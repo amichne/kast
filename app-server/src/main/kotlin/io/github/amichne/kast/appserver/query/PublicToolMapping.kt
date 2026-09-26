@@ -22,7 +22,12 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                         )
                     )
             }
-        is PublicToolQuerySymbols ->
+        is PublicToolQuerySymbols -> request.lower()
+    }
+
+private fun PublicToolAction.lower(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
+    when (this) {
+        is PublicToolRunAction ->
             when (val from = source.lower()) {
                 is Refinement.Rejected -> from
                 is Refinement.Refined ->
@@ -30,17 +35,45 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                         is Refinement.Rejected -> loweredSteps
                         is Refinement.Refined ->
                             Refinement.Refined(
-                                query(
-                                    from.value,
-                                    loweredSteps.value,
-                                    (return_fields ?: PublicToolDefaults.returnFields).values,
-                                    continuation,
-                                    executionBudget,
+                                PublicToolCanonical.Query(
+                                    QueryRunRequest.Run(
+                                        from = from.value,
+                                        steps = bounded(loweredSteps.value),
+                                        output = output(return_fields),
+                                        execution =
+                                            QueryExecutionDocument(
+                                                QueryExecutionKindDocument.EXHAUSTIVE,
+                                                QueryExecutionBudgetDocument.INTERACTIVE,
+                                            ),
+                                        retention =
+                                            when (retention) {
+                                                null,
+                                                PublicToolRetention.DISCARD -> QueryRetentionModeDocument.DISCARD
+                                                PublicToolRetention.RETAIN -> QueryRetentionModeDocument.RETAIN
+                                            },
+                                        executionBudget = executionBudget,
+                                    )
                                 )
                             )
                     }
             }
+        is PublicToolResumeAction ->
+            Refinement.Refined(PublicToolCanonical.Query(QueryRunRequest.Resume(continuation, executionBudget)))
+        is PublicToolReadResultAction ->
+            Refinement.Refined(
+                PublicToolCanonical.Query(
+                    QueryRunRequest.ReadResult(
+                        result,
+                        cursor ?: QueryResultCursor.Start,
+                        output(return_fields),
+                        executionBudget,
+                    )
+                )
+            )
     }
+
+private fun output(fields: BoundedProtocolList<PublicToolReturnFields>?): QueryOutputDocument.Symbols =
+    QueryOutputDocument.Symbols(bounded((fields ?: PublicToolDefaults.returnFields).values.map { it.lower() }))
 
 private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolInputFailure> =
     when (this) {
@@ -77,6 +110,7 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
                     )
                 )
             )
+        is PublicToolResultSource -> Refinement.Refined(QueryFromDocument.Result(result))
     }
 
 /** The spelling remains unchanged; no qualification stripping, wildcard expansion or fuzzy retry. */
@@ -162,24 +196,6 @@ private fun PublicToolScope.lower(): Refinement<QueryScopeDocument, PublicToolIn
 
 private fun containment(recursive: Boolean): QueryContainmentDocument =
     if (recursive) QueryContainmentDocument.DESCENDANTS else QueryContainmentDocument.DIRECT
-
-private fun query(
-    source: QueryFromDocument,
-    steps: List<QueryStepDocument>,
-    fields: List<PublicToolReturnFields>,
-    continuation: ProtocolText? = null,
-    executionBudget: ExecutionBudgetDocument? = null,
-) =
-    PublicToolCanonical.Query(
-        QueryRunRequest(
-            source,
-            bounded(steps),
-            QueryOutputDocument.Symbols(bounded(fields.map { it.lower() })),
-            QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            continuation = continuation,
-            executionBudget = executionBudget,
-        )
-    )
 
 private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, PublicToolInputFailure> {
     val result = mutableListOf<QueryStepDocument>()

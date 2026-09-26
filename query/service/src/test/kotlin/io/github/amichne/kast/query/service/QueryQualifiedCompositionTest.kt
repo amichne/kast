@@ -43,8 +43,7 @@ class QueryQualifiedCompositionTest {
                     ),
                     qualified.continuation,
                 )
-                val symbols =
-                    (qualified.result.items as io.github.amichne.kast.query.contract.QueryResultSet.Symbols).values
+                val symbols = qualified.result.items
                 assertEquals(if (leaf) emptyList() else listOf("C"), symbols.map { it.description.name.value }.sorted())
                 symbols.forEach { symbol ->
                     assertEquals(listOf("PaymentService", "B"), symbol.connections.map { it.source.name.value })
@@ -95,7 +94,7 @@ class QueryQualifiedCompositionTest {
                     }
                     is QueryExecutionResult.Rejected -> error(page.toString())
                 }
-            symbols += (result.items as io.github.amichne.kast.query.contract.QueryResultSet.Symbols).values
+            symbols += result.items
             val continuation = (page as? QueryExecutionResult.Qualified)?.continuation
             if (continuation is io.github.amichne.kast.query.contract.QueryContinuationState.Resumable) {
                 next =

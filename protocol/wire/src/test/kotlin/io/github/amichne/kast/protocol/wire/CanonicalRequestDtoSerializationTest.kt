@@ -1,5 +1,7 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
@@ -10,7 +12,18 @@ import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
+import io.github.amichne.kast.protocol.contract.QueryFromDocument
+import io.github.amichne.kast.protocol.contract.QueryMatchDocument
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
+import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
@@ -22,6 +35,9 @@ import java.util.Base64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -29,6 +45,47 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CanonicalRequestDtoSerializationTest {
+    @Test
+    fun `query resume and result read serialize without a repeated plan`() {
+        val token =
+            (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000001")
+                    as Refinement.Refined)
+                .value
+        val resume = strictJson.encodeToString(QueryRunRequest.serializer(), QueryRunRequest.Resume(token))
+        val resumeShape = strictJson.parseToJsonElement(resume).jsonObject
+        assertEquals(setOf("action", "continuation"), resumeShape.keys)
+        assertEquals("resume", resumeShape.getValue("action").jsonPrimitive.content)
+        assertEquals(token.value, resumeShape.getValue("continuation").jsonPrimitive.content)
+        assertThrows(SerializationException::class.java) {
+            strictJson.decodeFromString(QueryRunRequest.serializer(), resume.replace("\"resume\"", "\"obsolete\""))
+        }
+        assertThrows(SerializationException::class.java) {
+            strictJson.decodeFromString(QueryRunRequest.serializer(), resume.dropLast(1) + ",\"from\":{}}")
+        }
+
+        val result =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined).value
+        val fields =
+            (BoundedProtocolList.create(emptyList<io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument>())
+                    as Refinement.Refined)
+                .value
+        val read =
+            strictJson.encodeToString(
+                QueryRunRequest.serializer(),
+                QueryRunRequest.ReadResult(result, output = QueryOutputDocument.Symbols(fields)),
+            )
+        val readShape = strictJson.parseToJsonElement(read).jsonObject
+        assertEquals(setOf("action", "result", "cursor", "output"), readShape.keys)
+        assertEquals("read-result", readShape.getValue("action").jsonPrimitive.content)
+        assertEquals(result.value, readShape.getValue("result").jsonPrimitive.content)
+        assertEquals("0", readShape.getValue("cursor").jsonPrimitive.content)
+        assertEquals(setOf("fields"), readShape.getValue("output").jsonObject.keys)
+        assertTrue(readShape.getValue("output").jsonObject.getValue("fields").jsonArray.isEmpty())
+        assertThrows(SerializationException::class.java) {
+            strictJson.decodeFromString(QueryRunRequest.serializer(), read.replace("\"cursor\":0", "\"cursor\":-1"))
+        }
+    }
+
     @Test
     fun `all canonical requests own their wire serializer`() {
         val serializers = canonicalRequestSerializers()
@@ -75,24 +132,9 @@ class CanonicalRequestDtoSerializationTest {
         assertThrows(SerializationException::class.java) {
             strictJson.decodeFromString(
                 QueryRunRequest.serializer(),
-                """
-                {
-                  "from":{
-                    "type":"symbols",
-                    "match":{"type":"all"},
-                    "scope":{
-                      "sourceSets":["main","main"],
-                      "directory":null,
-                      "packageName":null
-                    },
-                    "declarationKinds":["class"]
-                  },
-                  "steps":[],
-                  "output":{"type":"symbols","fields":["name"]},
-                  "execution":{"kind":"exhaustive","budget":"interactive"}
-                }
-                """
-                    .trimIndent(),
+                strictJson
+                    .encodeToString(QueryRunRequest.serializer(), canonicalQueryRequest())
+                    .replace("\"sourceSets\":[\"main\"]", "\"sourceSets\":[\"main\",\"main\"]"),
             )
         }
     }
@@ -104,7 +146,7 @@ class CanonicalRequestDtoSerializationTest {
         val countConstraint =
             ProtocolCount.serializer().descriptor.annotations.filterIsInstance<ProtocolIntegerConstraint>().single()
         val collectionConstraint =
-            QueryRunRequest.serializer()
+            QueryRunRequest.Run.serializer()
                 .descriptor
                 .getElementDescriptor(1)
                 .annotations
@@ -134,6 +176,28 @@ class CanonicalRequestDtoSerializationTest {
             ChangeApplyRequest.serializer(),
             ChangeRecoverRequest.serializer(),
         )
+
+    private fun canonicalQueryRequest(): QueryRunRequest.Run {
+        val main = (ProtocolText.parse("main") as Refinement.Refined).value
+        val sourceSets = (BoundedProtocolList.create(listOf(main)) as Refinement.Refined).value
+        val kinds = (BoundedProtocolList.create(listOf(QueryDeclarationKindDocument.CLASS)) as Refinement.Refined).value
+        val steps =
+            (BoundedProtocolList.create(emptyList<io.github.amichne.kast.protocol.contract.QueryStepDocument>())
+                    as Refinement.Refined)
+                .value
+        val fields =
+            (BoundedProtocolList.create(emptyList<io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument>())
+                    as Refinement.Refined)
+                .value
+        return QueryRunRequest.Run(
+            QueryFromDocument.Symbols(
+                QueryDiscoveryDocument(QueryMatchDocument.All, QueryScopeDocument(sourceSets, null, null), kinds)
+            ),
+            steps,
+            QueryOutputDocument.Symbols(fields),
+            QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+        )
+    }
 
     private fun selector(family: String): String {
         val payload = "{}".encodeToByteArray()

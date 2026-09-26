@@ -9,7 +9,9 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -36,6 +38,8 @@ object CanonicalQueryCliDocuments {
                         status = "complete",
                         items = result.items.values.map(QueryResultItemDocument::toCliDocument),
                         failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
+                        retention = result.retention,
+                        nextCursor = result.nextCursor,
                         coverage = QueryCoverageCliDocument(exhaustive = true),
                         executionBudget = result.executionBudget,
                         referenceAcquisitions = result.referenceAcquisitions,
@@ -43,28 +47,7 @@ object CanonicalQueryCliDocuments {
                     )
                 )
             },
-            qualified = { result, qualification, live ->
-                qualifiedFactory.create(
-                    QueryQualifiedCliDocument(
-                        operation = CanonicalOperation.QUERY_RUN.id.value,
-                        status = "qualified",
-                        items = result.items.values.map(QueryResultItemDocument::toCliDocument),
-                        failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
-                        coverage = QueryCoverageCliDocument(exhaustive = false),
-                        qualification =
-                            QueryQualificationCliDocument(
-                                qualification.knownMinimum.value,
-                                qualification.limitations.map(Enum<*>::cliName),
-                                qualification.progress,
-                            ),
-                        continuation = qualification.progress.continuationToken?.value,
-                        terminalReason = qualification.progress.terminalReason?.cliName(),
-                        executionBudget = result.executionBudget,
-                        referenceAcquisitions = result.referenceAcquisitions,
-                        live = live,
-                    )
-                )
-            },
+            qualified = ::projectQualified,
             rejected = { rejection ->
                 rejectedFactory.create(
                     QueryRejectedCliDocument(
@@ -79,12 +62,44 @@ object CanonicalQueryCliDocuments {
         )
 }
 
+private fun projectQualified(
+    result: QueryRunResult,
+    qualification: QueryRunQualification,
+    live: LiveReadCliEvidence?,
+): CanonicalJsonDocument =
+    qualifiedFactory.create(
+        QueryQualifiedCliDocument(
+            operation = CanonicalOperation.QUERY_RUN.id.value,
+            status = "qualified",
+            items = result.items.values.map(QueryResultItemDocument::toCliDocument),
+            failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
+            retention = result.retention,
+            nextCursor = result.nextCursor,
+            coverage = QueryCoverageCliDocument(exhaustive = false),
+            qualification =
+                QueryQualificationCliDocument(
+                    qualification.knownMinimum.value,
+                    qualification.limitations.map(Enum<*>::cliName),
+                    qualification.progress,
+                ),
+            continuation = qualification.progress.continuationToken?.value,
+            terminalReason = qualification.progress.terminalReason?.cliName(),
+            executionBudget = result.executionBudget,
+            referenceAcquisitions = result.referenceAcquisitions,
+            live = live,
+        )
+    )
+
 @Serializable
 private data class QueryCompleteCliDocument(
     val operation: String,
     val status: String,
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
+    val retention: QueryResultRetention,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("next_cursor")
+    val nextCursor: QueryResultCursor? = null,
     val coverage: QueryCoverageCliDocument,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
@@ -102,6 +117,10 @@ private data class QueryQualifiedCliDocument(
     val status: String,
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
+    val retention: QueryResultRetention,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("next_cursor")
+    val nextCursor: QueryResultCursor? = null,
     val coverage: QueryCoverageCliDocument,
     val qualification: QueryQualificationCliDocument,
     val continuation: String?,
@@ -139,15 +158,6 @@ private data class QueryQualificationCliDocument(
 @Serializable
 private sealed interface QueryResultItemCliDocument {
     @Serializable
-    @SerialName("candidate")
-    data class Candidate(
-        val ref: String,
-        val kind: String,
-        val name: String?,
-        val location: QueryCandidateLocationCliDocument?,
-    ) : QueryResultItemCliDocument
-
-    @Serializable
     @SerialName("exact-symbol")
     data class ExactSymbol(
         val ref: String,
@@ -167,8 +177,6 @@ private data class QuerySourceWindowCliDocument(
     val startLine: Long,
     val endLine: Long,
 )
-
-@Serializable private data class QueryCandidateLocationCliDocument(val file: String, val offset: Int)
 
 @Serializable private data class QueryExactLocationCliDocument(val file: String, val range: SourceRangeCliDocument)
 
@@ -204,15 +212,6 @@ private sealed interface QueryRejectionCliDocument {
     @Serializable @SerialName("workspace-not-ready") data object WorkspaceNotReady : QueryRejectionCliDocument
 
     @Serializable
-    @SerialName("plan-rejected")
-    data class PlanRejected(
-        val path: String,
-        val required: String,
-        val actual: String,
-        val correction: String,
-    ) : QueryRejectionCliDocument
-
-    @Serializable
     @SerialName("reference-rejected")
     data class ReferenceRejected(val path: String, val reason: String) : QueryRejectionCliDocument
 
@@ -227,13 +226,6 @@ private sealed interface QueryRejectionCliDocument {
 
 private fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument =
     when (this) {
-        is QueryResultItemDocument.Candidate ->
-            QueryResultItemCliDocument.Candidate(
-                ref.toCliDocument(),
-                kind.cliName(),
-                name?.value,
-                location?.let { QueryCandidateLocationCliDocument(it.file.value, it.offset.value) },
-            )
         is QueryResultItemDocument.ExactSymbol ->
             QueryResultItemCliDocument.ExactSymbol(
                 ref.toCliDocument(),
@@ -280,13 +272,6 @@ private fun QueryReferenceDocument.toCliDocument(): String = token.value
 private fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
     when (this) {
         QueryRunRejection.WorkspaceNotReady -> QueryRejectionCliDocument.WorkspaceNotReady
-        is QueryRunRejection.PlanRejected ->
-            QueryRejectionCliDocument.PlanRejected(
-                "steps[${position.value}]",
-                required.cliName(),
-                actual.cliName(),
-                correction.cliName(),
-            )
         is QueryRunRejection.ReferenceRejected ->
             QueryRejectionCliDocument.ReferenceRejected(
                 "from.values[${position.value}]",

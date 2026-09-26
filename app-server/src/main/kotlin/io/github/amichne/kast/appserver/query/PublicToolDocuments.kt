@@ -8,6 +8,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryResultCursor
+import io.github.amichne.kast.protocol.contract.QueryResultReference
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -59,6 +62,12 @@ internal enum class PublicToolReturnFields {
     @SerialName("source") SOURCE,
 }
 
+@Serializable
+internal enum class PublicToolRetention {
+    @SerialName("discard") DISCARD,
+    @SerialName("retain") RETAIN,
+}
+
 @Serializable(with = PublicToolScopeSerializer::class)
 internal sealed interface PublicToolScope
 
@@ -67,6 +76,10 @@ internal sealed interface PublicToolSource
 
 @Serializable
 internal sealed interface PublicToolStep
+
+@Serializable
+@kotlinx.serialization.json.JsonClassDiscriminator("action")
+internal sealed interface PublicToolAction
 
 @Serializable
 internal data class PublicToolDirectoryScope(
@@ -133,6 +146,44 @@ internal data class PublicToolFilterJq(
 ) : PublicToolStep
 
 @Serializable
+@SerialName("result")
+internal data class PublicToolResultSource(
+    val result: QueryResultReference,
+) : PublicToolSource
+
+@Serializable
+@SerialName("run")
+internal data class PublicToolRunAction(
+    val source: PublicToolSource,
+    val steps: BoundedProtocolList<PublicToolStep>?,
+    val return_fields: BoundedProtocolList<PublicToolReturnFields>?,
+    val retention: PublicToolRetention? = null,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
+) : PublicToolAction
+
+@Serializable
+@SerialName("resume")
+internal data class PublicToolResumeAction(
+    val continuation: QueryExecutionContinuation,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
+) : PublicToolAction
+
+@Serializable
+@SerialName("read_result")
+internal data class PublicToolReadResultAction(
+    val result: QueryResultReference,
+    val cursor: QueryResultCursor? = null,
+    val return_fields: BoundedProtocolList<PublicToolReturnFields>?,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
+) : PublicToolAction
+
+@Serializable
 internal data class PublicToolCheckDiagnostics(
     val relative_path: ProtocolText,
     val max_diagnostics: Int? = null,
@@ -144,13 +195,7 @@ internal data class PublicToolCheckDiagnostics(
 
 @Serializable
 internal data class PublicToolQuerySymbols(
-    val source: PublicToolSource,
-    val steps: BoundedProtocolList<PublicToolStep>?,
-    val return_fields: BoundedProtocolList<PublicToolReturnFields>?,
-    val continuation: ProtocolText? = null,
-    @SerialName("execution_budget")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val executionBudget: ExecutionBudgetDocument? = null,
+    val request: PublicToolAction,
 ) : PublicToolDocument
 
 internal object PublicToolScopeSerializer : JsonContentPolymorphicSerializer<PublicToolScope>(PublicToolScope::class) {

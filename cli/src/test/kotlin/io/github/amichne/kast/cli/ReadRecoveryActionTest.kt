@@ -7,9 +7,7 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
-import io.github.amichne.kast.protocol.contract.QueryAdmissionCorrectionDocument
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
-import io.github.amichne.kast.protocol.contract.QueryElementTypeDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
@@ -119,12 +117,6 @@ class ReadRecoveryActionTest {
         val reasons =
             listOf(
                 QueryRunRejection.WorkspaceNotReady,
-                QueryRunRejection.PlanRejected(
-                    offset,
-                    QueryElementTypeDocument.EXACT_SYMBOL,
-                    QueryElementTypeDocument.DECLARATION_CANDIDATE,
-                    QueryAdmissionCorrectionDocument.INSERT_INSPECT,
-                ),
                 QueryRunRejection.SourceRejected(
                     QueryDeclarationKindDocument.CONSTRUCTOR,
                     QuerySourceRejectionReason.UNSUPPORTED_DECLARATION_KIND,

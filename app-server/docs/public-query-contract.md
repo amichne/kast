@@ -11,7 +11,15 @@ The agent supplies intent; Kast establishes semantic evidence. Each public tool 
 | `check_diagnostics` | `diagnostic.check` | `tool check_diagnostics` | eager |
 | `query_symbols` | `query.run` | `tool query_symbols` | eager |
 
-All routes read one JSON document from stdin. The optional nullable `continuation` is absent/null for a new pipeline and preserves exact opaque bytes for resume. Other required nullable controls normalize once into the authored defaults before constructing a canonical request. Exact case-sensitive matching is the default. `query_symbols` selects declaration families and output fields, preserving overload identities. Advanced source scopes restrict discovery only, ordered steps stay ordered, and an empty return-field list remains meaningful.
+All routes read one JSON document from stdin. `query_symbols` takes one required `request` object with exactly one action:
+
+| Action | Required input | Meaning |
+|---|---|---|
+| `run` | `source`, `steps`, `return_fields` | Execute an ordered query; optionally request `retention: "retain"`. |
+| `resume` | Issued `continuation` | Resume the retained execution with an optional new `execution_budget`; the plan is not resent. |
+| `read_result` | Issued `result`, `return_fields` | Present an immutable retained result from an optional `cursor`; no query stages run. |
+
+A run can start from declaration discovery, issued exact-symbol references, or a retained result reference. Exact case-sensitive name matching is the discovery default. Source scope restricts discovery only, ordered steps stay ordered, and an empty return-field list remains meaningful. Omitted or null controls use the authored defaults. A result source can be empty; it still carries its original qualification and omissions into the next query.
 
 `PublicToolContract` validates the full schema, decodes generated syntax, and performs pure lowering. `AdmittedPublicTool` has a private constructor and retains tool identity, typed syntax and a closed query/diagnostic canonical request. The provider and CLI share this admission boundary. Re-encoding uses retained typed syntax; a request admitted for one tool cannot be reused under another tool's schema merely because both own `query.run`.
 
@@ -23,7 +31,7 @@ Installed server projection **15** and CLI invocation projection **4** carry the
 
 The catalog advertises `read_relations` for individual `relation.read` occurrences and `traverse_relations` for bounded multi-step `traversal.run` reachability. Retired aliases reject at input admission.
 
-Search and advanced query results supply one scalar `ref`, preserving the issued candidate or exact token verbatim. Runtime reference restoration still owns authenticity, workspace, lifetime, epoch and scope. Input schema acceptance proves syntax only. Complete/qualified/rejected outcomes, item failures, signatures and occurrence facts remain intact; a qualified empty result is not proof of absence.
+Query symbol rows carry exact-symbol references. Separate candidate lookup may return candidate references; these are not query output. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors have different owners and cannot substitute for each other. Runtime restoration owns authenticity, workspace, lifetime, epoch and scope. Input schema acceptance proves syntax only. Complete/qualified/rejected outcomes, item failures, signatures and occurrence facts remain intact; a qualified empty result is not proof of absence.
 
 Executable checks are `PublicToolContractTest`, `PublicToolSchemaTest`, `KastPublicQueryProviderTest`, `PublicToolCommandTest`, `InstalledServerProjectionTest`, `CanonicalAgentToolDefinitionsTest`, and `GeneratedCliProjectionTest`. Run `:app-server:verifyPublicQueryGeneration`, the relevant module checks, `verifyKastArchitecture`, and the existing native replay for native semantic evidence. The [search guide](../../docs/public/search.mdx) contains current examples.
 
@@ -33,9 +41,9 @@ Executable checks are `PublicToolContractTest`, `PublicToolSchemaTest`, `KastPub
 
 Omitted or explicit null controls normalize once through the generated defaults. Invalid and empty values retain their own meaning. Unknown fields, duplicate sets, unsupported stages and lexical errors reject before effects. The provider's generation projection may omit validation keywords, but server admission enforces the full schema.
 
-Canonical query execution owns workspace, semantic basis, exact reference restoration, resource limits, coverage and compiler evidence. Schema admission grants no compiler authority. Ordered stages and exact token bytes survive lowering and encoding. Query results retain a scalar opaque reference and finite item failures; a qualified empty result cannot establish absence.
+Canonical query execution owns workspace, semantic basis, exact reference restoration, resource limits, coverage and compiler evidence. Schema admission grants no compiler authority. Ordered stages and exact token bytes survive lowering and encoding. Retained results are immutable, bounded, and bound to the semantic basis that produced them. Reusing a qualified result preserves its positive rows, incomplete coverage, and omissions; a qualified empty result cannot establish absence. A requested retention can fail for capacity without erasing the returned query result.
 
-A continuation resumes the same bound query and basis. It carries pending work and stage-local distinct history; reference-string equality does not replace canonical declaration identity. Expired, evicted, mismatched and stale state rejects. A nullable continuation is absent or null for a new request; non-null values preserve their issued bytes.
+An execution continuation resumes the same bound query and basis. Public admission accepts only the `query:v1` pipeline and `query-output:v1` retained-output token families with their bounded UUID syntax. It rejects malformed tokens and `result:v1` references before canonical lowering. The caller sends only issued continuation bytes and an optional new grant. A result cursor addresses a presentation page inside one separately supplied retained result and never resumes semantic execution. Expired, evicted, mismatched and stale retained state rejects. Query set membership uses canonical semantic identity, not names or token-string equality.
 
 ## Verification
 

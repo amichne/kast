@@ -5,6 +5,8 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
@@ -74,10 +76,10 @@ private suspend fun evaluateHostedQuery(
     continuations: IntellijSourceReadContinuations,
 ): HostedResponse {
     val queryContinuations = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)
-    val token = request.request.continuation
+    val token = (request.request as? QueryRunRequest.Resume)?.continuation
     val outcome =
-        if (token != null && token.value.startsWith(HostedQueryContinuations.prefix)) {
-            queryContinuations.restore(token, request.request, context.authority)
+        if (token is QueryExecutionContinuation.Output) {
+            queryContinuations.restore(token, context.authority)
         } else {
             CanonicalQueryProtocol(
                     QueryService(
@@ -87,7 +89,7 @@ private suspend fun evaluateHostedQuery(
                         relations = services.relations,
                     ),
                     services.readReferences,
-                    queryContinuations.checkpoints,
+                    queryContinuations.queryState,
                 )
                 .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
         }

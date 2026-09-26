@@ -8,9 +8,14 @@ changes, and focused PublicTool contract/schema tests after admission changes.
 A public request is intent, not compiler evidence. Admit the sole public query
 grammar in `tools.schema.json` into `AdmittedPublicTool` through its private
 construction boundary. Never reintroduce a raw JSON query payload, candidate
-output, an INSPECT stage, magic wildcard, or implicit retry. Pagination
-continuation is optional nullable context: absent or null starts a query, while
-a value must retain exact opaque bytes.
+output, an INSPECT stage, magic wildcard, or implicit retry. The closed query
+request admits exactly one of three actions: run with a source and ordered steps, resume
+with a typed pipeline or retained-output execution continuation and optional grant, or read_result with a
+retained-result reference and distinct presentation cursor. Keep exact-symbol
+references, result references, execution continuations, and result cursors
+separate in the admitted syntax. The public resume schema admits only issued
+`query:v1` and `query-output:v1` token families; malformed and retained-result
+tokens reject before canonical lowering.
 The intent tools in `tools.schema.json` allow default controls to be omitted;
 normalize omission or explicit null once through the generated defaults before canonical construction. Admit
 those requests through `AdmittedPublicTool`, retaining tool identity and schema

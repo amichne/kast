@@ -62,8 +62,6 @@ enum class QueryPrimitiveOperator {
 }
 
 sealed interface QueryStepSyntax {
-    data object Inspect : QueryStepSyntax
-
     data class Where(val predicate: QueryPredicate) : QueryStepSyntax
 
     data class Related(val meaning: RelationMeaning) : QueryStepSyntax

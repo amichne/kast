@@ -6,6 +6,6 @@
 - [Source failures](source-failures.md) — request fields, reference causes, and internal obligations.
 - [Source identity](source-identity.md) — retained scope, published/live authority, coordinates, and source snapshots.
 
-- [Public intent tools](public-tools.md) — schema-bound search/diagnostic presentations and canonical lowering.
+- [Public intent tools](public-tools.md) — schema-bound query actions, retained-result inputs, diagnostics, and canonical lowering.
 
 - [Installed knowledge](installed-knowledge.md) — bounded installed syntax documentation and scoped guides.

@@ -1,83 +1,23 @@
 {
   "type": "object",
   "properties": {
-    "source": {
+    "request": {
       "anyOf": [
         {
-          "$ref": "#/$defs/SearchSource"
+          "$ref": "#/$defs/RunAction"
         },
         {
-          "$ref": "#/$defs/AllSource"
+          "$ref": "#/$defs/ResumeAction"
         },
         {
-          "$ref": "#/$defs/ReferenceSource"
+          "$ref": "#/$defs/ReadResultAction"
         }
       ],
-      "description": "Starting declarations or returned exact-symbol references. No candidate-refinement step is needed."
-    },
-    "steps": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "anyOf": [
-          {
-            "$ref": "#/$defs/FilterVisibility"
-          },
-          {
-            "$ref": "#/$defs/ExpandRelation"
-          },
-          {
-            "$ref": "#/$defs/DistinctSymbols"
-          },
-          {
-            "$ref": "#/$defs/AppendSymbolRefs"
-          },
-          {
-            "$ref": "#/$defs/FilterJq"
-          }
-        ]
-      },
-      "minItems": 0,
-      "maxItems": 1000,
-      "description": "Ordered transformations, executed left to right. null and [] mean no transformations. append_symbol_refs merges prior exact-symbol outputs into the stream; distinct_symbols then forms a set union. filter_jq accepts the documented bounded jq select subset over primitive symbol fields."
-    },
-    "return_fields": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "string",
-        "enum": [
-          "name",
-          "location",
-          "signature",
-          "source"
-        ]
-      },
-      "minItems": 0,
-      "maxItems": 4,
-      "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission. The source field adds committed declaration text with five surrounding lines, subject to the query budget."
-    },
-    "continuation": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Opaque continuation returned by this exact pipeline. Omit or use null to start. Resume with the same source, steps and return_fields; stale or mismatched state rejects."
-    },
-    "execution_budget": {
-      "$ref": "#/$defs/ExecutionBudget"
+      "description": "Exactly one closed query action: run, resume, or read_result."
     }
   },
   "required": [
-    "source",
-    "steps",
-    "return_fields",
-    "continuation",
-    "execution_budget"
+    "request"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -460,6 +400,215 @@
       ],
       "additionalProperties": false,
       "description": "Keep symbols for which the supported jq predicate selects the primitive projection."
+    },
+    "ResultReference": {
+      "type": "string",
+      "pattern": "^result:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Opaque retained-result reference returned by Kast. It is separate from an exact-symbol reference and an execution continuation."
+    },
+    "ResultCursor": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1000000,
+      "description": "Optional presentation offset in the immutable retained result. Omission or null starts at zero; this cursor does not resume semantic execution."
+    },
+    "ResultSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "result"
+          ]
+        },
+        "result": {
+          "$ref": "#/$defs/ResultReference"
+        }
+      },
+      "required": [
+        "type",
+        "result"
+      ],
+      "additionalProperties": false,
+      "description": "Seed a new pipeline from a retained immutable result. The same semantic basis is checked when Kast restores it, including an empty result and any incomplete-coverage qualification."
+    },
+    "RunAction": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "run"
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SearchSource"
+            },
+            {
+              "$ref": "#/$defs/AllSource"
+            },
+            {
+              "$ref": "#/$defs/ReferenceSource"
+            },
+            {
+              "$ref": "#/$defs/ResultSource"
+            }
+          ],
+          "description": "Starting declarations, exact-symbol references, or one retained result."
+        },
+        "steps": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/FilterVisibility"
+              },
+              {
+                "$ref": "#/$defs/ExpandRelation"
+              },
+              {
+                "$ref": "#/$defs/DistinctSymbols"
+              },
+              {
+                "$ref": "#/$defs/AppendSymbolRefs"
+              },
+              {
+                "$ref": "#/$defs/FilterJq"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1000,
+          "description": "Ordered transformations, executed left to right. null and [] mean no transformations. append_symbol_refs merges prior exact-symbol outputs into the stream; distinct_symbols then forms a set union. filter_jq accepts the documented bounded jq select subset over primitive symbol fields."
+        },
+        "return_fields": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "name",
+              "location",
+              "signature",
+              "source"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4,
+          "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission. The source field adds committed declaration text with five surrounding lines, subject to the query budget."
+        },
+        "retention": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "discard",
+            "retain",
+            null
+          ],
+          "description": "Omission or null discards the completed result after returning it. retain publishes an immutable bounded same-basis result reference; publication failure is reported without erasing the query result."
+        },
+        "execution_budget": {
+          "$ref": "#/$defs/ExecutionBudget"
+        }
+      },
+      "required": [
+        "action",
+        "source",
+        "steps",
+        "return_fields",
+        "retention",
+        "execution_budget"
+      ],
+      "additionalProperties": false,
+      "description": "Run a query from the supplied source and ordered steps. Retain the completed result only when requested."
+    },
+    "ResumeAction": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "resume"
+          ]
+        },
+        "continuation": {
+          "$ref": "#/$defs/ExecutionContinuation"
+        },
+        "execution_budget": {
+          "$ref": "#/$defs/ExecutionBudget"
+        }
+      },
+      "required": [
+        "action",
+        "continuation",
+        "execution_budget"
+      ],
+      "additionalProperties": false,
+      "description": "Continue the saved query execution without resending or rediscovering its completed prefix."
+    },
+    "ReadResultAction": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "read_result"
+          ]
+        },
+        "result": {
+          "$ref": "#/$defs/ResultReference"
+        },
+        "cursor": {
+          "$ref": "#/$defs/ResultCursor"
+        },
+        "return_fields": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "name",
+              "location",
+              "signature",
+              "source"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4,
+          "description": "Optional symbol fields for this presentation page. null uses name and location; [] returns mandatory identity and kind only. No semantic provider is invoked."
+        },
+        "execution_budget": {
+          "$ref": "#/$defs/ExecutionBudget"
+        }
+      },
+      "required": [
+        "action",
+        "result",
+        "cursor",
+        "return_fields",
+        "execution_budget"
+      ],
+      "additionalProperties": false,
+      "description": "Present an immutable retained result, starting at the supplied result cursor; this performs no query evaluation."
+    },
+    "ExecutionContinuation": {
+      "type": "string",
+      "pattern": "^(?:query|query-output):v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Issued execution continuation for an unfinished query pipeline or retained transport output. Copy verbatim. A retained-result reference cannot resume execution."
     }
   }
 }

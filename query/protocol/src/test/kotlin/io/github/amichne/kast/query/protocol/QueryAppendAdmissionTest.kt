@@ -35,7 +35,6 @@ import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
-import io.github.amichne.kast.query.contract.QueryResultSet
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -115,14 +114,14 @@ class QueryAppendAdmissionTest {
         val continuation = first.qualification.progress.continuationToken!!
         assertInstanceOf(
             OperationOutcome.Complete::class.java,
-            protocol.execute(input.copy(continuation = continuation), fixture.authority, budget),
+            protocol.execute(QueryRunRequest.Resume(continuation), fixture.authority, budget),
         )
         assertEquals(1, acquisitions)
         assertEquals(2, executions)
     }
 
     private fun qualifiedThenComplete(admitted: QueryExecutionRequest, execution: Int): QueryExecutionResult {
-        val result = QueryResult(QueryResultSet.Symbols(emptyList()), emptyList())
+        val result = QueryResult(emptyList(), emptyList())
         if (execution != 1)
             return QueryExecutionResult.Complete(
                 result,
@@ -146,7 +145,7 @@ class QueryAppendAdmissionTest {
     }
 
     private fun request() =
-        QueryRunRequest(
+        QueryRunRequest.Run(
             QueryFromDocument.Symbols(
                 QueryDiscoveryDocument(
                     QueryMatchDocument.All,

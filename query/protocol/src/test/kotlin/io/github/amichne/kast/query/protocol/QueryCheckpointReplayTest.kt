@@ -21,10 +21,6 @@ import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
-import io.github.amichne.kast.protocol.contract.QueryStepDocument
-import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
-import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCheckpoint
@@ -33,7 +29,7 @@ import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
-import io.github.amichne.kast.query.contract.QueryResultSet
+import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.LiveReadAuthorityFixture
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -60,9 +56,27 @@ class QueryCheckpointReplayTest {
     private val largerGrant = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(200).refined())
 
     @Test
+    fun `result references share bounded expiry and reject a different semantic basis`() {
+        var now = 0L
+        val store = QueryStateStore(capacity = 1, maximumBytes = 16_384L, clock = { now })
+        val snapshot = QueryRetainedResult.capture(lease, complete()).refined()
+        val issued = store.issueResult(request(), snapshot) as QueryResultIssuance.Issued
+        val restored = store.restoreResult(issued.reference, lease) as QueryResultRestoration.Restored
+        assertEquals(emptyList<Any>(), restored.result.symbols)
+        val different = SemanticReadLease(root, EvidenceGeneration.parse(8).refined())
+        assertEquals(QueryResultRestoration.StaleBasis, store.restoreResult(issued.reference, different))
+        now = 600_000_000_001L
+        assertEquals(QueryResultRestoration.Unavailable, store.restoreResult(issued.reference, lease))
+        assertEquals(
+            QueryResultIssuance.CapacityExceeded,
+            QueryStateStore(maximumBytes = 1L).issueResult(request(), snapshot),
+        )
+    }
+
+    @Test
     fun `checkpoint replay retains token and expiry without consuming capacity`() = runTest {
         var now = 0L
-        val store = QueryCheckpointStore(capacity = 1, maximumBytes = 16384L, clock = { now })
+        val store = QueryStateStore(capacity = 1, maximumBytes = 16384L, clock = { now })
         lateinit var retained: QueryCheckpoint
         CanonicalQueryProtocol(
                 QueryOperations { admitted ->
@@ -73,71 +87,58 @@ class QueryCheckpointReplayTest {
                             override val retainedBytes = 1024L
                         }
                     QueryExecutionResult.Complete(
-                        QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                        QueryResult(emptyList(), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
                 },
                 CanonicalQueryReferences(),
             )
             .execute(request(), lease, budget)
-        val first = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
+        val first = store.issueCheckpoint(request(), retained) as QueryCheckpointIssuance.Issued
         now = 300_000_000_000L
         val second =
-            store.issue(request().copy(executionBudget = largerGrant), retained) as QueryCheckpointIssuance.Issued
+            store.issueCheckpoint(request().copy(executionBudget = largerGrant), retained)
+                as QueryCheckpointIssuance.Issued
         assertEquals(first, second)
-        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(first.token, request(), lease))
-        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(second.token, request(), lease))
+        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restoreCheckpoint(first.token, lease))
+        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restoreCheckpoint(second.token, lease))
         for (age in listOf(599_999_999_999L, 600_000_000_000L)) {
             now = age
-            assertEquals(first, store.issue(request(), retained))
+            assertEquals(first, store.issueCheckpoint(request(), retained))
             assertInstanceOf(
                 QueryCheckpointRestoration.Restored::class.java,
-                store.restore(first.token, request(), lease),
+                store.restoreCheckpoint(first.token, lease),
             )
         }
         now = 600_000_000_001L
-        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(second.token, request(), lease))
+        assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(second.token, lease))
         assertEquals(
             QueryCheckpointIssuance.CapacityExceeded,
-            QueryCheckpointStore(maximumBytes = 1L).issue(request(), retained),
+            QueryStateStore(maximumBytes = 1L).issueCheckpoint(request(), retained),
         )
-        val renewed = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
+        assertReplacementRetiresPrevious(store, retained)
+    }
+
+    private fun assertReplacementRetiresPrevious(store: QueryStateStore, retained: QueryCheckpoint) {
+        val renewed = store.issueCheckpoint(request(), retained) as QueryCheckpointIssuance.Issued
         val different =
-            store.issue(request(), object : QueryCheckpoint by retained {}) as QueryCheckpointIssuance.Issued
-        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(renewed.token, request(), lease))
+            store.issueCheckpoint(request(), object : QueryCheckpoint by retained {}) as QueryCheckpointIssuance.Issued
+        assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(renewed.token, lease))
         assertInstanceOf(
             QueryCheckpointRestoration.Restored::class.java,
-            store.restore(different.token, request(), lease),
+            store.restoreCheckpoint(different.token, lease),
         )
     }
 
     @Test
-    fun `checkpoint identity retains query scope projection and relationship`() = runTest {
-        val store = QueryCheckpointStore()
+    fun `checkpoint retains the admitted query plan and rejects another basis`() = runTest {
+        val store = QueryStateStore()
         val original = request()
         val retained = checkpoint(lease)
-        val issued = store.issue(original, retained) as QueryCheckpointIssuance.Issued
-        val source = original.from as QueryFromDocument.Symbols
-        val changed =
-            listOf(
-                original.copy(
-                    from =
-                        source.copy(
-                            match = QueryMatchDocument.Name(text("Other"), SymbolDiscoveryMatchDocument.EXACT_NAME)
-                        )
-                ),
-                original.copy(
-                    from = source.copy(scope = source.scope.copy(sourceSets = bounded(listOf(text("main")))))
-                ),
-                original.copy(
-                    from = source.copy(declarationKinds = bounded(listOf(QueryDeclarationKindDocument.FUNCTION)))
-                ),
-                original.copy(output = QueryOutputDocument.Symbols(bounded(listOf(QuerySymbolFieldDocument.NAME)))),
-                original.copy(steps = bounded(listOf(QueryStepDocument.Related(RelationKindDocument.CALLERS)))),
-            )
-        changed.forEach { altered ->
-            assertEquals(QueryCheckpointRestoration.Mismatch, store.restore(issued.token, altered, lease))
-        }
+        val issued = store.issueCheckpoint(original, retained) as QueryCheckpointIssuance.Issued
+        val restored = store.restoreCheckpoint(issued.token, lease) as QueryCheckpointRestoration.Restored
+        assertEquals(original, restored.request)
+        assertEquals(retained, restored.checkpoint)
         val authorities =
             listOf(
                 SemanticReadLease(
@@ -148,21 +149,21 @@ class QueryCheckpointReplayTest {
                 LiveReadAuthorityFixture.create(root),
             )
         authorities.forEach { authority ->
-            assertEquals(QueryCheckpointRestoration.Mismatch, store.restore(issued.token, original, authority))
+            assertEquals(QueryCheckpointRestoration.Mismatch, store.restoreCheckpoint(issued.token, authority))
         }
         assertEquals(
             QueryCheckpointRestoration.Unavailable,
-            QueryCheckpointStore().restore(issued.token, original, lease),
+            QueryStateStore().restoreCheckpoint(issued.token, lease),
         )
         store.clear()
-        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(issued.token, original, lease))
+        assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(issued.token, lease))
     }
 
     @Test
     fun `checkpoint resumes each larger allowance through canonical admission with retained plan`() = runTest {
-        val store = QueryCheckpointStore()
+        val store = QueryStateStore()
         val retained = checkpoint(lease)
-        val issued = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
+        val issued = store.issueCheckpoint(request(), retained) as QueryCheckpointIssuance.Issued
         val grants =
             listOf(
                 budget.copy(
@@ -174,17 +175,16 @@ class QueryCheckpointReplayTest {
             )
         grants.forEach { grant ->
             val requested =
-                request()
-                    .copy(
-                        continuation = issued.token,
-                        executionBudget =
-                            ExecutionBudgetDocument(
-                                maxElapsedMillis = grant.resources.elapsedTimeLimit,
-                                maxWorkUnits = grant.resources.workUnitLimit,
-                                maxResults = grant.resources.resultLimit,
-                                maxReturnedBytes = ReturnedByteLimit.parse(grant.returnedBytes.value).refined(),
-                            ),
-                    )
+                QueryRunRequest.Resume(
+                    continuation = issued.token,
+                    executionBudget =
+                        ExecutionBudgetDocument(
+                            maxElapsedMillis = grant.resources.elapsedTimeLimit,
+                            maxWorkUnits = grant.resources.workUnitLimit,
+                            maxResults = grant.resources.resultLimit,
+                            maxReturnedBytes = ReturnedByteLimit.parse(grant.returnedBytes.value).refined(),
+                        ),
+                )
             val protocol =
                 CanonicalQueryProtocol(
                     QueryOperations { admitted ->
@@ -197,16 +197,22 @@ class QueryCheckpointReplayTest {
                     store,
                 )
             assertInstanceOf(OperationOutcome.Complete::class.java, protocol.execute(requested, lease, grant))
-            assertEquals(issued, store.issue(requested, retained))
+            assertEquals(
+                issued,
+                store.issueCheckpoint(request().copy(executionBudget = requested.executionBudget), retained),
+            )
         }
-        assertEquals(issued, store.issue(request().copy(executionBudget = ExecutionBudgetDocument()), retained))
+        assertEquals(
+            issued,
+            store.issueCheckpoint(request().copy(executionBudget = ExecutionBudgetDocument()), retained),
+        )
     }
 
     @Test
     fun `live checkpoints bind workspace host lifetime and epoch independently`() = runTest {
         val authority = LiveReadAuthorityFixture.create(root)
-        val store = QueryCheckpointStore()
-        val issued = store.issue(request(), checkpoint(authority)) as QueryCheckpointIssuance.Issued
+        val store = QueryStateStore()
+        val issued = store.issueCheckpoint(request(), checkpoint(authority)) as QueryCheckpointIssuance.Issued
         val changed =
             listOf(
                 LiveReadAuthorityFixture.create(CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/other")).refined()),
@@ -217,11 +223,11 @@ class QueryCheckpointReplayTest {
                 LiveReadAuthorityFixture.create(root),
             )
         changed.forEach { altered ->
-            assertEquals(QueryCheckpointRestoration.Mismatch, store.restore(issued.token, request(), altered))
+            assertEquals(QueryCheckpointRestoration.Mismatch, store.restoreCheckpoint(issued.token, altered))
         }
         assertInstanceOf(
             QueryCheckpointRestoration.Restored::class.java,
-            store.restore(issued.token, request(), authority),
+            store.restoreCheckpoint(issued.token, authority),
         )
     }
 
@@ -245,12 +251,12 @@ class QueryCheckpointReplayTest {
 
     private fun complete() =
         QueryExecutionResult.Complete(
-            QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+            QueryResult(emptyList(), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(0).refined()),
         )
 
     private fun request() =
-        QueryRunRequest(
+        QueryRunRequest.Run(
             QueryFromDocument.Symbols(
                 QueryDiscoveryDocument(
                     QueryMatchDocument.All,

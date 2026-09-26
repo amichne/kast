@@ -141,7 +141,7 @@ class HostedReadBudgetAdmissionTest {
             diagnosticInput(budget),
             input(
                 CanonicalOperationWireBindings.queryRun,
-                QueryRunRequest(
+                QueryRunRequest.Run(
                     QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(fixture.exact)))),
                     bounded(emptyList()),
                     QueryOutputDocument.Symbols(bounded(emptyList())),

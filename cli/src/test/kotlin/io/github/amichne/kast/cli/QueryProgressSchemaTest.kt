@@ -6,8 +6,8 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
@@ -90,7 +90,7 @@ class QueryProgressSchemaTest {
             QueryRunResult(
                 BoundedProtocolList.create(listOf(item)).refined(),
                 BoundedProtocolList.create(emptyList<QueryItemFailureDocument>()).refined(),
-                ExecutionBudgetReport.from(hostedSchemaBudgetGrant(ExecutionBudgetDocument())),
+                executionBudget = ExecutionBudgetReport.from(hostedSchemaBudgetGrant(ExecutionBudgetDocument())),
             )
         }
 
@@ -99,7 +99,9 @@ class QueryProgressSchemaTest {
             val id = "00000000-0000-0000-0000-000000000001"
             val upstream =
                 QueryQualifiedProgressDocument.Resumable(
-                    QueryCheckpointDocument.Upstream(ProtocolText.parse("query:v1:$id").refined()),
+                    QueryCheckpointDocument.Upstream(
+                        QueryExecutionContinuation.Pipeline.parse("query:v1:$id").refined()
+                    ),
                     ReadResumeActionDocument.RESUME,
                 )
             val terminals = QueryTerminalReasonDocument.entries.map(QueryQualifiedProgressDocument::TerminalIncomplete)
@@ -111,7 +113,7 @@ class QueryProgressSchemaTest {
                 coverage.map { original ->
                     QueryQualifiedProgressDocument.Resumable(
                         QueryCheckpointDocument.RetainedOutput(
-                            ProtocolText.parse("query-output:v1:$id").refined(),
+                            QueryExecutionContinuation.Output.parse("query-output:v1:$id").refined(),
                             original,
                         ),
                         ReadResumeActionDocument.RESUME,

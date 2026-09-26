@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.query.PublicToolDeclarationKinds
 import io.github.amichne.kast.appserver.query.PublicToolNameMatch
 import io.github.amichne.kast.appserver.query.PublicToolQuerySymbols
 import io.github.amichne.kast.appserver.query.PublicToolReturnFields
+import io.github.amichne.kast.appserver.query.PublicToolRunAction
 import io.github.amichne.kast.appserver.query.PublicToolScope
 import io.github.amichne.kast.appserver.query.PublicToolSearchSource
 import io.github.amichne.kast.kernel.Refinement
@@ -23,13 +24,15 @@ internal fun publicNameQuery(
     Json.encodeToJsonElement(
         PublicToolQuerySymbols.serializer(),
         PublicToolQuerySymbols(
-            PublicToolSearchSource(
-                (ProtocolText.parse(name) as Refinement.Refined).value,
-                match,
-                kinds?.let { (BoundedProtocolList.create(it) as Refinement.Refined).value },
-                scope,
-            ),
-            null,
-            fields?.let { (BoundedProtocolList.create(it) as Refinement.Refined).value },
+            PublicToolRunAction(
+                PublicToolSearchSource(
+                    (ProtocolText.parse(name) as Refinement.Refined).value,
+                    match,
+                    kinds?.let { (BoundedProtocolList.create(it) as Refinement.Refined).value },
+                    scope,
+                ),
+                null,
+                fields?.let { (BoundedProtocolList.create(it) as Refinement.Refined).value },
+            )
         ),
     )

@@ -88,27 +88,6 @@ sealed interface QueryReferenceDocument {
 @Serializable
 sealed interface QueryFromDocument {
     @Serializable
-    @SerialName("candidates")
-    data class Candidates(
-        val match: QueryMatchDocument,
-        val scope: QueryScopeDocument,
-        @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
-        @ProtocolAllowedValues("class", "function", "property", "type-alias")
-        val declarationKinds: BoundedProtocolList<QueryDeclarationKindDocument>,
-    ) : QueryFromDocument {
-        constructor(
-            discovery: QueryDiscoveryDocument
-        ) : this(
-            discovery.match,
-            discovery.scope,
-            discovery.declarationKinds,
-        )
-
-        val discovery: QueryDiscoveryDocument
-            get() = QueryDiscoveryDocument(match, scope, declarationKinds)
-    }
-
-    @Serializable
     @SerialName("symbols")
     data class Symbols(
         val match: QueryMatchDocument,
@@ -133,15 +112,10 @@ sealed interface QueryFromDocument {
     @SerialName("references")
     data class References(
         @ProtocolCollectionConstraint(minimumItems = 1)
-        @ProtocolHomogeneousCollection
-        val values: BoundedProtocolList<QueryReferenceDocument>
+        val values: BoundedProtocolList<QueryReferenceDocument.ExactSymbol>
     ) : QueryFromDocument
-}
 
-@Serializable
-enum class QueryCandidateFieldDocument {
-    @SerialName("name") NAME,
-    @SerialName("location") LOCATION,
+    @Serializable @SerialName("result") data class Result(val reference: QueryResultReference) : QueryFromDocument
 }
 
 @Serializable
@@ -154,12 +128,6 @@ enum class QuerySymbolFieldDocument {
 
 @Serializable
 sealed interface QueryOutputDocument {
-    @Serializable
-    @SerialName("candidates")
-    data class Candidates(
-        @ProtocolCollectionConstraint(uniqueItems = true) val fields: BoundedProtocolList<QueryCandidateFieldDocument>
-    ) : QueryOutputDocument
-
     @Serializable
     @SerialName("symbols")
     data class Symbols(
@@ -183,48 +151,81 @@ data class QueryExecutionDocument(
     val budget: QueryExecutionBudgetDocument,
 )
 
-/** Closed public syntax. Semantic transition compatibility is established by plan admission. */
-@Serializable(with = QueryRunRequestSerializer::class)
-@KeepGeneratedSerializer
-data class QueryRunRequest(
-    val from: QueryFromDocument,
-    val steps: BoundedProtocolList<QueryStepDocument>,
-    val output: QueryOutputDocument,
-    val execution: QueryExecutionDocument,
-    val continuation: ProtocolText? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("execution_budget")
-    val executionBudget: ExecutionBudgetDocument? = null,
-) : OperationRequest
+@Serializable
+enum class QueryRetentionModeDocument {
+    @SerialName("discard") DISCARD,
+    @SerialName("retain") RETAIN,
+}
 
-internal object QueryRunRequestSerializer : KSerializer<QueryRunRequest> {
-    private val delegate = QueryRunRequest.generatedSerializer()
+/** Each action carries exactly the input needed for that transition. */
+@Serializable
+@JsonClassDiscriminator("action")
+sealed interface QueryRunRequest : OperationRequest {
+    val executionBudget: ExecutionBudgetDocument?
+
+    /** Semantic transition compatibility is established by plan admission. */
+    @Serializable(with = QueryRunActionSerializer::class)
+    @KeepGeneratedSerializer
+    @SerialName("run")
+    data class Run(
+        val from: QueryFromDocument,
+        val steps: BoundedProtocolList<QueryStepDocument>,
+        val output: QueryOutputDocument,
+        val execution: QueryExecutionDocument,
+        val retention: QueryRetentionModeDocument = QueryRetentionModeDocument.DISCARD,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("execution_budget")
+        override val executionBudget: ExecutionBudgetDocument? = null,
+    ) : QueryRunRequest
+
+    @Serializable
+    @SerialName("resume")
+    data class Resume(
+        val continuation: QueryExecutionContinuation,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("execution_budget")
+        override val executionBudget: ExecutionBudgetDocument? = null,
+    ) : QueryRunRequest
+
+    @Serializable
+    @SerialName("read-result")
+    data class ReadResult(
+        val result: QueryResultReference,
+        val cursor: QueryResultCursor = QueryResultCursor.Start,
+        val output: QueryOutputDocument.Symbols,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("execution_budget")
+        override val executionBudget: ExecutionBudgetDocument? = null,
+    ) : QueryRunRequest
+}
+
+internal object QueryRunActionSerializer : KSerializer<QueryRunRequest.Run> {
+    private val delegate = QueryRunRequest.Run.generatedSerializer()
 
     override val descriptor = delegate.descriptor
 
-    override fun serialize(encoder: Encoder, value: QueryRunRequest) {
+    override fun serialize(encoder: Encoder, value: QueryRunRequest.Run) {
         delegate.serialize(encoder, value.requireCanonicalSyntax())
     }
 
-    override fun deserialize(decoder: Decoder): QueryRunRequest = delegate.deserialize(decoder).requireCanonicalSyntax()
+    override fun deserialize(decoder: Decoder): QueryRunRequest.Run =
+        delegate.deserialize(decoder).requireCanonicalSyntax()
 }
 
-private fun QueryRunRequest.requireCanonicalSyntax(): QueryRunRequest =
+private fun QueryRunRequest.Run.requireCanonicalSyntax(): QueryRunRequest.Run =
     if (hasCanonicalRequestSyntax()) this
     else throw SerializationException("QueryRunRequest rejected non-canonical query syntax")
 
-private fun QueryRunRequest.hasCanonicalRequestSyntax(): Boolean {
+private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
     val sourceIsCanonical =
         when (val source = from) {
-            is QueryFromDocument.Candidates -> source.discovery.isCanonical()
             is QueryFromDocument.Symbols -> source.discovery.isCanonical()
-            is QueryFromDocument.References ->
-                source.values.values.isNotEmpty() && source.values.values.map { it::class }.distinct().size == 1
+            is QueryFromDocument.References -> source.values.values.isNotEmpty()
+            is QueryFromDocument.Result -> true
         }
     if (!sourceIsCanonical) return false
     if (steps.values.any { !it.hasCanonicalSyntax() }) return false
     return when (val projection = output) {
-        is QueryOutputDocument.Candidates -> projection.fields.values.isUnique()
         is QueryOutputDocument.Symbols -> projection.fields.values.isUnique()
     }
 }
@@ -251,7 +252,6 @@ private fun QueryDiscoveryDocument.isCanonical(): Boolean {
 
 private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
     when (this) {
-        QueryStepDocument.Inspect,
         is QueryStepDocument.Related,
         QueryStepDocument.Distinct -> true
         is QueryStepDocument.AppendReferences -> values.values.isNotEmpty()
@@ -268,11 +268,6 @@ private fun <Value> List<Value>.isUnique(): Boolean = size == distinct().size
 
 private val QUERY_PACKAGE_NAME = Regex("(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*")
 
-data class QueryCandidateLocationDocument(
-    val file: ProtocolText,
-    val offset: ProtocolOffset,
-)
-
 data class QueryExactLocationDocument(
     val file: ProtocolText,
     val range: SourceRangeDocument,
@@ -280,13 +275,6 @@ data class QueryExactLocationDocument(
 
 sealed interface QueryResultItemDocument {
     val ref: QueryReferenceDocument
-
-    data class Candidate(
-        override val ref: QueryReferenceDocument.DeclarationCandidate,
-        val kind: SymbolDiscoveryKindDocument,
-        val name: ProtocolText?,
-        val location: QueryCandidateLocationDocument?,
-    ) : QueryResultItemDocument
 
     data class ExactSymbol(
         override val ref: QueryReferenceDocument.ExactSymbol,
@@ -382,20 +370,11 @@ enum class QueryRelationFailureDocument {
 data class QueryRunResult(
     val items: BoundedProtocolList<QueryResultItemDocument>,
     val failures: BoundedProtocolList<QueryItemFailureDocument>,
+    val retention: QueryResultRetention = QueryResultRetention.NotRequested,
+    val nextCursor: QueryResultCursor? = null,
     val executionBudget: ExecutionBudgetReport? = null,
     val referenceAcquisitions: ReadReferenceAcquisitions? = null,
 ) : OperationResult
-
-enum class QueryElementTypeDocument {
-    DECLARATION_CANDIDATE,
-    EXACT_SYMBOL,
-}
-
-enum class QueryAdmissionCorrectionDocument {
-    INSERT_INSPECT,
-    REMOVE_INSPECT,
-    SELECT_SYMBOL_OUTPUT,
-}
 
 enum class QuerySourceRejectionReason {
     UNSUPPORTED_DECLARATION_KIND
@@ -433,13 +412,6 @@ enum class QueryReferenceRejectionReason {
 
 sealed interface QueryRunRejection : QueryRunFailure {
     data object WorkspaceNotReady : QueryRunRejection
-
-    data class PlanRejected(
-        val position: ProtocolOffset,
-        val required: QueryElementTypeDocument,
-        val actual: QueryElementTypeDocument,
-        val correction: QueryAdmissionCorrectionDocument,
-    ) : QueryRunRejection
 
     data class ReferenceRejected(
         val position: ProtocolOffset,

@@ -20,12 +20,10 @@ class PublicToolCommandTest {
             mapOf(
                 PublicToolIdentity.CHECK_DIAGNOSTICS to Json.encodeToString(DiagnosticFixture(".", null)),
                 PublicToolIdentity.QUERY_SYMBOLS to
-                    Json.encodeToString(
-                        QueryFixture(
-                            SearchFixture("search_declarations", "order", null, listOf("property", "type_alias"), null),
-                            null,
-                            emptyList(),
-                        )
+                    PublicQueryInputFixture.search(
+                        "order",
+                        kinds = listOf("property", "type_alias"),
+                        fields = emptyList(),
                     ),
             )
         val graph =
@@ -64,20 +62,4 @@ class PublicToolCommandTest {
 private data class DiagnosticFixture(
     @SerialName("relative_path") val path: String,
     @SerialName("max_diagnostics") val maximum: Int?,
-)
-
-@Serializable
-private data class QueryFixture(
-    val source: SearchFixture,
-    val steps: List<String>?,
-    @SerialName("return_fields") val fields: List<String>,
-)
-
-@Serializable
-private data class SearchFixture(
-    val type: String,
-    @SerialName("declaration_name") val name: String,
-    @SerialName("name_match") val matching: String?,
-    @SerialName("declaration_kinds") val kinds: List<String>,
-    val scope: String?,
 )

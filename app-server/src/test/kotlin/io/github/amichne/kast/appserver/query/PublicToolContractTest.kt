@@ -24,13 +24,14 @@ class PublicToolContractTest {
                     )
                 ) as Refinement.Refined)
                 .value
-        val input = PublicToolQuerySymbols(PublicToolReferenceSource(refs), steps, null)
+        val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), steps, null))
         val admitted =
             PublicToolContract.admit(
                 PublicToolIdentity.QUERY_SYMBOLS,
                 Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
             ) as Refinement.Refined
-        val lowered = (admitted.value.canonical as PublicToolCanonical.Query).request.steps.values
+        val lowered =
+            ((admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run).steps.values
         assertEquals(
             listOf(
                 QueryStepDocument.AppendReferences::class,
@@ -54,7 +55,7 @@ class PublicToolContractTest {
         val steps =
             (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolFilterJq(expression))) as Refinement.Refined)
                 .value
-        val input = PublicToolQuerySymbols(PublicToolReferenceSource(refs), steps, null)
+        val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), steps, null))
         val result =
             PublicToolContract.admit(
                 PublicToolIdentity.QUERY_SYMBOLS,
@@ -78,10 +79,12 @@ class PublicToolContractTest {
                 PublicToolIdentity.QUERY_SYMBOLS,
                 Json.encodeToJsonElement(
                     PublicToolQuerySymbols.serializer(),
-                    PublicToolQuerySymbols(PublicToolReferenceSource(refs), PublicToolDefaults.steps, fields),
+                    PublicToolQuerySymbols(
+                        PublicToolRunAction(PublicToolReferenceSource(refs), PublicToolDefaults.steps, fields)
+                    ),
                 ),
             ) as Refinement.Refined
-        val request = (admitted.value.canonical as PublicToolCanonical.Query).request
+        val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
         assertEquals(
             listOf(QuerySymbolFieldDocument.SOURCE),
             (request.output as QueryOutputDocument.Symbols).fields.values,
@@ -89,21 +92,90 @@ class PublicToolContractTest {
     }
 
     @Test
-    fun `pipeline continuation retains exact opaque bytes through facade lowering`() {
-        val token = (ProtocolText.parse("query:v1:EXAMPLE_NOT_ISSUED") as Refinement.Refined).value
-        val refs =
-            (BoundedProtocolList.create(
-                    listOf((ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value)
-                ) as Refinement.Refined)
-                .value
-        val document = PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, token)
-        val encoded = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), document)
-        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
-        val canonical = (admitted.value.canonical as PublicToolCanonical.Query).request
-        assertEquals(token, canonical.continuation)
+    fun `typed pipeline and output continuations retain exact opaque bytes through facade lowering`() {
+        val tokens =
+            listOf(
+                (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000000")
+                        as Refinement.Refined)
+                    .value,
+                (QueryExecutionContinuation.Output.parse("query-output:v1:00000000-0000-0000-0000-000000000000")
+                        as Refinement.Refined)
+                    .value,
+            )
+        tokens.forEach { token ->
+            val document = PublicToolQuerySymbols(PublicToolResumeAction(token))
+            val encoded = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), document)
+            val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
+            val canonical = (admitted.value.canonical as PublicToolCanonical.Query).request
+            assertEquals(token, (canonical as QueryRunRequest.Resume).continuation)
+            assertEquals(
+                token.value,
+                PublicToolContract.encode(admitted.value)
+                    .jsonObject
+                    .getValue("request")
+                    .jsonObject
+                    .getValue("continuation")
+                    .jsonPrimitive
+                    .content,
+            )
+        }
+    }
+
+    @Test
+    fun `retained result source lowers without reconstructing exact symbol references`() {
+        val reference =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
+        val input =
+            PublicToolQuerySymbols(
+                PublicToolRunAction(PublicToolResultSource(reference), null, null, PublicToolRetention.RETAIN)
+            )
+        val admitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+            ) as Refinement.Refined
+        val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        assertEquals(QueryFromDocument.Result(reference), run.from)
+        assertEquals(QueryRetentionModeDocument.RETAIN, run.retention)
         assertEquals(
-            "query:v1:EXAMPLE_NOT_ISSUED",
-            PublicToolContract.encode(admitted.value).jsonObject.getValue("continuation").jsonPrimitive.content,
+            "result",
+            PublicToolContract.encode(admitted.value)
+                .jsonObject
+                .getValue("request")
+                .jsonObject
+                .getValue("source")
+                .jsonObject
+                .getValue("type")
+                .jsonPrimitive
+                .content,
+        )
+    }
+
+    @Test
+    fun `read result carries a presentation cursor and projection without execution plan`() {
+        val reference =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
+        val cursor = (QueryResultCursor.parse(7) as Refinement.Refined).value
+        val fields = (BoundedProtocolList.create(listOf(PublicToolReturnFields.SIGNATURE)) as Refinement.Refined).value
+        val input = PublicToolQuerySymbols(PublicToolReadResultAction(reference, cursor, fields))
+        val admitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+            ) as Refinement.Refined
+        val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.ReadResult
+        assertEquals(reference, request.result)
+        assertEquals(cursor, request.cursor)
+        assertEquals(listOf(QuerySymbolFieldDocument.SIGNATURE), request.output.fields.values)
+        assertEquals(
+            7,
+            PublicToolContract.encode(admitted.value)
+                .jsonObject
+                .getValue("request")
+                .jsonObject
+                .getValue("cursor")
+                .jsonPrimitive
+                .int,
         )
     }
 
@@ -123,7 +195,9 @@ class PublicToolContractTest {
                         ),
                 ),
             )
-        val request = ((admitted as Refinement.Refined).value.canonical as PublicToolCanonical.Query).request
+        val request =
+            ((admitted as Refinement.Refined).value.canonical as PublicToolCanonical.Query).request
+                as QueryRunRequest.Run
         val source = request.from as QueryFromDocument.Symbols
         assertEquals(SymbolDiscoveryMatchDocument.EXACT_NAME, (source.match as QueryMatchDocument.Name).matching)
         assertEquals(listOf(QueryDeclarationKindDocument.CLASS), source.declarationKinds.values)
@@ -143,12 +217,12 @@ class PublicToolContractTest {
 
 class PublicToolSchemaTest {
     @Test
-    fun `the proposal corpus runs through production schema and typed admission`() {
+    fun `rejection corpus runs through production schema and typed admission`() {
         val cases =
             requireNotNull(javaClass.getResourceAsStream("/public-tools/schema-cases.json")).bufferedReader().use {
                 Json.parseToJsonElement(it.readText()).jsonArray
             }
-        assertEquals(35, cases.size)
+        assertEquals(36, cases.size)
         cases.forEach { case ->
             val row = case.jsonObject
             val identity =
@@ -171,25 +245,96 @@ class PublicToolSchemaTest {
     }
 
     @Test
+    fun `typed accepted action variants pass the production schema`() {
+        val root = (ProtocolText.parse(".") as Refinement.Refined).value
+        val result =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
+        val continuation =
+            (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000000")
+                    as Refinement.Refined)
+                .value
+        val emptyFields = (BoundedProtocolList.create(emptyList<PublicToolReturnFields>()) as Refinement.Refined).value
+        val cases =
+            listOf(
+                PublicToolIdentity.CHECK_DIAGNOSTICS to
+                    Json.encodeToJsonElement(PublicToolCheckDiagnostics.serializer(), PublicToolCheckDiagnostics(root)),
+                PublicToolIdentity.QUERY_SYMBOLS to publicNameQuery(),
+                PublicToolIdentity.QUERY_SYMBOLS to
+                    Json.encodeToJsonElement(
+                        PublicToolQuerySymbols.serializer(),
+                        PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource(), null, emptyFields)),
+                    ),
+                PublicToolIdentity.QUERY_SYMBOLS to
+                    Json.encodeToJsonElement(
+                        PublicToolQuerySymbols.serializer(),
+                        PublicToolQuerySymbols(
+                            PublicToolRunAction(PublicToolResultSource(result), null, null, PublicToolRetention.RETAIN)
+                        ),
+                    ),
+                PublicToolIdentity.QUERY_SYMBOLS to
+                    Json.encodeToJsonElement(
+                        PublicToolQuerySymbols.serializer(),
+                        PublicToolQuerySymbols(PublicToolResumeAction(continuation)),
+                    ),
+                PublicToolIdentity.QUERY_SYMBOLS to
+                    Json.encodeToJsonElement(
+                        PublicToolQuerySymbols.serializer(),
+                        PublicToolQuerySymbols(PublicToolReadResultAction(result, null, null)),
+                    ),
+            )
+        cases.forEach { (identity, encoded) ->
+            assertTrue(
+                PublicToolContract.schema(identity).admit(encoded) is io.github.amichne.kast.kernel.Validation.Validated
+            )
+            assertTrue(PublicToolContract.admit(identity, encoded) is Refinement.Refined)
+        }
+    }
+
+    @Test
     fun `schema syntax does not manufacture exact reference authority`() {
         val token = "NON_ISSUED_SCHEMA_TEST_ONLY"
+        val reference = (ProtocolText.parse(token) as Refinement.Refined).value
+        val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
+        val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), null, null))
         val admitted =
-            admit(
-                PublicToolIdentity.QUERY_SYMBOLS,
-                """{"source":{"type":"symbol_refs","symbol_refs":["$token"]},"steps":null,"return_fields":null}""",
-            )
-        val source = (admitted.canonical as PublicToolCanonical.Query).request.from as QueryFromDocument.References
+            (PublicToolContract.admit(
+                    PublicToolIdentity.QUERY_SYMBOLS,
+                    Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+                ) as Refinement.Refined)
+                .value
+        val source =
+            ((admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run).from
+                as QueryFromDocument.References
         assertEquals(token, (source.values.values.single() as QueryReferenceDocument.ExactSymbol).token.value)
         // Authenticity is deliberately deferred to the existing exact-reference owner.
     }
 
     @Test
     fun `ordered transformations stay ordered and empty fields retain their distinct meaning`() {
-        val source = """{"type":"all_declarations","declaration_kinds":["function"],"scope":null}"""
+        val source =
+            PublicToolAllSource(
+                (BoundedProtocolList.create(listOf(PublicToolDeclarationKinds.FUNCTION)) as Refinement.Refined).value
+            )
+        val steps =
+            (BoundedProtocolList.create(
+                    listOf<PublicToolStep>(
+                        PublicToolFilterVisibility(
+                            (BoundedProtocolList.create(listOf(PublicToolVisibilities.PUBLIC)) as Refinement.Refined)
+                                .value
+                        ),
+                        PublicToolExpandRelation(PublicToolRelation.CALLERS),
+                        PublicToolDistinctSymbols,
+                    )
+                ) as Refinement.Refined)
+                .value
+        val fields = (BoundedProtocolList.create(emptyList<PublicToolReturnFields>()) as Refinement.Refined).value
         val input =
-            """{"source":$source,"steps":[{"type":"filter_visibility","visibilities":["public"]},{"type":"expand_relation","relation":"callers"},{"type":"distinct_symbols"}],"return_fields":[]}"""
-        val admitted = admit(PublicToolIdentity.QUERY_SYMBOLS, input)
-        val request = (admitted.canonical as PublicToolCanonical.Query).request
+            Json.encodeToJsonElement(
+                PublicToolQuerySymbols.serializer(),
+                PublicToolQuerySymbols(PublicToolRunAction(source, steps, fields)),
+            )
+        val admitted = (PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input) as Refinement.Refined).value
+        val request = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
         assertEquals(
             listOf(QueryStepDocument.Where::class, QueryStepDocument.Related::class, QueryStepDocument.Distinct::class),
             request.steps.values.map { it::class },
@@ -247,7 +392,7 @@ class PublicToolSchemaTest {
                     PublicToolNameMatch.FUZZY,
                 ),
             ) as Refinement.Refined
-        val request = (admitted.value.canonical as PublicToolCanonical.Query).request
+        val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
         val source = request.from as QueryFromDocument.Symbols
         assertEquals(SymbolDiscoveryMatchDocument.FUZZY, (source.match as QueryMatchDocument.Name).matching)
         assertEquals(QueryContainmentDocument.DIRECT, source.scope.packageName!!.containment)

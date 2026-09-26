@@ -27,8 +27,15 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPreparedCoverage.kt
   - path: query/protocol/build.gradle.kts
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+    symbols: [CanonicalQueryProtocol]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
+    symbols: [QueryOutcomeProjection]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QuerySyntaxAdmission.kt
+    symbols: [evidenceBasis]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryItemProjector.kt
-    symbols: [CanonicalQueryProtocol, evidenceBasis]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSymbolProtocols.kt
     symbols: [CanonicalSymbolDiscoverProtocol, CanonicalSymbolInspectProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
@@ -73,8 +80,9 @@ publication store, or worker capability.
 
 The owning host supplies the current `SemanticReadAuthority`, operation ports,
 and budgets. `CanonicalQueryProtocol` restores input references, admits the typed
-query plan, executes the supplied `QueryOperations`, and projects complete,
-qualified, or rejected results. The other read protocols use the same reference
+query plan, and executes the supplied `QueryOperations`. `QueryOutcomeProjection`
+projects complete, qualified, or rejected results and retained presentations.
+The other read protocols use the same reference
 and evidence vocabulary around their domain operations. The existing-IDE host uses this boundary; historical published-evidence tests exercise the same contracts without granting a production publication owner.
 
 Diagnostic progress retains the requested path alongside file inventory and analyzed files. The CLI derives discovered, analyzed, skipped, and exhaustive coverage from that progress, and labels the result as IDE file diagnostics.
@@ -86,7 +94,7 @@ root, host, epoch, version, and content view must match it. Restoration does not
 open an IDE or prove a declaration is current. Native read adapters must still
 revalidate scope, location, compiler evidence, and content.
 
-First-page query admission reacquires exact references from both the source and append-reference steps through one bounded request capability. An invalid appended token reports its step and position. A continuation is first matched against its stored request and authority, then executes the retained admitted plan; old tokens are not reacquired on each page.
+Run admission reacquires exact references from the source and append-reference steps through one bounded request capability. An invalid appended token reports its step and position. A result-source run instead restores immutable, basis-bound rows and their original qualification, including an empty result, without rediscovery. A resume action supplies only the issued continuation and optional new grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page. A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
 
 Selector documents retain directory, package, declaration-kind, and exact Gradle
 source-set constraints. Batch issuance preserves these facts for declaration,
@@ -132,7 +140,7 @@ produces an owner-issued continuation, and resume reaches the fourth fact under
 the unchanged authority without consuming the prefix again. These tests start
 no IntelliJ process and make no native provider-parity claim.
 
-`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; explicit `distinct_symbols` uses the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. Query continuations use a host-supplied bounded checkpoint store. Traversal tokens additionally bind strategy, maximum depth and cumulative progress; older tokens without these witnesses reject. Relation tokens retain earlier-page provider limitations even after the final page.
+`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; explicit `distinct_symbols` uses the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. `QueryStateStore` shares one bounded, expiring quota between typed execution checkpoints and immutable retained results; their tokens and restoration outcomes remain separate. Traversal tokens additionally bind strategy, maximum depth and cumulative progress; older tokens without these witnesses reject. Relation tokens retain earlier-page provider limitations even after the final page.
 
 Relation projection retains provider/version, page-local observed or unmeasured
 omissions, bounded source samples and a closed remediation. Budget stops qualify
@@ -143,7 +151,7 @@ the exact returned facts independently of incomplete enumeration. Traversal
 projection retains cumulative progress and page-local partial node expansions;
 a bounded-fan-out remainder is explicitly unexamined rather than silently absent.
 
-Query qualification owns a mandatory closed progress state: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. Query result payloads cannot carry independent cursor/terminal state; the CLI compatibility fields are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. This cursor cannot resume execution; CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 
 Source qualifications own closed resumable or terminal-incomplete progress. Native
 source checkpoints and hosted retained-output checkpoints are separate variants;

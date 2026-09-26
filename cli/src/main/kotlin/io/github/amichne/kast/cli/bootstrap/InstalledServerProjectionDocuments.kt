@@ -357,6 +357,8 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             executionBudgetProperty(),
             referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
+            queryResultRetentionProperty(),
+            queryResultCursorProperty(),
         ),
         operationOutcomeVariant(
             operation,
@@ -379,6 +381,8 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             executionBudgetProperty(),
             referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
+            queryResultRetentionProperty(),
+            queryResultCursorProperty(),
             ServerSchemaProperty(
                 "qualification",
                 queryQualificationSchema(),
@@ -445,56 +449,39 @@ private fun queryQualificationSchema(): JsonObject =
     )
 
 private fun queryResultItemSchema(): JsonObject =
-    unionSchema(
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("candidate", "Declaration-candidate result.")),
-            ServerSchemaProperty("ref", queryOutputReferenceSchema("declaration-candidate")),
-            ServerSchemaProperty("kind", enumSchema(listOf("class", "symbol"), "Candidate discovery kind.")),
-            ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
-            ServerSchemaProperty(
-                "location",
-                nullableSchema(
-                    objectSchema(
-                        ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
-                        ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
-                    )
-                ),
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
+        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty(
+            "kind",
+            enumSchema(
+                listOf("classlike", "constructor", "function", "property", "type-alias"),
+                "Compiler symbol kind.",
             ),
         ),
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
-            ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
-            ServerSchemaProperty(
-                "kind",
-                enumSchema(
-                    listOf("classlike", "constructor", "function", "property", "type-alias"),
-                    "Compiler symbol kind.",
-                ),
+        ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
+        ServerSchemaProperty(
+            "location",
+            nullableSchema(
+                objectSchema(
+                    ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
+                    ServerSchemaProperty("range", sourceRangeSchema()),
+                )
             ),
-            ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
-            ServerSchemaProperty(
-                "location",
-                nullableSchema(
-                    objectSchema(
-                        ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
-                        ServerSchemaProperty("range", sourceRangeSchema()),
-                    )
-                ),
-            ),
-            ServerSchemaProperty(
-                "signature",
-                nullableSchema(
-                    unionSchema(
-                        functionCompilerSignatureSchema(),
-                        propertyCompilerSignatureSchema(),
-                        typeAliasCompilerSignatureSchema(),
-                        classLikeCompilerSignatureSchema(),
-                    )
-                ),
-            ),
-            ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
-            ServerSchemaProperty("source", querySourceWindowSchema(), required = false),
         ),
+        ServerSchemaProperty(
+            "signature",
+            nullableSchema(
+                unionSchema(
+                    functionCompilerSignatureSchema(),
+                    propertyCompilerSignatureSchema(),
+                    typeAliasCompilerSignatureSchema(),
+                    classLikeCompilerSignatureSchema(),
+                )
+            ),
+        ),
+        ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
+        ServerSchemaProperty("source", querySourceWindowSchema(), required = false),
     )
 
 /** Syntax identifies the reference family; only the existing semantic owner can admit its authority. */
@@ -596,29 +583,6 @@ private fun queryRejectionSchema(): JsonObject =
     unionSchema(
         objectSchema(ServerSchemaProperty("type", constantSchema("workspace-not-ready", "Workspace unavailable."))),
         objectSchema(
-            ServerSchemaProperty("type", constantSchema("plan-rejected", "Typed stage composition rejected.")),
-            ServerSchemaProperty("path", textSchema("Rejected step path.")),
-            ServerSchemaProperty(
-                "required",
-                enumSchema(listOf("declaration-candidate", "exact-symbol"), "Required input type."),
-            ),
-            ServerSchemaProperty(
-                "actual",
-                enumSchema(listOf("declaration-candidate", "exact-symbol"), "Actual input type."),
-            ),
-            ServerSchemaProperty(
-                "correction",
-                enumSchema(
-                    listOf(
-                        "insert-inspect",
-                        "remove-inspect",
-                        "select-symbol-output",
-                    ),
-                    "Closed corrective action.",
-                ),
-            ),
-        ),
-        objectSchema(
             ServerSchemaProperty("type", constantSchema("reference-rejected", "Reference admission rejected.")),
             ServerSchemaProperty("path", textSchema("Rejected reference path.")),
             ServerSchemaProperty(
@@ -648,6 +612,10 @@ private fun queryRejectionSchema(): JsonObject =
                     listOf(
                         "continuation-unavailable",
                         "continuation-mismatch",
+                        "result-unavailable",
+                        "result-stale-basis",
+                        "result-cursor-out-of-range",
+                        "result-field-unavailable",
                         "request-rejected",
                         "discovery-rejected",
                         "reference-stale",
@@ -1745,5 +1713,18 @@ internal fun referenceAcquisitionsProperty() =
     ServerSchemaProperty(
         "reference_acquisitions",
         generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions.serializer()),
+        required = false,
+    )
+
+private fun queryResultRetentionProperty() =
+    ServerSchemaProperty(
+        "retention",
+        generatedRequestSchema(io.github.amichne.kast.protocol.contract.QueryResultRetention.serializer()),
+    )
+
+private fun queryResultCursorProperty() =
+    ServerSchemaProperty(
+        "next_cursor",
+        generatedRequestSchema(io.github.amichne.kast.protocol.contract.QueryResultCursor.serializer()),
         required = false,
     )

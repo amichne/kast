@@ -13,7 +13,9 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 - [SourceRequestAdmission.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceRequestAdmission.kt) - source request predicates retain precise field and finite cause.
 
 - [PipelineCheckpoint.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt) - detached ordered stage tasks and distinct history.
-- [QueryCheckpointStore.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt) - bounded expiring query state and exact resume admission.
+- [QueryStateStore.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) - one bounded lifetime and quota for typed execution checkpoints and immutable results.
+- [QueryOutcomeProjection.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt) - canonical projection of semantic rows, qualification, retention, and result pages.
+- [QueryRetainedResult.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt) - detached semantic rows, producer progress, coverage, and failures bound to one read basis.
 - [QueryReferenceTransport.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt) - detached token representation before canonical authority validation.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt) - query plan model.
@@ -22,7 +24,7 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 - [service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt) - execution orchestration.
 - [service/src/main/kotlin/io/github/amichne/kast/query/service/QueryExecutionState.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/QueryExecutionState.kt) - retained execution state.
 
-- [protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) - host-independent read admission and projection.
+- [protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) - host-independent read admission and dispatch.
 - [protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt) - issued and restored reference authority.
 
 ## Subdirectories
@@ -39,4 +41,4 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 - Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
-- Begin with `QueryPlan`, then trace each step through `QueryService` into symbol, source, relation, or traversal operations.
+- Begin with `QueryPlan`, then trace each exact-symbol stage through `QueryService` into symbol, source, or relation operations. `CanonicalQueryProtocol` restores result sources and execution checkpoints through `QueryStateStore`; presentation cursors read retained rows without replaying stages.

@@ -6,10 +6,8 @@ import io.github.amichne.kast.kernel.LiveReadEvidence
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.QueryAdmissionCorrectionDocument
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
-import io.github.amichne.kast.protocol.contract.QueryElementTypeDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
@@ -18,7 +16,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
-import io.github.amichne.kast.query.contract.QueryCandidateReferences
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExactReferences
@@ -28,7 +25,6 @@ import io.github.amichne.kast.query.contract.QueryPlanSyntax
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
-import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
@@ -61,19 +57,17 @@ internal sealed interface QuerySyntaxAdmission {
     data object RequestRejected : QuerySyntaxAdmission
 }
 
-internal fun QueryRunRequest.admitSyntax(
+internal fun QueryRunRequest.Run.admitSyntax(
     lease: SemanticReadAuthority,
     authority: QueryReferenceAuthority,
+    retained: io.github.amichne.kast.query.contract.QueryRetainedResult? = null,
 ): QuerySyntaxAdmission {
     val source =
         when (val value = from) {
-            is QueryFromDocument.Candidates ->
-                value.discovery.syntax()?.let(QuerySourceSyntax::Candidates)
-                    ?: return QuerySyntaxAdmission.RequestRejected
             is QueryFromDocument.Symbols ->
                 value.discovery.syntax()?.let(QuerySourceSyntax::Symbols) ?: return QuerySyntaxAdmission.RequestRejected
             is QueryFromDocument.References ->
-                when (val references = value.values.values.admitReferenceSource(lease, authority)) {
+                when (val references = value.values.values.admitExactReferences(lease, authority)) {
                     is QueryReferenceSourceAdmission.Admitted -> references.source
                     is QueryReferenceSourceAdmission.Rejected ->
                         return QuerySyntaxAdmission.ReferenceRejected(
@@ -82,6 +76,8 @@ internal fun QueryRunRequest.admitSyntax(
                         )
                     QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
                 }
+            is QueryFromDocument.Result ->
+                retained?.let(QuerySourceSyntax::Retained) ?: return QuerySyntaxAdmission.RequestRejected
         }
     val querySteps = mutableListOf<QueryStepSyntax>()
     steps.values.forEachIndexed { index, step ->
@@ -117,65 +113,19 @@ private sealed interface QueryReferenceSourceAdmission {
     data object RequestRejected : QueryReferenceSourceAdmission
 }
 
-private fun List<QueryReferenceDocument>.admitReferenceSource(
-    lease: SemanticReadAuthority,
-    authority: QueryReferenceAuthority,
-): QueryReferenceSourceAdmission {
-    val first = firstOrNull() ?: return QueryReferenceSourceAdmission.RequestRejected
-    return when (first) {
-        is QueryReferenceDocument.DeclarationCandidate -> admitCandidateReferences(lease, authority)
-        is QueryReferenceDocument.ExactSymbol -> admitExactReferences(lease, authority)
-    }
-}
-
-private fun List<QueryReferenceDocument>.admitCandidateReferences(
-    lease: SemanticReadAuthority,
-    authority: QueryReferenceAuthority,
-): QueryReferenceSourceAdmission {
-    val selections = mutableListOf<io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection>()
-    forEachIndexed { index, reference ->
-        if (reference !is QueryReferenceDocument.DeclarationCandidate) {
-            return QueryReferenceSourceAdmission.Rejected(index, QueryReferenceRejectionReason.WRONG_KIND)
-        }
-        val selector =
-            when (val decoded = authority.restoreCandidate(reference.token, lease)) {
-                is CanonicalSelectorDecoding.Decoded -> decoded.value
-                is CanonicalSelectorDecoding.Rejected ->
-                    return QueryReferenceSourceAdmission.Rejected(
-                        index,
-                        decoded.failure.queryRejection(reference.token, expectedExact = false),
-                    )
-            }
-        val declaration =
-            selector as? CandidateSelector.Declaration
-                ?: return QueryReferenceSourceAdmission.Rejected(
-                    index,
-                    QueryReferenceRejectionReason.WRONG_KIND,
-                )
-        selections += declaration.selection
-    }
-    val references =
-        QueryCandidateReferences.from(selections).refinedOrNull()
-            ?: return QueryReferenceSourceAdmission.RequestRejected
-    return QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.CandidateReferences(references))
-}
-
-private fun List<QueryReferenceDocument>.admitExactReferences(
+private fun List<QueryReferenceDocument.ExactSymbol>.admitExactReferences(
     lease: SemanticReadAuthority,
     authority: QueryReferenceAuthority,
 ): QueryReferenceSourceAdmission {
     val selectors = mutableListOf<SymbolSelector>()
     forEachIndexed { index, reference ->
-        if (reference !is QueryReferenceDocument.ExactSymbol) {
-            return QueryReferenceSourceAdmission.Rejected(index, QueryReferenceRejectionReason.WRONG_KIND)
-        }
         val selector =
             when (val decoded = authority.restoreExact(reference.token, lease)) {
                 is CanonicalSelectorDecoding.Decoded -> decoded.value
                 is CanonicalSelectorDecoding.Rejected ->
                     return QueryReferenceSourceAdmission.Rejected(
                         index,
-                        decoded.failure.queryRejection(reference.token, expectedExact = true),
+                        decoded.failure.queryRejection(reference.token),
                     )
             }
         selectors += selector
@@ -185,14 +135,8 @@ private fun List<QueryReferenceDocument>.admitExactReferences(
     return QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.ExactReferences(references))
 }
 
-private fun ProtocolText.belongsToOtherReferenceFamily(expectedExact: Boolean): Boolean =
-    if (expectedExact) {
-        value.startsWith("candidate:") ||
-            value.startsWith("source-selector-v1:") ||
-            value.startsWith("source-selector-v2:")
-    } else {
-        value.startsWith("exact:") || value.startsWith("source-selector-v1:") || value.startsWith("source-selector-v2:")
-    }
+private fun ProtocolText.belongsToOtherReferenceFamily(): Boolean =
+    value.startsWith("candidate:") || value.startsWith("source-selector-v1:") || value.startsWith("source-selector-v2:")
 
 private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
     val kinds = declarationKinds.values.uniqueValues()?.mapTo(linkedSetOf()) { it.compilerKind() } ?: return null
@@ -254,20 +198,6 @@ internal fun QueryPlanAdmissionFailure.protocolRejection(): QueryRunRejection =
                 },
                 QuerySourceRejectionReason.UNSUPPORTED_DECLARATION_KIND,
             )
-        is QueryPlanAdmissionFailure.StageTypeMismatch ->
-            QueryRunRejection.PlanRejected(
-                queryPosition(position.value),
-                QueryElementTypeDocument.valueOf(required.name),
-                QueryElementTypeDocument.valueOf(actual.name),
-                QueryAdmissionCorrectionDocument.valueOf(correction.name),
-            )
-        is QueryPlanAdmissionFailure.OutputTypeMismatch ->
-            QueryRunRejection.PlanRejected(
-                queryPosition(position.value),
-                QueryElementTypeDocument.valueOf(required.name),
-                QueryElementTypeDocument.valueOf(actual.name),
-                QueryAdmissionCorrectionDocument.valueOf(correction.name),
-            )
     }
 
 internal fun queryPosition(raw: Int): ProtocolOffset =
@@ -301,10 +231,7 @@ fun SemanticReadAuthority.evidenceBasis(): EvidenceBasis =
             }
     }
 
-internal fun CanonicalSelectorDecodingFailure.queryRejection(
-    token: ProtocolText,
-    expectedExact: Boolean,
-): QueryReferenceRejectionReason =
+internal fun CanonicalSelectorDecodingFailure.queryRejection(token: ProtocolText): QueryReferenceRejectionReason =
     when (this) {
         CanonicalSelectorDecodingFailure.REVALIDATION_WRONG_KIND ->
             QueryReferenceRejectionReason.REVALIDATION_WRONG_KIND
@@ -353,6 +280,6 @@ internal fun CanonicalSelectorDecodingFailure.queryRejection(
         CanonicalSelectorDecodingFailure.UNSUPPORTED_REFERENCE_VERSION ->
             QueryReferenceRejectionReason.INCOMPATIBLE_REFERENCE_VERSION
         else ->
-            if (token.belongsToOtherReferenceFamily(expectedExact)) QueryReferenceRejectionReason.WRONG_KIND
+            if (token.belongsToOtherReferenceFamily()) QueryReferenceRejectionReason.WRONG_KIND
             else QueryReferenceRejectionReason.MALFORMED
     }

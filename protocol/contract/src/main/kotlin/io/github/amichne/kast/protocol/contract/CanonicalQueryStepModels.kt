@@ -47,8 +47,6 @@ enum class QueryPrimitiveOperatorDocument {
 
 @Serializable
 sealed interface QueryStepDocument {
-    @Serializable @SerialName("inspect") data object Inspect : QueryStepDocument
-
     @Serializable @SerialName("where") data class Where(val predicate: QueryPredicateDocument) : QueryStepDocument
 
     @Serializable @SerialName("related") data class Related(val relation: RelationKindDocument) : QueryStepDocument

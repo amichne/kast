@@ -8,6 +8,8 @@ import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -37,7 +39,9 @@ class PublicExecutionBudgetTest {
             listOf(
                 PublicToolIdentity.QUERY_SYMBOLS to
                     json.encodeToJsonElement(
-                        PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null, budget)
+                        PublicToolQuerySymbols(
+                            PublicToolRunAction(PublicToolReferenceSource(refs), null, null, executionBudget = budget)
+                        )
                     )
             )
         for ((identity, document) in cases) {
@@ -47,14 +51,56 @@ class PublicExecutionBudgetTest {
     }
 
     @Test
+    fun `resume and read result retain caller allowances without a run plan`() {
+        val continuation =
+            (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000000")
+                    as Refinement.Refined)
+                .value
+        val result =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
+        val actions =
+            listOf(
+                PublicToolResumeAction(continuation, budget),
+                PublicToolReadResultAction(result, null, null, budget),
+            )
+        actions.forEach { action ->
+            val admitted =
+                PublicToolContract.admit(
+                    PublicToolIdentity.QUERY_SYMBOLS,
+                    json.encodeToJsonElement(PublicToolQuerySymbols(action)),
+                ) as Refinement.Refined
+            assertEquals(budget, (admitted.value.canonical as PublicToolCanonical.Query).request.executionBudget)
+        }
+    }
+
+    @Test
     fun `quoted and nonpositive caller allowances fail public admission`() {
         val refs = (BoundedProtocolList.create(listOf(name)) as Refinement.Refined).value
         val invalid =
             listOf(
-                json.encodeToJsonElement(InvalidQuery(PublicToolReferenceSource(refs), InvalidBudget("100"))),
-                json.encodeToJsonElement(InvalidQuery(PublicToolReferenceSource(refs), InvalidBudget(0))),
-                json.encodeToJsonElement(InvalidQuery(PublicToolReferenceSource(refs), InvalidBudget(-1))),
-                json.encodeToJsonElement(InvalidQuery(PublicToolReferenceSource(refs), InvalidBudget(1.5))),
+                json.encodeToJsonElement(
+                    InvalidQuery(
+                        InvalidRunQuery(
+                            source = PublicToolReferenceSource(refs),
+                            executionBudget = InvalidBudget("100"),
+                        )
+                    )
+                ),
+                json.encodeToJsonElement(
+                    InvalidQuery(
+                        InvalidRunQuery(source = PublicToolReferenceSource(refs), executionBudget = InvalidBudget(0))
+                    )
+                ),
+                json.encodeToJsonElement(
+                    InvalidQuery(
+                        InvalidRunQuery(source = PublicToolReferenceSource(refs), executionBudget = InvalidBudget(-1))
+                    )
+                ),
+                json.encodeToJsonElement(
+                    InvalidQuery(
+                        InvalidRunQuery(source = PublicToolReferenceSource(refs), executionBudget = InvalidBudget(1.5))
+                    )
+                ),
             )
         for (document in invalid) assertInstanceOf(
             Refinement.Rejected::class.java,
@@ -69,7 +115,9 @@ class PublicExecutionBudgetTest {
             listOf(
                 PublicToolIdentity.QUERY_SYMBOLS to
                     json.encodeToJsonElement(
-                        PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null, budget)
+                        PublicToolQuerySymbols(
+                            PublicToolRunAction(PublicToolReferenceSource(refs), null, null, executionBudget = budget)
+                        )
                     )
             )
         val encodedBudget = json.encodeToString(ExecutionBudgetDocument.serializer(), budget)
@@ -104,8 +152,11 @@ class PublicExecutionBudgetTest {
     }
 }
 
+@Serializable private data class InvalidQuery<T>(val request: InvalidRunQuery<T>)
+
 @Serializable
-private data class InvalidQuery<T>(
+private data class InvalidRunQuery<T>(
+    val action: String = "run",
     val source: PublicToolReferenceSource,
     @kotlinx.serialization.SerialName("execution_budget") val executionBudget: InvalidBudget<T>,
     val steps: String? = null,

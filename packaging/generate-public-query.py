@@ -22,6 +22,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryResultCursor
+import io.github.amichne.kast.protocol.contract.QueryResultReference
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -98,8 +101,9 @@ def render_tools(authority: dict) -> dict[Path, str]:
     objects = {**{key: value for key, value in definitions.items() if 'x-kotlin-type' not in value}, **roots}
     enums = {}
     unions = {'Scope': ['DirectoryScope', 'PackageScope'],
-              'Source': ['SearchSource', 'AllSource', 'ReferenceSource'],
-              'Step': ['FilterVisibility', 'ExpandRelation', 'DistinctSymbols', 'AppendSymbolRefs', 'FilterJq']}
+              'Source': ['SearchSource', 'AllSource', 'ReferenceSource', 'ResultSource'],
+              'Step': ['FilterVisibility', 'ExpandRelation', 'DistinctSymbols', 'AppendSymbolRefs', 'FilterJq'],
+              'Action': ['RunAction', 'ResumeAction', 'ReadResultAction']}
     parents = {child: parent for parent, children in unions.items() for child in children}
     def typ(spec, prop):
         if '$ref' in spec:
@@ -132,12 +136,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
              'internal sealed interface PublicToolDocument\n\n']
     body = []
     for key, spec in objects.items():
-        props = [(p,s) for p,s in spec['properties'].items() if p != 'type']
         parent = parents.get(key)
+        discriminator = 'action' if parent == 'Action' else 'type'
+        props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
         suffix = ' : PublicTool' + parent if parent else ' : PublicToolDocument'
         annotation = '@Serializable\n'
         if parent and parent != 'Scope':
-            annotation += '@SerialName(' + json.dumps(spec['properties']['type']['enum'][0]) + ')\n'
+            annotation += '@SerialName(' + json.dumps(spec['properties'][discriminator]['enum'][0]) + ')\n'
         if not props:
             body.append(annotation + f'internal data object PublicTool{key}{suffix}\n\n')
         else:
@@ -165,6 +170,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
         lines.append('}\n\n')
     for union in unions:
         annotation = '@Serializable(with = PublicToolScopeSerializer::class)' if union == 'Scope' else '@Serializable'
+        if union == 'Action':
+            annotation += '\n@kotlinx.serialization.json.JsonClassDiscriminator("action")'
         lines.append(f'{annotation}\ninternal sealed interface PublicTool{union}\n\n')
     lines += body
     lines.append('''internal object PublicToolScopeSerializer : JsonContentPolymorphicSerializer<PublicToolScope>(PublicToolScope::class) {

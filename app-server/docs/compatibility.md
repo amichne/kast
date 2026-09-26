@@ -204,30 +204,20 @@ installed provider/CLI/plugin workflow passed the
 [native change matrix](../../docs/reviews/plugin-native-change-acceptance.md).
 The desktop checklist below remains a separate, unqualified client gate.
 
-## Historical semantic-access reproduction
+## Semantic-access reproduction
 
-The recorded observations above used the projection 7 query grammar. Preserve
-this request as historical evidence; projection 8 rejects it. The pre-extraction
-directory was `cli`; the recorded post-extraction request used `app-server`:
-
-```sh
-kast query run <<'JSON'
-{"from":{"type":"symbols","match":{"type":"name","text":"KtorBrokerServer","matching":"exact-name"},"scope":{"sourceSets":["main"],"directory":{"path":"app-server","containment":"descendants"},"packageName":null},"declarationKinds":["class"]},"steps":[],"output":{"type":"symbols","fields":["name","location","signature"]},"execution":{"kind":"exhaustive","budget":"interactive"}}
-JSON
-```
-
-## Historical replacement request
-
-Projection 8 expressed the same discovery intent with the former public query CLI contract. The current route is `kast tool query_symbols` with the schema-bound tool request:
+The earlier recorded compiler identity and later workspace-not-ready rejection
+used older query inputs. Reproduce the same discovery intent through the current
+schema-bound `kast tool query_symbols` route:
 
 ```sh
 kast tool query_symbols <<'JSON'
-{"source":{"type":"search_declarations","declaration_name":"KtorBrokerServer","name_match":null,"declaration_kinds":["class"],"scope":{"relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}},"steps":null,"return_fields":["name","location","signature"]}
+{"request":{"action":"run","source":{"type":"search_declarations","declaration_name":"KtorBrokerServer","name_match":null,"declaration_kinds":["class"],"scope":{"relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}},"steps":null,"return_fields":["name","location","signature"]}}
 JSON
 ```
 
 The public contract tests cover admission and lowering, not live semantic readiness.
-This replacement request has not been observed against the user's live workspace;
+This current request has not been observed against the user's live workspace;
 it does not resolve or supersede the historical readiness blocker above.
 
 ## Desktop release checklist — not yet passed

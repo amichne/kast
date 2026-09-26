@@ -12,6 +12,10 @@ enum class QueryTerminalReasonDocument {
 }
 
 enum class QueryExecutionRejectionDocument {
+    RESULT_UNAVAILABLE,
+    RESULT_STALE_BASIS,
+    RESULT_CURSOR_OUT_OF_RANGE,
+    RESULT_FIELD_UNAVAILABLE,
     CONTINUATION_UNAVAILABLE,
     CONTINUATION_MISMATCH,
     REQUEST_REJECTED,

@@ -64,9 +64,8 @@ private constructor(
         ): Refinement<QueryExecutionRequest, QueryExecutionRequestFailure> {
             val referenceLeases =
                 when (plan) {
-                    is AdmittedQueryPlan.CandidateReferences -> plan.source.values.map { it.lease }
                     is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { it.lease }
-                    is AdmittedQueryPlan.Candidates,
+                    is AdmittedQueryPlan.Retained -> listOf(plan.source.lease)
                     is AdmittedQueryPlan.Symbols -> emptyList()
                 }
             if (checkpoint != null && (checkpoint.plan != plan || checkpoint.lease != lease)) {
@@ -80,8 +79,6 @@ private constructor(
         }
     }
 }
-
-data class QueryCandidate(val selection: SymbolDiscoverySelection)
 
 /** Exact symbol plus every retained relation edge that established its presence. */
 data class QuerySymbol(
@@ -102,12 +99,6 @@ sealed interface QuerySymbolSource {
     data class Rejected(val reason: SourceReadRejection) : QuerySymbolSource
 
     data class Withheld(val reason: SourceTextWithheldReason) : QuerySymbolSource
-}
-
-sealed interface QueryResultSet {
-    data class Candidates(val values: List<QueryCandidate>) : QueryResultSet
-
-    data class Symbols(val values: List<QuerySymbol>) : QueryResultSet
 }
 
 sealed interface QueryItemFailure {
@@ -144,7 +135,7 @@ sealed interface QuerySourceFailure {
 }
 
 data class QueryResult(
-    val items: QueryResultSet,
+    val items: List<QuerySymbol>,
     val failures: List<QueryItemFailure>,
 )
 

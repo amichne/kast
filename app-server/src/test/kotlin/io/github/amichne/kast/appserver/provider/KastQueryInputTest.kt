@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.query.PublicToolCheckDiagnostics
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolQuerySymbols
 import io.github.amichne.kast.appserver.query.PublicToolReferenceSource
+import io.github.amichne.kast.appserver.query.PublicToolRunAction
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
@@ -25,7 +26,7 @@ class KastQueryInputTest {
         val raw =
             Json.encodeToJsonElement(
                 PublicToolQuerySymbols.serializer(),
-                PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null),
+                PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), null, null)),
             )
         val admitted =
             when (val result = PublicToolContract.schema(PublicToolIdentity.QUERY_SYMBOLS).admit(raw)) {

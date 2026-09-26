@@ -140,13 +140,15 @@ read permit, source epoch, import, or indexing wait. Query admission still check
 saved content and current authority. Older hosts may omit the new observation;
 absence provides no readiness proof.
 
-`HostedQueryContinuations` owns bounded expiring pipeline and encoded-output state
+`HostedQueryContinuations` owns bounded expiring query state and encoded-output state
 for the current project read authority. Lookup follows fresh host admission and
-compares the normalized request and semantic snapshot. Its active epoch owns
-five stores: query execution checkpoints and query, source, relation and traversal
-output suffixes. Each store has an independent entry, charged-byte and TTL bound;
-project disposal or epoch replacement clears all five. Restore does not renew
-creation time. It cannot restore a foreign or stale authority. See the
+checks the semantic basis. Its active epoch owns one query state store for execution
+checkpoints and immutable semantic results, a diagnostic checkpoint store, and
+query, diagnostic, source, relation and traversal output suffix stores. Each store
+has an entry, charged-byte and TTL bound; the query state store charges its two
+entry kinds against one shared capacity. Project disposal or epoch replacement
+clears them. Restore does not renew creation time and cannot restore a foreign or
+stale authority. See the
 [hosted retention bounds](../flows/hosted-query.md#hosted-continuation-retention-bounds)
 for aggregate accounting and the separate native source owner.
 

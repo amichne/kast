@@ -17,16 +17,19 @@ This example filters public functions before finding their callers:
 
 ```json
 {
-  "source": {
-    "type": "all_declarations",
-    "declaration_kinds": ["function"],
-    "scope": null
-  },
-  "steps": [
-    {"type":"filter_visibility","visibilities":["public"]},
-    {"type":"expand_relation","relation":"callers"}
-  ],
-  "return_fields": ["name","location","signature"]
+  "request": {
+    "action": "run",
+    "source": {
+      "type": "all_declarations",
+      "declaration_kinds": ["function"],
+      "scope": null
+    },
+    "steps": [
+      {"type":"filter_visibility","visibilities":["public"]},
+      {"type":"expand_relation","relation":"callers"}
+    ],
+    "return_fields": ["name","location","signature"]
+  }
 }
 ```
 
@@ -34,8 +37,11 @@ This example filters public functions before finding their callers:
 
 | Part | Supported values |
 | --- | --- |
-| Sources | `search_declarations`, `all_declarations`, `symbol_refs` |
+| Sources | `search_declarations`, `all_declarations`, `symbol_refs`, `result` |
 | Steps | `filter_visibility`, `filter_jq`, `expand_relation`, `append_symbol_refs`, `distinct_symbols` |
+
+Put the source, steps, and returned fields inside `request` with `action: "run"`.
+The other actions are `resume` and `read_result`; each accepts only its own fields.
 
 Step order changes the result:
 
@@ -51,17 +57,17 @@ Kast preserves every explicit step in order.
 
 | Input | Result |
 | --- | --- |
-| `steps: null` or `steps: []` | No transformations |
-| `return_fields: null` | Name and location |
-| `return_fields: []` | Mandatory identity and kind only |
+| `request.steps: null` or `[]` | No transformations |
+| `request.return_fields: null` | Name and location |
+| `request.return_fields: []` | Mandatory identity and kind only |
 | Duplicate projection fields | Rejected request |
 
 ## Reuse an exact symbol
 
-Copy `ref` verbatim into the `symbol_refs` source:
+Copy an exact symbol's `ref` verbatim into the `symbol_refs` source of a new run:
 
 ```json
-{"type":"symbol_refs","symbol_refs":["<returned token>"]}
+{"request":{"action":"run","source":{"type":"symbol_refs","symbol_refs":["<returned exact ref>"]},"steps":null,"return_fields":null}}
 ```
 
 - Do not construct, shorten, or edit a reference.
@@ -75,17 +81,24 @@ Run each input query, copy its returned exact `ref` values, and append them in a
 
 ```json
 {
-  "source": {"type":"symbol_refs","symbol_refs":["<first exact ref>"]},
-  "steps": [
-    {"type":"append_symbol_refs","symbol_refs":["<second exact ref>","<third exact ref>"]},
-    {"type":"distinct_symbols"},
-    {"type":"filter_jq","expression":"select(.kind == \"function\")"}
-  ],
-  "return_fields": ["name","location"]
+  "request": {
+    "action": "run",
+    "source": {"type":"symbol_refs","symbol_refs":["<first exact ref>"]},
+    "steps": [
+      {"type":"append_symbol_refs","symbol_refs":["<second exact ref>","<third exact ref>"]},
+      {"type":"distinct_symbols"},
+      {"type":"filter_jq","expression":"select(.kind == \"function\")"}
+    ],
+    "return_fields": ["name","location"]
+  }
 }
 ```
 
-`append_symbol_refs` retains stream order and duplicates. `distinct_symbols` turns the combined stream into a set of exact identities. Every appended reference is revalidated against the current workspace generation and spends the same query budget. A stale reference rejects with its step and reference positions.
+`append_symbol_refs` retains stream order and duplicates. `distinct_symbols`
+forms a set by canonical semantic identity, not by name or opaque token spelling.
+Every appended reference is revalidated against the current workspace generation
+and spends the same query budget. A stale reference rejects with its step and
+reference positions.
 
 The bounded `filter_jq` step accepts these jq `select` forms over primitive symbol fields `name`, `kind`, and `file`:
 
@@ -96,14 +109,52 @@ The bounded `filter_jq` step accepts these jq `select` forms over primitive symb
 The literal must be a non-empty JSON string and the expression is limited to 512 characters. Other jq syntax rejects during admission. The predicate reads the compiler-grounded symbol description and does not start a source read. `file` is the symbol's stable file path or URL; `kind` uses `class`, `constructor`, `function`, `property`, or `type_alias`.
 
 
-## Continue an ordered pipeline
+## Retain and reuse a query result
 
-Use a returned continuation to resume the same pipeline.
+Set `"retention":"retain"` on a run when later stages should use its rows.
+The response's `retention` is `retained` with an issued `reference`,
+`capacity_exceeded`, or `not_requested`. Capacity failure does not discard the
+current query answer. A retained result is immutable, bounded, and tied to the
+semantic basis that produced it. An empty retained result is a valid input.
 
-1. Omit `continuation` or use `null` for the first page.
-2. Retain a non-null `continuation` from a qualified result.
-3. Repeat the same source, steps, and return fields with that token.
-4. Append each returned page in order.
+Start the next run from the issued reference:
+
+```json
+{
+  "request": {
+    "action": "run",
+    "source": {"type":"result","result":"<issued result reference>"},
+    "steps": [{"type":"filter_visibility","visibilities":["public"]}],
+    "return_fields": ["name","location"]
+  }
+}
+```
+
+The next run keeps the retained result's qualification and omissions. Known
+positive rows remain usable; an incomplete input cannot prove absence. Copy
+the result reference as issued. It is distinct from an exact symbol `ref`.
+
+To present the saved rows again without running query stages, use
+`read_result`. Its `cursor` starts at zero when omitted. The returned
+`next_cursor` identifies the next presentation page when present:
+
+```json
+{"request":{"action":"read_result","result":"<issued result reference>","cursor":0,"return_fields":["name","location"]}}
+```
+
+## Continue an interrupted pipeline
+
+A qualified response may include an execution `continuation`. Resume by
+sending only that token and, optionally, a new `execution_budget`:
+
+```json
+{"request":{"action":"resume","continuation":"<issued execution continuation>"}}
+```
+
+Append each returned page in order. The token restores the original source,
+steps, returned fields, and retention request; resending those fields is
+rejected. `continuation` resumes semantic execution. `next_cursor` only pages
+through one separately supplied retained result.
 
 The checkpoint retains:
 
@@ -139,8 +190,8 @@ If no prefix fits, the request rejects with `RESULT_TOO_LARGE`.
 
 ### Keep a continuation valid
 
-- Keep the project, source snapshot, and query unchanged.
-- Expect changed queries to reject.
+- Keep the project and source snapshot unchanged.
+- Send only the issued continuation token, without a replacement plan.
 - Expect expired, evicted, or stale checkpoints to reject.
 - Rediscover after source or model changes.
 - Never reconstruct an opaque token.

@@ -8,7 +8,6 @@ import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryPredicate
-import io.github.amichne.kast.query.contract.QueryResultSet
 import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QueryVisibilitySelection
 import io.github.amichne.kast.source.contract.DeclarationVisibility
@@ -101,8 +100,8 @@ class QueryWorkAdmissionTest {
 
 private fun QueryExecutionResult.selectors() =
     when (this) {
-        is QueryExecutionResult.Complete -> (result.items as QueryResultSet.Symbols).values.map { it.selector }
-        is QueryExecutionResult.Qualified -> (result.items as QueryResultSet.Symbols).values.map { it.selector }
+        is QueryExecutionResult.Complete -> result.items.map { it.selector }
+        is QueryExecutionResult.Qualified -> result.items.map { it.selector }
         is QueryExecutionResult.Rejected -> error("Unexpected rejection: $reason")
     }
 

@@ -9,8 +9,8 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryPreparedCoverageDocument
@@ -109,7 +109,7 @@ private class QueryPageEncoding(
 ) {
     fun placeholder(count: Int): HostedResponse = encode(count, QUERY_PLACEHOLDER)
 
-    fun encode(count: Int, token: ProtocolText): HostedResponse =
+    fun encode(count: Int, token: QueryExecutionContinuation.Output): HostedResponse =
         HostedResponse.Canonical.encode(
             CanonicalOperationWireBindings.queryRun,
             OperationOutcome.Qualified(
@@ -135,7 +135,8 @@ private class QueryPageEncoding(
 }
 
 private val QUERY_PLACEHOLDER =
-    ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000").proven()
+    QueryExecutionContinuation.Output.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000")
+        .proven()
 
 private fun HostedQueryOutcome.querySuffix(count: Int): HostedQueryOutcome {
     fun EvidenceEnvelope<QueryRunResult>.suffix() =
@@ -173,10 +174,14 @@ private fun largestHostedQueryPrefix(maximum: Int, encode: (Int) -> HostedRespon
 
 private fun HostedOutputRetention.encodeOr(
     original: HostedResponse,
-    encode: (ProtocolText) -> HostedResponse,
+    encode: (QueryExecutionContinuation.Output) -> HostedResponse,
 ): HostedResponse =
     when (this) {
-        is HostedOutputRetention.Retained -> encode(token)
+        is HostedOutputRetention.Retained ->
+            when (val parsed = QueryExecutionContinuation.Output.parse(token.value)) {
+                is Refinement.Refined -> encode(parsed.value)
+                is Refinement.Rejected -> original
+            }
         HostedOutputRetention.CapacityExceeded,
         HostedOutputRetention.EncodingRejected -> original
     }

@@ -14,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
@@ -51,10 +52,9 @@ class HostedReadAllowanceIdentityTest {
         allowanceGrowth().forEach { (low, high) ->
             val first =
                 owner.issue(request.copy(executionBudget = low), authority, outcome) as HostedOutputRetention.Retained
-            val resumed = request.copy(continuation = first.token, executionBudget = high)
-            assertEquals(outcome, owner.restore(first.token, resumed, authority))
-            assertEquals(outcome, owner.restore(first.token, resumed, authority))
-            assertEquals(first, owner.issue(resumed, authority, outcome))
+            assertEquals(outcome, owner.restore(first.queryOutputToken(), authority))
+            assertEquals(outcome, owner.restore(first.queryOutputToken(), authority))
+            assertEquals(first, owner.issue(request.copy(executionBudget = high), authority, outcome))
         }
     }
 
@@ -125,12 +125,15 @@ class HostedReadAllowanceIdentityTest {
 }
 
 internal fun queryIdentityRequest(exact: ProtocolText) =
-    QueryRunRequest(
+    QueryRunRequest.Run(
         QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(exact)))),
         bounded(emptyList()),
         QueryOutputDocument.Symbols(bounded(emptyList())),
         QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
     )
+
+private fun HostedOutputRetention.Retained.queryOutputToken(): QueryExecutionContinuation.Output =
+    QueryExecutionContinuation.Output.parse(token.value).value()
 
 private fun allowanceGrowth() =
     listOf(

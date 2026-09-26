@@ -1,9 +1,8 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.query.contract.CandidateQueryStage
+import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
-import io.github.amichne.kast.query.contract.QueryCandidate
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
@@ -13,7 +12,6 @@ import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
-import io.github.amichne.kast.query.contract.QueryResultSet
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolSource
@@ -55,11 +53,8 @@ class QueryService(
     private inner class Execution(private val request: QueryExecutionRequest, checkpoint: PipelineCheckpoint?) {
         private val state = QueryExecutionState(request, clock)
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
-        private val seenCandidates =
-            checkpoint?.candidateDistinct?.mapValues { it.value.toMutableSet() }?.toMutableMap() ?: mutableMapOf()
         private val seenSymbols =
             checkpoint?.symbolDistinct?.mapValues { it.value.toMutableSet() }?.toMutableMap() ?: mutableMapOf()
-        private val candidates = mutableListOf<QueryCandidate>()
         private val symbols = mutableListOf<QuerySymbol>()
         private val completedFailures = mutableListOf<QueryItemFailure>()
         private var progressed = false
@@ -69,6 +64,13 @@ class QueryService(
         init {
             state.limitations += checkpoint?.limitations.orEmpty()
             state.upstreamLimitations += checkpoint?.limitations.orEmpty()
+            if (checkpoint == null) {
+                val retained = (request.plan as? AdmittedQueryPlan.Retained)?.source
+                completedFailures += retained?.failures.orEmpty()
+                val inherited = retained?.coverage as? QueryCoverage.Qualified
+                state.limitations += inherited?.limitations.orEmpty()
+                state.upstreamLimitations += inherited?.limitations.orEmpty()
+            }
         }
 
         suspend fun run(): QueryExecutionResult {
@@ -79,7 +81,7 @@ class QueryService(
         }
 
         private suspend fun executeNext(): Boolean {
-            if (candidates.size + symbols.size + completedFailures.size >= request.budget.resources.resultLimit.value) {
+            if (symbols.size + completedFailures.size >= request.budget.resources.resultLimit.value) {
                 state.limit(QueryLimitation.RESULT_LIMIT_REACHED)
                 return false
             }
@@ -140,28 +142,13 @@ class QueryService(
             return true
         }
 
-        private suspend fun candidate(task: PipelineTask.Candidate): Boolean =
-            when (val stage = task.stage) {
-                is CandidateQueryStage.Emit -> {
-                    val value = QueryCandidate(task.value)
-                    emit(value.projectedUtf8Size()) { candidates += value }
-                }
-                is CandidateQueryStage.Distinct -> {
-                    tasks.removeFirst()
-                    if (seenCandidates.getOrPut(stage) { mutableSetOf() }.add(task.value.candidate))
-                        tasks.addFirst(task.copy(stage = stage.next))
-                    true
-                }
-                is CandidateQueryStage.Inspect -> {
-                    if (!state.consumeUnit()) false
-                    else {
-                        val values = stages.refine(task.value, discoverySyntax(request.plan), state)
-                        tasks.removeFirst()
-                        values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
-                        true
-                    }
-                }
-            }
+        private suspend fun candidate(task: PipelineTask.Candidate): Boolean {
+            if (!state.consumeUnit()) return false
+            val values = stages.refine(task.value, discoverySyntax(request.plan), state)
+            tasks.removeFirst()
+            values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, task.stage)) }
+            return true
+        }
 
         private suspend fun symbol(task: PipelineTask.Symbol): Boolean =
             when (val stage = task.stage) {
@@ -293,11 +280,8 @@ class QueryService(
         private fun finish(): QueryExecutionResult {
             if (state.contractViolation)
                 return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
-            val items =
-                if (isCandidateOutput(request.plan)) QueryResultSet.Candidates(candidates)
-                else QueryResultSet.Symbols(symbols)
-            val result = QueryResult(items, completedFailures)
-            val count = (candidates.size + symbols.size).queryCount()
+            val result = QueryResult(symbols.toList(), completedFailures.toList())
+            val count = symbols.size.queryCount()
             if (tasks.isEmpty() && state.limitations.isEmpty())
                 return QueryExecutionResult.Complete(result, QueryCoverage.Complete(count))
             if (state.limitations.isEmpty()) state.limit(QueryLimitation.WORK_LIMIT_REACHED)
@@ -320,7 +304,6 @@ class QueryService(
                     plan = request.plan,
                     lease = request.lease,
                     tasks = tasks.toList(),
-                    candidateDistinct = seenCandidates.mapValues { it.value.toSet() },
                     symbolDistinct = seenSymbols.mapValues { it.value.toSet() },
                     limitations =
                         state.limitations.filterTo(linkedSetOf()) { it !in pageLimits } + state.upstreamLimitations,

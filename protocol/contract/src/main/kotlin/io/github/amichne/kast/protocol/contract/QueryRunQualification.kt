@@ -30,7 +30,6 @@ value class QueryKnownMinimum private constructor(val value: Int) {
 enum class QueryRunQualificationFailure {
     EMPTY_LIMITATIONS,
     NON_CANONICAL_LIMITATIONS,
-    INVALID_CONTINUATION,
 }
 
 class QueryRunQualification
@@ -49,7 +48,6 @@ private constructor(
                 limitations.isEmpty() -> Refinement.Rejected(QueryRunQualificationFailure.EMPTY_LIMITATIONS)
                 limitations != limitations.distinct().sortedBy { it.ordinal } ->
                     Refinement.Rejected(QueryRunQualificationFailure.NON_CANONICAL_LIMITATIONS)
-                !progress.hasCanonicalSyntax() -> Refinement.Rejected(QueryRunQualificationFailure.INVALID_CONTINUATION)
                 else -> Refinement.Refined(QueryRunQualification(knownMinimum, limitations.toList(), progress))
             }
     }
