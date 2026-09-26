@@ -63,7 +63,7 @@ private constructor(
             }
             val syntax =
                 try {
-                    decodePublicTool(identity, raw.element, PublicQueryContract.json)
+                    decodePublicTool(identity, raw.element, PublicToolContract.json)
                 } catch (_: SerializationException) {
                     return Refinement.Rejected(PublicToolInputFailure.SyntaxRejected)
                 }
@@ -73,12 +73,12 @@ private constructor(
                     try {
                         when (val canonical = lowered.value) {
                             is PublicToolCanonical.Query ->
-                                PublicQueryContract.json.encodeToJsonElement(
+                                PublicToolContract.json.encodeToJsonElement(
                                     QueryRunRequest.serializer(),
                                     canonical.request,
                                 )
                             is PublicToolCanonical.Diagnostics ->
-                                PublicQueryContract.json.encodeToJsonElement(
+                                PublicToolContract.json.encodeToJsonElement(
                                     DiagnosticCheckRequest.serializer(),
                                     canonical.request,
                                 )
@@ -94,6 +94,13 @@ private constructor(
 }
 
 object PublicToolContract {
+    internal val json = Json {
+        ignoreUnknownKeys = false
+        coerceInputValues = false
+        explicitNulls = true
+        encodeDefaults = true
+    }
+
     private val parametersByIdentity by lazy {
         PublicToolIdentity.entries.associateWith { identity ->
             requireNotNull(javaClass.getResourceAsStream(identity.toolName + ".parameters.json"))
@@ -135,7 +142,7 @@ object PublicToolContract {
         raw: ValidatedJsonValue,
     ): Refinement<AdmittedPublicTool, PublicToolInputFailure> = AdmittedPublicTool.admit(identity, raw)
 
-    fun encode(request: AdmittedPublicTool): JsonElement = encodePublicTool(request.syntax, PublicQueryContract.json)
+    fun encode(request: AdmittedPublicTool): JsonElement = encodePublicTool(request.syntax, json)
 }
 
 /** A bound serializer prevents cross-tool reuse even when two facades share an operation. */

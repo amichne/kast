@@ -148,7 +148,7 @@ class PublicToolSchemaTest {
             requireNotNull(javaClass.getResourceAsStream("/public-tools/schema-cases.json")).bufferedReader().use {
                 Json.parseToJsonElement(it.readText()).jsonArray
             }
-        assertEquals(34, cases.size)
+        assertEquals(35, cases.size)
         cases.forEach { case ->
             val row = case.jsonObject
             val identity =

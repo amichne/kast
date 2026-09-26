@@ -585,5 +585,17 @@
       ]
     },
     "schema_valid": false
+  },
+  {
+    "id": "retired-query-grammar-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "type": "QUERY",
+      "from": {
+        "type": "SEARCH",
+        "query": "Order"
+      }
+    },
+    "schema_valid": false
   }
 ]
