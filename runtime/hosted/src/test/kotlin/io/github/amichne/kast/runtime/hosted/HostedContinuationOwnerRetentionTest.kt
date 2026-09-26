@@ -17,8 +17,6 @@ import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
-import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.query.contract.QueryBudget
@@ -34,6 +32,7 @@ import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.QueryCheckpointIssuance
 import io.github.amichne.kast.query.protocol.QueryCheckpointRestoration
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.evidenceBasis
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -41,7 +40,7 @@ import org.junit.jupiter.api.Test
 
 class HostedContinuationOwnerRetentionTest {
     @Test
-    fun `entry bound is per store and epoch retirement clears all five stores`() = runTest {
+    fun `entry bound is per store and epoch retirement clears all four stores`() = runTest {
         val fixture = RelationPagingFixture.live()
         val authority = fixture.authority
         val source = HostedSourcePagingFixture.create(fixture)
@@ -49,16 +48,11 @@ class HostedContinuationOwnerRetentionTest {
         val limits = ReadLimits.resolve(environment = mapOf("KAST_READ_QUERY_CONTINUATION_ENTRIES" to "1")).value()
         val continuations = HostedQueryContinuations()
         val owner = continuations.forEpoch(authority, limits)
-        val relationRequest = fixture.request(RelationReadPositionDocument.Start)
-        val relationOutcome = fixture.page()
-        val evidence = (relationOutcome as OperationOutcome.Qualified).evidence
         val queryRequest = queryRequest(fixture)
-        val queryOutcome = queryOutcome(evidence.basis)
+        val queryOutcome = queryOutcome(authority.evidenceBasis())
         val checkpoint = checkpoint(fixture)
         val queryState = owner.queryState.issueCheckpoint(queryRequest, checkpoint) as QueryCheckpointIssuance.Issued
         val queryOutput = owner.issue(queryRequest, authority, queryOutcome) as HostedOutputRetention.Retained
-        val relationOutput =
-            owner.relationOutputs.issue(relationRequest, authority, relationOutcome) as HostedOutputRetention.Retained
         val sourceOutput =
             owner.sourceOutputs.issue(source.request, authority, source.outcome) as HostedOutputRetention.Retained
         val traversalOutput =
@@ -69,7 +63,6 @@ class HostedContinuationOwnerRetentionTest {
             owner.queryState.restoreCheckpoint(queryState.token, authority),
         )
         assertEquals(queryOutcome, owner.restore(queryOutput.queryOutputToken(), authority))
-        assertEquals(relationOutcome, owner.relationOutputs.restore(relationOutput.token, relationRequest, authority))
         assertEquals(source.outcome, owner.sourceOutputs.restore(sourceOutput.token, source.request, authority))
         assertEquals(
             traversal.outcome,
@@ -78,10 +71,6 @@ class HostedContinuationOwnerRetentionTest {
 
         continuations.forEpoch(RelationPagingFixture.live().authority, limits)
         assertQueryRetired(owner, queryState.token, queryOutput.queryOutputToken())
-        assertEquals(
-            OperationOutcome.Rejected(RelationReadRejection.CONTINUATION_UNAVAILABLE),
-            owner.relationOutputs.restore(relationOutput.token, relationRequest, authority),
-        )
         assertEquals(
             OperationOutcome.Rejected(SourceReadRejection.CONTINUATION_UNAVAILABLE),
             owner.sourceOutputs.restore(sourceOutput.token, source.request, authority),
@@ -97,7 +86,7 @@ class HostedContinuationOwnerRetentionTest {
             EvidenceEnvelope(
                 CanonicalOperation.QUERY_RUN.id,
                 basis,
-                QueryRunResult(bounded(emptyList()), bounded(emptyList())),
+                QueryRunResult(bounded(emptyList()), bounded(emptyList()), bounded(emptyList())),
             )
         )
 

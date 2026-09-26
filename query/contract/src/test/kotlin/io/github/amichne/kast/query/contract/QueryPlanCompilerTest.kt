@@ -22,7 +22,7 @@ class QueryPlanCompilerTest {
                         QueryStepSyntax.Related(RelationMeaning.Inheritors),
                         QueryStepSyntax.Distinct,
                     ),
-                output = QueryOutputSyntax(symbolFields()),
+                output = QueryOutputSyntax.Symbols(symbolFields()),
             )
 
         val plan =
@@ -44,7 +44,7 @@ class QueryPlanCompilerTest {
             QueryPlanSyntax(
                 source = QuerySourceSyntax.Symbols(discovery()),
                 steps = emptyList(),
-                output = QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
+                output = QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
             )
 
         val plan =
@@ -54,7 +54,8 @@ class QueryPlanCompilerTest {
                 )
                 .plan
         val stage = assertInstanceOf(ExactQueryStage.Emit::class.java, (plan as AdmittedQueryPlan.Symbols).stage)
-        assertEquals(emptyList<QuerySymbolField>(), stage.fields.values)
+        val output = assertInstanceOf(QueryOutputSyntax.Symbols::class.java, stage.output)
+        assertEquals(emptyList<QuerySymbolField>(), output.fields.values)
     }
 
     @Test
@@ -63,7 +64,7 @@ class QueryPlanCompilerTest {
             QueryPlanSyntax(
                 source = QuerySourceSyntax.Symbols(discovery(CompilerSymbolKind.CONSTRUCTOR)),
                 steps = emptyList(),
-                output = QueryOutputSyntax(symbolFields()),
+                output = QueryOutputSyntax.Symbols(symbolFields()),
             )
 
         assertEquals(

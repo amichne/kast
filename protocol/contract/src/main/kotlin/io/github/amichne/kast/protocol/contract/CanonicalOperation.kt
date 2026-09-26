@@ -12,7 +12,6 @@ enum class CanonicalOperation(val id: OperationId) {
     SYMBOL_DISCOVER(canonicalOperationId("symbol.discover")),
     SYMBOL_INSPECT(canonicalOperationId("symbol.inspect")),
     SOURCE_READ(canonicalOperationId("source.read")),
-    RELATION_READ(canonicalOperationId("relation.read")),
     TRAVERSAL_RUN(canonicalOperationId("traversal.run")),
     DIAGNOSTIC_CHECK(canonicalOperationId("diagnostic.check")),
     CHANGE(canonicalOperationId("change.run")),

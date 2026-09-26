@@ -118,7 +118,7 @@ private constructor(
                                 }
                         }
                         ProviderCall.Completed(Output("unsupported"))
-                    } else ProviderCall.Completed(Output("relation-continuation:v1:structural-fixture"))
+                    } else ProviderCall.Completed(Output("valid:fixture"))
                 } finally {
                     active--
                 }

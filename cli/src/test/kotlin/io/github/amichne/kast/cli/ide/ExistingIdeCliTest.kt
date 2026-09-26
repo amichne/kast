@@ -105,7 +105,6 @@ class ExistingIdeCliTest {
                 listOf("symbol", "discover"),
                 listOf("symbol", "inspect"),
                 listOf("source", "read"),
-                listOf("relation", "read"),
                 listOf("traversal", "run"),
                 listOf("tool", "check_diagnostics"),
             )) {
@@ -279,8 +278,7 @@ class ExistingIdeCliTest {
 
     @Test
     fun `status binds the descriptor host identity and rejects unknown capabilities`() {
-        val valid =
-            """{"type":"KAST_IDE_HOST","protocol":3,"root":"/workspace","hostPid":123,"host":"$host","querySchema":"kast.query.run.v2","operations":["DESCRIBE","CLASS_LOOKUP","DIRECT_SUPERTYPE","QUERY_RUN","SYMBOL_DISCOVER","SYMBOL_INSPECT","SOURCE_READ","RELATION_READ","TRAVERSAL_RUN","DIAGNOSTIC_CHECK","CHANGE_PLAN","CHANGE_APPROVAL_PREPARE","CHANGE_APPLY","CHANGE_RECOVER"],"indexAuthority":"existing_ide_kotlin_stub_index"}"""
+        val valid = HostedDescriptorFixture.status("/workspace", host)
         assertTrue(
             ExistingIdeDocuments.response(valid.toByteArray(), root, ExistingIdeOperation.Status, descriptor)
                 is ExistingIdeExchange.Received

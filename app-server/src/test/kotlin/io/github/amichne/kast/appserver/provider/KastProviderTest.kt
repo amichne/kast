@@ -546,11 +546,8 @@ class KastProviderTest {
             )
         val semantic =
             observer(
-                "relation.read",
-                KastObserverFixtures.semanticQuery.replaceFirst(
-                    "\"status\": \"complete\",",
-                    "\"status\": \"qualified\", \"qualification\": {\"type\": \"terminal_incomplete\", \"knownMinimum\": 2, \"limitations\": [\"result-limit-reached\"]},",
-                ),
+                "query.run",
+                KastObserverFixtures.qualifiedQueryOccurrences,
             )
         val impact =
             observer(
@@ -570,11 +567,11 @@ class KastProviderTest {
 
     @Test
     fun `semantic query leads with related symbols and hides protocol evidence`() {
-        val semanticQuery = observer("relation.read", KastObserverFixtures.semanticQuery)
+        val semanticQuery = observer("query.run", KastObserverFixtures.queryOccurrences)
 
         assertEquals(
             """
-            **Kast · semantic query**
+            **Kast · query**
 
             **2 compiler-confirmed callers**
 
@@ -621,8 +618,8 @@ class KastProviderTest {
     fun `semantic and impact observations fail closed on contradictory graph structure`() {
         val mixedRelations =
             observerPresentation(
-                "relation.read",
-                KastObserverFixtures.semanticQuery.replaceFirst("\"callers\"", "\"callees\""),
+                "query.run",
+                KastObserverFixtures.mixedQueryOccurrences,
             )
         val danglingImpact =
             observerPresentation(

@@ -65,8 +65,8 @@ Requalify whenever the provider starts or the installed release changes.
 
 | Availability | Tools | Why |
 | --- | --- | --- |
-| Eager defaults | `query_symbols`, `check_diagnostics` | Declaration queries and diagnostics |
-| Deferred defaults | `source_read`, `read_relations`, `traverse_relations` | Source, occurrence facts, and reachability |
+| Eager defaults | `query_symbols`, `check_diagnostics` | Declaration and occurrence queries, and diagnostics |
+| Deferred defaults | `source_read`, `traverse_relations` | Source and reachability |
 | Deferred changes | `change_plan`, `change_apply`, `change_recover` | Keep planning and approval attached to stored changes |
 | Explicit opt-in | `symbol_lookup`, `symbol_inspect` | Expose candidate discovery and refinement when required |
 
@@ -135,11 +135,13 @@ Never render `applied_unverified` or `recovery_required` as verified success.
   </Accordion>
 </AccordionGroup>
 
-## Relation tools
+## Relation evidence
 
-`read_relations` returns individual relation occurrences, including separate use sites.
+`query_symbols` returns individual relation occurrences, including separate use
+sites, when a run expands a relation and selects `output: {"type":"occurrences"}`.
+Its `omissions` retain the exact subject and structured incomplete coverage.
 `traverse_relations` returns bounded multi-step reachability from an exact selector.
-The retired names `semantic_query` and `impact_analyze` are rejected. Older
+The retired names `read_relations`, `semantic_query`, and `impact_analyze` are rejected. Older
 persisted catalogs must requalify before dispatch.
 
-The CLI commands remain `kast relation read` and `kast traversal run`.
+The CLI retains `kast traversal run` for standalone reachability.

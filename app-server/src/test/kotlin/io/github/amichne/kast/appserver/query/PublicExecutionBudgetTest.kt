@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.SerialName
@@ -160,7 +161,7 @@ private data class InvalidRunQuery<T>(
     val source: PublicToolReferenceSource,
     @kotlinx.serialization.SerialName("execution_budget") val executionBudget: InvalidBudget<T>,
     val steps: String? = null,
-    @SerialName("return_fields") val returnFields: String? = null,
+    val output: QueryOutputDocument? = null,
 )
 
 @Serializable

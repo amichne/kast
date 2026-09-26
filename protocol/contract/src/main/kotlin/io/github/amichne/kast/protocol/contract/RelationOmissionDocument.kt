@@ -85,8 +85,3 @@ private constructor(
             else Refinement.Rejected(RelationOmissionDocumentFailure.TOO_MANY_SAMPLES)
     }
 }
-
-@Serializable
-enum class RelationSoundnessDocument {
-    EXACT_RETURNED_FACTS
-}

@@ -22,7 +22,7 @@ class CompilerEvidenceAdmissionTest {
             IdeHostCapabilitySet.parse(
                     listOf(
                         CanonicalOperation.SYMBOL_INSPECT.id.value,
-                        CanonicalOperation.RELATION_READ.id.value,
+                        CanonicalOperation.QUERY_RUN.id.value,
                     )
                 )
                 .refined()
@@ -31,7 +31,7 @@ class CompilerEvidenceAdmissionTest {
             @Suppress("UNCHECKED_CAST") (admitted.capabilities as MutableList<IdeHostCapability>).clear()
         }
         assertEquals(
-            listOf(CanonicalOperation.SYMBOL_INSPECT, CanonicalOperation.RELATION_READ),
+            listOf(CanonicalOperation.SYMBOL_INSPECT, CanonicalOperation.QUERY_RUN),
             admitted.capabilities.map(IdeHostCapability::operation),
         )
     }

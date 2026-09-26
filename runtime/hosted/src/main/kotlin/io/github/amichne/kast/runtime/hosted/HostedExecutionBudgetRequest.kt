@@ -11,7 +11,6 @@ internal fun HostedRequest.Read.executionBudget(): HostedExecutionBudgetRequest 
     HostedExecutionBudgetRequest(
         requested =
             when (this) {
-                is HostedRequest.Relation -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Query -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Source -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Traversal -> request.executionBudget?.requested() ?: RequestedExecutionBudget()

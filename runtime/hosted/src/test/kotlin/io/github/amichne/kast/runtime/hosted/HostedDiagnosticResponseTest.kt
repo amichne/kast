@@ -35,6 +35,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.evidenceBasis
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -44,7 +45,7 @@ class HostedDiagnosticResponseTest {
     @Test
     fun `byte suffix replay preserves original analysis continuation and all occurrences`() = runTest {
         val owner = RelationPagingFixture.live()
-        val basis = (owner.page() as OperationOutcome.Qualified).evidence.basis
+        val basis = owner.authority.evidenceBasis()
         val file = ProtocolText.parse("/workspace/Heavy.kt").refined()
         val upstream = ProtocolText.parse("diagnostic:v1:analysis").refined()
         val facts = facts(file)
@@ -159,7 +160,7 @@ class HostedDiagnosticResponseTest {
 
     private suspend fun heavyOutcome(): HostedDiagnosticOutcome {
         val owner = RelationPagingFixture.live()
-        val basis = (owner.page() as OperationOutcome.Qualified).evidence.basis
+        val basis = owner.authority.evidenceBasis()
         val file = ProtocolText.parse("/workspace/Heavy.kt").refined()
         return OperationOutcome.Complete(
             EvidenceEnvelope(

@@ -10,9 +10,7 @@ import io.github.amichne.kast.protocol.contract.RelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionMeasurementDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
-import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.RelationRemediationDocument
-import io.github.amichne.kast.protocol.contract.RelationSoundnessDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -89,39 +87,3 @@ private fun RelationOmissionMeasurementWireDocument.toContract():
         RelationOmissionMeasurementWireDocument.UnmeasuredOnPage ->
             WireDocumentConversion.Converted(RelationOmissionMeasurementDocument.UnmeasuredOnPage)
     }
-
-@Serializable
-internal data class RelationReadResultWireDocument(
-    val relations: List<RelationFactWireDocument>,
-    val omissions: List<RelationOmissionWireDocument>,
-    val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
-    @kotlinx.serialization.SerialName("execution_budget")
-    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @kotlinx.serialization.SerialName("reference_acquisitions")
-    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
-)
-
-internal fun RelationReadResult.toSymbolWireDocument() =
-    RelationReadResultWireDocument(
-        relations.values.map { it.toWireDocument() },
-        omissions.values.map { it.toWireDocument() },
-        soundness,
-        executionBudget,
-        referenceAcquisitions,
-    )
-
-/**
- * `RelationReadResultWireDocument -> RelationReadResult` establishes a bounded exact-symbol list; invalid raw fields
- * become `WireFailure.InvalidPayload` at this wire boundary.
- */
-internal fun RelationReadResultWireDocument.toContract(): WireDocumentConversion<RelationReadResult> =
-    relations
-        .convertEach { it.toContract() }
-        .flatMapConverted { values -> BoundedProtocolList.create(values).toWireDocumentConversion() }
-        .flatMapConverted { relations ->
-            omissions
-                .convertEach { it.toContract() }
-                .flatMapConverted { BoundedProtocolList.create(it).toWireDocumentConversion() }
-                .mapConverted { RelationReadResult(relations, it, executionBudget, referenceAcquisitions) }
-        }

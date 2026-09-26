@@ -24,6 +24,7 @@ import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.evidenceBasis
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonNull
@@ -40,7 +41,6 @@ class QueryProgressSchemaTest {
     fun `every query progress variant validates and owns its compatibility fields`() = runTest {
         with(schema) {
             val fixture = RelationPagingFixture.live()
-            val relation = fixture.page() as OperationOutcome.Qualified
             val result = result(fixture)
             for (progress in progressStates()) {
                 val qualification =
@@ -53,7 +53,11 @@ class QueryProgressSchemaTest {
                 val document =
                     CanonicalQueryCliDocuments.project(
                             OperationOutcome.Qualified(
-                                EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, relation.evidence.basis, result),
+                                EvidenceEnvelope(
+                                    CanonicalOperation.QUERY_RUN.id,
+                                    fixture.authority.evidenceBasis(),
+                                    result,
+                                ),
                                 qualification,
                             )
                         )

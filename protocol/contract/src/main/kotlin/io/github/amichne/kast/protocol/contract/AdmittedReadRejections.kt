@@ -6,13 +6,6 @@ sealed interface SourceReadFailure : OperationRejection
 data class AdmittedSourceReadRejection(val reason: SourceReadCause, val executionBudget: ExecutionBudgetReport) :
     SourceReadFailure
 
-sealed interface RelationReadFailure : OperationRejection
-
-data class AdmittedRelationReadRejection(
-    val reason: RelationReadRejection,
-    val executionBudget: ExecutionBudgetReport,
-) : RelationReadFailure
-
 sealed interface TraversalRunFailure : OperationRejection
 
 data class AdmittedTraversalRunRejection(
@@ -31,12 +24,6 @@ fun SourceReadFailure.reason(): SourceReadCause =
         is AdmittedSourceReadRejection -> reason
     }
 
-fun RelationReadFailure.reason(): RelationReadRejection =
-    when (this) {
-        is RelationReadRejection -> this
-        is AdmittedRelationReadRejection -> reason
-    }
-
 fun TraversalRunFailure.reason(): TraversalRunRejection =
     when (this) {
         is TraversalRunRejection -> this
@@ -53,12 +40,6 @@ fun SourceReadFailure.budgetPresence(): ExecutionBudgetPresence =
     when (this) {
         is SourceReadCause -> ExecutionBudgetPresence.Absent
         is AdmittedSourceReadRejection -> ExecutionBudgetPresence.Present(executionBudget)
-    }
-
-fun RelationReadFailure.budgetPresence(): ExecutionBudgetPresence =
-    when (this) {
-        is RelationReadRejection -> ExecutionBudgetPresence.Absent
-        is AdmittedRelationReadRejection -> ExecutionBudgetPresence.Present(executionBudget)
     }
 
 fun TraversalRunFailure.budgetPresence(): ExecutionBudgetPresence =

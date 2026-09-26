@@ -99,7 +99,7 @@ other projects are left alone. A changed Gradle input blocks semantic dispatch
 until the coordinator completes native model import and retries a safe read once.
 An import failure remains a finite rejection. When a relation is `qualified`, keep its known facts and omission
 reasons. Resume only when a continuation is returned; terminal incomplete
-coverage has no resumable upstream work. `read_relations` can find callees in
+coverage has no resumable upstream work. A query relation expansion can find callees in
 another package even when the subject was found with a narrow discovery scope.
 
 If Codex MCP registration fails, the installer reports the collision or

@@ -8,61 +8,6 @@ import org.junit.jupiter.api.Test
 
 class QualificationProofContractTest {
     @Test
-    fun `relation qualification is canonical immutable proof`() {
-        val continuation = relationContinuationDocument()
-        val qualification =
-            RelationReadQualification.resumable(
-                    RelationKnownMinimumDocument.parse(2).refined(),
-                    listOf(
-                        RelationLimitationDocument.RESULT_LIMIT_REACHED,
-                        RelationLimitationDocument.PROVIDER_INCOMPLETE,
-                    ),
-                    continuation,
-                )
-                .refined()
-
-        assertThrows(UnsupportedOperationException::class.java) {
-            @Suppress("UNCHECKED_CAST") (qualification.limitations as MutableList<RelationLimitationDocument>).clear()
-        }
-        assertEquals(2, qualification.limitations.size)
-        assertInstanceOf(
-            Refinement.Rejected::class.java,
-            RelationReadQualification.resumable(
-                qualification.knownMinimum,
-                qualification.limitations.reversed(),
-                qualification.continuation,
-            ),
-        )
-
-        val terminal =
-            RelationReadQualification.terminalIncomplete(
-                    RelationKnownMinimumDocument.parse(0).refined(),
-                    listOf(RelationLimitationDocument.UNRESOLVED_TARGET),
-                )
-                .refined()
-        assertInstanceOf(RelationReadQualification.TerminalIncomplete::class.java, terminal)
-    }
-
-    @Test
-    fun `relation request position is a closed start or resume shape`() {
-        val start =
-            RelationReadRequest(
-                text("exact:Target"),
-                RelationKindDocument.CALLERS,
-                ProtocolCount.parse(2).refined(),
-                RelationReadPositionDocument.Start,
-            )
-        val resume = start.copy(position = RelationReadPositionDocument.Resume(relationContinuationDocument()))
-
-        assertInstanceOf(RelationReadPositionDocument.Start::class.java, start.position)
-        assertInstanceOf(RelationReadPositionDocument.Resume::class.java, resume.position)
-        assertInstanceOf(
-            Refinement.Rejected::class.java,
-            RelationContinuationDocument.parse("a".repeat(64)),
-        )
-    }
-
-    @Test
     fun `traversal request and qualification distinguish resumable from terminal state`() {
         val continuation = traversalContinuationDocument()
         val start =
@@ -151,16 +96,6 @@ class QualificationProofContractTest {
     }
 
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refined()
-
-    private fun relationContinuationDocument(): RelationContinuationDocument {
-        val payload = "self-contained".toByteArray()
-        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return RelationContinuationDocument.parse("relation-continuation:v1:$encoded:$digest").refined()
-    }
 
     private fun traversalContinuationDocument(): TraversalContinuationDocument {
         val payload = "self-contained-checkpoint".toByteArray()

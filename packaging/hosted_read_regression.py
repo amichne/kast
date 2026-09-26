@@ -32,6 +32,7 @@ from hosted_source_failure_regression import run_source_failure_regression
 from hosted_diagnostic_pages_regression import (run_diagnostic_pages_regression, DiagnosticRequest,
     DiagnosticGrant, DiagnosticDrained, drain_diagnostics)
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
+from query_name_request import relation_query, occurrence_facts
 
 
 MAX_READ_RECEIPTS = 512  # Two surfaces, each bounded to 256 authored cases.
@@ -251,12 +252,11 @@ class _ReadReplay:
 
     def relations(self):
         token = self.seeds['helper']['ref']
-        response = self.transport.invoke(self.surface, 'read_relations', {
-            'exactSelector': token, 'relation': 'callers', 'limit': 100, 'position': {'type': 'start'}})
-        relations = response.get('relations', [])
+        response = self.transport.invoke(self.surface, 'query_symbols', asdict(relation_query(token, 'callers')))
+        relations = occurrence_facts(response)
         expected = Counter(self.fixture.oracle['helperCallers'])
         helper = self.fixture.oracle['declarations']['helper'][1]
-        self.record('semantic-callers-five', 'read_relations', {
+        self.record('semantic-callers-five', 'query_symbols', {
             **self.completed(response), 'exactCallers': Counter(r.get('source', {}).get('qualifiedIdentity')
                 for r in relations) == expected,
             'exactTarget': all(r.get('target', {}).get('qualifiedIdentity') == helper for r in relations),

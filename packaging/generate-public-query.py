@@ -23,10 +23,12 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
+import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -40,7 +42,9 @@ def tagged_type(node: dict, kind: str) -> bool:
 
 
 def nullable(node: dict) -> bool:
-    return isinstance(node.get('type'), list) and 'null' in node['type']
+    return (isinstance(node.get('type'), list) and 'null' in node['type']) or any(
+        branch.get('type') == 'null' for branch in node.get('anyOf', [])
+    )
 
 
 def enum_entry(value: str) -> str:
@@ -198,7 +202,19 @@ def render_tools(authority: dict) -> dict[Path, str]:
     lines.append('    val nameMatch = PublicToolNameMatch.' + enum_entry(defaults['name_match']) + '\n')
     lines.append('    val sourceSets = ' + bounded([text_value(s) for s in defaults['source_set_names']]) + '\n')
     lines.append('    val declarationKinds = ' + bounded(['PublicToolDeclarationKinds.' + enum_entry(s) for s in defaults['declaration_kinds']]) + '\n')
-    lines.append('    val returnFields = ' + bounded(['PublicToolReturnFields.' + enum_entry(s) for s in defaults['return_fields']]) + '\n')
+    output = defaults['output']
+    if output['type'] != 'symbols': raise ValueError('Only symbols default output is supported')
+    lines.append('    val output: QueryOutputDocument.Symbols =\n')
+    lines.append('        QueryOutputDocument.Symbols(\n')
+    lines.append('            toolDefault(\n')
+    lines.append('                BoundedProtocolList.create(\n')
+    lines.append('                    listOf(\n')
+    for field in output['fields']:
+        lines.append('                        QuerySymbolFieldDocument.' + enum_entry(field) + ',\n')
+    lines.append('                    )\n')
+    lines.append('                )\n')
+    lines.append('            )\n')
+    lines.append('        )\n')
     lines.append('    val steps: BoundedProtocolList<PublicToolStep> = toolDefault(BoundedProtocolList.create(emptyList()))\n')
     if defaults['steps'] != []: raise ValueError('Only empty default transformations are supported')
     lines.append(f'    const val maxDiagnostics = {defaults["max_diagnostics"]}\n')

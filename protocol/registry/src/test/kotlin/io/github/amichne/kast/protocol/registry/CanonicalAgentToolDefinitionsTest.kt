@@ -40,7 +40,6 @@ class CanonicalAgentToolDefinitionsTest {
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_INSPECT,
                 CanonicalOperation.SOURCE_READ,
-                CanonicalOperation.RELATION_READ,
                 CanonicalOperation.TRAVERSAL_RUN,
                 CanonicalOperation.DIAGNOSTIC_CHECK,
                 CanonicalOperation.CHANGE,
@@ -54,7 +53,6 @@ class CanonicalAgentToolDefinitionsTest {
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
-                "read_relations",
                 "traverse_relations",
                 "check_diagnostics",
                 "change",
@@ -76,7 +74,6 @@ class CanonicalAgentToolDefinitionsTest {
             CanonicalAgentToolDefinitions.all.filter { it.loading == HostedToolLoading.EAGER }.map { it.name.value },
         )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.change.approval)
-        assertTrue("exact selector" in CanonicalAgentToolDefinitions.relationRead.description.value)
         assertTrue("Reachability is qualified" in CanonicalAgentToolDefinitions.traversalRun.description.value)
         assertTrue("does not guarantee breakage" in CanonicalAgentToolDefinitions.traversalRun.description.value)
         val policy = CanonicalAgentToolDefinitions.policy.text

@@ -62,7 +62,6 @@ internal suspend fun evaluateHostedCanonicalQuery(
                 limits = context.limits,
             )
         is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)
-        is HostedRequest.Relation -> evaluateHostedRelation(project, services, context, request)
         is HostedRequest.Traversal -> evaluateHostedTraversal(project, services, context, request)
         is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(project, services, context, request)
     }

@@ -212,7 +212,7 @@ schema-bound `kast tool query_symbols` route:
 
 ```sh
 kast tool query_symbols <<'JSON'
-{"request":{"action":"run","source":{"type":"search_declarations","declaration_name":"KtorBrokerServer","name_match":null,"declaration_kinds":["class"],"scope":{"relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}},"steps":null,"return_fields":["name","location","signature"]}}
+{"request":{"action":"run","source":{"type":"search_declarations","declaration_name":"KtorBrokerServer","name_match":null,"declaration_kinds":["class"],"scope":{"relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}},"steps":null,"output":{"type":"symbols","fields":["name","location","signature"]}}}
 JSON
 ```
 

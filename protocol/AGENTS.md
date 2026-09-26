@@ -17,9 +17,8 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [SymbolInspectionOutcomes.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolInspectionOutcomes.kt) - strict versus reacquired inspection results and finite revalidation refusals.
 
 - [ReadRecoveryAction.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt) - finite read-failure recovery directions derived from the canonical reason.
-- [RelationCheckpointDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt) - upstream versus retained relation coverage.
 - [AdmittedReadRejections.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt) - operation-owned admitted failures retain finite reasons and required execution reports.
-- [RelationOmissionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationOmissionDocument.kt) - canonical omission and soundness evidence.
+- [RelationOmissionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationOmissionDocument.kt) - canonical provider omission evidence.
 - [TraversalPartialExpansionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalPartialExpansionDocument.kt) - typed partial-expansion projection.
 - [CanonicalSourceReadAnchorDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt) - disjoint inline and hosted-handle source anchor admission.
 

@@ -7,6 +7,7 @@ import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.relation.contract.RelationContinuation
@@ -33,6 +34,10 @@ internal val pageLimits =
 /** A detached depth-first ordered pipeline. Stage identity retains each distinct operator's own history. */
 internal sealed interface PipelineTask {
     data class Failure(val value: QueryItemFailure) : PipelineTask
+
+    data class Omission(val value: QueryRelationOmission) : PipelineTask
+
+    data class Occurrence(val value: QuerySymbol) : PipelineTask
 
     data class Discover(val syntax: QueryDiscoverySyntax, val next: ExactQueryStage) : PipelineTask
 
@@ -78,6 +83,8 @@ internal data class PipelineCheckpoint(
 private fun PipelineTask.retainedBytes(): Long =
     when (this) {
         is PipelineTask.Failure -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
+        is PipelineTask.Omission -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
+        is PipelineTask.Occurrence -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Symbol -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Related ->
             saturatedAdd(
@@ -113,7 +120,8 @@ internal fun PipelineTask.Feed.expand(): List<PipelineTask> =
             input.references.values.map { PipelineTask.Revalidate(it, stage.next) }
         is QueryCompositionInput.Retained ->
             input.result.symbols.map { PipelineTask.Symbol(it, stage.next) } +
-                input.result.failures.map(PipelineTask::Failure)
+                input.result.failures.map(PipelineTask::Failure) +
+                input.result.omissions.map(PipelineTask::Omission)
     }
 
 private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
@@ -122,7 +130,8 @@ private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
         is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { PipelineTask.Revalidate(it, plan.stage) }
         is AdmittedQueryPlan.Retained ->
             plan.source.symbols.map { PipelineTask.Symbol(it, plan.stage) } +
-                plan.source.failures.map(PipelineTask::Failure)
+                plan.source.failures.map(PipelineTask::Failure) +
+                plan.source.omissions.map(PipelineTask::Omission)
     }
 
 private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =

@@ -6,16 +6,11 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
-import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
-import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
-import io.github.amichne.kast.protocol.contract.QueryPredicateFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
-import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
-import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
@@ -26,18 +21,13 @@ import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
-import io.github.amichne.kast.protocol.contract.QuerySourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
-import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
-import io.github.amichne.kast.query.contract.QuerySourceFailure
 import io.github.amichne.kast.query.contract.QuerySymbolSource
-import io.github.amichne.kast.symbol.contract.SymbolExactRejection
-import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 /** Projects semantic rows and retained presentations through one canonical query outcome. */
@@ -88,7 +78,7 @@ internal class QueryOutcomeProjection(
             }
         val rows = restored.result.symbols
         if (
-            QuerySymbolFieldDocument.SOURCE in request.output.fields.values &&
+            QuerySymbolFieldDocument.SOURCE in request.symbolOutput.fields.values &&
                 rows.any { it.source == QuerySymbolSource.Pending }
         ) {
             return rejected(QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE)
@@ -103,7 +93,7 @@ internal class QueryOutcomeProjection(
         return project(
             request = restored.request,
             lease = lease,
-            result = QueryResult(rows.subList(start, end), restored.result.failures),
+            result = QueryResult(rows.subList(start, end), restored.result.failures, restored.result.omissions),
             coverage = coverage,
             continuationState = restored.result.producerProgress,
             output = request.output,
@@ -134,12 +124,12 @@ internal class QueryOutcomeProjection(
                 is QueryProjection.Projected -> projected.values
                 QueryProjection.Rejected -> return contractRejected()
             }
-        val failures =
-            when (val projected = result.failures.mapProjected(::projectFailure)) {
-                is QueryProjection.Projected -> projected.values
-                QueryProjection.Rejected -> return contractRejected()
-            }
-        val boundedFailures = BoundedProtocolList.create(failures).refinedForQueryOrNull() ?: return contractRejected()
+        val boundedFailures =
+            result.failures.mapProjected { it.projectIssue(authority) }.boundedProjectedOrNull()
+                ?: return contractRejected()
+        val boundedOmissions =
+            result.omissions.mapProjected { it.projectIssue(authority) }.boundedProjectedOrNull()
+                ?: return contractRejected()
         val projectedQualification =
             projectQualification(request, coverage, continuationState, progressItemCount ?: items.size, protectedResult)
         val qualification =
@@ -169,6 +159,7 @@ internal class QueryOutcomeProjection(
                 QueryRunResult(
                     items = presented.items,
                     failures = boundedFailures,
+                    omissions = boundedOmissions,
                     retention = presented.retention,
                     nextCursor = nextCursor,
                     referenceAcquisitions = authority.readAcquisitions(),
@@ -230,6 +221,7 @@ internal class QueryOutcomeProjection(
             items.mapIndexed { index, item ->
                 when (item) {
                     is QueryResultItemDocument.ExactSymbol -> item.copy(rowId = rowIds[index])
+                    is QueryResultItemDocument.Occurrence -> item.copy(rowId = rowIds[index])
                 }
             }
         )
@@ -287,61 +279,6 @@ internal class QueryOutcomeProjection(
         return Refinement.Refined(state.issueResult(request, captured, protectedCheckpoint))
     }
 
-    private fun projectFailure(failure: QueryItemFailure): QueryItemFailureDocument? =
-        when (failure) {
-            is QueryItemFailure.Refinement -> {
-                val token =
-                    (authority.issueDeclarationCandidate(failure.candidate) as? CandidateSelectorTokenIssuance.Issued)
-                        ?.selector ?: return null
-                QueryItemFailureDocument.Refinement(
-                    QueryReferenceDocument.DeclarationCandidate(token),
-                    QueryExactFailureDocument.valueOf(failure.reason.name),
-                )
-            }
-            is QueryItemFailure.ExactReference -> exactFailure(failure.selector, failure.reason)
-            is QueryItemFailure.Visibility ->
-                QueryItemFailureDocument.Predicate(
-                    exactReference(failure.selector) ?: return null,
-                    QueryPredicateFailureDocument.valueOf(failure.reason.name),
-                )
-            is QueryItemFailure.PredicateUnproven ->
-                QueryItemFailureDocument.Predicate(
-                    exactReference(failure.selector) ?: return null,
-                    QueryPredicateFailureDocument.PREDICATE_UNPROVEN,
-                )
-            is QueryItemFailure.Source ->
-                QueryItemFailureDocument.Source(
-                    exactReference(failure.selector) ?: return null,
-                    QuerySourceFailureDocument.valueOf(
-                        when (val cause = failure.reason) {
-                            is QuerySourceFailure.Rejected -> cause.reason.name
-                            is QuerySourceFailure.Withheld -> cause.reason.name
-                        }
-                    ),
-                )
-            is QueryItemFailure.Relation ->
-                QueryItemFailureDocument.Relation(
-                    exactReference(failure.selector) ?: return null,
-                    failure.meaning.protocolDocument(),
-                    QueryRelationFailureDocument.valueOf(failure.reason.name),
-                )
-        }
-
-    private fun exactFailure(
-        selector: SymbolSelector,
-        reason: SymbolExactRejection,
-    ): QueryItemFailureDocument.ExactReference? =
-        QueryItemFailureDocument.ExactReference(
-            exactReference(selector) ?: return null,
-            QueryExactFailureDocument.valueOf(reason.name),
-        )
-
-    private fun exactReference(selector: SymbolSelector): QueryReferenceDocument.ExactSymbol? =
-        when (val issued = authority.issueExact(selector)) {
-            is ExactSelectorIssuance.Issued -> QueryReferenceDocument.ExactSymbol(issued.selector)
-            is ExactSelectorIssuance.Rejected -> null
-        }
-
     private fun contractRejected(): OperationOutcome.Rejected<QueryRunRejection> =
         OperationOutcome.Rejected(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
@@ -366,6 +303,12 @@ internal inline fun <Input, Output : Any> Iterable<Input>.mapProjected(
     for (input in this) values += transform(input) ?: return QueryProjection.Rejected
     return QueryProjection.Projected(values)
 }
+
+internal fun <Value> QueryProjection<Value>.boundedProjectedOrNull(): BoundedProtocolList<Value>? =
+    when (this) {
+        is QueryProjection.Projected -> BoundedProtocolList.create(values).refinedForQueryOrNull()
+        QueryProjection.Rejected -> null
+    }
 
 internal fun <Value, Failure> Refinement<Value, Failure>.refinedForQueryOrNull(): Value? =
     when (this) {

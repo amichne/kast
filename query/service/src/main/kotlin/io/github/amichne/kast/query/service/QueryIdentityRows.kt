@@ -5,6 +5,7 @@ import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QuerySetOperator
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolSource
+import io.github.amichne.kast.query.contract.merge
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 
@@ -129,7 +130,11 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
                 else -> return Refinement.Rejected(QueryIdentityRowFailure.CONFLICTING_SOURCE)
             }
         return Refinement.Refined(
-            first.copy(connections = (first.connections + second.connections).distinct().sorted(), source = source)
+            first.copy(
+                connections = (first.connections + second.connections).distinct().sorted(),
+                source = source,
+                arrival = first.arrival.merge(second.arrival),
+            )
         )
     }
 }

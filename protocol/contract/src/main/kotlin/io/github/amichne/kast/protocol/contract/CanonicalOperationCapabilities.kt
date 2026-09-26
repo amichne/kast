@@ -12,8 +12,6 @@ interface SymbolInspectCapability : CapabilityMarker
 
 interface SourceReadCapability : CapabilityMarker
 
-interface RelationReadCapability : CapabilityMarker
-
 interface TraversalRunCapability : CapabilityMarker
 
 interface QueryRunCapability : CapabilityMarker

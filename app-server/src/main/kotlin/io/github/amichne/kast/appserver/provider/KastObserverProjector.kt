@@ -9,7 +9,6 @@ import io.github.amichne.kast.kernel.LiveReadContentView
 import io.github.amichne.kast.kernel.LiveReadEvidence
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
-import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -58,11 +57,10 @@ internal object KastObserverProjector {
         if (operation.value == CHANGE_APPLY) return projectAppliedChange(document)
         val markdown =
             when (operation.value) {
-                "query.run" -> projectQuery(document, evidence)
+                "query.run" -> projectQuery(document, evidence, directory)
                 SYMBOL_DISCOVER -> projectDiscovery(document, evidence, directory)
                 SYMBOL_INSPECT -> projectInspection(document, evidence, directory)
                 SOURCE_READ -> projectSource(document, evidence, directory)
-                RELATION_READ -> projectRelations(document, evidence, directory)
                 TRAVERSAL_RUN -> projectTraversal(document, evidence, directory)
                 DIAGNOSTIC_CHECK -> projectDiagnostics(document, evidence, directory)
                 CHANGE_PLAN -> projectPlannedChange(document, evidence)
@@ -151,19 +149,34 @@ internal object KastObserverProjector {
         }
     }
 
-    private fun projectQuery(document: JsonObject, evidence: ObserverEvidence): String? {
+    private fun projectQuery(
+        document: JsonObject,
+        evidence: ObserverEvidence,
+        observerDirectory: ObserverWorkingDirectory,
+    ): String? {
         val items = document["items"] as? JsonArray ?: return null
         val failures = document["failures"] as? JsonArray ?: return null
+        val omissions = document["omissions"] as? JsonArray ?: return null
+        if (items.isNotEmpty() && items.all { (it as? JsonObject)?.strictString("type") == "occurrence" }) {
+            return projectQueryOccurrences(items, failures, omissions, evidence, observerDirectory)
+        }
         return observerDocument(
             "query",
             evidence,
-            buildString {
-                append("**${items.size} query result${if (items.size == 1) "" else "s"}**")
-                if (failures.isNotEmpty())
-                    append(" · ${failures.size} item failure${if (failures.size == 1) "" else "s"}")
-            },
+            querySummary(items.size, failures.size, omissions.size),
         )
     }
+
+    private fun querySummary(items: Int, failures: Int, omissions: Int): String =
+        (listOf("**${countedQueryLabel(items, "query result")}**") +
+                listOfNotNull(
+                    failures.takeIf { it > 0 }?.let { countedQueryLabel(it, "item failure") },
+                    omissions.takeIf { it > 0 }?.let { countedQueryLabel(it, "relation omission") },
+                ))
+            .joinToString(" · ")
+
+    private fun countedQueryLabel(count: Int, singular: String): String =
+        "$count $singular${if (count == 1) "" else "s"}"
 
     private fun projectDiscovery(
         document: JsonObject,
@@ -337,47 +350,65 @@ internal object KastObserverProjector {
         return observerDocument("diagnostics", evidence, rows.joinToString("\n"))
     }
 
-    private fun projectRelations(
-        document: JsonObject,
+    private fun projectQueryOccurrences(
+        items: JsonArray,
+        failures: JsonArray,
+        omissions: JsonArray,
         evidence: ObserverEvidence,
         observerDirectory: ObserverWorkingDirectory,
     ): String? {
-        val relations =
-            (document["relations"] as? JsonArray)?.map { candidate ->
-                admitRelation(candidate as? JsonObject ?: return null, observerDirectory.path) ?: return null
-            } ?: return null
+        val relations = admitQueryRelations(items, observerDirectory.path) ?: return null
         val meaning = relations.firstOrNull()?.meaning
         if (relations.any { relation -> relation.meaning != meaning }) return null
-        val body =
-            if (relations.isEmpty()) {
-                if (evidence.coverage == ObserverCoverage.COMPLETE) {
-                    "_No compiler-confirmed relations._"
-                } else {
-                    "_No known relations._"
-                }
+        return observerDocument(
+            "query",
+            evidence,
+            renderQueryRelations(relations, evidence.coverage, failures.size, omissions.size),
+        )
+    }
+
+    private fun admitQueryRelations(items: JsonArray, observerDirectory: Path): List<RelationObservation>? =
+        items.map { candidate ->
+            val item = candidate as? JsonObject ?: return null
+            if (item.strictString("ref") == null) return null
+            admitRelation(item["relation"] as? JsonObject ?: return null, observerDirectory) ?: return null
+        }
+
+    private fun renderQueryRelations(
+        relations: List<RelationObservation>,
+        coverage: ObserverCoverage,
+        failures: Int,
+        omissions: Int,
+    ): String {
+        if (relations.isEmpty()) {
+            return if (coverage == ObserverCoverage.COMPLETE) {
+                "_No compiler-confirmed relations._"
             } else {
-                buildString {
-                    append("**")
-                    append(relations.size)
-                    append(if (evidence.coverage == ObserverCoverage.COMPLETE) " compiler-confirmed " else " known ")
-                    append(meaning!!.countedLabel(relations.size))
-                    appendLine("**")
-                    appendLine()
-                    appendLine("| Symbol | Kind | File |")
-                    appendLine("|---|---|---|")
-                    relations.forEach { relation ->
-                        append("| ")
-                        append(inlineCode(relation.related.name).markdownTableCell())
-                        append(" | ")
-                        append(relation.related.kind)
-                        append(" | ")
-                        append(relation.related.file.link().markdownTableCell())
-                        appendLine(" |")
-                    }
-                }
-                    .trimEnd()
+                "_No known relations._"
             }
-        return observerDocument("semantic query", evidence, body)
+        }
+        return buildString {
+            append("**")
+            append(relations.size)
+            append(if (coverage == ObserverCoverage.COMPLETE) " compiler-confirmed " else " known ")
+            append(relations.first().meaning.countedLabel(relations.size))
+            appendLine("**")
+            appendLine()
+            appendLine("| Symbol | Kind | File |")
+            appendLine("|---|---|---|")
+            relations.forEach { relation ->
+                append("| ")
+                append(inlineCode(relation.related.name).markdownTableCell())
+                append(" | ")
+                append(relation.related.kind)
+                append(" | ")
+                append(relation.related.file.link().markdownTableCell())
+                appendLine(" |")
+            }
+            if (failures > 0) append("\n$failures item failures")
+            if (omissions > 0) append("\n$omissions relation omissions")
+        }
+            .trimEnd()
     }
 
     private fun projectTraversal(
@@ -689,7 +720,6 @@ internal object KastObserverProjector {
                             SYMBOL_DISCOVER,
                             SYMBOL_INSPECT,
                             SOURCE_READ,
-                            RELATION_READ,
                             TRAVERSAL_RUN,
                             DIAGNOSTIC_CHECK,
                         )
@@ -809,89 +839,15 @@ internal object KastObserverProjector {
         }
     }
 
-    @JvmInline
-    private value class ObserverFilePath private constructor(val value: String) {
-        fun link(): String = "[${value.substringAfterLast('/').markdownLabel()}](<${value.markdownDestination()}>)"
-
-        companion object {
-            fun admit(raw: String, observerDirectory: Path): ObserverFilePath? {
-                if (
-                    raw.isBlank() ||
-                        raw.length > MAXIMUM_FILE_LENGTH ||
-                        raw.any { character -> character == '\n' || character == '\r' || character == '\u0000' }
-                )
-                    return null
-                return try {
-                    val candidate = Path.of(raw).normalize()
-                    val relative =
-                        when {
-                            !candidate.isAbsolute -> candidate
-                            candidate.startsWith(observerDirectory) -> observerDirectory.relativize(candidate)
-                            else -> return null
-                        }
-                    admitRelative(relative)
-                } catch (_: InvalidPathException) {
-                    null
-                }
-            }
-
-            fun admitSource(
-                raw: String,
-                canonicalRoot: String,
-                observerDirectory: Path,
-            ): ObserverFilePath? {
-                if (
-                    raw.isBlank() ||
-                        raw.length > MAXIMUM_FILE_LENGTH ||
-                        canonicalRoot.isBlank() ||
-                        canonicalRoot.length > MAXIMUM_FILE_LENGTH ||
-                        raw.any(::isForbiddenPathCharacter) ||
-                        canonicalRoot.any(::isForbiddenPathCharacter)
-                )
-                    return null
-                return try {
-                    val root = Path.of(canonicalRoot).normalize()
-                    if (!root.isAbsolute) return null
-                    val candidate = Path.of(raw).normalize()
-                    if (!candidate.isAbsolute) return admitRelative(candidate)
-                    if (!candidate.startsWith(root) || !candidate.startsWith(observerDirectory)) {
-                        return null
-                    }
-                    admitRelative(observerDirectory.relativize(candidate))
-                } catch (_: InvalidPathException) {
-                    null
-                }
-            }
-
-            private fun admitRelative(relative: Path): ObserverFilePath? {
-                val value = relative.toString().replace(relative.fileSystem.separator, "/")
-                return if (value.isBlank() || value == "." || value == ".." || value.startsWith("../")) null
-                else ObserverFilePath(value)
-            }
-
-            private fun isForbiddenPathCharacter(character: Char): Boolean =
-                character == '\n' || character == '\r' || character == '\u0000'
-        }
-    }
-
-    private fun String.markdownLabel(): String = replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
-
-    private fun String.markdownTableCell(): String = replace("|", "\\|")
-
-    private fun String.markdownDestination(): String =
-        replace("%", "%25").replace("<", "%3C").replace(">", "%3E").replace("|", "%7C")
-
     private const val SYMBOL_DISCOVER = "symbol.discover"
     private const val SYMBOL_INSPECT = "symbol.inspect"
     private const val CHANGE_PLAN = "change.plan"
     private const val CHANGE_APPLY = "change.apply"
     private const val CHANGE_RECOVER = "change.recover"
     private const val SOURCE_READ = "source.read"
-    private const val RELATION_READ = "relation.read"
     private const val TRAVERSAL_RUN = "traversal.run"
     private const val DIAGNOSTIC_CHECK = "diagnostic.check"
     private const val MAXIMUM_LABEL_LENGTH = 16_384
-    private const val MAXIMUM_FILE_LENGTH = 16_384
     private val BACKTICK_RUN = Regex("`+")
     private val RELATION_PROVENANCE =
         setOf(

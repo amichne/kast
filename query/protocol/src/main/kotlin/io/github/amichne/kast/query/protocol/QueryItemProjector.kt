@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceWindowDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
+import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolSource
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
@@ -17,6 +18,20 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
     fun projectItems(output: QueryOutputDocument, items: List<QuerySymbol>): QueryProjection<QueryResultItemDocument> =
         when (output) {
             is QueryOutputDocument.Symbols -> projectSymbols(output, items)
+            QueryOutputDocument.Occurrences -> projectOccurrences(items)
+        }
+
+    private fun projectOccurrences(items: List<QuerySymbol>): QueryProjection<QueryResultItemDocument> =
+        items.mapProjected { symbol ->
+            val fact =
+                (symbol.arrival as? QueryArrivalEvidence.Proven)?.facts?.singleOrNull() ?: return@mapProjected null
+            val token =
+                when (val issued = authority.issueExact(symbol.selector)) {
+                    is ExactSelectorIssuance.Issued -> issued.selector
+                    is ExactSelectorIssuance.Rejected -> return@mapProjected null
+                }
+            val relation = fact.protocolDocument(authority) ?: return@mapProjected null
+            QueryResultItemDocument.Occurrence(QueryReferenceDocument.ExactSymbol(token), relation)
         }
 
     private fun projectSymbols(

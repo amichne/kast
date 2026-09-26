@@ -18,7 +18,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.OperationRequest
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
@@ -166,7 +165,6 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
             CanonicalOperation.SYMBOL_DISCOVER,
             CanonicalOperation.SYMBOL_INSPECT,
             CanonicalOperation.SOURCE_READ,
-            CanonicalOperation.RELATION_READ,
             CanonicalOperation.TRAVERSAL_RUN,
             CanonicalOperation.DIAGNOSTIC_CHECK -> ExistingIdeOperation.Read.admit(request)
         }
@@ -185,8 +183,6 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                         decode(input, SymbolDiscoverRequest.serializer(), preparers.symbolDiscover)
                     CanonicalOperation.SYMBOL_INSPECT ->
                         decode(input, SymbolInspectRequest.serializer(), preparers.symbolInspect)
-                    CanonicalOperation.RELATION_READ ->
-                        decode(input, RelationReadRequest.serializer(), preparers.relationRead)
                     CanonicalOperation.TRAVERSAL_RUN ->
                         decode(input, TraversalRunRequest.serializer(), preparers.traversalRun)
                     CanonicalOperation.CHANGE_PLAN ->

@@ -22,7 +22,6 @@ import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
@@ -85,7 +84,7 @@ class HostedReadBudgetAdmissionTest {
                 )
             }
         }
-        assertEquals(5, providerCalls, "Only the five valid controls may enter provider dispatch")
+        assertEquals(4, providerCalls, "Only the four valid controls may enter provider dispatch")
     }
 
     @Test
@@ -164,10 +163,6 @@ class HostedReadBudgetAdmissionTest {
                     SourceReadPageDocument.First,
                     executionBudget = budget,
                 ),
-            ),
-            input(
-                CanonicalOperationWireBindings.relationRead,
-                fixture.request(RelationReadPositionDocument.Start).copy(executionBudget = budget),
             ),
             input(
                 CanonicalOperationWireBindings.traversalRun,

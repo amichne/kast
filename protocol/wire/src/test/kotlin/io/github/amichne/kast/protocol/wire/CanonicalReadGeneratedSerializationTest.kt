@@ -14,13 +14,7 @@ import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
-import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
-import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
@@ -31,54 +25,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class CanonicalReadGeneratedSerializationTest {
-    @Test
-    fun `generated request document preserves shape and rejects malformed fields`() {
-        val codec = CanonicalReadSerializers.relationReadRequest
-        val request =
-            RelationReadRequest(
-                exactSelector = text("exact:Target"),
-                relation = RelationKindDocument.CALLERS,
-                limit = count(25),
-            )
-        val document =
-            json("""{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"start"}}""")
-
-        assertEquals(WireValueEncoding.Encoded(document), codec.encode(request, WireValueRole.REQUEST))
-        assertEquals(WireDecoding.Decoded(request), codec.decode(document, WireValueRole.REQUEST))
-        listOf(
-                """{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"start"},"extra":true}""",
-                """{"exactSelector":"exact:Target","relation":"unknown","limit":25,"position":{"type":"start"}}""",
-                """{"exactSelector":"exact:Target","relation":"callers","limit":0,"position":{"type":"start"}}""",
-            )
-            .forEach { malformed ->
-                assertEquals(
-                    WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REQUEST)),
-                    codec.decode(json(malformed), WireValueRole.REQUEST),
-                )
-            }
-        val defaulted = RelationReadRequest(text("exact:Target"), RelationKindDocument.CALLERS)
-        val defaultedDocument = (codec.encode(defaulted, WireValueRole.REQUEST) as WireValueEncoding.Encoded).value
-        org.junit.jupiter.api.Assertions.assertFalse(defaultedDocument.toString().contains("\"limit\""))
-        assertEquals(
-            WireDecoding.Decoded(defaulted),
-            codec.decode(defaultedDocument, WireValueRole.REQUEST),
-        )
-        val continuation = relationContinuation("resume")
-        val resumed = request.copy(position = RelationReadPositionDocument.Resume(continuation))
-        val resumedDocument =
-            json(
-                """{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"resume","continuation":"${continuation.value}"}}"""
-            )
-        assertEquals(
-            WireValueEncoding.Encoded(resumedDocument),
-            codec.encode(resumed, WireValueRole.REQUEST),
-        )
-        assertEquals(
-            WireDecoding.Decoded(resumed),
-            codec.decode(resumedDocument, WireValueRole.REQUEST),
-        )
-    }
-
     @Test
     fun `traversal request round trips closed start and resume positions`() {
         val codec = CanonicalReadSerializers.traversalRunRequest
@@ -149,39 +95,6 @@ class CanonicalReadGeneratedSerializationTest {
 
     @Test
     fun `proof carrying qualifications round trip and malformed claims fail closed`() {
-        val continuation = relationContinuation("qualification")
-        val relation =
-            RelationReadQualification.resumable(
-                    RelationKnownMinimumDocument.parse(2).refinedValue(),
-                    listOf(
-                        RelationLimitationDocument.RESULT_LIMIT_REACHED,
-                        RelationLimitationDocument.PROVIDER_INCOMPLETE,
-                    ),
-                    continuation,
-                )
-                .refinedValue()
-        assertQualification(
-            CanonicalReadSerializers.relationReadQualification,
-            relation,
-            checkNotNull(javaClass.getResource("/relation/qualification/upstream-resume.json")).readText(),
-            listOf(
-                """{"type":"resumable","knownMinimum":2,"limitations":["provider_incomplete","result_limit_reached"],"continuation":"${continuation.value}"}""",
-                """{"type":"resumable","knownMinimum":2,"limitations":["provider_incomplete"],"continuation":"bad"}""",
-            ),
-        )
-        val terminal =
-            RelationReadQualification.terminalIncomplete(
-                    RelationKnownMinimumDocument.parse(0).refinedValue(),
-                    listOf(RelationLimitationDocument.UNRESOLVED_TARGET),
-                )
-                .refinedValue()
-        assertQualification(
-            CanonicalReadSerializers.relationReadQualification,
-            terminal,
-            """{"type":"terminal_incomplete","knownMinimum":0,"limitations":["unresolved_target"]}""",
-            listOf("""{"type":"terminal_incomplete","knownMinimum":0,"limitations":[],"continuation":"bad"}"""),
-        )
-
         val diagnostic =
             DiagnosticCheckQualification.create(
                     DiagnosticKnownCountDocument.parse(3).refinedValue(),
@@ -277,16 +190,6 @@ class CanonicalReadGeneratedSerializationTest {
     private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refinedValue()
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
-
-    private fun relationContinuation(payloadText: String): RelationContinuationDocument {
-        val payload = payloadText.toByteArray()
-        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return RelationContinuationDocument.parse("relation-continuation:v1:$encoded:$digest").refinedValue()
-    }
 
     private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
         val payload = payloadText.toByteArray()

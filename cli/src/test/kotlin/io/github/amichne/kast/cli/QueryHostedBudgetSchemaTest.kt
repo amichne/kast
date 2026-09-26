@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.evidenceBasis
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -26,7 +27,7 @@ class QueryHostedBudgetSchemaTest {
     @Test
     fun `complete and qualified query envelopes retain valid execution grant metadata`() = runTest {
         with(LiveReadOutputSchemaTest()) {
-            val fixture = RelationPagingFixture.live().page() as OperationOutcome.Qualified
+            val fixture = RelationPagingFixture.live()
             val grant = hostedSchemaBudgetGrant(ExecutionBudgetDocument(maxResults = ResultLimit.parse(999).refined()))
             val result =
                 QueryRunResult(
@@ -34,7 +35,7 @@ class QueryHostedBudgetSchemaTest {
                     BoundedProtocolList.create(emptyList<QueryItemFailureDocument>()).refined(),
                     executionBudget = ExecutionBudgetReport.from(grant),
                 )
-            val evidence = EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, fixture.evidence.basis, result)
+            val evidence = EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, fixture.authority.evidenceBasis(), result)
             val qualified =
                 OperationOutcome.Qualified(
                     evidence,

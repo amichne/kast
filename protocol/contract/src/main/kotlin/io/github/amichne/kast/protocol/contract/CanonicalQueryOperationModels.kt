@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -144,6 +145,8 @@ sealed interface QueryOutputDocument {
     data class Symbols(
         @ProtocolCollectionConstraint(uniqueItems = true) val fields: BoundedProtocolList<QuerySymbolFieldDocument>
     ) : QueryOutputDocument
+
+    @Serializable @SerialName("occurrences") data object Occurrences : QueryOutputDocument
 }
 
 @Serializable
@@ -200,14 +203,33 @@ sealed interface QueryRunRequest : OperationRequest {
 
     @Serializable
     @SerialName("read-result")
-    data class ReadResult(
+    data class ReadResult
+    private constructor(
         val result: QueryResultReference,
         val cursor: QueryResultCursor = QueryResultCursor.Start,
-        val output: QueryOutputDocument.Symbols,
+        val output: QueryOutputDocument,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
-    ) : QueryRunRequest
+    ) : QueryRunRequest {
+        init {
+            if (output !is QueryOutputDocument.Symbols) {
+                throw kotlinx.serialization.SerializationException("read-result output must be symbols")
+            }
+        }
+
+        val symbolOutput: QueryOutputDocument.Symbols
+            get() = output as QueryOutputDocument.Symbols
+
+        companion object {
+            fun symbols(
+                result: QueryResultReference,
+                cursor: QueryResultCursor = QueryResultCursor.Start,
+                output: QueryOutputDocument.Symbols,
+                executionBudget: ExecutionBudgetDocument? = null,
+            ): ReadResult = ReadResult(result, cursor, output, executionBudget)
+        }
+    }
 }
 
 internal object QueryRunActionSerializer : KSerializer<QueryRunRequest.Run> {
@@ -238,6 +260,7 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
     if (steps.values.any { !it.hasCanonicalSyntax() }) return false
     return when (val projection = output) {
         is QueryOutputDocument.Symbols -> projection.fields.values.isUnique()
+        QueryOutputDocument.Occurrences -> true
     }
 }
 
@@ -305,6 +328,24 @@ sealed interface QueryResultItemDocument {
         val source: QuerySourceWindowDocument? = null,
         val rowId: QueryResultRowReference? = null,
     ) : QueryResultItemDocument
+
+    data class Occurrence(
+        override val ref: QueryReferenceDocument.ExactSymbol,
+        val relation: RelationFactDocument,
+        val rowId: QueryResultRowReference? = null,
+    ) : QueryResultItemDocument
+}
+
+/** A relation omission retains the exact subject and meaning that produced it. */
+data class QueryRelationOmissionDocument(
+    val subject: QueryReferenceDocument.ExactSymbol,
+    val relation: RelationKindDocument,
+    val evidence: RelationOmissionDocument,
+) {
+    companion object {
+        val Empty: BoundedProtocolList<QueryRelationOmissionDocument> =
+            (BoundedProtocolList.create(emptyList<QueryRelationOmissionDocument>()) as Refinement.Refined).value
+    }
 }
 
 sealed interface QueryItemFailureDocument {
@@ -389,6 +430,7 @@ enum class QueryRelationFailureDocument {
 data class QueryRunResult(
     val items: BoundedProtocolList<QueryResultItemDocument>,
     val failures: BoundedProtocolList<QueryItemFailureDocument>,
+    val omissions: BoundedProtocolList<QueryRelationOmissionDocument> = QueryRelationOmissionDocument.Empty,
     val retention: QueryResultRetention = QueryResultRetention.NotRequested,
     val nextCursor: QueryResultCursor? = null,
     val executionBudget: ExecutionBudgetReport? = null,

@@ -16,7 +16,6 @@ import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
@@ -45,14 +44,10 @@ class HostedRejectedBudgetTest {
     }
 
     @Test
-    fun `all four admitted semantic failures retain their report and reject malformed report fields`() {
+    fun `all three admitted semantic failures retain their report and reject malformed report fields`() {
         verify(
             CanonicalOperationWireBindings.sourceRead,
             OperationOutcome.Rejected(SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE).withSourceBudget(report()),
-        )
-        verify(
-            CanonicalOperationWireBindings.relationRead,
-            OperationOutcome.Rejected(RelationReadRejection.SELECTOR_STALE).withRelationBudget(report()),
         )
         verify(
             CanonicalOperationWireBindings.traversalRun,

@@ -53,21 +53,21 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The hosted `query_symbols` and `check_diagnostics` presentations lower to canonical query and diagnostic operations. The former CLI routes are retired; provider admission retains distinct schemas for these presentations.
 
-`query_symbols` and `check_diagnostics` are eager. The query tool takes one required `request` object with a closed `run`, `resume`, or `read_result` action. Run admits discovery, exact-symbol references, or an immutable retained-result reference with optional issued row IDs as its source, plus ordered steps, return fields, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, return fields, and optional grant; it does not execute query stages. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+`query_symbols` and `check_diagnostics` are eager. The query tool takes one required `request` object with a closed `run`, `resume`, or `read_result` action. Run admits discovery, exact-symbol references, or an immutable retained-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, symbol output, and optional grant; it does not execute query stages. Run output is either `symbols` with selected fields or `occurrences` with individual relation facts; read-result output accepts symbols only. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
-The pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items expose exact-symbol `ref` values; query candidate output and its inspect stage have been removed. Separate symbol lookup still uses candidate references. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors are distinct typed values. No token spelling creates authority: runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
+The pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion can present related declarations or individual occurrence facts through the one query result. Occurrence rows preserve repeated call sites, exact endpoint references, use-site location and provenance. Structured result omissions keep the exact subject, relation kind and provider evidence beside known positive rows. Query items expose exact-symbol `ref` values; query candidate output and its inspect stage have been removed. Separate symbol lookup still uses candidate references. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors are distinct typed values. No token spelling creates authority: runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
 Run can request `retention: "retain"`. The produced semantic rows, failures, coverage and producer progress are captured immutably under one bounded query-state lifetime. Issued `row_id` handles identify rows within that result. A qualified retained result may seed a later run, including when its row set is empty; its original omissions and qualification remain attached. Optional `row_ids` select rows in order; an empty list is valid and a proper subset retains incomplete-selection qualification. Row handles must belong to the supplied result. Result reuse rejects an unavailable or stale basis. Retention capacity failure is reported without erasing the run result. Read-result pages a retained result without semantic provider work, while `resume` restores pending execution from the original plan without resending it.
 
 `where` admits a closed visibility or primitive predicate. Primitive predicates select compiler-grounded `name`, `kind`, or `file`, a finite comparison operator, and a nonblank literal bounded to 512 characters at public admission. The facade uses the canonical predicate type directly. `concat` accepts the same exact-reference or retained-result input shapes used as query sources, preserves stream order and multiplicity, and revalidates exact references under the current authority and query budget. `intersect`, `union`, and `difference` require a retained result on the right and compare canonical semantic identity, not names or token spelling. `difference` requires complete right coverage and no right failures or producer progress before it can establish absence. `distinct_symbols` removes duplicates only at its explicit stage.
 
-`query_symbols.request.return_fields` accepts `source` for a run. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text. Read-result can present a retained source window only when that evidence was captured in the original run.
+`query_symbols.request.output.fields` accepts `source` in symbol mode for a run. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text. Read-result can present a retained source window only when that evidence was captured in the original run.
 
 The installed `source_read` input projection distributes declaration visibility alternatives into its filter choices. This preserves the canonical request variants while keeping every advertised tool input within two composition levels for Copilot catalog loading. `CopilotInputSchemaCompatibilityTest` checks both the depth limit and acceptance parity for every source filter variant.
 
-Installed projection 15 retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; CLI invocation version 4 remains a separate public CLI projection and omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. File or text lookup and candidate refinement require explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
+The installed projection retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; the CLI invocation projection omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source and traversal defaults remain unchanged. File or text lookup and candidate refinement require explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
@@ -99,10 +99,8 @@ HTTP server or interactive playground advertised. Full-width contract pages keep
 the generated fields visible without synthesized response examples; invocation
 commands render as Bash blocks in the page content.
 
-`read_relations` advertises both published `v1` and live `v2` relation
-continuations in its resume input and qualified output. Both schemas use
-`RelationContinuationDocument.TOKEN_PATTERN`; the production codec preserves
-the authority's version. The [query protocol](../modules/query-protocol.md)
+Query execution continuations remain distinct from relation continuation
+documents used within relation and traversal engines. The [query protocol](../modules/query-protocol.md)
 retains the stronger continuation ownership checks after structural admission.
 
 Public exact-reference syntax accepts hosted `exact:v5:` and `exact:v4:` handles alongside legacy `v2` and `v3` tokens. Returned references remain opaque and must be passed back unchanged. The host resolves compact handles before validating authority; source anchors also accept the corresponding candidate handle family.
@@ -135,7 +133,7 @@ optional next result cursor. Exact items expose the scalar `ref` capability;
 canonical equality remains internal to set and distinct stages, and `symbol_id` has
 no public accessor.
 Traversal output includes progress, strategy and page-local partial expansions.
-Relation output separates exact returned-fact soundness from bounded provider
+Query occurrence output separates exact returned facts from bounded provider
 omission evidence, with measured or explicitly unmeasured page counts.
 
 Query reference rejection schemas retain the finite lookup and reacquisition
@@ -147,9 +145,9 @@ lookup cannot establish current identity, rejection retains its specific cause.
 Continuations and source snapshots remain strict. See
 [query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
 
-Installed source, relation, and traversal rejection schemas enumerate their canonical finite reasons. Wire decode and CLI projection preserve each reason; an unknown rejection string is incompatible with the installed tool envelope.
+Installed source and traversal rejection schemas enumerate their canonical finite reasons. Query relation expansion retains finite per-item failures and structured omissions. Wire decode and CLI projection preserve each reason; an unknown rejection string is incompatible with the installed tool envelope.
 
-All four read output schemas separately admit rejected outcomes with a required,
+The query, source, and traversal output schemas separately admit rejected outcomes with a required,
 nonnull `execution_budget` report. The existing reason string or query rejection
 object retains its shape. An omitted report describes an unadmitted rejection;
 an explicit null does not satisfy either schema variant.
@@ -160,13 +158,13 @@ checkpoints drain detached entities while preserving original upstream coverage.
 Terminal qualifications retain a finite reason and all source limitations. These
 states do not independently override canonical complete/qualified/rejected status.
 
-Canonical rejected query, source, relation and traversal tool documents require the derived
+Canonical rejected query, source and traversal tool documents require the derived
 `next_action` alongside the unchanged finite failure and any admitted budget.
 Unknown or absent actions fail the installed schema. The
 [outcome contract](operation-outcomes.md) defines the six recovery directions;
 action text does not authorize silent reference refresh or an automatic retry.
 
-Server projection version 15 advertises `read_relations` for individual occurrence facts and `traverse_relations` for bounded multi-step reachability. The retired `semantic_query` and `impact_analyze` names are rejected; catalog digest binding remains required before dispatch.
+The server projection advertises query occurrence output for individual relation facts and `traverse_relations` for bounded multi-step reachability. The retired `read_relations`, `semantic_query`, and `impact_analyze` names are rejected; catalog digest binding remains required before dispatch.
 
 Workspace setup belongs to the agent catalog, separately from the user CLI surface.
 The private invocation binding remains available to the harness, while root help

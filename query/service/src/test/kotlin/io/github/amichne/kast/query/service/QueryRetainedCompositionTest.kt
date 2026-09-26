@@ -272,7 +272,7 @@ class QueryRetainedCompositionTest {
         admittedPlan(
             QuerySourceSyntax.Retained(retained),
             steps,
-            QueryOutputSyntax(QuerySymbolFields.from(setOf(QuerySymbolField.NAME)).refined()),
+            QueryOutputSyntax.Symbols(QuerySymbolFields.from(setOf(QuerySymbolField.NAME)).refined()),
         )
 
     private fun nameEquals(name: String) =

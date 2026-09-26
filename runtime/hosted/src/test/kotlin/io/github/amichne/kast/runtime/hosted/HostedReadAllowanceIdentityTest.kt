@@ -22,13 +22,13 @@ import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
-import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.evidenceBasis
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -40,13 +40,12 @@ class HostedReadAllowanceIdentityTest {
         val authority = fixture.authority
         val owner = HostedQueryContinuations.Active(authority, ReadLimits.Default)
         val request = queryIdentityRequest(fixture.exact)
-        val evidence = (fixture.page() as OperationOutcome.Qualified).evidence
         val outcome =
             OperationOutcome.Complete(
                 EvidenceEnvelope(
                     CanonicalOperation.QUERY_RUN.id,
-                    evidence.basis,
-                    QueryRunResult(bounded(emptyList()), bounded(emptyList())),
+                    authority.evidenceBasis(),
+                    QueryRunResult(bounded(emptyList()), bounded(emptyList()), bounded(emptyList())),
                 )
             )
         allowanceGrowth().forEach { (low, high) ->
@@ -55,22 +54,6 @@ class HostedReadAllowanceIdentityTest {
             assertEquals(outcome, owner.restore(first.queryOutputToken(), authority))
             assertEquals(outcome, owner.restore(first.queryOutputToken(), authority))
             assertEquals(first, owner.issue(request.copy(executionBudget = high), authority, outcome))
-        }
-    }
-
-    @Test
-    fun `relation output owner excludes all allowance axes and page size from retained identity`() = runTest {
-        val fixture = RelationPagingFixture.live()
-        val owner = HostedQueryContinuations.Active(fixture.authority, ReadLimits.Default)
-        val request = fixture.request(RelationReadPositionDocument.Start)
-        val outcome = fixture.page()
-        allowanceGrowth().forEach { (low, high) ->
-            val first =
-                owner.relationOutputs.issue(request.copy(executionBudget = low), fixture.authority, outcome)
-                    as HostedOutputRetention.Retained
-            val resumed = request.copy(executionBudget = high, limit = ProtocolCount.parse(100).value())
-            assertEquals(outcome, owner.relationOutputs.restore(first.token, resumed, fixture.authority))
-            assertEquals(first, owner.relationOutputs.issue(resumed, fixture.authority, outcome))
         }
     }
 

@@ -54,7 +54,7 @@ class HostedQueryStoreTest {
                 EvidenceEnvelope(
                     CanonicalOperation.QUERY_RUN.id,
                     lease.generation,
-                    QueryRunResult(bounded(emptyList()), bounded(emptyList())),
+                    QueryRunResult(bounded(emptyList()), bounded(emptyList()), bounded(emptyList())),
                 )
             )
         val first = store.issue(low, lease, output) as HostedOutputRetention.Retained
@@ -90,7 +90,7 @@ class HostedQueryStoreTest {
                 EvidenceEnvelope(
                     CanonicalOperation.QUERY_RUN.id,
                     lease.generation,
-                    QueryRunResult(bounded(emptyList()), bounded(emptyList())),
+                    QueryRunResult(bounded(emptyList()), bounded(emptyList()), bounded(emptyList())),
                 )
             )
         assertTrue(store.issue(request("short"), lease, output) is HostedOutputRetention.Retained)

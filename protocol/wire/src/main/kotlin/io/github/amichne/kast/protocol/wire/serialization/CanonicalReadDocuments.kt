@@ -124,26 +124,6 @@ internal enum class RelationKindWireDocument {
 }
 
 @Serializable
-internal sealed interface RelationReadQualificationWireDocument {
-    @Serializable
-    @SerialName("resumable")
-    data class Resumable(
-        val knownMinimum: Int,
-        val limitations: List<RelationLimitationWireDocument>,
-        val continuation: String,
-        val checkpoint: io.github.amichne.kast.protocol.contract.RelationCheckpointDocument,
-        @SerialName("next_action") val nextAction: io.github.amichne.kast.protocol.contract.ReadResumeActionDocument,
-    ) : RelationReadQualificationWireDocument
-
-    @Serializable
-    @SerialName("terminal_incomplete")
-    data class TerminalIncomplete(
-        val knownMinimum: Int,
-        val limitations: List<RelationLimitationWireDocument>,
-    ) : RelationReadQualificationWireDocument
-}
-
-@Serializable
 internal enum class RelationLimitationWireDocument {
     @SerialName("result_limit_reached") RESULT_LIMIT_REACHED,
     @SerialName("byte_limit_reached") BYTE_LIMIT_REACHED,

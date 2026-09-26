@@ -36,7 +36,7 @@ The examples below show the tool inputs for direct calls or harness integration.
 | Declaration names, enumeration, returned references, or ordered transformations | `kast.query_symbols` |
 | File, location, name, or source-text candidate discovery | `kast.symbol_lookup` |
 | Candidate refinement or exact-selector revalidation | `kast.symbol_inspect` |
-| Individual relation occurrences | `kast.read_relations` |
+| Individual relation occurrences | `kast.query_symbols` with `expand_relation` and occurrence output |
 | Multi-step reachability | `kast.traverse_relations` |
 | Compiler diagnostics for a file or directory | `kast.check_diagnostics` |
 
@@ -45,7 +45,7 @@ The examples below show the tool inputs for direct calls or harness integration.
 Call `kast.query_symbols` with:
 
 ```json
-{"request":{"action":"run","source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":["class"],"scope":null},"steps":null,"return_fields":["name","location","signature"]}}
+{"request":{"action":"run","source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":["class"],"scope":null},"steps":null,"output":{"type":"symbols","fields":["name","location","signature"]}}}
 ```
 
 Send that input to the hosted `kast.query_symbols` tool in the connected session.
@@ -53,7 +53,7 @@ Send that input to the hosted `kast.query_symbols` tool in the connected session
 Use these request rules:
 
 - Set `declaration_kinds` to `["function"]` for methods or `["property"]` for properties.
-- Include `action`, `source`, `steps`, and `return_fields` inside `request`; other run controls are optional.
+- Include `action`, `source`, and `steps` inside `request`; `output` and other run controls are optional.
 - Use `null` for exact, case-sensitive matching under recursive directory `.`.
 - Expect the default source sets to be exactly `main` and `test`.
 - Use a package scope when a simple declaration name needs qualification.
@@ -82,7 +82,7 @@ For a property or an unknown declaration kind, use `query_symbols`:
     "action": "run",
     "source": {"type": "search_declarations", "declaration_name": "retryCount", "name_match": null, "scope": null, "declaration_kinds": ["property"]},
     "steps": null,
-    "return_fields": null
+    "output": null
   }
 }
 ```
@@ -96,7 +96,7 @@ Constructor discovery is not advertised.
 
 ## Include source with a symbol query
 
-Request `source` in `query_symbols.request.return_fields` when the result needs code as well as identity:
+Request `source` in `query_symbols.request.output.fields` when the symbol result needs code as well as identity:
 
 ```json
 {
@@ -104,7 +104,7 @@ Request `source` in `query_symbols.request.return_fields` when the result needs 
     "action": "run",
     "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": "exact", "declaration_kinds": ["function"], "scope": null},
     "steps": [],
-    "return_fields": ["name", "location", "source"]
+    "output": {"type":"symbols","fields":["name", "location", "source"]}
   }
 }
 ```
@@ -125,7 +125,7 @@ A directory scope uses paths relative to the session workspace root:
       "source_set_names": ["main"]
     }},
     "steps": null,
-    "return_fields": null
+    "output": null
   }
 }
 ```
@@ -142,7 +142,7 @@ A package scope instead uses semantic Kotlin package names:
       "source_set_names": null
     }},
     "steps": null,
-    "return_fields": null
+    "output": null
   }
 }
 ```
@@ -185,9 +185,9 @@ A path may name a file or directory.
 Use [Query pipelines](/query-pipelines) for callers, implementations,
 enumeration, or returned-reference input.
 
-Query expansion returns declarations.
-
-Use `read_relations` for individual use-site facts.
+Query expansion can present related declarations or individual use-site facts.
+For the latter, set `"output":{"type":"occurrences"}` on a run with an
+`expand_relation` step.
 
 <Accordion title="Why did a search miss a saved edit?">
   - Save the file.

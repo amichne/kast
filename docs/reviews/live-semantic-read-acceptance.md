@@ -1,6 +1,7 @@
 # Live semantic read acceptance
 
-The default CLI path now sends the seven canonical semantic reads to the existing
+This records the seven-operation CLI surface tested on 2026-09-10; that surface
+has since changed. At that time, the default CLI path sent the reads to the existing
 IntelliJ project. Manual native execution established complete exact reads and
 explicitly qualified bounded reads on the Kotlin fixture below. This acceptance
 does not establish complete `ALL` enumeration, library parity, or full Codex

@@ -140,7 +140,6 @@ private fun mcpOperation(call: DaemonOperationCall): Refinement<ExistingIdeOpera
                     is DaemonCanonicalRead.SymbolDiscover -> mcpPreparers.symbolDiscover.prepare(read.request)
                     is DaemonCanonicalRead.SymbolInspect -> mcpPreparers.symbolInspect.prepare(read.request)
                     is DaemonCanonicalRead.SourceRead -> mcpPreparers.sourceRead.prepare(read.request)
-                    is DaemonCanonicalRead.RelationRead -> mcpPreparers.relationRead.prepare(read.request)
                     is DaemonCanonicalRead.TraversalRun -> mcpPreparers.traversalRun.prepare(read.request)
                 }
             is DaemonOperationCall.Change ->

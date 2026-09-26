@@ -23,7 +23,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.semanticReadValidation
 
-/** Current-authority admission owner for public `relation.read`. */
+/** Current-authority admission owner for query and traversal one-hop relation reads. */
 class RelationService(
     private val authorities: SemanticReadValidationPort,
     private val compiler: RelationCompilerPort,

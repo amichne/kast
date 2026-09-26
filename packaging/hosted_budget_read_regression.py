@@ -5,6 +5,7 @@ import json
 
 from hosted_read_requests import BreadthFirstStrategy, TraversalStart, TraversalResume
 from hosted_source_read_regression import SymbolAnchor, FileRegion, FirstPage, NoText
+from query_name_request import QueryInput, QueryRun, SymbolOutput, SymbolReferences, relation_query
 
 
 @dataclass(frozen=True)
@@ -32,20 +33,6 @@ AXES = ('max_elapsed_ms', 'max_work_units', 'max_results', 'max_returned_bytes')
 
 
 @dataclass(frozen=True)
-class ExactReferences:
-    symbol_refs: tuple[str, ...]
-    type: str = field(default='symbol_refs', init=False)
-
-
-@dataclass(frozen=True)
-class BudgetQuery:
-    source: ExactReferences
-    execution_budget: Budget
-    steps: None = None
-    return_fields: tuple[str, ...] = ('name',)
-
-
-@dataclass(frozen=True)
 class NoEntities:
     type: str = field(default='none', init=False)
 
@@ -59,15 +46,6 @@ class BudgetSource:
     text: NoText = field(default_factory=NoText)
     textByteLimit: int = 65536
     page: FirstPage = field(default_factory=FirstPage)
-
-
-@dataclass(frozen=True)
-class BudgetRelation:
-    exactSelector: str
-    execution_budget: Budget
-    relation: str = 'callers'
-    limit: int = 100
-    position: TraversalStart = field(default_factory=TraversalStart)
 
 
 @dataclass(frozen=True)
@@ -86,14 +64,15 @@ def run_budget_read_regression(replay):
     for budget in (ElapsedBudget(), WorkBudget(), ResultsBudget(), BytesBudget()):
         axis = next(iter(asdict(budget)))
         cases = (
-            ('query_symbols', BudgetQuery(ExactReferences((replay.seeds['logger']['ref'],)), budget)),
-            ('source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['ref']), budget)),
-            ('read_relations', BudgetRelation(replay.seeds['helper']['ref'], budget)),
-            ('traverse_relations', BudgetTraversal(replay.seeds['helper']['ref'], budget)),
+            ('query-symbols', 'query_symbols', QueryInput(QueryRun(SymbolReferences((replay.seeds['logger']['ref'],)),
+                output=SymbolOutput(('name',)), execution_budget=budget))),
+            ('source-read', 'source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['ref']), budget)),
+            ('query-occurrences', 'query_symbols', relation_query(replay.seeds['helper']['ref'], 'callers', budget)),
+            ('traverse-relations', 'traverse_relations', BudgetTraversal(replay.seeds['helper']['ref'], budget)),
         )
-        for tool, request in cases:
+        for case, tool, request in cases:
             response = _invoke(replay, tool, request)
-            replay.record('budget-' + axis + '-' + tool, tool, {
+            replay.record('budget-' + axis + '-' + case, tool, {
                 'semanticResult': response.get('status') in ('complete', 'qualified'),
                 'sameLiveAuthority': response.get('live') == replay.live,
                 'independentGrant': independent_grant(response, budget),

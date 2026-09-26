@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -21,7 +20,7 @@ internal object OutputContractTestSchemas {
                     Type.OBJECT,
                     listOf("continuation"),
                     false,
-                    OutputProperties(PatternSchema(Type.STRING, RelationContinuationDocument.TOKEN_PATTERN)),
+                    OutputProperties(PatternSchema(Type.STRING, "^valid:[a-z]+$")),
                 )
             )
             .jsonObject

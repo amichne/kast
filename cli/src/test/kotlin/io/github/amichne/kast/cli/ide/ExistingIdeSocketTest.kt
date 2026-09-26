@@ -14,6 +14,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.*
@@ -36,56 +37,16 @@ class ExistingIdeSocketTest {
             Files.createDirectories(directory)
             Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
             val socket = directory.resolve("host.sock")
-            val operations =
-                JsonArray(
-                    listOf(
-                            "DESCRIBE",
-                            "CLASS_LOOKUP",
-                            "DIRECT_SUPERTYPE",
-                            "QUERY_RUN",
-                            "SYMBOL_DISCOVER",
-                            "SYMBOL_INSPECT",
-                            "SOURCE_READ",
-                            "RELATION_READ",
-                            "TRAVERSAL_RUN",
-                            "DIAGNOSTIC_CHECK",
-                            "CHANGE_PLAN",
-                            "CHANGE_APPROVAL_PREPARE",
-                            "CHANGE_APPLY",
-                            "CHANGE_RECOVER",
-                        )
-                        .map(::JsonPrimitive)
-                )
+            val host = UUID.fromString("00000000-0000-0000-0000-000000000001")
             Files.writeString(
                 directory.resolve("endpoint.json"),
-                buildJsonObject {
-                    put("type", "KAST_IDE_ENDPOINT")
-                    put("protocol", 3)
-                    put("host", "00000000-0000-0000-0000-000000000001")
-                    put("querySchema", "kast.query.run.v2")
-                    put("root", home.toString())
-                    put("socket", socket.toString())
-                    put("hostPid", 123)
-                    put("operations", operations)
-                }
-                    .toString(),
+                HostedDescriptorFixture.endpoint(home.toString(), socket.toString(), host),
             )
             val executor = Executors.newSingleThreadExecutor()
             try {
                 ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
                     server.bind(UnixDomainSocketAddress.of(socket))
-                    val response = buildJsonObject {
-                        put("type", "KAST_IDE_HOST")
-                        put("protocol", 3)
-                        put("host", "00000000-0000-0000-0000-000000000001")
-                        put("querySchema", "kast.query.run.v2")
-                        put("root", home.toString())
-                        put("hostPid", 123)
-                        put("operations", operations)
-                        put("indexAuthority", "existing_ide_kotlin_stub_index")
-                    }
-                        .toString()
-                        .toByteArray()
+                    val response = HostedDescriptorFixture.status(home.toString(), host).toByteArray()
                     val task = executor.submit {
                         server.accept().use { client ->
                             val input = java.io.DataInputStream(Channels.newInputStream(client))

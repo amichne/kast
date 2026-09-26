@@ -54,7 +54,7 @@
             "relative_path": "."
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -79,7 +79,7 @@
             ]
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -101,7 +101,7 @@
             "relation": "dependencies"
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -117,7 +117,7 @@
           "symbol_refs": []
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -136,7 +136,7 @@
           "scope": null
         },
         "steps": null,
-        "return_fields": null,
+        "output": null,
         "execution": {
           "kind": "exhaustive"
         }
@@ -179,7 +179,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -203,7 +203,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -227,7 +227,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -251,7 +251,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -275,7 +275,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -299,7 +299,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -323,7 +323,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -347,7 +347,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -371,7 +371,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -391,7 +391,7 @@
           "scope": null
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -411,7 +411,7 @@
           "scope": null
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -431,7 +431,7 @@
           "scope": null
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -451,7 +451,7 @@
           "scope": null
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": true,
@@ -471,7 +471,7 @@
           "scope": null
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -493,7 +493,7 @@
           "scope": null
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -519,7 +519,7 @@
           }
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -547,13 +547,13 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
   },
   {
-    "id": "duplicate-return-fields",
+    "id": "duplicate-output-symbol-fields",
     "tool": "query_symbols",
     "arguments": {
       "request": {
@@ -564,10 +564,13 @@
           "scope": null
         },
         "steps": null,
-        "return_fields": [
-          "name",
-          "name"
-        ]
+        "output": {
+          "type": "symbols",
+          "fields": [
+            "name",
+            "name"
+          ]
+        }
       }
     },
     "schema_valid": false
@@ -606,7 +609,7 @@
         "action": "read_result",
         "result": "result:v1:00000000-0000-0000-0000-000000000000",
         "cursor": -1,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -622,7 +625,7 @@
           "result": "symbol:v1:00000000-0000-0000-0000-000000000000"
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -637,7 +640,7 @@
           "type": "all_declarations"
         },
         "steps": null,
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -650,7 +653,7 @@
         "type": "all_declarations"
       },
       "steps": null,
-      "return_fields": null
+      "output": null
     },
     "schema_valid": false
   },
@@ -695,7 +698,7 @@
             ]
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -717,7 +720,7 @@
             "expression": "select(.kind == \"class\")"
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -744,7 +747,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -771,7 +774,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -798,7 +801,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -827,7 +830,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -854,7 +857,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -881,7 +884,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -906,7 +909,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -930,7 +933,7 @@
             ]
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -956,7 +959,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -983,7 +986,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -1011,7 +1014,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -1040,7 +1043,7 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
       }
     },
     "schema_valid": false
@@ -1065,7 +1068,45 @@
             }
           }
         ],
-        "return_fields": null
+        "output": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "retired-return-fields-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {"type": "all_declarations"},
+        "steps": null,
+        "return_fields": ["name"]
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "occurrence-output-rejects-symbol-fields",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {"type": "all_declarations"},
+        "steps": null,
+        "output": {"type": "occurrences", "fields": ["name"]}
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "read-result-rejects-occurrence-output",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "read_result",
+        "result": "result:v1:00000000-0000-0000-0000-000000000000",
+        "output": {"type": "occurrences"}
       }
     },
     "schema_valid": false

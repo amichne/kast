@@ -9,7 +9,6 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
@@ -112,10 +111,6 @@ sealed interface DaemonCanonicalRead {
     @Serializable @SerialName("source_read") data class SourceRead(val request: SourceReadRequest) : DaemonCanonicalRead
 
     @Serializable
-    @SerialName("relation_read")
-    data class RelationRead(val request: RelationReadRequest) : DaemonCanonicalRead
-
-    @Serializable
     @SerialName("traversal_run")
     data class TraversalRun(val request: TraversalRunRequest) : DaemonCanonicalRead
 }
@@ -125,7 +120,6 @@ internal fun DaemonCanonicalRead.operation(): CanonicalOperation =
         is DaemonCanonicalRead.SymbolDiscover -> CanonicalOperation.SYMBOL_DISCOVER
         is DaemonCanonicalRead.SymbolInspect -> CanonicalOperation.SYMBOL_INSPECT
         is DaemonCanonicalRead.SourceRead -> CanonicalOperation.SOURCE_READ
-        is DaemonCanonicalRead.RelationRead -> CanonicalOperation.RELATION_READ
         is DaemonCanonicalRead.TraversalRun -> CanonicalOperation.TRAVERSAL_RUN
     }
 

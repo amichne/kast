@@ -79,8 +79,6 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
     linkedMapOf(
             "sourceReadOperation" to
                 constantSchema(CanonicalOperation.SOURCE_READ.id.value, "Canonical operation identity."),
-            "relationReadOperation" to
-                constantSchema(CanonicalOperation.RELATION_READ.id.value, "Canonical operation identity."),
             "traversalRunOperation" to
                 constantSchema(CanonicalOperation.TRAVERSAL_RUN.id.value, "Canonical operation identity."),
             "queryRunOperation" to
@@ -104,7 +102,6 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "ContinuationRef" to textSchema("Opaque snapshot and pipeline-bound next page handle."),
             "queryRejection" to queryRejectionSchema(),
             "sourceReadRejection" to canonicalReadRejectionSchema(CanonicalOperation.SOURCE_READ),
-            "relationReadRejection" to canonicalReadRejectionSchema(CanonicalOperation.RELATION_READ),
             "traversalRunRejection" to canonicalReadRejectionSchema(CanonicalOperation.TRAVERSAL_RUN),
             "compilerFunctionSignature" to functionCompilerSignatureSchema(),
             "compilerReceiver" to compilerReceiverSchema(),
@@ -112,7 +109,6 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "symbol" to symbolSchema(),
             "symbolDiscovery" to symbolDiscoverySchema(),
             "relationFact" to relationFactSchema(),
-            "relationOmission" to relationOmissionSchema(),
             "queryQualification" to queryQualificationSchema(),
             "queryTerminalReason" to queryTerminalReasonSchema(),
             "publishedSourceSnapshot" to sourceSnapshotSchema(ServerReadEvidenceShape.PUBLISHED),
@@ -123,7 +119,6 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "sourceTextProjection" to sourceTextProjectionSchema(),
             "sourceQualification" to sourceReadQualificationSchema(),
             "traversalQualification" to traversalQualificationSchema(),
-            "relationQualification" to relationQualificationSchema(),
             "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
             "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
             "diagnostic" to diagnosticSchema(),
@@ -192,22 +187,6 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 ),
             )
         CanonicalOperation.SOURCE_READ -> sourceReadOutputSchema(operation)
-        CanonicalOperation.RELATION_READ ->
-            proofQualifiedOutcomeSchema(
-                operation,
-                relationQualificationSchema(),
-                ServerSchemaProperty("relations", arraySchema(relationFactSchema())),
-                executionBudgetProperty(),
-                referenceAcquisitionsProperty(),
-                ServerSchemaProperty("omissions", arraySchema(relationOmissionSchema())),
-                ServerSchemaProperty(
-                    "soundness",
-                    constantSchema(
-                        "EXACT_RETURNED_FACTS",
-                        "Returned facts retain exact proof independently of enumeration coverage.",
-                    ),
-                ),
-            )
         CanonicalOperation.TRAVERSAL_RUN ->
             proofQualifiedOutcomeSchema(
                 operation,
@@ -357,6 +336,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             executionBudgetProperty(),
             referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
+            ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema())),
             queryResultRetentionProperty(),
             queryResultCursorProperty(),
         ),
@@ -381,6 +361,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             executionBudgetProperty(),
             referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
+            ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema())),
             queryResultRetentionProperty(),
             queryResultCursorProperty(),
             ServerSchemaProperty(
@@ -450,7 +431,9 @@ private fun queryQualificationSchema(): JsonObject =
         ),
     )
 
-private fun queryResultItemSchema(): JsonObject =
+private fun queryResultItemSchema(): JsonObject = unionSchema(queryExactSymbolItemSchema(), queryOccurrenceItemSchema())
+
+private fun queryExactSymbolItemSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
         ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
@@ -492,6 +475,28 @@ private fun queryResultItemSchema(): JsonObject =
             ),
             required = false,
         ),
+    )
+
+private fun queryOccurrenceItemSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("occurrence", "Exact relation occurrence.")),
+        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty("relation", relationFactSchema()),
+        ServerSchemaProperty(
+            "row_id",
+            patternTextSchema(
+                "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "Opaque row identity scoped to one retained result.",
+            ),
+            required = false,
+        ),
+    )
+
+private fun queryRelationOmissionSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("subject", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty("relation", relationSchema()),
+        ServerSchemaProperty("evidence", relationOmissionSchema()),
     )
 
 /** Syntax identifies the reference family; only the existing semantic owner can admit its authority. */
@@ -675,7 +680,6 @@ internal fun proofQualifiedOutcomeSchema(
 private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<JsonObject> =
     when (operation) {
         CanonicalOperation.SOURCE_READ,
-        CanonicalOperation.RELATION_READ,
         CanonicalOperation.TRAVERSAL_RUN,
         CanonicalOperation.DIAGNOSTIC_CHECK ->
             arrayOf(
@@ -694,58 +698,6 @@ private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<
             )
         else -> emptyArray()
     }
-
-private fun relationQualificationSchema(): JsonObject =
-    unionSchema(
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
-            ServerSchemaProperty(
-                "knownMinimum",
-                integerSchema(0, description = "Known minimum relation count."),
-            ),
-            ServerSchemaProperty("limitations", relationLimitationsSchema()),
-            ServerSchemaProperty(
-                "recovery",
-                arraySchema(
-                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance.serializer())
-                ),
-            ),
-            ServerSchemaProperty(
-                "checkpoint",
-                generatedRequestSchema(
-                    io.github.amichne.kast.protocol.contract.RelationCheckpointDocument.serializer()
-                ),
-            ),
-            ServerSchemaProperty(
-                "next_action",
-                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.serializer()),
-            ),
-            ServerSchemaProperty(
-                "continuation",
-                patternTextSchema(
-                    io.github.amichne.kast.protocol.contract.RelationContinuationDocument.TOKEN_PATTERN,
-                    "Self-contained relation continuation.",
-                ),
-            ),
-        ),
-        objectSchema(
-            ServerSchemaProperty(
-                "type",
-                constantSchema("terminal_incomplete", "Coverage state."),
-            ),
-            ServerSchemaProperty(
-                "knownMinimum",
-                integerSchema(0, description = "Known minimum relation count."),
-            ),
-            ServerSchemaProperty("limitations", relationLimitationsSchema()),
-            ServerSchemaProperty(
-                "recovery",
-                arraySchema(
-                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance.serializer())
-                ),
-            ),
-        ),
-    )
 
 internal fun sourceReadQualificationSchema(): JsonObject =
     objectSchema(
@@ -1707,7 +1659,6 @@ private fun readRecoveryActionProperty(): ServerSchemaProperty =
 private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<ServerSchemaProperty> =
     when (operation) {
         CanonicalOperation.SOURCE_READ,
-        CanonicalOperation.RELATION_READ,
         CanonicalOperation.TRAVERSAL_RUN -> arrayOf(readRecoveryActionProperty())
         CanonicalOperation.DIAGNOSTIC_CHECK ->
             arrayOf(

@@ -8,7 +8,7 @@ the canonical compiler identities and signatures of the child and its resolved
 direct supertype, plus source ownership and content revision evidence.
 
 This is a manually activated feasibility endpoint. It does not advertise the
-production `relation.read` capability or construct a production workspace
+production `query.run` capability or construct a production workspace
 publication. Its publication is a request-local snapshot validated against one
 retained project epoch. Content means saved, PSI-committed IDE VFS content;
 source provenance means the cached source-folder flag. Neither is a disk hash

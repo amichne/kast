@@ -21,9 +21,11 @@ enum class PublicToolIdentity(
         "Run, resume, and read a compositional compiler-grounded Kotlin symbol query. Start from na" +
             "me/scope discovery, exact-symbol references, or selected rows of an immutable retained res" +
             "ult. Apply structured predicates, relation expansion, concatenation, set operations, and e" +
-            "xplicit deduplication. Retain a completed result when needed for later composition; resume" +
-            " uses only the opaque execution continuation, and read_result uses a separate presentation" +
-            " cursor. Incomplete coverage and bounded work remain explicit.",
+            "xplicit deduplication. Choose symbol fields or individual relation occurrences as output; " +
+            "structured omissions retain incomplete relation coverage. Retain a completed result when n" +
+            "eeded for later composition; resume uses only the opaque execution continuation, and read_" +
+            "result uses a separate presentation cursor. Incomplete coverage and bounded work remain ex" +
+            "plicit.",
         HostedToolLoading.EAGER,
     ),
 }

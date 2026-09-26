@@ -16,9 +16,6 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationReadQualification.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationPreparedCoverage.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt
     symbols: [CanonicalOperation]
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
@@ -73,12 +70,12 @@ published source-state identity from the live saved, PSI-committed view. A live
 stamp is never serialized as a workspace generation or source-state identity.
 
 The canonical read revisions are `query.run.v2`, `source.read.v4`, and version 3
-for symbol discovery, symbol inspection, relation reads, traversal, and diagnostics.
-The packaged App Server projection is version 15, and provider qualification requires
+for symbol discovery, symbol inspection, traversal, and diagnostics.
+Provider qualification requires
 that version and every canonical hosted tool. The build generates `provider-catalog.json`
 from the shared schema owner without CLI invocation metadata. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
-endpoint schema is version 3 and advertises the seven canonical read routes plus
+endpoint schema is version 3 and advertises the six canonical read routes plus
 change planning, approval preparation, apply and recovery. Version-2 endpoint
 descriptors reject. `change.apply.v3` distinguishes `Verified`,
 `AppliedUnverified` and `RecoveryRequired`; only the first carries a receipt.
@@ -87,8 +84,8 @@ Hosted rejection schemas retain their transitive definitions when embedded in
 installed output schemas, preserving bounded module/root evidence for selected-build
 source-scope failures.
 Installed output schemas reuse equal compiler-signature, receiver, source-range,
-source/relation/traversal qualification, rejection-reason, and execution-budget
-definitions through local references. Admitted failures in the four canonical
+source/query/traversal qualification, rejection-reason, and execution-budget
+definitions through local references. Admitted failures in the query, source, and traversal
 reads preserve a required report alongside their existing finite reason; wire
 decoding distinguishes missing metadata from invalid or null reports. The CLI schema regression retains its independent output budget. App Server reads
 the packaged catalog with a 1,048,576-byte file bound and rejects malformed UTF-8,
@@ -101,12 +98,10 @@ The current [public tool contracts](../contracts/public-tools.md) distinguish pr
 
 The hosted endpoint rejection schema admits bounded, discriminated change-failure detail and rejects unknown causes or contradictory outer failure codes. Runtime encoded-shape tests validate each closed variant against this independently owned schema.
 
-Relation qualifications distinguish an upstream continuation from retained detached
-output. A retained checkpoint preserves whether upstream work is complete, resumable,
-or terminal-incomplete; its only supported next action is draining the output.
-The legacy continuation field is derived from the checkpoint token, and wire
-decoding rejects disagreement between them. Omissions and their finite remediation
-remain unchanged on every fitted page, including the terminal suffix.
+Query occurrence rows retain individual relation facts, while structured omissions
+retain subject, relation kind, provider reason, measurement, samples, and finite
+remediation. Traversal may embed a relation-domain continuation while one node's
+relation read remains unfinished; it does not expose a standalone relation route.
 
 `ReadRecoveryAction` derives the rejected read's direction exhaustively from the
 canonical failure, including its admitted wrapper. Wire round trips preserve the

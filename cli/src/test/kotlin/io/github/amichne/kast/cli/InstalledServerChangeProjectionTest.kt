@@ -37,7 +37,6 @@ class InstalledServerChangeProjectionTest {
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
-                "read_relations",
                 "traverse_relations",
                 "check_diagnostics",
                 "change",

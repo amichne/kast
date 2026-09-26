@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
@@ -10,15 +11,14 @@ import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
+import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolSource
 import io.github.amichne.kast.query.contract.QueryTerminalReason
-import io.github.amichne.kast.relation.contract.RelationIncompleteCoverage
 import io.github.amichne.kast.relation.contract.RelationOperations
-import io.github.amichne.kast.relation.contract.RelationReadResult
-import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 
@@ -36,10 +36,11 @@ class QueryService(
     discovery: io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations,
     exact: SymbolExactOperations,
     source: SourceReadOperations,
-    private val relations: RelationOperations,
+    relations: RelationOperations,
     private val clock: QueryNanoClock = SystemQueryNanoClock,
 ) : QueryOperations {
     private val stages = QueryReadStages(discovery, exact, source)
+    private val relationStage = QueryRelationStage(relations)
 
     override suspend fun run(request: QueryExecutionRequest): QueryExecutionResult {
         val checkpoint = request.checkpoint
@@ -55,6 +56,7 @@ class QueryService(
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
         private val symbols = mutableListOf<QuerySymbol>()
         private val completedFailures = mutableListOf<QueryItemFailure>()
+        private val completedOmissions = mutableListOf<QueryRelationOmission>()
         private var progressed = false
         private var terminal: QueryTerminalReason? = null
         private var rejection: QueryExecutionResult.Rejected? = null
@@ -73,7 +75,10 @@ class QueryService(
         }
 
         private suspend fun executeNext(): Boolean {
-            if (symbols.size + completedFailures.size >= request.budget.resources.resultLimit.value) {
+            if (
+                symbols.size + completedFailures.size + completedOmissions.size >=
+                    request.budget.resources.resultLimit.value
+            ) {
                 state.limit(QueryLimitation.RESULT_LIMIT_REACHED)
                 return false
             }
@@ -89,6 +94,8 @@ class QueryService(
         private suspend fun advance(task: PipelineTask): Boolean =
             when (task) {
                 is PipelineTask.Failure -> emit(task.value.projectedUtf8Size()) { completedFailures += task.value }
+                is PipelineTask.Omission -> emit(task.value.projectedUtf8Size()) { completedOmissions += task.value }
+                is PipelineTask.Occurrence -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)
                 is PipelineTask.Related -> related(task)
@@ -138,7 +145,9 @@ class QueryService(
                 }
             tasks.removeFirst()
             val values =
-                rows.map { PipelineTask.Symbol(it, stage.next) } + stage.right.failures.map(PipelineTask::Failure)
+                rows.map { PipelineTask.Symbol(it, stage.next) } +
+                    stage.right.failures.map(PipelineTask::Failure) +
+                    stage.right.omissions.map(PipelineTask::Omission)
             values.asReversed().forEach(tasks::addFirst)
             return true
         }
@@ -228,8 +237,25 @@ class QueryService(
             }
 
         private suspend fun emitSymbol(task: PipelineTask.Symbol, stage: ExactQueryStage.Emit): Boolean {
-            if (QuerySymbolField.SOURCE !in stage.fields.values || task.value.source !is QuerySymbolSource.Pending)
-                return emit(task.value.projectedUtf8Size()) { symbols += task.value }
+            when (val output = stage.output) {
+                QueryOutputSyntax.Occurrences -> {
+                    tasks.removeFirst()
+                    val facts = (task.value.arrival as? QueryArrivalEvidence.Proven)?.facts.orEmpty()
+                    facts.asReversed().forEach { fact ->
+                        tasks.addFirst(
+                            PipelineTask.Occurrence(task.value.copy(arrival = QueryArrivalEvidence.Proven.one(fact)))
+                        )
+                    }
+                    return true
+                }
+                is QueryOutputSyntax.Symbols -> {
+                    if (
+                        QuerySymbolField.SOURCE !in output.fields.values ||
+                            task.value.source !is QuerySymbolSource.Pending
+                    )
+                        return emit(task.value.projectedUtf8Size()) { symbols += task.value }
+                }
+            }
             val resources =
                 when (val admitted = state.sourceResources()) {
                     is Refinement.Rejected -> return false
@@ -243,76 +269,30 @@ class QueryService(
         }
 
         private suspend fun related(task: PipelineTask.Related): Boolean {
-            val childBudget = state.relationBudget(request.budget.resources.resultLimit.value) ?: return false
-            val boundary = io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION
-            val child =
-                if (task.cursor == null) {
-                    RelationRequest.start(
-                        selector = task.value.selector,
-                        meaning = task.stage.meaning,
-                        budget = childBudget,
-                        boundary = boundary,
-                    )
-                } else {
-                    when (
-                        val resumed =
-                            RelationRequest.resume(
-                                selector = task.value.selector,
-                                meaning = task.stage.meaning,
-                                budget = childBudget,
-                                continuation = task.cursor,
-                                boundary = boundary,
-                            )
-                    ) {
-                        is Refinement.Refined -> resumed.value
-                        is Refinement.Rejected -> {
-                            state.contractViolation = true
-                            return false
-                        }
-                    }
+            return when (val result = relationStage.read(task, state)) {
+                QueryRelationStageResult.NotStarted -> false
+                QueryRelationStageResult.ContractRejected -> {
+                    state.contractViolation = true
+                    false
                 }
-            val result = relations.read(child)
-            tasks.removeFirst()
-            val facts = relationFacts(result, task)
-            facts.asReversed().forEach { fact ->
-                tasks.addFirst(PipelineTask.Symbol(fact.toQuerySymbol(task.value.connections, state), task.stage.next))
+                is QueryRelationStageResult.Read -> {
+                    tasks.removeFirst()
+                    result.continuation?.let { tasks.addFirst(task.copy(cursor = it)) }
+                    result.omissions.asReversed().forEach { omission ->
+                        tasks.addFirst(PipelineTask.Omission(omission))
+                    }
+                    result.symbols.asReversed().forEach { symbol ->
+                        tasks.addFirst(PipelineTask.Symbol(symbol, task.stage.next))
+                    }
+                    true
+                }
             }
-            state.observeTime()
-            return true
         }
-
-        private fun relationFacts(
-            result: RelationReadResult,
-            task: PipelineTask.Related,
-        ): List<io.github.amichne.kast.relation.contract.RelationFact> =
-            when (result) {
-                is RelationReadResult.Complete -> {
-                    state.consume(result.batch.examinedWorkUnits.value.coerceAtLeast(1L))
-                    result.batch.facts
-                }
-                is RelationReadResult.Qualified -> {
-                    state.consume(result.batch.examinedWorkUnits.value.coerceAtLeast(1L))
-                    when (val coverage = result.coverage) {
-                        is RelationIncompleteCoverage.Resumable -> {
-                            state.relationPageLimited(coverage.limitations)
-                            tasks.addFirst(task.copy(cursor = coverage.continuation))
-                        }
-                        is RelationIncompleteCoverage.TerminalIncomplete ->
-                            state.relationTerminallyLimited(coverage.limitations)
-                    }
-                    result.batch.facts
-                }
-                is RelationReadResult.Rejected -> {
-                    state.failure(QueryItemFailure.Relation(task.value.selector, task.stage.meaning, result.reason))
-                    state.limit(QueryLimitation.RELATION_INCOMPLETE)
-                    emptyList()
-                }
-            }
 
         private fun finish(): QueryExecutionResult {
             if (state.contractViolation)
                 return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
-            val result = QueryResult(symbols.toList(), completedFailures.toList())
+            val result = QueryResult(symbols.toList(), completedFailures.toList(), completedOmissions.toList())
             val count = symbols.size.queryCount()
             if (tasks.isEmpty() && state.limitations.isEmpty())
                 return QueryExecutionResult.Complete(result, QueryCoverage.Complete(count))

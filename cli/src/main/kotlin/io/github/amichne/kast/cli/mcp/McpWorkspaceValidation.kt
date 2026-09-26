@@ -5,7 +5,6 @@ import io.github.amichne.kast.protocol.wire.CompactSourceTextDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.CompactSourceContentDocument
 import io.github.amichne.kast.protocol.wire.presentation.DiagnosticCoverageCliDocument
-import io.github.amichne.kast.protocol.wire.presentation.RelationFactCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.SymbolCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.SymbolDiscoveryCliDocument
 import java.nio.file.Path
@@ -155,17 +154,24 @@ private class WorkspaceValidator(
                 ?: return McpProbe.unverified("Relation target could not be inspected exactly")
         val subject = probe.kind.subjectSelector(source.selector, target.selector)
         val response =
-            read<McpRelationDocument>(
-                "read_relations",
+            read<McpQueryOccurrenceDocument>(
+                "query_symbols",
                 validationInputJson
-                    .encodeToJsonElement(McpRelationRequest(subject, probe.kind.name.lowercase(), limit = 1000))
+                    .encodeToJsonElement(
+                        McpQueryRelationRequest(
+                            McpQueryRunAction(
+                                McpQuerySymbolRefs(listOf(subject)),
+                                listOf(McpQueryExpandRelation(probe.kind)),
+                            )
+                        )
+                    )
                     .jsonObject,
             )
         val facts =
             when (response) {
-                is NativeRead.Complete -> response.value.relations
-                is NativeRead.Partial -> response.value.relations
-                is NativeRead.Rejected -> return response.unverified("Relation read was unavailable")
+                is NativeRead.Complete -> response.value.items.map { it.relation }
+                is NativeRead.Partial -> response.value.items.map { it.relation }
+                is NativeRead.Rejected -> return response.unverified("Query relation read was unavailable")
             }
         if (facts.any { it.source.selector == source.selector && it.target.selector == target.selector })
             return McpProbe.passed("Exact relation fact was returned", response.evidence)
@@ -316,8 +322,6 @@ private enum class McpValidationReadStatus {
 
 @Serializable private data class McpSourceDocument(val content: List<CompactSourceContentDocument>)
 
-@Serializable private data class McpRelationDocument(val relations: List<RelationFactCliDocument>)
-
 @Serializable
 private data class McpDiagnosticDocument(
     val analysisKind: String,
@@ -373,16 +377,6 @@ private enum class McpSourceTextMode {
 private enum class McpSourceEntityMode {
     @SerialName("none") NONE
 }
-
-@Serializable
-private data class McpRelationRequest(
-    val exactSelector: String,
-    val relation: String,
-    val limit: Int,
-    val position: McpRelationPosition = McpRelationPosition(),
-)
-
-@Serializable private data class McpRelationPosition(val type: String = "start")
 
 @Serializable
 private data class McpDiagnosticRequest(

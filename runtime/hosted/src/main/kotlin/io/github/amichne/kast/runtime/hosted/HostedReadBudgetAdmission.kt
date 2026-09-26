@@ -12,8 +12,6 @@ internal fun HostedRequest.admitResponseBudget(): Refinement<HostedRequest, Host
             admit(request.executionBudget, CanonicalOperationWireBindings.queryRun.minimumResponseBytes)
         is HostedRequest.Source ->
             admit(request.executionBudget, CanonicalOperationWireBindings.sourceRead.minimumResponseBytes)
-        is HostedRequest.Relation ->
-            admit(request.executionBudget, CanonicalOperationWireBindings.relationRead.minimumResponseBytes)
         is HostedRequest.Traversal ->
             admit(request.executionBudget, CanonicalOperationWireBindings.traversalRun.minimumResponseBytes)
         is HostedRequest.Diagnostic ->

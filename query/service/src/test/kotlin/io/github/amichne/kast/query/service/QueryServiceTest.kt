@@ -249,7 +249,7 @@ class QueryServiceTest {
                     QueryPlanSyntax(
                         QuerySourceSyntax.Symbols(syntax),
                         emptyList(),
-                        QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
+                        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                     )
                 )
             assertTrue(plan is QueryPlanAdmission.Admitted)
@@ -590,7 +590,7 @@ class QueryServiceTest {
     internal fun symbolPlan(): AdmittedQueryPlan =
         admittedPlan(
             source = QuerySourceSyntax.Symbols(discovery()),
-            output = QueryOutputSyntax(symbolFields()),
+            output = QueryOutputSyntax.Symbols(symbolFields()),
         )
 
     internal fun exactReferencePlan(
@@ -600,7 +600,7 @@ class QueryServiceTest {
         admittedPlan(
             source = QuerySourceSyntax.ExactReferences(QueryExactReferences.from(selectors).refined()),
             steps = steps,
-            output = QueryOutputSyntax(symbolFields()),
+            output = QueryOutputSyntax.Symbols(symbolFields()),
         )
 
     internal fun admittedPlan(

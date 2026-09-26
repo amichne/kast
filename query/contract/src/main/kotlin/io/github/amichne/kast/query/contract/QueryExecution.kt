@@ -85,7 +85,12 @@ data class QuerySymbol(
     val description: SymbolDescription,
     val connections: List<RelationFact>,
     val source: QuerySymbolSource = QuerySymbolSource.Pending,
+    val arrival: QueryArrivalEvidence = QueryArrivalEvidence.None,
 ) {
+    init {
+        require(arrival !is QueryArrivalEvidence.Proven || arrival.facts.all(connections::contains))
+    }
+
     val selector: SymbolSelector
         get() = description.selector
 }
@@ -137,6 +142,7 @@ sealed interface QuerySourceFailure {
 data class QueryResult(
     val items: List<QuerySymbol>,
     val failures: List<QueryItemFailure>,
+    val omissions: List<QueryRelationOmission> = emptyList(),
 )
 
 enum class QueryCountFailure {

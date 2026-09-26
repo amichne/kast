@@ -36,6 +36,7 @@ import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.evidenceBasis
 import io.github.amichne.kast.source.contract.NonEmptySourceRange
 import io.github.amichne.kast.source.contract.SourceEntityKind
 import io.github.amichne.kast.source.contract.SourceEntityName
@@ -65,7 +66,7 @@ private constructor(
             source: String = "parameters",
             includeText: Boolean = false,
         ): HostedSourcePagingFixture {
-            val basis = (owner.page() as OperationOutcome.Qualified).evidence.basis as EvidenceBasis.Live
+            val basis = owner.authority.evidenceBasis() as EvidenceBasis.Live
             val snapshot =
                 SourceSnapshot.create(
                     SourceReadContext.Live(owner.authority as LiveSemanticReadAuthority),

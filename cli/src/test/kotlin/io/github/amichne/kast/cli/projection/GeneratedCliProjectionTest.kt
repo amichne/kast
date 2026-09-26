@@ -22,16 +22,12 @@ import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
@@ -51,7 +47,6 @@ import io.github.amichne.kast.protocol.wire.presentation.changeRecoverCliProject
 import io.github.amichne.kast.protocol.wire.presentation.diagnosticCheckCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.normalizeTraversalGraph
 import io.github.amichne.kast.protocol.wire.presentation.queryRunCliProjector
-import io.github.amichne.kast.protocol.wire.presentation.relationReadCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.symbolDiscoverCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.symbolInspectCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.traversalRunCliProjector
@@ -338,18 +333,6 @@ class GeneratedCliProjectionTest {
 
     @Test
     fun `qualified read outputs retain structured proof instead of one reason label`() {
-        val relation =
-            relationReadCliProjector.project(
-                OperationOutcome.Qualified(
-                    evidence(CanonicalOperation.RELATION_READ, RelationReadResult(bounded(emptyList()))),
-                    relationQualification(),
-                )
-            ) as ProjectedOperationOutcome.Qualified
-        assertTrue(Json.parseToJsonElement(relation.document.value).jsonObject.containsKey("omissions"))
-        assertEquals(
-            kotlinx.serialization.json.JsonPrimitive("EXACT_RETURNED_FACTS"),
-            Json.parseToJsonElement(relation.document.value).jsonObject.getValue("soundness"),
-        )
         val traversal =
             traversalRunCliProjector.project(
                 OperationOutcome.Qualified(
@@ -372,14 +355,6 @@ class GeneratedCliProjectionTest {
             ) as ProjectedOperationOutcome.Qualified
 
         assertAll(
-            {
-                assertEquals(
-                    Json.parseToJsonElement(
-                        checkNotNull(javaClass.getResource("/projection/qualified-relation-upstream.json")).readText()
-                    ),
-                    relation.qualification(),
-                )
-            },
             {
                 val qualification = traversal.qualification().jsonObject
                 assertEquals(
@@ -469,17 +444,6 @@ class GeneratedCliProjectionTest {
             value,
         )
 
-    private fun relationQualification(): RelationReadQualification =
-        RelationReadQualification.resumable(
-                RelationKnownMinimumDocument.parse(0).refined(),
-                listOf(
-                    RelationLimitationDocument.RESULT_LIMIT_REACHED,
-                    RelationLimitationDocument.PROVIDER_INCOMPLETE,
-                ),
-                relationContinuation("cli-projection"),
-            )
-            .refined()
-
     private fun traversalQualification(): TraversalRunQualification =
         TraversalRunQualification.admitResumable(
                 listOf(
@@ -518,16 +482,6 @@ class GeneratedCliProjectionTest {
 
     private fun ProjectedOperationOutcome.Qualified.qualification() =
         Json.parseToJsonElement(document.value).jsonObject.getValue("qualification")
-
-    private fun relationContinuation(payloadText: String): RelationContinuationDocument {
-        val payload = payloadText.toByteArray()
-        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return RelationContinuationDocument.parse("relation-continuation:v1:$encoded:$digest").refined()
-    }
 
     private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
         val payload = payloadText.toByteArray()

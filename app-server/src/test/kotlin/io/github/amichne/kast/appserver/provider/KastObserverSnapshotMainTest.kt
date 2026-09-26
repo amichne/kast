@@ -25,7 +25,7 @@ class KastObserverSnapshotMainTest {
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
-                "relation.read",
+                "query.run",
                 "traversal.run",
                 "diagnostic.check",
                 "change.plan",

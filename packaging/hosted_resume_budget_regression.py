@@ -1,4 +1,4 @@
-"""Bounded installed query/source/relation grant parity; payloads remain in memory.
+"""Bounded installed query/source grant parity; payloads remain in memory.
 
 A low page may finish. Otherwise only its issued canonical checkpoint advances
 under the larger grant. This helper never claims a wall-clock cutoff occurred.
@@ -7,15 +7,11 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 
-from hosted_budget_read_regression import (BudgetQuery, BudgetRelation, Budget, ExactReferences,
+from hosted_budget_read_regression import (Budget,
     ElapsedBudget, WorkBudget, ResultsBudget, BytesBudget, independent_grant)
-from hosted_read_requests import TraversalResume
 from hosted_source_read_regression import (SymbolAnchor, FileRegion, FirstPage, DescendantFunctions)
-
-
-@dataclass(frozen=True)
-class ResumeQuery(BudgetQuery):
-    continuation: str | None = None
+from query_name_request import (QueryInput, QueryRun, QueryResume, SymbolOutput, SymbolReferences,
+    relation_query)
 
 
 @dataclass(frozen=True)
@@ -83,7 +79,7 @@ def admit_progress(tool, response):
     qualification = response.get('qualification', {})
     if response.get('status') != 'qualified' or not isinstance(qualification, dict):
         return DrainRejected(ResumeFailure.NON_RESUMABLE)
-    progress = qualification if tool == 'read_relations' else qualification.get('progress', {})
+    progress = qualification.get('progress', {})
     if not isinstance(progress, dict) or progress.get('type') != 'resumable':
         return DrainRejected(ResumeFailure.NON_RESUMABLE)
     checkpoint = progress.get('checkpoint', {})
@@ -95,7 +91,7 @@ def admit_progress(tool, response):
             or (kind == 'retained_output' and action != 'resume')
             or not isinstance(token, str) or not 1 <= len(token) <= 1048576):
         return DrainRejected(ResumeFailure.CHECKPOINT_REJECTED)
-    if tool == 'query_symbols':
+    if tool in ('query_symbols', 'query_occurrences'):
         alias = response.get('continuation')
     elif tool == 'source_read':
         legacy = qualification.get('continuation', {})
@@ -108,18 +104,17 @@ def admit_progress(tool, response):
 
 
 def resume_request(request, token):
-    if isinstance(request, ResumeQuery):
-        return replace(request, continuation=token)
+    if isinstance(request, QueryInput):
+        return QueryInput(QueryResume(token, request.request.execution_budget))
     if isinstance(request, ResumeSource):
         return replace(request, page=SourceResume(token))
-    if isinstance(request, BudgetRelation):
-        return replace(request, position=TraversalResume(token))
     raise TypeError('UNSUPPORTED_RESUME_REQUEST')
 
 
 def _invoke(replay, tool, request):
-    response = replay.transport.invoke(replay.surface, tool, asdict(request))
-    replay.transport.validate(tool, response)
+    transport_tool = 'query_symbols' if tool == 'query_occurrences' else tool
+    response = replay.transport.invoke(replay.surface, transport_tool, asdict(request))
+    replay.transport.validate(transport_tool, response)
     return response
 
 
@@ -143,7 +138,7 @@ def drain(replay, tool, request, first, initial_budget):
             return DrainRejected(ResumeFailure.TOKEN_REPEATED)
         seen.add(progress.token)
         request = resume_request(request, progress.token)
-        budget = request.execution_budget
+        budget = request.request.execution_budget if isinstance(request, QueryInput) else request.execution_budget
         if len(pages) < MAXIMUM_PAGES:
             response = _invoke(replay, tool, request)
     return DrainRejected(ResumeFailure.PAGE_BOUND)
@@ -158,7 +153,10 @@ def _freeze(value):
 
 
 def records(tool, response):
-    key = {'query_symbols': 'items', 'source_read': 'entities', 'read_relations': 'relations'}[tool]
+    if tool == 'query_occurrences':
+        return tuple(_freeze(record['relation']) for record in response.get('items', [])
+                     if record.get('type') == 'occurrence')
+    key = {'query_symbols': 'items', 'source_read': 'entities'}[tool]
     return tuple(_freeze(record) for record in response.get(key, []))
 
 
@@ -168,7 +166,7 @@ def record_parity(tool, observed, baseline):
         return False
     actual = tuple(item for page in observed.pages for item in records(tool, page))
     expected = tuple(item for page in baseline.pages for item in records(tool, page))
-    if tool == 'read_relations':
+    if tool == 'query_occurrences':
         # Native provider cursors use file/range order; RelationBatch sorts each
         # admitted page by endpoint fingerprint. Grant changes can change page
         # boundaries, but must preserve every full occurrence, including duplicates.
@@ -192,7 +190,7 @@ def coverage_parity(tool, observed, baseline):
         return all(page.get('snapshot') == original.get('snapshot')
                    and page.get('region') == original.get('region')
                    and page.get('text') == original.get('text') for page in pages)
-    if tool == 'read_relations':
+    if tool == 'query_occurrences':
         return relation_coverage_parity(observed, baseline)
     return all(page.get('failures') == baseline.pages[0].get('failures') for page in pages)
 
@@ -204,13 +202,14 @@ def relation_coverage_parity(observed, baseline):
     temporary = {'RESULT_LIMIT_REACHED', 'BYTE_LIMIT_REACHED', 'TIME_LIMIT_REACHED', 'WORK_LIMIT_REACHED'}
     for page in observed.pages:
         permanent = []
-        for omission in page.get('omissions', []):
+        for attributed in page.get('omissions', []):
+            omission = attributed.get('evidence', {})
             if omission.get('reason') not in temporary:
-                permanent.append(omission)
+                permanent.append(attributed)
                 continue
             qualification = page.get('qualification', {})
-            if (not isinstance(admit_progress('read_relations', page), Checkpoint)
-                    or omission['reason'].lower().replace('_', '-') not in qualification.get('limitations', [])
+            if (not isinstance(admit_progress('query_occurrences', page), Checkpoint)
+                    or 'relation-incomplete' not in qualification.get('limitations', [])
                     or omission.get('measurement') != {'type': 'unmeasured_on_page'}
                     or _freeze(omission.get('samples')) != () or omission.get('remediation') != 'INCREASE_READ_LIMIT'):
                 return False
@@ -230,8 +229,9 @@ def _authored_baseline(replay, tool, result):
         items = tuple(item for page in result.pages for item in page.get('items', []))
         return tuple(item.get('ref') for item in items) == tuple(
             replay.seeds[key]['ref'] for key in ('logger', 'helper'))
-    if tool == 'read_relations':
-        relations = tuple(item for page in result.pages for item in page.get('relations', []))
+    if tool == 'query_occurrences':
+        relations = tuple(item['relation'] for page in result.pages for item in page.get('items', [])
+                          if item.get('type') == 'occurrence')
         return (Counter(item.get('source', {}).get('qualifiedIdentity') for item in relations)
                 == Counter(replay.fixture.oracle['helperCallers'])
                 and all(item.get('coverage') == 'exact-compiler-confirmed'
@@ -247,11 +247,11 @@ def _effective(response, budget):
 def run_resume_budget_regression(replay):
     """Twelve receipt cases per surface; internal pages never consume receipt rows."""
     requests = (
-        ('query_symbols', ResumeQuery(ExactReferences(tuple(replay.seeds[key]['ref']
-            for key in ('logger', 'helper'))), ResultsBudget(),
-            return_fields=('name', 'location', 'signature'))),
+        ('query_symbols', QueryInput(QueryRun(SymbolReferences(tuple(replay.seeds[key]['ref']
+            for key in ('logger', 'helper'))), output=SymbolOutput(('name', 'location', 'signature')),
+            execution_budget=ResultsBudget()))),
         ('source_read', ResumeSource(SymbolAnchor(replay.seeds['logger']['ref']), ResultsBudget())),
-        ('read_relations', BudgetRelation(replay.seeds['helper']['ref'], ResultsBudget())),
+        ('query_occurrences', relation_query(replay.seeds['helper']['ref'], 'callers', ResultsBudget())),
     )
     for low, large in ((ElapsedBudget(1000), ElapsedBudget(3000)),
                        (WorkBudget(100), WorkBudget(100000)),
@@ -262,10 +262,10 @@ def run_resume_budget_regression(replay):
 
 
 def _case(replay, tool, request, low, large):
-    ample = replace(request, execution_budget=large)
+    ample = with_budget(request, large)
     baseline_first = _invoke(replay, tool, ample)
     baseline = drain(replay, tool, ample, baseline_first, large)
-    first = _invoke(replay, tool, replace(request, execution_budget=low))
+    first = _invoke(replay, tool, with_budget(request, low))
     observed = drain(replay, tool, ample, first, low)
     checks = {
         'exhaustiveBaseline': isinstance(baseline, Drained),
@@ -286,4 +286,11 @@ def _case(replay, tool, request, low, large):
             # Finite failure names are receipt assertion keys; no token or payload is recorded.
             checks[name + result.failure.value] = False
     count = sum(len(records(tool, page)) for page in observed.pages) if isinstance(observed, Drained) else 0
-    replay.record('budget-resume-' + tool + '-' + next(iter(asdict(low))), tool, checks, count, first)
+    replay.record('budget-resume-' + tool + '-' + next(iter(asdict(low))),
+                  'query_symbols' if tool == 'query_occurrences' else tool, checks, count, first)
+
+
+def with_budget(request, budget):
+    if isinstance(request, QueryInput):
+        return replace(request, request=replace(request.request, execution_budget=budget))
+    return replace(request, execution_budget=budget)
