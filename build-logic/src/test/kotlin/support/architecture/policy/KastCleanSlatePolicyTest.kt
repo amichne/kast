@@ -88,6 +88,7 @@ class KastCleanSlatePolicyTest {
                 ModuleId.RELATION_CONTRACT,
                 ModuleId.SOURCE_CONTRACT,
                 ModuleId.SYMBOL_CONTRACT,
+                ModuleId.TRAVERSAL_CONTRACT,
                 ModuleId.WORKSPACE_CONTRACT,
             ),
             contract.allowedProjectDependencies,
@@ -102,6 +103,7 @@ class KastCleanSlatePolicyTest {
                 ModuleId.RELATION_CONTRACT,
                 ModuleId.SOURCE_CONTRACT,
                 ModuleId.SYMBOL_CONTRACT,
+                ModuleId.TRAVERSAL_CONTRACT,
             ),
             service.allowedProjectDependencies,
         )
