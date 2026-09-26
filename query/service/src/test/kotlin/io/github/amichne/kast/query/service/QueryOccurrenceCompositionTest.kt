@@ -66,14 +66,14 @@ class QueryOccurrenceCompositionTest {
                     QueryOutputSyntax.Occurrences,
                 )
             val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 8L)))
-            assertEquals(2, complete.result.items.size)
+            assertEquals(2, complete.result.symbolRows().size)
             assertEquals(
                 listOf(200, 202),
-                complete.result.items.map { row ->
+                complete.result.symbolRows().map { row ->
                     (row.arrival as QueryArrivalEvidence.Proven).facts.single().occurrence.range.startInclusive
                 },
             )
-            assertTrue(complete.result.items.all { it.connections.size == 4 })
+            assertTrue(complete.result.symbolRows().all { it.connections.size == 4 })
         }
     }
 
@@ -109,17 +109,17 @@ class QueryOccurrenceCompositionTest {
                     QueryOutputSyntax.Occurrences,
                 )
             val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(request(plan, 8L)))
-            assertEquals(1, first.result.items.size)
+            assertEquals(1, first.result.symbolRows().size)
             assertEquals(listOf(QueryLimitation.RELATION_INCOMPLETE), first.coverage.limitations)
             assertEquals(selected, first.result.omissions.single().subject)
             assertEquals(RelationMeaning.Callees, first.result.omissions.single().meaning)
             assertEquals(evidence.single(), first.result.omissions.single().evidence)
 
-            val retained = QueryRetainedResult.capture(selected.lease, first).refined()
+            val retained = QueryRetainedResult.capture(selected.lease, first).refined().symbolsResult()
             val suffix = admittedPlan(QuerySourceSyntax.Retained(retained), emptyList(), QueryOutputSyntax.Occurrences)
             val composed =
                 assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(request(suffix, 8L)))
-            assertEquals(1, composed.result.items.size)
+            assertEquals(1, composed.result.symbolRows().size)
             assertEquals(first.result.omissions, composed.result.omissions)
             assertEquals(listOf(QueryLimitation.RELATION_INCOMPLETE), composed.coverage.limitations)
         }
@@ -146,8 +146,11 @@ class QueryOccurrenceCompositionTest {
                 )
             val prefixResult =
                 assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(prefix, 8L)))
-            assertEquals(2, (prefixResult.result.items.single().arrival as QueryArrivalEvidence.Proven).facts.size)
-            val retained = QueryRetainedResult.capture(selected.lease, prefixResult).refined()
+            assertEquals(
+                2,
+                (prefixResult.result.symbolRows().single().arrival as QueryArrivalEvidence.Proven).facts.size,
+            )
+            val retained = QueryRetainedResult.capture(selected.lease, prefixResult).refined().symbolsResult()
             assertArrivalImmutable(retained)
             val suffix = admittedPlan(QuerySourceSyntax.Retained(retained), emptyList(), QueryOutputSyntax.Occurrences)
             val firstRequest = request(suffix, 8L, resultLimit = 1)
@@ -156,19 +159,11 @@ class QueryOccurrenceCompositionTest {
             val last =
                 assertInstanceOf(
                     QueryExecutionResult.Complete::class.java,
-                    service.run(
-                        QueryExecutionRequest.create(
-                                suffix,
-                                firstRequest.lease,
-                                firstRequest.budget,
-                                checkpoint.checkpoint,
-                            )
-                            .refined()
-                    ),
+                    service.run(resume(firstRequest, checkpoint)),
                 )
             assertEquals(
                 listOf(100, 102),
-                (first.result.items + last.result.items).map {
+                (first.result.symbolRows() + last.result.symbolRows()).map {
                     (it.arrival as QueryArrivalEvidence.Proven).facts.single().occurrence.range.startInclusive
                 },
             )
@@ -184,15 +179,15 @@ class QueryOccurrenceCompositionTest {
             val plan = occurrencePlan(selected)
             val firstRequest = request(plan, 8L, resultLimit = 1)
             val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(firstRequest))
-            assertEquals(1, first.result.items.size)
+            assertEquals(1, first.result.symbolRows().size)
             assertTrue(first.result.omissions.isEmpty())
             assertTrue(QueryLimitation.RELATION_INCOMPLETE in first.coverage.limitations)
-            val retained = QueryRetainedResult.capture(selected.lease, first).refined()
+            val retained = QueryRetainedResult.capture(selected.lease, first).refined().symbolsResult()
             assertEquals(1, retained.symbols.size)
             val checkpoint = assertInstanceOf(QueryContinuationState.Resumable::class.java, first.continuation)
             val last = service.run(resume(firstRequest, checkpoint))
             val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, last)
-            assertTrue(qualified.result.items.isEmpty())
+            assertTrue(qualified.result.symbolRows().isEmpty())
             assertEquals(RelationLimitation.UNSUPPORTED_ITEM, qualified.result.omissions.single().evidence.reason)
         }
     }
@@ -215,10 +210,10 @@ class QueryOccurrenceCompositionTest {
                 )
             val firstRequest = request(occurrencePlan(selected), 8L, resultLimit = 2)
             val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(firstRequest))
-            assertEquals(1, first.result.items.size)
+            assertEquals(1, first.result.symbolRows().size)
             assertEquals(RelationLimitation.RESULT_LIMIT_REACHED, first.result.omissions.single().evidence.reason)
             assertTrue(QueryLimitation.RELATION_INCOMPLETE in first.coverage.limitations)
-            val retained = QueryRetainedResult.capture(selected.lease, first).refined()
+            val retained = QueryRetainedResult.capture(selected.lease, first).refined().symbolsResult()
             assertEquals(first.result.omissions, retained.omissions)
             val checkpoint = assertInstanceOf(QueryContinuationState.Resumable::class.java, first.continuation)
             val last =
@@ -278,7 +273,7 @@ private fun measuredPageOmission(read: RelationRequest): RelationReadResult.Qual
     )
 }
 
-private fun assertArrivalImmutable(retained: QueryRetainedResult) {
+private fun assertArrivalImmutable(retained: QueryRetainedResult.Symbols) {
     val arrival = retained.symbols.single().arrival as QueryArrivalEvidence.Proven
     assertThrows(UnsupportedOperationException::class.java) {
         (arrival.facts as MutableList<RelationFact>).clear()

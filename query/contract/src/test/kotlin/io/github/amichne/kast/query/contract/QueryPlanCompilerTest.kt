@@ -75,6 +75,66 @@ class QueryPlanCompilerTest {
         )
     }
 
+    @Test
+    fun `named join resolves only an earlier unique sealed binding`() {
+        val earlier = bindingName("earlier")
+        val syntax =
+            QueryPlanSyntax(
+                source = QuerySourceSyntax.Symbols(discovery()),
+                steps =
+                    listOf(
+                        QueryStepSyntax.Bind(earlier),
+                        QueryStepSyntax.Join(QueryJoinMode.Semi, QueryJoinInput.Named(earlier)),
+                    ),
+                output = QueryOutputSyntax.Symbols(symbolFields()),
+            )
+
+        val admitted = assertInstanceOf(QueryPlanAdmission.Admitted::class.java, QueryPlanCompiler.admit(syntax))
+        val source = assertInstanceOf(AdmittedQueryPlan.Symbols::class.java, admitted.plan)
+        val bind = assertInstanceOf(ExactQueryStage.Bind::class.java, source.stage)
+        assertEquals(earlier, bind.name)
+        assertInstanceOf(ExactQueryStage.Join::class.java, bind.next)
+
+        assertEquals(
+            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.UnknownBindingName(earlier)),
+            QueryPlanCompiler.admit(syntax.copy(steps = syntax.steps.reversed())),
+        )
+        assertEquals(
+            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.DuplicateBindingName(earlier)),
+            QueryPlanCompiler.admit(
+                syntax.copy(steps = listOf(QueryStepSyntax.Bind(earlier), QueryStepSyntax.Bind(earlier)))
+            ),
+        )
+    }
+
+    @Test
+    fun `inner join is terminal and emits only typed binding rows`() {
+        val left = bindingName("left")
+        val right = bindingName("right")
+        val inner = QueryJoinMode.Inner.create(left, right).refined()
+        val join = QueryStepSyntax.Join(inner, QueryJoinInput.Named(left))
+        val syntax =
+            QueryPlanSyntax(
+                source = QuerySourceSyntax.Symbols(discovery()),
+                steps = listOf(QueryStepSyntax.Bind(left), join),
+                output = QueryOutputSyntax.BindingRows,
+            )
+
+        assertInstanceOf(QueryPlanAdmission.Admitted::class.java, QueryPlanCompiler.admit(syntax))
+        assertEquals(
+            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.InnerJoinNotTerminal),
+            QueryPlanCompiler.admit(syntax.copy(steps = syntax.steps + QueryStepSyntax.Distinct)),
+        )
+        assertEquals(
+            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch),
+            QueryPlanCompiler.admit(syntax.copy(output = QueryOutputSyntax.Symbols(symbolFields()))),
+        )
+        assertEquals(
+            Refinement.Rejected(QueryJoinModeFailure.DUPLICATE_OUTPUT_NAME),
+            QueryJoinMode.Inner.create(left, left),
+        )
+    }
+
     private fun discovery(kind: CompilerSymbolKind = CompilerSymbolKind.CLASSLIKE): QueryDiscoverySyntax =
         QueryDiscoverySyntax(
             match =
@@ -92,6 +152,8 @@ class QueryPlanCompilerTest {
     private fun symbolFields(): QuerySymbolFields =
         QuerySymbolFields.from(setOf(QuerySymbolField.NAME, QuerySymbolField.LOCATION, QuerySymbolField.SIGNATURE))
             .refined()
+
+    private fun bindingName(value: String): QueryBindingName = QueryBindingName.parse(value).refined()
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
         when (this) {

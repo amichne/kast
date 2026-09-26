@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryArrivalEvidence
+import io.github.amichne.kast.query.contract.QueryBindingRow
 import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
@@ -38,6 +39,7 @@ import java.nio.charset.StandardCharsets
 
 private const val SOURCE_CONTEXT_LINES = 5
 private const val SOURCE_WINDOW_PROJECTION_OVERHEAD_BYTES = 64L
+private const val BINDING_ROW_PROJECTION_OVERHEAD_BYTES = 256L
 private const val RELATION_OMISSION_PROJECTION_MULTIPLIER = 4
 private const val WALK_OBSERVATION_PROJECTION_MULTIPLIER = 4L
 
@@ -158,6 +160,17 @@ internal fun QuerySymbol.projectedUtf8Size(): Long =
         ) +
             connections.map { it.canonicalProjection().utf8Size() } +
             (walkArrival as? QueryWalkArrival.Proven)?.records.orEmpty().map { it.canonicalProjection().utf8Size() }
+    )
+
+internal fun QueryBindingRow.projectedUtf8Size(): Long =
+    saturatedSum(
+        listOf(
+            left.name.value.utf8Size(),
+            left.value.symbol.projectedUtf8Size(),
+            right.name.value.utf8Size(),
+            right.value.symbol.projectedUtf8Size(),
+            BINDING_ROW_PROJECTION_OVERHEAD_BYTES,
+        )
     )
 
 internal fun QueryItemFailure.projectedUtf8Size(): Long =

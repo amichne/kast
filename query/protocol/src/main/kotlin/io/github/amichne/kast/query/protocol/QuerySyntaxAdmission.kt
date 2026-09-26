@@ -6,10 +6,13 @@ import io.github.amichne.kast.kernel.LiveReadEvidence
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
+import io.github.amichne.kast.protocol.contract.QueryJoinModeDocument
+import io.github.amichne.kast.protocol.contract.QueryJoinRightDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason
@@ -17,10 +20,13 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
+import io.github.amichne.kast.query.contract.QueryBindingName
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExactReferences
+import io.github.amichne.kast.query.contract.QueryJoinInput
+import io.github.amichne.kast.query.contract.QueryJoinMode
 import io.github.amichne.kast.query.contract.QueryMatch
 import io.github.amichne.kast.query.contract.QueryPlanAdmissionFailure
 import io.github.amichne.kast.query.contract.QueryPlanSyntax
@@ -96,8 +102,9 @@ private fun QueryFromDocument.admitSource(
                 ?: QueryReferenceSourceAdmission.RequestRejected
         is QueryFromDocument.References -> values.values.admitExactReferences(lease, authority)
         is QueryFromDocument.Result ->
-            retained[this]?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Retained(it)) }
-                ?: QueryReferenceSourceAdmission.RequestRejected
+            (retained[this] as? QueryRetainedResult.Symbols)?.let {
+                QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Retained(it))
+            } ?: QueryReferenceSourceAdmission.RequestRejected
     }
 
 private sealed interface QueryStepAdmission {
@@ -114,16 +121,23 @@ private fun QueryStepDocument.admitStep(
     retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
 ): QueryStepAdmission =
     when (this) {
+        is QueryStepDocument.Bind ->
+            name.domainName()?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Bind(it)) }
+                ?: QueryStepAdmission.RequestRejected
+        is QueryStepDocument.Join -> admitJoin(retained)
         is QueryStepDocument.Concat -> admitConcat(lease, authority, retained)
         is QueryStepDocument.Intersect ->
-            retained[right]?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Intersect(it)) }
-                ?: QueryStepAdmission.RequestRejected
+            (retained[right] as? QueryRetainedResult.Symbols)?.let {
+                QueryStepAdmission.Admitted(QueryStepSyntax.Intersect(it))
+            } ?: QueryStepAdmission.RequestRejected
         is QueryStepDocument.Union ->
-            retained[right]?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Union(it)) }
-                ?: QueryStepAdmission.RequestRejected
+            (retained[right] as? QueryRetainedResult.Symbols)?.let {
+                QueryStepAdmission.Admitted(QueryStepSyntax.Union(it))
+            } ?: QueryStepAdmission.RequestRejected
         is QueryStepDocument.Difference ->
-            retained[right]?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Difference(it)) }
-                ?: QueryStepAdmission.RequestRejected
+            (retained[right] as? QueryRetainedResult.Symbols)?.let {
+                QueryStepAdmission.Admitted(QueryStepSyntax.Difference(it))
+            } ?: QueryStepAdmission.RequestRejected
         else -> syntax()?.let(QueryStepAdmission::Admitted) ?: QueryStepAdmission.RequestRejected
     }
 
@@ -148,10 +162,38 @@ private fun QueryStepDocument.Concat.admitConcat(
                 QueryReferenceSourceAdmission.RequestRejected -> QueryStepAdmission.RequestRejected
             }
         is QueryFromDocument.Result ->
-            retained[value]?.let {
+            (retained[value] as? QueryRetainedResult.Symbols)?.let {
                 QueryStepAdmission.Admitted(QueryStepSyntax.Concat(QueryCompositionInput.Retained(it)))
             } ?: QueryStepAdmission.RequestRejected
     }
+
+private fun QueryStepDocument.Join.admitJoin(
+    retained: Map<QueryFromDocument.Result, QueryRetainedResult>
+): QueryStepAdmission {
+    val admittedMode = mode.domainMode() ?: return QueryStepAdmission.RequestRejected
+    val admittedRight =
+        when (val input = right) {
+            is QueryJoinRightDocument.Named ->
+                input.name.domainName()?.let(QueryJoinInput::Named) ?: return QueryStepAdmission.RequestRejected
+            is QueryFromDocument.Result ->
+                (retained[input] as? QueryRetainedResult.Symbols)?.let(QueryJoinInput::Retained)
+                    ?: return QueryStepAdmission.RequestRejected
+        }
+    return QueryStepAdmission.Admitted(QueryStepSyntax.Join(admittedMode, admittedRight))
+}
+
+private fun QueryJoinModeDocument.domainMode(): QueryJoinMode? =
+    when (this) {
+        is QueryJoinModeDocument.Inner -> {
+            val left = leftName.domainName() ?: return null
+            val right = rightName.domainName() ?: return null
+            QueryJoinMode.Inner.create(left, right).refinedOrNull()
+        }
+        QueryJoinModeDocument.Semi -> QueryJoinMode.Semi
+        QueryJoinModeDocument.Anti -> QueryJoinMode.Anti
+    }
+
+private fun QueryBindingNameDocument.domainName(): QueryBindingName? = QueryBindingName.parse(value).refinedOrNull()
 
 private sealed interface QueryReferenceSourceAdmission {
     data class Admitted(val source: QuerySourceSyntax) : QueryReferenceSourceAdmission
@@ -240,6 +282,14 @@ internal fun QueryPlanAdmissionFailure.protocolRejection(): QueryRunRejection =
     when (this) {
         QueryPlanAdmissionFailure.IncompleteRightInput ->
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE)
+        is QueryPlanAdmissionFailure.DuplicateBindingName ->
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.DUPLICATE_BINDING_NAME)
+        is QueryPlanAdmissionFailure.UnknownBindingName ->
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.UNKNOWN_BINDING_NAME)
+        QueryPlanAdmissionFailure.InnerJoinNotTerminal ->
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.INNER_JOIN_NOT_TERMINAL)
+        QueryPlanAdmissionFailure.OutputTypeMismatch ->
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH)
         is QueryPlanAdmissionFailure.UnsupportedDeclarationKind ->
             QueryRunRejection.SourceRejected(
                 when (kind) {

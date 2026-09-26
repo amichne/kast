@@ -41,10 +41,10 @@ This example filters public functions before finding their callers:
 | Part | Supported values |
 | --- | --- |
 | Sources | `search_declarations`, `all_declarations`, `symbol_refs`, `result` |
-| Steps | `where`, `expand_relation`, `walk`, `concat`, `intersect`, `union`, `difference`, `distinct_symbols` |
+| Steps | `where`, `expand_relation`, `walk`, `concat`, `intersect`, `union`, `difference`, `distinct_symbols`, `bind`, `join` |
 
 Put the source and steps inside `request` with `action: "run"`. Choose an optional
-typed `output` to present symbols, individual relation occurrences, or depth-bearing traversal records.
+typed `output` to present symbols, individual relation occurrences, depth-bearing traversal records, or inner-join binding rows.
 The other actions are `resume` and `read_result`; each accepts only its own fields.
 
 Step order changes the result:
@@ -66,6 +66,7 @@ Kast preserves every explicit step in order.
 | `request.output: {"type":"symbols","fields":[]}` | Mandatory identity and kind only |
 | `request.output: {"type":"occurrences"}` | One row per relation occurrence, including repeated use sites |
 | `request.output: {"type":"traversal_records"}` | One row per reached traversal record, including its depth and relation fact |
+| `request.output: {"type":"binding_rows"}` | One row per inner-join pair, with both named bindings and their evidence |
 | Duplicate symbol projection fields | Rejected request |
 
 ## Reuse an exact symbol
@@ -138,6 +139,47 @@ incomplete right input because it cannot establish absence. Selecting fewer
 than all rows on the right makes that input incomplete too.
 
 
+## Bind and join earlier rows
+
+`bind` captures the current ordered symbol stream under a query-local name. A later
+`join` may read that sealed binding, or an immutable retained symbol result, on its
+right. Names contain 1 to 64 ASCII letters, digits, or underscores and start
+with a letter. A binding must be declared earlier in the same run; duplicate,
+unknown, and forward names reject before query effects.
+
+```json
+{
+  "request": {
+    "action": "run",
+    "source": {"type":"result","result":"<issued symbol result>"},
+    "steps": [
+      {"type":"bind","name":"earlier"},
+      {"type":"join","mode":{"type":"inner","left_name":"subject","right_name":"match"},
+       "right":{"type":"binding","name":"earlier"}}
+    ],
+    "output": {"type":"binding_rows"},
+    "retention": "retain"
+  }
+}
+```
+
+The join key is canonical symbol identity. Each matching left and right row
+produces one pair; repeated rows remain repeated pairs. `binding_rows` is
+required for a terminal inner join and is unavailable for other pipelines. The
+column names must differ. Each cell carries its exact reference and established
+symbol evidence. A cell with one proven arrival relation also carries that
+occurrence fact; the result does not infer missing facts.
+
+Use `{"type":"semi"}` to keep matching left symbols, or
+`{"type":"anti"}` to keep left symbols with no right match. These modes keep
+the symbol stream, so later stages and symbol, occurrence, or traversal-record
+output remain available. An anti join needs complete right-hand membership:
+an incomplete retained right input rejects, and an incomplete named binding
+cannot establish absence. Qualified positive evidence remains available without
+claiming unsupported absence. The query checkpoint retains a partially built
+join, so resuming does not rebuild an already completed prefix.
+
+
 ## Retain and reuse a query result
 
 Set `"retention":"retain"` on a run when later stages should use its rows.
@@ -146,7 +188,7 @@ The response's `retention` is `retained` with an issued `reference`,
 current query answer. A retained result is immutable, bounded, and tied to the
 semantic basis that produced it. An empty retained result is a valid input.
 
-Start the next run from the issued reference. A retained item also carries a
+Start the next run from an issued retained symbol result reference. Binding-row results can be paged with `read_result` but cannot seed symbol stages or join right inputs. A retained item also carries a
 `row_id` when Kast issues a result reference. Pass `row_ids` with that owning
 result reference to select specific rows; omit it or use null for all rows, or
 use `[]` for an empty selection:
@@ -168,8 +210,8 @@ usable; an incomplete input cannot prove absence. Copy result and row references
 as issued. A row ID is bound to one retained result and is distinct from an
 exact symbol `ref`.
 
-To present saved symbol rows again without running query stages, use
-`read_result`. It accepts symbol output only. To present relation occurrences,
+To present saved symbol or binding rows again without running query stages, use
+`read_result`. Select `symbols` for retained symbol rows or `binding_rows` for retained join pairs; a mismatched output rejects. To present relation occurrences,
 start a new run from the retained result with occurrence output. The
 `read_result` cursor starts at zero when omitted. The returned
 `next_cursor` identifies the next presentation page when present:
@@ -177,6 +219,10 @@ start a new run from the retained result with occurrence output. The
 ```json
 {"request":{"action":"read_result","result":"<issued result reference>","cursor":0,"output":{"type":"symbols","fields":["name","location"]}}}
 ```
+
+For a retained inner join, use the same action with
+`"output":{"type":"binding_rows"}`. Each page keeps whole pairs and their
+issued row IDs.
 
 ## Continue an interrupted pipeline
 

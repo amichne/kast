@@ -31,6 +31,10 @@ internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("result-cursor-out-of-range") RESULT_CURSOR_OUT_OF_RANGE,
     @SerialName("result-field-unavailable") RESULT_FIELD_UNAVAILABLE,
     @SerialName("right-input-incomplete") RIGHT_INPUT_INCOMPLETE,
+    @SerialName("duplicate-binding-name") DUPLICATE_BINDING_NAME,
+    @SerialName("unknown-binding-name") UNKNOWN_BINDING_NAME,
+    @SerialName("inner-join-not-terminal") INNER_JOIN_NOT_TERMINAL,
+    @SerialName("output-kind-mismatch") OUTPUT_KIND_MISMATCH,
     @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
     @SerialName("continuation-mismatch") CONTINUATION_MISMATCH,
     @SerialName("request-rejected") REQUEST_REJECTED,
@@ -60,4 +64,5 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("relation-incomplete") RELATION_INCOMPLETE,
     @SerialName("traversal-incomplete") TRAVERSAL_INCOMPLETE,
     @SerialName("row-selection-incomplete") ROW_SELECTION_INCOMPLETE,
+    @SerialName("join-input-incomplete") JOIN_INPUT_INCOMPLETE,
 }

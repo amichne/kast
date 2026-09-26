@@ -36,6 +36,7 @@ import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -123,7 +124,7 @@ class QueryConcatAdmissionTest {
     }
 
     private fun qualifiedThenComplete(admitted: QueryExecutionRequest, execution: Int): QueryExecutionResult {
-        val result = QueryResult(emptyList(), emptyList())
+        val result = QueryResult(QueryRows.Symbols.of(emptyList()), emptyList())
         if (execution != 1)
             return QueryExecutionResult.Complete(
                 result,

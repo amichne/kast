@@ -92,7 +92,7 @@
     {
       "type": "function",
       "name": "query_symbols",
-      "description": "Run, resume, and read a compositional compiler-grounded Kotlin symbol query. Start from name/scope discovery, exact-symbol references, or selected rows of an immutable retained result. Apply structured predicates, relation expansion, bounded multi-hop walk, concatenation, set operations, and explicit deduplication. Choose symbol fields, individual relation occurrences, or depth-bearing traversal records as output; structured omissions and walk observations retain incomplete coverage. Retain a completed result when needed for later composition; resume uses only the opaque execution continuation, and read_result uses a separate presentation cursor. Incomplete coverage and bounded work remain explicit.",
+      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from discovery, exact references, or immutable retained rows. Apply structured predicates, relation expansion, bounded walk, set composition, and typed query-local bindings and joins. Join matches canonical symbol identity and preserves both named bindings, multiplicity, and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -342,10 +342,13 @@
                 "$ref": "#/$defs/TraversalRecordsOutput"
               },
               {
+                "$ref": "#/$defs/BindingRowsOutput"
+              },
+              {
                 "type": "null"
               }
             ],
-            "description": "Omission or null returns symbols with name and location. Choose occurrences for individual relation facts or traversal_records for depth-bearing walk records."
+            "description": "Omission or null returns symbols with name and location. Choose occurrences, traversal_records, or binding_rows for their typed established evidence."
           },
           "ReadResultOutput": {
             "anyOf": [
@@ -353,10 +356,13 @@
                 "$ref": "#/$defs/SymbolsOutput"
               },
               {
+                "$ref": "#/$defs/BindingRowsOutput"
+              },
+              {
                 "type": "null"
               }
             ],
-            "description": "Present retained symbol rows with selected fields. Omission or null returns name and location."
+            "description": "Present retained symbols or typed binding rows without rerunning stages. Omission or null selects symbol fields and rejects a retained binding-row result."
           },
           "SymbolsOutput": {
             "type": "object",
@@ -920,12 +926,18 @@
                     },
                     {
                       "$ref": "#/$defs/Difference"
+                    },
+                    {
+                      "$ref": "#/$defs/Bind"
+                    },
+                    {
+                      "$ref": "#/$defs/Join"
                     }
                   ]
                 },
                 "minItems": 0,
                 "maxItems": 1000,
-                "description": "Ordered transformations, executed left to right. null and [] mean no transformations. where applies one structured predicate; walk traverses bounded multi-hop relations through the existing traversal engine. concat preserves order and multiplicity; intersect, union, and difference use canonical semantic identity. distinct_symbols removes duplicate identities only when requested."
+                "description": "Ordered transformations executed left to right. null and [] mean no transformations. bind captures a symbol stream once; join references only an earlier bind or retained symbols. Inner join is terminal and requires binding_rows output. Semi and anti joins retain symbol rows; anti requires complete right coverage."
               },
               "output": {
                 "$ref": "#/$defs/Output"
@@ -1012,6 +1024,167 @@
             "minLength": 45,
             "maxLength": 52,
             "description": "Issued execution continuation for an unfinished query pipeline or retained transport output. Copy verbatim. A retained-result reference cannot resume execution."
+          },
+          "BindingName": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "One bounded query-local binding name. A bind name is unique and a join may refer only to an earlier bind."
+          },
+          "NamedBindingSource": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "binding"
+                ]
+              },
+              "name": {
+                "$ref": "#/$defs/BindingName"
+              }
+            },
+            "required": [
+              "type",
+              "name"
+            ],
+            "additionalProperties": false,
+            "description": "Reuse rows captured by an earlier bind step in this run. Forward, unknown and duplicate names are rejected before execution."
+          },
+          "Bind": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "bind"
+                ]
+              },
+              "name": {
+                "$ref": "#/$defs/BindingName"
+              }
+            },
+            "required": [
+              "type",
+              "name"
+            ],
+            "additionalProperties": false,
+            "description": "Capture the current symbol rows once under a unique name for later join steps in this run."
+          },
+          "InnerJoinMode": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "inner"
+                ]
+              },
+              "left_name": {
+                "$ref": "#/$defs/BindingName"
+              },
+              "right_name": {
+                "$ref": "#/$defs/BindingName"
+              }
+            },
+            "required": [
+              "type",
+              "left_name",
+              "right_name"
+            ],
+            "additionalProperties": false,
+            "description": "Emit one typed binding row per matching pair. The two output column names must differ."
+          },
+          "SemiJoinMode": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "semi"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false,
+            "description": "Keep left symbol rows with a matching right identity, preserving left multiplicity and evidence."
+          },
+          "AntiJoinMode": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "anti"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false,
+            "description": "Keep left symbol rows only when complete right coverage proves no matching identity."
+          },
+          "Join": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "join"
+                ]
+              },
+              "mode": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/InnerJoinMode"
+                  },
+                  {
+                    "$ref": "#/$defs/SemiJoinMode"
+                  },
+                  {
+                    "$ref": "#/$defs/AntiJoinMode"
+                  }
+                ]
+              },
+              "right": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/NamedBindingSource"
+                  },
+                  {
+                    "$ref": "#/$defs/ResultSource"
+                  }
+                ],
+                "description": "An earlier named symbol binding or immutable retained symbol rows. A retained binding-row result is not a symbol right input."
+              }
+            },
+            "required": [
+              "type",
+              "mode",
+              "right"
+            ],
+            "additionalProperties": false,
+            "description": "Join on canonical symbol identity. Inner emits typed paired rows; semi keeps proven matches; anti requires complete right coverage to establish absence."
+          },
+          "BindingRowsOutput": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "binding_rows"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false,
+            "description": "Present both named symbol or exact-occurrence bindings in each inner-join pair, preserving multiplicity and evidence."
           }
         }
       },

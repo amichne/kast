@@ -8,6 +8,7 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
@@ -15,6 +16,8 @@ import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
+import io.github.amichne.kast.protocol.contract.QueryJoinModeDocument
+import io.github.amichne.kast.protocol.contract.QueryJoinRightDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
@@ -26,15 +29,19 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
+import io.github.amichne.kast.query.contract.QueryBindingName
+import io.github.amichne.kast.query.contract.QueryBindingRow
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
+import io.github.amichne.kast.query.contract.QueryJoinMode
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import kotlinx.coroutines.test.runTest
@@ -62,8 +69,36 @@ class QueryRetainedRowAdmissionTest {
         QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE)
 
     @Test
+    fun `retained binding pairs page with row IDs and reject symbol presentation`() = runTest {
+        val issued = retainedBindingPairs()
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { error("Presentation must not execute a query") },
+                CanonicalQueryReferences(),
+                store,
+            )
+        val page =
+            protocol.execute(QueryRunRequest.ReadResult.bindingRows(issued.reference), fixture.authority, budget)
+                as OperationOutcome.Complete
+        val pairs = page.evidence.payload.items.values.map { it as QueryResultItemDocument.BindingRow }
+        assertEquals(2, pairs.size)
+        assertEquals(issued.rowIds, pairs.map { it.rowId })
+        assertEquals(listOf("left", "right"), listOf(pairs.first().left.name.value, pairs.first().right.name.value))
+        val wrong =
+            protocol.execute(
+                QueryRunRequest.ReadResult.symbols(issued.reference, output = output),
+                fixture.authority,
+                budget,
+            ) as OperationOutcome.Rejected
+        assertEquals(
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE),
+            wrong.reason,
+        )
+    }
+
+    @Test
     fun `issued output row identity seeds a later query without reconstructing the symbol`() = runTest {
-        var selected: QueryRetainedResult? = null
+        var selected: QueryRetainedResult.Symbols? = null
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { request ->
@@ -95,7 +130,7 @@ class QueryRetainedRowAdmissionTest {
     @Test
     fun `issued row identity selects only the original proven row and qualifies unchecked omissions`() = runTest {
         val issued = retainedTwoRows()
-        var selected: QueryRetainedResult? = null
+        var selected: QueryRetainedResult.Symbols? = null
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { request ->
@@ -175,7 +210,7 @@ class QueryRetainedRowAdmissionTest {
         assertEquals(firstIds, secondIds)
         val after = store.restoreResult(issued.reference, fixture.authority) as QueryResultRestoration.Restored
         assertEquals(issued.rowIds, after.rowIds)
-        assertEquals(2, after.result.symbols.size)
+        assertEquals(2, (after.result as QueryRetainedResult.Symbols).symbols.size)
     }
 
     @Test
@@ -197,6 +232,44 @@ class QueryRetainedRowAdmissionTest {
         )
     }
 
+    private fun retainedBindingPairs(): QueryResultIssuance.Issued {
+        val symbol = QuerySymbol(SymbolDescription.from(fixture.selector), emptyList())
+        val mode =
+            QueryJoinMode.Inner.create(
+                    QueryBindingName.parse("left").refined(),
+                    QueryBindingName.parse("right").refined(),
+                )
+                .refined()
+        val pair = QueryBindingRow.join(mode, symbol, symbol).refined()
+        val result =
+            QueryExecutionResult.Complete(
+                QueryResult(QueryRows.Bindings.of(listOf(pair, pair)), emptyList()),
+                QueryCoverage.Complete(QueryCount.parse(2).refined()),
+            )
+        val retained = QueryRetainedResult.capture(fixture.authority, result).refined()
+        val binding = QueryBindingNameDocument.parse("earlier").refined()
+        val request =
+            run(QueryFromDocument.Symbols(discovery()))
+                .copy(
+                    steps =
+                        bounded(
+                            listOf(
+                                QueryStepDocument.Bind(binding),
+                                QueryStepDocument.Join(
+                                    QueryJoinModeDocument.Inner(
+                                        QueryBindingNameDocument.parse("left").refined(),
+                                        QueryBindingNameDocument.parse("right").refined(),
+                                    ),
+                                    QueryJoinRightDocument.Named(binding),
+                                ),
+                            )
+                        ),
+                    output = QueryOutputDocument.BindingRows,
+                )
+        val issued = store.issueResult(request, retained) as QueryResultIssuance.Issued
+        return issued
+    }
+
     private fun retainedTwoRows(): QueryResultIssuance.Issued {
         val retained = QueryRetainedResult.capture(fixture.authority, completeRows()).refined()
         return store.issueResult(run(QueryFromDocument.Symbols(discovery())), retained) as QueryResultIssuance.Issued
@@ -205,7 +278,7 @@ class QueryRetainedRowAdmissionTest {
     private fun completeRows(): QueryExecutionResult.Complete {
         val rows = listOf(fixture.selector, other.selector).map { QuerySymbol(SymbolDescription.from(it), emptyList()) }
         return QueryExecutionResult.Complete(
-            QueryResult(rows, emptyList()),
+            QueryResult(QueryRows.Symbols.of(rows), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(rows.size).refined()),
         )
     }
@@ -221,7 +294,7 @@ class QueryRetainedRowAdmissionTest {
 
     private fun emptyExecution() =
         QueryExecutionResult.Complete(
-            QueryResult(emptyList(), emptyList()),
+            QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(0).refined()),
         )
 

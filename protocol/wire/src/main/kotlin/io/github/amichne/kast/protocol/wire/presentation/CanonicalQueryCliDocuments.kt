@@ -6,6 +6,8 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
+import io.github.amichne.kast.protocol.contract.QueryBindingCellDocument
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
@@ -15,7 +17,6 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
-import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.ReadRecoveryAction
 import io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions
@@ -25,10 +26,17 @@ import io.github.amichne.kast.protocol.contract.continuationToken
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.contract.recoveryAction
 import io.github.amichne.kast.protocol.contract.terminalReason
+import io.github.amichne.kast.protocol.wire.SymbolKindWireDocument
+import io.github.amichne.kast.protocol.wire.toWireDocument
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 object CanonicalQueryCliDocuments {
+    /** The sealed serializer retains the item discriminator for installed output schemas. */
+    val itemSerializer: KSerializer<*>
+        get() = QueryResultItemCliDocument.serializer()
+
     fun project(outcome: OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunFailure>) =
         projectClosedOutcome(
             outcome,
@@ -169,8 +177,8 @@ private sealed interface QueryResultItemCliDocument {
     @Serializable
     @SerialName("exact-symbol")
     data class ExactSymbol(
-        val ref: String,
-        val kind: String,
+        @ProtocolStringConstraint(pattern = "^exact:v[2345]:") val ref: String,
+        val kind: SymbolKindWireDocument,
         val name: String?,
         val location: QueryExactLocationCliDocument?,
         val signature: CompilerSignatureCliDocument?,
@@ -179,6 +187,7 @@ private sealed interface QueryResultItemCliDocument {
         val source: QuerySourceWindowCliDocument? = null,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
+        @ProtocolStringConstraint(pattern = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
         val rowId: String? = null,
     ) : QueryResultItemCliDocument
 
@@ -201,6 +210,35 @@ private sealed interface QueryResultItemCliDocument {
         @SerialName("row_id")
         val rowId: String? = null,
     ) : QueryResultItemCliDocument
+
+    @Serializable
+    @SerialName("binding_row")
+    data class BindingRow(
+        val left: QueryBindingCellCliDocument,
+        val right: QueryBindingCellCliDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        @ProtocolStringConstraint(pattern = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+        val rowId: String? = null,
+    ) : QueryResultItemCliDocument
+}
+
+@Serializable
+private sealed interface QueryBindingCellCliDocument {
+    @Serializable
+    @SerialName("symbol")
+    data class Symbol(
+        @ProtocolStringConstraint(pattern = "^[A-Za-z][A-Za-z0-9_]{0,63}$", maximumLength = 64) val name: String,
+        val symbol: QueryResultItemCliDocument.ExactSymbol,
+    ) : QueryBindingCellCliDocument
+
+    @Serializable
+    @SerialName("occurrence")
+    data class Occurrence(
+        @ProtocolStringConstraint(pattern = "^[A-Za-z][A-Za-z0-9_]{0,63}$", maximumLength = 64) val name: String,
+        val symbol: QueryResultItemCliDocument.ExactSymbol,
+        val relation: RelationFactCliDocument,
+    ) : QueryBindingCellCliDocument
 }
 
 @Serializable
@@ -254,51 +292,53 @@ private sealed interface QueryItemFailureCliDocument {
     ) : QueryItemFailureCliDocument
 }
 
-@Serializable
-private sealed interface QueryRejectionCliDocument {
-    @Serializable @SerialName("workspace-not-ready") data object WorkspaceNotReady : QueryRejectionCliDocument
-
-    @Serializable
-    @SerialName("reference-rejected")
-    data class ReferenceRejected(val path: String, val reason: String) : QueryRejectionCliDocument
-
-    @Serializable
-    @SerialName("source-rejected")
-    data class SourceRejected(val kind: String, val reason: String) : QueryRejectionCliDocument
-
-    @Serializable
-    @SerialName("execution-rejected")
-    data class ExecutionRejected(val reason: String) : QueryRejectionCliDocument
-}
-
 private fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument =
     when (this) {
-        is QueryResultItemDocument.ExactSymbol ->
-            QueryResultItemCliDocument.ExactSymbol(
-                ref.toCliDocument(),
-                kind.cliName(),
-                name?.value,
-                location?.let {
-                    QueryExactLocationCliDocument(
-                        it.file.value,
-                        SourceRangeCliDocument(it.range.startInclusive.value, it.range.endExclusive.value),
-                    )
-                },
-                signature?.toCliDocument(),
-                connections.values.map(RelationFactDocument::toCliDocument),
-                source?.let {
-                    QuerySourceWindowCliDocument(
-                        it.text.value,
-                        it.lines.startInclusive.value,
-                        it.lines.endInclusive.value,
-                    )
-                },
-                rowId?.value,
-            )
+        is QueryResultItemDocument.ExactSymbol -> toExactCliDocument()
         is QueryResultItemDocument.Occurrence ->
             QueryResultItemCliDocument.Occurrence(ref.toCliDocument(), relation.toCliDocument(), rowId?.value)
         is QueryResultItemDocument.TraversalRecord ->
             QueryResultItemCliDocument.TraversalRecord(ref.toCliDocument(), record.toQueryCliDocument(), rowId?.value)
+        is QueryResultItemDocument.BindingRow ->
+            QueryResultItemCliDocument.BindingRow(left.toCliDocument(), right.toCliDocument(), rowId?.value)
+    }
+
+private fun QueryResultItemDocument.ExactSymbol.toExactCliDocument(): QueryResultItemCliDocument.ExactSymbol =
+    QueryResultItemCliDocument.ExactSymbol(
+        ref.toCliDocument(),
+        kind.toWireDocument(),
+        name?.value,
+        location?.let {
+            QueryExactLocationCliDocument(
+                it.file.value,
+                SourceRangeCliDocument(it.range.startInclusive.value, it.range.endExclusive.value),
+            )
+        },
+        signature?.toCliDocument(),
+        connections.values.map(RelationFactDocument::toCliDocument),
+        source?.let {
+            QuerySourceWindowCliDocument(
+                it.text.value,
+                it.lines.startInclusive.value,
+                it.lines.endInclusive.value,
+            )
+        },
+        rowId?.value,
+    )
+
+private fun QueryBindingCellDocument.toCliDocument(): QueryBindingCellCliDocument =
+    when (this) {
+        is QueryBindingCellDocument.Symbol ->
+            QueryBindingCellCliDocument.Symbol(
+                name.value,
+                symbol.toExactCliDocument(),
+            )
+        is QueryBindingCellDocument.Occurrence ->
+            QueryBindingCellCliDocument.Occurrence(
+                name.value,
+                symbol.toExactCliDocument(),
+                relation.toCliDocument(),
+            )
     }
 
 private fun QueryRelationOmissionDocument.toCliDocument() =
@@ -325,27 +365,6 @@ private fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocumen
 
 /** Presentation extracts the issued token verbatim; the retained domain type still owns its family. */
 private fun QueryReferenceDocument.toCliDocument(): String = token.value
-
-private fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
-    when (this) {
-        QueryRunRejection.WorkspaceNotReady -> QueryRejectionCliDocument.WorkspaceNotReady
-        is QueryRunRejection.ReferenceRejected ->
-            QueryRejectionCliDocument.ReferenceRejected(
-                "from.values[${position.value}]",
-                reason.cliName(),
-            )
-        is QueryRunRejection.StepReferenceRejected ->
-            QueryRejectionCliDocument.ReferenceRejected(
-                "steps[${stepPosition.value}].input.values[${referencePosition.value}]",
-                reason.cliName(),
-            )
-        is QueryRunRejection.SourceRejected ->
-            QueryRejectionCliDocument.SourceRejected(
-                kind.cliName(),
-                reason.cliName(),
-            )
-        is QueryRunRejection.ExecutionRejected -> QueryRejectionCliDocument.ExecutionRejected(reason.cliName())
-    }
 
 private val completeFactory = CanonicalJsonDocument.generated(QueryCompleteCliDocument.serializer())
 private val qualifiedFactory = CanonicalJsonDocument.generated(QueryQualifiedCliDocument.serializer())

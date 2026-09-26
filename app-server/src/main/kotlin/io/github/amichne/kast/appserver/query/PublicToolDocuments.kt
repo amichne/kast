@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
@@ -68,6 +69,12 @@ internal sealed interface PublicToolCompositionInput
 
 @Serializable
 internal sealed interface PublicToolRetainedInput
+
+@Serializable
+internal sealed interface PublicToolJoinRight
+
+@Serializable
+internal sealed interface PublicToolJoinMode
 
 @Serializable
 internal sealed interface PublicToolStep
@@ -167,7 +174,7 @@ internal data class PublicToolDifference(
 internal data class PublicToolResultSource(
     val result: QueryResultReference,
     val row_ids: BoundedProtocolList<QueryResultRowReference>? = null,
-) : PublicToolSource, PublicToolCompositionInput, PublicToolRetainedInput
+) : PublicToolSource, PublicToolCompositionInput, PublicToolRetainedInput, PublicToolJoinRight
 
 @Serializable
 @SerialName("run")
@@ -200,6 +207,44 @@ internal data class PublicToolReadResultAction(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val executionBudget: ExecutionBudgetDocument? = null,
 ) : PublicToolAction
+
+@Serializable
+@SerialName("binding")
+internal data class PublicToolNamedBindingSource(
+    val name: QueryBindingNameDocument,
+) : PublicToolJoinRight
+
+@Serializable
+@SerialName("bind")
+internal data class PublicToolBind(
+    val name: QueryBindingNameDocument,
+) : PublicToolStep
+
+@Serializable
+@SerialName("inner")
+internal data class PublicToolInnerJoinMode(
+    @SerialName("left_name")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val leftName: QueryBindingNameDocument,
+    @SerialName("right_name")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val rightName: QueryBindingNameDocument,
+) : PublicToolJoinMode
+
+@Serializable
+@SerialName("semi")
+internal data object PublicToolSemiJoinMode : PublicToolJoinMode
+
+@Serializable
+@SerialName("anti")
+internal data object PublicToolAntiJoinMode : PublicToolJoinMode
+
+@Serializable
+@SerialName("join")
+internal data class PublicToolJoin(
+    val mode: PublicToolJoinMode,
+    val right: PublicToolJoinRight,
+) : PublicToolStep
 
 @Serializable
 internal data class PublicToolCheckDiagnostics(

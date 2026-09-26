@@ -23,6 +23,7 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
@@ -112,7 +113,9 @@ def render_tools(authority: dict) -> dict[Path, str]:
               'Source': ['SearchSource', 'AllSource', 'ReferenceSource', 'ResultSource'],
               'CompositionInput': ['ReferenceSource', 'ResultSource'],
               'RetainedInput': ['ResultSource'],
-              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'Concat', 'Intersect', 'Union', 'Difference'],
+              'JoinRight': ['NamedBindingSource', 'ResultSource'],
+              'JoinMode': ['InnerJoinMode', 'SemiJoinMode', 'AntiJoinMode'],
+              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'Concat', 'Intersect', 'Union', 'Difference', 'Bind', 'Join'],
               'Action': ['RunAction', 'ResumeAction', 'ReadResultAction']}
     parents = {}
     for parent, children in unions.items():

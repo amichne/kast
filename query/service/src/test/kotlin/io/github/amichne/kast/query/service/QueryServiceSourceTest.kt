@@ -88,7 +88,7 @@ class QueryServiceSourceTest {
                 )
             val result = service.run(request(sourcePlan(selected), 8L))
             val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, result)
-            val symbol = complete.result.items.single()
+            val symbol = complete.result.symbolRows().single()
             assertEquals(text, (symbol.source as QuerySymbolSource.Returned).value.text)
             assertEquals(1, reads)
         }
@@ -116,7 +116,7 @@ class QueryServiceSourceTest {
             )
             assertEquals(
                 SourceReadRejection.DOCUMENT_DIRTY,
-                (qualified.result.items.single().source as QuerySymbolSource.Rejected).reason,
+                (qualified.result.symbolRows().single().source as QuerySymbolSource.Rejected).reason,
             )
         }
     }

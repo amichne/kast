@@ -15,6 +15,7 @@ import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
+import java.util.Collections
 
 enum class QueryByteLimitFailure {
     NOT_POSITIVE
@@ -149,7 +150,7 @@ sealed interface QuerySourceFailure {
 }
 
 data class QueryResult(
-    val items: List<QuerySymbol>,
+    val rows: QueryRows,
     val failures: List<QueryItemFailure>,
     val omissions: List<QueryRelationOmission> = emptyList(),
     val walkObservations: List<QueryWalkObservation> = emptyList(),
@@ -182,6 +183,7 @@ enum class QueryLimitation {
     SOURCE_INCOMPLETE,
     RELATION_INCOMPLETE,
     TRAVERSAL_INCOMPLETE,
+    JOIN_INPUT_INCOMPLETE,
     ROW_SELECTION_INCOMPLETE,
 }
 
@@ -201,7 +203,9 @@ sealed interface QueryCoverage {
                 if (limitations.isEmpty()) {
                     Refinement.Rejected(QueryCollectionFailure.EMPTY)
                 } else {
-                    Refinement.Refined(Qualified(knownMinimum, limitations.sortedBy { it.ordinal }))
+                    Refinement.Refined(
+                        Qualified(knownMinimum, Collections.unmodifiableList(limitations.sortedBy { it.ordinal }))
+                    )
                 }
         }
 

@@ -13,10 +13,12 @@ import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryResult
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolSource
 import io.github.amichne.kast.query.contract.QueryTerminalReason
+import io.github.amichne.kast.query.contract.QueryWalkCoverage
 import io.github.amichne.kast.query.contract.QueryWalkObservation
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.source.contract.SourceReadOperations
@@ -58,10 +60,13 @@ class QueryService(
         return Execution(request, checkpoint).run()
     }
 
+    /** The single evaluator keeps task order, page accounting, and continuation construction in one owner. */
+    @Suppress("LargeClass")
     private inner class Execution(private val request: QueryExecutionRequest, checkpoint: PipelineCheckpoint?) {
         private val state = QueryExecutionState(request, clock)
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
+        private val joinStage = QueryJoinStage(request, state, tasks, checkpoint?.joinState)
         private val symbols = mutableListOf<QuerySymbol>()
         private val completedFailures = mutableListOf<QueryItemFailure>()
         private val completedOmissions = mutableListOf<QueryRelationOmission>()
@@ -73,7 +78,9 @@ class QueryService(
         init {
             state.limitations += checkpoint?.limitations.orEmpty()
             state.upstreamLimitations += checkpoint?.limitations.orEmpty()
-            request.plan.retainedInputs().forEach(state::inheritRetainedLimitations)
+            (request.plan as? io.github.amichne.kast.query.contract.AdmittedQueryPlan.Retained)
+                ?.source
+                ?.let(state::inheritRetainedLimitations)
         }
 
         suspend fun run(): QueryExecutionResult {
@@ -85,22 +92,20 @@ class QueryService(
 
         private suspend fun executeNext(): Boolean {
             if (
-                symbols.size + completedFailures.size + completedOmissions.size + completedWalkObservations.size >=
-                    request.budget.resources.resultLimit.value
+                symbols.size +
+                    joinStage.bindingRows.size +
+                    completedFailures.size +
+                    completedOmissions.size +
+                    completedWalkObservations.size >= request.budget.resources.resultLimit.value
             ) {
                 state.limit(QueryLimitation.RESULT_LIMIT_REACHED)
                 return false
             }
             val task = tasks.first()
-            val needsWork =
-                task is PipelineTask.Discover ||
-                    task is PipelineTask.Revalidate ||
-                    task is PipelineTask.Related ||
-                    task is PipelineTask.Walk
-            if (!state.canContinue(needsWork) || !advance(task)) return false
+            if (!state.canContinue(task.needsWork()) || !advance(task)) return false
             state.drainFailures().asReversed().forEach { tasks.addFirst(PipelineTask.Failure(it)) }
             progressed = true
-            return terminal == null && rejection == null
+            return terminal == null && joinStage.terminal == null && rejection == null
         }
 
         private suspend fun advance(task: PipelineTask): Boolean =
@@ -118,6 +123,10 @@ class QueryService(
                 is PipelineTask.Feed -> feed(task)
                 is PipelineTask.FlushSet -> flushSet(task)
                 is PipelineTask.FlushDistinct -> flushDistinct(task)
+                is PipelineTask.FlushBind ->
+                    joinStage.flushBind(task, completedFailures, completedOmissions, completedWalkObservations)
+                is PipelineTask.JoinEvidence -> joinStage.emitRightEvidence(task)
+                is PipelineTask.Join -> joinStage.advance(task)
                 is PipelineTask.Discover -> {
                     when (val result = stages.discover(task.syntax, state)) {
                         DiscoveryExecution.NotStarted -> false
@@ -144,6 +153,9 @@ class QueryService(
             }
 
         private fun feed(task: PipelineTask.Feed): Boolean {
+            (task.stage.input as? io.github.amichne.kast.query.contract.QueryCompositionInput.Retained)
+                ?.result
+                ?.let(state::inheritRetainedLimitations)
             tasks.removeFirst()
             task.expand().asReversed().forEach(tasks::addFirst)
             return true
@@ -151,6 +163,7 @@ class QueryService(
 
         private fun flushSet(task: PipelineTask.FlushSet): Boolean {
             val stage = task.stage
+            state.inheritRetainedLimitations(stage.right)
             val rows =
                 when (val merged = identityRows.flushSet(stage)) {
                     is Refinement.Refined -> merged.value
@@ -227,6 +240,8 @@ class QueryService(
                     true
                 }
                 is ExactQueryStage.Set -> set(task, stage)
+                is ExactQueryStage.Bind -> joinStage.bind(task, stage)
+                is ExactQueryStage.Join -> joinStage.enter(task, stage)
                 is ExactQueryStage.Related -> {
                     tasks.removeFirst()
                     tasks.addFirst(PipelineTask.Related(task.value, stage, null))
@@ -265,7 +280,12 @@ class QueryService(
                 expanded.asReversed().forEach(tasks::addFirst)
                 return true
             }
-            val output = stage.output as QueryOutputSyntax.Symbols
+            val output =
+                stage.output as? QueryOutputSyntax.Symbols
+                    ?: run {
+                        state.contractViolation = true
+                        return false
+                    }
             if (QuerySymbolField.SOURCE !in output.fields.values || task.value.source !is QuerySymbolSource.Pending)
                 return emit(task.value.projectedUtf8Size()) { symbols += task.value }
             val resources =
@@ -314,13 +334,16 @@ class QueryService(
                 return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
             val result =
                 QueryResult(
-                    symbols.toList(),
+                    when (request.plan.outputSyntax()) {
+                        QueryOutputSyntax.BindingRows -> QueryRows.Bindings.of(joinStage.bindingRows)
+                        else -> QueryRows.Symbols.of(symbols)
+                    },
                     completedFailures.toList(),
                     completedOmissions.toList(),
                     completedWalkObservations.toList(),
                 )
-            val count = symbols.size.queryCount()
-            if (tasks.isEmpty() && state.limitations.isEmpty())
+            val count = (symbols.size + joinStage.bindingRows.size).queryCount()
+            if (completedWithoutMissingEvidence())
                 return QueryExecutionResult.Complete(result, QueryCoverage.Complete(count))
             if (state.limitations.isEmpty()) state.limit(QueryLimitation.WORK_LIMIT_REACHED)
             val coverage =
@@ -332,8 +355,16 @@ class QueryService(
             return QueryExecutionResult.Qualified(result, coverage, continuation())
         }
 
+        private fun completedWithoutMissingEvidence(): Boolean {
+            if (tasks.isNotEmpty() || state.upstreamLimitations.isNotEmpty()) return false
+            if (completedFailures.isNotEmpty() || completedOmissions.isNotEmpty()) return false
+            if (completedWalkObservations.any { it.coverage !is QueryWalkCoverage.Complete }) return false
+            // A clock read after the final successful effect cannot make completed work incomplete.
+            return state.limitations.isEmpty() || state.limitations == setOf(QueryLimitation.TIME_LIMIT_REACHED)
+        }
+
         private fun continuation(): QueryContinuationState {
-            val reason = terminal
+            val reason = terminal ?: joinStage.terminal
             if (reason != null) return QueryContinuationState.Terminal(reason)
             if (tasks.isEmpty()) return QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
             if (!progressed) return QueryContinuationState.Terminal(QueryTerminalReason.NO_PROGRESS)
@@ -343,6 +374,7 @@ class QueryService(
                     lease = request.lease,
                     tasks = tasks.toList(),
                     identityRows = identityRows.snapshot(),
+                    joinState = joinStage.snapshot(),
                     limitations =
                         state.limitations.filterTo(linkedSetOf()) { it !in pageLimits } + state.upstreamLimitations,
                 )

@@ -20,6 +20,7 @@ import io.github.amichne.kast.query.contract.QueryPlanSyntax
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbol
@@ -151,7 +152,7 @@ class QuerySetCompositionTest {
                 )
             val result =
                 assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(request(intersectionPlan, 8L)))
-            assertEquals(1, result.result.items.size)
+            assertEquals(1, result.result.symbolRows().size)
             assertEquals(
                 listOf(QueryLimitation.DISCOVERY_INCOMPLETE, QueryLimitation.VISIBILITY_INCOMPLETE),
                 result.coverage.limitations,
@@ -177,7 +178,10 @@ class QuerySetCompositionTest {
             val failure = QueryItemFailure.ExactReference(selected, SymbolExactRejection.AMBIGUOUS_DECLARATION)
             val malformed =
                 QueryExecutionResult.Complete(
-                    QueryResult(listOf(QuerySymbol(SymbolDescription.from(selected), emptyList())), listOf(failure)),
+                    QueryResult(
+                        QueryRows.Symbols.of(listOf(QuerySymbol(SymbolDescription.from(selected), emptyList()))),
+                        listOf(failure),
+                    ),
                     QueryCoverage.Complete(QueryCount.parse(1).refined()),
                 )
             val rejected = QueryRetainedResult.capture(selected.lease, malformed)
@@ -296,7 +300,7 @@ class QuerySetCompositionTest {
             val plan = exactReferencePlan(listOf(first, second), listOf(QueryStepSyntax.Intersect(right)))
             val firstRequest = request(plan, 8L, resultLimit = 1)
             val firstPage = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(firstRequest))
-            assertEquals(1, firstPage.result.items.size)
+            assertEquals(1, firstPage.result.symbolRows().size)
             val checkpoint = assertInstanceOf(QueryContinuationState.Resumable::class.java, firstPage.continuation)
             val secondPage =
                 service.run(
@@ -403,7 +407,7 @@ private fun retained(
     vararg selectors: SymbolSelector,
     coverage: QueryCoverage = QueryCoverage.Complete(QueryCount.parse(selectors.size).refined()),
     failures: List<QueryItemFailure> = emptyList(),
-): QueryRetainedResult =
+): QueryRetainedResult.Symbols =
     retainedRows(
         selectors.first(),
         selectors.map { QuerySymbol(SymbolDescription.from(it), emptyList()) },
@@ -416,20 +420,20 @@ private fun retainedRows(
     rows: List<QuerySymbol>,
     coverage: QueryCoverage = QueryCoverage.Complete(QueryCount.parse(rows.size).refined()),
     failures: List<QueryItemFailure> = emptyList(),
-): QueryRetainedResult {
-    val result = QueryResult(rows, failures)
+): QueryRetainedResult.Symbols {
+    val result = QueryResult(QueryRows.Symbols.of(rows), failures)
     val execution =
         when (coverage) {
             is QueryCoverage.Complete -> QueryExecutionResult.Complete(result, coverage)
             is QueryCoverage.Qualified -> QueryExecutionResult.Qualified(result, coverage)
         }
-    return QueryRetainedResult.capture(owner.lease, execution).refined()
+    return (QueryRetainedResult.capture(owner.lease, execution).refined() as QueryRetainedResult.Symbols)
 }
 
 private fun QueryExecutionResult.rows(): List<QuerySymbol> =
     when (this) {
-        is QueryExecutionResult.Complete -> result.items
-        is QueryExecutionResult.Qualified -> result.items
+        is QueryExecutionResult.Complete -> result.symbolRows()
+        is QueryExecutionResult.Qualified -> result.symbolRows()
         is QueryExecutionResult.Rejected -> error("Unexpected rejection: $reason")
     }
 

@@ -180,7 +180,7 @@ class QueryPaginationTest {
                 service.run(QueryExecutionRequest.create(first.plan, first.lease, resumed.budget, checkpoint).refined())
             val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
             assertEquals(1, complete.symbolCount())
-            assertEquals(2, complete.result.items.single().connections.size)
+            assertEquals(2, complete.result.symbolRows().single().connections.size)
             assertEquals(listOf(0L, 1L), positions)
             assertEquals(1, descriptions)
         }
@@ -288,7 +288,7 @@ class QueryPaginationTest {
                 )
             val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
             assertEquals(1, complete.symbolCount())
-            assertEquals(selected, complete.result.items.single().selector)
+            assertEquals(selected, complete.result.symbolRows().single().selector)
             assertEquals(3, descriptions)
         }
     }

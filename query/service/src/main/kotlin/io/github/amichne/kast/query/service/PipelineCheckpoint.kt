@@ -7,6 +7,7 @@ import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
+import io.github.amichne.kast.query.contract.QueryJoinInput
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRelationOmission
@@ -60,6 +61,10 @@ internal sealed interface PipelineTask {
 
     data class FlushDistinct(val stage: ExactQueryStage.Distinct) : PipelineTask
 
+    data class FlushBind(val stage: ExactQueryStage.Bind) : PipelineTask
+
+    data class JoinEvidence(val stage: ExactQueryStage.Join) : PipelineTask
+
     data class Candidate(val value: SymbolDiscoverySelection, val stage: ExactQueryStage) : PipelineTask
 
     data class Symbol(val value: QuerySymbol, val stage: ExactQueryStage) : PipelineTask
@@ -69,13 +74,37 @@ internal sealed interface PipelineTask {
 
     data class Walk(val value: QuerySymbol, val stage: ExactQueryStage.Walk, val cursor: TraversalContinuation?) :
         PipelineTask
+
+    data class Join(val value: QuerySymbol, val stage: ExactQueryStage.Join, val cursor: QueryJoinCursor) : PipelineTask
 }
+
+internal sealed interface QueryJoinCursor {
+    data object Build : QueryJoinCursor
+
+    data class Inner(val nextMatch: Int) : QueryJoinCursor
+
+    data class Semi(val nextMatch: Int, val accumulated: QuerySymbol) : QueryJoinCursor
+
+    data object Anti : QueryJoinCursor
+}
+
+internal fun PipelineTask.needsWork(): Boolean =
+    when (this) {
+        is PipelineTask.Discover,
+        is PipelineTask.Revalidate,
+        is PipelineTask.Related,
+        is PipelineTask.Walk,
+        is PipelineTask.Join -> true
+        is PipelineTask.Symbol -> stage is ExactQueryStage.Bind
+        else -> false
+    }
 
 internal data class PipelineCheckpoint(
     override val plan: AdmittedQueryPlan,
     override val lease: SemanticReadAuthority,
     val tasks: List<PipelineTask>,
     val identityRows: Map<ExactQueryStage, Map<CanonicalSymbolId, QuerySymbol>>,
+    val joinState: QueryJoinSnapshot,
     val limitations: Set<QueryLimitation>,
 ) : QueryCheckpoint {
     override val retainedBytes: Long =
@@ -89,7 +118,7 @@ internal data class PipelineCheckpoint(
                         saturatedAdd(size, saturatedMultiply(row.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER))
                     }
                 },
-                plan.retainedInputBytes(),
+                saturatedAdd(plan.retainedInputBytes(), QueryJoins(joinState).retainedBytes()),
             ),
         )
 }
@@ -127,6 +156,13 @@ private fun PipelineTask.retainedBytes(): Long =
             }
         is PipelineTask.FlushSet -> stage.right.retainedBytes
         is PipelineTask.FlushDistinct -> 0L
+        is PipelineTask.FlushBind -> 0L
+        is PipelineTask.JoinEvidence -> 0L
+        is PipelineTask.Join ->
+            saturatedAdd(
+                saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
+                (cursor as? QueryJoinCursor.Semi)?.accumulated?.projectedUtf8Size() ?: 0L,
+            )
         is PipelineTask.Discover -> DISCOVERY_TASK_BYTES
     }
 
@@ -157,6 +193,7 @@ internal fun PipelineTask.Symbol.expandOutput(output: QueryOutputSyntax): List<P
             (value.walkArrival as? QueryWalkArrival.Proven)?.records.orEmpty().map { record ->
                 PipelineTask.WalkRecord(value.copy(walkArrival = QueryWalkArrival.Proven.one(record)))
             }
+        QueryOutputSyntax.BindingRows -> null
         is QueryOutputSyntax.Symbols -> null
     }
 
@@ -183,6 +220,8 @@ private fun boundaryTasks(stage: ExactQueryStage): List<PipelineTask> =
         is ExactQueryStage.Concat -> listOf(PipelineTask.Feed(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Set -> listOf(PipelineTask.FlushSet(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Distinct -> listOf(PipelineTask.FlushDistinct(stage)) + boundaryTasks(stage.next)
+        is ExactQueryStage.Bind -> listOf(PipelineTask.FlushBind(stage)) + boundaryTasks(stage.next)
+        is ExactQueryStage.Join -> listOf(PipelineTask.JoinEvidence(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Where -> boundaryTasks(stage.next)
         is ExactQueryStage.Related -> boundaryTasks(stage.next)
         is ExactQueryStage.Walk -> boundaryTasks(stage.next)
@@ -200,6 +239,26 @@ internal fun AdmittedQueryPlan.retainedInputs(): List<QueryRetainedResult> {
     return source + stage.retainedInputs()
 }
 
+internal fun AdmittedQueryPlan.outputSyntax(): QueryOutputSyntax =
+    when (this) {
+        is AdmittedQueryPlan.Symbols -> stage.outputSyntax()
+        is AdmittedQueryPlan.ExactReferences -> stage.outputSyntax()
+        is AdmittedQueryPlan.Retained -> stage.outputSyntax()
+    }
+
+private fun ExactQueryStage.outputSyntax(): QueryOutputSyntax =
+    when (this) {
+        is ExactQueryStage.Concat -> next.outputSyntax()
+        is ExactQueryStage.Set -> next.outputSyntax()
+        is ExactQueryStage.Distinct -> next.outputSyntax()
+        is ExactQueryStage.Bind -> next.outputSyntax()
+        is ExactQueryStage.Join -> next.outputSyntax()
+        is ExactQueryStage.Where -> next.outputSyntax()
+        is ExactQueryStage.Related -> next.outputSyntax()
+        is ExactQueryStage.Walk -> next.outputSyntax()
+        is ExactQueryStage.Emit -> output
+    }
+
 internal fun AdmittedQueryPlan.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
     when (this) {
         is AdmittedQueryPlan.Symbols -> stage.exceedsTraversalDepth(ceiling)
@@ -213,6 +272,8 @@ private fun ExactQueryStage.exceedsTraversalDepth(ceiling: TraversalDepthLimit):
         is ExactQueryStage.Concat -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Set -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Distinct -> next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Bind -> next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Join -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Where -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Related -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Emit -> false
@@ -224,6 +285,9 @@ private fun ExactQueryStage.retainedInputs(): List<QueryRetainedResult> =
             (input as? QueryCompositionInput.Retained)?.result?.let { listOf(it) }.orEmpty() + next.retainedInputs()
         is ExactQueryStage.Set -> listOf(right) + next.retainedInputs()
         is ExactQueryStage.Distinct -> next.retainedInputs()
+        is ExactQueryStage.Bind -> next.retainedInputs()
+        is ExactQueryStage.Join ->
+            (right as? QueryJoinInput.Retained)?.result?.let { listOf(it) }.orEmpty() + next.retainedInputs()
         is ExactQueryStage.Where -> next.retainedInputs()
         is ExactQueryStage.Related -> next.retainedInputs()
         is ExactQueryStage.Walk -> next.retainedInputs()

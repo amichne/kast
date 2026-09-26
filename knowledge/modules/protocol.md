@@ -103,6 +103,10 @@ retain subject, relation kind, provider reason, measurement, samples, and finite
 remediation. Traversal may embed a relation-domain continuation while one node's
 relation read remains unfinished; it does not expose a standalone relation route.
 
+Query binding rows retain two named exact-symbol cells and proven occurrence
+facts. The wire decoder rejects pairs with different canonical symbol IDs or
+occurrence facts absent from a cell's established relation connections.
+
 `ReadRecoveryAction` derives the rejected read's direction exhaustively from the
 canonical failure, including its admitted wrapper. Wire round trips preserve the
 reason and budget, then CLI projection derives the same action. Installed schemas

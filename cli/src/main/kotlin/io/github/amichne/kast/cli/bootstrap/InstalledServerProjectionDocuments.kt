@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -341,6 +342,7 @@ private fun queryQualificationSchema(): JsonObject =
                         "relation-incomplete",
                         "traversal-incomplete",
                         "row-selection-incomplete",
+                        "join-input-incomplete",
                     ),
                     "Every aggregate query limitation.",
                 )
@@ -349,7 +351,29 @@ private fun queryQualificationSchema(): JsonObject =
     )
 
 private fun queryResultItemSchema(): JsonObject =
-    unionSchema(queryExactSymbolItemSchema(), queryOccurrenceItemSchema(), queryTraversalRecordItemSchema())
+    unionSchema(
+        queryExactSymbolItemSchema(),
+        queryOccurrenceItemSchema(),
+        queryTraversalRecordItemSchema(),
+        queryBindingRowItemSchema(),
+    )
+
+/** Select the typed joined-row variant; the sealed serializer supplies its required discriminator. */
+private fun queryBindingRowItemSchema(): JsonObject =
+    generatedRequestSchema(io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.itemSerializer)
+        .getValue("anyOf")
+        .jsonArray
+        .map { it.jsonObject }
+        .single { item ->
+            item
+                .getValue("properties")
+                .jsonObject
+                .getValue("type")
+                .jsonObject
+                .getValue("const")
+                .jsonPrimitive
+                .content == "binding_row"
+        }
 
 private fun queryExactSymbolItemSchema(): JsonObject =
     objectSchema(
@@ -629,21 +653,9 @@ private fun queryRejectionSchema(): JsonObject =
             ServerSchemaProperty(
                 "reason",
                 enumSchema(
-                    listOf(
-                        "continuation-unavailable",
-                        "continuation-mismatch",
-                        "result-unavailable",
-                        "result-stale-basis",
-                        "result-row-unavailable",
-                        "result-cursor-out-of-range",
-                        "result-field-unavailable",
-                        "right-input-incomplete",
-                        "request-rejected",
-                        "discovery-rejected",
-                        "reference-stale",
-                        "budget-rejected",
-                        "internal-contract-violation",
-                    ),
+                    io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument.entries.map {
+                        it.cliName()
+                    },
                     "Closed execution rejection reason.",
                 ),
             ),

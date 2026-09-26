@@ -9,6 +9,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -69,7 +70,15 @@ internal class HostedQueryContinuations : Disposable {
                         is QueryRunRequest.Run -> request.copy(executionBudget = null)
                         is QueryRunRequest.Resume -> request.copy(executionBudget = null)
                         is QueryRunRequest.ReadResult ->
-                            QueryRunRequest.ReadResult.symbols(request.result, request.cursor, request.symbolOutput)
+                            when (val output = request.output) {
+                                is QueryOutputDocument.Symbols ->
+                                    QueryRunRequest.ReadResult.symbols(request.result, request.cursor, output)
+                                QueryOutputDocument.BindingRows ->
+                                    QueryRunRequest.ReadResult.bindingRows(request.result, request.cursor)
+                                QueryOutputDocument.Occurrences,
+                                QueryOutputDocument.TraversalRecords ->
+                                    error("An admitted retained-result request has a closed output kind")
+                            }
                     }
                 },
                 unavailable =

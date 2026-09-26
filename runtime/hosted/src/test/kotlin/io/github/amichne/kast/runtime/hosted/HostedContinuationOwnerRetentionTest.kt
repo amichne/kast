@@ -26,6 +26,7 @@ import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.QueryCheckpointIssuance
@@ -126,7 +127,7 @@ class HostedContinuationOwnerRetentionTest {
                             override val retainedBytes = 1024L
                         }
                     QueryExecutionResult.Complete(
-                        QueryResult(emptyList(), emptyList()),
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).value()),
                     )
                 },
