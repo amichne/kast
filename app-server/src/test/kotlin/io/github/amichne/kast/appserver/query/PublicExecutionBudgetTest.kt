@@ -157,7 +157,7 @@ class PublicExecutionBudgetTest {
 
 @Serializable
 private data class InvalidRunQuery<T>(
-    val action: String = "run",
+    val type: String = "RUN",
     val source: PublicToolReferenceSource,
     @kotlinx.serialization.SerialName("execution_budget") val executionBudget: InvalidBudget<T>,
     val steps: String? = null,

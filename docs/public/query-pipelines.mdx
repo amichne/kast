@@ -5,15 +5,15 @@ icon: "workflow"
 ---
 
 `query_symbols` starts from a typed source and applies `steps` from left
-to right. Use `{"type":"at_location","file":"src/main/kotlin/Subject.kt","offset":42}` to find the nearest named declaration containing that UTF-16 file offset. The result is an exact symbol, not a definition followed from a reference. Use [the first query](/search) to obtain an exact `ref`.
+to right. Use `{"type":"AT_LOCATION","file":"src/main/kotlin/Subject.kt","offset":42}` to find the nearest named declaration containing that UTF-16 file offset. The result is an exact symbol, not a definition followed from a reference. Use [the first query](/search) to obtain an exact `ref`.
 
 ```json
 {
   "request": {
-    "action": "run",
-    "source": {"type": "symbol_refs", "symbol_refs": ["<returned ref>"]},
-    "steps": [{"type": "expand_relation", "relation": "references"}],
-    "output": {"type": "occurrences"}
+    "type": "RUN",
+    "source": {"type": "SYMBOL_REFS", "symbol_refs": ["<returned ref>"]},
+    "steps": [{"type": "EXPAND_RELATION", "relation": "REFERENCES"}],
+    "output": {"type": "OCCURRENCES"}
   }
 }
 ```
@@ -23,7 +23,7 @@ An empty answer is meaningful only when the returned coverage is complete.
 
 An inner `join` yields named binding rows. Retain the result, preview it with
 `read_result`, and select issued `row_ids` in a later run. Add
-`{"type":"project_binding","name":"caller"}` before `distinct_symbols` or
+`{"type":"PROJECT_BINDING","name":"caller"}` before `distinct_symbols` or
 `walk` to continue from that exact cell while preserving the result's coverage.
 
 The generated **Query symbols** entry in the API / RPC tab lists every source,

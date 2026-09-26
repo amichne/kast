@@ -1,27 +1,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "defaults": {
-    "name_match": "exact",
+    "name_match": "EXACT",
     "source_set_names": [
       "main",
       "test"
     ],
     "declaration_kinds": [
-      "class",
-      "function",
-      "property",
-      "type_alias"
+      "CLASS",
+      "FUNCTION",
+      "PROPERTY",
+      "TYPE_ALIAS"
     ],
     "max_diagnostics": 100,
     "steps": [],
     "output": {
-      "type": "symbols",
+      "type": "SYMBOLS",
       "fields": [
-        "name",
-        "location"
+        "NAME",
+        "LOCATION"
       ]
     },
     "scope": {
+      "type": "DIRECTORY",
       "relative_directory_path": ".",
       "include_subdirectories": true,
       "source_set_names": [
@@ -34,6 +35,13 @@
     "DirectoryScope": {
       "type": "object",
       "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DIRECTORY"
+          ],
+          "default": "DIRECTORY"
+        },
         "relative_directory_path": {
           "type": "string",
           "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission.",
@@ -63,6 +71,7 @@
         }
       },
       "required": [
+        "type",
         "relative_directory_path"
       ],
       "additionalProperties": false
@@ -70,6 +79,13 @@
     "PackageScope": {
       "type": "object",
       "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PACKAGE"
+          ],
+          "default": "PACKAGE"
+        },
         "package_name": {
           "type": "string",
           "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar.",
@@ -99,6 +115,7 @@
         }
       },
       "required": [
+        "type",
         "package_name"
       ],
       "additionalProperties": false
@@ -109,8 +126,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "search_declarations"
-          ]
+            "SEARCH_DECLARATIONS"
+          ],
+          "default": "SEARCH_DECLARATIONS"
         },
         "declaration_name": {
           "type": "string",
@@ -124,8 +142,8 @@
             "null"
           ],
           "enum": [
-            "exact",
-            "fuzzy",
+            "EXACT",
+            "FUZZY",
             null
           ],
           "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
@@ -138,10 +156,10 @@
           "items": {
             "type": "string",
             "enum": [
-              "class",
-              "function",
-              "property",
-              "type_alias"
+              "CLASS",
+              "FUNCTION",
+              "PROPERTY",
+              "TYPE_ALIAS"
             ]
           },
           "minItems": 1,
@@ -177,8 +195,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "all_declarations"
-          ]
+            "ALL_DECLARATIONS"
+          ],
+          "default": "ALL_DECLARATIONS"
         },
         "declaration_kinds": {
           "type": [
@@ -188,10 +207,10 @@
           "items": {
             "type": "string",
             "enum": [
-              "class",
-              "function",
-              "property",
-              "type_alias"
+              "CLASS",
+              "FUNCTION",
+              "PROPERTY",
+              "TYPE_ALIAS"
             ]
           },
           "minItems": 1,
@@ -226,8 +245,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "symbol_refs"
-          ]
+            "SYMBOL_REFS"
+          ],
+          "default": "SYMBOL_REFS"
         },
         "symbol_refs": {
           "type": "array",
@@ -265,7 +285,6 @@
           "type": "null"
         }
       ],
-      "x-kotlin-type": "QueryOutputDocument",
       "description": "Omission or null returns symbols with name and location. Choose occurrences, traversal_records, or binding_rows for their typed established evidence."
     },
     "ReadResultOutput": {
@@ -280,7 +299,6 @@
           "type": "null"
         }
       ],
-      "x-kotlin-type": "QueryOutputDocument",
       "description": "Present retained symbols or typed binding rows without rerunning stages. Omission or null selects symbol fields and rejects a retained binding-row result."
     },
     "SymbolsOutput": {
@@ -289,18 +307,19 @@
         "type": {
           "type": "string",
           "enum": [
-            "symbols"
-          ]
+            "SYMBOLS"
+          ],
+          "default": "SYMBOLS"
         },
         "fields": {
           "type": "array",
           "items": {
             "type": "string",
             "enum": [
-              "name",
-              "location",
-              "signature",
-              "source"
+              "NAME",
+              "LOCATION",
+              "SIGNATURE",
+              "SOURCE"
             ]
           },
           "minItems": 0,
@@ -313,8 +332,7 @@
         "type",
         "fields"
       ],
-      "additionalProperties": false,
-      "x-kotlin-type": "QueryOutputDocument.Symbols"
+      "additionalProperties": false
     },
     "OccurrencesOutput": {
       "type": "object",
@@ -322,15 +340,15 @@
         "type": {
           "type": "string",
           "enum": [
-            "occurrences"
-          ]
+            "OCCURRENCES"
+          ],
+          "default": "OCCURRENCES"
         }
       },
       "required": [
         "type"
       ],
-      "additionalProperties": false,
-      "x-kotlin-type": "QueryOutputDocument.Occurrences"
+      "additionalProperties": false
     },
     "TraversalRecordsOutput": {
       "type": "object",
@@ -338,15 +356,15 @@
         "type": {
           "type": "string",
           "enum": [
-            "traversal_records"
-          ]
+            "TRAVERSAL_RECORDS"
+          ],
+          "default": "TRAVERSAL_RECORDS"
         }
       },
       "required": [
         "type"
       ],
       "additionalProperties": false,
-      "x-kotlin-type": "QueryOutputDocument.TraversalRecords",
       "description": "Present each compiler-confirmed walk record with its hop depth and relation fact."
     },
     "Predicate": {
@@ -358,7 +376,6 @@
           "$ref": "#/$defs/PrimitivePredicate"
         }
       ],
-      "x-kotlin-type": "QueryPredicateDocument",
       "description": "A closed predicate over compiler-grounded symbol facts."
     },
     "VisibilityPredicate": {
@@ -367,19 +384,20 @@
         "type": {
           "type": "string",
           "enum": [
-            "visibility"
-          ]
+            "VISIBILITY"
+          ],
+          "default": "VISIBILITY"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string",
             "enum": [
-              "public",
-              "protected",
-              "internal",
-              "private",
-              "local"
+              "PUBLIC",
+              "PROTECTED",
+              "INTERNAL",
+              "PRIVATE",
+              "LOCAL"
             ]
           },
           "minItems": 1,
@@ -392,8 +410,7 @@
         "type",
         "values"
       ],
-      "additionalProperties": false,
-      "x-kotlin-type": "QueryPredicateDocument.Visibility"
+      "additionalProperties": false
     },
     "PrimitivePredicate": {
       "type": "object",
@@ -401,25 +418,26 @@
         "type": {
           "type": "string",
           "enum": [
-            "primitive"
-          ]
+            "PRIMITIVE"
+          ],
+          "default": "PRIMITIVE"
         },
         "field": {
           "type": "string",
           "enum": [
-            "name",
-            "kind",
-            "file"
+            "NAME",
+            "KIND",
+            "FILE"
           ],
           "description": "Compiler-grounded name, declaration kind, or stable file identity."
         },
         "operator": {
           "type": "string",
           "enum": [
-            "equals",
-            "not_equals",
-            "starts_with",
-            "ends_with"
+            "EQUALS",
+            "NOT_EQUALS",
+            "STARTS_WITH",
+            "ENDS_WITH"
           ]
         },
         "value": {
@@ -436,8 +454,7 @@
         "operator",
         "value"
       ],
-      "additionalProperties": false,
-      "x-kotlin-type": "QueryPredicateDocument.Primitive"
+      "additionalProperties": false
     },
     "Where": {
       "type": "object",
@@ -445,8 +462,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "where"
-          ]
+            "WHERE"
+          ],
+          "default": "WHERE"
         },
         "predicate": {
           "$ref": "#/$defs/Predicate"
@@ -465,19 +483,20 @@
         "type": {
           "type": "string",
           "enum": [
-            "expand_relation"
-          ]
+            "EXPAND_RELATION"
+          ],
+          "default": "EXPAND_RELATION"
         },
         "relation": {
           "type": "string",
           "enum": [
-            "references",
-            "callers",
-            "callees",
-            "implementations",
-            "inheritors",
-            "overrides",
-            "type_uses"
+            "REFERENCES",
+            "CALLERS",
+            "CALLEES",
+            "IMPLEMENTATIONS",
+            "INHERITORS",
+            "OVERRIDES",
+            "TYPE_USES"
           ],
           "description": "One semantic hop. callers means declarations calling the current symbols; callees means declarations called by them. Choose output type occurrences to return individual relation facts, including repeated use sites."
         }
@@ -507,7 +526,6 @@
           "type": "null"
         }
       ],
-      "x-kotlin-type": "TraversalStrategyDocument",
       "description": "Omission or null uses breadth-first exploration. Bounded fan-out keeps representative deeper paths and qualifies truncated coverage."
     },
     "BreadthFirstStrategy": {
@@ -516,15 +534,15 @@
         "type": {
           "type": "string",
           "enum": [
-            "breadth_first"
-          ]
+            "BREADTH_FIRST"
+          ],
+          "default": "BREADTH_FIRST"
         }
       },
       "required": [
         "type"
       ],
-      "additionalProperties": false,
-      "x-kotlin-type": "TraversalStrategyDocument.BreadthFirst"
+      "additionalProperties": false
     },
     "BoundedFanOutStrategy": {
       "type": "object",
@@ -532,8 +550,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "bounded_fan_out"
-          ]
+            "BOUNDED_FAN_OUT"
+          ],
+          "default": "BOUNDED_FAN_OUT"
         },
         "maximumEdgesPerNode": {
           "type": "integer",
@@ -545,8 +564,7 @@
         "type",
         "maximumEdgesPerNode"
       ],
-      "additionalProperties": false,
-      "x-kotlin-type": "TraversalStrategyDocument.BoundedFanOut"
+      "additionalProperties": false
     },
     "Walk": {
       "type": "object",
@@ -554,19 +572,20 @@
         "type": {
           "type": "string",
           "enum": [
-            "walk"
-          ]
+            "WALK"
+          ],
+          "default": "WALK"
         },
         "relation": {
           "type": "string",
           "enum": [
-            "references",
-            "callers",
-            "callees",
-            "implementations",
-            "inheritors",
-            "overrides",
-            "type_uses"
+            "REFERENCES",
+            "CALLERS",
+            "CALLEES",
+            "IMPLEMENTATIONS",
+            "INHERITORS",
+            "OVERRIDES",
+            "TYPE_USES"
           ]
         },
         "maximum_depth": {
@@ -590,8 +609,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "distinct_symbols"
-          ]
+            "DISTINCT_SYMBOLS"
+          ],
+          "default": "DISTINCT_SYMBOLS"
         }
       },
       "required": [
@@ -606,8 +626,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "project_binding"
-          ]
+            "PROJECT_BINDING"
+          ],
+          "default": "PROJECT_BINDING"
         },
         "name": {
           "$ref": "#/$defs/BindingName"
@@ -670,8 +691,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "concat"
-          ]
+            "CONCAT"
+          ],
+          "default": "CONCAT"
         },
         "input": {
           "anyOf": [
@@ -698,8 +720,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "intersect"
-          ]
+            "INTERSECT"
+          ],
+          "default": "INTERSECT"
         },
         "right": {
           "anyOf": [
@@ -722,8 +745,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "union"
-          ]
+            "UNION"
+          ],
+          "default": "UNION"
         },
         "right": {
           "anyOf": [
@@ -746,8 +770,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "difference"
-          ]
+            "DIFFERENCE"
+          ],
+          "default": "DIFFERENCE"
         },
         "right": {
           "anyOf": [
@@ -796,8 +821,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "result"
-          ]
+            "RESULT"
+          ],
+          "default": "RESULT"
         },
         "result": {
           "$ref": "#/$defs/ResultReference"
@@ -826,11 +852,12 @@
     "RunAction": {
       "type": "object",
       "properties": {
-        "action": {
+        "type": {
           "type": "string",
           "enum": [
-            "run"
-          ]
+            "RUN"
+          ],
+          "default": "RUN"
         },
         "source": {
           "anyOf": [
@@ -904,8 +931,8 @@
             "null"
           ],
           "enum": [
-            "discard",
-            "retain",
+            "DISCARD",
+            "RETAIN",
             null
           ],
           "description": "Omission or null discards the completed result after returning it. retain publishes an immutable bounded same-basis result reference; publication failure is reported without erasing the query result."
@@ -915,7 +942,7 @@
         }
       },
       "required": [
-        "action",
+        "type",
         "source",
         "steps"
       ],
@@ -925,11 +952,12 @@
     "ResumeAction": {
       "type": "object",
       "properties": {
-        "action": {
+        "type": {
           "type": "string",
           "enum": [
-            "resume"
-          ]
+            "RESUME"
+          ],
+          "default": "RESUME"
         },
         "continuation": {
           "$ref": "#/$defs/ExecutionContinuation"
@@ -939,7 +967,7 @@
         }
       },
       "required": [
-        "action",
+        "type",
         "continuation"
       ],
       "additionalProperties": false,
@@ -948,11 +976,12 @@
     "ReadResultAction": {
       "type": "object",
       "properties": {
-        "action": {
+        "type": {
           "type": "string",
           "enum": [
-            "read_result"
-          ]
+            "READ_RESULT"
+          ],
+          "default": "READ_RESULT"
         },
         "result": {
           "$ref": "#/$defs/ResultReference"
@@ -968,7 +997,7 @@
         }
       },
       "required": [
-        "action",
+        "type",
         "result"
       ],
       "additionalProperties": false,
@@ -996,8 +1025,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "inner"
-          ]
+            "INNER"
+          ],
+          "default": "INNER"
         },
         "left_name": {
           "$ref": "#/$defs/BindingName"
@@ -1020,8 +1050,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "semi"
-          ]
+            "SEMI"
+          ],
+          "default": "SEMI"
         }
       },
       "required": [
@@ -1036,8 +1067,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "anti"
-          ]
+            "ANTI"
+          ],
+          "default": "ANTI"
         }
       },
       "required": [
@@ -1052,8 +1084,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "join"
-          ]
+            "JOIN"
+          ],
+          "default": "JOIN"
         },
         "mode": {
           "anyOf": [
@@ -1091,15 +1124,15 @@
         "type": {
           "type": "string",
           "enum": [
-            "binding_rows"
-          ]
+            "BINDING_ROWS"
+          ],
+          "default": "BINDING_ROWS"
         }
       },
       "required": [
         "type"
       ],
       "additionalProperties": false,
-      "x-kotlin-type": "QueryOutputDocument.BindingRows",
       "description": "Present both named symbol or exact-occurrence bindings in each inner-join pair, preserving multiplicity and evidence."
     },
     "LocationSource": {
@@ -1108,8 +1141,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "at_location"
-          ]
+            "AT_LOCATION"
+          ],
+          "default": "AT_LOCATION"
         },
         "file": {
           "type": "string",

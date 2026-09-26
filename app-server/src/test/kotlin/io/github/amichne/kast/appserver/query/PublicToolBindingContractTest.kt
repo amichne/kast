@@ -43,7 +43,7 @@ class PublicToolBindingContractTest {
         val joined =
             run(
                 listOf(PublicToolJoin(PublicToolInnerJoinMode(name("l"), name("r")), PublicToolResultSource(result))),
-                QueryOutputDocument.BindingRows,
+                PublicToolBindingRowsOutput,
             )
         val admitted = admit(joined) as Refinement.Refined
         val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
@@ -54,7 +54,7 @@ class PublicToolBindingContractTest {
                 .reference,
         )
 
-        val read = PublicToolQuerySymbols(PublicToolReadResultAction(result, output = QueryOutputDocument.BindingRows))
+        val read = PublicToolQuerySymbols(PublicToolReadResultAction(result, output = PublicToolBindingRowsOutput))
         val readRequest =
             ((admit(read) as Refinement.Refined).value.canonical as PublicToolCanonical.Query).request
                 as QueryRunRequest.ReadResult
@@ -89,7 +89,7 @@ class PublicToolBindingContractTest {
         assertEquals(QueryStepDocument.ProjectBinding(name("caller")), request.steps.values.first())
     }
 
-    private fun run(steps: List<PublicToolStep>, output: QueryOutputDocument?): PublicToolQuerySymbols {
+    private fun run(steps: List<PublicToolStep>, output: PublicToolOutput?): PublicToolQuerySymbols {
         val ref = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
         val refs = (BoundedProtocolList.create(listOf(ref)) as Refinement.Refined).value
         val stages = (BoundedProtocolList.create(steps) as Refinement.Refined).value

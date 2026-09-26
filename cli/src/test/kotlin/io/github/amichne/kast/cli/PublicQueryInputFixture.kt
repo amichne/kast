@@ -31,17 +31,17 @@ internal object PublicQueryInputFixture {
         val source: Source,
         val steps: List<Step>?,
         val output: SymbolOutput?,
-        val action: String = "run",
+        val type: String = "RUN",
     )
 
-    @Serializable private data class SymbolOutput(val fields: List<String>, val type: String = "symbols")
+    @Serializable private data class SymbolOutput(val fields: List<String>, val type: String = "SYMBOLS")
 
     @Serializable private data class Step(val type: String)
 
     @Serializable
     private sealed interface Source {
         @Serializable
-        @SerialName("search_declarations")
+        @SerialName("SEARCH_DECLARATIONS")
         data class Search(
             @SerialName("declaration_name") val name: String,
             @SerialName("name_match") val matching: String? = null,
@@ -50,14 +50,14 @@ internal object PublicQueryInputFixture {
         ) : Source
 
         @Serializable
-        @SerialName("all_declarations")
+        @SerialName("ALL_DECLARATIONS")
         data class All(
             @SerialName("declaration_kinds") val kinds: List<String>? = null,
             val scope: String? = null,
         ) : Source
 
         @Serializable
-        @SerialName("symbol_refs")
+        @SerialName("SYMBOL_REFS")
         data class References(@SerialName("symbol_refs") val values: List<String>) : Source
     }
 }

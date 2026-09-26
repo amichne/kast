@@ -45,7 +45,7 @@ private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, Publ
                             QueryRunRequest.Run(
                                 from = from.value,
                                 steps = bounded(loweredSteps.value),
-                                output = output ?: PublicToolDefaults.output,
+                                output = output?.lower() ?: PublicToolDefaults.output,
                                 execution =
                                     QueryExecutionDocument(
                                         QueryExecutionKindDocument.EXHAUSTIVE,
@@ -65,7 +65,7 @@ private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, Publ
     }
 
 private fun PublicToolReadResultAction.lowerReadResult(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
-    when (val selected = output ?: PublicToolDefaults.output) {
+    when (val selected = output?.lower() ?: PublicToolDefaults.output) {
         is QueryOutputDocument.Symbols ->
             Refinement.Refined(
                 PublicToolCanonical.Query(
@@ -253,14 +253,14 @@ private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, Pu
 
 private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInputFailure> =
     when (this) {
-        is PublicToolWhere -> Refinement.Refined(QueryStepDocument.Where(predicate))
+        is PublicToolWhere -> Refinement.Refined(QueryStepDocument.Where(predicate.lower()))
         is PublicToolExpandRelation -> Refinement.Refined(QueryStepDocument.Related(relation.lower()))
         is PublicToolWalk ->
             Refinement.Refined(
                 QueryStepDocument.Walk(
                     relation.lower(),
                     maximumDepth,
-                    strategy ?: TraversalStrategyDocument.BreadthFirst,
+                    strategy?.lower() ?: TraversalStrategyDocument.BreadthFirst,
                 )
             )
         PublicToolDistinctSymbols -> Refinement.Refined(QueryStepDocument.Distinct)
@@ -270,6 +270,74 @@ private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInpu
         is PublicToolIntersect -> Refinement.Refined(QueryStepDocument.Intersect(right.lowerResult()))
         is PublicToolUnion -> Refinement.Refined(QueryStepDocument.Union(right.lowerResult()))
         is PublicToolDifference -> Refinement.Refined(QueryStepDocument.Difference(right.lowerResult()))
+    }
+
+private fun PublicToolOutput.lower(): QueryOutputDocument =
+    when (this) {
+        is PublicToolSymbolsOutput -> symbolsOutput()
+        PublicToolOccurrencesOutput -> QueryOutputDocument.Occurrences
+        PublicToolTraversalRecordsOutput -> QueryOutputDocument.TraversalRecords
+        PublicToolBindingRowsOutput -> QueryOutputDocument.BindingRows
+    }
+
+private fun PublicToolReadResultOutput.lower(): QueryOutputDocument =
+    when (this) {
+        is PublicToolSymbolsOutput -> symbolsOutput()
+        PublicToolBindingRowsOutput -> QueryOutputDocument.BindingRows
+    }
+
+private fun PublicToolSymbolsOutput.symbolsOutput(): QueryOutputDocument.Symbols =
+    QueryOutputDocument.Symbols(
+        bounded(
+            fields.values.map { field ->
+                when (field) {
+                    PublicToolFields.NAME -> QuerySymbolFieldDocument.NAME
+                    PublicToolFields.LOCATION -> QuerySymbolFieldDocument.LOCATION
+                    PublicToolFields.SIGNATURE -> QuerySymbolFieldDocument.SIGNATURE
+                    PublicToolFields.SOURCE -> QuerySymbolFieldDocument.SOURCE
+                }
+            }
+        )
+    )
+
+private fun PublicToolPredicate.lower(): QueryPredicateDocument =
+    when (this) {
+        is PublicToolVisibilityPredicate ->
+            QueryPredicateDocument.Visibility(
+                bounded(
+                    values.values.map { value ->
+                        when (value) {
+                            PublicToolValues.PUBLIC -> QueryVisibilityDocument.PUBLIC
+                            PublicToolValues.PROTECTED -> QueryVisibilityDocument.PROTECTED
+                            PublicToolValues.INTERNAL -> QueryVisibilityDocument.INTERNAL
+                            PublicToolValues.PRIVATE -> QueryVisibilityDocument.PRIVATE
+                            PublicToolValues.LOCAL -> QueryVisibilityDocument.LOCAL
+                        }
+                    }
+                )
+            )
+        is PublicToolPrimitivePredicate ->
+            QueryPredicateDocument.Primitive(
+                when (field) {
+                    PublicToolField.NAME -> QueryPrimitiveFieldDocument.NAME
+                    PublicToolField.KIND -> QueryPrimitiveFieldDocument.KIND
+                    PublicToolField.FILE -> QueryPrimitiveFieldDocument.FILE
+                },
+                when (operator) {
+                    PublicToolOperator.EQUALS -> QueryPrimitiveOperatorDocument.EQUALS
+                    PublicToolOperator.NOT_EQUALS -> QueryPrimitiveOperatorDocument.NOT_EQUALS
+                    PublicToolOperator.STARTS_WITH -> QueryPrimitiveOperatorDocument.STARTS_WITH
+                    PublicToolOperator.ENDS_WITH -> QueryPrimitiveOperatorDocument.ENDS_WITH
+                },
+                value,
+            )
+    }
+
+private fun PublicToolWalkStrategy.lower(): TraversalStrategyDocument =
+    when (this) {
+        PublicToolBreadthFirstStrategy -> TraversalStrategyDocument.BreadthFirst
+        is PublicToolBoundedFanOutStrategy ->
+            TraversalStrategyDocument.BoundedFanOut(proven(ProtocolCount.parse(maximumEdgesPerNode)))
     }
 
 private fun PublicToolJoinMode.lower(): QueryJoinModeDocument =
