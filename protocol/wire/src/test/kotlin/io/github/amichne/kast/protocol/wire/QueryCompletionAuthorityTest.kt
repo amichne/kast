@@ -1,8 +1,8 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryPreparedCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
@@ -35,15 +35,17 @@ class QueryCompletionAuthorityTest {
 
     @Test
     fun `checkpoint family must match its declared continuation scope`() {
-        fun text(raw: String) = (ProtocolText.parse(raw) as Refinement.Refined).value
         val id = "00000000-0000-0000-0000-000000000001"
-        val invalid =
+        val pipeline = (QueryExecutionContinuation.Pipeline.parse("query:v1:$id") as Refinement.Refined).value
+        val output = (QueryExecutionContinuation.Output.parse("query-output:v1:$id") as Refinement.Refined).value
+        val cases =
             listOf(
-                QueryCheckpointDocument.Upstream(text("query-output:v1:$id")),
-                QueryCheckpointDocument.Upstream(text("query:v1:not-an-issued-identity")),
-                QueryCheckpointDocument.RetainedOutput(text("query:v1:$id"), QueryPreparedCoverageDocument.Complete),
+                QueryCheckpointDocument.Upstream(pipeline) to "query-output:v1:$id",
+                QueryCheckpointDocument.Upstream(pipeline) to "query:v1:not-an-issued-identity",
+                QueryCheckpointDocument.RetainedOutput(output, QueryPreparedCoverageDocument.Complete) to
+                    "query:v1:$id",
             )
-        for (checkpoint in invalid) {
+        for ((checkpoint, invalidToken) in cases) {
             val boundary =
                 QueryRunQualificationWireDocument(
                     0,
@@ -53,10 +55,12 @@ class QueryCompletionAuthorityTest {
                         ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
                     ),
                 )
+            val encoded = json.encodeToString(QueryRunQualificationWireDocument.serializer(), boundary)
+            val malformed = json.parseToJsonElement(encoded.replace(checkpoint.token.value, invalidToken))
             assertInstanceOf(
                 WireDecoding.Rejected::class.java,
                 CanonicalQuerySerializers.qualification.decode(
-                    json.encodeToJsonElement(QueryRunQualificationWireDocument.serializer(), boundary),
+                    malformed,
                     WireValueRole.QUALIFICATION,
                 ),
             )

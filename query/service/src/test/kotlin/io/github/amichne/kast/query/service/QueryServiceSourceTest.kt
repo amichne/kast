@@ -7,7 +7,6 @@ import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
-import io.github.amichne.kast.query.contract.QueryResultSet
 import io.github.amichne.kast.query.contract.QuerySourceFailure
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QuerySymbolField
@@ -89,7 +88,7 @@ class QueryServiceSourceTest {
                 )
             val result = service.run(request(sourcePlan(selected), 8L))
             val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, result)
-            val symbol = (complete.result.items as QueryResultSet.Symbols).values.single()
+            val symbol = complete.result.items.single()
             assertEquals(text, (symbol.source as QuerySymbolSource.Returned).value.text)
             assertEquals(1, reads)
         }
@@ -117,9 +116,7 @@ class QueryServiceSourceTest {
             )
             assertEquals(
                 SourceReadRejection.DOCUMENT_DIRTY,
-                ((qualified.result.items as QueryResultSet.Symbols).values.single().source
-                        as QuerySymbolSource.Rejected)
-                    .reason,
+                (qualified.result.items.single().source as QuerySymbolSource.Rejected).reason,
             )
         }
     }
@@ -128,7 +125,7 @@ class QueryServiceSourceTest {
         with(fixture) {
             admittedPlan(
                 source = QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                output = QueryOutputSyntax.Symbols(QuerySymbolFields.from(setOf(QuerySymbolField.SOURCE)).refined()),
+                output = QueryOutputSyntax(QuerySymbolFields.from(setOf(QuerySymbolField.SOURCE)).refined()),
             )
         }
 

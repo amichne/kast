@@ -118,10 +118,9 @@ class MintlifyCallableReferenceTest {
         assertEquals("constructor symbol", symbolVariants[1].jsonObject.getValue("title").jsonPrimitive.content)
         val item = components.getValue("query_symbolsResponse_queryResultItem").jsonObject
         assertEquals("queryResultItem", item.getValue("title").jsonPrimitive.content)
-        val variants = item.getValue("anyOf").jsonArray
         assertEquals(
-            listOf("candidate", "exact-symbol"),
-            variants.map { it.jsonObject.getValue("title").jsonPrimitive.content },
+            "exact-symbol",
+            item.getValue("properties").jsonObject.getValue("type").jsonObject.getValue("const").jsonPrimitive.content,
         )
         components.values
             .flatMap { it.localReferences() }

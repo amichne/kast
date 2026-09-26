@@ -10,7 +10,8 @@ code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
 ---
 
-A query item is either a discovered **candidate** or an **exact symbol**.
+A `query_symbols` item is an **exact symbol**. Candidate discovery remains a
+separate `symbol_lookup` capability.
 
 Read `type` before every other field.
 
@@ -31,8 +32,8 @@ The original optional fields remain present when their projection is `null`. `so
 
 - `null` does not mean an empty name or signature.
 - `null` does not weaken the exact identity.
-- `return_fields: []` requests only mandatory identity and kind values.
-- `return_fields: ["source"]` requests the fixed source window; a rejected or withheld window appears as a per-item source failure with `SOURCE_INCOMPLETE` coverage.
+- `request.return_fields: []` requests only mandatory identity and kind values.
+- `request.return_fields: ["source"]` requests the fixed source window; a rejected or withheld window appears as a per-item source failure with `SOURCE_INCOMPLETE` coverage.
 
 [Open the complete query-item model](/reference/models/query-item).
 
@@ -95,7 +96,7 @@ Neither a rendered type nor a qualified name can replace `ref`.
 
 Reuse rules:
 
-- Copy `ref` unchanged into the `symbol_refs` source of `query_symbols`.
+- Copy `ref` unchanged into `query_symbols.request.source` with `type: "symbol_refs"`.
 - Keep overloads separate even when their names and files match.
 - Expect re-admission against workspace, owner lifetime, epoch, and scope.
 - Repeat discovery after saved-source or imported-model changes.
@@ -124,7 +125,7 @@ An exact location also contains a half-open `range`.
 - `startInclusive` belongs to the range.
 - `endExclusive` does not belong to the range.
 - The values are source offsets, not line numbers.
-- A candidate has one `offset` instead of an exact range.
+- A separately returned `symbol_lookup` candidate has one `offset` instead of an exact range.
 - Use locations only with the corresponding source state.
 
 An `expand_relation` step returns related **declarations**.
@@ -136,8 +137,8 @@ Use `read_relations` for occurrence-oriented facts and inspect the tagged
 
 Preserve relation kind, endpoints, use-site location, and unavailable evidence.
 
-<Accordion title="Candidate results carry weaker evidence">
-  A candidate has:
+<Accordion title="Separate candidate lookup carries weaker evidence">
+  A `symbol_lookup` candidate has:
 
   - `type: "candidate"` and an opaque scalar `ref`
   - `kind: "class"` or `"symbol"`
@@ -145,9 +146,10 @@ Preserve relation kind, endpoints, use-site location, and unavailable evidence.
 
   It lacks a compiler signature and connections.
 
-  Refine it before using an operation that requires exact identity.
+  Refine it with `symbol_inspect` before using an operation that requires exact identity.
 
-  Candidate discovery alone does not establish overload identity.
+  Candidate discovery alone does not establish overload identity. It is not a
+  `query_symbols` output variant.
 </Accordion>
 
 Before judging the whole answer, return to [response outcomes](/reference/responses).

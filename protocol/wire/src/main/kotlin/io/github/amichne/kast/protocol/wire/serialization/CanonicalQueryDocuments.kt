@@ -36,15 +36,6 @@ internal enum class QueryDeclarationKindWireDocument {
 @Serializable
 internal sealed interface QueryResultItemWireDocument {
     @Serializable
-    @SerialName("candidate")
-    data class Candidate(
-        val ref: QueryReferenceWireDocument.DeclarationCandidate,
-        val kind: SymbolCategoryWireDocument,
-        val name: String?,
-        val location: QueryCandidateLocationWireDocument?,
-    ) : QueryResultItemWireDocument
-
-    @Serializable
     @SerialName("exact-symbol")
     data class ExactSymbol(
         val ref: QueryReferenceWireDocument.ExactSymbol,
@@ -58,8 +49,6 @@ internal sealed interface QueryResultItemWireDocument {
         val source: QuerySourceWindowWireDocument? = null,
     ) : QueryResultItemWireDocument
 }
-
-@Serializable internal data class QueryCandidateLocationWireDocument(val file: String, val offset: Int)
 
 @Serializable internal data class QueryExactLocationWireDocument(val file: String, val range: SourceRangeWireDocument)
 
@@ -122,15 +111,6 @@ internal sealed interface QueryRunRejectionWireDocument {
     @Serializable @SerialName("workspace-not-ready") data object WorkspaceNotReady : QueryRunRejectionWireDocument
 
     @Serializable
-    @SerialName("plan-rejected")
-    data class PlanRejected(
-        val position: Int,
-        val required: QueryElementTypeWireDocument,
-        val actual: QueryElementTypeWireDocument,
-        val correction: QueryAdmissionCorrectionWireDocument,
-    ) : QueryRunRejectionWireDocument
-
-    @Serializable
     @SerialName("reference-rejected")
     data class ReferenceRejected(
         val position: Int,
@@ -155,19 +135,6 @@ internal sealed interface QueryRunRejectionWireDocument {
     @Serializable
     @SerialName("execution-rejected")
     data class ExecutionRejected(val reason: QueryExecutionRejectionWireDocument) : QueryRunRejectionWireDocument
-}
-
-@Serializable
-internal enum class QueryElementTypeWireDocument {
-    @SerialName("declaration-candidate") DECLARATION_CANDIDATE,
-    @SerialName("exact-symbol") EXACT_SYMBOL,
-}
-
-@Serializable
-internal enum class QueryAdmissionCorrectionWireDocument {
-    @SerialName("insert-inspect") INSERT_INSPECT,
-    @SerialName("remove-inspect") REMOVE_INSPECT,
-    @SerialName("select-symbol-output") SELECT_SYMBOL_OUTPUT,
 }
 
 @Serializable
@@ -204,18 +171,12 @@ private fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
         is QueryReferenceDocument.ExactSymbol -> QueryReferenceWireDocument.ExactSymbol(token.value)
     }
 
-private fun QueryReferenceWireDocument.toContract(): WireDocumentConversion<QueryReferenceDocument> =
-    token.protocolText().mapConverted {
-        when (this) {
-            is QueryReferenceWireDocument.DeclarationCandidate -> QueryReferenceDocument.DeclarationCandidate(it)
-            is QueryReferenceWireDocument.ExactSymbol -> QueryReferenceDocument.ExactSymbol(it)
-        }
-    }
-
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
         items = items.values.map(QueryResultItemDocument::toWire),
         failures = failures.values.map(QueryItemFailureDocument::toWire),
+        retention = retention,
+        nextCursor = nextCursor,
         executionBudget = executionBudget,
         referenceAcquisitions = referenceAcquisitions,
     )
@@ -229,6 +190,8 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                         QueryRunResult(
                             items = boundedItems,
                             failures = boundedFailures,
+                            retention = retention,
+                            nextCursor = nextCursor,
                             executionBudget = executionBudget,
                             referenceAcquisitions = referenceAcquisitions,
                         )
@@ -240,13 +203,6 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
 
 private fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
     when (this) {
-        is QueryResultItemDocument.Candidate ->
-            QueryResultItemWireDocument.Candidate(
-                ref.toWire() as QueryReferenceWireDocument.DeclarationCandidate,
-                kind.toWireDocument(),
-                name?.value,
-                location?.let { QueryCandidateLocationWireDocument(it.file.value, it.offset.value) },
-            )
         is QueryResultItemDocument.ExactSymbol ->
             QueryResultItemWireDocument.ExactSymbol(
                 ref.toWire() as QueryReferenceWireDocument.ExactSymbol,
@@ -267,19 +223,6 @@ private fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
 
 private fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<QueryResultItemDocument> =
     when (this) {
-        is QueryResultItemWireDocument.Candidate ->
-            ref.token.protocolText().flatMapConverted { token ->
-                optionalText(name).flatMapConverted { projectedName ->
-                    location.toContract().mapConverted { projectedLocation ->
-                        QueryResultItemDocument.Candidate(
-                            QueryReferenceDocument.DeclarationCandidate(token),
-                            kind.toDiscoveryKind(),
-                            projectedName,
-                            projectedLocation,
-                        )
-                    }
-                }
-            }
         is QueryResultItemWireDocument.ExactSymbol ->
             ref.token.protocolText().flatMapConverted { token ->
                 optionalText(name).flatMapConverted { projectedName ->
@@ -310,15 +253,6 @@ private fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<Que
                 }
             }
     }
-
-private fun QueryCandidateLocationWireDocument?.toContract(): WireDocumentConversion<QueryCandidateLocationDocument?> =
-    if (this == null) WireDocumentConversion.Converted(null)
-    else
-        combineConverted(
-            file.protocolText(),
-            offset.protocolOffset(),
-            ::QueryCandidateLocationDocument,
-        )
 
 private fun QueryExactLocationWireDocument?.toContract(): WireDocumentConversion<QueryExactLocationDocument?> =
     if (this == null) WireDocumentConversion.Converted(null)
@@ -423,13 +357,6 @@ private fun QueryRunQualificationWireDocument.toContract(): WireDocumentConversi
 private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocument =
     when (this) {
         QueryRunRejection.WorkspaceNotReady -> QueryRunRejectionWireDocument.WorkspaceNotReady
-        is QueryRunRejection.PlanRejected ->
-            QueryRunRejectionWireDocument.PlanRejected(
-                position.value,
-                required.toWire(),
-                actual.toWire(),
-                correction.toWire(),
-            )
         is QueryRunRejection.ReferenceRejected ->
             QueryRunRejectionWireDocument.ReferenceRejected(
                 position.value,
@@ -454,10 +381,6 @@ private fun QueryRunRejectionWireDocument.toContract(): WireDocumentConversion<Q
     when (this) {
         QueryRunRejectionWireDocument.WorkspaceNotReady ->
             WireDocumentConversion.Converted(QueryRunRejection.WorkspaceNotReady)
-        is QueryRunRejectionWireDocument.PlanRejected ->
-            position.protocolOffset().mapConverted {
-                QueryRunRejection.PlanRejected(it, required.toContract(), actual.toContract(), correction.toContract())
-            }
         is QueryRunRejectionWireDocument.ReferenceRejected ->
             position.protocolOffset().mapConverted {
                 QueryRunRejection.ReferenceRejected(it, reason.toContract())
@@ -488,14 +411,6 @@ private fun QueryDeclarationKindWireDocument.toContract() = QueryDeclarationKind
 private fun QueryLimitationDocument.toWire() = QueryLimitationWireDocument.valueOf(name)
 
 private fun QueryLimitationWireDocument.toContract() = QueryLimitationDocument.valueOf(name)
-
-private fun QueryElementTypeDocument.toWire() = QueryElementTypeWireDocument.valueOf(name)
-
-private fun QueryElementTypeWireDocument.toContract() = QueryElementTypeDocument.valueOf(name)
-
-private fun QueryAdmissionCorrectionDocument.toWire() = QueryAdmissionCorrectionWireDocument.valueOf(name)
-
-private fun QueryAdmissionCorrectionWireDocument.toContract() = QueryAdmissionCorrectionDocument.valueOf(name)
 
 private fun QueryReferenceRejectionReason.toWire() = QueryReferenceRejectionReasonWireDocument.valueOf(name)
 

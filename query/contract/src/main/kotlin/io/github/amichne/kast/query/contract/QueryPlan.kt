@@ -3,23 +3,7 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-
-enum class QueryCandidateField {
-    NAME,
-    LOCATION,
-}
-
-/** Optional presentation fields. The proof-carrying ref is always emitted independently. */
-class QueryCandidateFields private constructor(val values: List<QueryCandidateField>) {
-    companion object {
-        fun from(raw: Set<QueryCandidateField>): Refinement<QueryCandidateFields, QueryCollectionFailure> =
-            Refinement.Refined(QueryCandidateFields(raw.sortedBy { it.ordinal }))
-    }
-
-    override fun equals(other: Any?): Boolean = other is QueryCandidateFields && values == other.values
-
-    override fun hashCode(): Int = values.hashCode()
-}
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 enum class QuerySymbolField {
     NAME,
@@ -40,11 +24,7 @@ class QuerySymbolFields private constructor(val values: List<QuerySymbolField>) 
     override fun hashCode(): Int = values.hashCode()
 }
 
-sealed interface QueryOutputSyntax {
-    data class Candidates(val fields: QueryCandidateFields) : QueryOutputSyntax
-
-    data class Symbols(val fields: QuerySymbolFields) : QueryOutputSyntax
-}
+data class QueryOutputSyntax(val fields: QuerySymbolFields)
 
 data class QueryPlanSyntax(
     val source: QuerySourceSyntax,
@@ -52,57 +32,8 @@ data class QueryPlanSyntax(
     val output: QueryOutputSyntax,
 )
 
-enum class QueryElementType {
-    DECLARATION_CANDIDATE,
-    EXACT_SYMBOL,
-}
-
-enum class QueryAdmissionCorrection {
-    INSERT_INSPECT,
-    REMOVE_INSPECT,
-    SELECT_SYMBOL_OUTPUT,
-}
-
-enum class QueryStagePositionFailure {
-    NEGATIVE
-}
-
-@JvmInline
-value class QueryStagePosition private constructor(val value: Int) {
-    companion object {
-        fun parse(raw: Int): Refinement<QueryStagePosition, QueryStagePositionFailure> =
-            if (raw < 0) {
-                Refinement.Rejected(QueryStagePositionFailure.NEGATIVE)
-            } else {
-                Refinement.Refined(QueryStagePosition(raw))
-            }
-    }
-}
-
 sealed interface QueryPlanAdmissionFailure {
     data class UnsupportedDeclarationKind(val kind: CompilerSymbolKind) : QueryPlanAdmissionFailure
-
-    data class StageTypeMismatch(
-        val position: QueryStagePosition,
-        val required: QueryElementType,
-        val actual: QueryElementType,
-        val correction: QueryAdmissionCorrection,
-    ) : QueryPlanAdmissionFailure
-
-    data class OutputTypeMismatch(
-        val position: QueryStagePosition,
-        val required: QueryElementType,
-        val actual: QueryElementType,
-        val correction: QueryAdmissionCorrection,
-    ) : QueryPlanAdmissionFailure
-}
-
-sealed interface CandidateQueryStage {
-    data class Distinct(val next: CandidateQueryStage) : CandidateQueryStage
-
-    data class Inspect(val next: ExactQueryStage) : CandidateQueryStage
-
-    data class Emit(val fields: QueryCandidateFields) : CandidateQueryStage
 }
 
 sealed interface ExactQueryStage {
@@ -118,27 +49,21 @@ sealed interface ExactQueryStage {
 }
 
 sealed interface AdmittedQueryPlan {
-    data class Candidates
-    internal constructor(
-        val source: QueryDiscoverySyntax,
-        val stage: CandidateQueryStage,
-    ) : AdmittedQueryPlan
-
     data class Symbols
     internal constructor(
         val source: QueryDiscoverySyntax,
         val stage: ExactQueryStage,
     ) : AdmittedQueryPlan
 
-    data class CandidateReferences
-    internal constructor(
-        val source: QueryCandidateReferences,
-        val stage: CandidateQueryStage,
-    ) : AdmittedQueryPlan
-
     data class ExactReferences
     internal constructor(
         val source: QueryExactReferences,
+        val stage: ExactQueryStage,
+    ) : AdmittedQueryPlan
+
+    data class Retained
+    internal constructor(
+        val source: QueryRetainedResult,
         val stage: ExactQueryStage,
     ) : AdmittedQueryPlan
 }
@@ -149,229 +74,51 @@ sealed interface QueryPlanAdmission {
     data class Rejected(val failure: QueryPlanAdmissionFailure) : QueryPlanAdmission
 }
 
-/** Pure plan compiler; successful values contain only type-compatible stage transitions. */
+/** Pure plan compiler; every admitted stage consumes exact semantic symbols. */
 object QueryPlanCompiler {
     fun admit(syntax: QueryPlanSyntax): QueryPlanAdmission {
-        val discovery =
-            when (val source = syntax.source) {
-                is QuerySourceSyntax.Candidates -> source.discovery
-                is QuerySourceSyntax.Symbols -> source.discovery
-                is QuerySourceSyntax.CandidateReferences,
-                is QuerySourceSyntax.ExactReferences -> null
-            }
-        if (discovery != null && CompilerSymbolKind.CONSTRUCTOR in discovery.declarationKinds.values) {
+        val source = syntax.source
+        if (
+            source is QuerySourceSyntax.Symbols &&
+                CompilerSymbolKind.CONSTRUCTOR in source.discovery.declarationKinds.values
+        ) {
             return QueryPlanAdmission.Rejected(
                 QueryPlanAdmissionFailure.UnsupportedDeclarationKind(CompilerSymbolKind.CONSTRUCTOR)
             )
         }
-        return when (val source = syntax.source) {
-            is QuerySourceSyntax.Candidates ->
-                when (
-                    val stage =
-                        candidateStage(
-                            syntax.steps,
-                            0,
-                            syntax.output,
-                        )
-                ) {
-                    is CandidateStageAdmission.Admitted ->
-                        QueryPlanAdmission.Admitted(AdmittedQueryPlan.Candidates(source.discovery, stage.stage))
-                    is CandidateStageAdmission.Rejected -> QueryPlanAdmission.Rejected(stage.failure)
-                }
-            is QuerySourceSyntax.Symbols ->
-                exactPlan(
-                    source.discovery,
-                    syntax.steps,
-                    syntax.output,
-                )
-            is QuerySourceSyntax.CandidateReferences ->
-                when (val stage = candidateStage(syntax.steps, 0, syntax.output)) {
-                    is CandidateStageAdmission.Admitted ->
-                        QueryPlanAdmission.Admitted(
-                            AdmittedQueryPlan.CandidateReferences(source.references, stage.stage)
-                        )
-                    is CandidateStageAdmission.Rejected -> QueryPlanAdmission.Rejected(stage.failure)
-                }
-            is QuerySourceSyntax.ExactReferences ->
-                when (val stage = exactStage(syntax.steps, 0, syntax.output)) {
-                    is ExactStageAdmission.Admitted ->
-                        QueryPlanAdmission.Admitted(AdmittedQueryPlan.ExactReferences(source.references, stage.stage))
-                    is ExactStageAdmission.Rejected -> QueryPlanAdmission.Rejected(stage.failure)
-                }
-        }
+        val stage = exactStage(syntax.steps, syntax.output.fields)
+        val plan =
+            when (source) {
+                is QuerySourceSyntax.Symbols -> AdmittedQueryPlan.Symbols(source.discovery, stage)
+                is QuerySourceSyntax.ExactReferences -> AdmittedQueryPlan.ExactReferences(source.references, stage)
+                is QuerySourceSyntax.Retained -> AdmittedQueryPlan.Retained(source.result, stage)
+            }
+        return QueryPlanAdmission.Admitted(plan)
     }
 
-    private fun exactPlan(
-        source: QueryDiscoverySyntax,
-        steps: List<QueryStepSyntax>,
-        output: QueryOutputSyntax,
-    ): QueryPlanAdmission =
-        when (val stage = exactStage(steps, 0, output)) {
-            is ExactStageAdmission.Admitted ->
-                QueryPlanAdmission.Admitted(AdmittedQueryPlan.Symbols(source, stage.stage))
-            is ExactStageAdmission.Rejected -> QueryPlanAdmission.Rejected(stage.failure)
-        }
-
-    private fun candidateStage(
-        steps: List<QueryStepSyntax>,
-        index: Int,
-        output: QueryOutputSyntax,
-    ): CandidateStageAdmission {
-        val step =
-            steps.getOrNull(index)
-                ?: return when (output) {
-                    is QueryOutputSyntax.Candidates ->
-                        CandidateStageAdmission.Admitted(CandidateQueryStage.Emit(output.fields))
-                    is QueryOutputSyntax.Symbols ->
-                        CandidateStageAdmission.Rejected(
-                            QueryPlanAdmissionFailure.OutputTypeMismatch(
-                                position(index),
-                                QueryElementType.EXACT_SYMBOL,
-                                QueryElementType.DECLARATION_CANDIDATE,
-                                QueryAdmissionCorrection.INSERT_INSPECT,
-                            )
-                        )
+    private fun exactStage(steps: List<QueryStepSyntax>, fields: QuerySymbolFields): ExactQueryStage {
+        var stage: ExactQueryStage = ExactQueryStage.Emit(fields)
+        for (step in steps.asReversed()) {
+            stage =
+                when (step) {
+                    QueryStepSyntax.Distinct -> ExactQueryStage.Distinct(stage)
+                    is QueryStepSyntax.Where -> ExactQueryStage.Where(step.predicate, stage)
+                    is QueryStepSyntax.Related -> ExactQueryStage.Related(step.meaning, stage)
+                    is QueryStepSyntax.AppendReferences -> ExactQueryStage.AppendReferences(step.references, stage)
                 }
-        return when (step) {
-            QueryStepSyntax.Distinct ->
-                candidateStage(
-                        steps,
-                        index + 1,
-                        output,
-                    )
-                    .map { CandidateQueryStage.Distinct(it) }
-            QueryStepSyntax.Inspect ->
-                when (val next = exactStage(steps, index + 1, output)) {
-                    is ExactStageAdmission.Admitted ->
-                        CandidateStageAdmission.Admitted(CandidateQueryStage.Inspect(next.stage))
-                    is ExactStageAdmission.Rejected -> CandidateStageAdmission.Rejected(next.failure)
-                }
-            is QueryStepSyntax.Related,
-            is QueryStepSyntax.Where,
-            is QueryStepSyntax.AppendReferences ->
-                CandidateStageAdmission.Rejected(
-                    stageMismatch(
-                        index,
-                        QueryElementType.EXACT_SYMBOL,
-                        QueryElementType.DECLARATION_CANDIDATE,
-                        QueryAdmissionCorrection.INSERT_INSPECT,
-                    )
-                )
         }
+        return stage
     }
-
-    private fun exactStage(
-        steps: List<QueryStepSyntax>,
-        index: Int,
-        output: QueryOutputSyntax,
-    ): ExactStageAdmission {
-        val step =
-            steps.getOrNull(index)
-                ?: return when (output) {
-                    is QueryOutputSyntax.Symbols -> ExactStageAdmission.Admitted(ExactQueryStage.Emit(output.fields))
-                    is QueryOutputSyntax.Candidates ->
-                        ExactStageAdmission.Rejected(
-                            outputMismatch(index, QueryElementType.DECLARATION_CANDIDATE, QueryElementType.EXACT_SYMBOL)
-                        )
-                }
-        return when (step) {
-            QueryStepSyntax.Inspect ->
-                ExactStageAdmission.Rejected(
-                    stageMismatch(
-                        index,
-                        QueryElementType.DECLARATION_CANDIDATE,
-                        QueryElementType.EXACT_SYMBOL,
-                        QueryAdmissionCorrection.REMOVE_INSPECT,
-                    )
-                )
-            QueryStepSyntax.Distinct -> exactStage(steps, index + 1, output).map { ExactQueryStage.Distinct(it) }
-            is QueryStepSyntax.Where ->
-                exactStage(steps, index + 1, output).map { ExactQueryStage.Where(step.predicate, it) }
-            is QueryStepSyntax.Related ->
-                exactStage(steps, index + 1, output).map { ExactQueryStage.Related(step.meaning, it) }
-            is QueryStepSyntax.AppendReferences ->
-                exactStage(steps, index + 1, output).map { ExactQueryStage.AppendReferences(step.references, it) }
-        }
-    }
-
-    private fun stageMismatch(
-        index: Int,
-        required: QueryElementType,
-        actual: QueryElementType,
-        correction: QueryAdmissionCorrection,
-    ): QueryPlanAdmissionFailure.StageTypeMismatch =
-        QueryPlanAdmissionFailure.StageTypeMismatch(
-            position(index),
-            required,
-            actual,
-            correction,
-        )
-
-    private fun outputMismatch(
-        index: Int,
-        required: QueryElementType,
-        actual: QueryElementType,
-    ): QueryPlanAdmissionFailure.OutputTypeMismatch =
-        QueryPlanAdmissionFailure.OutputTypeMismatch(
-            position(index),
-            required,
-            actual,
-            if (required == QueryElementType.EXACT_SYMBOL) QueryAdmissionCorrection.INSERT_INSPECT
-            else QueryAdmissionCorrection.SELECT_SYMBOL_OUTPUT,
-        )
-
-    private fun position(raw: Int): QueryStagePosition =
-        when (val parsed = QueryStagePosition.parse(raw)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> error("A plan index cannot be negative")
-        }
 }
 
-private sealed interface CandidateStageAdmission {
-    data class Admitted(val stage: CandidateQueryStage) : CandidateStageAdmission
-
-    data class Rejected(val failure: QueryPlanAdmissionFailure) : CandidateStageAdmission
-}
-
-private sealed interface ExactStageAdmission {
-    data class Admitted(val stage: ExactQueryStage) : ExactStageAdmission
-
-    data class Rejected(val failure: QueryPlanAdmissionFailure) : ExactStageAdmission
-}
-
-private fun CandidateStageAdmission.map(
-    transform: (CandidateQueryStage) -> CandidateQueryStage
-): CandidateStageAdmission =
+internal fun AdmittedQueryPlan.appendedReferenceLeases(): List<SemanticReadAuthority> =
     when (this) {
-        is CandidateStageAdmission.Admitted -> CandidateStageAdmission.Admitted(transform(stage))
-        is CandidateStageAdmission.Rejected -> this
-    }
-
-private fun ExactStageAdmission.map(transform: (ExactQueryStage) -> ExactQueryStage): ExactStageAdmission =
-    when (this) {
-        is ExactStageAdmission.Admitted -> ExactStageAdmission.Admitted(transform(stage))
-        is ExactStageAdmission.Rejected -> this
-    }
-
-internal fun AdmittedQueryPlan.appendedReferenceLeases():
-    List<io.github.amichne.kast.workspace.contract.SemanticReadAuthority> =
-    when (this) {
-        is AdmittedQueryPlan.Candidates -> stage.appendedReferenceLeases()
         is AdmittedQueryPlan.Symbols -> stage.appendedReferenceLeases()
-        is AdmittedQueryPlan.CandidateReferences -> stage.appendedReferenceLeases()
         is AdmittedQueryPlan.ExactReferences -> stage.appendedReferenceLeases()
+        is AdmittedQueryPlan.Retained -> stage.appendedReferenceLeases()
     }
 
-private fun CandidateQueryStage.appendedReferenceLeases():
-    List<io.github.amichne.kast.workspace.contract.SemanticReadAuthority> =
-    when (this) {
-        is CandidateQueryStage.Distinct -> next.appendedReferenceLeases()
-        is CandidateQueryStage.Inspect -> next.appendedReferenceLeases()
-        is CandidateQueryStage.Emit -> emptyList()
-    }
-
-private fun ExactQueryStage.appendedReferenceLeases():
-    List<io.github.amichne.kast.workspace.contract.SemanticReadAuthority> =
+private fun ExactQueryStage.appendedReferenceLeases(): List<SemanticReadAuthority> =
     when (this) {
         is ExactQueryStage.AppendReferences -> references.values.map { it.lease } + next.appendedReferenceLeases()
         is ExactQueryStage.Distinct -> next.appendedReferenceLeases()

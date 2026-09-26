@@ -96,6 +96,15 @@ internal class HostedOutputPages<
         return entry.outcome
     }
 
+    /** A typed resume action carries only the opaque cursor; the stored entry owns its request. */
+    @Synchronized
+    fun restore(token: ProtocolText, lease: SemanticReadAuthority): OperationOutcome<Result, Qualification, Rejection> {
+        expire()
+        val entry = entries[token] ?: return OperationOutcome.Rejected(unavailable)
+        if (entry.lease != lease) return OperationOutcome.Rejected(mismatch)
+        return entry.outcome
+    }
+
     @Synchronized fun clear() = entries.clear()
 
     private fun expire() {

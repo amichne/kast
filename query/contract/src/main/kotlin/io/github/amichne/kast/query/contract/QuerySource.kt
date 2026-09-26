@@ -6,7 +6,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
-import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 
@@ -58,25 +57,6 @@ data class QueryDiscoverySyntax(
     val declarationKinds: QueryDeclarationKinds,
 )
 
-/** Non-empty declaration candidates from one semantic generation. */
-class QueryCandidateReferences private constructor(val values: List<SymbolDiscoverySelection>) {
-    companion object {
-        fun from(raw: List<SymbolDiscoverySelection>): Refinement<QueryCandidateReferences, QueryCollectionFailure> {
-            if (raw.isEmpty()) return Refinement.Rejected(QueryCollectionFailure.EMPTY)
-            val lease = raw.first().lease
-            return if (raw.any { it.lease != lease }) {
-                Refinement.Rejected(QueryCollectionFailure.MIXED_LEASE)
-            } else {
-                Refinement.Refined(QueryCandidateReferences(raw.toList()))
-            }
-        }
-    }
-
-    override fun equals(other: Any?): Boolean = other is QueryCandidateReferences && values == other.values
-
-    override fun hashCode(): Int = values.hashCode()
-}
-
 /** Non-empty exact references whose generation authority cannot be reconstructed from text. */
 class QueryExactReferences private constructor(val values: List<SymbolSelector>) {
     companion object {
@@ -97,11 +77,9 @@ class QueryExactReferences private constructor(val values: List<SymbolSelector>)
 }
 
 sealed interface QuerySourceSyntax {
-    data class Candidates(val discovery: QueryDiscoverySyntax) : QuerySourceSyntax
-
     data class Symbols(val discovery: QueryDiscoverySyntax) : QuerySourceSyntax
 
-    data class CandidateReferences(val references: QueryCandidateReferences) : QuerySourceSyntax
-
     data class ExactReferences(val references: QueryExactReferences) : QuerySourceSyntax
+
+    data class Retained(val result: QueryRetainedResult) : QuerySourceSyntax
 }

@@ -18,11 +18,11 @@ import io.github.amichne.kast.protocol.contract.QueryPredicateFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -68,23 +68,6 @@ class QueryReferenceSurfaceTest {
     }
 
     @Test
-    fun `candidate references remain candidates and cannot satisfy an exact result schema`() {
-        val candidate =
-            QueryResultItemDocument.Candidate(
-                QueryReferenceDocument.DeclarationCandidate(text(candidateToken)),
-                SymbolDiscoveryKindDocument.CLASS,
-                text("Example"),
-                null,
-            )
-        val document = project(listOf(candidate))
-        schema.assertAdmits(CanonicalOperation.QUERY_RUN, document)
-        val output = document.getValue("items").jsonArray.single().jsonObject
-        assertEquals(JsonPrimitive(candidateToken), output["ref"])
-        assertEquals(JsonPrimitive("candidate"), output["type"])
-        schema.assertRejects(CanonicalOperation.QUERY_RUN, negative(InvalidExactItem(JsonPrimitive(candidateToken))))
-    }
-
-    @Test
     fun `legacy reference objects and duplicated identity aliases are not the new output contract`() {
         val legacy = json.encodeToJsonElement(LegacyReference.serializer(), LegacyReference("exact-symbol", exactToken))
         for (invalid in
@@ -108,13 +91,9 @@ class QueryReferenceSurfaceTest {
                 .getValue("ref")
                 .jsonPrimitive
                 .content
-        val followup =
-            json.encodeToJsonElement(
-                ReferenceQuery.serializer(),
-                ReferenceQuery(ReferenceSource(listOf(returned))),
-            )
+        val followup = json.parseToJsonElement(PublicQueryInputFixture.references(listOf(returned)))
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, followup).refined()
-        val request = (admitted.canonical as PublicToolCanonical.Query).request
+        val request = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
         val references = request.from as QueryFromDocument.References
         assertEquals(returned, references.values.values.single().token.value)
         assertTrue(request.steps.values.isEmpty())
@@ -251,17 +230,4 @@ class QueryReferenceSurfaceTest {
     )
 
     @Serializable private data class LegacyReference(val kind: String, val token: String)
-
-    @Serializable
-    private data class ReferenceSource(
-        @SerialName("symbol_refs") val symbolRefs: List<String>,
-        val type: String = "symbol_refs",
-    )
-
-    @Serializable
-    private data class ReferenceQuery(
-        val source: ReferenceSource,
-        val steps: List<String>? = null,
-        @SerialName("return_fields") val returnFields: List<String>? = null,
-    )
 }

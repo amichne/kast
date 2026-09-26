@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
@@ -9,14 +10,15 @@ import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 
 internal fun projectQueryProgress(
-    request: QueryRunRequest,
+    request: QueryRunRequest.Run,
     continuation: QueryContinuationState,
     itemCount: Int,
-    checkpoints: QueryCheckpointStore,
+    state: QueryStateStore,
+    protectedResult: QueryResultReference? = null,
 ): QueryQualifiedProgressDocument =
     when (continuation) {
         is QueryContinuationState.Resumable ->
-            when (val issued = checkpoints.issue(request, continuation.checkpoint)) {
+            when (val issued = state.issueCheckpoint(request, continuation.checkpoint, protectedResult)) {
                 is QueryCheckpointIssuance.Issued ->
                     QueryQualifiedProgressDocument.Resumable(
                         QueryCheckpointDocument.Upstream(issued.token),

@@ -182,24 +182,11 @@ class InstalledServerProjectionTest {
     fun `query schema exposes intent and defaults but not evaluator states`() {
         val query = projectionTools().tool("query_symbols")
         val input = query.getValue("inputSchema").jsonObject
-        input.assertAdmits(
-            """{"source":{"type":"search_declarations","declaration_name":"OrderService",""" +
-                """"name_match":null,"declaration_kinds":null,"scope":null},"steps":null,""" +
-                """"return_fields":null}"""
-        )
-        input.assertAdmits(
-            """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,""" +
-                """"return_fields":[]}"""
-        )
-        input.assertAdmits(
-            """{"source":{"type":"symbol_refs","symbol_refs":["NON_ISSUED_SCHEMA_TEST_ONLY"]},""" +
-                """"steps":null,"return_fields":null}"""
-        )
+        input.assertAdmits(PublicQueryInputFixture.search("OrderService"))
+        input.assertAdmits(PublicQueryInputFixture.all(fields = emptyList()))
+        input.assertAdmits(PublicQueryInputFixture.references(listOf("NON_ISSUED_SCHEMA_TEST_ONLY")))
         input.assertRejects("""{"type":"QUERY","from":{"type":"ALL"}}""")
-        input.assertRejects(
-            """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},""" +
-                """"steps":[{"type":"check_diagnostics"}],"return_fields":null}"""
-        )
+        input.assertRejects(PublicQueryInputFixture.unsupportedStep())
         assertEquals(
             io.github.amichne.kast.appserver.query.PublicToolContract.parameters(
                 io.github.amichne.kast.protocol.registry.PublicToolIdentity.QUERY_SYMBOLS

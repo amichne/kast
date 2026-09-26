@@ -10,11 +10,11 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
@@ -29,7 +29,6 @@ import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
-import io.github.amichne.kast.query.contract.QueryResultSet
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.QueryCheckpointIssuance
@@ -56,7 +55,7 @@ class HostedContinuationOwnerRetentionTest {
         val queryRequest = queryRequest(fixture)
         val queryOutcome = queryOutcome(evidence.basis)
         val checkpoint = checkpoint(fixture)
-        val queryState = owner.checkpoints.issue(queryRequest, checkpoint) as QueryCheckpointIssuance.Issued
+        val queryState = owner.queryState.issueCheckpoint(queryRequest, checkpoint) as QueryCheckpointIssuance.Issued
         val queryOutput = owner.issue(queryRequest, authority, queryOutcome) as HostedOutputRetention.Retained
         val relationOutput =
             owner.relationOutputs.issue(relationRequest, authority, relationOutcome) as HostedOutputRetention.Retained
@@ -67,9 +66,9 @@ class HostedContinuationOwnerRetentionTest {
                 as HostedOutputRetention.Retained
         assertInstanceOf(
             QueryCheckpointRestoration.Restored::class.java,
-            owner.checkpoints.restore(queryState.token, queryRequest, authority),
+            owner.queryState.restoreCheckpoint(queryState.token, authority),
         )
-        assertEquals(queryOutcome, owner.restore(queryOutput.token, queryRequest, authority))
+        assertEquals(queryOutcome, owner.restore(queryOutput.queryOutputToken(), authority))
         assertEquals(relationOutcome, owner.relationOutputs.restore(relationOutput.token, relationRequest, authority))
         assertEquals(source.outcome, owner.sourceOutputs.restore(sourceOutput.token, source.request, authority))
         assertEquals(
@@ -78,7 +77,7 @@ class HostedContinuationOwnerRetentionTest {
         )
 
         continuations.forEpoch(RelationPagingFixture.live().authority, limits)
-        assertQueryRetired(owner, queryRequest, queryState.token, queryOutput.token)
+        assertQueryRetired(owner, queryState.token, queryOutput.queryOutputToken())
         assertEquals(
             OperationOutcome.Rejected(RelationReadRejection.CONTINUATION_UNAVAILABLE),
             owner.relationOutputs.restore(relationOutput.token, relationRequest, authority),
@@ -104,21 +103,23 @@ class HostedContinuationOwnerRetentionTest {
 
     private fun assertQueryRetired(
         owner: HostedQueryContinuations.Active,
-        queryRequest: QueryRunRequest,
-        queryState: ProtocolText,
-        queryOutput: ProtocolText,
+        queryState: QueryExecutionContinuation.Pipeline,
+        queryOutput: QueryExecutionContinuation.Output,
     ) {
         assertEquals(
             QueryCheckpointRestoration.Unavailable,
-            owner.checkpoints.restore(queryState, queryRequest, owner.lease),
+            owner.queryState.restoreCheckpoint(queryState, owner.lease),
         )
         assertEquals(
             OperationOutcome.Rejected(
                 QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
             ),
-            owner.restore(queryOutput, queryRequest, owner.lease),
+            owner.restore(queryOutput, owner.lease),
         )
     }
+
+    private fun HostedOutputRetention.Retained.queryOutputToken(): QueryExecutionContinuation.Output =
+        (QueryExecutionContinuation.Output.parse(token.value) as Refinement.Refined).value
 
     private fun queryRequest(fixture: RelationPagingFixture) =
         queryIdentityRequest(fixture.exact)
@@ -128,9 +129,7 @@ class HostedContinuationOwnerRetentionTest {
                         QueryDiscoveryDocument(
                             QueryMatchDocument.All,
                             QueryScopeDocument(
-                                bounded(
-                                    listOf(io.github.amichne.kast.protocol.contract.ProtocolText.parse("main").value())
-                                ),
+                                bounded(listOf(ProtocolText.parse("main").value())),
                                 null,
                                 null,
                             ),
@@ -151,7 +150,7 @@ class HostedContinuationOwnerRetentionTest {
                             override val retainedBytes = 1024L
                         }
                     QueryExecutionResult.Complete(
-                        QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                        QueryResult(emptyList(), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).value()),
                     )
                 },

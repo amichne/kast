@@ -39,7 +39,7 @@ class HostedEndpointTest {
         fun <T> bounded(values: List<T>) = (BoundedProtocolList.create(values) as Refinement.Refined).value
         fun text(value: String) = (ProtocolText.parse(value) as Refinement.Refined).value
         val request =
-            QueryRunRequest(
+            QueryRunRequest.Run(
                 QueryFromDocument.Symbols(
                     QueryDiscoveryDocument(
                         QueryMatchDocument.All,

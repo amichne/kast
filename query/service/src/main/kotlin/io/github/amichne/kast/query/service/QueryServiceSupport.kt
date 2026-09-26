@@ -1,7 +1,6 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.query.contract.QueryCandidate
 import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
@@ -157,8 +156,6 @@ internal fun distinct(
                 { it.description.compilerIdentity.value },
             )
         )
-
-internal fun QueryCandidate.projectedUtf8Size(): Long = selection.candidate.projectedUtf8Size().value
 
 internal fun QuerySymbol.projectedUtf8Size(): Long =
     saturatedSum(

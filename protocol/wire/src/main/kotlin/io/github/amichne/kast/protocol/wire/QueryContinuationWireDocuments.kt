@@ -9,6 +9,10 @@ import kotlinx.serialization.Serializable
 internal data class QueryRunResultWireDocument(
     val items: List<QueryResultItemWireDocument>,
     val failures: List<QueryItemFailureWireDocument>,
+    val retention: io.github.amichne.kast.protocol.contract.QueryResultRetention,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("next_cursor")
+    val nextCursor: io.github.amichne.kast.protocol.contract.QueryResultCursor? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
@@ -19,6 +23,10 @@ internal data class QueryRunResultWireDocument(
 
 @Serializable
 internal enum class QueryExecutionRejectionWireDocument {
+    @SerialName("result-unavailable") RESULT_UNAVAILABLE,
+    @SerialName("result-stale-basis") RESULT_STALE_BASIS,
+    @SerialName("result-cursor-out-of-range") RESULT_CURSOR_OUT_OF_RANGE,
+    @SerialName("result-field-unavailable") RESULT_FIELD_UNAVAILABLE,
     @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
     @SerialName("continuation-mismatch") CONTINUATION_MISMATCH,
     @SerialName("request-rejected") REQUEST_REJECTED,

@@ -22,7 +22,6 @@ import io.github.amichne.kast.query.contract.QueryPlanAdmission
 import io.github.amichne.kast.query.contract.QueryPlanCompiler
 import io.github.amichne.kast.query.contract.QueryPlanSyntax
 import io.github.amichne.kast.query.contract.QueryPredicate
-import io.github.amichne.kast.query.contract.QueryResultSet
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
@@ -104,7 +103,7 @@ class QueryServiceTest {
             val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, result)
             assertEquals(
                 if (visibility == DeclarationVisibility.PUBLIC) 1 else 0,
-                (complete.result.items as QueryResultSet.Symbols).values.size,
+                complete.result.items.size,
             )
         }
     }
@@ -129,7 +128,7 @@ class QueryServiceTest {
                     )
                     .run(request(visibilityPlan(selected), 8L))
             val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, result)
-            assertEquals(0, (qualified.result.items as QueryResultSet.Symbols).values.size)
+            assertEquals(0, qualified.result.items.size)
             assertTrue(QueryLimitation.VISIBILITY_INCOMPLETE in qualified.coverage.limitations)
             assertTrue(qualified.result.failures.single() is QueryItemFailure.PredicateUnproven)
         }
@@ -250,7 +249,7 @@ class QueryServiceTest {
                     QueryPlanSyntax(
                         QuerySourceSyntax.Symbols(syntax),
                         emptyList(),
-                        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+                        QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
                     )
                 )
             assertTrue(plan is QueryPlanAdmission.Admitted)
@@ -277,9 +276,8 @@ class QueryServiceTest {
         val result = service.run(request(symbolPlan(), workLimit = 8L))
 
         val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, result)
-        val symbols = assertInstanceOf(QueryResultSet.Symbols::class.java, complete.result.items)
         assertEquals(1, resolutions)
-        assertEquals(listOf("PaymentService"), symbols.values.map { it.description.name.value })
+        assertEquals(listOf("PaymentService"), complete.result.items.map { it.description.name.value })
         assertEquals(1, complete.coverage.resultCount.value)
     }
 
@@ -297,8 +295,7 @@ class QueryServiceTest {
         val result = service.run(request(symbolPlan(), workLimit = 8L))
 
         val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, result)
-        val symbols = assertInstanceOf(QueryResultSet.Symbols::class.java, qualified.result.items)
-        assertEquals(emptyList<Any>(), symbols.values)
+        assertEquals(emptyList<Any>(), qualified.result.items)
         assertEquals(1, qualified.result.failures.size)
         assertEquals(listOf(QueryLimitation.REFINEMENT_INCOMPLETE), qualified.coverage.limitations)
         assertEquals(0, qualified.coverage.knownMinimum.value)
@@ -306,10 +303,9 @@ class QueryServiceTest {
 
     @Test
     fun `complete empty and incomplete empty remain distinct coverage claims`() = runTest {
-        val complete =
-            service(discovery = discoveryEmpty(qualified = false)).run(request(candidatePlan(), workLimit = 8L))
+        val complete = service(discovery = discoveryEmpty(qualified = false)).run(request(symbolPlan(), workLimit = 8L))
         val incomplete =
-            service(discovery = discoveryEmpty(qualified = true)).run(request(candidatePlan(), workLimit = 8L))
+            service(discovery = discoveryEmpty(qualified = true)).run(request(symbolPlan(), workLimit = 8L))
 
         assertInstanceOf(QueryExecutionResult.Complete::class.java, complete)
         val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, incomplete)
@@ -354,8 +350,7 @@ class QueryServiceTest {
         val result = service.run(request(exactReferencePlan(listOf(selector)), workLimit = 8L, returnedBytes = 1L))
 
         val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, result)
-        val symbols = assertInstanceOf(QueryResultSet.Symbols::class.java, qualified.result.items)
-        assertEquals(emptyList<Any>(), symbols.values)
+        assertEquals(emptyList<Any>(), qualified.result.items)
         assertEquals(listOf(QueryLimitation.BYTE_LIMIT_REACHED), qualified.coverage.limitations)
     }
 
@@ -595,19 +590,7 @@ class QueryServiceTest {
     internal fun symbolPlan(): AdmittedQueryPlan =
         admittedPlan(
             source = QuerySourceSyntax.Symbols(discovery()),
-            output = QueryOutputSyntax.Symbols(symbolFields()),
-        )
-
-    private fun candidatePlan(): AdmittedQueryPlan =
-        admittedPlan(
-            source = QuerySourceSyntax.Candidates(discovery()),
-            output =
-                QueryOutputSyntax.Candidates(
-                    io.github.amichne.kast.query.contract.QueryCandidateFields.from(
-                            setOf(io.github.amichne.kast.query.contract.QueryCandidateField.NAME)
-                        )
-                        .refined()
-                ),
+            output = QueryOutputSyntax(symbolFields()),
         )
 
     internal fun exactReferencePlan(
@@ -617,7 +600,7 @@ class QueryServiceTest {
         admittedPlan(
             source = QuerySourceSyntax.ExactReferences(QueryExactReferences.from(selectors).refined()),
             steps = steps,
-            output = QueryOutputSyntax.Symbols(symbolFields()),
+            output = QueryOutputSyntax(symbolFields()),
         )
 
     internal fun admittedPlan(
@@ -632,8 +615,8 @@ class QueryServiceTest {
 
     internal fun QueryExecutionResult.symbolCount(): Int =
         when (this) {
-            is QueryExecutionResult.Complete -> (result.items as QueryResultSet.Symbols).values.size
-            is QueryExecutionResult.Qualified -> (result.items as QueryResultSet.Symbols).values.size
+            is QueryExecutionResult.Complete -> result.items.size
+            is QueryExecutionResult.Qualified -> result.items.size
             is QueryExecutionResult.Rejected -> error("Expected symbol result, got $reason")
         }
 

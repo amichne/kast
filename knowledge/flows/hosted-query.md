@@ -24,7 +24,9 @@ code_sources:
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryUnsupportedIdentityTest.kt
   - path: packaging/hosted_resume_budget_regression.py
   - path: packaging/test-hosted-resume-budget-regression.py
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationReplayTest.kt
   - path: packaging/hosted_authority_read_regression.py
@@ -418,13 +420,16 @@ owner's serialized schema/operation identity size before semantic dispatch. This
 a necessary lower bound, not an exact sufficient envelope size. The original
 encoder still fits bodies, reports and continuations against the admitted allowance.
 
-Hosted query continuation stores retain detached task/output state under an exact
-query and semantic snapshot. Entry, byte, per-checkpoint and lifetime limits are
-explicit read settings; epoch replacement and disposal clear project state.
-Resumption acquires fresh host admission before state lookup. No checkpoint holds
-PSI, K2 symbols or an IDE observer callback. The serialized output budget is
-checked after compact references and selected projection fields are encoded.
-After exact request and authority matching, query protocol execution uses the retained admitted plan and pending append-reference tasks without reacquiring prior tokens or replaying emitted items.
+`HostedQueryContinuations` owns one `QueryStateStore` for detached query execution
+checkpoints and immutable retained results under the same entry, byte and lifetime
+limits. Transport output suffixes remain separate. Epoch replacement and project
+disposal clear the state. Resume takes only an issued continuation plus an optional
+new grant; the stored checkpoint supplies the admitted plan and pending tasks.
+Restored results require the same semantic basis, while read-result uses its own
+presentation cursor and no semantic provider call. Host admission precedes each
+lookup. No retained entry holds PSI, K2 symbols or an IDE observer callback. The
+serialized output budget is checked after compact exact references and selected
+projection fields are encoded.
 
 Relation output uses the same detached output-page retention implementation as
 query output. If the full encoded relation response exceeds its byte cap, the
@@ -434,13 +439,13 @@ preserves omissions and the provider's original resumable or terminal coverage.
 `relation-continuation:v1` and `v2` remain provider checkpoints. Restoring output
 cannot prove an unfinished provider scan complete.
 
-Output cursors are replayable until expiry or eviction. Equal retained requests
+Transport output cursors are replayable until expiry or eviction. Equal retained requests
 and outcomes have equal child identities; replay does not refresh expiry. The
 request identity retains selector and relationship but excludes the page limit
 and position. Changed authority or semantic request is rejected. Each of the
-query checkpoint, query output, relation output, and source output stores has the configured
-entry/byte bound; their aggregate maximum is four times that bound. No retained
-entry contains PSI or K2 state.
+query state, query output, relation output, source output, traversal output,
+diagnostic output and diagnostic checkpoint stores has the configured entry/byte
+bound. No retained entry contains PSI or K2 state.
 
 Relation and query/search reads admit optional caller execution controls once at
 semantic entry.
@@ -454,10 +459,12 @@ semantic identity.
 
 Reissuing an equal detached query checkpoint returns its existing token without
 renewing its expiry or consuming another entry. Restoration is non-consuming.
-Query pipeline checkpoints and output suffixes exclude caller execution controls
-from semantic identity. Query page result limits also constrain retained output;
-every page preserves known item failures. An explicit query `take` remains part of
-the query identity. Source and traversal caller controls retain the same admitted report; traversal encoded fitting remains unfinished.
+Query checkpoints and immutable results share one quota but retain distinct typed
+references. Query pipeline checkpoints and output suffixes exclude caller execution
+controls from semantic identity. Query page result limits also constrain retained
+output; every page preserves known item failures. A query `take` stage is not
+admitted. Source and traversal caller controls retain the same admitted report;
+traversal encoded fitting remains unfinished.
 
 Source entity cursors retain typed token keys and exact snapshot, region, and
 selection identity. Their binding excludes entity/text page allowances; an equal
@@ -522,7 +529,7 @@ Native source enumeration asks the ordered page owner to admit each known declar
 
 Decoded execution reports also retain their dimension rules: elapsed limits admit deadline clamps; result and byte limits admit transport clamps; work limits admit only the operator ceiling. Every result amount remains within the integer domain. Invalid dimension evidence is rejected by the report decoder before a report value is exposed.
 
-Query qualification owns a mandatory closed progress state: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. Query result payloads cannot carry independent cursor/terminal state; the CLI compatibility fields are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. That cursor pages immutable retained rows; it is not an execution continuation. CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 
 Source qualifications own closed resumable or terminal-incomplete progress. Native
 source checkpoints and hosted retained-output checkpoints are separate variants;
@@ -535,26 +542,30 @@ variants and mismatched checkpoint families.
 
 ### Hosted continuation retention bounds
 
-Each `HostedQueryContinuations.Active` owns five independently bounded stores:
-query execution checkpoints and query, relation, source and traversal output
-suffixes. For configured entry bound `C` and charged-byte bound `B`, this owner
-can retain at most `5 × C` entries and `5 × B` charged bytes in aggregate.
-`B` is each store's accounting bound, not a measurement of JVM heap usage:
-output stores charge four times encoded request plus outcome bytes; query
-checkpoints charge detached checkpoint accounting plus four times request bytes.
-The separate native source continuation owner and compact reference store have
-their own policies and are outside this five-store sum.
+Each `HostedQueryContinuations.Active` owns seven independently bounded stores:
+one query state store sharing its capacity between execution checkpoints and
+immutable results, five output-suffix stores for query, relation, source,
+traversal and diagnostic reads, and one diagnostic checkpoint store. For
+configured entry bound `C` and charged-byte bound `B`, these owners have an
+aggregate upper bound of `7 × C` entries and `7 × B` charged bytes. `B` is an
+accounting bound, not measured JVM heap use: output stores charge four times
+encoded request plus outcome bytes; query state charges each detached payload
+plus four times its normalized run request bytes. The separate native source
+continuation owner and compact reference store have their own policies.
 
 The native source continuation owner expires at age greater than or equal to
 its TTL and evicts the least recently accessed checkpoint; a successful replay
 updates eviction order without renewing creation time. Its exact-boundary and
-access-order policies are distinct from the hosted stores. Both hosted output and query-checkpoint stores expire when age is strictly
-greater than TTL. An entry remains available at exactly TTL; restore and
-identical reissuance do not renew its creation time. Capacity eviction removes
-the oldest inserted entry even if it was replayed. Owner retirement clears all
-five stores. Tests exercise TTL−1, exact TTL, TTL+1, replay, eviction and clear
-without changing those policies. Retained values are detached identities and
-results; these stores do not retain PSI, K2 sessions or a live project.
+access-order policies are distinct from the hosted stores. Hosted output and
+query-state entries expire when age is strictly greater than TTL. An entry
+remains available at exactly TTL; restore and identical reissuance do not renew
+its creation time. Capacity eviction removes the oldest inserted entry even if
+it was replayed. Owner retirement clears all seven stores. Focused tests cover
+TTL−1, exact TTL, TTL+1, replay, eviction and clear for the relevant store
+owners; the five-store shared-owner test exercises query state plus query,
+relation, source and traversal suffixes, without claiming seven-store aggregate
+measurement. Retained values are detached identities and results; these stores
+do not retain PSI, K2 sessions or a live project.
 
 ### Installed transport and authority qualification
 
@@ -583,21 +594,20 @@ completed/document envelope is checked with its qualified same-build output
 schema; CLI payloads are checked through the canonical wrapper projection.
 
 The hosted owner identity checks independently increase elapsed-time, work,
-result and byte allowances for all four output stores. Each change restores the
-same detached outcome and reissues the same token. Query checkpoint admission
-also receives each larger grant while retaining the original plan. Query
-matching, source sets, declaration kinds, projection and relationship changes
-reject, as do workspace, published generation, live host lifetime and live epoch
-changes. Absent and empty execution-budget controls normalize alike; omitted
+result and byte allowances for the exercised output stores. Each change restores
+the same detached outcome and reissues the same token. Query checkpoint resume
+supplies only the issued token and new grant; the store restores the original
+plan. Workspace, published generation, live host lifetime and live epoch changes
+reject. Absent and empty execution-budget controls normalize alike; omitted
 traversal strategy and explicit breadth-first retain the same semantic choice.
 Query `take` steps and query fanout fields are unsupported and reject at the
 public wire boundary; traversal bounded fanout remains a supported strategy
 whose value participates in continuation identity.
 
-A shared-owner test configures one entry per store, retains five entries
-simultaneously, and verifies that changing the epoch retires all five. This is
-entry-composition and detached-identity evidence. It does not measure heap use
-or replace unchanged-fixture native execution parity for larger grants.
+A shared-owner test configures one entry per exercised store, retains five
+entries simultaneously, and verifies that changing the epoch retires all five.
+This is entry-composition and detached-identity evidence. It does not measure
+heap use or replace unchanged-fixture native execution parity for larger grants.
 
 The installed resume-budget helper defines twelve bounded cases per surface:
 query, source and relation reads, each with independently larger elapsed-time,

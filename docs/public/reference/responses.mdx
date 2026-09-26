@@ -28,7 +28,7 @@ consistent machine envelope in `structuredContent` for semantic reads:
 ```json
 {
   "status": "complete",
-  "data": {"operation": "query.run", "status": "complete", "items": [], "failures": [], "coverage": {"exhaustive": true}},
+  "data": {"operation": "query.run", "status": "complete", "items": [], "failures": [], "retention": {"kind": "not_requested"}, "coverage": {"exhaustive": true}},
   "coverage": {"exhaustive": true},
   "basis": {"root": "/workspace", "host": "host-id", "epoch": 1, "contentView": "SAVED_PSI_COMMITTED", "version": 1, "hostState": "INDEXED"}
 }
@@ -102,6 +102,7 @@ This illustrative published query response is complete and empty:
     "status": "complete",
     "items": [],
     "failures": [],
+    "retention": {"kind": "not_requested"},
     "coverage": {"exhaustive": true}
   }
 }
@@ -119,6 +120,7 @@ This qualified illustration does not establish absence:
     "status": "qualified",
     "items": [],
     "failures": [],
+    "retention": {"kind": "not_requested"},
     "coverage": {"exhaustive": false},
     "continuation": null,
     "terminal_reason": "upstream-incomplete",
@@ -136,7 +138,7 @@ Choose the payload model for the invoked tool.
 
 | Tool family | Canonical operation | Payload to inspect |
 | --- | --- | --- |
-| `query_symbols` | `query.run` | `items[]`: candidate or exact symbol; `failures[]`: per-item failures |
+| `query_symbols` | `query.run` | `items[]`: exact symbols; `failures[]`: per-item failures |
 | `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
 | `read_relations` | `relation.read` | `relations[]`: occurrence-oriented relation facts |
 | `traverse_relations` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |
@@ -176,6 +178,29 @@ Each `failures[]` entry retains its affected reference and finite reason.
 | `relation` | Relation expansion failed and names the relation |
 
 Successful items remain usable, but failures still limit completeness claims.
+
+### Query result references and progress
+
+For `query_symbols`, keep four returned concepts separate:
+
+| Field | Meaning |
+| --- | --- |
+| `items[].ref` | Exact-symbol reference for one declaration |
+| `retention.reference` when `retention.kind` is `retained` | Immutable retained result for another query run or a later presentation read |
+| `continuation` on a qualified response | Interrupted execution to resume with `request.action: "resume"` |
+| `next_cursor` | Next presentation page of the same retained result, read with `request.action: "read_result"` |
+
+`retention.kind` is `not_requested`, `retained`, or `capacity_exceeded`.
+Capacity failure leaves the current answer intact. A result reference is
+bounded and valid only in its original semantic basis. An empty retained result
+can be reused. A qualified retained result keeps its limitations and omissions;
+reading or composing its positive rows does not prove missing rows absent.
+
+`read_result` presents saved rows without running query stages. The caller
+supplies the result reference and may supply `cursor`; copy `next_cursor` into
+the next read when present. A `complete` semantic result can still have a
+`next_cursor`, because the field describes presentation pages. A missing
+`next_cursor` does not remove a retained qualification.
 
 ### Relation omissions
 

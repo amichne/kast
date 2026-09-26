@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
@@ -57,10 +58,12 @@ class HostedQueryStoreTest {
                 )
             )
         val first = store.issue(low, lease, output) as HostedOutputRetention.Retained
-        assertEquals(output, store.restore(first.token, high, lease))
-        assertEquals(output, store.restore(first.token, high, lease))
+        assertEquals(output, store.restore(first.queryOutputToken(), lease))
+        assertEquals(output, store.restore(first.queryOutputToken(), lease))
         assertEquals(first, store.issue(high, lease, output))
-        assertTrue(store.restore(first.token, request("different"), lease) is OperationOutcome.Rejected)
+        assertTrue(store.issue(request("different"), lease, output) != first)
+        val foreign = SemanticReadLease(lease.workspaceRoot, EvidenceGeneration.parse(2).refined())
+        assertTrue(store.restore(first.queryOutputToken(), foreign) is OperationOutcome.Rejected)
         val hosted = HostedRequest.Query(lease.workspaceRoot, high)
         assertEquals(high.executionBudget!!.requested(), hosted.executionBudget().requested)
     }
@@ -95,7 +98,7 @@ class HostedQueryStoreTest {
     }
 
     private fun request(reference: String) =
-        QueryRunRequest(
+        QueryRunRequest.Run(
             QueryFromDocument.References(
                 bounded(listOf(QueryReferenceDocument.ExactSymbol(ProtocolText.parse("exact:v3:$reference").refined())))
             ),
@@ -105,6 +108,9 @@ class HostedQueryStoreTest {
         )
 
     private fun <T> bounded(values: List<T>): BoundedProtocolList<T> = BoundedProtocolList.create(values).refined()
+
+    private fun HostedOutputRetention.Retained.queryOutputToken(): QueryExecutionContinuation.Output =
+        QueryExecutionContinuation.Output.parse(token.value).refined()
 
     private fun <T, F> Refinement<T, F>.refined(): T = (this as Refinement.Refined).value
 }

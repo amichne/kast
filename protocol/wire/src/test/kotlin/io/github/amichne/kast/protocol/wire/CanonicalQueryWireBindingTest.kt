@@ -13,7 +13,8 @@ class CanonicalQueryWireBindingTest {
     @Test
     fun `continuation and every terminal reason have independent encoded qualification shapes`() {
         val json = Json { encodeDefaults = true }
-        val token = text("query:v1:00000000-0000-0000-0000-000000000001")
+        val token =
+            QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000001").refinedValue()
         val resumable =
             qualification(
                 QueryQualifiedProgressDocument.Resumable(
@@ -73,7 +74,7 @@ class CanonicalQueryWireBindingTest {
     @Test
     fun `query request round trip admits ref only symbol output`() {
         val request =
-            QueryRunRequest(
+            QueryRunRequest.Run(
                 from =
                     QueryFromDocument.References(
                         bounded(listOf(QueryReferenceDocument.ExactSymbol(text("exact:v2:opaque"))))
@@ -99,7 +100,7 @@ class CanonicalQueryWireBindingTest {
     @Test
     fun `query request round trip retains explicit enumeration and typed stages`() {
         val request =
-            QueryRunRequest(
+            QueryRunRequest.Run(
                 from =
                     QueryFromDocument.Symbols(
                         QueryDiscoveryDocument(

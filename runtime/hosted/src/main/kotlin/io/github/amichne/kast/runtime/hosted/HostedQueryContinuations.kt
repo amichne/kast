@@ -8,6 +8,7 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
@@ -19,7 +20,7 @@ import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
-import io.github.amichne.kast.query.protocol.QueryCheckpointStore
+import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 internal typealias HostedQueryOutcome = OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunFailure>
@@ -56,8 +57,8 @@ internal class HostedQueryContinuations : Disposable {
     }
 
     class Active(val lease: SemanticReadAuthority, private val limits: ReadLimits) {
-        val checkpoints =
-            QueryCheckpointStore(
+        val queryState =
+            QueryStateStore(
                 capacity = limits[ReadLimitParameter.QUERY_CONTINUATION_ENTRIES].value,
                 maximumBytes = limits[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value.toLong(),
                 ttlMillis = limits[ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS].value.toLong(),
@@ -69,7 +70,11 @@ internal class HostedQueryContinuations : Disposable {
                 prefix,
                 limits,
                 normalize = { request: QueryRunRequest ->
-                    request.copy(continuation = null, executionBudget = null)
+                    when (request) {
+                        is QueryRunRequest.Run -> request.copy(executionBudget = null)
+                        is QueryRunRequest.Resume -> request.copy(executionBudget = null)
+                        is QueryRunRequest.ReadResult -> request.copy(executionBudget = null)
+                    }
                 },
                 unavailable =
                     QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
@@ -110,15 +115,21 @@ internal class HostedQueryContinuations : Disposable {
             outcome: HostedQueryOutcome,
         ): HostedOutputRetention = outputs.issue(request, lease, outcome)
 
-        fun restore(token: ProtocolText, request: QueryRunRequest, lease: SemanticReadAuthority): HostedQueryOutcome =
-            outputs.restore(token, request, lease)
+        fun restore(token: QueryExecutionContinuation.Output, lease: SemanticReadAuthority): HostedQueryOutcome =
+            when (val text = ProtocolText.parse(token.value)) {
+                is Refinement.Refined -> outputs.restore(text.value, lease)
+                is Refinement.Rejected ->
+                    OperationOutcome.Rejected(
+                        QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
+                    )
+            }
 
         fun clear() {
             outputs.clear()
             relationOutputs.clear()
             sourceOutputs.clear()
             traversalOutputs.clear()
-            checkpoints.clear()
+            queryState.clear()
             diagnosticCheckpoints.retire()
             diagnosticOutputs.clear()
         }

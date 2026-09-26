@@ -55,13 +55,7 @@ class ExistingIdeSemanticReadTest {
             Triple(
                 "tool query_symbols",
                 ExistingIdeReadOperation.QUERY_RUN,
-                Json.encodeToString(
-                    QuerySymbolsFixture(
-                        QuerySourceFixture(QuerySourceType.ALL_DECLARATIONS, null, null),
-                        null,
-                        emptyList(),
-                    )
-                ),
+                PublicQueryInputFixture.all(fields = emptyList()),
             ),
             Triple(
                 "symbol discover",
@@ -94,25 +88,6 @@ class ExistingIdeSemanticReadTest {
                 Json.encodeToString(CheckDiagnosticsFixture("src", 10)),
             ),
         )
-
-    @Serializable
-    private enum class QuerySourceType {
-        @SerialName("all_declarations") ALL_DECLARATIONS
-    }
-
-    @Serializable
-    private data class QuerySourceFixture(
-        val type: QuerySourceType,
-        @SerialName("declaration_kinds") val declarationKinds: List<String>?,
-        val scope: String?,
-    )
-
-    @Serializable
-    private data class QuerySymbolsFixture(
-        val source: QuerySourceFixture,
-        val steps: List<String>?,
-        @SerialName("return_fields") val returnFields: List<String>,
-    )
 
     @Serializable
     private data class CheckDiagnosticsFixture(

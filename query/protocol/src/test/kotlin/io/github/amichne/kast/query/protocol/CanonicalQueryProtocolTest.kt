@@ -33,8 +33,49 @@ class CanonicalQueryProtocolTest {
     private val largerGrant = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(200).refined())
 
     @Test
+    fun `retained empty result is readable without another semantic execution`() = runTest {
+        var executions = 0
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations {
+                    executions++
+                    QueryExecutionResult.Complete(
+                        QueryResult(emptyList(), emptyList()),
+                        QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                    )
+                },
+                CanonicalQueryReferences(),
+            )
+        val first =
+            protocol.execute(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
+                as OperationOutcome.Complete
+        val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
+        val read =
+            protocol.execute(
+                QueryRunRequest.ReadResult(reference, output = QueryOutputDocument.Symbols(bounded(emptyList()))),
+                lease,
+                budget,
+            ) as OperationOutcome.Complete
+        assertEquals(1, executions)
+        assertEquals(first.evidence.payload.items, read.evidence.payload.items)
+        assertEquals(first.evidence.payload.failures, read.evidence.payload.failures)
+        assertEquals(QueryResultRetention.Retained(reference), read.evidence.payload.retention)
+        assertNull(read.evidence.payload.nextCursor)
+        assertEquals(
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_STALE_BASIS),
+            (protocol.execute(
+                    QueryRunRequest.ReadResult(reference, output = QueryOutputDocument.Symbols(bounded(emptyList()))),
+                    SemanticReadLease(root, EvidenceGeneration.parse(8).refined()),
+                    budget,
+                ) as OperationOutcome.Rejected)
+                .reason,
+        )
+        assertEquals(1, executions)
+    }
+
+    @Test
     fun `opaque checkpoint binds query and snapshot while allowing fresh page budget`() = runTest {
-        val store = QueryCheckpointStore()
+        val store = QueryStateStore()
         var executions = 0
         val protocol =
             CanonicalQueryProtocol(
@@ -48,7 +89,7 @@ class CanonicalQueryProtocolTest {
                                 override val retainedBytes = 1024L
                             }
                         QueryExecutionResult.Qualified(
-                            QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                            QueryResult(emptyList(), emptyList()),
                             QueryCoverage.Qualified.create(
                                     QueryCount.parse(0).refined(),
                                     setOf(QueryLimitation.WORK_LIMIT_REACHED),
@@ -58,7 +99,7 @@ class CanonicalQueryProtocolTest {
                         )
                     } else
                         QueryExecutionResult.Complete(
-                            QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                            QueryResult(emptyList(), emptyList()),
                             QueryCoverage.Complete(QueryCount.parse(0).refined()),
                         )
                 },
@@ -76,7 +117,7 @@ class CanonicalQueryProtocolTest {
         assertInstanceOf(
             OperationOutcome.Complete::class.java,
             protocol.execute(
-                request().copy(continuation = token, executionBudget = largerGrant),
+                QueryRunRequest.Resume(token, executionBudget = largerGrant),
                 lease,
                 budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
             ),
@@ -84,16 +125,12 @@ class CanonicalQueryProtocolTest {
         assertEquals(2, executions)
     }
 
-    private suspend fun assertCheckpointBinding(protocol: CanonicalQueryProtocol, token: ProtocolText) {
-        val changed = request().copy(continuation = token, steps = bounded(listOf(QueryStepDocument.Distinct)))
-        assertEquals(
-            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
-            (protocol.execute(changed, lease, budget) as OperationOutcome.Rejected).reason,
-        )
+    private suspend fun assertCheckpointBinding(protocol: CanonicalQueryProtocol, token: QueryExecutionContinuation) {
+        // Resume is token-only: a caller cannot provide a conflicting replacement plan.
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
             (protocol.execute(
-                    request().copy(continuation = token),
+                    QueryRunRequest.Resume(token),
                     SemanticReadLease(root, EvidenceGeneration.parse(8).refined()),
                     budget,
                 ) as OperationOutcome.Rejected)
@@ -101,8 +138,14 @@ class CanonicalQueryProtocolTest {
         )
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
-            (protocol.execute(request().copy(continuation = text("query:v1:missing")), lease, budget)
-                    as OperationOutcome.Rejected)
+            (protocol.execute(
+                    QueryRunRequest.Resume(
+                        QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000002")
+                            .refined()
+                    ),
+                    lease,
+                    budget,
+                ) as OperationOutcome.Rejected)
                 .reason,
         )
     }
@@ -160,7 +203,7 @@ class CanonicalQueryProtocolTest {
                         (scope.sourceSets as SymbolDiscoverySourceSets.Exact).values.map { it.value }.toSet(),
                     )
                     QueryExecutionResult.Complete(
-                        QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                        QueryResult(emptyList(), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
                 },
@@ -182,7 +225,7 @@ class CanonicalQueryProtocolTest {
             CanonicalQueryProtocol(
                 QueryOperations {
                     QueryExecutionResult.Qualified(
-                        QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                        QueryResult(emptyList(), emptyList()),
                         coverage,
                     )
                 },
@@ -568,7 +611,7 @@ class CanonicalQueryProtocolTest {
     }
 
     private fun request() =
-        QueryRunRequest(
+        QueryRunRequest.Run(
             QueryFromDocument.Symbols(
                 QueryDiscoveryDocument(
                     QueryMatchDocument.All,

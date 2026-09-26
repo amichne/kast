@@ -5,8 +5,6 @@ import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.query.contract.QueryCandidateField
-import io.github.amichne.kast.query.contract.QueryCandidateFields
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryPredicate
 import io.github.amichne.kast.query.contract.QueryPrimitiveField
@@ -21,7 +19,6 @@ import io.github.amichne.kast.source.contract.DeclarationVisibility
 
 internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
     when (this) {
-        QueryStepDocument.Inspect -> QueryStepSyntax.Inspect
         is QueryStepDocument.Related -> QueryStepSyntax.Related(relation.meaning())
         QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
         is QueryStepDocument.AppendReferences -> null // Bound and restored by admitSyntax above.
@@ -51,16 +48,10 @@ internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
 
 internal fun QueryOutputDocument.syntax(): QueryOutputSyntax? =
     when (this) {
-        is QueryOutputDocument.Candidates -> {
-            val selected =
-                fields.values.uniqueValues()?.mapTo(linkedSetOf()) { QueryCandidateField.valueOf(it.name) }
-                    ?: return null
-            QueryOutputSyntax.Candidates(QueryCandidateFields.from(selected).refinedOrNull() ?: return null)
-        }
         is QueryOutputDocument.Symbols -> {
             val selected =
                 fields.values.uniqueValues()?.mapTo(linkedSetOf()) { QuerySymbolField.valueOf(it.name) } ?: return null
-            QueryOutputSyntax.Symbols(QuerySymbolFields.from(selected).refinedOrNull() ?: return null)
+            QueryOutputSyntax(QuerySymbolFields.from(selected).refinedOrNull() ?: return null)
         }
     }
 

@@ -23,6 +23,10 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
     symbols: [InstalledDaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PrimitiveJqFilter.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
@@ -47,15 +51,17 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The hosted `query_symbols` and `check_diagnostics` presentations lower to canonical query and diagnostic operations. The former CLI routes are retired; provider admission retains distinct schemas for these presentations.
 
-`query_symbols` and `check_diagnostics` are eager. Symbol queries admit declaration kinds, names, locations, signatures, and optional source windows; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+`query_symbols` and `check_diagnostics` are eager. The query tool takes one required `request` object with a closed `run`, `resume`, or `read_result` action. Run admits discovery, exact-symbol references, or an immutable retained-result reference as its source, plus ordered steps, return fields, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, return fields, and optional grant; it does not execute query stages. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
-The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items and per-item failures expose one scalar `ref`, preserving the issued candidate or exact token verbatim. Named output schemas `CandidateRef`, `ExactSymbolRef`, and query-scoped `ContinuationRef` describe these opaque representations. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
+The pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items expose exact-symbol `ref` values; query candidate output and its inspect stage have been removed. Separate symbol lookup still uses candidate references. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors are distinct typed values. No token spelling creates authority: runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
+
+Run can request `retention: "retain"`. The produced semantic rows, failures, coverage and producer progress are captured immutably under one bounded query-state lifetime. A qualified retained result may seed a later run, including when its row set is empty; its original omissions and qualification remain attached. Result reuse rejects an unavailable or stale basis. Retention capacity failure is reported without erasing the run result. Read-result pages a retained result without semantic provider work, while `resume` restores pending execution from the original plan without resending it.
 
 The `append_symbol_refs` step accepts prior exact query outputs at any pipeline position. It revalidates each reference in the current read authority, appends it after the upstream stream, and sends it through later steps under the same query budget. `distinct_symbols` is the explicit set-union operation. `filter_jq` admits only bounded `select` predicates over compiler-grounded `name`, `kind`, and `file` primitives; the facade refines their spelling into a closed predicate before execution, and unsupported jq syntax rejects.
 
-`query_symbols.return_fields` accepts `source`. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. The same `SOURCE` selection is available in the public query syntax. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text.
+`query_symbols.request.return_fields` accepts `source` for a run. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text. Read-result can present a retained source window only when that evidence was captured in the original run.
 
 The installed `source_read` input projection distributes declaration visibility alternatives into its filter choices. This preserves the canonical request variants while keeping every advertised tool input within two composition levels for Copilot catalog loading. `CopilotInputSchemaCompatibilityTest` checks both the depth limit and acceptance parity for every source filter variant.
 
@@ -63,7 +69,7 @@ Installed projection 15 retains the full canonical hosted tool inventory. App Se
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
-The 32-example corpus, typed lowering, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
+The 36-case rejection corpus, typed accepted-action fixtures, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).
 
@@ -117,11 +123,15 @@ missing, and non-object final display results omit structured content rather tha
 manufacturing an empty object. A compact source result retains its unchanged
 leading source text while its final canonical envelope supplies structured content.
 
-`query_symbols` accepts optional nullable `continuation`; omission or null starts
-a query. It preserves the opaque token through public lowering. Qualified query
-output derives nullable `continuation` and `terminal_reason` from its required closed qualification progress state, while exact items
-expose only the scalar `ref` capability. Canonical equality remains internal to
-`distinct_symbols`; `symbol_id` has no public accessor.
+`query_symbols` starts new execution only through `request.action: "run"`. A
+`resume` action carries the unchanged opaque execution continuation without the
+source or stages. A `read_result` action carries a separate result reference and
+optional presentation cursor. Qualified query output derives execution
+`continuation` and `terminal_reason` from its required closed qualification
+progress state. The result payload separately reports retention outcome and an
+optional next result cursor. Exact items expose the scalar `ref` capability;
+canonical equality remains internal to `distinct_symbols`, and `symbol_id` has
+no public accessor.
 Traversal output includes progress, strategy and page-local partial expansions.
 Relation output separates exact returned-fact soundness from bounded provider
 omission evidence, with measured or explicitly unmeasured page counts.

@@ -7,7 +7,11 @@ tags: [query, symbol, source, relation]
 timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
+  - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
+  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryRetainedCompositionTest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
@@ -52,18 +56,22 @@ code_sources:
 
 ```text
 host admission -> current authority + request budget
-              -> query protocol/reference admission -> typed plan
-              -> candidate discovery or restored references -> exact refinement
-              -> optional predicates/relations -> bounded result projection
+              -> closed run / resume / read-result action
+run           -> discovery, exact references, or retained semantic rows
+              -> exact stages -> bounded projection -> optional retention
+resume        -> saved execution checkpoint -> remaining exact stages
+read-result   -> immutable retained rows -> presentation page
 ```
 
-The pure plan compiler prevents candidate-only and exact-symbol stages from being combined incorrectly. Execution uses a single request state to track `SemanticReadAuthority`, time, work units, encoded bytes, result capacity, limitations, and item failures. A live authority is supplied by its admitted host; decoding a reference never creates one.
+The pure plan compiler admits only exact-symbol stages and selects discovery, exact references, or a retained result as its source. Discovery still refines internal candidates before a row enters the exact pipeline. Execution tracks `SemanticReadAuthority`, time, work units, encoded bytes, result capacity, limitations, and item failures. A live authority is supplied by its admitted host; decoding a reference never creates one. Query candidate output and its inspect stage have been removed; separate symbol lookup and inspection still own those capabilities.
 
-An append-reference stage admits exact outputs from earlier queries under the current authority, then schedules them after the upstream stream. Later predicates, relation hops, and distinct stages see both inputs. Appended items share the parent work and checkpoint budget; distinct is the explicit set-union choice. The public bounded jq spelling is refined to a typed predicate over compiler-grounded name, kind, or file text before the service evaluates it without a source read. A resumed request uses the checkpoint's already admitted plan after exact request and authority matching, so it does not reacquire old tokens for each page.
+An append-reference stage admits exact outputs from earlier queries under the current authority, then schedules them after the upstream stream. Later predicates, relation hops, and distinct stages see both inputs. Appended items share the parent work and checkpoint budget; distinct is the explicit set-union choice. The public bounded jq spelling is refined to a typed predicate over compiler-grounded name, kind, or file text before the service evaluates it without a source read. A resume action supplies only an issued execution continuation and optional new grant. `QueryStateStore` restores the admitted plan and pending work, so completed prefix stages and old tokens are not reacquired.
 
-An exact-symbol output may request `SOURCE`. At its emit stage, the service calls the existing source port with the same exact selector and read authority, a file region, no entity enumeration, and a fixed five-line window on each side. Returned text keeps its normalized committed-text proof and one-based line range. Source rejection or withheld text qualifies the query with a finite item cause; output and checkpoint bytes account for returned text. This adds one source read per emitted symbol and does not alter candidate-only results.
+`QueryRetainedResult` captures immutable exact rows, item failures, coverage, producer progress, and their semantic basis. `QueryStateStore` holds result references and execution checkpoints as distinct typed entries under one entry, byte, and lifetime bound. A run sourced from a retained result seeds the service from those proven rows, including an empty set, without rediscovery or re-description. Qualified positives remain usable with their original limitations and omissions. Restoration rejects unavailable or stale-basis results. A requested retention can fail for capacity without erasing the current query output. The read-result action presents a bounded page from retained rows using a result cursor; it does not invoke semantic providers.
 
-Discovery may remain a candidate result. Exact-only operations force refinement, and failed refinements remain visible as limitations. Relation continuations and child budgets are derived from remaining parent capacity.
+An exact-symbol output may request `SOURCE`. At its emit stage, the service calls the existing source port with the same exact selector and read authority, a file region, no entity enumeration, and a fixed five-line window on each side. Returned text keeps its normalized committed-text proof and one-based line range. Source rejection or withheld text qualifies the query with a finite item cause; output and checkpoint bytes account for returned text. This adds one source read per emitted symbol and does not alter discovery refinement.
+
+Discovery candidates are refined to exact symbols before query output. Failed refinements remain visible as limitations. Relation continuations and child budgets are derived from remaining parent capacity.
 
 Broad native discovery now filters index names by the admitted scope's coarse
 project-content or project-plus-library ID policy before the name cap, then
@@ -120,14 +128,15 @@ The current [public tool contracts](../contracts/public-tools.md) distinguish pr
 
 Cheap scope and declaration-family constraints precede native collection. Mixed-family syntax issues one symbol discovery request with all requested kinds retained. Project-only fuzzy declarations use scoped Kotlin files, and exact searches select only requested short-name index families. Package PSI runs outside native index callbacks before candidate collection. Qualified partial results retain their limitations through exact refinement.
 
-Hosted query projection issues compact exact/candidate handles before encoding.
+Hosted query projection issues compact exact-symbol handles before encoding.
 The final byte guard accounts for actual serialized references and connections,
-then retains the remaining output and execution checkpoint in a project-owned
-bounded store. Resume binds the exact plan and semantic snapshot. Expiry,
-eviction and mismatch reject rather than restarting the query. The pure service
-retains an ordered task stack, relation cursors, stage-local distinct identities,
-pending output and finite upstream failures. Intermediate expansion does not
-consume final projection byte capacity.
+then retains any remaining transport output separately from query execution
+checkpoints and requested immutable results. Resume restores the original plan
+and semantic snapshot without retransmission. Expiry, eviction and mismatch
+reject rather than restarting the query. The pure service retains an ordered
+task stack, relation cursors, stage-local distinct identities, pending output
+and finite upstream failures. Intermediate expansion does not consume final
+projection byte capacity.
 
 Distinct stages preserve the first canonical declaration occurrence and that
 occurrence's connections. Later duplicates cannot mutate an emitted page.

@@ -28,16 +28,16 @@ sealed interface QueryQualifiedProgressDocument {
 /** Retained output permits draining proven facts; it cannot establish upstream resumability. */
 @Serializable
 sealed interface QueryCheckpointDocument {
-    val token: ProtocolText
+    val token: QueryExecutionContinuation
 
     @Serializable
     @SerialName("upstream")
-    data class Upstream(override val token: ProtocolText) : QueryCheckpointDocument
+    data class Upstream(override val token: QueryExecutionContinuation.Pipeline) : QueryCheckpointDocument
 
     @Serializable
     @SerialName("retained_output")
     data class RetainedOutput(
-        override val token: ProtocolText,
+        override val token: QueryExecutionContinuation.Output,
         val upstream: QueryPreparedCoverageDocument,
     ) : QueryCheckpointDocument
 }
@@ -54,18 +54,8 @@ sealed interface QueryPreparedCoverageDocument {
     data class TerminalIncomplete(val reason: QueryTerminalReasonDocument) : QueryPreparedCoverageDocument
 }
 
-internal fun QueryQualifiedProgressDocument.hasCanonicalSyntax(): Boolean =
-    when (this) {
-        is QueryQualifiedProgressDocument.TerminalIncomplete -> true
-        is QueryQualifiedProgressDocument.Resumable ->
-            when (val reference = checkpoint) {
-                is QueryCheckpointDocument.Upstream -> PIPELINE_TOKEN.matches(reference.token.value)
-                is QueryCheckpointDocument.RetainedOutput -> OUTPUT_TOKEN.matches(reference.token.value)
-            }
-    }
-
 /** Compatibility projections are derived; no result payload may independently supply these fields. */
-val QueryQualifiedProgressDocument.continuationToken: ProtocolText?
+val QueryQualifiedProgressDocument.continuationToken: QueryExecutionContinuation?
     get() =
         when (this) {
             is QueryQualifiedProgressDocument.Resumable -> checkpoint.token
@@ -78,7 +68,3 @@ val QueryQualifiedProgressDocument.terminalReason: QueryTerminalReasonDocument?
             is QueryQualifiedProgressDocument.Resumable -> null
             is QueryQualifiedProgressDocument.TerminalIncomplete -> reason
         }
-
-private const val UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-private val PIPELINE_TOKEN = Regex("query:v1:$UUID_PATTERN")
-private val OUTPUT_TOKEN = Regex("query-output:v1:$UUID_PATTERN")

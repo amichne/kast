@@ -4763,36 +4763,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolSchemaTest/fun:ordered transformations stay ordered and empty fields retain their distinct meaning()/val:input",
-        "kind": "JSON_LITERAL",
-        "sha256": "5bbe04bfc8b2fbe855503c6ce0da03e6f1902a6f80b2daddcb5abfb93f504d11"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolSchemaTest/fun:ordered transformations stay ordered and empty fields retain their distinct meaning()/val:source",
-        "kind": "JSON_LITERAL",
-        "sha256": "e5a17657d4536aca8a970091612b6ef293b4da7e665c4becc8acefb49f0452df"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolSchemaTest/fun:schema syntax does not manufacture exact reference authority()/val:admitted",
-        "kind": "JSON_LITERAL",
-        "sha256": "f23c20093333778b0b22600679d15d2d96c09e2b519dfa2aee8e024cc6869f9b"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
         "scope": "type:BrokerSessionHubTest/fun:approval answer and resolution retain recipient correlation through a handoff(4:Path)/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
@@ -6986,47 +6956,7 @@
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
         "scope": "type:InstalledServerProjectionTest/fun:query schema exposes intent and defaults but not evaluator states()",
         "kind": "JSON_LITERAL",
-        "sha256": "34d30892c1705872b803411e45602cbc785d0313409a6562bbe5b9bd46bb8407"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:query schema exposes intent and defaults but not evaluator states()",
-        "kind": "JSON_LITERAL",
-        "sha256": "90e439d461640b7846a8590fc16a9031e5a56818c9fbd2d21e992db01eb0715d"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:query schema exposes intent and defaults but not evaluator states()",
-        "kind": "JSON_LITERAL",
-        "sha256": "4a03d8533d34f0e54078fd1bea5bf222ba584f607fc065fe692014fcf94f590a"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:query schema exposes intent and defaults but not evaluator states()",
-        "kind": "JSON_LITERAL",
         "sha256": "58e762e3cc666563dd73c06a75f9ea20d4b5b4b8242c5418b161a815beed469d"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:query schema exposes intent and defaults but not evaluator states()",
-        "kind": "JSON_LITERAL",
-        "sha256": "a1d4d4d0b75da4e65f9e8c1fa7393b4e8146b036813959c174e21ea6e003632f"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -8277,16 +8207,6 @@
         "scope": "type:CanonicalRequestDtoSerializationTest/fun:request deserialization rejects non-canonical aggregate syntax at parse time()/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
         "sha256": "8c3fdebbc7d863da658e61edc872964a65bfe6745de64ec3e106756d9a813c12"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalRequestDtoSerializationTest.kt",
-        "scope": "type:CanonicalRequestDtoSerializationTest/fun:request deserialization rejects non-canonical aggregate syntax at parse time()/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "7745e87c6418909e7933ea112d7773a4f3246198114cd25d3fa19d6b3a4ff2cf"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

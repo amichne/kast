@@ -139,12 +139,15 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
         QueryRunRejection.WorkspaceNotReady -> ReadRecoveryAction.WAIT_FOR_WORKSPACE
         is QueryRunRejection.ReferenceRejected -> rejection.reason.recoveryAction()
         is QueryRunRejection.StepReferenceRejected -> rejection.reason.recoveryAction()
-        is QueryRunRejection.PlanRejected,
         is QueryRunRejection.SourceRejected -> ReadRecoveryAction.CORRECT_REQUEST
         is QueryRunRejection.ExecutionRejected ->
             when (rejection.reason) {
-                QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE -> ReadRecoveryAction.RESTART_READ
+                QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE,
+                QueryExecutionRejectionDocument.RESULT_UNAVAILABLE,
+                QueryExecutionRejectionDocument.RESULT_STALE_BASIS -> ReadRecoveryAction.RESTART_READ
                 QueryExecutionRejectionDocument.CONTINUATION_MISMATCH,
+                QueryExecutionRejectionDocument.RESULT_CURSOR_OUT_OF_RANGE,
+                QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE,
                 QueryExecutionRejectionDocument.REQUEST_REJECTED,
                 QueryExecutionRejectionDocument.BUDGET_REJECTED -> ReadRecoveryAction.CORRECT_REQUEST
                 QueryExecutionRejectionDocument.REFERENCE_STALE -> ReadRecoveryAction.REACQUIRE_AUTHORITY

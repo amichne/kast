@@ -45,7 +45,7 @@ The examples below show the tool inputs for direct calls or harness integration.
 Call `kast.query_symbols` with:
 
 ```json
-{"source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":["class"],"scope":null},"steps":null,"return_fields":["name","location","signature"]}
+{"request":{"action":"run","source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":["class"],"scope":null},"steps":null,"return_fields":["name","location","signature"]}}
 ```
 
 Send that input to the hosted `kast.query_symbols` tool in the connected session.
@@ -53,7 +53,7 @@ Send that input to the hosted `kast.query_symbols` tool in the connected session
 Use these request rules:
 
 - Set `declaration_kinds` to `["function"]` for methods or `["property"]` for properties.
-- Keep every control field present.
+- Include `action`, `source`, `steps`, and `return_fields` inside `request`; other run controls are optional.
 - Use `null` for exact, case-sensitive matching under recursive directory `.`.
 - Expect the default source sets to be exactly `main` and `test`.
 - Use a package scope when a simple declaration name needs qualification.
@@ -78,9 +78,12 @@ For a property or an unknown declaration kind, use `query_symbols`:
 
 ```json
 {
-  "source": {"type": "search_declarations", "declaration_name": "retryCount", "name_match": null, "scope": null, "declaration_kinds": ["property"]},
-  "steps": null,
-  "return_fields": null
+  "request": {
+    "action": "run",
+    "source": {"type": "search_declarations", "declaration_name": "retryCount", "name_match": null, "scope": null, "declaration_kinds": ["property"]},
+    "steps": null,
+    "return_fields": null
+  }
 }
 ```
 
@@ -93,13 +96,16 @@ Constructor discovery is not advertised.
 
 ## Include source with a symbol query
 
-Request `source` in `query_symbols.return_fields` when the result needs code as well as identity:
+Request `source` in `query_symbols.request.return_fields` when the result needs code as well as identity:
 
 ```json
 {
-  "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": "exact", "declaration_kinds": ["function"], "scope": null},
-  "steps": [],
-  "return_fields": ["name", "location", "source"]
+  "request": {
+    "action": "run",
+    "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": "exact", "declaration_kinds": ["function"], "scope": null},
+    "steps": [],
+    "return_fields": ["name", "location", "source"]
+  }
 }
 ```
 
@@ -111,13 +117,16 @@ A directory scope uses paths relative to the session workspace root:
 
 ```json
 {
-  "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": null, "declaration_kinds": ["function"], "scope": {
-    "relative_directory_path": "services/orders",
-    "include_subdirectories": true,
-    "source_set_names": ["main"]
-  }},
-  "steps": null,
-  "return_fields": null
+  "request": {
+    "action": "run",
+    "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": null, "declaration_kinds": ["function"], "scope": {
+      "relative_directory_path": "services/orders",
+      "include_subdirectories": true,
+      "source_set_names": ["main"]
+    }},
+    "steps": null,
+    "return_fields": null
+  }
 }
 ```
 
@@ -125,13 +134,16 @@ A package scope instead uses semantic Kotlin package names:
 
 ```json
 {
-  "source": {"type": "search_declarations", "declaration_name": "OrderService", "name_match": null, "declaration_kinds": ["class"], "scope": {
-    "package_name": "com.example.orders",
-    "include_subpackages": false,
-    "source_set_names": null
-  }},
-  "steps": null,
-  "return_fields": null
+  "request": {
+    "action": "run",
+    "source": {"type": "search_declarations", "declaration_name": "OrderService", "name_match": null, "declaration_kinds": ["class"], "scope": {
+      "package_name": "com.example.orders",
+      "include_subpackages": false,
+      "source_set_names": null
+    }},
+    "steps": null,
+    "return_fields": null
+  }
 }
 ```
 
