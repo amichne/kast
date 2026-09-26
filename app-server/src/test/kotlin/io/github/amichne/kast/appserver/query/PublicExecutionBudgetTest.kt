@@ -31,22 +31,6 @@ class PublicExecutionBudgetTest {
         )
 
     @Test
-    fun `legacy query retains its rejection of explicit null controls`() {
-        val refs =
-            (BoundedProtocolList.create(
-                    listOf((ProtocolText.parse("exact:v3:EXAMPLE_NOT_ISSUED") as Refinement.Refined).value)
-                ) as Refinement.Refined)
-                .value
-        val invalid = json.encodeToJsonElement(InvalidLegacyBudget(PublicQueryRefs(refs), null as String?))
-        assertInstanceOf(Refinement.Rejected::class.java, PublicQueryContract.admit(invalid))
-        val valid =
-            json.encodeToJsonElement(
-                PublicQueryDocument(PublicQueryDocumentType.QUERY, PublicQueryRefs(refs), executionBudget = budget)
-            )
-        assertInstanceOf(Refinement.Refined::class.java, PublicQueryContract.admit(valid))
-    }
-
-    @Test
     fun `query facade retains all four requested allowances`() {
         val refs = (BoundedProtocolList.create(listOf(name)) as Refinement.Refined).value
         val cases =
@@ -60,8 +44,6 @@ class PublicExecutionBudgetTest {
             val admitted = PublicToolContract.admit(identity, document) as Refinement.Refined
             assertEquals(budget, (admitted.value.canonical as PublicToolCanonical.Query).request.executionBudget)
         }
-        val legacy = PublicQueryDocument(PublicQueryDocumentType.QUERY, PublicQueryRefs(refs), executionBudget = budget)
-        assertEquals(budget, legacy.toCanonicalQuery().executionBudget)
     }
 
     @Test
@@ -132,13 +114,6 @@ private data class InvalidQuery<T>(
 
 @Serializable
 private data class InvalidBudget<T>(@kotlinx.serialization.SerialName("max_work_units") val maxWorkUnits: T)
-
-@Serializable
-private data class InvalidLegacyBudget<T>(
-    val from: PublicQuerySource,
-    @kotlinx.serialization.SerialName("execution_budget") val executionBudget: T,
-    val type: String = "QUERY",
-)
 
 /** The malformed scalar values exercise the public schema and typed numeric decoder. */
 @Serializable

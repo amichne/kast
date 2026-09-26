@@ -84,9 +84,9 @@ limits fail. Baseline changes require deliberate review; checks never regenerate
 them. Detekt's finding identities do not bound growth within an existing finding.
 
 Spotless uses ktfmt Kotlinlang style at 120 columns for authored Kotlin and
-module Gradle scripts. The public-query generator owns `PublicQueryDocuments.kt`,
-`PublicToolDocuments.kt`, and `PublicToolIdentity.kt`; Spotless excludes those
-files and `verifyPublicQueryGeneration` checks their exact generator parity.
+module Gradle scripts. The public-tool generator owns `PublicToolDocuments.kt`
+and `PublicToolIdentity.kt`; Spotless excludes those files and
+`verifyPublicQueryGeneration` checks their exact generator parity.
 
 ## Verify
 

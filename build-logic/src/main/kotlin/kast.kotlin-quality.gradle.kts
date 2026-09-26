@@ -10,7 +10,6 @@ spotless {
         target("src/**/*.kt")
         // The schema generator owns these bytes; verifyPublicQueryGeneration enforces parity.
         targetExclude(
-            "src/main/kotlin/io/github/amichne/kast/appserver/query/PublicQueryDocuments.kt",
             "src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt",
             "src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
         )

@@ -336,34 +336,6 @@
     <ID>MaxLineLength:NativeToolIdentityTest.kt:NativeToolIdentityTest$"""{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"query","arguments":{},"status":"$status","success":$success,"durationMs":17,"contentItems":[{"type":"inputText","text":"query: qualified"},{"type":"inputText","text":"{\"status\":\"qualified\",\"items\":[],\"failures\":[\"budget\"]}"}]}"""</ID>
     <ID>MaxLineLength:NativeToolIdentityTest.kt:NativeToolIdentityTest$"""{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"query","arguments":{},"status":"failed","success":true}"""</ID>
     <ID>MaxLineLength:PersistentBrokerServiceTest.kt:PersistentBrokerServiceTest$"""{"state":"rejected","schemaVersion":$BROKER_SERVICE_STATE_SCHEMA_VERSION,"serviceIdentity":"${command.identity.value}","serviceInstanceId":"123e4567-e89b-42d3-a456-426614174000","brokerVersion":"$VENDORED_BROKER_VERSION","failure":"CODEX_QUALIFICATION_REJECTED"}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","containment":"DIRECT"}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","containment":"recursive"}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","containment":null}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","sourceSets":[" "]}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":".","sourceSets":["integrationTest","integrationTest"]}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":"services","containment":"DESCENDANTS"}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":"services","package":"com.example"}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"DIRECTORY","value":"services/orders","sourceSets":["main"]}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"ALL","scope":{"type":"SCOPE","directory":{"type":"DIRECTORY","path":"services"},"package":{"type":"PACKAGE","name":"com.example"}}}}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"SEARCH","query":"Order","kinds":["CLASS"]},"steps":[{"type":"EXPAND","relation":"TYPE_USES"}],"select":[]}"""</ID>
-    <ID>MaxLineLength:PublicQueryContractTest.kt:PublicQueryContractTest$"""{"type":"QUERY","from":{"type":"SEARCH","query":"submitOrder"},"steps":[{"type":"EXPAND","relation":"CALLERS"},{"type":"FILTER","visibility":["PUBLIC"]}]}"""</ID>
-    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryAll$val kinds: BoundedProtocolList&lt;PublicQueryDeclarationKind> = queryListOf(PublicQueryDeclarationKind.CLASS, PublicQueryDeclarationKind.FUNCTION, PublicQueryDeclarationKind.PROPERTY, PublicQueryDeclarationKind.TYPE_ALIAS)</ID>
-    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScope.Directory$override val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
-    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScope.Package$override val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
-    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQueryScopeEnvelope$val sourceSets: BoundedProtocolList&lt;ProtocolText> = queryListOf(queryValue(ProtocolText.parse("main")), queryValue(ProtocolText.parse("test")))</ID>
-    <ID>MaxLineLength:PublicQueryDocuments.kt:PublicQuerySearch$val kinds: BoundedProtocolList&lt;PublicQueryDeclarationKind> = queryListOf(PublicQueryDeclarationKind.CLASS, PublicQueryDeclarationKind.FUNCTION, PublicQueryDeclarationKind.PROPERTY, PublicQueryDeclarationKind.TYPE_ALIAS)</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"/tmp\"}}}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"a/ /b\"}}}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"a/../b\"}}}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"a/./b\"}}}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"directory\":{\"type\":\"DIRECTORY\",\"path\":\"a//b\"}}}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\",\"scope\":{\"type\":\"SCOPE\",\"sourceSets\":[\"main\",\"main\"]}}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\"},\"steps\":[{\"type\":\"EXPAND\",\"relation\":\"type_uses\"}]}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"ALL\"},\"steps\":[{\"type\":\"FILTER\",\"visibility\":[\"public\",\"public\"]}]}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"REFS\",\"refs\":[{\"kind\":\"exact-symbol\",\"token\":\"exact:v2:abc\"}]}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"SEARCH\",\"query\":\"OrderService\"},\"execution\":{\"kind\":\"exhaustive\"}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"SEARCH\",\"query\":\"OrderService\"},\"output\":{\"type\":\"candidates\",\"fields\":[]}}"</ID>
-    <ID>MaxLineLength:PublicQuerySchemaTest.kt:PublicQuerySchemaTest$"{\"type\":\"QUERY\",\"from\":{\"type\":\"SEARCH\",\"query\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}"</ID>
     <ID>MaxLineLength:PublicToolContractTest.kt:PublicToolSchemaTest$"""{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":".","include_subdirectories":true,"source_set_names":["main","main"]}}"""</ID>
     <ID>MaxLineLength:PublicToolContractTest.kt:PublicToolSchemaTest$"""{"declaration_name":"Order","name_match":null,"scope":null,"declaration_kinds":["class","class"]}"""</ID>
     <ID>MaxLineLength:PublicToolContractTest.kt:PublicToolSchemaTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"filter_visibility","visibilities":["public","public"]}],"return_fields":null}"""</ID>
@@ -445,8 +417,6 @@
     <ID>WildcardImport:KastPublicQueryProviderTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
     <ID>WildcardImport:NativeToolIdentityTest.kt:import kotlinx.serialization.json.*</ID>
     <ID>WildcardImport:NativeToolIdentityTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
-    <ID>WildcardImport:PublicQuerySchemaTest.kt:import kotlinx.serialization.json.*</ID>
-    <ID>WildcardImport:PublicQuerySchemaTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
     <ID>WildcardImport:PublicToolContract.kt:import io.github.amichne.kast.appserver.schema.*</ID>
     <ID>WildcardImport:PublicToolContract.kt:import io.github.amichne.kast.protocol.contract.*</ID>
     <ID>WildcardImport:PublicToolContract.kt:import kotlinx.serialization.*</ID>

@@ -1,13 +1,12 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.query.PublicQueryContract
-import io.github.amichne.kast.appserver.query.PublicQueryDocument
-import io.github.amichne.kast.appserver.query.PublicQueryDocumentType
-import io.github.amichne.kast.appserver.query.PublicQuerySearch
 import io.github.amichne.kast.appserver.query.PublicToolCheckDiagnostics
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.PublicToolQuerySymbols
+import io.github.amichne.kast.appserver.query.PublicToolReferenceSource
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
@@ -20,17 +19,18 @@ import org.junit.jupiter.api.Test
 
 class KastQueryInputTest {
     @Test
-    fun `retired canonical query route rejects admitted historical syntax`() {
+    fun `retired canonical query route rejects admitted current tool syntax`() {
         val name = (ProtocolText.parse("Order") as Refinement.Refined).value
+        val refs = (BoundedProtocolList.create(listOf(name)) as Refinement.Refined).value
         val raw =
             Json.encodeToJsonElement(
-                PublicQueryDocument.serializer(),
-                PublicQueryDocument(PublicQueryDocumentType.QUERY, PublicQuerySearch(name)),
+                PublicToolQuerySymbols.serializer(),
+                PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null),
             )
         val admitted =
-            when (val result = PublicQueryContract.schema.admit(raw)) {
+            when (val result = PublicToolContract.schema(PublicToolIdentity.QUERY_SYMBOLS).admit(raw)) {
                 is Validation.Validated -> result.value
-                is Validation.Rejected -> error("Historical query fixture must satisfy its schema")
+                is Validation.Rejected -> error("Current tool fixture must satisfy its schema")
             }
 
         val rejection =
