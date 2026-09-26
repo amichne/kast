@@ -229,7 +229,7 @@ class QuerySetCompositionTest {
     }
 
     @Test
-    fun `union and intersection merge distinct established relation occurrences`() = runTest {
+    fun `union keeps first row while intersection combines established relation occurrences`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             val first = relationFact(selected, 100)
@@ -237,7 +237,10 @@ class QuerySetCompositionTest {
             val left = retainedRows(selected, listOf(QuerySymbol(SymbolDescription.from(selected), listOf(first))))
             val right = retainedRows(selected, listOf(QuerySymbol(SymbolDescription.from(selected), listOf(second))))
             val service = service()
-            for (step in listOf(QueryStepSyntax.Union(right), QueryStepSyntax.Intersect(right))) {
+            for ((step, expected) in listOf(
+                QueryStepSyntax.Union(right) to listOf(first),
+                QueryStepSyntax.Intersect(right) to listOf(first, second).sorted(),
+            )) {
                 val plan =
                     admittedPlan(
                         QuerySourceSyntax.Retained(left),
@@ -245,13 +248,13 @@ class QuerySetCompositionTest {
                         QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                     )
                 val result = service.run(request(plan, 8L))
-                assertEquals(listOf(first, second).sorted(), result.rows().single().connections)
+                assertEquals(expected, result.rows().single().connections)
             }
         }
     }
 
     @Test
-    fun `distinct after relation expansion merges repeated occurrence evidence`() = runTest {
+    fun `distinct after relation expansion keeps first occurrence evidence`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             val service =
@@ -274,7 +277,7 @@ class QuerySetCompositionTest {
                 )
             val rows = service.run(request(plan, 16L)).rows()
             assertEquals(1, rows.size)
-            assertEquals(listOf(100, 102), rows.single().connections.map { it.occurrence.range.startInclusive })
+            assertEquals(listOf(100), rows.single().connections.map { it.occurrence.range.startInclusive })
         }
     }
 

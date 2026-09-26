@@ -22,7 +22,10 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
     fun acceptDistinct(
         stage: ExactQueryStage.Distinct,
         incoming: QuerySymbol,
-    ): Refinement<Unit, QueryIdentityRowFailure> = mergeInto(rows.getOrPut(stage) { linkedMapOf() }, incoming)
+    ): Refinement<Unit, QueryIdentityRowFailure> {
+        rows.getOrPut(stage) { linkedMapOf() }.putIfAbsent(CanonicalSymbolId.from(incoming.selector), incoming)
+        return Refinement.Refined(Unit)
+    }
 
     fun flushDistinct(stage: ExactQueryStage.Distinct): List<QuerySymbol> =
         rows.remove(stage)?.values?.toList().orEmpty()
@@ -36,7 +39,6 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
         val id = CanonicalSymbolId.from(incoming.selector)
         val selected =
             when (stage.operator) {
-                QuerySetOperator.UNION -> Refinement.Refined(incoming)
                 QuerySetOperator.INTERSECTION ->
                     right[id]?.let { mergeRows(incoming, it) } ?: return Refinement.Refined(Unit)
                 QuerySetOperator.DIFFERENCE ->
@@ -50,19 +52,6 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
 
     fun flushSet(stage: ExactQueryStage.Set): Refinement<List<QuerySymbol>, QueryIdentityRowFailure> {
         val aggregated = LinkedHashMap(rows[stage].orEmpty())
-        if (stage.operator == QuerySetOperator.UNION) {
-            val right =
-                when (val grouped = groupedRight(stage)) {
-                    is Refinement.Refined -> grouped.value
-                    is Refinement.Rejected -> return grouped
-                }
-            for (row in right.values) {
-                when (val merged = mergeInto(aggregated, row)) {
-                    is Refinement.Refined -> Unit
-                    is Refinement.Rejected -> return merged
-                }
-            }
-        }
         rows.remove(stage)
         return Refinement.Refined(aggregated.values.toList())
     }

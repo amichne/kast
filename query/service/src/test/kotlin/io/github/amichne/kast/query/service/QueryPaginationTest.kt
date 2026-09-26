@@ -140,7 +140,7 @@ class QueryPaginationTest {
     }
 
     @Test
-    fun `relation cursor and distinct evidence survive a work page without prefix replay`() = runTest {
+    fun `relation cursor and first distinct evidence survive a work page without prefix replay`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             val positions = mutableListOf<Long>()
@@ -180,7 +180,8 @@ class QueryPaginationTest {
                 service.run(QueryExecutionRequest.create(first.plan, first.lease, resumed.budget, checkpoint).refined())
             val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
             assertEquals(1, complete.symbolCount())
-            assertEquals(2, complete.result.symbolRows().single().connections.size)
+            assertEquals(1, complete.result.symbolRows().single().connections.size)
+            assertEquals(8, complete.result.symbolRows().single().connections.single().occurrence.range.startInclusive)
             assertEquals(listOf(0L, 1L), positions)
             assertEquals(1, descriptions)
         }

@@ -58,7 +58,6 @@ sealed interface QueryPlanAdmissionFailure {
 
 enum class QuerySetOperator {
     INTERSECTION,
-    UNION,
     DIFFERENCE,
 }
 
@@ -218,7 +217,8 @@ object QueryPlanCompiler {
                     is QueryStepSyntax.Concat -> ExactQueryStage.Concat(step.input, stage)
                     is QueryStepSyntax.Intersect ->
                         ExactQueryStage.Set(QuerySetOperator.INTERSECTION, step.right, stage)
-                    is QueryStepSyntax.Union -> ExactQueryStage.Set(QuerySetOperator.UNION, step.right, stage)
+                    is QueryStepSyntax.Union ->
+                        ExactQueryStage.Concat(QueryCompositionInput.Retained(step.right), ExactQueryStage.Distinct(stage))
                     is QueryStepSyntax.Difference -> ExactQueryStage.Set(QuerySetOperator.DIFFERENCE, step.right, stage)
                     is QueryStepSyntax.Bind -> ExactQueryStage.Bind(step.name, stage)
                     is QueryStepSyntax.Join -> ExactQueryStage.Join(step.mode, step.right, stage)
