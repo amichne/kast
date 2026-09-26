@@ -48,7 +48,7 @@ code_sources:
   - path: source/contract/src/test/kotlin/io/github/amichne/kast/source/contract/SourceSelectorTokenContractTest.kt
   - path: symbol/contract/src/test/kotlin/io/github/amichne/kast/symbol/contract/SymbolSelectorContractTest.kt
   - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/Utf16Coordinate.kt
-    symbols: [Utf16Coordinate]
+    symbols: [Utf16CodeUnitOffset, Utf16CodeUnitCount]
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedSymbolHandle.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadSimpleRequest.kt

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.protocol.codex.kastToolCall
+import io.github.amichne.kast.appserver.protocol.codex.kastToolCompleted
 import io.github.amichne.kast.appserver.BrokerSocketReachability
 import io.github.amichne.kast.appserver.JdkBrokerSocketProbe
 import io.github.amichne.kast.appserver.core.Broker
@@ -107,7 +109,7 @@ class KtorBrokerServerTest {
                     val arguments = """{"selector":"exact:v2:opaque"}"""
                     upstream.receivedFromUpstream.send(
                         BrokerUpstreamFrame.Text(
-                            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments}}"""
+                            kastToolCall(Json.parseToJsonElement(arguments))
                         )
                     )
                     val modelReply = Json.parseToJsonElement(upstream.sentByBroker.receive()).jsonObject
@@ -127,7 +129,7 @@ class KtorBrokerServerTest {
 
                     upstream.receivedFromUpstream.send(
                         BrokerUpstreamFrame.Text(
-                            """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":20,"item":{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"exact model result"}],"success":true}}}"""
+                            kastToolCompleted(Json.parseToJsonElement(arguments), "exact model result")
                         )
                     )
 
@@ -389,7 +391,7 @@ class KtorBrokerServerTest {
             )
         val tool: BrokerTool<Unit, ObserverInput, ObserverOutput, Nothing> =
             BrokerTool(
-                toolName("symbol_inspect"),
+                toolName("query_symbols"),
                 ToolDescription.admit("Inspect one symbol.").refinedValue(),
                 ToolLoading.DEFERRED,
                 input,

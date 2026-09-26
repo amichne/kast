@@ -24,11 +24,11 @@ internal data class McpValidationDeclaration(
 )
 
 @Serializable
-internal enum class McpValidationKind(val lookupKind: String, val discoveryKind: String, val inspectedKind: String) {
-    @SerialName("class") CLASS("class", "class", "classlike"),
-    @SerialName("function") FUNCTION("symbol", "function", "function"),
-    @SerialName("property") PROPERTY("symbol", "property", "property"),
-    @SerialName("type_alias") TYPE_ALIAS("symbol", "type-alias", "type-alias"),
+internal enum class McpValidationKind(val queryKind: String, val queryResultKind: String) {
+    @SerialName("class") CLASS("class", "classlike"),
+    @SerialName("function") FUNCTION("function", "function"),
+    @SerialName("property") PROPERTY("property", "property"),
+    @SerialName("type_alias") TYPE_ALIAS("type_alias", "type-alias"),
 }
 
 @Serializable
@@ -76,8 +76,7 @@ internal data class McpValidationResult(
 
 @Serializable
 internal data class McpValidationData(
-    val discovery: McpProbe,
-    val exactInspection: McpProbe,
+    val declarationQuery: McpProbe,
     val sourceRead: McpProbe,
     val relation: McpProbe,
     val diagnostics: McpProbe,

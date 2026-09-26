@@ -6,10 +6,6 @@ interface IndexSyncCapability : CapabilityMarker
 
 interface TopologyBuildCapability : CapabilityMarker
 
-interface SymbolDiscoverCapability : CapabilityMarker
-
-interface SymbolInspectCapability : CapabilityMarker
-
 interface SourceReadCapability : CapabilityMarker
 
 interface QueryRunCapability : CapabilityMarker

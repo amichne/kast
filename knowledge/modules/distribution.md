@@ -35,7 +35,6 @@ code_sources:
   - path: packaging/released_upgrade_acceptance.py
   - path: packaging/released_acceptance_product.py
   - path: packaging/released_tool_inventory.py
-  - path: packaging/hosted_raw_symbol_regression.py
   - path: packaging/released_payload_identity.py
   - path: packaging/run-hosted-change-acceptance.py
   - path: packaging/hosted_read_regression.py
@@ -209,9 +208,9 @@ boundaries separate.
 
 The native acceptance runner also accepts `--release-assets` and `--release-version` in place of source-built `--product` and `--plugin`. This mode requires a clean checkout at the exact version tag and a harness carrying that source commit. It invokes the tagged public `install.sh` with original checksum-bound control and plugin archives in an exclusively owned fixture. It verifies the checksum-derived installed version directory, manifest inventory, and original archive file bytes, then routes CLI and provider calls through the installed `bin/kast-complete`. The hosted plugin stays in the installer's private JetBrains plugin directory; only the separately identified test probe is added. Login-service and App Server activation are disabled during installation. This admission mode alone proves neither native behavior nor upgrade or persistent-session behavior; those require the corresponding completed runtime receipts. Temporary fake-installer tests qualify the admission boundary only.
 
-Release acceptance binds all 11 advertised tools to their canonical operations
+Release acceptance binds all five advertised tools to their canonical operations
 and confirms that the installed configuration contains no retired tool-selection
-assignment. The native read harness exercises the seven read tools from that complete
+assignment. The native read harness exercises the three read tools from that complete
 suite; lifecycle and change tools retain their own effect and approval contracts.
 
 Released mode checks two fresh noninteractive Bash sessions without reading startup files: command resolution, exact version, saved runtime configuration, and installation identity. Optional `--previous-release-assets` and `--previous-release-version` first install a compatible immediately preceding patch through the same tagged target installer, then register the owned empty workspace through that prior wrapper. The upgrade requires completed prior admission, retirement, configuration validation and command qualification observations, unchanged prior payload/configuration, and exact populated workspace-registry retention. Original archives and invocation output digests remain bound to the receipt. These child-shell observations do not qualify login-service activation, a persistent coordinator, or stock Codex UI; those remain explicit runtime gates.

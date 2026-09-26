@@ -12,7 +12,6 @@ import io.github.amichne.kast.cli.command.codex.codexCommandGroup
 import io.github.amichne.kast.cli.command.knowledge.knowledgeCommandFamily
 import io.github.amichne.kast.cli.command.product.productCommandGroup
 import io.github.amichne.kast.cli.command.source.sourceCommandGroup
-import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
 import io.github.amichne.kast.cli.command.workspace.indexCommandGroup
 import io.github.amichne.kast.cli.command.workspace.topologyCommandGroup
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -330,11 +329,10 @@ private fun canonicalGraph(
     val ide = io.github.amichne.kast.cli.command.ide.ideCommandGroup()
     val index = indexCommandGroup(preparers, requestInput)
     val topology = topologyCommandGroup(preparers, requestInput)
-    val symbol = symbolCommandGroup(preparers, requestInput)
     val source = sourceCommandGroup(preparers, requestInput)
     val change = changeCommandGroup(preparers, requestInput)
     val families =
-        listOf(index, topology, symbol, source, change).map {
+        listOf(index, topology, source, change).map {
             it.projectPublicDefinitions(CanonicalOperationDefinitions.all)
         }
     val semantic = families.flatMap(CommandFamily::semanticCommands)

@@ -26,8 +26,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
-import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
-import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
@@ -48,24 +46,6 @@ import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
-import io.github.amichne.kast.protocol.contract.SymbolDocument
-import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
-import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
-import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
-import io.github.amichne.kast.protocol.contract.SymbolKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.TopologyBuildDigest
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
@@ -79,24 +59,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class CanonicalOperationWireBindingsTest {
-    @Test
-    fun `exact native index and unsupported failures have distinct encoded causes`() {
-        for ((reason, code) in
-            listOf(
-                SymbolInspectRejection.NATIVE_FAILURE to "native_failure",
-                SymbolInspectRejection.WORKSPACE_INDEX_UNAVAILABLE to "workspace_index_unavailable",
-                SymbolInspectRejection.UNSUPPORTED_DECLARATION to "unsupported_declaration",
-            )) {
-            val outcome = OperationOutcome.Rejected(reason)
-            val document = CanonicalOperationWireBindings.symbolInspect.encodeOutcome(outcome).encodedDocument()
-            org.junit.jupiter.api.Assertions.assertTrue(document.contains("\"rejection\":\"$code\""), document)
-            assertEquals(
-                WireDecoding.Decoded(outcome),
-                CanonicalOperationWireBindings.symbolInspect.decodeOutcome(document),
-            )
-        }
-    }
-
     @Test
     fun `production serializer table covers the exact canonical operation set`() {
         assertEquals(
@@ -137,33 +99,6 @@ class CanonicalOperationWireBindingsTest {
 
     @Test
     fun `all production bindings round trip requests and every outcome variant`() {
-        assertRoundTrips(
-            CanonicalOperationWireBindings.symbolDiscover,
-            discoverRequest("Target", 20),
-            SymbolDiscoverResult(
-                BoundedProtocolList.create(
-                        listOf<SymbolDiscoveryDocument>(
-                            SymbolDiscoveryDocument.Declaration(
-                                text("candidate:v1:Target"),
-                                SymbolDiscoveryKindDocument.SYMBOL,
-                                text("Target"),
-                                text("src/Target.kt"),
-                                offset(7),
-                            )
-                        )
-                    )
-                    .refinedValue()
-            ),
-            SymbolDiscoverQualification.from(setOf(SymbolDiscoverLimitation.RESULT_LIMIT)).refinedValue(),
-            SymbolDiscoverRejection.QUERY_REJECTED,
-        )
-        assertRoundTrips(
-            CanonicalOperationWireBindings.symbolInspect,
-            SymbolInspectRequest(SymbolInspectTarget.Exact(text("exact:Target"))),
-            SymbolInspectResult(symbol("exact:v1:Target", "Target")),
-            SymbolInspectQualification.EVIDENCE_INCOMPLETE,
-            SymbolInspectRejection.EXACT_SELECTOR_STALE,
-        )
         assertRoundTrips(
             CanonicalOperationWireBindings.diagnosticCheck,
             DiagnosticCheckRequest(text("project:fixture"), count(100)),
@@ -252,8 +187,8 @@ class CanonicalOperationWireBindingsTest {
 
     @Test
     fun `production binding rejects unknown operation schema and invalid refined payload`() {
-        val binding = CanonicalOperationWireBindings.symbolDiscover
-        val encoded = binding.encodeRequest(discoverRequest("Target", 20)).encodedDocument()
+        val binding = CanonicalOperationWireBindings.diagnosticCheck
+        val encoded = binding.encodeRequest(DiagnosticCheckRequest(text("project:fixture"), count(100))).encodedDocument()
         val unknownSchema = SchemaIdentity.parse("kast.unknown.v1").refinedValue()
         val unknownOperation = OperationId.parse("symbol.missing").refinedValue()
 
@@ -273,7 +208,7 @@ class CanonicalOperationWireBindingsTest {
             ),
         )
 
-        val invalidPayload = encoded.replace("\"Target\"", "\"\"")
+        val invalidPayload = encoded.replace("\"project:fixture\"", "\"\"")
         assertEquals(
             WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REQUEST)),
             binding.decodeRequest(WireRequestEnvelope.admit(invalidPayload).admittedRequest()),
@@ -329,46 +264,15 @@ class CanonicalOperationWireBindingsTest {
         }
     }
 
-    private fun discoverRequest(raw: String, limit: Int): SymbolDiscoverRequest =
-        SymbolDiscoverRequest(
-            SymbolDiscoverTargetDocument.Name(
-                text(raw),
-                SymbolNameKindDocument.SYMBOL,
-                SymbolDiscoveryMatchDocument.FUZZY,
-            ),
-            count(limit),
-        )
-
-    private fun symbol(selector: String, name: String): SymbolDocument {
-        val qualifiedIdentity = text("sample.$name")
-        val signature = CompilerSignatureDocument.ClassLike(qualifiedIdentity)
-        val evidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refinedValue()
-        return SymbolDocument.create(
-                selector = text(selector),
-                kind = SymbolKindDocument.CLASSLIKE,
-                name = text(name),
-                qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(qualifiedIdentity),
-                file = text("src/$name.kt"),
-                range = SourceRangeDocument.create(offset(0), offset(name.length)).refinedValue(),
-                compilerEvidence = evidence,
-            )
-            .refinedValue()
-    }
-
     private fun diagnosticQualification(): DiagnosticCheckQualification =
         DiagnosticCheckQualification.create(
                 DiagnosticKnownCountDocument.parse(1).refinedValue(),
                 resultLimitReached = true,
                 analyzedFiles = listOf(text("src/Target.kt")),
-                limitations =
-                    listOf(
-                        DiagnosticLimitationDocument(
-                            text("src/Other.kt"),
-                            DiagnosticLimitationReasonDocument.INDEXING,
-                        )
-                    ),
-            )
-            .refinedValue()
+                limitations = listOf(
+                    DiagnosticLimitationDocument(text("src/Other.kt"), DiagnosticLimitationReasonDocument.INDEXING)
+                ),
+            ).refinedValue()
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
 

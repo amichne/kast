@@ -44,16 +44,6 @@ class CliBoundaryContractTest {
         val commands =
             listOf(
                 SemanticCase(
-                    listOf("symbol", "discover"),
-                    """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}""",
-                    CanonicalOperation.SYMBOL_DISCOVER,
-                ),
-                SemanticCase(
-                    listOf("symbol", "inspect"),
-                    """{"target":{"type":"candidate","selector":"candidate"}}""",
-                    CanonicalOperation.SYMBOL_INSPECT,
-                ),
-                SemanticCase(
                     listOf("source", "read"),
                     """{"anchor":{"type":"symbol","selector":"$selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":250,"textByteLimit":65536,"page":{"type":"first"}}""",
                     CanonicalOperation.SOURCE_READ,
@@ -138,18 +128,11 @@ class CliBoundaryContractTest {
     }
 
     @Test
-    fun `command arguments are bounded boundary values`() {
+    fun `retired symbol commands reject before request input`() {
         val factory = commandGraphFactory()
-
-        assertTrue(
-            factory.parse(
-                listOf("symbol", "discover"),
-                CliRequestDocumentInput.Provided(
-                    """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}"""
-                ),
-            ) is CliCommandParsing.Parsed
-        )
-        assertTrue(factory.parse(listOf("symbol", "discover", "")) is CliCommandParsing.Rejected)
+        for (command in listOf(listOf("symbol", "discover"), listOf("symbol", "inspect"))) {
+            assertTrue(factory.parse(command, CliRequestDocumentInput.Deferred { error("retired route read input") }) is CliCommandParsing.Rejected)
+        }
     }
 
     @Test

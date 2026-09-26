@@ -10,7 +10,6 @@ import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalSymbolCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import java.util.UUID
 import kotlinx.serialization.Serializable
@@ -184,16 +183,6 @@ class LiveReadOutputSchemaTest {
                         complete(CanonicalOperation.QUERY_RUN, basis, QueryRunResult(empty(), empty()))
                     )
                     .document(),
-            CanonicalOperation.SYMBOL_DISCOVER to
-                CanonicalSymbolCliDocuments.projectDiscovery(
-                        complete(CanonicalOperation.SYMBOL_DISCOVER, basis, SymbolDiscoverResult(empty()))
-                    )
-                    .document(),
-            CanonicalOperation.SYMBOL_INSPECT to
-                CanonicalSymbolCliDocuments.projectInspection(
-                        complete(CanonicalOperation.SYMBOL_INSPECT, basis, SymbolInspectResult(symbol()))
-                    )
-                    .document(),
             CanonicalOperation.SOURCE_READ to
                 CanonicalSourceReadCliDocuments.project(
                         complete(CanonicalOperation.SOURCE_READ, basis, sourceResult(basis))
@@ -222,30 +211,6 @@ class LiveReadOutputSchemaTest {
                                         ),
                                 )
                                 .refined(),
-                        )
-                    )
-                    .document(),
-            CanonicalOperation.SYMBOL_DISCOVER to
-                CanonicalSymbolCliDocuments.projectDiscovery(
-                        OperationOutcome.Qualified(
-                            EvidenceEnvelope(
-                                CanonicalOperation.SYMBOL_DISCOVER.id,
-                                basis,
-                                SymbolDiscoverResult(empty()),
-                            ),
-                            SymbolDiscoverQualification.from(setOf(SymbolDiscoverLimitation.WORK_LIMIT)).refined(),
-                        )
-                    )
-                    .document(),
-            CanonicalOperation.SYMBOL_INSPECT to
-                CanonicalSymbolCliDocuments.projectInspection(
-                        OperationOutcome.Qualified(
-                            EvidenceEnvelope(
-                                CanonicalOperation.SYMBOL_INSPECT.id,
-                                basis,
-                                SymbolInspectResult(symbol()),
-                            ),
-                            SymbolInspectQualification.EVIDENCE_INCOMPLETE,
                         )
                     )
                     .document(),
@@ -315,21 +280,6 @@ class LiveReadOutputSchemaTest {
             SourceTextProjectionDocument.NotRequested,
         )
     }
-
-    private fun symbol(): SymbolDocument =
-        SymbolDocument.create(
-                text("exact:v2:payload:digest"),
-                SymbolKindDocument.CLASSLIKE,
-                text("Example"),
-                SymbolQualifiedIdentityDocument.Available(text("sample.Example")),
-                text("src/Example.kt"),
-                SourceRangeDocument.create(offset(0), offset(1)).refined(),
-                CompilerSymbolEvidenceDocument.fromSignature(
-                        CompilerSignatureDocument.ClassLike(text("sample.Example"))
-                    )
-                    .refined(),
-            )
-            .refined()
 
     /** Negative fixtures deliberately omit one required live evidence field. */
     @Serializable

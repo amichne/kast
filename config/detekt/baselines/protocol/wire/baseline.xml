@@ -14,7 +14,6 @@
     <ID>InvalidPackageDeclaration:CanonicalReadSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:CanonicalSourceReadDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:CanonicalSourceReadSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
-    <ID>InvalidPackageDeclaration:CanonicalSymbolSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:TopologyBuildRejectionDocument.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:TopologyCoverageDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>LargeClass:CanonicalOperationWireBindingsTest.kt:CanonicalOperationWireBindingsTest</ID>
@@ -25,7 +24,6 @@
     <ID>LongMethod:CanonicalTopologyRejectionWireTest.kt:CanonicalTopologyRejectionWireTest$@Test fun `generated topology rejection preserves every specific extraction failure and path`</ID>
     <ID>LongMethod:IdeEndpointDescriptorNegativeTest.kt:IdeEndpointDescriptorNegativeTest$@Test fun `unknown unsupported duplicate missing and reordered capabilities fail closed`</ID>
     <ID>LongMethod:IdeEndpointDescriptorV2.kt:IdeEndpointDescriptorV2.Companion$fun create: IdeEndpointDescriptorAdmission</ID>
-    <ID>LongMethod:SymbolPublicSurfaceWireTest.kt:SymbolPublicSurfaceWireTest$@Test fun `describe and relation share one structured symbol document`</ID>
     <ID>MagicNumber:TopologyCoverageDocuments.kt:3</ID>
     <ID>MagicNumber:TopologyCoverageDocuments.kt:4</ID>
     <ID>MaxLineLength:CanonicalChangeGeneratedSerializationTest.kt:CanonicalChangeGeneratedSerializationTest$"""{"intent":{"kind":"add-declaration","exactTarget":"exact:Target","declaration":"fun added() = Unit"}}"""</ID>
@@ -44,10 +42,6 @@
     <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached","provider_incomplete"],"continuation":"${continuation.value}"}"""</ID>
     <ID>MaxLineLength:CanonicalReadGeneratedSerializationTest.kt:CanonicalReadGeneratedSerializationTest$"""{"type":"terminal_incomplete","limitations":["one_hop_incomplete"],"relationLimitations":["unresolved_target"]}"""</ID>
     <ID>MaxLineLength:CanonicalSelectableLocationWireTest.kt:CanonicalSelectableLocationWireTest$"""{"diagnostics":[{"severity":"warning","code":"INSERTION_POINT","message":"insert here","location":{"file":"src/A.kt","range":{"startInclusive":7,"endExclusive":7}}}]}"""</ID>
-    <ID>MaxLineLength:CanonicalSymbolGeneratedSerializationTest.kt:CanonicalSymbolGeneratedSerializationTest$"""{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"Sample","qualifiedIdentity":"sample.Sample","file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10},"compilerEvidence":{"identity":"${evidence.identity.value}","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}"""</ID>
-    <ID>MaxLineLength:CanonicalSymbolGeneratedSerializationTest.kt:CanonicalSymbolGeneratedSerializationTest$"""{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"sample","file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10},"compilerEvidence":{"identity":"identity","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}"""</ID>
-    <ID>MaxLineLength:CanonicalSymbolGeneratedSerializationTest.kt:CanonicalSymbolGeneratedSerializationTest$"""{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"sample","qualifiedIdentity":null,"file":"src/Sample.kt","range":{"startInclusive":10,"endExclusive":4},"compilerEvidence":{"identity":"identity","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}"""</ID>
-    <ID>MaxLineLength:CanonicalSymbolGeneratedSerializationTest.kt:CanonicalSymbolGeneratedSerializationTest$"""{"target":{"type":"name","query":"Controller","kind":"symbol","match":"exact-name"},"limit":25,"extra":true}"""</ID>
     <ID>WildcardImport:CanonicalQueryDocuments.kt:import io.github.amichne.kast.protocol.contract.*</ID>
     <ID>WildcardImport:CanonicalQueryWireBindingTest.kt:import io.github.amichne.kast.kernel.*</ID>
     <ID>WildcardImport:CanonicalQueryWireBindingTest.kt:import io.github.amichne.kast.protocol.contract.*</ID>

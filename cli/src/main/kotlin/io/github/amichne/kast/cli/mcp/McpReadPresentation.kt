@@ -18,8 +18,6 @@ private val semanticReadNames =
         "search_functions",
         "search_declarations",
         "query_symbols",
-        "symbol_lookup",
-        "symbol_inspect",
         "source_read",
         "check_diagnostics",
     )
@@ -158,8 +156,6 @@ private fun summaryFor(name: String, header: McpCanonicalHeader, complete: Boole
             "$finding in $files; $completion. IDE analysis; project build not run."
         }
         "source_read" -> "Source read; $completion"
-        "symbol_lookup" -> "${header.items?.size ?: 0} declaration candidates; $completion"
-        "symbol_inspect" -> "Exact symbol inspection; $completion"
         else -> "$name; $completion"
     }
 }

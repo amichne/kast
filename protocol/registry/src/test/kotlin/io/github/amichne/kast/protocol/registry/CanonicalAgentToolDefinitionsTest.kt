@@ -37,8 +37,6 @@ class CanonicalAgentToolDefinitionsTest {
             listOf(
                 CanonicalOperation.WORKSPACE_LIFECYCLE,
                 CanonicalOperation.QUERY_RUN,
-                CanonicalOperation.SYMBOL_DISCOVER,
-                CanonicalOperation.SYMBOL_INSPECT,
                 CanonicalOperation.SOURCE_READ,
                 CanonicalOperation.DIAGNOSTIC_CHECK,
                 CanonicalOperation.CHANGE,
@@ -49,8 +47,6 @@ class CanonicalAgentToolDefinitionsTest {
             listOf(
                 "workspace_lifecycle",
                 "query_symbols",
-                "symbol_lookup",
-                "symbol_inspect",
                 "source_read",
                 "check_diagnostics",
                 "change",
@@ -65,7 +61,6 @@ class CanonicalAgentToolDefinitionsTest {
             HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
             CanonicalAgentToolDefinitions.workspaceLifecycle.approval,
         )
-        assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.symbolLookup.approval)
         assertEquals(HostedToolLoading.EAGER, CanonicalAgentToolDefinitions.query.loading)
         assertEquals(
             listOf("query_symbols", "check_diagnostics"),

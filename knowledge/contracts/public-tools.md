@@ -21,7 +21,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
     symbols: [DaemonOperationProtocol, DaemonOperationSelection]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
-    symbols: [InstalledDaemonOperationClient]
+    symbols: [DaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt
@@ -60,7 +60,7 @@ The authored tool bundle generates Kotlin request DTOs, concrete normalization d
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
-The pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion can present related declarations or individual occurrence facts through the one query result. Occurrence rows preserve repeated call sites, exact endpoint references, use-site location and provenance. Structured result omissions keep the exact subject, relation kind and provider evidence beside known positive rows. Query items expose exact-symbol `ref` values; query candidate output and its inspect stage have been removed. Separate symbol lookup still uses candidate references. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors are distinct typed values. No token spelling creates authority: runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
+The pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion can present related declarations or individual occurrence facts through the one query result. Occurrence rows preserve repeated call sites, exact endpoint references, use-site location and provenance. Structured result omissions keep the exact subject, relation kind and provider evidence beside known positive rows. Query items expose exact-symbol `ref` values. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors are distinct typed values. No token spelling creates authority: runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
 Run can request `retention: "retain"`. The produced semantic rows, failures, coverage and producer progress are captured immutably under one bounded query-state lifetime. Issued `row_id` handles identify rows within that result. A qualified retained symbol result may seed a later run, including when its row set is empty; its original omissions and qualification remain attached. Optional `row_ids` select rows in order; an empty list is valid and a proper subset retains incomplete-selection qualification. Row handles must belong to the supplied result. Result reuse rejects an unavailable or stale basis. Retention capacity failure is reported without erasing the run result. Read-result pages a retained result without semantic provider work, while `resume` restores pending execution from the original plan without resending it.
 

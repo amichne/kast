@@ -27,7 +27,7 @@ fun interface SymbolCompilerPort {
     suspend fun compile(request: SymbolDiscoveryRequest): SymbolCompilation
 }
 
-/** Finite public rejections for `symbol.discover`. */
+/** Finite internal failures for query declaration discovery. */
 enum class SymbolDiscoveryRejection {
     WORKSPACE_NOT_READY,
     STALE_GENERATION,
@@ -37,14 +37,14 @@ enum class SymbolDiscoveryRejection {
     COMPILER_CONTRACT_VIOLATION,
 }
 
-/** Closed public result of `symbol.discover`. */
+/** Closed internal result of query declaration discovery. */
 sealed interface SymbolDiscoveryResult {
     data class Discovered(val outcome: SymbolDiscoveryOutcome) : SymbolDiscoveryResult
 
     data class Rejected(val reason: SymbolDiscoveryRejection) : SymbolDiscoveryResult
 }
 
-/** Public operation boundary for `symbol.discover`. */
+/** Internal operation boundary for query declaration discovery. */
 fun interface SymbolDiscoveryOperations {
     /**
      * Proof transition: `SymbolDiscoveryRequest -> SymbolDiscoveryResult`.

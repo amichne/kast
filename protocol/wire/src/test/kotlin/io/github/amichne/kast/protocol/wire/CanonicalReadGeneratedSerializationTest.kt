@@ -13,48 +13,11 @@ import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class CanonicalReadGeneratedSerializationTest {
-    @Test
-    fun `generated qualification document preserves hyphenated names and closed variants`() {
-        val codec = CanonicalReadSerializers.symbolDiscoverQualification
-        val qualification =
-            SymbolDiscoverQualification.from(
-                    setOf(
-                        SymbolDiscoverLimitation.WORK_LIMIT,
-                        SymbolDiscoverLimitation.PROVIDER_FAILURE,
-                    )
-                )
-                .refinedValue()
-        val document = json("""{"limitations":["work-limit","provider-failure"]}""")
-
-        assertEquals(
-            WireValueEncoding.Encoded(document),
-            codec.encode(qualification, WireValueRole.QUALIFICATION),
-        )
-        assertEquals(
-            WireDecoding.Decoded(qualification),
-            codec.decode(document, WireValueRole.QUALIFICATION),
-        )
-        listOf(
-                """{}""",
-                """{"limitations":[]}""",
-                """{"limitations":["unknown"]}""",
-                """{"limitations":["work-limit"],"extra":true}""",
-            )
-            .forEach { malformed ->
-                assertEquals(
-                    WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.QUALIFICATION)),
-                    codec.decode(json(malformed), WireValueRole.QUALIFICATION),
-                )
-            }
-    }
-
     @Test
     fun `proof carrying qualifications round trip and malformed claims fail closed`() {
         val diagnostic =

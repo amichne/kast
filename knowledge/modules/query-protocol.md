@@ -38,8 +38,6 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryBindingDocuments.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSymbolProtocols.kt
-    symbols: [CanonicalSymbolDiscoverProtocol, CanonicalSymbolInspectProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
     symbols: [CanonicalSourceReadProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalDiagnosticCheckProtocol.kt
@@ -164,14 +162,13 @@ See [source identity](../contracts/source-identity.md#source-output-format).
 
 ## Explicit exact reacquisition
 
-`symbol.inspect` accepts `revalidate_exact` alongside unchanged `candidate` and
-`exact` targets. The previous exact token is only a key into the running owner's
+Fresh first-page query and source requests may reacquire an exact reference after
+strict restoration reports a stale handle. The previous exact token is only a key into the running owner's
 separate detached locator store. Current admission, the same host/root and model
 source owner, unchanged saved committed owning-file bytes, and one fresh exact K2
 match are required. The service checks freshness again before new issuance.
-Results encode `acquisition: strict` or `acquisition: reacquired` explicitly.
 No prior source snapshot, relation, continuation or mutation approval becomes
-current through this operation.
+current through reacquisition; those paths retain strict restoration.
 
 Capture is optional for ordinary issuance: it runs inside exact compiler lookup,
 deduplicates at most 64 files per request, and retains no source payload or platform

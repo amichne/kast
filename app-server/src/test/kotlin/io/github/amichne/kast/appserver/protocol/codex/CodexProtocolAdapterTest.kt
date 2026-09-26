@@ -233,22 +233,7 @@ class CodexProtocolAdapterTest {
                     .trimIndent()
             )
         val canonicalResult = "{\"fingerprint\":\"sha256:model-only\",\"selector\":\"exact:v2:model-only\"}"
-        val call = buildJsonObject {
-            put("id", 9)
-            put("method", "item/tool/call")
-            put(
-                "params",
-                buildJsonObject {
-                    put("threadId", "thread-1")
-                    put("turnId", "turn-1")
-                    put("callId", "call-1")
-                    put("namespace", "kast")
-                    put("tool", "symbol_inspect")
-                    put("arguments", arguments)
-                },
-            )
-        }
-            .toString()
+        val call = kastToolCall(arguments)
 
         val reply =
             Json.parseToJsonElement((adapter.fromUpstream(call) as ProtocolRouting.ReplyUpstream).message).jsonObject
@@ -364,7 +349,7 @@ class CodexProtocolAdapterTest {
             val adapter = CodexProtocolAdapter(broker, protocolContracts(), store)
             val arguments = buildJsonObject {}
             adapter.fromUpstream(
-                """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":{}}}"""
+                kastToolCall(arguments)
             )
             val completed = buildJsonObject {
                 put("method", "item/completed")
@@ -435,7 +420,7 @@ class CodexProtocolAdapterTest {
         val adapter = CodexProtocolAdapter(broker, protocolContractsWithoutAgentMessages(), store)
         val arguments = Json.parseToJsonElement("""{"selector":"exact:v2:opaque"}""")
         adapter.fromUpstream(
-            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments}}"""
+            kastToolCall(arguments)
         )
         val completed = buildJsonObject {
             put("method", "item/completed")
@@ -490,7 +475,7 @@ class CodexProtocolAdapterTest {
 
         val reply =
             adapter.fromUpstream(
-                """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments}}"""
+                kastToolCall(arguments)
             )
         val completed = buildJsonObject {
             put("method", "item/completed")
@@ -1574,7 +1559,7 @@ class CodexProtocolAdapterTest {
             )
         val tool: BrokerTool<Unit, ObserverInput, ObserverOutput, Nothing> =
             BrokerTool(
-                toolName("symbol_inspect"),
+                toolName("query_symbols"),
                 ToolDescription.admit("Inspect one symbol.").refinedValue(),
                 ToolLoading.DEFERRED,
                 input,
@@ -1668,31 +1653,7 @@ class CodexProtocolAdapterTest {
         arguments: JsonElement,
         result: String,
         completed: Boolean,
-    ): JsonObject = buildJsonObject {
-        put("type", "dynamicToolCall")
-        put("id", "call-1")
-        put("tool", "symbol_inspect")
-        put("namespace", "kast")
-        put("arguments", arguments)
-        if (completed) {
-            put("status", "completed")
-            put(
-                "contentItems",
-                buildJsonArray {
-                    add(
-                        buildJsonObject {
-                            put("type", "inputText")
-                            put("text", result)
-                        }
-                    )
-                },
-            )
-            put("success", true)
-            put("durationMs", 17)
-        } else {
-            put("status", "inProgress")
-        }
-    }
+    ): JsonObject = kastDynamicItem(arguments, result, completed)
 
     private fun assertSanitizedKastArguments(arguments: JsonObject) {
         assertEquals("EventConsumer", arguments.getValue("query").jsonPrimitive.content)

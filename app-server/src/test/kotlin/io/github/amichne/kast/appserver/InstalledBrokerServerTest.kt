@@ -364,8 +364,6 @@ class InstalledBrokerServerTest {
                     listOf(
                         "workspace_lifecycle",
                         "query_symbols",
-                        "symbol_lookup",
-                        "symbol_inspect",
                         "source_read",
                         "check_diagnostics",
                         "change",

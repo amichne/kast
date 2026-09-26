@@ -7,7 +7,5 @@ internal fun HostedRequest.Read.completionPolicy(): HostedReadCompletionPolicy =
     when (this) {
         is HostedRequest.Diagnostic -> HostedReadCompletionPolicy.CALLER_ELAPSED
         is HostedRequest.Query,
-        is HostedRequest.Discover,
-        is HostedRequest.Inspect,
         is HostedRequest.Source -> HostedReadCompletionPolicy.HOST_CONTAINMENT
     }

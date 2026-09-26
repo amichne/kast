@@ -7,8 +7,6 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
@@ -16,8 +14,6 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 class CanonicalCliRequestPreparers(
     val indexSync: OperationRequestPreparer<IndexSyncRequest>,
     val topologyBuild: OperationRequestPreparer<TopologyBuildRequest>,
-    val symbolDiscover: OperationRequestPreparer<SymbolDiscoverRequest>,
-    val symbolInspect: OperationRequestPreparer<SymbolInspectRequest>,
     val sourceRead: OperationRequestPreparer<SourceReadRequest>,
     val queryRun: OperationRequestPreparer<QueryRunRequest>,
     val diagnosticCheck: OperationRequestPreparer<DiagnosticCheckRequest>,
@@ -32,10 +28,6 @@ fun canonicalCliRequestPreparers(): CanonicalCliRequestPreparers =
         indexSync = TypedOperationProjection(CanonicalOperationWireBindings.indexSync, indexSyncCliProjector),
         topologyBuild =
             TypedOperationProjection(CanonicalOperationWireBindings.topologyBuild, topologyBuildCliProjector),
-        symbolDiscover =
-            TypedOperationProjection(CanonicalOperationWireBindings.symbolDiscover, symbolDiscoverCliProjector),
-        symbolInspect =
-            TypedOperationProjection(CanonicalOperationWireBindings.symbolInspect, symbolInspectCliProjector),
         sourceRead = TypedOperationProjection(CanonicalOperationWireBindings.sourceRead, sourceReadCliProjector),
         queryRun = TypedOperationProjection(CanonicalOperationWireBindings.queryRun, queryRunCliProjector),
         diagnosticCheck =

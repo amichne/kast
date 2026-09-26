@@ -14,7 +14,6 @@
     <ID>InvalidPackageDeclaration:CanonicalReadSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:CanonicalSourceReadDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:CanonicalSourceReadSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
-    <ID>InvalidPackageDeclaration:CanonicalSymbolSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:TopologyBuildRejectionDocument.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:TopologyCoverageDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>LongMethod:CanonicalSourceReadSerializers.kt:private fun SourceEntityWireDocument.toContract: WireDocumentConversion&lt;SourceEntityDocument></ID>

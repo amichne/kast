@@ -110,22 +110,6 @@ object CanonicalAgentToolDefinitions {
             approval = HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
         )
     val query = facade(PublicToolIdentity.QUERY_SYMBOLS)
-    val symbolLookup =
-        tool(
-            CanonicalOperationDefinitions.symbolDiscover,
-            "symbol_lookup",
-            "Discover bounded file, name, location or source-text candidates for explicit " +
-                "refinement. Use query_symbols for declaration results and semantic pipelines. " +
-                "Preserve returned candidate selectors verbatim for symbol_inspect or source_read.",
-        )
-    val symbolInspect =
-        tool(
-            CanonicalOperationDefinitions.symbolInspect,
-            "symbol_inspect",
-            "Refine a symbol_lookup candidate into exact compiler-grounded identity, or explicitly " +
-                "revalidate an existing exact selector. Use query_symbols for declaration search. Preserve " +
-                "the returned exact selector verbatim.",
-        )
     val sourceRead =
         tool(
             CanonicalOperationDefinitions.sourceRead,
@@ -133,7 +117,7 @@ object CanonicalAgentToolDefinitions {
             "Read bounded source and structural context. For an exact selector, pass only " +
                 "`{\"symbol\":\"<exact selector from search>\"}`; region defaults to declaration, text to complete, " +
                 "entities to none, and format to compact. Optional region, text, entities, and format " +
-                "override those defaults. Candidate and source selectors use the typed anchor request. " +
+                "override those defaults. Source selectors use the typed anchor request. " +
                 "Preserve selectors verbatim and prefer this tool over unrestricted filesystem reads " +
                 "when Kast can represent the required Kotlin context. Omit entityLimit for an " +
                 "entity-free read, and omit page and default budgets for the first read.",
@@ -176,8 +160,6 @@ object CanonicalAgentToolDefinitions {
         listOf(
             workspaceLifecycle,
             query,
-            symbolLookup,
-            symbolInspect,
             sourceRead,
             diagnosticCheck,
             change,
@@ -196,9 +178,7 @@ object CanonicalAgentToolDefinitions {
                 Use kast.query_symbols for declaration-name search, enumeration, returned exact
                 references, and ordered pipelines. Restrict declaration kinds and scope before
                 expensive work; exact matching is default and fuzzy requires explicit opt-in.
-                Use symbol_lookup only when candidate discovery by file, location, name or
-                source text is required; use symbol_inspect to refine a candidate or revalidate
-                an exact selector. Use source_read for bounded source context and
+                Use source_read for bounded source context and
                 query_symbols with occurrence output for relation facts and its walk step for
                 multi-step reachability. Use kast.check_diagnostics
                 for compiler diagnostics.

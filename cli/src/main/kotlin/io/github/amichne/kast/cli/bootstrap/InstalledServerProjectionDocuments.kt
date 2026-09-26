@@ -167,20 +167,6 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 ),
             )
         CanonicalOperation.TOPOLOGY_BUILD -> topologyBuildDocumentSchema(operation)
-        CanonicalOperation.SYMBOL_DISCOVER ->
-            outcomeSchema(
-                operation,
-                ServerSchemaProperty("items", arraySchema(symbolDiscoverySchema())),
-            )
-        CanonicalOperation.SYMBOL_INSPECT ->
-            outcomeSchema(
-                operation,
-                ServerSchemaProperty("symbol", symbolSchema()),
-                ServerSchemaProperty(
-                    "acquisition",
-                    enumSchema(listOf("strict", "reacquired"), "Exact inspection authority acquisition."),
-                ),
-            )
         CanonicalOperation.SOURCE_READ -> sourceReadOutputSchema(operation)
         CanonicalOperation.QUERY_RUN -> queryRunDocumentSchema(operation)
         CanonicalOperation.DIAGNOSTIC_CHECK ->

@@ -9,8 +9,6 @@ import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocume
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
@@ -25,37 +23,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
-
-fun SymbolDiscoveryCandidate.protocolDocument(candidateSelector: ProtocolText): SymbolDiscoveryDocument? {
-    val name = text(name.value) ?: return null
-    val file = text(location.file.stableValue) ?: return null
-    return when (val candidateLocation = location) {
-        is SymbolDiscoveryCandidateLocation.File ->
-            SymbolDiscoveryDocument.File(
-                candidateSelector,
-                name,
-                file,
-            )
-        is SymbolDiscoveryCandidateLocation.Declaration ->
-            SymbolDiscoveryDocument.Declaration(
-                candidateSelector,
-                kind.protocolDiscoveryKind() ?: return null,
-                name,
-                file,
-                offset(candidateLocation.offset.value) ?: return null,
-            )
-        is SymbolDiscoveryCandidateLocation.Text ->
-            SymbolDiscoveryDocument.TextMatch(
-                candidateSelector,
-                name,
-                file,
-                range(
-                    candidateLocation.range.startInclusive.value,
-                    candidateLocation.range.endExclusive.value,
-                ) ?: return null,
-            )
-    }
-}
 
 fun SymbolDescription.protocolDocument(exactSelector: ProtocolText): SymbolDocument? =
     symbolDocument(
@@ -158,14 +125,6 @@ private fun List<CanonicalCompilerType>.protocolTypes(): BoundedProtocolList<Pro
     val projected = map { compilerType -> text(compilerType.value) ?: return null }
     return BoundedProtocolList.create(projected).refinedOrNull()
 }
-
-private fun SymbolDiscoveryKind.protocolDiscoveryKind(): SymbolDiscoveryKindDocument? =
-    when (this) {
-        SymbolDiscoveryKind.FILE -> SymbolDiscoveryKindDocument.FILE
-        SymbolDiscoveryKind.CLASS -> SymbolDiscoveryKindDocument.CLASS
-        SymbolDiscoveryKind.SYMBOL -> SymbolDiscoveryKindDocument.SYMBOL
-        SymbolDiscoveryKind.TEXT -> null
-    }
 
 private fun CompilerSymbolKind.protocolKind(): SymbolKindDocument =
     when (this) {

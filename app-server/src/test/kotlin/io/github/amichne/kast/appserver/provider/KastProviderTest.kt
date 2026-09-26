@@ -371,8 +371,8 @@ class KastProviderTest {
             val explicit =
                 broker.dispatch(
                     BrokerDispatchRequest(
-                        ToolAddress(namespace("kast"), toolName("symbol_lookup")),
-                        Json.encodeToJsonElement(SymbolQueryArguments("Thing")).jsonObject,
+                        ToolAddress(namespace("kast"), toolName("query_symbols")),
+                        searchInput().jsonObject,
                         context(cwd),
                     )
                 )
@@ -383,7 +383,7 @@ class KastProviderTest {
             val invalidRead = assertInstanceOf(BrokerDispatch.Rejected::class.java, explicit)
             val invalidInput =
                 assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, invalidRead.failure)
-            assertEquals(ProviderFailureCode.IDE_INVALID_REQUEST, invalidInput.code)
+            assertEquals(ProviderFailureCode.WORKSPACE_ROOT_MARKER_NOT_FOUND, invalidInput.code)
             assertEquals(
                 2,
                 executor.reads,
@@ -421,29 +421,6 @@ class KastProviderTest {
 
     @Test
     fun `supported Kast operations produce selector-free observer Markdown`() {
-        val discover =
-            observer(
-                "symbol.discover",
-                """
-                {
-                  "status": "completed",
-                  "document": {
-                    "operation": "symbol.discover",
-                    "status": "complete",
-                    "items": [{
-                      "type": "declaration",
-                      "candidateSelector": "candidate:v2:opaque",
-                      "kind": "class",
-                      "name": "EventConsumer",
-                      "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
-                      "offset": 17
-                    }]
-                  }
-                }
-                """
-                    .trimIndent(),
-            )
-        val inspect = observer("symbol.inspect", symbolInspectionObserverFixture())
         val source =
             observer(
                 "source.read",
@@ -486,30 +463,6 @@ class KastProviderTest {
 
         assertEquals(
             """
-            **Kast · symbol**
-
-            `EventConsumer` · class
-
-            [EventConsumer.kt](<events/core/src/main/kotlin/sample/EventConsumer.kt>)
-            """
-                .trimIndent(),
-            discover,
-        )
-        assertEquals(
-            """
-            **Kast · symbol**
-
-            `EventConsumer` · class-like · compiler-confirmed
-
-            [EventConsumer.kt](<events/core/src/main/kotlin/sample/EventConsumer.kt>)
-
-            `com.aexp.mobile.one.streaming.events.core.EventConsumer`
-            """
-                .trimIndent(),
-            inspect,
-        )
-        assertEquals(
-            """
             **Kast · source**
 
             [EventConsumer.kt](<events/core/src/main/kotlin/sample/EventConsumer.kt>)
@@ -523,7 +476,7 @@ class KastProviderTest {
                 .trimIndent(),
             source,
         )
-        listOf(discover, inspect, source).forEach { markdown ->
+        listOf(source).forEach { markdown ->
             FORBIDDEN_OBSERVER_TOKENS.forEach { forbidden ->
                 check(!markdown.contains(forbidden)) { "Observer Markdown leaked $forbidden" }
             }
@@ -533,12 +486,6 @@ class KastProviderTest {
 
     @Test
     fun `qualified Kast observations remain visibly incomplete`() {
-        val discover =
-            observer(
-                "symbol.discover",
-                """{"status":"completed","document":{"operation":"symbol.discover","status":"qualified","items":[{"type":"declaration","candidateSelector":"candidate:v2:opaque","kind":"class","name":"EventConsumer","file":"src/EventConsumer.kt","offset":3}],"qualification":"[result-limit-reached]"}}""",
-            )
-        val inspect = observer("symbol.inspect", symbolInspectionObserverFixture(InspectionFixtureCoverage.QUALIFIED))
         val source =
             observer(
                 "source.read",
@@ -551,7 +498,7 @@ class KastProviderTest {
             )
         val walk = observer("query.run", KastObserverFixtures.qualifiedQueryWalk)
 
-        listOf(discover, inspect, source, semantic, walk).forEach { markdown ->
+        listOf(source, semantic, walk).forEach { markdown ->
             check(markdown.contains("> Qualified — evidence incomplete"))
             check(!markdown.contains("compiler-confirmed"))
             FORBIDDEN_OBSERVER_TOKENS.forEach { forbidden -> check(!markdown.contains(forbidden)) }
@@ -626,12 +573,13 @@ class KastProviderTest {
     fun `absolute Kast file paths are relative to the admitted invocation directory`(@TempDir temporary: Path) {
         val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val file = workspace.resolve("src/main/kotlin/sample/EventConsumer.kt")
-        val rendered =
-            observer(
-                "symbol.discover",
-                """{"status":"completed","document":{"operation":"symbol.discover","status":"complete","items":[{"type":"declaration","candidateSelector":"candidate:v2:opaque","kind":"symbol","name":"EventConsumer","file":"$file","offset":3}]}}""",
-                workspace,
-            )
+        val rendered = observer(
+            "source.read",
+            KastObserverFixtures.sourceRead
+                .replace("/workspace", workspace.toString())
+                .replace("events/core/src/main/kotlin/sample/EventConsumer.kt", file.toString()),
+            workspace,
+        )
 
         check(rendered.contains("[EventConsumer.kt](<src/main/kotlin/sample/EventConsumer.kt>)"))
         check(!rendered.contains(workspace.toString()))
@@ -639,16 +587,14 @@ class KastProviderTest {
 
     @Test
     fun `unsupported malformed and contradictory observations fail closed`() {
-        val malformed =
-            observerPresentation(
-                "symbol.inspect",
-                """{"status":"completed","document":{"operation":"symbol.inspect","status":"complete","symbol":{"name":"EventConsumer"}}}""",
-            )
-        val mismatched =
-            observerPresentation(
-                "symbol.discover",
-                """{"status":"completed","document":{"operation":"source.read","status":"complete","items":[]}}""",
-            )
+        val malformed = observerPresentation(
+            "query.run",
+            KastObserverFixtures.queryOccurrences.replace("\"items\"", "\"missing_items\""),
+        )
+        val mismatched = observerPresentation(
+            "query.run",
+            """{"status":"completed","document":{"operation":"source.read","status":"complete","items":[]}}""",
+        )
         val unsupported =
             observerPresentation(
                 "diagnostic.check",
@@ -664,12 +610,18 @@ class KastProviderTest {
     fun `provider start rejects contract drift before invocation`(@TempDir temporary: Path) = runBlocking {
         val executable = executable(temporary.resolve("kast"))
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        Files.writeString(cwd.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val originalSchema = capabilitySchema()
+        val changedSchema =
+            originalSchema.replace(
+                "\"outputSchema\":{\"type\":\"object\"}",
+                "\"outputSchema\":{\"type\":\"object\",\"description\":\"changed\"}",
+            )
+        check(changedSchema != originalSchema)
         val executor =
             RecordingCatalogSource(
-                schema = capabilitySchema(),
-                replacementSchema =
-                    capabilitySchema()
-                        .replace("\"document\":{\"type\":\"object\"}", "\"document\":{\"type\":\"string\"}"),
+                schema = originalSchema,
+                replacementSchema = changedSchema,
             )
         val options = KastProviderOptions(catalogSource = executor)
         val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
@@ -683,13 +635,14 @@ class KastProviderTest {
         val dispatch =
             broker.dispatch(
                 BrokerDispatchRequest(
-                    ToolAddress(namespace("kast"), toolName("symbol_lookup")),
-                    buildJsonObject { put("query", "Thing") },
+                    ToolAddress(namespace("kast"), toolName("query_symbols")),
+                    searchInput().jsonObject,
                     context(cwd),
                 )
             ) as BrokerDispatch.Rejected
 
-        val failure = dispatch.failure as BrokerFailure.ProviderStartupRejected
+        val failure =
+            assertInstanceOf(BrokerFailure.ProviderStartupRejected::class.java, dispatch.failure, dispatch.failure.toString())
         assertEquals(ProviderFailureCode.KAST_CONTRACT_CHANGED, failure.code)
         assertEquals(2, executor.reads)
     }
@@ -793,5 +746,3 @@ class KastProviderTest {
 @Serializable private data class ApprovalPlanArguments(val plan: String)
 
 @Serializable private data class PhaseIdentityArguments(val planIdentity: String)
-
-@Serializable private data class SymbolQueryArguments(val query: String)

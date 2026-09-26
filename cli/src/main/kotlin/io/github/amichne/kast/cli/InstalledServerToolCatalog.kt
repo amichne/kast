@@ -12,8 +12,6 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.registry.AgentToolDefinition
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
@@ -184,16 +182,6 @@ private enum class InstalledServerTool(
         operation = CanonicalOperation.TOPOLOGY_BUILD,
         requestSerializer = TopologyBuildRequest.serializer(),
         route = InstalledToolRoute.Cli(listOf("topology", "build")),
-    ),
-    SYMBOL_DISCOVER(
-        operation = CanonicalOperation.SYMBOL_DISCOVER,
-        requestSerializer = SymbolDiscoverRequest.serializer(),
-        route = InstalledToolRoute.Cli(listOf("symbol", "discover")),
-    ),
-    SYMBOL_INSPECT(
-        operation = CanonicalOperation.SYMBOL_INSPECT,
-        requestSerializer = SymbolInspectRequest.serializer(),
-        route = InstalledToolRoute.Cli(listOf("symbol", "inspect")),
     ),
     SOURCE_READ(
         operation = CanonicalOperation.SOURCE_READ,

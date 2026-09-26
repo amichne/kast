@@ -15,9 +15,8 @@ name, source location, signature, and an opaque `ref`. The
 | `signature` | Display the compiler's declaration details. |
 | `source` | Show a bounded committed source window when requested. |
 
-`symbol_lookup` can return candidates without exact compiler identity.
-Use `symbol_inspect` to refine a candidate. Do not treat a matching name,
-file path, or reconstructed token as an exact `ref`.
+Pass the returned exact `ref` unchanged to later query or source reads. A
+matching name, file path, or reconstructed token does not prove exact identity.
 
 The [symbol query example](/search) works without knowing a project-specific
 name. Keep the result's coverage with any symbol you report.
