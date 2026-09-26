@@ -94,7 +94,6 @@ private data class PreparedEndpointDocument(
             "SYMBOL_DISCOVER",
             "SYMBOL_INSPECT",
             "SOURCE_READ",
-            "TRAVERSAL_RUN",
             "DIAGNOSTIC_CHECK",
             "CHANGE_PLAN",
             "CHANGE_APPROVAL_PREPARE",

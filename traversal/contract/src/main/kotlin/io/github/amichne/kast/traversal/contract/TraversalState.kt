@@ -10,6 +10,7 @@ import io.github.amichne.kast.relation.contract.RelationScopeFingerprint
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.util.Collections
 
 enum class TraversalDepthFailure {
     NEGATIVE,
@@ -221,7 +222,7 @@ private constructor(
         fun initial(plan: TraversalPlan): TraversalCheckpoint =
             TraversalCheckpoint(
                 identity = plan.identity,
-                frontier = listOf(TraversalFrontierEntry.initial(plan)),
+                frontier = Collections.unmodifiableList(listOf(TraversalFrontierEntry.initial(plan))),
                 visited = emptySet(),
                 pending = TraversalPendingState.None,
                 terminalRelationLimitations = emptySet(),
@@ -270,10 +271,10 @@ private constructor(
             return Refinement.Refined(
                 TraversalCheckpoint(
                     plan.identity,
-                    frontier.toList(),
-                    visited.toSet(),
+                    Collections.unmodifiableList(ArrayList(frontier)),
+                    Collections.unmodifiableSet(LinkedHashSet(visited)),
                     pending,
-                    terminalRelationLimitations.toSortedSet(compareBy { it.ordinal }).toSet(),
+                    Collections.unmodifiableSet(LinkedHashSet(terminalRelationLimitations.sortedBy { it.ordinal })),
                     progress,
                 )
             )

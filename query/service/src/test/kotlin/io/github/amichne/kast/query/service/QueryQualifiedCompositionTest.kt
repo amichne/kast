@@ -136,6 +136,8 @@ class QueryQualifiedCompositionTest {
                 reads += read.subject.name.value to read.providerCursor.nextPosition.value
                 recordingRead(read, selected, leaf, terminal, repeated)
             },
+            unexpectedQueryTraversal(),
+            queryTestTraversalCeiling(),
             clock = QueryNanoClock { 0L },
         )
 

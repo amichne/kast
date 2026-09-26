@@ -7,7 +7,6 @@ import io.github.amichne.kast.appserver.core.BrokerFailure
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
 import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.CatalogDigest
-import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
@@ -45,14 +44,13 @@ class PreferredReadRoutingTest {
     }
 
     @Test
-    fun `old traversal name is rejected while the published name reaches request admission`(@TempDir root: Path) =
-        runTest {
-            assertRoutes(
-                root = root,
-                removed = "impact_analyze",
-                preferred = "traverse_relations",
-            )
-        }
+    fun `retired traversal route is rejected while query reaches request admission`(@TempDir root: Path) = runTest {
+        assertRoutes(
+            root = root,
+            removed = "traverse_relations",
+            preferred = "query_symbols",
+        )
+    }
 
     @Test
     fun `published inputs cannot bypass a different bound catalog`(@TempDir root: Path) = runTest {
@@ -118,11 +116,8 @@ class PreferredReadRoutingTest {
             val rejected = assertInstanceOf(BrokerDispatch.Rejected::class.java, result, "$name: $result")
             if (name == removed) {
                 assertInstanceOf(BrokerFailure.UnknownTool::class.java, rejected.failure)
-            } else if (name == "query_symbols") {
-                assertInstanceOf(BrokerFailure.InvalidArguments::class.java, rejected.failure)
             } else {
-                val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
-                assertEquals(ProviderFailureCode.IDE_INVALID_REQUEST, failure.code)
+                assertInstanceOf(BrokerFailure.InvalidArguments::class.java, rejected.failure)
             }
         }
 
@@ -174,7 +169,7 @@ class PreferredReadRoutingTest {
             is Validation.Rejected -> fail("Expected validation: $this")
         }
 
-    private val readNames = listOf("query_symbols", "traverse_relations")
+    private val readNames = listOf("query_symbols")
 
     @Serializable private data object EmptyArguments
 

@@ -29,6 +29,11 @@ internal sealed interface QueryRelationStageResult {
     ) : QueryRelationStageResult
 }
 
+internal fun QueryRelationStageResult.Read.nextTasks(task: PipelineTask.Related): List<PipelineTask> =
+    symbols.map { PipelineTask.Symbol(it, task.stage.next) } +
+        omissions.map(PipelineTask::Omission) +
+        listOfNotNull(continuation?.let { task.copy(cursor = it) })
+
 /** One bounded query hop delegates semantic discovery and cursor validation to the relation domain. */
 internal class QueryRelationStage(private val relations: RelationOperations) {
     suspend fun read(task: PipelineTask.Related, state: QueryExecutionState): QueryRelationStageResult {

@@ -79,8 +79,6 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
     linkedMapOf(
             "sourceReadOperation" to
                 constantSchema(CanonicalOperation.SOURCE_READ.id.value, "Canonical operation identity."),
-            "traversalRunOperation" to
-                constantSchema(CanonicalOperation.TRAVERSAL_RUN.id.value, "Canonical operation identity."),
             "queryRunOperation" to
                 constantSchema(CanonicalOperation.QUERY_RUN.id.value, "Canonical operation identity."),
             "finiteFailureEvidence" to textSchema("Finite failure evidence."),
@@ -102,7 +100,6 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "ContinuationRef" to textSchema("Opaque snapshot and pipeline-bound next page handle."),
             "queryRejection" to queryRejectionSchema(),
             "sourceReadRejection" to canonicalReadRejectionSchema(CanonicalOperation.SOURCE_READ),
-            "traversalRunRejection" to canonicalReadRejectionSchema(CanonicalOperation.TRAVERSAL_RUN),
             "compilerFunctionSignature" to functionCompilerSignatureSchema(),
             "compilerReceiver" to compilerReceiverSchema(),
             "sourceRange" to sourceRangeSchema(),
@@ -118,9 +115,6 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "sourceEntity" to sourceEntitySchema(),
             "sourceTextProjection" to sourceTextProjectionSchema(),
             "sourceQualification" to sourceReadQualificationSchema(),
-            "traversalQualification" to traversalQualificationSchema(),
-            "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
-            "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
             "diagnostic" to diagnosticSchema(),
             "gradleJvmObservation" to gradleJvmSelectionObservationSchema(),
             "gradleJvmReport" to gradleJvmSelectionReportSchema(),
@@ -187,86 +181,6 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 ),
             )
         CanonicalOperation.SOURCE_READ -> sourceReadOutputSchema(operation)
-        CanonicalOperation.TRAVERSAL_RUN ->
-            proofQualifiedOutcomeSchema(
-                operation,
-                traversalQualificationSchema(),
-                executionBudgetProperty(),
-                referenceAcquisitionsProperty(),
-                ServerSchemaProperty("graph", normalizedTraversalGraphSchema()),
-                ServerSchemaProperty(
-                    "partialExpansions",
-                    arraySchema(
-                        objectSchema(
-                            ServerSchemaProperty(
-                                "subject",
-                                textSchema("Exact reference to the partially expanded node."),
-                            ),
-                            ServerSchemaProperty(
-                                "depth",
-                                integerSchema(0, description = "Subject depth; the start node is depth zero."),
-                            ),
-                            ServerSchemaProperty("limitations", relationLimitationsSchema()),
-                            ServerSchemaProperty(
-                                "remainder",
-                                enumSchema(
-                                    listOf("continuation_retained", "not_explored"),
-                                    "Disposition of unenumerated neighbors; no omitted subtree count is inferred.",
-                                ),
-                            ),
-                            ServerSchemaProperty(
-                                "scope",
-                                constantSchema("page", "Only qualified node reads performed on this page."),
-                            ),
-                        )
-                    ),
-                ),
-                ServerSchemaProperty(
-                    "progress",
-                    objectSchema(
-                        ServerSchemaProperty(
-                            "checkpointSequence",
-                            integerSchema(0, description = "Monotonic committed checkpoint sequence."),
-                        ),
-                        ServerSchemaProperty(
-                            "totalReads",
-                            integerSchema(0, description = "Cumulative committed one-hop reads."),
-                        ),
-                        ServerSchemaProperty(
-                            "totalEdges",
-                            integerSchema(0, description = "Cumulative emitted relation edges."),
-                        ),
-                        ServerSchemaProperty(
-                            "maximumDepthReached",
-                            integerSchema(0, description = "Deepest emitted edge."),
-                        ),
-                    ),
-                ),
-                ServerSchemaProperty(
-                    "strategy",
-                    unionSchema(
-                        objectSchema(
-                            ServerSchemaProperty(
-                                "type",
-                                constantSchema("breadth_first", "Exhaust each breadth-first frontier."),
-                            )
-                        ),
-                        objectSchema(
-                            ServerSchemaProperty(
-                                "type",
-                                constantSchema(
-                                    "bounded_fan_out",
-                                    "Bound each node expansion and retain qualified coverage.",
-                                ),
-                            ),
-                            ServerSchemaProperty(
-                                "maximumEdgesPerNode",
-                                countSchema("Maximum edges expanded per node."),
-                            ),
-                        ),
-                    ),
-                ),
-            )
         CanonicalOperation.QUERY_RUN -> queryRunDocumentSchema(operation)
         CanonicalOperation.DIAGNOSTIC_CHECK ->
             proofQualifiedOutcomeSchema(
@@ -337,6 +251,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
             ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema())),
+            ServerSchemaProperty("walk_observations", arraySchema(queryWalkObservationSchema())),
             queryResultRetentionProperty(),
             queryResultCursorProperty(),
         ),
@@ -362,6 +277,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
             ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema())),
+            ServerSchemaProperty("walk_observations", arraySchema(queryWalkObservationSchema())),
             queryResultRetentionProperty(),
             queryResultCursorProperty(),
             ServerSchemaProperty(
@@ -423,6 +339,7 @@ private fun queryQualificationSchema(): JsonObject =
                         "visibility-incomplete",
                         "source-incomplete",
                         "relation-incomplete",
+                        "traversal-incomplete",
                         "row-selection-incomplete",
                     ),
                     "Every aggregate query limitation.",
@@ -431,7 +348,8 @@ private fun queryQualificationSchema(): JsonObject =
         ),
     )
 
-private fun queryResultItemSchema(): JsonObject = unionSchema(queryExactSymbolItemSchema(), queryOccurrenceItemSchema())
+private fun queryResultItemSchema(): JsonObject =
+    unionSchema(queryExactSymbolItemSchema(), queryOccurrenceItemSchema(), queryTraversalRecordItemSchema())
 
 private fun queryExactSymbolItemSchema(): JsonObject =
     objectSchema(
@@ -492,6 +410,71 @@ private fun queryOccurrenceItemSchema(): JsonObject =
         ),
     )
 
+private fun queryTraversalRecordItemSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema("traversal_record", "Exact traversal edge.")),
+        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty(
+            "record",
+            objectSchema(
+                ServerSchemaProperty("depth", integerSchema(0, description = "Breadth-first hop depth.")),
+                ServerSchemaProperty("relation", relationFactSchema()),
+            ),
+        ),
+        ServerSchemaProperty(
+            "row_id",
+            patternTextSchema(
+                "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "Opaque row identity scoped to one retained result.",
+            ),
+            required = false,
+        ),
+    )
+
+private fun queryWalkObservationSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("subject", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty("relation", relationSchema()),
+        ServerSchemaProperty("maximum_depth", integerSchema(1, description = "Requested traversal depth bound.")),
+        ServerSchemaProperty("expanded_frontier", integerSchema(0, description = "Nodes expanded on this page.")),
+        ServerSchemaProperty(
+            "progress",
+            generatedRequestSchema(io.github.amichne.kast.protocol.contract.TraversalProgressDocument.serializer()),
+        ),
+        ServerSchemaProperty(
+            "strategy",
+            generatedRequestSchema(io.github.amichne.kast.protocol.contract.TraversalStrategyDocument.serializer()),
+        ),
+        ServerSchemaProperty("partial_expansions", arraySchema(queryWalkPartialExpansionSchema())),
+        ServerSchemaProperty("coverage", queryWalkCoverageSchema()),
+    )
+
+private fun queryWalkPartialExpansionSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("subject", queryOutputReferenceSchema("exact-symbol")),
+        ServerSchemaProperty("depth", integerSchema(0, description = "Partially expanded subject depth.")),
+        ServerSchemaProperty("limitations", relationLimitationsSchema()),
+        ServerSchemaProperty(
+            "remainder",
+            enumSchema(listOf("continuation_retained", "not_explored"), "Disposition of unenumerated neighbors."),
+        ),
+        ServerSchemaProperty("scope", constantSchema("page", "Only qualified node reads performed on this page.")),
+    )
+
+private fun queryWalkCoverageSchema(): JsonObject =
+    unionSchema(
+        objectSchema(ServerSchemaProperty("kind", constantSchema("complete", "Traversal coverage state."))),
+        *listOf("resumable", "terminal_incomplete")
+            .map { kind ->
+                objectSchema(
+                    ServerSchemaProperty("kind", constantSchema(kind, "Traversal coverage state.")),
+                    ServerSchemaProperty("limitations", traversalLimitationsSchema()),
+                    ServerSchemaProperty("relation_limitations", relationLimitationsSchema()),
+                )
+            }
+            .toTypedArray(),
+    )
+
 private fun queryRelationOmissionSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty("subject", queryOutputReferenceSchema("exact-symbol")),
@@ -518,6 +501,28 @@ private fun queryItemFailureSchema(): JsonObject =
             ServerSchemaProperty("relation", relationSchema()),
             ServerSchemaProperty("reason", queryRelationFailureSchema()),
         ),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("walk", "Per-symbol traversal failure.")),
+            ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
+            ServerSchemaProperty("relation", relationSchema()),
+            ServerSchemaProperty("reason", queryWalkFailureSchema()),
+        ),
+    )
+
+private fun queryWalkFailureSchema(): JsonObject =
+    unionSchema(
+        objectSchema(
+            ServerSchemaProperty("kind", constantSchema("one_hop", "One-hop relation failure.")),
+            ServerSchemaProperty("reason", queryRelationFailureSchema()),
+        ),
+        *listOf(
+                "required_evidence_unavailable",
+                "required_evidence_stale",
+                "reader_contract_violation",
+                "traversal_contract_violation",
+            )
+            .map { kind -> objectSchema(ServerSchemaProperty("kind", constantSchema(kind, "Traversal failure."))) }
+            .toTypedArray(),
     )
 
 private fun queryItemFailureVariantSchema(
@@ -680,7 +685,6 @@ internal fun proofQualifiedOutcomeSchema(
 private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<JsonObject> =
     when (operation) {
         CanonicalOperation.SOURCE_READ,
-        CanonicalOperation.TRAVERSAL_RUN,
         CanonicalOperation.DIAGNOSTIC_CHECK ->
             arrayOf(
                 operationOutcomeVariant(
@@ -923,52 +927,6 @@ internal fun sourceTextProjectionSchema(): JsonObject =
         ),
     )
 
-private fun traversalQualificationSchema(): JsonObject =
-    unionSchema(
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
-            ServerSchemaProperty(
-                "checkpoint",
-                generatedRequestSchema(
-                    io.github.amichne.kast.protocol.contract.TraversalCheckpointDocument.serializer()
-                ),
-            ),
-            ServerSchemaProperty(
-                "next_action",
-                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.serializer()),
-            ),
-            ServerSchemaProperty("limitations", traversalLimitationsSchema()),
-            ServerSchemaProperty(
-                "recovery",
-                arraySchema(
-                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance.serializer())
-                ),
-            ),
-            ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
-            ServerSchemaProperty(
-                "continuation",
-                patternTextSchema(
-                    io.github.amichne.kast.protocol.contract.TraversalContinuationDocument.TOKEN_PATTERN,
-                    "Self-contained traversal checkpoint.",
-                ),
-            ),
-        ),
-        objectSchema(
-            ServerSchemaProperty(
-                "type",
-                constantSchema("terminal_incomplete", "Coverage state."),
-            ),
-            ServerSchemaProperty("limitations", traversalLimitationsSchema()),
-            ServerSchemaProperty(
-                "recovery",
-                arraySchema(
-                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance.serializer())
-                ),
-            ),
-            ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
-        ),
-    )
-
 private fun traversalLimitationsSchema(): JsonObject =
     arraySchema(
         enumSchema(
@@ -1072,8 +1030,6 @@ internal fun operationOutcomeVariant(
                 ServerSchemaProperty("content", compactSourceContentSchema(ServerReadEvidenceShape.LIVE))
             operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
                 ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
-            operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
-                ServerSchemaProperty("graph", normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE))
             else -> property
         }
     }
@@ -1336,83 +1292,6 @@ private fun relationFactSchema(): JsonObject =
         ),
     )
 
-private fun normalizedTraversalGraphSchema(
-    basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED
-): JsonObject =
-    objectSchema(
-        ServerSchemaProperty(
-            "snapshot",
-            objectSchema(
-                ServerSchemaProperty(
-                    "canonicalRoot",
-                    textSchema("Exact canonical workspace root for the whole graph."),
-                ),
-                when (basis) {
-                    ServerReadEvidenceShape.PUBLISHED ->
-                        ServerSchemaProperty(
-                            "generation",
-                            integerSchema(0, description = "Exact semantic evidence generation."),
-                        )
-                    ServerReadEvidenceShape.LIVE -> ServerSchemaProperty("live", liveReadEvidenceSchema())
-                },
-            ),
-        ),
-        ServerSchemaProperty("nodes", arraySchema(normalizedTraversalNodeSchema())),
-        ServerSchemaProperty("edges", arraySchema(normalizedTraversalEdgeSchema())),
-        ServerSchemaProperty("proofs", arraySchema(normalizedTraversalProofSchema())),
-    )
-
-private fun normalizedTraversalNodeSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("id", integerSchema(0, description = "Graph-local node index.")),
-        ServerSchemaProperty("selector", textSchema("Exact generation-bound selector.")),
-        ServerSchemaProperty(
-            "kind",
-            enumSchema(
-                listOf("classlike", "constructor", "function", "property", "type-alias"),
-                "Compiler symbol kind.",
-            ),
-        ),
-        ServerSchemaProperty("name", textSchema("Source declaration name.")),
-        ServerSchemaProperty("qualifiedIdentity", textSchema("Compiler qualified identity.")),
-        ServerSchemaProperty("file", textSchema("Exact source file.")),
-        ServerSchemaProperty("range", sourceRangeSchema()),
-        ServerSchemaProperty("proof", integerSchema(0, description = "Graph-local proof index.")),
-    )
-
-private fun normalizedTraversalEdgeSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("depth", integerSchema(0, description = "Breadth-first hop depth.")),
-        ServerSchemaProperty("meaning", relationSchema()),
-        ServerSchemaProperty("source", integerSchema(0, description = "Source node index.")),
-        ServerSchemaProperty("target", integerSchema(0, description = "Target node index.")),
-        ServerSchemaProperty(
-            "occurrence",
-            objectSchema(
-                ServerSchemaProperty("candidateSelector", textSchema("Occurrence candidate selector.")),
-                ServerSchemaProperty("file", textSchema("Exact occurrence file.")),
-                ServerSchemaProperty("range", sourceRangeSchema()),
-            ),
-        ),
-        ServerSchemaProperty(
-            "provenance",
-            enumSchema(
-                listOf("k2-authored-source", "k2-generated-source", "k2-project-library"),
-                "Compiler and source-root provenance.",
-            ),
-        ),
-        ServerSchemaProperty(
-            "coverage",
-            constantSchema("exact-compiler-confirmed", "Per-edge compiler coverage proof."),
-        ),
-    )
-
-private fun normalizedTraversalProofSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("id", integerSchema(0, description = "Graph-local proof index.")),
-        ServerSchemaProperty("identity", compilerIdentitySchema()),
-    )
-
 private fun diagnosticSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty(
@@ -1658,8 +1537,7 @@ private fun readRecoveryActionProperty(): ServerSchemaProperty =
 
 private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<ServerSchemaProperty> =
     when (operation) {
-        CanonicalOperation.SOURCE_READ,
-        CanonicalOperation.TRAVERSAL_RUN -> arrayOf(readRecoveryActionProperty())
+        CanonicalOperation.SOURCE_READ -> arrayOf(readRecoveryActionProperty())
         CanonicalOperation.DIAGNOSTIC_CHECK ->
             arrayOf(
                 ServerSchemaProperty(

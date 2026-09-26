@@ -138,14 +138,6 @@ object CanonicalAgentToolDefinitions {
                 "when Kast can represent the required Kotlin context. Omit entityLimit for an " +
                 "entity-free read, and omit page and default budgets for the first read.",
         )
-    val traversalRun =
-        tool(
-            CanonicalOperationDefinitions.traversalRun,
-            "traverse_relations",
-            "Traverse multi-step compiler-grounded relations from an exact selector. " +
-                "Reachability is qualified by depth, scope, relation evidence and execution budgets; " +
-                "it does not guarantee breakage or test selection.",
-        )
     val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
     val change =
         tool(
@@ -187,7 +179,6 @@ object CanonicalAgentToolDefinitions {
             symbolLookup,
             symbolInspect,
             sourceRead,
-            traversalRun,
             diagnosticCheck,
             change,
         )
@@ -208,8 +199,8 @@ object CanonicalAgentToolDefinitions {
                 Use symbol_lookup only when candidate discovery by file, location, name or
                 source text is required; use symbol_inspect to refine a candidate or revalidate
                 an exact selector. Use source_read for bounded source context and
-                query_symbols with occurrence output for relation facts. Use
-                traverse_relations for multi-step reachability. Use kast.check_diagnostics
+                query_symbols with occurrence output for relation facts and its walk step for
+                multi-step reachability. Use kast.check_diagnostics
                 for compiler diagnostics.
                 Preserve returned symbol references verbatim, including compact host handles.
                 Do not reconstruct handles. Reads may reacquire retained exact handles;

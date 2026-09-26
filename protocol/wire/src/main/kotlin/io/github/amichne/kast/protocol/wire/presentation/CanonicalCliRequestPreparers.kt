@@ -10,7 +10,6 @@ import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
 /** The exact generated request preparations consumed by the canonical command graph. */
@@ -20,7 +19,6 @@ class CanonicalCliRequestPreparers(
     val symbolDiscover: OperationRequestPreparer<SymbolDiscoverRequest>,
     val symbolInspect: OperationRequestPreparer<SymbolInspectRequest>,
     val sourceRead: OperationRequestPreparer<SourceReadRequest>,
-    val traversalRun: OperationRequestPreparer<TraversalRunRequest>,
     val queryRun: OperationRequestPreparer<QueryRunRequest>,
     val diagnosticCheck: OperationRequestPreparer<DiagnosticCheckRequest>,
     val changePlan: OperationRequestPreparer<ChangePlanRequest>,
@@ -39,7 +37,6 @@ fun canonicalCliRequestPreparers(): CanonicalCliRequestPreparers =
         symbolInspect =
             TypedOperationProjection(CanonicalOperationWireBindings.symbolInspect, symbolInspectCliProjector),
         sourceRead = TypedOperationProjection(CanonicalOperationWireBindings.sourceRead, sourceReadCliProjector),
-        traversalRun = TypedOperationProjection(CanonicalOperationWireBindings.traversalRun, traversalRunCliProjector),
         queryRun = TypedOperationProjection(CanonicalOperationWireBindings.queryRun, queryRunCliProjector),
         diagnosticCheck =
             TypedOperationProjection(CanonicalOperationWireBindings.diagnosticCheck, diagnosticCheckCliProjector),

@@ -22,8 +22,6 @@
     <ID>LongParameterList:WireDocumentConversion.kt:internal inline fun &lt;First, Second, Third, Fourth, Fifth, Result> combineConverted: WireDocumentConversion&lt;Result></ID>
     <ID>MagicNumber:TopologyCoverageDocuments.kt:3</ID>
     <ID>MagicNumber:TopologyCoverageDocuments.kt:4</ID>
-    <ID>MultilineLambdaItParameter:CanonicalQueryDocuments.kt:{ QueryResultItemDocument.ExactSymbol( QueryReferenceDocument.ExactSymbol(token), kind.toContract(), projectedName, projectedLocation, projectedSignature, it, ) }</ID>
-    <ID>MultilineLambdaItParameter:CanonicalQueryDocuments.kt:{ when (this) { is QueryReferenceWireDocument.DeclarationCandidate -> QueryReferenceDocument.DeclarationCandidate(it) is QueryReferenceWireDocument.ExactSymbol -> QueryReferenceDocument.ExactSymbol(it) } }</ID>
     <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalChangeSerializers.changeApplyRequest, CanonicalChangeSerializers.changeApplyResult, CanonicalChangeSerializers.changeApplyQualification, CanonicalChangeSerializers.changeApplyRejection, )</ID>
     <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalChangeSerializers.changePlanRequest, CanonicalChangeSerializers.changePlanResult, CanonicalChangeSerializers.changePlanQualification, CanonicalChangeSerializers.changePlanRejection, )</ID>
     <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalChangeSerializers.changeRecoverRequest, CanonicalChangeSerializers.changeRecoverResult, CanonicalChangeSerializers.changeRecoverQualification, CanonicalChangeSerializers.changeRecoverRejection, )</ID>
@@ -32,15 +30,8 @@
     <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalReadSerializers.diagnosticCheckRequest, CanonicalReadSerializers.diagnosticCheckResult, CanonicalReadSerializers.diagnosticCheckQualification, CanonicalReadSerializers.diagnosticCheckRejection, )</ID>
     <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalReadSerializers.symbolDiscoverRequest, CanonicalReadSerializers.symbolDiscoverResult, CanonicalReadSerializers.symbolDiscoverQualification, CanonicalReadSerializers.symbolDiscoverRejection, )</ID>
     <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalReadSerializers.symbolInspectRequest, CanonicalReadSerializers.symbolInspectResult, CanonicalReadSerializers.symbolInspectQualification, CanonicalReadSerializers.symbolInspectRejection, )</ID>
-    <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalReadSerializers.traversalRunRequest, CanonicalReadSerializers.traversalRunResult, CanonicalReadSerializers.traversalRunQualification, CanonicalReadSerializers.traversalRunRejection, )</ID>
     <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalSourceReadSerializers.request, CanonicalSourceReadSerializers.result, CanonicalSourceReadSerializers.qualification, CanonicalSourceReadSerializers.rejection, )</ID>
     <ID>NamedArguments:CanonicalOperationWireBindings.kt:CanonicalOperationWireBindings$GeneratedOperationSerializers( CanonicalTopologySerializers.request, CanonicalTopologySerializers.result, CanonicalTopologySerializers.qualification, CanonicalTopologySerializers.rejection, )</ID>
-    <ID>NamedArguments:CanonicalQueryDocuments.kt:Candidate( QueryReferenceDocument.DeclarationCandidate(token), kind.toDiscoveryKind(), projectedName, projectedLocation, )</ID>
-    <ID>NamedArguments:CanonicalQueryDocuments.kt:Candidate( ref.toWire() as QueryReferenceWireDocument.DeclarationCandidate, kind.toWireDocument(), name?.value, location?.let { QueryCandidateLocationWireDocument(it.file.value, it.offset.value) }, )</ID>
-    <ID>NamedArguments:CanonicalQueryDocuments.kt:ExactSymbol( QueryReferenceDocument.ExactSymbol(token), kind.toContract(), projectedName, projectedLocation, projectedSignature, it, )</ID>
-    <ID>NamedArguments:CanonicalQueryDocuments.kt:ExactSymbol( ref.toWire() as QueryReferenceWireDocument.ExactSymbol, kind.toWireDocument(), name?.value, location?.let { QueryExactLocationWireDocument(it.file.value, it.range.toWireDocument()) }, signature?.toWireDocument(), connections.values.map(RelationFactDocument::toWireDocument), )</ID>
-    <ID>NamedArguments:CanonicalQueryDocuments.kt:PlanRejected( position.value, required.toWire(), actual.toWire(), correction.toWire(), )</ID>
-    <ID>NamedArguments:CanonicalQueryDocuments.kt:PlanRejected(it, required.toContract(), actual.toContract(), correction.toContract())</ID>
     <ID>NamedArguments:CanonicalReadDocuments.kt:DiagnosticDocument(severity.toContract(), code, message, location)</ID>
     <ID>NamedArguments:CanonicalReadDocuments.kt:combineConverted( candidateSelector.protocolText(), file.protocolText(), range.toContract(), ::DiagnosticLocationDocument, )</ID>
     <ID>NamedArguments:CanonicalSourceReadSerializers.kt:Call( admittedDepth, admittedParent, admittedSelection, admittedCallee, admittedTarget, )</ID>
@@ -94,7 +85,6 @@
     <ID>UnreachableCode:WireEnvelope.kt:val schema = when (val refined = SchemaIdentity.parse(envelope.schema)) { is Refinement.Refined -> refined.value is Refinement.Rejected -> return WireEnvelopeAdmission.Rejected(WireFailure.InvalidSchemaIdentity(refined.failure)) }</ID>
     <ID>UnusedPrivateFunction:CanonicalIndexSerializers.kt:private fun IndexSyncStateDocument.toWire: IndexSyncStateWireDocument</ID>
     <ID>UnusedPrivateFunction:CanonicalIndexSerializers.kt:private fun IndexSyncStateWireDocument.toContract: IndexSyncStateDocument</ID>
-    <ID>UnusedPrivateFunction:CanonicalQueryDocuments.kt:private fun QueryReferenceWireDocument.toContract: WireDocumentConversion&lt;QueryReferenceDocument></ID>
     <ID>UnusedPrivateFunction:CanonicalReadDocuments.kt:private fun Int.protocolCount: WireDocumentConversion&lt;ProtocolCount></ID>
     <ID>UnusedPrivateFunction:CanonicalSourceReadSerializers.kt:private fun Int.sourceEntityLimit: WireDocumentConversion&lt;SourceEntityLimitDocument></ID>
     <ID>UnusedPrivateFunction:CanonicalSourceReadSerializers.kt:private fun Int.sourceLineCount</ID>

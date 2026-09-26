@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryPredicate
 import io.github.amichne.kast.query.contract.QueryPrimitiveField
@@ -16,10 +17,25 @@ import io.github.amichne.kast.query.contract.QuerySymbolFields
 import io.github.amichne.kast.query.contract.QueryVisibilitySelection
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.source.contract.DeclarationVisibility
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalStrategy
 
 internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
     when (this) {
         is QueryStepDocument.Related -> QueryStepSyntax.Related(relation.meaning())
+        is QueryStepDocument.Walk ->
+            QueryStepSyntax.Walk(
+                relation.meaning(),
+                TraversalDepthLimit.parse(maximumDepth.value).refinedOrNull() ?: return null,
+                when (val selected = strategy) {
+                    TraversalStrategyDocument.BreadthFirst -> TraversalStrategy.BreadthFirst
+                    is TraversalStrategyDocument.BoundedFanOut ->
+                        TraversalStrategy.BoundedFanOut(
+                            io.github.amichne.kast.kernel.ResultLimit.parse(selected.maximumEdgesPerNode.value)
+                                .refinedOrNull() ?: return null
+                        )
+                },
+            )
         QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
         is QueryStepDocument.Concat,
         is QueryStepDocument.Intersect,
@@ -57,6 +73,7 @@ internal fun QueryOutputDocument.syntax(): QueryOutputSyntax? =
             QueryOutputSyntax.Symbols(QuerySymbolFields.from(selected).refinedOrNull() ?: return null)
         }
         QueryOutputDocument.Occurrences -> QueryOutputSyntax.Occurrences
+        QueryOutputDocument.TraversalRecords -> QueryOutputSyntax.TraversalRecords
     }
 
 private fun RelationKindDocument.meaning(): RelationMeaning =

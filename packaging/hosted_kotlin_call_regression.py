@@ -5,7 +5,8 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from query_name_request import (ExpandRelation, QueryInput, QueryResume, QueryRun, SymbolOutput,
-    SymbolReferences, name_query, relation_query, occurrence_facts, occurrence_omissions)
+    SymbolReferences, name_query, relation_query, occurrence_facts, occurrence_omissions,
+    walk_query, walk_records, walk_observation)
 from hosted_budget_read_regression import ResultsBudget
 
 
@@ -14,11 +15,6 @@ class KotlinCallScope:
     package_name: str = field(default='fixture.calls', init=False)
     include_subpackages: bool = field(default=False, init=False)
     source_set_names: tuple[str, ...] = field(default=('main',), init=False)
-
-
-@dataclass(frozen=True)
-class CallStart:
-    type: str = field(default='start', init=False)
 
 
 class KotlinCallMeaning(str, Enum):
@@ -121,26 +117,8 @@ class CallPageBudget:
     max_elapsed_ms: int = field(default=5000, init=False)
 
 
-@dataclass(frozen=True)
-class CallCycleTraversal:
-    exactSelector: str
-    execution_budget: CallPageBudget
-    position: CallStart | CallResume = field(default_factory=CallStart)
-    relation: KotlinCallMeaning = field(default=KotlinCallMeaning.CALLEES, init=False)
-    maximumDepth: int = field(default=2, init=False)
-    maximumResults: int = field(default=100, init=False)
-    strategy: 'CallBreadthFirst' = field(default_factory=lambda: CallBreadthFirst(), init=False)
-
-
-@dataclass(frozen=True)
-class CallResume:
-    continuation: str
-    type: str = field(default='resume', init=False)
-
-
-@dataclass(frozen=True)
-class CallBreadthFirst:
-    type: str = field(default='breadth_first', init=False)
+def cycle_query(reference, budget):
+    return walk_query(reference, KotlinCallMeaning.CALLEES.value, maximum_depth=2, budget=budget)
 
 
 @dataclass(frozen=True)
@@ -211,50 +189,52 @@ def _extended_call_cases(replay, source, path):
 
 
 def _cycle_edges(response):
-    graph = response.get('graph', {})
-    nodes = {node.get('id'): node for node in graph.get('nodes', [])}
-    return tuple((edge.get('depth'), nodes.get(edge.get('source'), {}).get('range', {}).get('startInclusive'),
-                  nodes.get(edge.get('target'), {}).get('range', {}).get('startInclusive'),
-                  edge.get('occurrence', {}).get('range', {}).get('startInclusive'),
-                  edge.get('occurrence', {}).get('range', {}).get('endExclusive'))
-                 for edge in graph.get('edges', []))
+    return tuple((record.get('depth'),
+                  record.get('relation', {}).get('source', {}).get('range', {}).get('startInclusive'),
+                  record.get('relation', {}).get('target', {}).get('range', {}).get('startInclusive'),
+                  record.get('relation', {}).get('occurrence', {}).get('range', {}).get('startInclusive'),
+                  record.get('relation', {}).get('occurrence', {}).get('range', {}).get('endExclusive'))
+                 for record in walk_records(response))
 
 
 def _drain_call_cycle(replay, request):
-    from dataclasses import replace
-    from hosted_budget_read_regression import traversal_checkpoint, progress_advances
+    from hosted_budget_read_regression import progress_advances
+    from hosted_resume_budget_regression import Checkpoint, admit_progress
     pages, seen = [], set()
     for _ in range(12):
-        response = replay.transport.invoke(replay.surface, 'traverse_relations', asdict(request))
-        previous = pages[-1].get('progress', {}) if pages else {}
+        response = replay.transport.invoke(replay.surface, 'query_symbols', asdict(request))
+        observation = walk_observation(response)
+        previous = walk_observation(pages[-1]).get('progress', {}) if pages else {}
         pages.append(response)
-        if (response.get('live') != replay.live or not progress_advances(previous, response.get('progress', {}))
-                or len(response.get('graph', {}).get('edges', [])) > request.execution_budget.max_results):
+        if (response.get('live') != replay.live or not progress_advances(previous, observation.get('progress', {}))
+                or len(walk_records(response)) > request.request.execution_budget.max_results):
             return pages, False
-        qualification = response.get('qualification', {})
         if response.get('status') != 'qualified':
             return pages, False
-        repeated = replay.transport.invoke(replay.surface, 'traverse_relations', asdict(request))
+        repeated = replay.transport.invoke(replay.surface, 'query_symbols', asdict(request))
         if not _same_cycle_page(response, repeated):
             return pages, False
-        if qualification.get('type') == 'terminal_incomplete':
-            return pages, (set(qualification.get('relationLimitations', [])) == {'unsupported-item'}
-                           and 'one-hop-incomplete' in qualification.get('limitations', []))
-        checkpoint = traversal_checkpoint(response)
-        if checkpoint is None or checkpoint['token'] in seen:
+        coverage = observation.get('coverage', {})
+        if coverage.get('kind') == 'terminal_incomplete':
+            return pages, (set(coverage.get('relation_limitations', [])) == {'unsupported-item'}
+                           and 'one-hop-incomplete' in coverage.get('limitations', []))
+        checkpoint = admit_progress('query_symbols', response)
+        if not isinstance(checkpoint, Checkpoint) or checkpoint.token in seen:
             return pages, False
-        seen.add(checkpoint['token'])
-        request = replace(request, position=CallResume(checkpoint['token']))
+        seen.add(checkpoint.token)
+        request = QueryInput(QueryResume(checkpoint.token, request.request.execution_budget))
     return pages, False
 
 
 def _qualified_partial(pages, source):
-    selectors = {node.get('selector') for page in pages for node in page.get('graph', {}).get('nodes', [])
-                 if node.get('range', {}).get('startInclusive') == source.index('fun qualified(')}
+    selectors = {record.get('relation', {}).get('target', {}).get('selector') for page in pages
+                 for record in walk_records(page)
+                 if record.get('relation', {}).get('target', {}).get('range', {}).get('startInclusive') ==
+                     source.index('fun qualified(')}
     return any(partial.get('subject') in selectors and partial.get('depth') == 1
                and partial.get('scope') == 'page' and partial.get('remainder') == 'not_explored'
                and partial.get('limitations') == ['unsupported-item']
-               for page in pages for partial in page.get('partialExpansions', []))
+               for page in pages for partial in walk_observation(page).get('partial_expansions', []))
 
 
 def _cycle_checks(replay, source):
@@ -263,8 +243,8 @@ def _cycle_checks(replay, source):
     if discovery.get('status') != 'complete' or len(items) != 1 or not items[0].get('ref'):
         return {'cycleIssuer': False}
     token = items[0]['ref']
-    high, high_valid = _drain_call_cycle(replay, CallCycleTraversal(token, CallPageBudget(100)))
-    low, low_valid = _drain_call_cycle(replay, CallCycleTraversal(token, CallPageBudget(1)))
+    high, high_valid = _drain_call_cycle(replay, cycle_query(token, CallPageBudget(100)))
+    low, low_valid = _drain_call_cycle(replay, cycle_query(token, CallPageBudget(1)))
     entry, peer, qualified, base = (source.index(prefix) for prefix in
         ('fun callCycleEntry(', 'fun callCyclePeer(', 'fun qualified(', 'fun fetch(): String'))
     expected = Counter((
@@ -284,14 +264,14 @@ def _cycle_checks(replay, source):
         'cycleBoundedPagination': 1 < len(low) <= 12,
         'cycleQualifiedPartialRetained': _qualified_partial(high, source) and _qualified_partial(low, source),
         'cycleGrantInvariantCompilerProofs': observed.compiler_identities_equal,
-        'cycleGrantInvariantFullGraph': _same_cycle_graph(high, low),
+        'cycleGrantInvariantFullRecords': _same_cycle_graph(high, low),
     }
 
 
 def _run_extended_calls(replay, source, path):
     checks, count = _extended_call_cases(replay, source, path)
     checks.update(_cycle_checks(replay, source))
-    replay.record('kotlin-call-extended-and-cycle', 'query_symbols+traverse_relations', checks, count)
+    replay.record('kotlin-call-extended-and-cycle', 'query_symbols', checks, count)
 
 
 class CallObservationCase(str, Enum):
@@ -430,21 +410,21 @@ def _call_observation(name, response, path, source):
 
 
 def _cycle_components(pages):
-    from hosted_budget_read_regression import _freeze
+    from hosted_resume_budget_regression import _freeze
     components = tuple(Counter() for _ in range(5))
     for page in pages:
-        graph = page.get('graph', {})
-        nodes = {node['id']: node for node in graph.get('nodes', [])}
-        proofs = {proof['id']: proof['identity'] for proof in graph.get('proofs', [])}
-        for key, edge in zip(_cycle_edges(page), graph.get('edges', []), strict=True):
-            source, target = nodes[edge['source']], nodes[edge['target']]
-            components[0][(key, proofs[source['proof']], proofs[target['proof']])] += 1
+        for key, record in zip(_cycle_edges(page), walk_records(page), strict=True):
+            relation = record['relation']
+            source, target = relation['source'], relation['target']
+            components[0][(key, source.get('compilerEvidence', {}).get('identity'),
+                           target.get('compilerEvidence', {}).get('identity'))] += 1
             components[1][(key, source.get('selector'), target.get('selector'))] += 1
-            components[2][(key, edge.get('occurrence', {}).get('candidateSelector'))] += 1
-            components[3][(key, _freeze({k: v for k, v in source.items() if k not in ('id', 'proof', 'selector')}),
-                           _freeze({k: v for k, v in target.items() if k not in ('id', 'proof', 'selector')}))] += 1
-            components[4][(key, _freeze({k: v for k, v in edge.items() if k not in ('source', 'target', 'occurrence')}),
-                           _freeze({k: v for k, v in edge.get('occurrence', {}).items()
+            components[2][(key, relation.get('occurrence', {}).get('candidateSelector'))] += 1
+            components[3][(key, _freeze({k: v for k, v in source.items() if k != 'selector'}),
+                           _freeze({k: v for k, v in target.items() if k != 'selector'}))] += 1
+            components[4][(key, _freeze({k: v for k, v in relation.items()
+                                         if k not in ('source', 'target', 'occurrence')}),
+                           _freeze({k: v for k, v in relation.get('occurrence', {}).items()
                                     if k != 'candidateSelector'}))] += 1
     return components
 
@@ -466,19 +446,17 @@ def _emit_native_observation(observation: CallNativeObservation | CycleNativeObs
 
 def _same_cycle_page(first, repeated):
     """The contract sorts each admitted page; replay must preserve that page's ordered records."""
-    from hosted_budget_read_regression import graph_records
     return (first.get('status') == repeated.get('status') and first.get('live') == repeated.get('live')
-            and graph_records(first) == graph_records(repeated)
-            and first.get('partialExpansions') == repeated.get('partialExpansions')
-            and all(first.get('qualification', {}).get(key) == repeated.get('qualification', {}).get(key)
-                    for key in ('type', 'limitations', 'relationLimitations')))
+            and walk_records(first) == walk_records(repeated)
+            and walk_observation(first) == walk_observation(repeated)
+            and first.get('qualification') == repeated.get('qualification'))
 
 
 def _same_cycle_graph(high, low):
-    """Grant partitioning may reorder pages; preserve every full normalized record and its multiplicity."""
-    from hosted_budget_read_regression import graph_records
-    return Counter(record for page in high for record in graph_records(page)) == Counter(
-        record for page in low for record in graph_records(page))
+    """Grant partitioning may reorder pages; preserve every exact record and its multiplicity."""
+    from hosted_resume_budget_regression import _freeze
+    return Counter(_freeze(record) for page in high for record in walk_records(page)) == Counter(
+        _freeze(record) for page in low for record in walk_records(page))
 
 
 def _inline_sites(source, name):
@@ -613,18 +591,17 @@ def run_inline_composition(replay, selector):
                     for fact in connections)
     expected = Counter((('fixture.calls.stdlibInline', 'fixture.calls.inlineTarget'),
                         ('fixture.calls.inlineTarget', 'fixture.calls.inlineLeaf')))
-    traversal = replay.transport.invoke(replay.surface, 'traverse_relations',
-                                        asdict(CallCycleTraversal(selector, CallPageBudget(100))))
-    graph = traversal.get('graph', {})
-    nodes = {node['id']: node for node in graph.get('nodes', [])}
-    edges = graph.get('edges', [])
+    traversal = replay.transport.invoke(replay.surface, 'query_symbols',
+                                        asdict(cycle_query(selector, CallPageBudget(100))))
+    records = walk_records(traversal)
+    observation = walk_observation(traversal)
     replay.record('inline-two-hop-composition', 'query_symbols', {
         'completeQuery': query.get('status') == 'complete',
         'exactLeaf': len(items) == 1 and items[0].get('signature', {}).get('qualifiedIdentity') == 'fixture.calls.inlineLeaf',
         'bothConnections': chain == expected,
-        'bothTraversalEdges': Counter((nodes[edge['source']].get('qualifiedIdentity'),
-                                      nodes[edge['target']].get('qualifiedIdentity')) for edge in edges) == expected,
-        'witnessedDepthTwo': traversal.get('progress', {}).get('maximumDepthReached') == 2,
-        'retainedDepthCutoff': traversal.get('qualification', {}).get('limitations') == ['depth-limit-reached'],
+        'bothTraversalEdges': Counter((record['relation']['source'].get('qualifiedIdentity'),
+                                      record['relation']['target'].get('qualifiedIdentity')) for record in records) == expected,
+        'witnessedDepthTwo': observation.get('progress', {}).get('maximumDepthReached') == 2,
+        'retainedDepthCutoff': observation.get('coverage', {}).get('limitations') == ['depth-limit-reached'],
         'sameAuthority': query.get('live') == traversal.get('live') == replay.live,
     }, len(items), query)

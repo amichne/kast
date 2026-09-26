@@ -39,7 +39,7 @@ internal object KastObserverSnapshotMain {
                                 ),
                         ),
                         ObserverSnapshotPage(
-                            slug = "kast-observer-semantic-impact",
+                            slug = "kast-observer-semantic-walk",
                             title = "Semantic evidence rendering",
                             items =
                                 listOf(
@@ -49,8 +49,8 @@ internal object KastObserverSnapshotMain {
                                         observerDirectory,
                                     ),
                                     presentation(
-                                        "traversal.run",
-                                        KastObserverFixtures.impactAnalysis,
+                                        "query.run",
+                                        KastObserverFixtures.queryWalk,
                                         observerDirectory,
                                     ),
                                     presentation(

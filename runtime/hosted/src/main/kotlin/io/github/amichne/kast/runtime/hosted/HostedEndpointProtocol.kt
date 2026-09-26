@@ -16,7 +16,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
@@ -113,8 +112,6 @@ internal sealed interface HostedRequest {
 
     data class Source(override val root: CanonicalWorkspaceRoot, val request: SourceReadRequest) : Read
 
-    data class Traversal(override val root: CanonicalWorkspaceRoot, val request: TraversalRunRequest) : Read
-
     data class Diagnostic(override val root: CanonicalWorkspaceRoot, val request: DiagnosticCheckRequest) : Read
 }
 
@@ -188,7 +185,6 @@ internal object HostedRequests {
                 "SYMBOL_DISCOVER",
                 "SYMBOL_INSPECT",
                 "SOURCE_READ",
-                "TRAVERSAL_RUN",
                 "DIAGNOSTIC_CHECK",
                 "CHANGE_PLAN" -> {
                     if (json.keySet() != setOf("type", "root", "document")) return rejected
@@ -217,10 +213,6 @@ internal object HostedRequests {
                         "SOURCE_READ" ->
                             decode(CanonicalOperationWireBindings.sourceRead.decodeRequest(envelope)) {
                                 HostedRequest.Source(root, it)
-                            }
-                        "TRAVERSAL_RUN" ->
-                            decode(CanonicalOperationWireBindings.traversalRun.decodeRequest(envelope)) {
-                                HostedRequest.Traversal(root, it)
                             }
                         "DIAGNOSTIC_CHECK" ->
                             decode(CanonicalOperationWireBindings.diagnosticCheck.decodeRequest(envelope)) {

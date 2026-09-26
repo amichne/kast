@@ -10,8 +10,10 @@ import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
@@ -21,6 +23,8 @@ import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
@@ -30,6 +34,11 @@ import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
+import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
+import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
+import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
+import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.encodeToString
@@ -170,86 +179,8 @@ internal object KastObserverFixtures {
     val qualifiedQueryOccurrences = queryOccurrenceOutcome(RelationKindDocument.CALLERS, qualified = true)
     val mixedQueryOccurrences = queryOccurrenceOutcome(RelationKindDocument.CALLEES, qualified = false)
     val emptyQuery = queryOutcome(emptyList(), qualified = false)
-
-    val impactAnalysis =
-        """
-        {
-          "status": "completed",
-          "document": {
-            "operation": "traversal.run",
-            "status": "complete",
-            "graph": {
-              "snapshot": {"canonicalRoot": "/workspace", "generation": 42},
-              "nodes": [
-                {
-                  "id": 0,
-                  "selector": "exact:v2:event-consumer",
-                  "kind": "classlike",
-                  "name": "EventConsumer",
-                  "qualifiedIdentity": "sample.events.EventConsumer",
-                  "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
-                  "range": {"startInclusive": 12, "endExclusive": 140},
-                  "proof": 0
-                },
-                {
-                  "id": 1,
-                  "selector": "exact:v2:checkout-service",
-                  "kind": "classlike",
-                  "name": "CheckoutService",
-                  "qualifiedIdentity": "sample.checkout.CheckoutService",
-                  "file": "checkout/core/src/main/kotlin/sample/CheckoutService.kt",
-                  "range": {"startInclusive": 20, "endExclusive": 180},
-                  "proof": 1
-                },
-                {
-                  "id": 2,
-                  "selector": "exact:v2:audit-sink",
-                  "kind": "function",
-                  "name": "recordEvent",
-                  "qualifiedIdentity": "sample.audit.AuditSink.recordEvent",
-                  "file": "audit/src/main/kotlin/sample/AuditSink.kt",
-                  "range": {"startInclusive": 30, "endExclusive": 96},
-                  "proof": 2
-                }
-              ],
-              "edges": [
-                {
-                  "depth": 1,
-                  "meaning": "callers",
-                  "source": 1,
-                  "target": 0,
-                  "occurrence": {
-                    "candidateSelector": "candidate:v2:checkout-call",
-                    "file": "checkout/core/src/main/kotlin/sample/CheckoutService.kt",
-                    "range": {"startInclusive": 88, "endExclusive": 101}
-                  },
-                  "provenance": "k2-authored-source",
-                  "coverage": "exact-compiler-confirmed"
-                },
-                {
-                  "depth": 2,
-                  "meaning": "callers",
-                  "source": 2,
-                  "target": 1,
-                  "occurrence": {
-                    "candidateSelector": "candidate:v2:audit-call",
-                    "file": "audit/src/main/kotlin/sample/AuditSink.kt",
-                    "range": {"startInclusive": 62, "endExclusive": 75}
-                  },
-                  "provenance": "k2-authored-source",
-                  "coverage": "exact-compiler-confirmed"
-                }
-              ],
-              "proofs": [
-                {"id": 0, "identity": "canonical-signature-sha256-v1|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
-                {"id": 1, "identity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
-                {"id": 2, "identity": "canonical-signature-sha256-v1|cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}
-              ]
-            }
-          }
-        }
-        """
-            .trimIndent()
+    val queryWalk = queryWalkOutcome(qualified = false)
+    val qualifiedQueryWalk = queryWalkOutcome(qualified = true)
 
     private fun queryOccurrenceOutcome(firstMeaning: RelationKindDocument, qualified: Boolean): String {
         val items: List<QueryResultItemDocument> =
@@ -259,8 +190,90 @@ internal object KastObserverFixtures {
         return queryOutcome(items, qualified)
     }
 
-    private fun queryOutcome(items: List<QueryResultItemDocument>, qualified: Boolean): String {
-        val result = QueryRunResult(bounded(items), bounded(emptyList()), bounded(emptyList()))
+    private fun queryWalkOutcome(qualified: Boolean): String {
+        val consumer =
+            symbol(
+                "EventConsumer",
+                "sample.events.EventConsumer",
+                "events/core/src/main/kotlin/sample/EventConsumer.kt",
+                "exact:v2:event-consumer",
+                12,
+                140,
+            )
+        val checkout =
+            symbol(
+                "CheckoutService",
+                "sample.checkout.CheckoutService",
+                "checkout/core/src/main/kotlin/sample/CheckoutService.kt",
+                "exact:v2:checkout-service",
+                20,
+                180,
+            )
+        val audit =
+            symbol(
+                "recordEvent",
+                "sample.audit.AuditSink.recordEvent",
+                "audit/src/main/kotlin/sample/AuditSink.kt",
+                "exact:v2:audit-sink",
+                30,
+                96,
+                function = true,
+            )
+        val first = relation(RelationKindDocument.CALLERS, checkout, consumer, "candidate:v2:checkout-call", 88, 101)
+        val second = relation(RelationKindDocument.CALLERS, audit, checkout, "candidate:v2:audit-call", 62, 75)
+        val items: List<QueryResultItemDocument> =
+            listOf(
+                QueryResultItemDocument.TraversalRecord(
+                    QueryReferenceDocument.ExactSymbol(checkout.selector),
+                    TraversalRecordDocument(TraversalDepthDocument.parse(1).required(), first),
+                ),
+                QueryResultItemDocument.TraversalRecord(
+                    QueryReferenceDocument.ExactSymbol(audit.selector),
+                    TraversalRecordDocument(TraversalDepthDocument.parse(2).required(), second),
+                ),
+            )
+        return queryOutcome(
+            items,
+            qualified,
+            listOf(queryWalkObservation(consumer, qualified)),
+            QueryLimitationDocument.TRAVERSAL_INCOMPLETE,
+        )
+    }
+
+    private fun queryWalkObservation(subject: SymbolDocument, qualified: Boolean): QueryWalkObservationDocument {
+        val coverage =
+            if (qualified)
+                QueryWalkCoverageDocument.terminalIncomplete(
+                        listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
+                        emptyList(),
+                    )
+                    .required()
+            else QueryWalkCoverageDocument.Complete
+        return QueryWalkObservationDocument(
+            subject = QueryReferenceDocument.ExactSymbol(subject.selector),
+            relation = RelationKindDocument.CALLERS,
+            maximumDepth = ProtocolCount.parse(2).required(),
+            expandedFrontier = QueryExpandedFrontierDocument.parse(2).required(),
+            progress = TraversalProgressDocument(1, 2, 2, 2),
+            strategy = TraversalStrategyDocument.BreadthFirst,
+            partialExpansions = bounded(emptyList()),
+            coverage = coverage,
+        )
+    }
+
+    private fun queryOutcome(
+        items: List<QueryResultItemDocument>,
+        qualified: Boolean,
+        walkObservations: List<QueryWalkObservationDocument> = emptyList(),
+        limitation: QueryLimitationDocument = QueryLimitationDocument.RELATION_INCOMPLETE,
+    ): String {
+        val result =
+            QueryRunResult(
+                bounded(items),
+                bounded(emptyList()),
+                bounded(emptyList()),
+                bounded(walkObservations),
+            )
         val envelope =
             EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, EvidenceGeneration.parse(17).required(), result)
         val outcome: OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> =
@@ -269,7 +282,7 @@ internal object KastObserverFixtures {
                     envelope,
                     QueryRunQualification.create(
                             QueryKnownMinimum.parse(2).required(),
-                            listOf(QueryLimitationDocument.RELATION_INCOMPLETE),
+                            listOf(limitation),
                             QueryQualifiedProgressDocument.TerminalIncomplete(
                                 QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
                             ),

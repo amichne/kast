@@ -15,4 +15,5 @@ dependencies {
     implementation(project(":relation:contract"))
     implementation(project(":source:contract"))
     implementation(project(":symbol:contract"))
+    implementation(project(":traversal:contract"))
 }

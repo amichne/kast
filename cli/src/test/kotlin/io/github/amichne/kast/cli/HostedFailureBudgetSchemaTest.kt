@@ -35,7 +35,6 @@ class HostedFailureBudgetSchemaTest {
                 listOf(
                     CanonicalOperation.QUERY_RUN,
                     CanonicalOperation.SOURCE_READ,
-                    CanonicalOperation.TRAVERSAL_RUN,
                     CanonicalOperation.DIAGNOSTIC_CHECK,
                 )) {
                 for (document in documents) {
@@ -91,7 +90,6 @@ class HostedFailureBudgetSchemaTest {
                     listOf(
                         CanonicalOperation.QUERY_RUN,
                         CanonicalOperation.SOURCE_READ,
-                        CanonicalOperation.TRAVERSAL_RUN,
                         CanonicalOperation.DIAGNOSTIC_CHECK,
                     )) {
                     assertAdmits(operation, document)
@@ -149,7 +147,6 @@ class HostedFailureBudgetSchemaTest {
                     listOf(
                         CanonicalOperation.QUERY_RUN,
                         CanonicalOperation.SOURCE_READ,
-                        CanonicalOperation.TRAVERSAL_RUN,
                         CanonicalOperation.DIAGNOSTIC_CHECK,
                     )) assertions.assertRejects(operation, candidate)
             }

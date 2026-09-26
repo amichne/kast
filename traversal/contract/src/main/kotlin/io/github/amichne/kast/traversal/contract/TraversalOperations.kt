@@ -1,6 +1,6 @@
 package io.github.amichne.kast.traversal.contract
 
-/** Public `traversal.run` boundary. */
+/** Domain traversal capability composed by query execution. */
 fun interface TraversalOperations {
     /**
      * Proof transition: `TraversalPlan -> TraversalResult`.

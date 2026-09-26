@@ -8,65 +8,35 @@ import org.junit.jupiter.api.Test
 
 class QualificationProofContractTest {
     @Test
-    fun `traversal request and qualification distinguish resumable from terminal state`() {
-        val continuation = traversalContinuationDocument()
-        val start =
-            TraversalRunRequest(
-                text("exact:Target"),
-                RelationKindDocument.CALLEES,
-                ProtocolCount.parse(2).refined(),
-                ProtocolCount.parse(4).refined(),
-                TraversalRunPositionDocument.Start,
-            )
-        val resume = start.copy(position = TraversalRunPositionDocument.Resume(continuation))
-        val qualification =
-            TraversalRunQualification.resumable(
+    fun `walk page coverage preserves finite incomplete evidence and immutable limitations`() {
+        val resumable =
+            QueryWalkCoverageDocument.resumable(
                     listOf(
                         TraversalLimitationDocument.RECORD_LIMIT_REACHED,
                         TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
                     ),
-                    listOf(
-                        RelationLimitationDocument.UNRESOLVED_TARGET,
-                        RelationLimitationDocument.PROVIDER_INCOMPLETE,
-                    ),
-                    continuation,
-                )
-                .refined()
-
-        assertInstanceOf(TraversalRunPositionDocument.Start::class.java, start.position)
-        assertInstanceOf(TraversalRunPositionDocument.Resume::class.java, resume.position)
-        assertEquals(2, qualification.limitations.size)
-        assertEquals(2, qualification.relationLimitations.size)
-        assertThrows(UnsupportedOperationException::class.java) {
-            @Suppress("UNCHECKED_CAST")
-            (qualification.relationLimitations as MutableList<RelationLimitationDocument>).clear()
-        }
-
-        val terminal =
-            TraversalRunQualification.terminalIncomplete(
-                    listOf(TraversalLimitationDocument.ONE_HOP_INCOMPLETE),
                     listOf(RelationLimitationDocument.UNRESOLVED_TARGET),
                 )
                 .refined()
-        val depthTerminal =
-            TraversalRunQualification.terminalIncomplete(
-                    listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
-                    emptyList(),
-                )
-                .refined()
-        assertInstanceOf(TraversalRunQualification.TerminalIncomplete::class.java, terminal)
-        assertInstanceOf(TraversalRunQualification.TerminalIncomplete::class.java, depthTerminal)
+        assertEquals(2, resumable.limitations.size)
+        assertEquals(1, resumable.relationLimitations.size)
+        assertThrows(UnsupportedOperationException::class.java) {
+            @Suppress("UNCHECKED_CAST") (resumable.limitations as MutableList<TraversalLimitationDocument>).clear()
+        }
         assertInstanceOf(
             Refinement.Rejected::class.java,
-            TraversalRunQualification.resumable(
-                listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
+            QueryWalkCoverageDocument.resumable(
+                listOf(TraversalLimitationDocument.ONE_HOP_INCOMPLETE),
                 emptyList(),
-                continuation,
             ),
         )
         assertInstanceOf(
-            Refinement.Rejected::class.java,
-            TraversalContinuationDocument.parse("b".repeat(64)),
+            QueryWalkCoverageDocument.TerminalIncomplete::class.java,
+            QueryWalkCoverageDocument.terminalIncomplete(
+                    listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
+                    emptyList(),
+                )
+                .refined(),
         )
     }
 
@@ -96,16 +66,6 @@ class QualificationProofContractTest {
     }
 
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refined()
-
-    private fun traversalContinuationDocument(): TraversalContinuationDocument {
-        val payload = "self-contained-checkpoint".toByteArray()
-        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return TraversalContinuationDocument.parse("traversal-continuation:v1:$encoded:$digest").refined()
-    }
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
         when (this) {

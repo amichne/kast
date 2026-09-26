@@ -153,6 +153,45 @@ class BudgetOccurrencePage:
     status: str = 'qualified'
 
 
+@dataclass(frozen=True)
+class WalkProgress:
+    checkpointSequence: int
+    totalReads: int
+    totalEdges: int
+    maximumDepthReached: int = 1
+
+
+@dataclass(frozen=True)
+class WalkRecord:
+    depth: int
+    relation: Record
+
+
+@dataclass(frozen=True)
+class WalkItem:
+    record: WalkRecord
+    ref: str = 'exact:v2:target'
+    type: str = 'traversal_record'
+
+
+@dataclass(frozen=True)
+class WalkObservation:
+    progress: WalkProgress
+    subject: str = 'exact:v2:subject'
+    relation: str = 'callers'
+    maximum_depth: int = 2
+    expanded_frontier: int = 1
+    strategy: str = 'breadth_first'
+    partial_expansions: tuple[str, ...] = ()
+    coverage: str = 'complete'
+
+
+@dataclass(frozen=True)
+class WalkPage:
+    items: tuple[WalkItem, ...]
+    walk_observations: tuple[WalkObservation, ...]
+
+
 def request(reference='exact:a'):
     return QueryInput(QueryRun(SymbolReferences((reference,)), output=SymbolOutput(('name',)),
                                execution_budget=ResultsBudget(100)))
@@ -268,6 +307,26 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
                 replace(page, omissions=(AttributedOmission(replace(Omission(), reason='UNRESOLVED_TARGET')),)),
                 replace(page, omissions=(AttributedOmission(replace(Omission(), remediation='REPAIR_PROVIDER')),))):
             self.assertFalse(payload_parity('query_occurrences', Drained((asdict(changed), tail)), reference))
+
+    def test_query_walk_parity_preserves_records_depth_strategy_progress_frontier_and_coverage(self):
+        a, b = WalkItem(WalkRecord(1, Record('a'))), WalkItem(WalkRecord(2, Record('b', 'call-2')))
+        first = WalkPage((a,), (WalkObservation(WalkProgress(1, 1, 1), partial_expansions=('partial',)),))
+        second = WalkPage((b,), (WalkObservation(WalkProgress(2, 2, 2)),))
+        baseline = Drained((asdict(WalkPage((a, b),
+            (WalkObservation(WalkProgress(2, 2, 2), partial_expansions=('partial',)),))),))
+        observed = Drained((asdict(first), asdict(second)))
+        self.assertTrue(payload_parity('query_walk', observed, baseline))
+        for changed in (
+                replace(second, items=(WalkItem(replace(b.record, depth=3)),)),
+                replace(second, items=(replace(b, ref='exact:v2:moved'),)),
+                replace(second, walk_observations=(replace(second.walk_observations[0], strategy='depth_first'),)),
+                replace(second, walk_observations=(replace(second.walk_observations[0], expanded_frontier=-1),)),
+                replace(second, walk_observations=(replace(second.walk_observations[0],
+                    progress=WalkProgress(1, 1, 1)),)),
+                replace(second, walk_observations=(replace(second.walk_observations[0],
+                    coverage='terminal_incomplete'),)),
+        ):
+            self.assertFalse(payload_parity('query_walk', Drained((asdict(first), asdict(changed))), baseline))
 
     def test_parity_rejects_lost_order_occurrence_proof_source_text_and_range(self):
         records = (Record('a'), Record('b', 'call-2'))

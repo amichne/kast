@@ -1,25 +1,17 @@
 package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
 class PreferredReadCatalogTest {
     @Test
-    fun `catalog advertises the remaining traversal name with canonical identity`() {
-        val expected = mapOf(CanonicalOperation.TRAVERSAL_RUN to "traverse_relations")
-        for ((operation, preferred) in expected) {
-            assertEquals(
-                preferred,
-                CanonicalAgentToolDefinitions.all.single { it.operation.operation == operation }.name.value,
-            )
-        }
-        assertFalse(
-            CanonicalAgentToolDefinitions.all.any { it.name.value in setOf("semantic_query", "impact_analyze") }
+    fun `catalog has one public compositional semantic read`() {
+        assertEquals(7, CanonicalAgentToolDefinitions.all.size)
+        assertEquals(
+            Refinement.Rejected(AgentToolInputFailure.UNKNOWN),
+            CanonicalAgentToolDefinitions.resolveInput("traverse_relations"),
         )
-        assertEquals(8, CanonicalAgentToolDefinitions.all.size)
     }
 
     @Test
@@ -35,6 +27,7 @@ class PreferredReadCatalogTest {
         for (removed in
             listOf(
                 "read_relations",
+                "traverse_relations",
                 "semantic_query",
                 "impact_analyze",
                 "search_classes",

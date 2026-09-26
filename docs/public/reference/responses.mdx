@@ -13,6 +13,7 @@ code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"
   - path: "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt"
   - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt"
+  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt"
   - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt"
   - path: "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt"
 ---
@@ -106,6 +107,7 @@ This illustrative published query response is complete and empty:
     "items": [],
     "failures": [],
     "omissions": [],
+    "walk_observations": [],
     "retention": {"kind": "not_requested"},
     "coverage": {"exhaustive": true}
   }
@@ -125,13 +127,15 @@ This qualified illustration does not establish absence:
     "items": [],
     "failures": [],
     "omissions": [],
+    "walk_observations": [],
     "retention": {"kind": "not_requested"},
     "coverage": {"exhaustive": false},
     "continuation": null,
     "terminal_reason": "upstream-incomplete",
     "qualification": {
       "knownMinimum": 0,
-      "limitations": ["discovery-incomplete"]
+      "limitations": ["discovery-incomplete"],
+      "progress": {"type": "terminal_incomplete", "reason": "upstream-incomplete"}
     }
   }
 }
@@ -143,9 +147,8 @@ Choose the payload model for the invoked tool.
 
 | Tool family | Canonical operation | Payload to inspect |
 | --- | --- | --- |
-| `query_symbols` | `query.run` | `items[]`: exact symbols or individual occurrences by requested output; `failures[]`: per-item failures; `omissions[]`: incomplete relation evidence |
+| `query_symbols` | `query.run` | `items[]`: exact symbols, relation occurrences, or depth-bearing traversal records by requested output; `walk_observations[]`: frontier, progress, strategy, partial expansions, and coverage; `failures[]` and `omissions[]`: incomplete evidence |
 | `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
-| `traverse_relations` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |
 | `check_diagnostics` | `diagnostic.check` | `diagnostics[]`, `analysisKind`, and `coverage`: requested path, discovered, analyzed, and skipped files |
 | `change` | `change.run` composed from private native `change.plan`, `change.apply`, and, when needed, `change.recover` | Preview, verified receipt or failure, and any recovery evidence; see [Change source](/change) |
 

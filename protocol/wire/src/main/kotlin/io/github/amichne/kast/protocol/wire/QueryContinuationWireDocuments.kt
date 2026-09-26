@@ -10,6 +10,7 @@ internal data class QueryRunResultWireDocument(
     val items: List<QueryResultItemWireDocument>,
     val failures: List<QueryItemFailureWireDocument>,
     val omissions: List<QueryRelationOmissionWireDocument>,
+    @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationWireDocument>,
     val retention: io.github.amichne.kast.protocol.contract.QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
@@ -57,5 +58,6 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("visibility-incomplete") VISIBILITY_INCOMPLETE,
     @SerialName("source-incomplete") SOURCE_INCOMPLETE,
     @SerialName("relation-incomplete") RELATION_INCOMPLETE,
+    @SerialName("traversal-incomplete") TRAVERSAL_INCOMPLETE,
     @SerialName("row-selection-incomplete") ROW_SELECTION_INCOMPLETE,
 }

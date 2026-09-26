@@ -5,11 +5,11 @@ import json
 import time
 
 from hosted_budget_read_regression import (
-    BudgetSource, BudgetTraversal,
+    BudgetSource,
     ElapsedBudget, independent_grant,
 )
 from hosted_source_read_regression import SymbolAnchor
-from query_name_request import name_query
+from query_name_request import name_query, walk_query
 from hosted_repair_time_observation import NativeRepairTimeWindow, NativeTimeEvidence
 from hosted_transport_observation import TransportSummary, TransportWitnessFailure, TransportWitnessRejected
 
@@ -77,7 +77,7 @@ class RepairNativeTimeRejected:
 def admit_time_receipt(surface, tool, requested, response, elapsed):
     """Transport validates the full matched schema before this narrow receipt projection."""
     if surface not in ('cli', 'provider') or tool not in (
-            'query_symbols', 'source_read', 'traverse_relations'):
+            'query_symbols', 'source_read'):
         return RepairReceiptRejected(ReceiptFailure.SURFACE)
     if requested not in (10000, 20000) or type(elapsed) is not int or elapsed < 0:
         return RepairReceiptRejected(ReceiptFailure.REQUEST)
@@ -106,7 +106,7 @@ def run_repair_time_regression(replay):
         cases = (
             ('query_symbols', name_query('pageItem00', ('function',), budget=budget)),
             ('source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['ref']), budget)),
-            ('traverse_relations', BudgetTraversal(replay.seeds['helper']['ref'], budget)),
+            ('query_symbols', walk_query(replay.seeds['helper']['ref'], budget=budget)),
         )
         for tool, request in cases:
             with NativeRepairTimeWindow(replay.transport.isolation.root / 'ide/log/idea.log', replay.live) as window:

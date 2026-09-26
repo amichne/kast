@@ -11,11 +11,6 @@ enum class KastSpanName(val wireName: String) {
     TOPOLOGY_EXTRACTION("kast.topology.extraction"),
     TOPOLOGY_REVALIDATION("kast.topology.revalidation"),
     TOPOLOGY_PUBLICATION("kast.topology.publication"),
-    TRAVERSAL_RUN("kast.traversal.run"),
-    TRAVERSAL_WORKSPACE("kast.traversal.workspace"),
-    TRAVERSAL_SNAPSHOT_ELIGIBILITY("kast.traversal.snapshot.eligibility"),
-    TRAVERSAL_SNAPSHOT_OPEN("kast.traversal.snapshot.open"),
-    TRAVERSAL_EXPANSION("kast.traversal.expansion"),
 }
 
 /** Low-cardinality terminal failure families; request values can never enter this type. */
@@ -33,13 +28,6 @@ enum class KastSpanFailure {
     TOPOLOGY_EXTRACTION,
     TOPOLOGY_COVERAGE,
     TOPOLOGY_PUBLICATION,
-    TRAVERSAL_WORKSPACE_NOT_READY,
-    TRAVERSAL_STALE_GENERATION,
-    TRAVERSAL_EVIDENCE_STALE,
-    TRAVERSAL_EVIDENCE_UNAVAILABLE,
-    TRAVERSAL_ONE_HOP,
-    TRAVERSAL_READER_CONTRACT,
-    TRAVERSAL_CONTRACT,
 }
 
 enum class KastSpanCountFailure {

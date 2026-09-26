@@ -244,10 +244,13 @@
           "$ref": "#/$defs/OccurrencesOutput"
         },
         {
+          "$ref": "#/$defs/TraversalRecordsOutput"
+        },
+        {
           "type": "null"
         }
       ],
-      "description": "Omission or null returns symbols with name and location. Choose occurrence output to retain individual relation facts."
+      "description": "Omission or null returns symbols with name and location. Choose occurrences for individual relation facts or traversal_records for depth-bearing walk records."
     },
     "ReadResultOutput": {
       "anyOf": [
@@ -306,6 +309,22 @@
         "type"
       ],
       "additionalProperties": false
+    },
+    "TraversalRecordsOutput": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "traversal_records"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Present each compiler-confirmed walk record with its hop depth and relation fact."
     },
     "Predicate": {
       "anyOf": [
@@ -442,6 +461,98 @@
         "relation"
       ],
       "additionalProperties": false
+    },
+    "WalkDepth": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "Maximum semantic hop depth; each walk remains bounded by the hosted traversal ceiling."
+    },
+    "WalkStrategy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BreadthFirstStrategy"
+        },
+        {
+          "$ref": "#/$defs/BoundedFanOutStrategy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Omission or null uses breadth-first exploration. Bounded fan-out keeps representative deeper paths and qualifies truncated coverage."
+    },
+    "BreadthFirstStrategy": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "breadth_first"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "BoundedFanOutStrategy": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "bounded_fan_out"
+          ]
+        },
+        "maximumEdgesPerNode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "type",
+        "maximumEdgesPerNode"
+      ],
+      "additionalProperties": false
+    },
+    "Walk": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "walk"
+          ]
+        },
+        "relation": {
+          "type": "string",
+          "enum": [
+            "references",
+            "callers",
+            "callees",
+            "implementations",
+            "inheritors",
+            "overrides",
+            "type_uses"
+          ]
+        },
+        "maximum_depth": {
+          "$ref": "#/$defs/WalkDepth"
+        },
+        "strategy": {
+          "$ref": "#/$defs/WalkStrategy"
+        }
+      },
+      "required": [
+        "type",
+        "relation",
+        "maximum_depth"
+      ],
+      "additionalProperties": false,
+      "description": "Traverse each input symbol through compiler-confirmed relations up to the requested depth. Existing traversal execution retains frontier, progress, strategy and partial-expansion evidence."
     },
     "DistinctSymbols": {
       "type": "object",
@@ -698,6 +809,9 @@
                 "$ref": "#/$defs/ExpandRelation"
               },
               {
+                "$ref": "#/$defs/Walk"
+              },
+              {
                 "$ref": "#/$defs/DistinctSymbols"
               },
               {
@@ -716,7 +830,7 @@
           },
           "minItems": 0,
           "maxItems": 1000,
-          "description": "Ordered transformations, executed left to right. null and [] mean no transformations. where applies one structured predicate. concat preserves order and multiplicity; intersect, union, and difference use canonical semantic identity. distinct_symbols removes duplicate identities only when requested."
+          "description": "Ordered transformations, executed left to right. null and [] mean no transformations. where applies one structured predicate; walk traverses bounded multi-hop relations through the existing traversal engine. concat preserves order and multiplicity; intersect, union, and difference use canonical semantic identity. distinct_symbols removes duplicate identities only when requested."
         },
         "output": {
           "$ref": "#/$defs/Output"

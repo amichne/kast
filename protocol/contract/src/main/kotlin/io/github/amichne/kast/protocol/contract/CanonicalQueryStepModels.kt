@@ -51,6 +51,14 @@ sealed interface QueryStepDocument {
 
     @Serializable @SerialName("related") data class Related(val relation: RelationKindDocument) : QueryStepDocument
 
+    @Serializable
+    @SerialName("walk")
+    data class Walk(
+        val relation: RelationKindDocument,
+        @SerialName("maximum_depth") val maximumDepth: ProtocolCount,
+        val strategy: TraversalStrategyDocument = TraversalStrategyDocument.BreadthFirst,
+    ) : QueryStepDocument
+
     @Serializable @SerialName("distinct") data object Distinct : QueryStepDocument
 
     @Serializable @SerialName("concat") data class Concat(val input: QueryCompositionInputDocument) : QueryStepDocument

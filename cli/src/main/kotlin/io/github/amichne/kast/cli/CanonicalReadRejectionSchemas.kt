@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.wire.presentation.cliName
 import kotlinx.serialization.json.JsonObject
 
@@ -15,8 +14,6 @@ internal fun canonicalReadRejectionSchema(operation: CanonicalOperation): JsonOb
                 enumSchema(SourceReadRejection.entries.map { it.cliName() }, "Source read rejection."),
                 generatedRequestSchema(io.github.amichne.kast.protocol.contract.SourceReadFailureDetail.serializer()),
             )
-        CanonicalOperation.TRAVERSAL_RUN ->
-            enumSchema(TraversalRunRejection.entries.map { it.cliName() }, "Traversal rejection.")
         CanonicalOperation.SYMBOL_INSPECT ->
             enumSchema(SymbolInspectRejection.entries.map { it.cliName() }, "Symbol inspection rejection.")
         CanonicalOperation.WORKSPACE_LIFECYCLE,

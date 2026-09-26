@@ -482,6 +482,8 @@ class QueryServiceTest {
             exact = exact,
             source = source,
             relations = RelationOperations { error("Relation read was not expected") },
+            traversal = unexpectedQueryTraversal(),
+            traversalCeiling = queryTestTraversalCeiling(),
             clock = clock,
         )
 

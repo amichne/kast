@@ -1,7 +1,7 @@
 ---
 type: Runtime Flow
 title: Existing-IDE semantic query
-description: An existing IDEA project owns six canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
+description: An existing IDEA project owns five canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-25T00:00:00Z
@@ -47,9 +47,9 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetReport.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionLimitDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetReports.kt
-  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/TraversalRunResultWireDocument.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryWalkWireDocuments.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/SourceReadOutcomeWireMappings.kt
-  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/TraversalOutcomeCliDocuments.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryWalkCliDocuments.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceExecution.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
@@ -219,10 +219,11 @@ evaluation, and ends its context before returning. Saved documents and committed
 PSI remain live obligations. Original-owner retirement and epoch movement reject
 references instead of falling back to a publication or another IDE.
 
-`HostedCanonicalQuery` composes six public canonical reads: `query.run`,
-`symbol.discover`, `symbol.inspect`, `source.read`, `traversal.run`, and
-`diagnostic.check`. Query expansion supplies one-hop relation facts through
-query occurrence output. The host supplies pure services, project-bound
+`HostedCanonicalQuery` composes five public canonical reads: `query.run`,
+`symbol.discover`, `symbol.inspect`, `source.read`, and `diagnostic.check`.
+Query expansion supplies one-hop relation facts through occurrence output;
+query walk composes the traversal domain operation and projects depth-bearing
+records and coverage. The host supplies pure services, project-bound
 ports, current-model reference restoration, and explicit budgets to the reusable
 [`query:protocol`](../modules/query-protocol.md) boundary. Query evaluation keeps
 one request budget across its stages; specialist request limits intersect bounded

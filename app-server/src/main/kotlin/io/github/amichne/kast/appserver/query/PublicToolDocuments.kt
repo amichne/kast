@@ -7,6 +7,7 @@ package io.github.amichne.kast.appserver.query
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
@@ -15,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -120,6 +122,16 @@ internal data class PublicToolWhere(
 @SerialName("expand_relation")
 internal data class PublicToolExpandRelation(
     val relation: PublicToolRelation,
+) : PublicToolStep
+
+@Serializable
+@SerialName("walk")
+internal data class PublicToolWalk(
+    val relation: PublicToolRelation,
+    @SerialName("maximum_depth")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val maximumDepth: ProtocolCount,
+    val strategy: TraversalStrategyDocument? = null,
 ) : PublicToolStep
 
 @Serializable

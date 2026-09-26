@@ -1,0 +1,1 @@
+{"type":"walk","relation":"callers","maximum_depth":3,"strategy":{"type":"breadth_first"}}

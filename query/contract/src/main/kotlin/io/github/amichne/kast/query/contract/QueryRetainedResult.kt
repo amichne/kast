@@ -22,6 +22,7 @@ private constructor(
     private val rows: List<QuerySymbol>,
     private val itemFailures: List<QueryItemFailure>,
     private val relationOmissions: List<QueryRelationOmission>,
+    private val traversalObservations: List<QueryWalkObservation>,
     private val resultCoverage: QueryCoverage,
     val producerProgress: QueryContinuationState?,
 ) {
@@ -34,12 +35,23 @@ private constructor(
     val omissions: List<QueryRelationOmission>
         get() = relationOmissions.toList()
 
+    val walkObservations: List<QueryWalkObservation>
+        get() = traversalObservations.toList()
+
     val coverage: QueryCoverage
         get() = resultCoverage.copyCoverage()
 
     /** Conservative detached-state accounting includes source text and unfinished producer work. */
     val retainedBytes: Long =
-        retainedStorageBytes(rows, itemFailures, relationOmissions, resultCoverage, producerProgress, lease)
+        retainedStorageBytes(
+            rows,
+            itemFailures,
+            relationOmissions,
+            traversalObservations,
+            resultCoverage,
+            producerProgress,
+            lease,
+        )
 
     /** Select original proven rows; excluded rows remain unchecked rather than proven nonmatches. */
     fun selectRows(indices: List<Int>): Refinement<QueryRetainedResult, QueryRetainedResultFailure> {
@@ -70,7 +82,15 @@ private constructor(
                 producerProgress
             }
         return Refinement.Refined(
-            QueryRetainedResult(lease, selected, itemFailures, relationOmissions, coverage, progress)
+            QueryRetainedResult(
+                lease,
+                selected,
+                itemFailures,
+                relationOmissions,
+                traversalObservations,
+                coverage,
+                progress,
+            )
         )
     }
 
@@ -85,6 +105,9 @@ private constructor(
             when (execution) {
                 is QueryExecutionResult.Complete -> {
                     if (execution.result.failures.isNotEmpty() || execution.result.omissions.isNotEmpty()) {
+                        return Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
+                    }
+                    if (execution.result.walkObservations.any { it.coverage.isTerminallyIncomplete() }) {
                         return Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
                     }
                     result = execution.result
@@ -112,6 +135,7 @@ private constructor(
                     symbols.map { it.copy(connections = it.connections.toList()) },
                     result.failures.toList(),
                     result.omissions.toList(),
+                    result.walkObservations.toList(),
                     coverage.copyCoverage(),
                     progress,
                 )
@@ -148,7 +172,13 @@ private fun QuerySymbol.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
 private fun QueryResult.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     items.any { it.hasForeignBasis(lease) } ||
         failures.any { it.hasForeignBasis(lease) } ||
-        omissions.any { it.subject.lease != lease }
+        omissions.any { it.subject.lease != lease } ||
+        walkObservations.any { it.subject.lease != lease }
+
+private fun QueryWalkCoverage.isTerminallyIncomplete(): Boolean =
+    this is QueryWalkCoverage.TerminalIncomplete ||
+        (this is QueryWalkCoverage.Resumable &&
+            io.github.amichne.kast.traversal.contract.TraversalLimitation.ONE_HOP_INCOMPLETE in limitations)
 
 private fun QueryItemFailure.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     when (this) {
@@ -158,12 +188,14 @@ private fun QueryItemFailure.hasForeignBasis(lease: SemanticReadAuthority): Bool
         is QueryItemFailure.PredicateUnproven -> selector.lease != lease
         is QueryItemFailure.Source -> selector.lease != lease
         is QueryItemFailure.Relation -> selector.lease != lease
+        is QueryItemFailure.Walk -> selector.lease != lease
     }
 
 private fun retainedStorageBytes(
     rows: List<QuerySymbol>,
     failures: List<QueryItemFailure>,
     omissions: List<QueryRelationOmission>,
+    walkObservations: List<QueryWalkObservation>,
     coverage: QueryCoverage,
     progress: QueryContinuationState?,
     lease: SemanticReadAuthority,
@@ -184,6 +216,7 @@ private fun retainedStorageBytes(
     return RETAINED_STATE_BASE_BYTES.saturatedAdd(rows.toString().utf8UpperBound())
         .saturatedAdd(failures.toString().utf8UpperBound())
         .saturatedAdd(omissions.toString().utf8UpperBound())
+        .saturatedAdd(walkObservations.toString().utf8UpperBound())
         .saturatedAdd(coverage.toString().utf8UpperBound())
         .saturatedAdd(lease.toString().utf8UpperBound())
         .saturatedAdd(sourceText)

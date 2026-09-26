@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 
 class CanonicalOperationDefinitionsTest {
     @Test
-    fun `production registry owns exactly thirteen distinct typed operation definitions`() {
+    fun `production registry owns exactly twelve distinct typed operation definitions`() {
         val definitions = CanonicalOperationDefinitions.all
         val expectedIds =
             listOf(
@@ -17,7 +17,6 @@ class CanonicalOperationDefinitionsTest {
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
-                "traversal.run",
                 "diagnostic.check",
                 "change.run",
                 "change.plan",
@@ -27,11 +26,11 @@ class CanonicalOperationDefinitionsTest {
 
         assertEquals(expectedIds, CanonicalOperation.entries.map { it.id.value })
         assertEquals(CanonicalOperation.entries, definitions.map { it.operation })
-        assertEquals(13, definitions.map { it.requestType }.toSet().size)
-        assertEquals(13, definitions.map { it.resultType }.toSet().size)
-        assertEquals(13, definitions.map { it.qualificationType }.toSet().size)
-        assertEquals(13, definitions.map { it.rejectionType }.toSet().size)
-        assertEquals(13, definitions.map { it.schema }.toSet().size)
+        assertEquals(12, definitions.map { it.requestType }.toSet().size)
+        assertEquals(12, definitions.map { it.resultType }.toSet().size)
+        assertEquals(12, definitions.map { it.qualificationType }.toSet().size)
+        assertEquals(12, definitions.map { it.rejectionType }.toSet().size)
+        assertEquals(12, definitions.map { it.schema }.toSet().size)
         assertEquals(definitions, CanonicalOperationDefinitions.registry.definitions)
         assertEquals(OperationLane.REGISTERED_LONG_WORK, CanonicalOperationDefinitions.topologyBuild.lane)
         assertEquals(
@@ -56,7 +55,6 @@ class CanonicalOperationDefinitionsTest {
                     CanonicalOperation.DIAGNOSTIC_CHECK -> 4
                     CanonicalOperation.QUERY_RUN -> 2
                     CanonicalOperation.SYMBOL_DISCOVER,
-                    CanonicalOperation.TRAVERSAL_RUN,
                     CanonicalOperation.CHANGE_APPLY -> 3
                     else -> 2
                 }

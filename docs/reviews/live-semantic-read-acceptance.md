@@ -8,6 +8,11 @@ does not establish complete `ALL` enumeration, library parity, or full Codex
 WebSocket integration. The production App Server provider also completed an exact
 query through the final qualified CLI distribution.
 
+Current Kast exposes relation expansion and multi-step walk through
+`query_symbols`; the standalone relation and traversal routes in this dated
+receipt are retired. The observations below remain evidence for the build tested
+on 2026-09-10.
+
 ## Qualified environment and evidence
 
 - Date: 2026-09-10.

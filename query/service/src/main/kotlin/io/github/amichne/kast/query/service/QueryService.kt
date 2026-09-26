@@ -2,7 +2,6 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.ExactQueryStage
-import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
@@ -18,9 +17,12 @@ import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolSource
 import io.github.amichne.kast.query.contract.QueryTerminalReason
+import io.github.amichne.kast.query.contract.QueryWalkObservation
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
+import io.github.amichne.kast.traversal.contract.TraversalBudget
+import io.github.amichne.kast.traversal.contract.TraversalOperations
 
 /** Monotonic clock isolated at the evaluator effect boundary. */
 fun interface QueryNanoClock {
@@ -37,15 +39,21 @@ class QueryService(
     exact: SymbolExactOperations,
     source: SourceReadOperations,
     relations: RelationOperations,
+    traversal: TraversalOperations,
+    private val traversalCeiling: TraversalBudget,
     private val clock: QueryNanoClock = SystemQueryNanoClock,
 ) : QueryOperations {
     private val stages = QueryReadStages(discovery, exact, source)
     private val relationStage = QueryRelationStage(relations)
+    private val walkStage = QueryWalkStage(traversal, traversalCeiling)
 
     override suspend fun run(request: QueryExecutionRequest): QueryExecutionResult {
         val checkpoint = request.checkpoint
         if (checkpoint != null && checkpoint !is PipelineCheckpoint) {
             return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
+        }
+        if (request.plan.exceedsTraversalDepth(traversalCeiling.depth)) {
+            return QueryExecutionResult.Rejected(QueryExecutionRejection.BUDGET_REJECTED)
         }
         return Execution(request, checkpoint).run()
     }
@@ -57,6 +65,7 @@ class QueryService(
         private val symbols = mutableListOf<QuerySymbol>()
         private val completedFailures = mutableListOf<QueryItemFailure>()
         private val completedOmissions = mutableListOf<QueryRelationOmission>()
+        private val completedWalkObservations = mutableListOf<QueryWalkObservation>()
         private var progressed = false
         private var terminal: QueryTerminalReason? = null
         private var rejection: QueryExecutionResult.Rejected? = null
@@ -76,7 +85,7 @@ class QueryService(
 
         private suspend fun executeNext(): Boolean {
             if (
-                symbols.size + completedFailures.size + completedOmissions.size >=
+                symbols.size + completedFailures.size + completedOmissions.size + completedWalkObservations.size >=
                     request.budget.resources.resultLimit.value
             ) {
                 state.limit(QueryLimitation.RESULT_LIMIT_REACHED)
@@ -84,7 +93,10 @@ class QueryService(
             }
             val task = tasks.first()
             val needsWork =
-                task is PipelineTask.Discover || task is PipelineTask.Revalidate || task is PipelineTask.Related
+                task is PipelineTask.Discover ||
+                    task is PipelineTask.Revalidate ||
+                    task is PipelineTask.Related ||
+                    task is PipelineTask.Walk
             if (!state.canContinue(needsWork) || !advance(task)) return false
             state.drainFailures().asReversed().forEach { tasks.addFirst(PipelineTask.Failure(it)) }
             progressed = true
@@ -95,10 +107,14 @@ class QueryService(
             when (task) {
                 is PipelineTask.Failure -> emit(task.value.projectedUtf8Size()) { completedFailures += task.value }
                 is PipelineTask.Omission -> emit(task.value.projectedUtf8Size()) { completedOmissions += task.value }
+                is PipelineTask.WalkObservation ->
+                    emit(task.value.projectedUtf8Size()) { completedWalkObservations += task.value }
                 is PipelineTask.Occurrence -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
+                is PipelineTask.WalkRecord -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)
                 is PipelineTask.Related -> related(task)
+                is PipelineTask.Walk -> walk(task)
                 is PipelineTask.Feed -> feed(task)
                 is PipelineTask.FlushSet -> flushSet(task)
                 is PipelineTask.FlushDistinct -> flushDistinct(task)
@@ -147,7 +163,8 @@ class QueryService(
             val values =
                 rows.map { PipelineTask.Symbol(it, stage.next) } +
                     stage.right.failures.map(PipelineTask::Failure) +
-                    stage.right.omissions.map(PipelineTask::Omission)
+                    stage.right.omissions.map(PipelineTask::Omission) +
+                    stage.right.walkObservations.map(PipelineTask::WalkObservation)
             values.asReversed().forEach(tasks::addFirst)
             return true
         }
@@ -215,6 +232,11 @@ class QueryService(
                     tasks.addFirst(PipelineTask.Related(task.value, stage, null))
                     true
                 }
+                is ExactQueryStage.Walk -> {
+                    tasks.removeFirst()
+                    tasks.addFirst(PipelineTask.Walk(task.value, stage, null))
+                    true
+                }
             }
 
         private suspend fun where(task: PipelineTask.Symbol, stage: ExactQueryStage.Where): Boolean =
@@ -237,25 +259,15 @@ class QueryService(
             }
 
         private suspend fun emitSymbol(task: PipelineTask.Symbol, stage: ExactQueryStage.Emit): Boolean {
-            when (val output = stage.output) {
-                QueryOutputSyntax.Occurrences -> {
-                    tasks.removeFirst()
-                    val facts = (task.value.arrival as? QueryArrivalEvidence.Proven)?.facts.orEmpty()
-                    facts.asReversed().forEach { fact ->
-                        tasks.addFirst(
-                            PipelineTask.Occurrence(task.value.copy(arrival = QueryArrivalEvidence.Proven.one(fact)))
-                        )
-                    }
-                    return true
-                }
-                is QueryOutputSyntax.Symbols -> {
-                    if (
-                        QuerySymbolField.SOURCE !in output.fields.values ||
-                            task.value.source !is QuerySymbolSource.Pending
-                    )
-                        return emit(task.value.projectedUtf8Size()) { symbols += task.value }
-                }
+            val expanded = task.expandOutput(stage.output)
+            if (expanded != null) {
+                tasks.removeFirst()
+                expanded.asReversed().forEach(tasks::addFirst)
+                return true
             }
+            val output = stage.output as QueryOutputSyntax.Symbols
+            if (QuerySymbolField.SOURCE !in output.fields.values || task.value.source !is QuerySymbolSource.Pending)
+                return emit(task.value.projectedUtf8Size()) { symbols += task.value }
             val resources =
                 when (val admitted = state.sourceResources()) {
                     is Refinement.Rejected -> return false
@@ -277,22 +289,36 @@ class QueryService(
                 }
                 is QueryRelationStageResult.Read -> {
                     tasks.removeFirst()
-                    result.continuation?.let { tasks.addFirst(task.copy(cursor = it)) }
-                    result.omissions.asReversed().forEach { omission ->
-                        tasks.addFirst(PipelineTask.Omission(omission))
-                    }
-                    result.symbols.asReversed().forEach { symbol ->
-                        tasks.addFirst(PipelineTask.Symbol(symbol, task.stage.next))
-                    }
+                    result.nextTasks(task).asReversed().forEach(tasks::addFirst)
                     true
                 }
             }
         }
 
+        private suspend fun walk(task: PipelineTask.Walk): Boolean =
+            when (val result = walkStage.read(task, state)) {
+                QueryWalkStageResult.NotStarted -> false
+                QueryWalkStageResult.ContractRejected -> {
+                    state.contractViolation = true
+                    false
+                }
+                is QueryWalkStageResult.Read -> {
+                    tasks.removeFirst()
+                    result.nextTasks(task).asReversed().forEach(tasks::addFirst)
+                    true
+                }
+            }
+
         private fun finish(): QueryExecutionResult {
             if (state.contractViolation)
                 return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
-            val result = QueryResult(symbols.toList(), completedFailures.toList(), completedOmissions.toList())
+            val result =
+                QueryResult(
+                    symbols.toList(),
+                    completedFailures.toList(),
+                    completedOmissions.toList(),
+                    completedWalkObservations.toList(),
+                )
             val count = symbols.size.queryCount()
             if (tasks.isEmpty() && state.limitations.isEmpty())
                 return QueryExecutionResult.Complete(result, QueryCoverage.Complete(count))

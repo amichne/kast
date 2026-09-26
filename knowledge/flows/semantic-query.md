@@ -11,6 +11,7 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QuerySyntaxAdmission.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryStepModels.kt
   - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
@@ -31,6 +32,7 @@ code_sources:
     symbols: [QueryExecutionState]
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
     symbols: [QueryService]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryIdentityRows.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
     symbols: [visibilityRequest]
@@ -67,15 +69,17 @@ resume        -> saved execution checkpoint -> remaining exact stages
 read-result   -> immutable retained rows -> presentation page
 ```
 
-The pure plan compiler admits only exact-symbol stages and selects discovery, exact references, or a retained result as its source. Discovery still refines internal candidates before a row enters the exact pipeline. Execution tracks `SemanticReadAuthority`, time, work units, encoded bytes, result capacity, limitations, and item failures. A live authority is supplied by its admitted host; decoding a reference never creates one. Query output selects exact symbols with requested fields or one row per relation occurrence. Query candidate output and its inspect stage have been removed; separate symbol lookup and inspection still own those capabilities.
+The pure plan compiler admits only exact-symbol stages and selects discovery, exact references, or a retained result as its source. Discovery still refines internal candidates before a row enters the exact pipeline. Execution tracks `SemanticReadAuthority`, time, work units, encoded bytes, result capacity, limitations, and item failures. A live authority is supplied by its admitted host; decoding a reference never creates one. Query output selects exact symbols with requested fields, one row per relation occurrence, or depth-bearing traversal records. Query candidate output and its inspect stage have been removed; separate symbol lookup and inspection still own those capabilities.
 
 The `where` stage admits a closed visibility or primitive predicate. Primitive predicates compare compiler-grounded name, kind, or file text without a source read. `concat` admits exact references or retained rows at any stage and schedules them after the upstream stream, preserving order and multiplicity. Later predicates and relation hops see both inputs. `intersect`, `union`, and `difference` use canonical semantic identity; matching rows merge evidence, while `difference` requires complete right coverage without failures or producer progress to establish absence. `distinct_symbols` removes repeated identities only where requested. Composed inputs share the parent work and checkpoint budget. A resume action supplies only an issued execution continuation and optional new grant. `QueryStateStore` restores the admitted plan and pending work, so completed prefix stages and old tokens are not reacquired.
+
+`walk` takes an admitted relation, maximum depth, and exploration strategy. The query service composes the existing traversal domain operation under its execution budget and host traversal ceiling. It retains reached rows with exact relation facts and depth; walk observations preserve strategy, expanded frontier, cumulative progress, partial expansions, and incomplete coverage. A domain traversal continuation stays inside the bounded query execution checkpoint while that stage is unfinished. The public query continuation resumes the pipeline; no standalone traversal operation or token is exposed.
 
 `QueryRetainedResult` captures immutable exact rows, relation evidence and omissions, item failures, coverage, producer progress, and their semantic basis. `QueryStateStore` holds result references and execution checkpoints as distinct typed entries under one entry, byte, and lifetime bound. It issues row handles tied to each retained result, and the result projection returns those handles with retained rows. A run sourced from a retained result seeds the service from proven rows, including an empty set, without rediscovery or re-description. Optional row IDs select original rows in order; a proper subset retains incomplete-selection qualification and cannot establish absence for excluded rows. Qualified positives remain usable with their original limitations and omissions. Restoration rejects unavailable, foreign-row, or stale-basis results. A requested retention can fail for capacity without erasing the current query output. The read-result action presents a bounded page from retained rows using a distinct result cursor; it does not invoke semantic providers.
 
 An exact-symbol output may request `SOURCE`. At its emit stage, the service calls the existing source port with the same exact selector and read authority, a file region, no entity enumeration, and a fixed five-line window on each side. Returned text keeps its normalized committed-text proof and one-based line range. Source rejection or withheld text qualifies the query with a finite item cause; output and checkpoint bytes account for returned text. This adds one source read per emitted symbol and does not alter discovery refinement.
 
-Discovery candidates are refined to exact symbols before query output. Query-local refinement preserves repeated rows in their source order; an explicit `distinct_symbols` stage groups equal canonical identities when requested. Failed refinements remain visible as limitations. Relation continuations and child budgets are derived from remaining parent capacity.
+Discovery candidates are refined to exact symbols before query output. Query-local refinement preserves repeated rows in their source order; an explicit `distinct_symbols` stage groups equal canonical identities when requested. Failed refinements remain visible as limitations. Relation and traversal child budgets are derived from remaining parent capacity.
 
 Broad native discovery now filters index names by the admitted scope's coarse
 project-content or project-plus-library ID policy before the name cap, then
@@ -114,9 +118,9 @@ qualifies the read; visited PSI units still consume the native execution grant.
 `CanonicalQueryProtocol` is shared by installed and existing-IDE composition.
 It preserves per-item failures and qualifications and projects the matching
 published or live evidence basis. `HostedCanonicalQuery` constructs the pure
-evaluator with project-bound symbol, source, and relation ports inside an admitted
+evaluator with project-bound symbol, source, relation, and traversal ports inside an admitted
 host read. `selectCliRuntimePath` chooses this existing-IDE path before installed
-bootstrap for the six public semantic reads. The
+bootstrap for the five public semantic reads. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final CLI and production provider observations, including their
 complete/qualified distinctions. Earlier class/supertype qualification remains

@@ -21,7 +21,6 @@ private val semanticReadNames =
         "symbol_lookup",
         "symbol_inspect",
         "source_read",
-        "traverse_relations",
         "check_diagnostics",
     )
 
@@ -161,7 +160,6 @@ private fun summaryFor(name: String, header: McpCanonicalHeader, complete: Boole
         "source_read" -> "Source read; $completion"
         "symbol_lookup" -> "${header.items?.size ?: 0} declaration candidates; $completion"
         "symbol_inspect" -> "Exact symbol inspection; $completion"
-        "traverse_relations" -> "Relation traversal; $completion"
         else -> "$name; $completion"
     }
 }

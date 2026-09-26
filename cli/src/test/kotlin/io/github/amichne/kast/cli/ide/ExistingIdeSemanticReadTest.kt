@@ -23,9 +23,7 @@ import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.wire.*
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.HostedRequestEffect
-import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.preparedOperationFixture
 import java.nio.file.Path
 import java.util.UUID
@@ -71,11 +69,6 @@ class ExistingIdeSemanticReadTest {
                 "source read",
                 ExistingIdeReadOperation.SOURCE_READ,
                 """{"anchor":{"type":"symbol","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}""",
-            ),
-            Triple(
-                "traversal run",
-                ExistingIdeReadOperation.TRAVERSAL_RUN,
-                """{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","maximumDepth":1,"maximumResults":10}""",
             ),
             Triple(
                 "tool check_diagnostics",
@@ -137,7 +130,6 @@ class ExistingIdeSemanticReadTest {
             is DaemonCanonicalRead.SymbolDiscover -> ExistingIdeReadOperation.SYMBOL_DISCOVER
             is DaemonCanonicalRead.SymbolInspect -> ExistingIdeReadOperation.SYMBOL_INSPECT
             is DaemonCanonicalRead.SourceRead -> ExistingIdeReadOperation.SOURCE_READ
-            is DaemonCanonicalRead.TraversalRun -> ExistingIdeReadOperation.TRAVERSAL_RUN
         }
 
     private fun publicIdentity(command: String): io.github.amichne.kast.protocol.registry.PublicToolIdentity =
@@ -203,14 +195,6 @@ class ExistingIdeSemanticReadTest {
                 ExistingIdeReadOperation.SYMBOL_DISCOVER to
                     { basis ->
                         encoded(CanonicalOperationWireBindings.symbolDiscover, SymbolDiscoverResult(empty()), basis)
-                    },
-                ExistingIdeReadOperation.TRAVERSAL_RUN to
-                    { basis ->
-                        encoded(
-                            CanonicalOperationWireBindings.traversalRun,
-                            TraversalRunResult(text("/workspace"), empty()),
-                            basis,
-                        )
                     },
                 ExistingIdeReadOperation.DIAGNOSTIC_CHECK to
                     { basis ->
@@ -288,24 +272,6 @@ class ExistingIdeSemanticReadTest {
                 ) is ExistingIdeExchange.Rejected
             )
         }
-    }
-
-    @Test
-    fun `live traversal projection retains the same basis at envelope and graph snapshot`() {
-        val outcome =
-            OperationOutcome.Complete(
-                EvidenceEnvelope(
-                    CanonicalOperation.TRAVERSAL_RUN.id,
-                    live,
-                    TraversalRunResult(text("/workspace"), empty()),
-                )
-            )
-        val projected = CanonicalReadCliDocuments.projectTraversal(outcome) as ProjectedOperationOutcome.Complete
-        val document = projected.document.value.let(Json::parseToJsonElement).jsonObject
-        val snapshot = document.getValue("graph").jsonObject.getValue("snapshot").jsonObject
-        assertEquals(document["live"], snapshot["live"])
-        assertFalse(document.containsKey("generation"))
-        assertFalse(snapshot.containsKey("generation"))
     }
 
     @Test

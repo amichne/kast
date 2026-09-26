@@ -7,10 +7,12 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
+import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
@@ -22,6 +24,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
@@ -93,7 +96,13 @@ internal class QueryOutcomeProjection(
         return project(
             request = restored.request,
             lease = lease,
-            result = QueryResult(rows.subList(start, end), restored.result.failures, restored.result.omissions),
+            result =
+                QueryResult(
+                    rows.subList(start, end),
+                    restored.result.failures,
+                    restored.result.omissions,
+                    restored.result.walkObservations,
+                ),
             coverage = coverage,
             continuationState = restored.result.producerProgress,
             output = request.output,
@@ -130,6 +139,9 @@ internal class QueryOutcomeProjection(
         val boundedOmissions =
             result.omissions.mapProjected { it.projectIssue(authority) }.boundedProjectedOrNull()
                 ?: return contractRejected()
+        val boundedWalkObservations =
+            result.walkObservations.mapProjected { it.projectWalkObservation(authority) }.boundedProjectedOrNull()
+                ?: return contractRejected()
         val projectedQualification =
             projectQualification(request, coverage, continuationState, progressItemCount ?: items.size, protectedResult)
         val qualification =
@@ -153,21 +165,32 @@ internal class QueryOutcomeProjection(
                 is Refinement.Rejected -> return contractRejected()
             }
         val envelope =
-            EvidenceEnvelope(
-                CanonicalOperation.QUERY_RUN.id,
-                lease.evidenceBasis(),
-                QueryRunResult(
-                    items = presented.items,
-                    failures = boundedFailures,
-                    omissions = boundedOmissions,
-                    retention = presented.retention,
-                    nextCursor = nextCursor,
-                    referenceAcquisitions = authority.readAcquisitions(),
-                ),
-            )
+            resultEnvelope(lease, presented, boundedFailures, boundedOmissions, boundedWalkObservations, nextCursor)
         return if (qualification == null) OperationOutcome.Complete(envelope)
         else OperationOutcome.Qualified(envelope, qualification)
     }
+
+    private fun resultEnvelope(
+        lease: SemanticReadAuthority,
+        presented: PresentedRows,
+        failures: BoundedProtocolList<QueryItemFailureDocument>,
+        omissions: BoundedProtocolList<QueryRelationOmissionDocument>,
+        walkObservations: BoundedProtocolList<QueryWalkObservationDocument>,
+        nextCursor: QueryResultCursor?,
+    ): EvidenceEnvelope<QueryRunResult> =
+        EvidenceEnvelope(
+            CanonicalOperation.QUERY_RUN.id,
+            lease.evidenceBasis(),
+            QueryRunResult(
+                items = presented.items,
+                failures = failures,
+                omissions = omissions,
+                walkObservations = walkObservations,
+                retention = presented.retention,
+                nextCursor = nextCursor,
+                referenceAcquisitions = authority.readAcquisitions(),
+            ),
+        )
 
     private data class PresentedRows(
         val items: BoundedProtocolList<QueryResultItemDocument>,
@@ -222,6 +245,7 @@ internal class QueryOutcomeProjection(
                 when (item) {
                     is QueryResultItemDocument.ExactSymbol -> item.copy(rowId = rowIds[index])
                     is QueryResultItemDocument.Occurrence -> item.copy(rowId = rowIds[index])
+                    is QueryResultItemDocument.TraversalRecord -> item.copy(rowId = rowIds[index])
                 }
             }
         )

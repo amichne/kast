@@ -41,55 +41,6 @@ fun SourceReadFailure.recoveryAction(): ReadRecoveryAction =
         SourceReadRejection.CONTINUATION_UNAVAILABLE -> ReadRecoveryAction.RESTART_READ
     }
 
-fun TraversalRunFailure.recoveryAction(): ReadRecoveryAction =
-    when (reason()) {
-        TraversalRunRejection.WORKSPACE_INDEX_UNAVAILABLE -> ReadRecoveryAction.WAIT_FOR_WORKSPACE
-        TraversalRunRejection.SCOPE_REJECTED -> ReadRecoveryAction.CORRECT_REQUEST
-        TraversalRunRejection.OUTSIDE_SCOPE -> ReadRecoveryAction.CORRECT_REQUEST
-        TraversalRunRejection.AMBIGUOUS_SUBJECT -> ReadRecoveryAction.CORRECT_REQUEST
-        TraversalRunRejection.RELATION_UNSUPPORTED -> ReadRecoveryAction.CORRECT_REQUEST
-        TraversalRunRejection.DEPTH_LIMIT_EXCEEDED -> ReadRecoveryAction.CORRECT_REQUEST
-        TraversalRunRejection.COMPILER_IDENTITY_UNAVAILABLE -> ReadRecoveryAction.REPORT_FAILURE
-        TraversalRunRejection.COMPILER_CONTRACT_VIOLATION -> ReadRecoveryAction.REPORT_FAILURE
-        TraversalRunRejection.READER_CONTRACT_VIOLATION -> ReadRecoveryAction.REPORT_FAILURE
-        TraversalRunRejection.TRAVERSAL_CONTRACT_VIOLATION -> ReadRecoveryAction.REPORT_FAILURE
-        TraversalRunRejection.CONTINUATION_CURSOR_MOVED -> ReadRecoveryAction.RESTART_READ
-        TraversalRunRejection.REVALIDATION_WRONG_KIND -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_UNRETAINED -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_EXPIRED -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_CAPACITY -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_WORK_LIMIT_REACHED -> ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
-        TraversalRunRejection.REVALIDATION_TIME_LIMIT_REACHED -> ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
-        TraversalRunRejection.REVALIDATION_RETIRED -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_CAPTURE_UNAVAILABLE -> ReadRecoveryAction.REPORT_FAILURE
-        TraversalRunRejection.REVALIDATION_WORKSPACE_MISMATCH -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_OWNER_MISMATCH -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_WORKSPACE_NOT_READY -> ReadRecoveryAction.WAIT_FOR_WORKSPACE
-        TraversalRunRejection.REVALIDATION_BASIS_MOVED -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_CONTENT_CHANGED -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_CONTENT_UNCOMMITTED -> ReadRecoveryAction.SAVE_SOURCE
-        TraversalRunRejection.REVALIDATION_SCOPE_REJECTED -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_DECLARATION_MISSING -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_UNSUPPORTED_DECLARATION -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_AMBIGUOUS -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.REVALIDATION_COMPILER_UNAVAILABLE -> ReadRecoveryAction.REPORT_FAILURE
-        TraversalRunRejection.WORKSPACE_NOT_READY -> ReadRecoveryAction.WAIT_FOR_WORKSPACE
-        TraversalRunRejection.SELECTOR_WRONG_KIND,
-        TraversalRunRejection.SELECTOR_MALFORMED,
-        TraversalRunRejection.SELECTOR_WORKSPACE_MISMATCH,
-        TraversalRunRejection.SELECTOR_STALE,
-        TraversalRunRejection.CONTINUATION_MALFORMED,
-        TraversalRunRejection.CONTINUATION_GENERATION_MISMATCH -> ReadRecoveryAction.REACQUIRE_AUTHORITY
-        TraversalRunRejection.CONTINUATION_REQUEST_MISMATCH,
-        TraversalRunRejection.TOPOLOGY_BUILD_REQUIRED,
-        TraversalRunRejection.PLAN_REJECTED,
-        TraversalRunRejection.CONTINUATION_SUBJECT_MISMATCH,
-        TraversalRunRejection.CONTINUATION_RELATION_MISMATCH,
-        TraversalRunRejection.CONTINUATION_SCOPE_MISMATCH -> ReadRecoveryAction.CORRECT_REQUEST
-        TraversalRunRejection.CONTINUATION_UNAVAILABLE -> ReadRecoveryAction.RESTART_READ
-    }
-
 fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
     when (val rejection = reason()) {
         QueryRunRejection.WorkspaceNotReady -> ReadRecoveryAction.WAIT_FOR_WORKSPACE

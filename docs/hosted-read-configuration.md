@@ -153,7 +153,7 @@ Query continuations retain detached pipeline state and encoded-output suffixes i
 
 ## Per-call execution budgets
 
-`query_symbols`, `traverse_relations`, `source_read`, and `symbol_lookup`
+`query_symbols`, `source_read`, and `symbol_lookup`
 accept an optional `execution_budget` object with
 `max_elapsed_ms`, `max_work_units`, `max_results`, and `max_returned_bytes`.
 Supplied numbers must be positive integers. Omitted controls select configured
@@ -179,19 +179,17 @@ so two distinct call sites remain two results. A page-result allowance does not
 change relationship or scope semantics. Byte fitting measures the complete
 canonical response, including this metadata and any cursor.
 
-Hosted output cursors can resume with a changed execution budget and page limit.
-Each resume admits a new grant, while selector, relationship, authority and epoch
-remain bound. Storage capacity and expiry retain their separate operator limits.
-Query result units are emitted declarations; work units retain the query pipeline's
-existing accounting for candidate refinement and child reads. An explicit `take`
-remains part of query semantics. Query output suffixes and pipeline checkpoints
-exclude execution allowances from their request identity. Reissuing the same
-checkpoint reuses its token without renewing expiry; replay is non-consuming.
-Each output page retains
-known item failures, and its full canonical encoding includes the current grant.
-These controls are implemented for relation and query/search reads. Traversal and
-source remain part of the unfinished reliability work.
+Query execution continuation can resume with a changed execution budget. Each
+resume admits a new grant while the source, steps, output, authority, and epoch
+remain bound. A separate result cursor pages one immutable retained result
+without running semantic providers. Storage capacity and expiry retain their
+operator limits. Query result units are emitted symbol, occurrence, or traversal
+record rows; work units include candidate refinement and child relation or walk
+reads. Query output suffixes and pipeline checkpoints exclude execution allowances
+from their request identity. Reissuing the same checkpoint reuses its token
+without renewing expiry; replay is non-consuming. Each output page retains known
+item failures, and its full canonical encoding includes the current grant.
 
 Source entity continuations remain owned by the original project. `SOURCE_CONTINUATIONS` bounds entries, `SOURCE_CONTINUATION_BYTES` bounds charged retention (default 32 MiB), and `SOURCE_CONTINUATION_TTL_MILLIS` bounds token age (default ten minutes). The byte charge conservatively includes detached identity text, scope constraints, and object/container overhead; it is not a heap measurement. The store retains no source text or PSI. Replay preserves the original creation time. Expired or evicted tokens are rejected; reacquire a source selection and start a fresh read. A checkpoint that cannot fit is rejected before issuance.
 
-Source result units are structural entities. Native source work units are visited PSI elements, checked before another unit starts; setup time and final-unit overruns remain charged. Traversal result units are relation records in the graph, and aggregate work/time attenuate each one-hop relation read. Semantic traversal depth remains fixed across resume. Source and traversal now enforce their full encoded byte caps; automatic fitting of safely retained output is still an implementation gate.
+Source result units are structural entities. Native source work units are visited PSI elements, checked before another unit starts; setup time and final-unit overruns remain charged. The query walk consumes relation records and attenuates each one-hop read under its aggregate work and time grant. Its semantic depth and strategy remain fixed across query resume. The source output cap and query's final encoded-byte guard measure their respective responses.

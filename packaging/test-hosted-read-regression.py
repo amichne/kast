@@ -441,66 +441,70 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertNotIn(str(self.workspace), json.dumps(first))
         self.assertNotIn('private-token', json.dumps(first))
 
-    def traversal_page(self, status, continuation=None, edges=True):
+    def walk_page(self, status, continuation=None, records=True):
         live = {'root': str(self.workspace), 'host': 'fixture-owner', 'epoch': 1,
                 'contentView': 'SAVED_PSI_COMMITTED', 'version': 1}
-        graph = {'snapshot': {'live': live}, 'nodes': [
-            {'id': 'h', 'qualifiedIdentity': 'helper'}, {'id': 'c', 'qualifiedIdentity': 'caller'}],
-            'edges': [{'source': 'c', 'target': 'h', 'coverage': 'exact-compiler-confirmed',
-                       'provenance': 'k2-authored-source'}] if edges else [],
-            'proofs': [{'identity': 'proof'}] if edges else []}
-        if not edges:
-            graph['nodes'] = []
-        result = {'status': status, 'live': live, 'graph': graph}
+        fact = {'source': {'qualifiedIdentity': 'caller', 'compilerEvidence': {'identity': 'source-proof'}},
+                'target': {'qualifiedIdentity': 'helper', 'compilerEvidence': {'identity': 'target-proof'}},
+                'coverage': 'exact-compiler-confirmed', 'provenance': 'k2-authored-source'}
+        result = {'status': status, 'live': live,
+                  'items': [{'type': 'traversal_record', 'ref': 'original-reference',
+                             'record': {'depth': 1, 'relation': fact}}] if records else [],
+                  'walk_observations': [{'subject': 'original-reference', 'relation': 'callers',
+                                         'maximum_depth': 4, 'strategy': {'type': 'breadth_first'},
+                                         'expanded_frontier': 1,
+                                         'progress': {'checkpointSequence': 1, 'totalReads': 1,
+                                                      'totalEdges': 1, 'maximumDepthReached': 1},
+                                         'partial_expansions': [],
+                                         'coverage': {'kind': 'resumable' if continuation else 'complete'}}]}
         if continuation is not None:
-            result['qualification'] = {'type': 'resumable', 'limitations': ['time-limit-reached'],
-                'relationLimitations': [], 'continuation': continuation}
+            result['continuation'] = continuation
+            result['qualification'] = {'limitations': ['time-limit-reached'], 'progress': {
+                'type': 'resumable', 'checkpoint': {'type': 'upstream', 'token': continuation},
+                'next_action': 'resume'}}
         return result
 
-    def test_traversal_consumes_returned_checkpoint_with_unchanged_request_and_requires_completion(self):
-        first = self.traversal_page('qualified', 'private-checkpoint')
+    def test_walk_consumes_query_checkpoint_without_resending_the_completed_plan(self):
+        first = self.walk_page('qualified', 'private-checkpoint')
         transport = Mock()
-        transport.invoke.side_effect = [first, self.traversal_page('complete', edges=False)]
+        transport.invoke.side_effect = [first, self.walk_page('complete', records=False)]
         replay = _ReadReplay(None, None, first['live'], transport, 'cli', [])
-        replay.traversal('original-reference', Counter({'caller': 1}), 'helper')
+        replay.walk('original-reference', Counter({'caller': 1}), 'helper')
         self.assertEqual(2, transport.invoke.call_count)
         initial, resumed = [call.args[2] for call in transport.invoke.call_args_list]
-        self.assertEqual({'type': 'start'}, initial['position'])
-        self.assertEqual({'type': 'breadth_first'}, initial['strategy'])
-        self.assertEqual({'exactSelector': 'original-reference', 'relation': 'callers',
-                          'maximumDepth': 4, 'maximumResults': 100, 'position': {'type': 'start'},
-                          'strategy': {'type': 'breadth_first'}}, json.loads(json.dumps(initial)))
-        self.assertEqual({'type': 'resume', 'continuation': 'private-checkpoint'}, resumed['position'])
-        self.assertEqual({k: v for k, v in initial.items() if k != 'position'},
-                         {k: v for k, v in resumed.items() if k != 'position'})
+        self.assertEqual({'request': {'source': {'type': 'symbol_refs', 'symbol_refs': ['original-reference']},
+                          'steps': [{'type': 'walk', 'relation': 'callers', 'maximum_depth': 4,
+                                     'strategy': {'type': 'breadth_first'}}],
+                          'output': {'type': 'traversal_records'}, 'execution_budget': None,
+                          'action': 'run'}}, json.loads(json.dumps(initial)))
+        self.assertEqual({'request': {'action': 'resume', 'continuation': 'private-checkpoint',
+                                     'execution_budget': None}}, resumed)
         self.assertTrue(all(row['passed'] for row in replay.rows))
         self.assertEqual('complete', replay.rows[-1]['observation']['status'])
         self.assertNotIn('private-checkpoint', json.dumps(replay.rows))
 
-    def test_repeated_or_foreign_traversal_checkpoint_never_becomes_complete(self):
-        first = self.traversal_page('qualified', 'private-checkpoint')
-        for second in (self.traversal_page('qualified', 'private-checkpoint', edges=False),
-                       self.traversal_page('qualified', 'different-checkpoint', edges=False),
-                       {**self.traversal_page('complete', edges=False), 'live': {**first['live'], 'epoch': 2}}):
+    def test_repeated_or_foreign_walk_checkpoint_never_becomes_complete(self):
+        first = self.walk_page('qualified', 'private-checkpoint')
+        for second in (self.walk_page('qualified', 'private-checkpoint', records=False),
+                       self.walk_page('qualified', 'different-checkpoint', records=False),
+                       {**self.walk_page('complete', records=False), 'live': {**first['live'], 'epoch': 2}}):
             transport = Mock()
             transport.invoke.side_effect = [first, second]
             replay = _ReadReplay(None, None, first['live'], transport, 'provider', [])
-            replay.traversal('original-reference', Counter({'caller': 1}), 'helper')
+            replay.walk('original-reference', Counter({'caller': 1}), 'helper')
             self.assertEqual(2, transport.invoke.call_count)
             self.assertFalse(replay.rows[-1]['passed'])
 
-    def test_traversal_qualification_keeps_finite_limits_without_checkpoint_payload(self):
-        response = {'status': 'qualified', 'qualification': {
-            'type': 'resumable', 'limitations': ['work-limit-reached'],
-            'relationLimitations': [], 'continuation': 'private-checkpoint'}}
+    def test_walk_coverage_keeps_finite_limits_without_checkpoint_payload(self):
+        response = {'status': 'qualified', 'walk_observations': [{'coverage': {
+            'kind': 'resumable', 'limitations': ['work-limit-reached'], 'relation_limitations': []}}]}
         observed = _read_observation(response)
-        self.assertEqual({'type': 'resumable', 'limitations': ['work-limit-reached'],
-                          'relationLimitations': [], 'continuationPresent': True},
-                         observed['traversalQualification'])
+        self.assertEqual({'kind': 'resumable', 'limitations': ['work-limit-reached'],
+                          'relation_limitations': []}, observed['walkCoverage'])
         self.assertNotIn('private-checkpoint', json.dumps(observed))
-        response['qualification']['limitations'] = ['private unknown reason']
+        response['walk_observations'][0]['coverage']['limitations'] = ['private unknown reason']
         rejected = _read_observation(response)
-        self.assertEqual({'outcome': 'unadmitted'}, rejected['traversalQualification'])
+        self.assertEqual({'outcome': 'unadmitted'}, rejected['walkCoverage'])
         self.assertNotIn('private unknown reason', json.dumps(rejected))
 
     def test_provider_rejection_preserves_closed_failure_without_payload(self):

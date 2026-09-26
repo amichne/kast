@@ -15,12 +15,11 @@ import sys
 import subprocess
 
 from hosted_read_transport import HostedReadTransport, ReadProviderFailure, ReadTransportRejected
-from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
 from native_provider_qualification import qualification_document
 from hosted_concurrent_read import run_concurrent_read_regression
 from hosted_authority_read_regression import run_authority_read_regression
-from hosted_budget_read_regression import run_budget_read_regression
-from hosted_resume_budget_regression import run_resume_budget_regression
+from hosted_budget_read_regression import progress_advances, run_budget_read_regression
+from hosted_resume_budget_regression import Checkpoint, Finished, admit_progress, run_resume_budget_regression
 from hosted_raw_symbol_regression import run_raw_symbol_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_repair_budget_regression import run_repair_time_regression
@@ -32,7 +31,7 @@ from hosted_source_failure_regression import run_source_failure_regression
 from hosted_diagnostic_pages_regression import (run_diagnostic_pages_regression, DiagnosticRequest,
     DiagnosticGrant, DiagnosticDrained, drain_diagnostics)
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
-from query_name_request import relation_query, occurrence_facts
+from query_name_request import QueryInput, QueryResume, relation_query, occurrence_facts, walk_query, walk_records, walk_observation
 
 
 MAX_READ_RECEIPTS = 512  # Two surfaces, each bounded to 256 authored cases.
@@ -263,44 +262,50 @@ class _ReadReplay:
             'compilerCoverage': all(r.get('coverage') == 'exact-compiler-confirmed' and
                 r.get('provenance') == 'k2-authored-source' for r in relations),
         }, len(relations), response)
-        self.traversal(token, expected, helper)
+        self.walk(token, expected, helper)
 
-    def traversal(self, token, expected, helper):
-        # Each hop retains its observed elapsed time; consume only issued checkpoints.
-        # Keep the explicit strategy and original limits unchanged across requests.
-        position, seen, callers = TraversalStart(), set(), Counter()
+    def walk(self, token, expected, helper):
+        # Query owns continuation; an issued token resumes its saved walk plan.
+        request, seen, callers = walk_query(token), set(), Counter()
         complete, valid_pages, response = False, True, None
+        previous_progress = {}
         for page in range(sum(expected.values()) + 1):
-            request = NativeTraversalRequest(exactSelector=token, position=position)
-            response = self.transport.invoke(self.surface, 'traverse_relations', asdict(request))
-            graph = response.get('graph', {})
-            nodes = {node['id']: node for node in graph.get('nodes', [])}
-            edges = graph.get('edges', [])
-            continuation = _next_traversal_page(response, seen)
-            terminal = response.get('status') == 'complete' and 'qualification' not in response
+            response = self.transport.invoke(self.surface, 'query_symbols', asdict(request))
+            records = walk_records(response)
+            observation = walk_observation(response)
+            progress = observation.get('progress', {})
+            state = admit_progress('query_symbols', response)
+            terminal = isinstance(state, Finished)
+            continuation = state.token if isinstance(state, Checkpoint) and state.token not in seen else None
             checks = {
                 'completeOrResumableTimeBound': terminal or continuation is not None,
                 'sameLiveAuthority': response.get('live') == self.live,
-                'nestedLiveRetained': graph.get('snapshot', {}).get('live') == self.live,
-                'distinctNodes': len(nodes) == len(graph.get('nodes', [])),
-                'exactTarget': all(nodes.get(edge.get('target'), {}).get('qualifiedIdentity') == helper
-                                   for edge in edges),
-                'compilerCoverage': all(edge.get('coverage') == 'exact-compiler-confirmed' and
-                    edge.get('provenance') == 'k2-authored-source' for edge in edges),
-                'compilerProofs': (not edges or bool(graph.get('proofs'))) and
-                    all(proof.get('identity') for proof in graph.get('proofs', [])),
+                'walkIdentity': observation.get('subject') == token and observation.get('relation') == 'callers'
+                    and observation.get('maximum_depth') == 4 and observation.get('strategy') == {'type': 'breadth_first'},
+                'progressMonotonic': progress_advances(previous_progress, progress),
+                'frontierObserved': type(observation.get('expanded_frontier')) is int
+                    and observation['expanded_frontier'] >= 0,
+                'coverageRetained': observation.get('coverage', {}).get('kind') ==
+                    ('complete' if terminal else 'resumable'),
+                'exactTarget': all(record.get('relation', {}).get('target', {}).get('qualifiedIdentity') == helper
+                                   for record in records),
+                'compilerCoverage': all(record.get('relation', {}).get('coverage') == 'exact-compiler-confirmed' and
+                    record.get('relation', {}).get('provenance') == 'k2-authored-source' for record in records),
+                'compilerProofs': all(all(relation.get(end, {}).get('compilerEvidence', {}).get('identity')
+                    for end in ('source', 'target')) for relation in (record['relation'] for record in records)),
             }
-            self.record('transitive-callers-page-' + str(page + 1), 'traverse_relations', checks, len(edges), response)
+            self.record('transitive-callers-page-' + str(page + 1), 'query_symbols', checks, len(records), response)
             valid_pages = valid_pages and all(checks.values())
             if not valid_pages:
                 break
-            callers.update(nodes.get(edge.get('source'), {}).get('qualifiedIdentity') for edge in edges)
+            callers.update(record['relation'].get('source', {}).get('qualifiedIdentity') for record in records)
+            previous_progress = progress
             if terminal:
                 complete = True
                 break
             seen.add(continuation)
-            position = TraversalResume(continuation=continuation)
-        self.record('transitive-callers-five', 'traverse_relations', {
+            request = QueryInput(QueryResume(continuation))
+        self.record('transitive-callers-five', 'query_symbols', {
             'complete': complete, 'allPagesProven': valid_pages, 'exactCallers': callers == expected,
         }, sum(callers.values()), response)
 
@@ -329,8 +334,9 @@ def _read_observation(response):
     if isinstance(failure, str) and failure in {known.value for known in ReadProviderFailure}:
         result['providerFailure'] = ReadProviderFailure(failure).value
     qualification = response.get('qualification')
-    if isinstance(qualification, dict) and 'relationLimitations' in qualification:
-        result['traversalQualification'] = _traversal_qualification_observation(qualification)
+    observations = response.get('walk_observations', [])
+    if isinstance(observations, list) and len(observations) == 1:
+        result['walkCoverage'] = _walk_coverage_observation(observations[0].get('coverage'))
     if isinstance(qualification, dict) and 'knownMinimumEntityCount' in qualification:
         result['sourceQualification'] = source_qualification_observation(qualification)
     live = response.get('live')
@@ -353,27 +359,17 @@ _RELATION_LIMITATIONS = frozenset(('result-limit-reached', 'byte-limit-reached',
     'provider-failure', 'provider-incomplete'))
 
 
-def _traversal_qualification_observation(qualification):
-    kind = qualification.get('type')
-    limits, relations = qualification.get('limitations'), qualification.get('relationLimitations')
+def _walk_coverage_observation(coverage):
+    if not isinstance(coverage, dict):
+        return {'outcome': 'unadmitted'}
+    kind = coverage.get('kind')
+    if kind == 'complete' and set(coverage) == {'kind'}:
+        return {'kind': kind}
+    limits, relations = coverage.get('limitations'), coverage.get('relation_limitations')
     if (kind not in ('resumable', 'terminal_incomplete')
             or not isinstance(limits, list) or not 1 <= len(limits) <= len(_TRAVERSAL_LIMITATIONS)
             or not all(isinstance(value, str) and value in _TRAVERSAL_LIMITATIONS for value in limits)
             or not isinstance(relations, list) or len(relations) > len(_RELATION_LIMITATIONS)
             or not all(isinstance(value, str) and value in _RELATION_LIMITATIONS for value in relations)):
         return {'outcome': 'unadmitted'}
-    return {'type': kind, 'limitations': limits, 'relationLimitations': relations,
-            'continuationPresent': isinstance(qualification.get('continuation'), str)}
-
-
-def _next_traversal_page(response, seen):
-    qualification = response.get('qualification')
-    if response.get('status') != 'qualified' or not isinstance(qualification, dict):
-        return None
-    token = qualification.get('continuation')
-    if (qualification.get('type') != 'resumable'
-            or qualification.get('limitations') != ['time-limit-reached']
-            or qualification.get('relationLimitations') != []
-            or not isinstance(token, str) or not 1 <= len(token) <= 1048576 or token in seen):
-        return None
-    return token
+    return {'kind': kind, 'limitations': limits, 'relation_limitations': relations}

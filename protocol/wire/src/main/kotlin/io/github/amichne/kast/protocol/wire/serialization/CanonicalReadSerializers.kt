@@ -9,9 +9,6 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunFailure
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.reason
 
 internal object CanonicalReadSerializers {
@@ -44,21 +41,6 @@ internal object CanonicalReadSerializers {
         factory.create(
             SymbolInspectRejectionWireDocument.serializer(),
             SymbolInspectRejection::toWireDocument,
-            { document -> WireDocumentConversion.Converted(document.toContract()) },
-        )
-
-    val traversalRunRequest = factory.create(TraversalRunRequest.serializer())
-    val traversalRunResult = CanonicalSymbolSerializers.traversalResult
-    val traversalRunQualification =
-        factory.create(
-            TraversalRunQualificationWireDocument.serializer(),
-            TraversalRunQualification::toWireDocument,
-            TraversalRunQualificationWireDocument::toContract,
-        )
-    val traversalRunRejection: WireValueCodec<TraversalRunFailure> =
-        factory.create(
-            TraversalRunRejectionWireDocument.serializer(),
-            { value: TraversalRunFailure -> value.reason().toWireDocument() },
             { document -> WireDocumentConversion.Converted(document.toContract()) },
         )
 

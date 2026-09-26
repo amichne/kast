@@ -21,6 +21,7 @@ package io.github.amichne.kast.appserver.query
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
@@ -29,6 +30,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -110,7 +112,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
               'Source': ['SearchSource', 'AllSource', 'ReferenceSource', 'ResultSource'],
               'CompositionInput': ['ReferenceSource', 'ResultSource'],
               'RetainedInput': ['ResultSource'],
-              'Step': ['Where', 'ExpandRelation', 'DistinctSymbols', 'Concat', 'Intersect', 'Union', 'Difference'],
+              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'Concat', 'Intersect', 'Union', 'Difference'],
               'Action': ['RunAction', 'ResumeAction', 'ReadResultAction']}
     parents = {}
     for parent, children in unions.items():

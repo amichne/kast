@@ -9,6 +9,5 @@ internal fun HostedRequest.Read.completionPolicy(): HostedReadCompletionPolicy =
         is HostedRequest.Query,
         is HostedRequest.Discover,
         is HostedRequest.Inspect,
-        is HostedRequest.Source,
-        is HostedRequest.Traversal -> HostedReadCompletionPolicy.HOST_CONTAINMENT
+        is HostedRequest.Source -> HostedReadCompletionPolicy.HOST_CONTAINMENT
     }

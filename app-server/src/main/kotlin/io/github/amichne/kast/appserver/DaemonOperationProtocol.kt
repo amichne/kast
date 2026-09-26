@@ -12,7 +12,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -109,10 +108,6 @@ sealed interface DaemonCanonicalRead {
     data class SymbolInspect(val request: SymbolInspectRequest) : DaemonCanonicalRead
 
     @Serializable @SerialName("source_read") data class SourceRead(val request: SourceReadRequest) : DaemonCanonicalRead
-
-    @Serializable
-    @SerialName("traversal_run")
-    data class TraversalRun(val request: TraversalRunRequest) : DaemonCanonicalRead
 }
 
 internal fun DaemonCanonicalRead.operation(): CanonicalOperation =
@@ -120,7 +115,6 @@ internal fun DaemonCanonicalRead.operation(): CanonicalOperation =
         is DaemonCanonicalRead.SymbolDiscover -> CanonicalOperation.SYMBOL_DISCOVER
         is DaemonCanonicalRead.SymbolInspect -> CanonicalOperation.SYMBOL_INSPECT
         is DaemonCanonicalRead.SourceRead -> CanonicalOperation.SOURCE_READ
-        is DaemonCanonicalRead.TraversalRun -> CanonicalOperation.TRAVERSAL_RUN
     }
 
 internal fun DaemonOperationSelection.operation(): CanonicalOperation =

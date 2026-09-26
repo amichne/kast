@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Independent request-shape and occurrence-oracle checks for the call fixture."""
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 import unittest
 import json
 from types import SimpleNamespace
@@ -9,10 +9,10 @@ from contextlib import redirect_stderr
 from io import StringIO
 
 from hosted_kotlin_call_regression import (KotlinCallScope, _site, _has_scoped_unsupported,
-    CallCycleTraversal, CallPageBudget, CallResume, CallObligation, _scoped_obligations, _drain_call_cycle,
+    CallPageBudget, CallObligation, cycle_query, _scoped_obligations, _drain_call_cycle,
     _inline_key, _cycle_observation, _call_observation, _emit_native_observation, FixtureEndpoint, EndpointCount,
     ObservedCallStatus, _extended_call_cases, _same_cycle_graph, _same_cycle_page)
-from query_name_request import QueryInput, QueryResume, name_query, relation_query
+from query_name_request import BreadthFirstWalk, QueryInput, QueryResume, name_query, relation_query
 
 
 @dataclass(frozen=True)
@@ -70,65 +70,87 @@ class Checkpoint:
 
 
 @dataclass(frozen=True)
-class Qualification:
-    type: str = 'resumable'
-    limitations: tuple[str, ...] = ('record-limit-reached',)
-    relationLimitations: tuple[str, ...] = ()
-    continuation: str = 'cursor'
+class QueryProgress:
     checkpoint: Checkpoint = Checkpoint()
+    type: str = 'resumable'
     next_action: str = 'resume'
 
 
 @dataclass(frozen=True)
-class Page:
-    status: str = 'qualified'
-    live: str = 'same-test-authority'
-    progress: Progress = Progress()
-    qualification: Qualification = Qualification()
+class Qualification:
+    progress: QueryProgress = QueryProgress()
+    limitations: tuple[str, ...] = ('record-limit-reached',)
 
 
 @dataclass(frozen=True)
-class GraphNode:
-    id: int
+class WalkEndpoint:
     range: Range
-    proof: int
+    compilerEvidence: 'WalkCompilerEvidence'
     selector: str = 'secret-node-handle'
     file: str = '/secret/workspace/Calls.kt'
 
 
 @dataclass(frozen=True)
-class GraphProof:
-    id: int
+class WalkCompilerEvidence:
     identity: str
 
 
 @dataclass(frozen=True)
-class GraphOccurrence:
+class CallOccurrence:
     range: Range
     candidateSelector: str = 'secret-occurrence-handle'
     file: str = '/secret/workspace/Calls.kt'
 
 
 @dataclass(frozen=True)
-class GraphEdge:
-    source: int
-    target: int
-    occurrence: GraphOccurrence
-    depth: int = 1
+class WalkRelation:
+    source: WalkEndpoint
+    target: WalkEndpoint
+    occurrence: CallOccurrence
     coverage: str = 'exact-compiler-confirmed'
     provenance: str = 'k2-authored-source'
 
 
 @dataclass(frozen=True)
-class Graph:
-    nodes: tuple[GraphNode, ...]
-    proofs: tuple[GraphProof, ...]
-    edges: tuple[GraphEdge, ...]
+class WalkRecord:
+    relation: WalkRelation
+    depth: int = 1
 
 
 @dataclass(frozen=True)
-class GraphPage:
-    graph: Graph
+class WalkItem:
+    record: WalkRecord
+    ref: str = 'secret-node-handle'
+    type: str = field(default='traversal_record', init=False)
+
+
+@dataclass(frozen=True)
+class WalkCoverage:
+    kind: str = 'resumable'
+    limitations: tuple[str, ...] = ('record-limit-reached',)
+    relation_limitations: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class WalkObservation:
+    progress: Progress = Progress()
+    coverage: WalkCoverage = WalkCoverage()
+    subject: str = 'secret-node-handle'
+    relation: str = 'callees'
+    maximum_depth: int = 2
+    expanded_frontier: int = 1
+    strategy: BreadthFirstWalk = BreadthFirstWalk()
+    partial_expansions: tuple = ()
+
+
+@dataclass(frozen=True)
+class WalkPage:
+    items: tuple[WalkItem, ...] = ()
+    walk_observations: tuple[WalkObservation, ...] = (WalkObservation(),)
+    live: str = 'same-test-authority'
+    status: str = 'qualified'
+    qualification: Qualification = Qualification()
+    continuation: str = 'cursor'
 
 
 @dataclass(frozen=True)
@@ -172,7 +194,7 @@ class NativeSymbol:
 @dataclass(frozen=True)
 class ObservedFact:
     target: NativeSymbol
-    occurrence: GraphOccurrence = GraphOccurrence(Range())
+    occurrence: CallOccurrence = CallOccurrence(Range())
     coverage: str = 'exact-compiler-confirmed'
     provenance: str = 'k2-authored-source'
     meaning: str = 'callees'
@@ -239,7 +261,7 @@ class KotlinCallRegressionTest(unittest.TestCase):
             if declaration == 'fun interface Fetcher':
                 target = replace(target, kind='classlike', name='Fetcher', qualifiedIdentity='fixture.calls.Fetcher',
                                  compilerEvidence=CompilerEvidence(ClassSignature()))
-            return ObservedFact(target, GraphOccurrence(Range(start, start + len(name)), file=str(fixture)))
+            return ObservedFact(target, CallOccurrence(Range(start, start + len(name)), file=str(fixture)))
         def omitted(call, prefix, name):
             start = source.index(call) + len(prefix)
             return OmissionEvidence(samples=(Sample(str(fixture), Range(start, start + len(name))),))
@@ -272,12 +294,12 @@ class KotlinCallRegressionTest(unittest.TestCase):
         self.assertFalse(rejected['delegatedExactStaticFacts'])
 
     def test_cycle_observation_separates_order_proofs_and_handles(self):
-        graph = Graph((GraphNode(0, Range(10, 15), 0), GraphNode(1, Range(20, 25), 1)),
-                      (GraphProof(0, 'secret-proof-a'), GraphProof(1, 'secret-proof-b')),
-                      (GraphEdge(0, 1, GraphOccurrence(Range(30, 35))),
-                       GraphEdge(1, 0, GraphOccurrence(Range(40, 45)), depth=2)))
-        high = [asdict(GraphPage(graph))]
-        reordered = [asdict(GraphPage(replace(graph, edges=tuple(reversed(graph.edges)))))]
+        first = WalkEndpoint(Range(10, 15), WalkCompilerEvidence('secret-proof-a'))
+        second = WalkEndpoint(Range(20, 25), WalkCompilerEvidence('secret-proof-b'))
+        a = WalkRecord(WalkRelation(first, second, CallOccurrence(Range(30, 35))))
+        b = WalkRecord(WalkRelation(second, first, CallOccurrence(Range(40, 45))), depth=2)
+        high = [asdict(WalkPage((WalkItem(a), WalkItem(b))))]
+        reordered = [asdict(WalkPage((WalkItem(b), WalkItem(a))))]
         order = _cycle_observation(high, reordered)
         self.assertFalse(order.edge_order_equal)
         self.assertTrue(order.edge_multiset_equal)
@@ -285,22 +307,26 @@ class KotlinCallRegressionTest(unittest.TestCase):
         self.assertTrue(_same_cycle_graph(high, reordered))
         self.assertTrue(_same_cycle_page(high[0], high[0]))
         self.assertFalse(_same_cycle_page(high[0], reordered[0]))
-        partitioned = [asdict(GraphPage(replace(graph, edges=(edge,)))) for edge in reversed(graph.edges)]
+        partitioned = [asdict(WalkPage((WalkItem(record),))) for record in (b, a)]
         self.assertTrue(_same_cycle_graph(high, partitioned))
         self.assertFalse(_same_cycle_graph(high, partitioned[:1]))
-        changed = replace(graph, proofs=(GraphProof(0, 'different-proof'), graph.proofs[1]))
-        proof = _cycle_observation(high, [asdict(GraphPage(changed))])
+        proof_changed = replace(a, relation=replace(a.relation, source=replace(first,
+                                compilerEvidence=WalkCompilerEvidence('different-proof'))))
+        changed_page = [asdict(WalkPage((WalkItem(proof_changed), WalkItem(b))))]
+        proof = _cycle_observation(high, changed_page)
         self.assertFalse(proof.compiler_identities_equal)
-        self.assertFalse(_same_cycle_graph(high, [asdict(GraphPage(changed))]))
+        self.assertFalse(_same_cycle_graph(high, changed_page))
         self.assertTrue(proof.node_selectors_equal)
-        changed = replace(graph, nodes=(replace(graph.nodes[0], selector='another-handle'), graph.nodes[1]),
-                          edges=(replace(graph.edges[0], occurrence=replace(graph.edges[0].occurrence,
-                                 candidateSelector='another-occurrence')), graph.edges[1]))
-        handles = _cycle_observation(high, [asdict(GraphPage(changed))])
+        handles_changed = replace(a, relation=replace(a.relation,
+                                  source=replace(first, selector='another-handle'),
+                                  occurrence=replace(a.relation.occurrence,
+                                                     candidateSelector='another-occurrence')))
+        handle_page = [asdict(WalkPage((WalkItem(handles_changed), WalkItem(b))))]
+        handles = _cycle_observation(high, handle_page)
         self.assertTrue(handles.compiler_identities_equal)
         self.assertFalse(handles.node_selectors_equal)
         self.assertFalse(handles.occurrence_selectors_equal)
-        self.assertFalse(_same_cycle_graph(high, [asdict(GraphPage(changed))]))
+        self.assertFalse(_same_cycle_graph(high, handle_page))
         output = StringIO()
         with redirect_stderr(output):
             _emit_native_observation(handles)
@@ -325,8 +351,8 @@ class KotlinCallRegressionTest(unittest.TestCase):
         self.assertIn('base-fetch', output.getvalue())
 
     def test_cycle_drain_rejects_repeated_cursor_and_rejected_branch(self):
-        request = CallCycleTraversal('issued-ref', CallPageBudget(1))
-        for responses in ((Page(), Page()), (replace(Page(), status='rejected'),)):
+        request = cycle_query('issued-ref', CallPageBudget(1))
+        for responses in ((WalkPage(), WalkPage()), (replace(WalkPage(), status='rejected'),)):
             stream = iter(asdict(page) for page in responses for _ in range(2))
             replay = SimpleNamespace(live='same-test-authority', surface='test',
                                      transport=SimpleNamespace(invoke=lambda *args: next(stream)))
@@ -351,13 +377,16 @@ class KotlinCallRegressionTest(unittest.TestCase):
                                            (obligation, CallObligation(50, 55, obligation.reasons))))
 
     def test_cycle_request_retains_semantic_limits_across_resume(self):
-        request = CallCycleTraversal('issued-ref', CallPageBudget(1))
-        expected = {'exactSelector': 'issued-ref', 'execution_budget': {'max_results': 1, 'max_elapsed_ms': 5000},
-                    'position': {'type': 'start'}, 'relation': 'callees', 'maximumDepth': 2,
-                    'maximumResults': 100, 'strategy': {'type': 'breadth_first'}}
+        request = cycle_query('issued-ref', CallPageBudget(1))
+        expected = {'request': {'action': 'run', 'source': {'type': 'symbol_refs', 'symbol_refs': ('issued-ref',)},
+                    'steps': ({'type': 'walk', 'relation': 'callees', 'maximum_depth': 2,
+                               'strategy': {'type': 'breadth_first'}},),
+                    'output': {'type': 'traversal_records'},
+                    'execution_budget': {'max_results': 1, 'max_elapsed_ms': 5000}}}
         self.assertEqual(expected, asdict(request))
-        expected['position'] = {'type': 'resume', 'continuation': 'issued-cursor'}
-        self.assertEqual(expected, asdict(replace(request, position=CallResume('issued-cursor'))))
+        self.assertEqual({'request': {'action': 'resume', 'continuation': 'issued-cursor',
+                                     'execution_budget': {'max_results': 1, 'max_elapsed_ms': 5000}}},
+                         asdict(QueryInput(QueryResume('issued-cursor', CallPageBudget(1)))))
 
     def test_fixed_request_shapes(self):
         self.assertEqual({'request': {'action': 'run',

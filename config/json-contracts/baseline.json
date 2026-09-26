@@ -4414,16 +4414,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastObserverFixtures.kt",
-        "scope": "type:KastObserverFixtures/val:impactAnalysis",
-        "kind": "JSON_LITERAL",
-        "sha256": "82da04d21ee0ed95d3136d069c4dbb4d5d17c3993cfe07a2815bcc2ff2be10b5"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastObserverFixtures.kt",
         "scope": "type:KastObserverFixtures/val:sourceRead",
         "kind": "JSON_LITERAL",
         "sha256": "334d8a8bbaae0d7c6b85650f29d5f16da0934495c6eb27723d0af73bffbb879c"
@@ -6544,26 +6534,6 @@
     {
       "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
-        "scope": "type:CliBoundaryContractTest/fun:command arguments are bounded boundary values()",
-        "kind": "JSON_LITERAL",
-        "sha256": "656e881c7d722e2c1918831730cffa1407ff73c569eb209de8c9871806eeb1d6"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
-        "scope": "type:CliBoundaryContractTest/fun:command arguments are bounded boundary values()",
-        "kind": "JSON_LITERAL",
-        "sha256": "79ab74efd83d7c87a35679a94d745aca99fad5ea036f33f6b07b98fea2f045d8"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
         "scope": "type:CliBoundaryContractTest/fun:every public command projection parses to its canonical operation()/val:commands",
         "kind": "JSON_LITERAL",
         "sha256": "0d6c9d3a91cfb0240a6bfab423aa71d743e20e3fd13c5c7512662fb4e566bc0c"
@@ -6587,16 +6557,6 @@
         "scope": "type:CliBoundaryContractTest/fun:every public command projection parses to its canonical operation()/val:commands",
         "kind": "JSON_LITERAL",
         "sha256": "93e81ef1a6ca1359a408b4a59803fc55d708ce9ee3ea334cda801e2a618f9142"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
-        "scope": "type:CliBoundaryContractTest/fun:every public command projection parses to its canonical operation()/val:commands",
-        "kind": "JSON_LITERAL",
-        "sha256": "99c9c58a4f5609362eb7cc71e113bdf627c3c906e7018f6eccaa0cbbe5f9b28d"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -7024,36 +6984,6 @@
     {
       "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt",
-        "scope": "type:LiveReadOutputSchemaTest/fun:resumable traversal output admits checkpoints for its actual evidence basis()/val:payload",
-        "kind": "JSON_LITERAL",
-        "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt",
-        "scope": "type:LiveReadOutputSchemaTest/fun:source and traversal schemas reject mixed or missing snapshot bases()",
-        "kind": "JSON_OBJECT",
-        "sha256": "5442d15791f7fe0225fa73b1de41dbc6694b8f5ebdd56c648de8b8fc1a847c56"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt",
-        "scope": "type:LiveReadOutputSchemaTest/fun:source and traversal schemas reject mixed or missing snapshot bases()",
-        "kind": "JSON_OBJECT",
-        "sha256": "54bfe8f5608aab69fcf442107c23e934085f907e2ee0fc9458d7f94818abc16c"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt",
         "scope": "type:LiveReadOutputSchemaTest/fun:with(6:String,11:JsonElement)10:JsonObject",
         "kind": "JSON_OBJECT",
         "sha256": "948810b4f4285cc8fff66ff7c878a63869ef51ba16ced34eff950fa4379c443e"
@@ -7253,16 +7183,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSemanticReadTest.kt",
-        "scope": "type:ExistingIdeSemanticReadTest/val:requests",
-        "kind": "JSON_LITERAL",
-        "sha256": "daec52e6e30036d221d68f47436dd7baf5aba1ac31e653bbaa648b4162400d28"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketTest.kt",
         "scope": "type:ExistingIdeSocketTest/fun:native framed client accepts the exact host and rejects oversized and invalid UTF8 responses()/declaration:<anonymous>/val:task/declaration:<anonymous>/declaration:<anonymous>/val:rejected",
         "kind": "JSON_LITERAL",
@@ -7427,16 +7347,6 @@
         "scope": "type:GeneratedCliProjectionTest/fun:generated rejection serializer retains operation-specific reason()",
         "kind": "JSON_LITERAL",
         "sha256": "f44f5d3c82b29f8a6bf91de2337d387c05afce7a16b0837f0fffccc6afb004d2"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/projection/GeneratedCliProjectionTest.kt",
-        "scope": "type:GeneratedCliProjectionTest/fun:qualified read outputs retain structured proof instead of one reason label()/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "44a3f3e6c85c39183edb03820c0554b5da75d10be445d0e7ec15978f09e59097"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -7967,16 +7877,6 @@
         "scope": "type:CanonicalReadGeneratedSerializationTest/fun:proof carrying qualifications round trip and malformed claims fail closed()",
         "kind": "JSON_LITERAL",
         "sha256": "700a01a7def956fd90c05a708d3ab3b487530232dbd591fa0c570c0051dc61bc"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
-        "scope": "type:CanonicalReadGeneratedSerializationTest/fun:traversal request round trips closed start and resume positions()",
-        "kind": "JSON_LITERAL",
-        "sha256": "e2d1a972da8976329d1695aeb18782b66791b619550bde9b50b48df20a46bfa3"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

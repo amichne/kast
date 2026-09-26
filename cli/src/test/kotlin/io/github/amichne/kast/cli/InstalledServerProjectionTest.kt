@@ -62,20 +62,6 @@ class InstalledServerProjectionTest {
     }
 
     @Test
-    fun `traversal resume input admits both supported checkpoint versions and rejects unknown versions`() {
-        val schema =
-            schemaRegistry.getSchema(projectionTools().tool("traverse_relations").getValue("inputSchema").toString())
-        for (version in listOf("v1", "v2", "v3")) {
-            val request =
-                requireNotNull(javaClass.getResource("/projection/traversal-resume-schema.json"))
-                    .readText()
-                    .replace("traversal-continuation:v1:", "traversal-continuation:$version:")
-            val admitted = schema.validate(request, InputFormat.JSON).isEmpty()
-            assertEquals(version != "v3", admitted, version)
-        }
-    }
-
-    @Test
     fun `full generated capability document fits the production provider schema byte budget`() {
         val document =
             installedSchema(
@@ -129,13 +115,8 @@ class InstalledServerProjectionTest {
     fun `server projection publishes readiness and canonical semantic budgets`() {
         val tools = projectionTools()
         val readBudget = tools.tool("source_read").getValue("executionBudget").jsonObject
-        val traversalBudget = tools.tool("traverse_relations").getValue("executionBudget").jsonObject
         assertEquals("1020000", readBudget.getValue("readinessMillis").jsonPrimitive.content)
         assertEquals("60000", readBudget.getValue("operationMillis").jsonPrimitive.content)
-        assertEquals(
-            OperationExecutionBudget.forOperation(CanonicalOperation.TRAVERSAL_RUN).operation.value.toString(),
-            traversalBudget.getValue("operationMillis").jsonPrimitive.content,
-        )
         assertEquals(240_000L, OperationExecutionBudget.forOperation(CanonicalOperation.TOPOLOGY_BUILD).operation.value)
     }
 
@@ -151,7 +132,6 @@ class InstalledServerProjectionTest {
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
-                "traversal.run",
                 "diagnostic.check",
                 "change.run",
             ),
@@ -211,7 +191,7 @@ class InstalledServerProjectionTest {
             }
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
-        assertEquals(8, tools.size)
+        assertEquals(7, tools.size)
         assertEquals(15, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
@@ -225,7 +205,6 @@ class InstalledServerProjectionTest {
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
-                "traverse_relations",
                 "check_diagnostics",
                 "change",
             ),
@@ -273,7 +252,6 @@ class InstalledServerProjectionTest {
                 "symbol_lookup" to listOf("symbol", "discover"),
                 "symbol_inspect" to listOf("symbol", "inspect"),
                 "source_read" to listOf("source", "read"),
-                "traverse_relations" to listOf("traversal", "run"),
                 "check_diagnostics" to listOf("tool", "check_diagnostics"),
             ),
             invocations.associate { invocation ->
@@ -281,7 +259,7 @@ class InstalledServerProjectionTest {
             },
         )
         assertTrue(invocations.all { "bindings" !in it.getValue("invocation").jsonObject })
-        assertEquals(8, tools.map { it.getValue("outputSchema") }.distinct().size)
+        assertEquals(7, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertTrue(
             tools
@@ -289,7 +267,6 @@ class InstalledServerProjectionTest {
                 .completedDocumentRequiredProperties()
                 .containsAll(listOf("operation", "status", "symbol"))
         )
-        assertTrue(tools.tool("traverse_relations").completedDocumentProperty("graph") != null)
 
         val changeIntentVariants =
             tools

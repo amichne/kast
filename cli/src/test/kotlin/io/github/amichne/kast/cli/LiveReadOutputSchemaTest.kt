@@ -13,6 +13,7 @@ import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliD
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalSymbolCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import java.util.UUID
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -67,7 +68,7 @@ class LiveReadOutputSchemaTest {
     private val schemas = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
 
     @Test
-    fun `all six actual complete projections satisfy their advertised published and live schemas`() {
+    fun `all five actual complete projections satisfy their advertised published and live schemas`() {
         for (basis in listOf(published, live)) for ((operation, document) in completeDocuments(basis)) {
             assertAdmits(operation, document)
             assertEquals(basis is EvidenceBasis.Live, document.containsKey("live"), operation.name)
@@ -75,7 +76,7 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
-    fun `all six actual qualified projections retain compatible evidence`() {
+    fun `all five actual qualified projections retain compatible evidence`() {
         for (basis in listOf(published, live)) for ((operation, document) in qualifiedDocuments(basis)) {
             assertAdmits(operation, document)
             assertEquals(JsonPrimitive("qualified"), document["status"])
@@ -101,25 +102,28 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
-    fun `source and traversal schemas reject mixed or missing snapshot bases`() {
+    fun `source schema rejects mixed or missing snapshot bases`() {
         val publishedDocuments = completeDocuments(published).toMap()
         for ((operation, document) in
             completeDocuments(live).filter { (operation) ->
-                operation == CanonicalOperation.SOURCE_READ || operation == CanonicalOperation.TRAVERSAL_RUN
+                operation == CanonicalOperation.SOURCE_READ
             }) {
-            val snapshot = snapshot(operation, document)
+            val snapshot = snapshot(document)
             assertEquals(document["live"], snapshot["live"])
-            assertRejects(operation, document.withSnapshot(operation, snapshot.with("generation", JsonPrimitive(7))))
+            assertRejects(operation, document.withSnapshot(snapshot.with("generation", JsonPrimitive(7))))
             assertRejects(
                 operation,
-                document.withSnapshot(operation, snapshot.with("sourceState", JsonPrimitive("fake"))),
+                document.withSnapshot(snapshot.with("sourceState", JsonPrimitive("fake"))),
             )
-            assertRejects(operation, document.withSnapshot(operation, JsonObject(snapshot - "live")))
-            assertRejects(operation, JsonObject(document - "live"))
+            val malformedJson = Json { ignoreUnknownKeys = true }
+            val snapshotWithoutLive = malformedJson.decodeFromJsonElement<SourceSnapshotWithoutLive>(snapshot)
+            assertRejects(operation, document.withSnapshot(Json.encodeToJsonElement(snapshotWithoutLive).jsonObject))
+            val documentWithoutLive = malformedJson.decodeFromJsonElement<SourceDocumentWithoutLive>(document)
+            assertRejects(operation, Json.encodeToJsonElement(documentWithoutLive).jsonObject)
             assertRejects(operation, publishedDocuments.getValue(operation).with("live", document.getValue("live")))
             assertRejects(
                 operation,
-                document.withSnapshot(operation, snapshot(operation, publishedDocuments.getValue(operation))),
+                document.withSnapshot(snapshot(publishedDocuments.getValue(operation))),
             )
         }
     }
@@ -195,47 +199,12 @@ class LiveReadOutputSchemaTest {
                         complete(CanonicalOperation.SOURCE_READ, basis, sourceResult(basis))
                     )
                     .document(),
-            CanonicalOperation.TRAVERSAL_RUN to
-                CanonicalReadCliDocuments.projectTraversal(
-                        complete(
-                            CanonicalOperation.TRAVERSAL_RUN,
-                            basis,
-                            traversalResult(),
-                        )
-                    )
-                    .document(),
             CanonicalOperation.DIAGNOSTIC_CHECK to
                 CanonicalReadCliDocuments.projectDiagnostics(
                         complete(CanonicalOperation.DIAGNOSTIC_CHECK, basis, DiagnosticCheckResult(empty()))
                     )
                     .document(),
         )
-
-    @Test
-    fun `resumable traversal output admits checkpoints for its actual evidence basis`() {
-        for ((basis, version) in listOf(published to "v1", live to "v2")) {
-            val payload = "{}".toByteArray()
-            val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-            val digest =
-                java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(payload))
-            val continuation =
-                TraversalContinuationDocument.parse("traversal-continuation:$version:$encoded:$digest").refined()
-            val outcome =
-                OperationOutcome.Qualified(
-                    EvidenceEnvelope(CanonicalOperation.TRAVERSAL_RUN.id, basis, traversalResult()),
-                    TraversalRunQualification.resumable(
-                            listOf(TraversalLimitationDocument.RECORD_LIMIT_REACHED),
-                            emptyList(),
-                            continuation,
-                        )
-                        .refined(),
-                )
-            val operation = CanonicalOperation.TRAVERSAL_RUN
-            val document = CanonicalReadCliDocuments.projectTraversal(outcome).document()
-            assertAdmits(operation, document)
-            assertUpstreamTraversalCheckpointContract(document, continuation)
-        }
-    }
 
     private fun qualifiedDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =
         listOf(
@@ -295,22 +264,6 @@ class LiveReadOutputSchemaTest {
                         )
                     )
                     .document(),
-            CanonicalOperation.TRAVERSAL_RUN to
-                CanonicalReadCliDocuments.projectTraversal(
-                        OperationOutcome.Qualified(
-                            EvidenceEnvelope(
-                                CanonicalOperation.TRAVERSAL_RUN.id,
-                                basis,
-                                traversalResult(),
-                            ),
-                            TraversalRunQualification.terminalIncomplete(
-                                    listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
-                                    emptyList(),
-                                )
-                                .refined(),
-                        )
-                    )
-                    .document(),
             CanonicalOperation.DIAGNOSTIC_CHECK to
                 CanonicalReadCliDocuments.projectDiagnostics(
                         OperationOutcome.Qualified(
@@ -363,32 +316,6 @@ class LiveReadOutputSchemaTest {
         )
     }
 
-    fun traversalResult(): TraversalRunResult =
-        TraversalRunResult(
-            text("/workspace"),
-            BoundedProtocolList.create(
-                    listOf(
-                        TraversalRecordDocument(
-                            TraversalDepthDocument.parse(1).refined(),
-                            RelationFactDocument(
-                                meaning = RelationKindDocument.CALLERS,
-                                source = symbol(),
-                                target = symbol(),
-                                occurrence =
-                                    RelationOccurrenceDocument(
-                                        text("candidate:occurrence"),
-                                        text("src/Example.kt"),
-                                        SourceRangeDocument.create(offset(0), offset(1)).refined(),
-                                    ),
-                                provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
-                                coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
-                            ),
-                        )
-                    )
-                )
-                .refined(),
-        )
-
     private fun symbol(): SymbolDocument =
         SymbolDocument.create(
                 text("exact:v2:payload:digest"),
@@ -404,13 +331,29 @@ class LiveReadOutputSchemaTest {
             )
             .refined()
 
-    private fun snapshot(operation: CanonicalOperation, document: JsonObject): JsonObject =
-        if (operation == CanonicalOperation.SOURCE_READ) document.getValue("snapshot").jsonObject
-        else document.getValue("graph").jsonObject.getValue("snapshot").jsonObject
+    /** Negative fixtures deliberately omit one required live evidence field. */
+    @Serializable
+    private data class SourceSnapshotWithoutLive(
+        val canonicalRoot: String,
+        val file: String,
+        val textIdentity: String,
+        val coordinateUnit: String,
+        val length: Int,
+    )
 
-    internal fun JsonObject.withSnapshot(operation: CanonicalOperation, snapshot: JsonObject): JsonObject =
-        if (operation == CanonicalOperation.SOURCE_READ) with("snapshot", snapshot)
-        else with("graph", getValue("graph").jsonObject.with("snapshot", snapshot))
+    @Serializable
+    private data class SourceDocumentWithoutLive(
+        val operation: String,
+        val status: String,
+        val snapshot: JsonElement,
+        val region: JsonElement,
+        val entities: JsonElement,
+        val text: JsonElement,
+    )
+
+    private fun snapshot(document: JsonObject): JsonObject = document.getValue("snapshot").jsonObject
+
+    internal fun JsonObject.withSnapshot(snapshot: JsonObject): JsonObject = with("snapshot", snapshot)
 
     internal fun qualifiedEnvelope(operation: CanonicalOperation): String =
         completedSchemaEnvelope(qualifiedDocuments(published).first { it.first == operation }.second)

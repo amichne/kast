@@ -5,7 +5,6 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.AdmittedSourceReadRejection
-import io.github.amichne.kast.protocol.contract.AdmittedTraversalRunRejection
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
@@ -14,12 +13,10 @@ import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.OperationWireBinding
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalRejectedDocument
@@ -53,25 +50,6 @@ class ReadRejectionSchemaParityTest {
                 AdmittedSourceReadRejection(reason, report),
                 reason.name.lowercase().replace('_', '-'),
                 CanonicalSourceReadCliDocuments::project,
-                admitted = true,
-            )
-        }
-    }
-
-    @Test
-    fun `every traversal rejection survives wire and installed envelope with unknown reasons rejected`() {
-        TraversalRunRejection.entries.forEach { reason ->
-            verify(
-                CanonicalOperationWireBindings.traversalRun,
-                reason,
-                reason.name.lowercase().replace('_', '-'),
-                CanonicalReadCliDocuments::projectTraversal,
-            )
-            verify(
-                CanonicalOperationWireBindings.traversalRun,
-                AdmittedTraversalRunRejection(reason, report),
-                reason.name.lowercase().replace('_', '-'),
-                CanonicalReadCliDocuments::projectTraversal,
                 admitted = true,
             )
         }

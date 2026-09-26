@@ -21,7 +21,6 @@ import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
@@ -30,7 +29,6 @@ import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.OperationWireBinding
 import io.github.amichne.kast.protocol.wire.WireEncoding
@@ -84,7 +82,7 @@ class HostedReadBudgetAdmissionTest {
                 )
             }
         }
-        assertEquals(4, providerCalls, "Only the four valid controls may enter provider dispatch")
+        assertEquals(3, providerCalls, "Only the three valid controls may enter provider dispatch")
     }
 
     @Test
@@ -161,16 +159,6 @@ class HostedReadBudgetAdmissionTest {
                     SourceEntityLimitDocument.parse(100).proven(),
                     SourceTextByteLimitDocument.parse(65536).proven(),
                     SourceReadPageDocument.First,
-                    executionBudget = budget,
-                ),
-            ),
-            input(
-                CanonicalOperationWireBindings.traversalRun,
-                TraversalRunRequest(
-                    fixture.exact,
-                    RelationKindDocument.CALLEES,
-                    ProtocolCount.parse(2).proven(),
-                    ProtocolCount.parse(100).proven(),
                     executionBudget = budget,
                 ),
             ),

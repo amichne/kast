@@ -11,7 +11,7 @@ from hosted_budget_read_regression import (Budget,
     ElapsedBudget, WorkBudget, ResultsBudget, BytesBudget, independent_grant)
 from hosted_source_read_regression import (SymbolAnchor, FileRegion, FirstPage, DescendantFunctions)
 from query_name_request import (QueryInput, QueryRun, QueryResume, SymbolOutput, SymbolReferences,
-    relation_query)
+    relation_query, walk_query, walk_records, walk_observation)
 
 
 @dataclass(frozen=True)
@@ -91,7 +91,7 @@ def admit_progress(tool, response):
             or (kind == 'retained_output' and action != 'resume')
             or not isinstance(token, str) or not 1 <= len(token) <= 1048576):
         return DrainRejected(ResumeFailure.CHECKPOINT_REJECTED)
-    if tool in ('query_symbols', 'query_occurrences'):
+    if tool in ('query_symbols', 'query_occurrences', 'query_walk'):
         alias = response.get('continuation')
     elif tool == 'source_read':
         legacy = qualification.get('continuation', {})
@@ -112,7 +112,7 @@ def resume_request(request, token):
 
 
 def _invoke(replay, tool, request):
-    transport_tool = 'query_symbols' if tool == 'query_occurrences' else tool
+    transport_tool = 'query_symbols' if tool in ('query_occurrences', 'query_walk') else tool
     response = replay.transport.invoke(replay.surface, transport_tool, asdict(request))
     replay.transport.validate(transport_tool, response)
     return response
@@ -153,6 +153,9 @@ def _freeze(value):
 
 
 def records(tool, response):
+    if tool == 'query_walk':
+        walk_records(response)  # Reject mixed output before comparing the full item identity.
+        return tuple(_freeze(item) for item in response.get('items', []))
     if tool == 'query_occurrences':
         return tuple(_freeze(record['relation']) for record in response.get('items', [])
                      if record.get('type') == 'occurrence')
@@ -166,7 +169,7 @@ def record_parity(tool, observed, baseline):
         return False
     actual = tuple(item for page in observed.pages for item in records(tool, page))
     expected = tuple(item for page in baseline.pages for item in records(tool, page))
-    if tool == 'query_occurrences':
+    if tool in ('query_occurrences', 'query_walk'):
         # Native provider cursors use file/range order; RelationBatch sorts each
         # admitted page by endpoint fingerprint. Grant changes can change page
         # boundaries, but must preserve every full occurrence, including duplicates.
@@ -192,6 +195,8 @@ def coverage_parity(tool, observed, baseline):
                    and page.get('text') == original.get('text') for page in pages)
     if tool == 'query_occurrences':
         return relation_coverage_parity(observed, baseline)
+    if tool == 'query_walk':
+        return walk_coverage_parity(observed, baseline)
     return all(page.get('failures') == baseline.pages[0].get('failures') for page in pages)
 
 
@@ -218,6 +223,35 @@ def relation_coverage_parity(observed, baseline):
     return observed.pages[-1].get('omissions') == baseline.pages[-1].get('omissions')
 
 
+def walk_coverage_parity(observed, baseline):
+    """Compare the traversal engine's page evidence after both query drains finish."""
+    from hosted_budget_read_regression import progress_advances
+    if not isinstance(observed, Drained) or not isinstance(baseline, Drained):
+        return False
+    reference = walk_observation(baseline.pages[0])
+    def admitted(pages):
+        previous, partials = {}, Counter()
+        for page in pages:
+            observation = walk_observation(page)
+            if (any(observation.get(key) != reference.get(key)
+                    for key in ('subject', 'relation', 'maximum_depth', 'strategy'))
+                    or type(observation.get('expanded_frontier')) is not int
+                    or observation['expanded_frontier'] < 0
+                    or not progress_advances(previous, observation.get('progress', {}))):
+                return None
+            previous = observation['progress']
+            partials.update(_freeze(item) for item in observation.get('partial_expansions', []))
+        return previous, partials
+    actual, expected = admitted(observed.pages), admitted(baseline.pages)
+    if actual is None or expected is None:
+        return False
+    progress_keys = ('totalReads', 'totalEdges', 'maximumDepthReached')
+    return (all(actual[0].get(key) == expected[0].get(key) for key in progress_keys)
+            and actual[1] == expected[1]
+            and walk_observation(observed.pages[-1]).get('coverage') ==
+                walk_observation(baseline.pages[-1]).get('coverage'))
+
+
 def payload_parity(tool, observed, baseline):
     return record_parity(tool, observed, baseline) and coverage_parity(tool, observed, baseline)
 
@@ -236,6 +270,13 @@ def _authored_baseline(replay, tool, result):
                 == Counter(replay.fixture.oracle['helperCallers'])
                 and all(item.get('coverage') == 'exact-compiler-confirmed'
                         and item.get('provenance') == 'k2-authored-source' for item in relations))
+    if tool == 'query_walk':
+        records = tuple(record for page in result.pages for record in walk_records(page))
+        return (Counter(record.get('relation', {}).get('source', {}).get('qualifiedIdentity') for record in records)
+                == Counter(replay.fixture.oracle['helperCallers'])
+                and all(record.get('depth') == 1 and record.get('relation', {}).get('coverage') ==
+                    'exact-compiler-confirmed' and record.get('relation', {}).get('provenance') ==
+                    'k2-authored-source' for record in records))
     return any(page.get('entities') for page in result.pages)
 
 
@@ -245,13 +286,14 @@ def _effective(response, budget):
 
 
 def run_resume_budget_regression(replay):
-    """Twelve receipt cases per surface; internal pages never consume receipt rows."""
+    """Sixteen receipt cases per surface; internal pages never consume receipt rows."""
     requests = (
         ('query_symbols', QueryInput(QueryRun(SymbolReferences(tuple(replay.seeds[key]['ref']
             for key in ('logger', 'helper'))), output=SymbolOutput(('name', 'location', 'signature')),
             execution_budget=ResultsBudget()))),
         ('source_read', ResumeSource(SymbolAnchor(replay.seeds['logger']['ref']), ResultsBudget())),
         ('query_occurrences', relation_query(replay.seeds['helper']['ref'], 'callers', ResultsBudget())),
+        ('query_walk', walk_query(replay.seeds['helper']['ref'], budget=ResultsBudget())),
     )
     for low, large in ((ElapsedBudget(1000), ElapsedBudget(3000)),
                        (WorkBudget(100), WorkBudget(100000)),
@@ -287,7 +329,7 @@ def _case(replay, tool, request, low, large):
             checks[name + result.failure.value] = False
     count = sum(len(records(tool, page)) for page in observed.pages) if isinstance(observed, Drained) else 0
     replay.record('budget-resume-' + tool + '-' + next(iter(asdict(low))),
-                  'query_symbols' if tool == 'query_occurrences' else tool, checks, count, first)
+                  'query_symbols' if tool in ('query_occurrences', 'query_walk') else tool, checks, count, first)
 
 
 def with_budget(request, budget):

@@ -21,7 +21,7 @@ import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
 
-/** Pure deterministic breadth-first implementation of public `traversal.run`. */
+/** Deterministic breadth-first engine behind the query walk stage. */
 class TraversalService internal constructor(private val reader: OneHopRelationReader) : TraversalOperations {
     override suspend fun run(plan: TraversalPlan): TraversalResult {
         val checkpoint =

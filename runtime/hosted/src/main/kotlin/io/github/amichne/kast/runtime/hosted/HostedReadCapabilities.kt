@@ -10,7 +10,6 @@ internal object HostedReadCapabilities {
             CanonicalOperationWireBindings.symbolDiscover,
             CanonicalOperationWireBindings.symbolInspect,
             CanonicalOperationWireBindings.sourceRead,
-            CanonicalOperationWireBindings.traversalRun,
             CanonicalOperationWireBindings.diagnosticCheck,
         )
     val operations: List<String> =
