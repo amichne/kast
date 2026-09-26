@@ -22,12 +22,6 @@ import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
-import io.github.amichne.kast.protocol.contract.RelationFactDocument
-import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
-import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
-import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
@@ -36,26 +30,17 @@ import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
-import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
-import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
-import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.changeRecoverCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.diagnosticCheckCliProjector
-import io.github.amichne.kast.protocol.wire.presentation.normalizeTraversalGraph
 import io.github.amichne.kast.protocol.wire.presentation.queryRunCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.symbolDiscoverCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.symbolInspectCliProjector
-import io.github.amichne.kast.protocol.wire.presentation.traversalRunCliProjector
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -103,67 +88,6 @@ class GeneratedCliProjectionTest {
             assertTrue("symbol_ref" !in item.jsonObject)
             assertTrue("symbol_id" !in item.jsonObject)
         }
-    }
-
-    @Test
-    fun `traversal graph normalizes repeated nodes and retains compact proof references`() {
-        val source = symbol("exact:A", "A", "src/A.kt")
-        val target = symbol("exact:B", "B", "src/B.kt")
-        val fact =
-            RelationFactDocument(
-                meaning = RelationKindDocument.CALLERS,
-                source = source,
-                target = target,
-                occurrence =
-                    RelationOccurrenceDocument(
-                        text("candidate:occurrence"),
-                        text("src/B.kt"),
-                        range(4, 8),
-                    ),
-                provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
-                coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
-            )
-
-        val records =
-            listOf(
-                TraversalRecordDocument(depth(1), fact),
-                TraversalRecordDocument(depth(2), fact),
-            )
-        val graph =
-            normalizeTraversalGraph(
-                text("/workspace"),
-                EvidenceGeneration.parse(1).refined(),
-                records,
-            )
-
-        assertEquals(2, graph.nodes.size)
-        assertEquals(2, graph.edges.size)
-        assertEquals(2, graph.proofs.size)
-        assertEquals(listOf(0, 0), graph.edges.map { it.source.value })
-        assertEquals(listOf(1, 1), graph.edges.map { it.target.value })
-        assertEquals(
-            source.compilerEvidence.identity.value,
-            graph.proofs[graph.nodes.first().proof.value].identity,
-        )
-        val projected =
-            traversalRunCliProjector.project(
-                OperationOutcome.Complete(
-                    evidence(
-                        CanonicalOperation.TRAVERSAL_RUN,
-                        TraversalRunResult(text("/workspace"), bounded(records)),
-                    )
-                )
-            ) as ProjectedOperationOutcome.Complete
-        val document = Json.parseToJsonElement(projected.document.value).jsonObject
-        val projectedGraph = document.getValue("graph").jsonObject
-        val snapshot = projectedGraph.getValue("snapshot").jsonObject
-        assertTrue("records" !in document)
-        assertEquals("/workspace", snapshot.getValue("canonicalRoot").toString().trim('"'))
-        assertEquals("1", snapshot.getValue("generation").toString())
-        assertEquals(2, projectedGraph.getValue("nodes").jsonArray.size)
-        assertEquals(2, projectedGraph.getValue("edges").jsonArray.size)
-        assertEquals(2, projectedGraph.getValue("proofs").jsonArray.size)
-        assertTrue(projectedGraph.getValue("nodes").jsonArray.none { "compilerEvidence" in it.jsonObject })
     }
 
     @Test
@@ -332,68 +256,26 @@ class GeneratedCliProjectionTest {
     }
 
     @Test
-    fun `qualified read outputs retain structured proof instead of one reason label`() {
-        val traversal =
-            traversalRunCliProjector.project(
-                OperationOutcome.Qualified(
-                    evidence(
-                        CanonicalOperation.TRAVERSAL_RUN,
-                        TraversalRunResult(text("/workspace"), bounded(emptyList())),
-                    ),
-                    traversalQualification(),
-                )
-            ) as ProjectedOperationOutcome.Qualified
+    fun `qualified diagnostic output retains structured proof`() {
         val diagnostics =
             diagnosticCheckCliProjector.project(
                 OperationOutcome.Qualified(
-                    evidence(
-                        CanonicalOperation.DIAGNOSTIC_CHECK,
-                        DiagnosticCheckResult(bounded(emptyList())),
-                    ),
+                    evidence(CanonicalOperation.DIAGNOSTIC_CHECK, DiagnosticCheckResult(bounded(emptyList()))),
                     diagnosticResultLimitQualification(),
                 )
             ) as ProjectedOperationOutcome.Qualified
-
-        assertAll(
-            {
-                val qualification = traversal.qualification().jsonObject
-                assertEquals(
-                    setOf(
-                        "type",
-                        "limitations",
-                        "relationLimitations",
-                        "continuation",
-                        "checkpoint",
-                        "next_action",
-                        "recovery",
-                    ),
-                    qualification.keys,
-                )
-                assertEquals("resumable", qualification.getValue("type").jsonPrimitive.content)
-                assertEquals(
-                    listOf("record-limit-reached", "one-hop-incomplete"),
-                    qualification.getValue("limitations").jsonArray.map { it.jsonPrimitive.content },
-                )
-                assertEquals(
-                    listOf("provider-incomplete"),
-                    qualification.getValue("relationLimitations").jsonArray.map { it.jsonPrimitive.content },
-                )
-                val token = traversalContinuation("cli-projection").value
-                assertEquals(token, qualification.getValue("continuation").jsonPrimitive.content)
-                val checkpoint = qualification.getValue("checkpoint").jsonObject
-                assertEquals(setOf("type", "token"), checkpoint.keys)
-                assertEquals("upstream", checkpoint.getValue("type").jsonPrimitive.content)
-                assertEquals(token, checkpoint.getValue("token").jsonPrimitive.content)
-                assertEquals("resume", qualification.getValue("next_action").jsonPrimitive.content)
-            },
-            {
-                assertEquals(
-                    "{\"knownDiagnosticCount\":0,\"resultLimitReached\":true," +
-                        "\"analyzedFiles\":[\"src/A.kt\"],\"limitations\":[]}",
-                    diagnostics.qualification().toString(),
-                )
-            },
+        val qualification = diagnostics.qualification().jsonObject
+        assertEquals(
+            setOf("knownDiagnosticCount", "resultLimitReached", "analyzedFiles", "limitations"),
+            qualification.keys,
         )
+        assertEquals("0", qualification.getValue("knownDiagnosticCount").jsonPrimitive.content)
+        assertEquals("true", qualification.getValue("resultLimitReached").jsonPrimitive.content)
+        assertEquals(
+            listOf("src/A.kt"),
+            qualification.getValue("analyzedFiles").jsonArray.map { it.jsonPrimitive.content },
+        )
+        assertTrue(qualification.getValue("limitations").jsonArray.isEmpty())
     }
 
     @Test
@@ -412,24 +294,8 @@ class GeneratedCliProjectionTest {
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refined()
 
-    private fun depth(raw: Int): TraversalDepthDocument = TraversalDepthDocument.parse(raw).refined()
-
     private fun range(start: Int, end: Int): SourceRangeDocument =
         SourceRangeDocument.create(offset(start), offset(end)).refined()
-
-    private fun symbol(selector: String, name: String, file: String): SymbolDocument {
-        val signature = CompilerSignatureDocument.ClassLike(text("sample.$name"))
-        return SymbolDocument.create(
-                selector = text(selector),
-                kind = SymbolKindDocument.CLASSLIKE,
-                name = text(name),
-                qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(text("sample.$name")),
-                file = text(file),
-                range = range(0, name.length),
-                compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined(),
-            )
-            .refined()
-    }
 
     private fun <Value> bounded(values: List<Value>): BoundedProtocolList<Value> =
         BoundedProtocolList.create(values).refined()
@@ -443,18 +309,6 @@ class GeneratedCliProjectionTest {
             EvidenceGeneration.parse(1).refined(),
             value,
         )
-
-    private fun traversalQualification(): TraversalRunQualification =
-        TraversalRunQualification.admitResumable(
-                listOf(
-                    TraversalLimitationDocument.RECORD_LIMIT_REACHED,
-                    TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
-                ),
-                listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-                TraversalCheckpointDocument.Upstream(traversalContinuation("cli-projection")),
-                ReadResumeActionDocument.RESUME,
-            )
-            .refined()
 
     private fun diagnosticCoverageQualification(): DiagnosticCheckQualification =
         DiagnosticCheckQualification.create(
@@ -482,16 +336,6 @@ class GeneratedCliProjectionTest {
 
     private fun ProjectedOperationOutcome.Qualified.qualification() =
         Json.parseToJsonElement(document.value).jsonObject.getValue("qualification")
-
-    private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
-        val payload = payloadText.toByteArray()
-        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return TraversalContinuationDocument.parse("traversal-continuation:v1:$encoded:$digest").refined()
-    }
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
         when (this) {

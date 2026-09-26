@@ -20,12 +20,12 @@ enum class PublicToolIdentity(
     QUERY_SYMBOLS("query_symbols", CanonicalOperation.QUERY_RUN,
         "Run, resume, and read a compositional compiler-grounded Kotlin symbol query. Start from na" +
             "me/scope discovery, exact-symbol references, or selected rows of an immutable retained res" +
-            "ult. Apply structured predicates, relation expansion, concatenation, set operations, and e" +
-            "xplicit deduplication. Choose symbol fields or individual relation occurrences as output; " +
-            "structured omissions retain incomplete relation coverage. Retain a completed result when n" +
-            "eeded for later composition; resume uses only the opaque execution continuation, and read_" +
-            "result uses a separate presentation cursor. Incomplete coverage and bounded work remain ex" +
-            "plicit.",
+            "ult. Apply structured predicates, relation expansion, bounded multi-hop walk, concatenatio" +
+            "n, set operations, and explicit deduplication. Choose symbol fields, individual relation o" +
+            "ccurrences, or depth-bearing traversal records as output; structured omissions and walk ob" +
+            "servations retain incomplete coverage. Retain a completed result when needed for later com" +
+            "position; resume uses only the opaque execution continuation, and read_result uses a separ" +
+            "ate presentation cursor. Incomplete coverage and bounded work remain explicit.",
         HostedToolLoading.EAGER,
     ),
 }

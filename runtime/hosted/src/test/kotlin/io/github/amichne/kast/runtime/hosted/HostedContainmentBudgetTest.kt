@@ -16,7 +16,6 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -75,14 +74,6 @@ class HostedContainmentBudgetTest {
                 ),
                 encodeHostedSourceResponse(
                     OperationOutcome.Rejected(SourceReadRejection.CONTRACT_VIOLATION).withSourceBudget(report),
-                    ReadLimits.Default,
-                    resultLimit,
-                    bytes,
-                ) {
-                    error("No suffix")
-                },
-                encodeHostedTraversalResponse(
-                    OperationOutcome.Rejected(TraversalRunRejection.SELECTOR_STALE).withTraversalBudget(report),
                     ReadLimits.Default,
                     resultLimit,
                     bytes,

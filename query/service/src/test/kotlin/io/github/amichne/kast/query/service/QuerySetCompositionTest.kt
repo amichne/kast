@@ -259,6 +259,8 @@ class QuerySetCompositionTest {
                     ),
                     SourceReadOperations { error("No source expected") },
                     repeatedRelationOperations(selected),
+                    unexpectedQueryTraversal(),
+                    queryTestTraversalCeiling(),
                     clock = QueryNanoClock { 0L },
                 )
             val plan =

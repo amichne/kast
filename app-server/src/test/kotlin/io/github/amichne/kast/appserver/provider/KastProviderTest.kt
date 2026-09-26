@@ -549,16 +549,9 @@ class KastProviderTest {
                 "query.run",
                 KastObserverFixtures.qualifiedQueryOccurrences,
             )
-        val impact =
-            observer(
-                "traversal.run",
-                KastObserverFixtures.impactAnalysis.replaceFirst(
-                    "\"status\": \"complete\",",
-                    "\"status\": \"qualified\", \"qualification\": {\"type\": \"terminal_incomplete\", \"limitations\": [\"depth-limit-reached\"], \"relationLimitations\": []},",
-                ),
-            )
+        val walk = observer("query.run", KastObserverFixtures.qualifiedQueryWalk)
 
-        listOf(discover, inspect, source, semantic, impact).forEach { markdown ->
+        listOf(discover, inspect, source, semantic, walk).forEach { markdown ->
             check(markdown.contains("> Qualified — evidence incomplete"))
             check(!markdown.contains("compiler-confirmed"))
             FORBIDDEN_OBSERVER_TOKENS.forEach { forbidden -> check(!markdown.contains(forbidden)) }
@@ -589,46 +582,44 @@ class KastProviderTest {
     }
 
     @Test
-    fun `impact analysis leads with unique affected symbols and keeps snapshot secondary`() {
-        val impact = observer("traversal.run", KastObserverFixtures.impactAnalysis)
+    fun `query walk leads with depth bearing related symbols`() {
+        val walk = observer("query.run", KastObserverFixtures.queryWalk)
 
         assertEquals(
             """
-            **Kast · impact analysis**
+            **Kast · query walk**
 
-            **2 affected symbols** · 2 hops
+            **2 compiler-confirmed callers** · 2 hops
 
             | Depth | Symbol | Kind | File |
             |---:|---|---|---|
             | 1 | `CheckoutService` | class-like | [CheckoutService.kt](<checkout/core/src/main/kotlin/sample/CheckoutService.kt>) |
             | 2 | `recordEvent` | function | [AuditSink.kt](<audit/src/main/kotlin/sample/AuditSink.kt>) |
 
-            _Callers · generation 42 · 2 compiler-confirmed relationships_
+            1 walk observation
             """
                 .trimIndent(),
-            impact,
+            walk,
         )
         FORBIDDEN_OBSERVER_TOKENS.forEach { forbidden ->
-            check(!impact.contains(forbidden)) { "Observer Markdown leaked $forbidden" }
+            check(!walk.contains(forbidden)) { "Observer Markdown leaked $forbidden" }
         }
-        check(!impact.contains("/workspace")) { "Observer Markdown leaked workspace root" }
+        check(!walk.contains("/workspace")) { "Observer Markdown leaked workspace root" }
     }
 
     @Test
-    fun `semantic and impact observations fail closed on contradictory graph structure`() {
+    fun `semantic and walk observations fail closed on malformed record depth`() {
         val mixedRelations =
             observerPresentation(
                 "query.run",
                 KastObserverFixtures.mixedQueryOccurrences,
             )
-        val danglingImpact =
-            observerPresentation(
-                "traversal.run",
-                KastObserverFixtures.impactAnalysis.replaceFirst("\"source\": 1", "\"source\": 99"),
-            )
+        val corruptedWalk = KastObserverFixtures.queryWalk.replaceFirst("\"depth\":1", "\"depth\":0")
+        check(corruptedWalk != KastObserverFixtures.queryWalk)
+        val mismatchedWalk = observerPresentation("query.run", corruptedWalk)
 
         assertEquals(ObserverPresentation.None, mixedRelations)
-        assertEquals(ObserverPresentation.None, danglingImpact)
+        assertEquals(ObserverPresentation.None, mismatchedWalk)
     }
 
     @Test

@@ -17,6 +17,9 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 - [QueryOutcomeProjection.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt) - canonical projection of semantic rows, qualification, retention, and result pages.
 - [QueryRetainedResult.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt) - detached semantic rows, producer progress, coverage, and failures bound to one read basis.
 - [QueryRelationEvidence.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRelationEvidence.kt) - occurrence arrival facts and subject-linked relation omissions retained through composition.
+- [QueryWalkEvidence.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt) - traversal record arrivals and page-local coverage, progress, strategy, and partial frontier evidence.
+- [QueryWalkStage.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/QueryWalkStage.kt) - query scheduling around the existing traversal operation and its typed continuation.
+- [QueryWalkProjection.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt) - canonical projection of traversal records and observations into query results.
 - [QueryReferenceTransport.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt) - detached token representation before canonical authority validation.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt) - query plan model.
@@ -42,4 +45,4 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 - Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
-- Begin with `QueryPlan`, then trace each exact-symbol stage through `QueryService` into symbol, source, or relation operations. `CanonicalQueryProtocol` restores result sources and execution checkpoints through `QueryStateStore`; presentation cursors read retained rows without replaying stages.
+- Begin with `QueryPlan`, then trace each stage through `QueryService` into symbol, source, relation, or traversal operations. `CanonicalQueryProtocol` restores result sources and execution checkpoints through `QueryStateStore`; presentation cursors read retained rows without replaying stages.

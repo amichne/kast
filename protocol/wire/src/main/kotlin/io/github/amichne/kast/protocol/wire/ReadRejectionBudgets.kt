@@ -3,7 +3,6 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.AdmittedDiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
 import io.github.amichne.kast.protocol.contract.AdmittedSourceReadRejection
-import io.github.amichne.kast.protocol.contract.AdmittedTraversalRunRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
@@ -11,8 +10,6 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
-import io.github.amichne.kast.protocol.contract.TraversalRunFailure
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.reason
 
 /** Typed binding of a report to one operation's closed rejection family. */
@@ -47,18 +44,6 @@ internal object ReadRejectionBudgets {
             },
             { reason, report ->
                 WireDocumentConversion.Converted(AdmittedSourceReadRejection(reason.reason(), report))
-            },
-        )
-    val traversal =
-        RejectionBudgetCodec<TraversalRunFailure>(
-            {
-                when (it) {
-                    is TraversalRunRejection -> ExecutionBudgetPresence.Absent
-                    is AdmittedTraversalRunRejection -> ExecutionBudgetPresence.Present(it.executionBudget)
-                }
-            },
-            { reason, report ->
-                WireDocumentConversion.Converted(AdmittedTraversalRunRejection(reason.reason(), report))
             },
         )
     val query =

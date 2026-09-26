@@ -18,7 +18,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCheckpoint
@@ -40,11 +39,10 @@ import org.junit.jupiter.api.Test
 
 class HostedContinuationOwnerRetentionTest {
     @Test
-    fun `entry bound is per store and epoch retirement clears all four stores`() = runTest {
+    fun `entry bound is per store and epoch retirement clears all three stores`() = runTest {
         val fixture = RelationPagingFixture.live()
         val authority = fixture.authority
         val source = HostedSourcePagingFixture.create(fixture)
-        val traversal = HostedTraversalPagingFixture.create(fixture)
         val limits = ReadLimits.resolve(environment = mapOf("KAST_READ_QUERY_CONTINUATION_ENTRIES" to "1")).value()
         val continuations = HostedQueryContinuations()
         val owner = continuations.forEpoch(authority, limits)
@@ -55,29 +53,18 @@ class HostedContinuationOwnerRetentionTest {
         val queryOutput = owner.issue(queryRequest, authority, queryOutcome) as HostedOutputRetention.Retained
         val sourceOutput =
             owner.sourceOutputs.issue(source.request, authority, source.outcome) as HostedOutputRetention.Retained
-        val traversalOutput =
-            owner.traversalOutputs.issue(traversal.request, authority, traversal.outcome)
-                as HostedOutputRetention.Retained
         assertInstanceOf(
             QueryCheckpointRestoration.Restored::class.java,
             owner.queryState.restoreCheckpoint(queryState.token, authority),
         )
         assertEquals(queryOutcome, owner.restore(queryOutput.queryOutputToken(), authority))
         assertEquals(source.outcome, owner.sourceOutputs.restore(sourceOutput.token, source.request, authority))
-        assertEquals(
-            traversal.outcome,
-            owner.traversalOutputs.restore(traversalOutput.token, traversal.request, authority),
-        )
 
         continuations.forEpoch(RelationPagingFixture.live().authority, limits)
         assertQueryRetired(owner, queryState.token, queryOutput.queryOutputToken())
         assertEquals(
             OperationOutcome.Rejected(SourceReadRejection.CONTINUATION_UNAVAILABLE),
             owner.sourceOutputs.restore(sourceOutput.token, source.request, authority),
-        )
-        assertEquals(
-            OperationOutcome.Rejected(TraversalRunRejection.CONTINUATION_UNAVAILABLE),
-            owner.traversalOutputs.restore(traversalOutput.token, traversal.request, authority),
         )
     }
 

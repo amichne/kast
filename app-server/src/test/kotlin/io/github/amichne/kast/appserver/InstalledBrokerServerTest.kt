@@ -367,7 +367,6 @@ class InstalledBrokerServerTest {
                         "symbol_lookup",
                         "symbol_inspect",
                         "source_read",
-                        "traverse_relations",
                         "check_diagnostics",
                         "change",
                     ),

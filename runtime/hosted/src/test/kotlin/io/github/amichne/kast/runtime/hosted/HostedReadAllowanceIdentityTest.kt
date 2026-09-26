@@ -11,7 +11,6 @@ import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
-import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
@@ -24,9 +23,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
-import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.query.protocol.evidenceBasis
 import kotlinx.coroutines.test.runTest
@@ -74,35 +70,6 @@ class HostedReadAllowanceIdentityTest {
                 )
             assertEquals(fixture.outcome, owner.sourceOutputs.restore(first.token, resumed, authority))
             assertEquals(first, owner.sourceOutputs.issue(resumed, authority, fixture.outcome))
-        }
-    }
-
-    @Test
-    fun `traversal output owner excludes allowances but preserves initially defaulted strategy`() = runTest {
-        val fixture = HostedTraversalPagingFixture.create()
-        val authority = fixture.owner.authority
-        val owner = HostedQueryContinuations.Active(authority, ReadLimits.Default)
-        allowanceGrowth().forEach { (low, high) ->
-            val first =
-                owner.traversalOutputs.issue(fixture.request.copy(executionBudget = low), authority, fixture.outcome)
-                    as HostedOutputRetention.Retained
-            val resumed =
-                fixture.request.copy(
-                    executionBudget = high,
-                    maximumResults = ProtocolCount.parse(100).value(),
-                    position = TraversalRunPositionDocument.Start,
-                    strategy = TraversalStrategyDocument.BreadthFirst,
-                )
-            assertEquals(fixture.outcome, owner.traversalOutputs.restore(first.token, resumed, authority))
-            assertEquals(first, owner.traversalOutputs.issue(resumed, authority, fixture.outcome))
-            assertEquals(
-                OperationOutcome.Rejected(TraversalRunRejection.CONTINUATION_REQUEST_MISMATCH),
-                owner.traversalOutputs.restore(
-                    first.token,
-                    resumed.copy(strategy = TraversalStrategyDocument.BoundedFanOut(ProtocolCount.parse(1).value())),
-                    authority,
-                ),
-            )
         }
     }
 }

@@ -16,7 +16,6 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.registry.OperationDefinition
 import java.util.UUID
 import kotlinx.serialization.KSerializer
@@ -353,12 +352,6 @@ private fun OperationResult.retainsEvidenceBasis(basis: EvidenceBasis): Boolean 
                     basis is EvidenceBasis.Live &&
                         context.evidence == basis.evidence &&
                         snapshot.canonicalRoot.value == basis.evidence.workspaceRoot
-            }
-        // Traversal carries its root on the wire; the CLI derives its snapshot basis from the envelope.
-        is TraversalRunResult ->
-            when (basis) {
-                is EvidenceBasis.Published -> true
-                is EvidenceBasis.Live -> snapshotRoot.value == basis.evidence.workspaceRoot
             }
         else -> true
     }

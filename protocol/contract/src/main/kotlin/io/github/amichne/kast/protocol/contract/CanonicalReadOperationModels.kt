@@ -3,9 +3,6 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.charset.CharacterCodingException
-import java.security.MessageDigest
-import java.util.Base64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -195,74 +192,6 @@ enum class RelationLimitationDocument {
     PROVIDER_STALLED,
 }
 
-enum class RelationContinuationDocumentFailure {
-    UNKNOWN_TOKEN_FAMILY,
-    INVALID_TOKEN_STRUCTURE,
-    INVALID_PAYLOAD_ENCODING,
-    PAYLOAD_DIGEST_MISMATCH,
-}
-
-@JvmInline
-@Serializable(with = RelationContinuationDocumentSerializer::class)
-value class RelationContinuationDocument private constructor(val value: String) {
-    companion object {
-        const val TOKEN_PATTERN: String = "^relation-continuation:v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64}$"
-
-        fun parse(raw: String): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> {
-            val parts = raw.split(':')
-            if (parts.firstOrNull() != RELATION_CONTINUATION_TOKEN_FAMILY) {
-                return Refinement.Rejected(RelationContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY)
-            }
-            if (
-                parts.size != RELATION_CONTINUATION_TOKEN_PART_COUNT ||
-                    parts[1] !in setOf(RELATION_CONTINUATION_TOKEN_VERSION, "v2")
-            ) {
-                return Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
-            }
-            val payload =
-                try {
-                    Base64.getUrlDecoder().decode(parts[2])
-                } catch (_: IllegalArgumentException) {
-                    return Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
-                }
-            if (payload.isEmpty() || Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[2]) {
-                return Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
-            }
-            try {
-                payload.decodeToString(throwOnInvalidSequence = true)
-            } catch (_: CharacterCodingException) {
-                return Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
-            }
-            if (parts[3] != relationContinuationSha256(payload)) {
-                return Refinement.Rejected(RelationContinuationDocumentFailure.PAYLOAD_DIGEST_MISMATCH)
-            }
-            return Refinement.Refined(RelationContinuationDocument(raw))
-        }
-    }
-}
-
-internal object RelationContinuationDocumentSerializer :
-    RefiningStringSerializer<RelationContinuationDocument>(
-        serialName = "io.github.amichne.kast.protocol.contract.RelationContinuationDocument",
-        minimumLength = 1,
-        maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
-        pattern = RelationContinuationDocument.TOKEN_PATTERN,
-    ) {
-    override fun raw(value: RelationContinuationDocument): String = value.value
-
-    override fun refine(raw: String): Refinement<RelationContinuationDocument, *> =
-        RelationContinuationDocument.parse(raw)
-}
-
-private fun relationContinuationSha256(bytes: ByteArray): String =
-    MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
-        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-    }
-
-private const val RELATION_CONTINUATION_TOKEN_FAMILY = "relation-continuation"
-private const val RELATION_CONTINUATION_TOKEN_VERSION = "v1"
-private const val RELATION_CONTINUATION_TOKEN_PART_COUNT = 4
-
 /** Wire-bound cumulative committed traversal work, independent of page size. */
 @Serializable
 data class TraversalProgressDocument(
@@ -300,54 +229,6 @@ data class TraversalRecordDocument(
     val depth: TraversalDepthDocument,
     val relation: RelationFactDocument,
 )
-
-enum class TraversalRunRejection : TraversalRunFailure {
-    REVALIDATION_WRONG_KIND,
-    REVALIDATION_UNRETAINED,
-    REVALIDATION_EXPIRED,
-    REVALIDATION_CAPACITY,
-    REVALIDATION_WORK_LIMIT_REACHED,
-    REVALIDATION_TIME_LIMIT_REACHED,
-    REVALIDATION_RETIRED,
-    REVALIDATION_CAPTURE_UNAVAILABLE,
-    REVALIDATION_WORKSPACE_MISMATCH,
-    REVALIDATION_OWNER_MISMATCH,
-    REVALIDATION_WORKSPACE_NOT_READY,
-    REVALIDATION_BASIS_MOVED,
-    REVALIDATION_CONTENT_CHANGED,
-    REVALIDATION_CONTENT_UNCOMMITTED,
-    REVALIDATION_SCOPE_REJECTED,
-    REVALIDATION_DECLARATION_MISSING,
-    REVALIDATION_UNSUPPORTED_DECLARATION,
-    REVALIDATION_AMBIGUOUS,
-    REVALIDATION_COMPILER_IDENTITY_CHANGED,
-    REVALIDATION_COMPILER_UNAVAILABLE,
-    SCOPE_REJECTED,
-    WORKSPACE_INDEX_UNAVAILABLE,
-    OUTSIDE_SCOPE,
-    AMBIGUOUS_SUBJECT,
-    COMPILER_IDENTITY_UNAVAILABLE,
-    COMPILER_CONTRACT_VIOLATION,
-    CONTINUATION_CURSOR_MOVED,
-    RELATION_UNSUPPORTED,
-    READER_CONTRACT_VIOLATION,
-    TRAVERSAL_CONTRACT_VIOLATION,
-    DEPTH_LIMIT_EXCEEDED,
-    CONTINUATION_UNAVAILABLE,
-    CONTINUATION_REQUEST_MISMATCH,
-    WORKSPACE_NOT_READY,
-    SELECTOR_WRONG_KIND,
-    SELECTOR_MALFORMED,
-    SELECTOR_WORKSPACE_MISMATCH,
-    SELECTOR_STALE,
-    TOPOLOGY_BUILD_REQUIRED,
-    PLAN_REJECTED,
-    CONTINUATION_MALFORMED,
-    CONTINUATION_SUBJECT_MISMATCH,
-    CONTINUATION_RELATION_MISMATCH,
-    CONTINUATION_SCOPE_MISMATCH,
-    CONTINUATION_GENERATION_MISMATCH,
-}
 
 @Serializable
 data class DiagnosticCheckRequest(

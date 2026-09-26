@@ -7,10 +7,12 @@ import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkFailureDocument
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QuerySourceFailure
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.traversal.contract.TraversalRejection
 
 internal fun QueryRelationOmission.projectIssue(authority: QueryReferenceAuthority): QueryRelationOmissionDocument? =
     QueryRelationOmissionDocument(
@@ -61,6 +63,22 @@ internal fun QueryItemFailure.projectIssue(authority: QueryReferenceAuthority): 
                 meaning.protocolDocument(),
                 QueryRelationFailureDocument.valueOf(reason.name),
             )
+        is QueryItemFailure.Walk ->
+            QueryItemFailureDocument.Walk(
+                selector.exactReference(authority) ?: return null,
+                meaning.protocolDocument(),
+                reason.walkFailure(),
+            )
+    }
+
+private fun TraversalRejection.walkFailure(): QueryWalkFailureDocument =
+    when (this) {
+        is TraversalRejection.OneHopRejected ->
+            QueryWalkFailureDocument.OneHop(QueryRelationFailureDocument.valueOf(reason.name))
+        TraversalRejection.RequiredEvidenceUnavailable -> QueryWalkFailureDocument.RequiredEvidenceUnavailable
+        TraversalRejection.RequiredEvidenceStale -> QueryWalkFailureDocument.RequiredEvidenceStale
+        TraversalRejection.ReaderContractViolation -> QueryWalkFailureDocument.ReaderContractViolation
+        TraversalRejection.TraversalContractViolation -> QueryWalkFailureDocument.TraversalContractViolation
     }
 
 private fun SymbolSelector.exactReference(authority: QueryReferenceAuthority): QueryReferenceDocument.ExactSymbol? =

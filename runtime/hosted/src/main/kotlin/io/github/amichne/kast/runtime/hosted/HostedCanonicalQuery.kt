@@ -26,6 +26,7 @@ import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
+import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
 
 /** Only the admitted project's pure query service and its bounded read ports enter this graph. */
@@ -62,7 +63,6 @@ internal suspend fun evaluateHostedCanonicalQuery(
                 limits = context.limits,
             )
         is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)
-        is HostedRequest.Traversal -> evaluateHostedTraversal(project, services, context, request)
         is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(project, services, context, request)
     }
 }
@@ -86,6 +86,8 @@ private suspend fun evaluateHostedQuery(
                         exact = services.exact,
                         source = services.source(continuations),
                         relations = services.relations,
+                        traversal = traversalOperations(services.relations),
+                        traversalCeiling = services.budgets.hostedTraversalBudget,
                     ),
                     services.readReferences,
                     queryContinuations.queryState,

@@ -15,7 +15,6 @@ class HostedOperationProjectionTest {
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_INSPECT,
                 CanonicalOperation.SOURCE_READ,
-                CanonicalOperation.TRAVERSAL_RUN,
                 CanonicalOperation.DIAGNOSTIC_CHECK,
                 CanonicalOperation.CHANGE,
                 CanonicalOperation.CHANGE_PLAN,

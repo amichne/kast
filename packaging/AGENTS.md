@@ -56,8 +56,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
 - [hosted_authority_read_regression.py](hosted_authority_read_regression.py) - ordinary private source edits, observed epochs, stale authority refusal, exact restoration, and provider envelope qualification.
 - [hosted_concurrent_read.py](hosted_concurrent_read.py) - bounded concurrent reads and structured transport fault/drain witnesses.
-- [hosted_read_requests.py](hosted_read_requests.py) - typed traversal fixture requests with explicit strategy and retained resume position.
-- [hosted_budget_read_regression.py](hosted_budget_read_regression.py) - independent caller-grant forwarding and retained traversal replay across installed read surfaces.
+- [hosted_budget_read_regression.py](hosted_budget_read_regression.py) - independent caller-grant forwarding across installed query and source reads.
 - [native_fixture_probe.py](native_fixture_probe.py) - typed native fixture control responses and readiness evidence admission.
 - [native_provider_qualification.py](native_provider_qualification.py) - closed, payload-free provider startup evidence retained by native read reports.
 

@@ -2,25 +2,32 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QuerySymbol
+import io.github.amichne.kast.query.contract.QueryWalkArrival
+import io.github.amichne.kast.query.contract.QueryWalkObservation
 import io.github.amichne.kast.relation.contract.RelationContinuation
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.traversal.contract.TraversalContinuation
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 private const val TASK_OVERHEAD_BYTES = 512L
 private const val RETAINED_EVIDENCE_MULTIPLIER = 4L
 private const val DISCOVERY_TASK_BYTES = 4096L
 private const val RELATION_CURSOR_BYTES = 4096L
+private const val TRAVERSAL_CURSOR_BYTES = 8192L
 private const val REFERENCE_TASK_BYTES = 512L
 
 internal val pageLimits =
@@ -37,7 +44,11 @@ internal sealed interface PipelineTask {
 
     data class Omission(val value: QueryRelationOmission) : PipelineTask
 
+    data class WalkObservation(val value: QueryWalkObservation) : PipelineTask
+
     data class Occurrence(val value: QuerySymbol) : PipelineTask
+
+    data class WalkRecord(val value: QuerySymbol) : PipelineTask
 
     data class Discover(val syntax: QueryDiscoverySyntax, val next: ExactQueryStage) : PipelineTask
 
@@ -54,6 +65,9 @@ internal sealed interface PipelineTask {
     data class Symbol(val value: QuerySymbol, val stage: ExactQueryStage) : PipelineTask
 
     data class Related(val value: QuerySymbol, val stage: ExactQueryStage.Related, val cursor: RelationContinuation?) :
+        PipelineTask
+
+    data class Walk(val value: QuerySymbol, val stage: ExactQueryStage.Walk, val cursor: TraversalContinuation?) :
         PipelineTask
 }
 
@@ -84,12 +98,19 @@ private fun PipelineTask.retainedBytes(): Long =
     when (this) {
         is PipelineTask.Failure -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Omission -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
+        is PipelineTask.WalkObservation -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Occurrence -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
+        is PipelineTask.WalkRecord -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Symbol -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Related ->
             saturatedAdd(
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
                 RELATION_CURSOR_BYTES,
+            )
+        is PipelineTask.Walk ->
+            saturatedAdd(
+                saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
+                TRAVERSAL_CURSOR_BYTES,
             )
         is PipelineTask.Candidate ->
             saturatedMultiply(value.candidate.projectedUtf8Size().value, RETAINED_EVIDENCE_MULTIPLIER)
@@ -121,7 +142,22 @@ internal fun PipelineTask.Feed.expand(): List<PipelineTask> =
         is QueryCompositionInput.Retained ->
             input.result.symbols.map { PipelineTask.Symbol(it, stage.next) } +
                 input.result.failures.map(PipelineTask::Failure) +
-                input.result.omissions.map(PipelineTask::Omission)
+                input.result.omissions.map(PipelineTask::Omission) +
+                input.result.walkObservations.map(PipelineTask::WalkObservation)
+    }
+
+/** A record output keeps each established occurrence as a separate retained row. */
+internal fun PipelineTask.Symbol.expandOutput(output: QueryOutputSyntax): List<PipelineTask>? =
+    when (output) {
+        QueryOutputSyntax.Occurrences ->
+            (value.arrival as? QueryArrivalEvidence.Proven)?.facts.orEmpty().map { fact ->
+                PipelineTask.Occurrence(value.copy(arrival = QueryArrivalEvidence.Proven.one(fact)))
+            }
+        QueryOutputSyntax.TraversalRecords ->
+            (value.walkArrival as? QueryWalkArrival.Proven)?.records.orEmpty().map { record ->
+                PipelineTask.WalkRecord(value.copy(walkArrival = QueryWalkArrival.Proven.one(record)))
+            }
+        is QueryOutputSyntax.Symbols -> null
     }
 
 private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
@@ -131,7 +167,8 @@ private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
         is AdmittedQueryPlan.Retained ->
             plan.source.symbols.map { PipelineTask.Symbol(it, plan.stage) } +
                 plan.source.failures.map(PipelineTask::Failure) +
-                plan.source.omissions.map(PipelineTask::Omission)
+                plan.source.omissions.map(PipelineTask::Omission) +
+                plan.source.walkObservations.map(PipelineTask::WalkObservation)
     }
 
 private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
@@ -148,6 +185,7 @@ private fun boundaryTasks(stage: ExactQueryStage): List<PipelineTask> =
         is ExactQueryStage.Distinct -> listOf(PipelineTask.FlushDistinct(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Where -> boundaryTasks(stage.next)
         is ExactQueryStage.Related -> boundaryTasks(stage.next)
+        is ExactQueryStage.Walk -> boundaryTasks(stage.next)
         is ExactQueryStage.Emit -> emptyList()
     }
 
@@ -162,6 +200,24 @@ internal fun AdmittedQueryPlan.retainedInputs(): List<QueryRetainedResult> {
     return source + stage.retainedInputs()
 }
 
+internal fun AdmittedQueryPlan.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
+    when (this) {
+        is AdmittedQueryPlan.Symbols -> stage.exceedsTraversalDepth(ceiling)
+        is AdmittedQueryPlan.ExactReferences -> stage.exceedsTraversalDepth(ceiling)
+        is AdmittedQueryPlan.Retained -> stage.exceedsTraversalDepth(ceiling)
+    }
+
+private fun ExactQueryStage.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
+    when (this) {
+        is ExactQueryStage.Walk -> maximumDepth.value > ceiling.value || next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Concat -> next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Set -> next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Distinct -> next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Where -> next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Related -> next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Emit -> false
+    }
+
 private fun ExactQueryStage.retainedInputs(): List<QueryRetainedResult> =
     when (this) {
         is ExactQueryStage.Concat ->
@@ -170,6 +226,7 @@ private fun ExactQueryStage.retainedInputs(): List<QueryRetainedResult> =
         is ExactQueryStage.Distinct -> next.retainedInputs()
         is ExactQueryStage.Where -> next.retainedInputs()
         is ExactQueryStage.Related -> next.retainedInputs()
+        is ExactQueryStage.Walk -> next.retainedInputs()
         is ExactQueryStage.Emit -> emptyList()
     }
 

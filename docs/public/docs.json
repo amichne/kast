@@ -99,8 +99,7 @@
             "group": "Read and explore",
             "pages": [
               "POST /callables/query_symbols",
-              "POST /callables/source_read",
-              "POST /callables/traverse_relations"
+              "POST /callables/source_read"
             ]
           },
           {

@@ -138,28 +138,6 @@ internal enum class RelationLimitationWireDocument {
 }
 
 @Serializable
-internal sealed interface TraversalRunQualificationWireDocument {
-    val limitations: List<TraversalLimitationWireDocument>
-    val relationLimitations: List<RelationLimitationWireDocument>
-
-    @Serializable
-    @SerialName("resumable")
-    data class Resumable(
-        override val limitations: List<TraversalLimitationWireDocument>,
-        override val relationLimitations: List<RelationLimitationWireDocument>,
-        val checkpoint: io.github.amichne.kast.protocol.contract.TraversalCheckpointDocument,
-        @SerialName("next_action") val nextAction: io.github.amichne.kast.protocol.contract.ReadResumeActionDocument,
-    ) : TraversalRunQualificationWireDocument
-
-    @Serializable
-    @SerialName("terminal_incomplete")
-    data class TerminalIncomplete(
-        override val limitations: List<TraversalLimitationWireDocument>,
-        override val relationLimitations: List<RelationLimitationWireDocument>,
-    ) : TraversalRunQualificationWireDocument
-}
-
-@Serializable
 internal enum class TraversalLimitationWireDocument {
     @SerialName("record_limit_reached") RECORD_LIMIT_REACHED,
     @SerialName("byte_limit_reached") BYTE_LIMIT_REACHED,

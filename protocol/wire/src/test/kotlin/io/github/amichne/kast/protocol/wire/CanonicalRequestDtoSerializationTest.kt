@@ -27,11 +27,11 @@ import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import java.security.MessageDigest
 import java.util.Base64
 import kotlinx.serialization.KSerializer
@@ -145,8 +145,34 @@ class CanonicalRequestDtoSerializationTest {
     fun `all canonical requests own their wire serializer`() {
         val serializers = canonicalRequestSerializers()
 
-        assertEquals(11, serializers.size)
+        assertEquals(10, serializers.size)
         assertFalse(serializers.any { "WireDocument" in it.descriptor.serialName })
+    }
+
+    @Test
+    fun `query walk is the admitted traversal grammar with a closed record output`() {
+        val request =
+            canonicalQueryRequest()
+                .copy(
+                    steps = bounded(listOf(QueryStepDocument.Walk(RelationKindDocument.CALLERS, count(3)))),
+                    output = QueryOutputDocument.TraversalRecords,
+                )
+        val encoded = strictJson.encodeToString(QueryRunRequest.serializer(), request)
+        val shape = strictJson.parseToJsonElement(encoded).jsonObject
+        val expectedStep =
+            strictJson.parseToJsonElement(checkNotNull(javaClass.getResource("/query/walk-step.json")).readText())
+        assertEquals(expectedStep, shape.getValue("steps").jsonArray.single())
+        assertEquals("traversal_records", shape.getValue("output").jsonObject.getValue("type").jsonPrimitive.content)
+        assertEquals(request, strictJson.decodeFromString(QueryRunRequest.serializer(), encoded))
+        for (obsolete in
+            listOf(
+                encoded.replace("\"type\":\"walk\"", "\"type\":\"traverse\""),
+                encoded.replace("\"maximum_depth\":3", "\"maximum_depth\":3,\"maximum_results\":25"),
+            )) {
+            assertThrows(SerializationException::class.java) {
+                strictJson.decodeFromString(QueryRunRequest.serializer(), obsolete)
+            }
+        }
     }
 
     @Test
@@ -223,7 +249,6 @@ class CanonicalRequestDtoSerializationTest {
             SymbolDiscoverRequest.serializer(),
             SymbolInspectRequest.serializer(),
             SourceReadRequest.serializer(),
-            TraversalRunRequest.serializer(),
             QueryRunRequest.serializer(),
             DiagnosticCheckRequest.serializer(),
             ChangePlanRequest.serializer(),
@@ -257,6 +282,8 @@ class CanonicalRequestDtoSerializationTest {
         (BoundedProtocolList.create(values) as Refinement.Refined).value
 
     private fun text(raw: String): ProtocolText = (ProtocolText.parse(raw) as Refinement.Refined).value
+
+    private fun count(raw: Int): ProtocolCount = (ProtocolCount.parse(raw) as Refinement.Refined).value
 
     private fun selector(family: String): String {
         val payload = "{}".encodeToByteArray()

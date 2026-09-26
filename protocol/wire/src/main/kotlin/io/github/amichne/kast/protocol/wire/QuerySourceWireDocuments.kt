@@ -46,6 +46,14 @@ internal sealed interface QueryItemFailureWireDocument {
         val relation: RelationKindWireDocument,
         val reason: QueryRelationFailureWireDocument,
     ) : QueryItemFailureWireDocument
+
+    @Serializable
+    @SerialName("walk")
+    data class Walk(
+        val ref: QueryReferenceWireDocument.ExactSymbol,
+        val relation: RelationKindWireDocument,
+        val reason: QueryWalkFailureWireDocument,
+    ) : QueryItemFailureWireDocument
 }
 
 @Serializable

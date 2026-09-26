@@ -134,6 +134,7 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
                 connections = (first.connections + second.connections).distinct().sorted(),
                 source = source,
                 arrival = first.arrival.merge(second.arrival),
+                walkArrival = first.walkArrival.merge(second.walkArrival),
             )
         )
     }

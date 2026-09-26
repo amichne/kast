@@ -1,5 +1,10 @@
 package io.github.amichne.kast.query.protocol
 
+import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkFailureDocument
+import io.github.amichne.kast.query.contract.QueryItemFailure
+import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -7,7 +12,8 @@ import org.junit.jupiter.api.Test
 
 class GraphFailurePreservationTest {
     @Test
-    fun `actionable one hop causes survive traversal projection independently`() {
+    fun `actionable one hop causes survive query walk projection independently`() {
+        val fixture = RelationPagingFixture.live()
         val causes =
             listOf(
                 RelationReadRejection.SCOPE_REJECTED,
@@ -19,6 +25,17 @@ class GraphFailurePreservationTest {
                 RelationReadRejection.CONTINUATION_CURSOR_MOVED,
                 RelationReadRejection.UNSUPPORTED_SUBJECT,
             )
-        assertEquals(causes.size, causes.map { TraversalRejection.OneHopRejected(it).protocol() }.distinct().size)
+        val projected = causes.map { reason ->
+            QueryItemFailure.Walk(
+                    fixture.selector,
+                    RelationMeaning.Callers,
+                    TraversalRejection.OneHopRejected(reason),
+                )
+                .projectIssue(fixture.references) as QueryItemFailureDocument.Walk
+        }
+        assertEquals(
+            causes.map { QueryWalkFailureDocument.OneHop(QueryRelationFailureDocument.valueOf(it.name)) },
+            projected.map { it.reason },
+        )
     }
 }

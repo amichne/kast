@@ -13,6 +13,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 enum class QueryByteLimitFailure {
@@ -86,9 +87,11 @@ data class QuerySymbol(
     val connections: List<RelationFact>,
     val source: QuerySymbolSource = QuerySymbolSource.Pending,
     val arrival: QueryArrivalEvidence = QueryArrivalEvidence.None,
+    val walkArrival: QueryWalkArrival = QueryWalkArrival.None,
 ) {
     init {
         require(arrival !is QueryArrivalEvidence.Proven || arrival.facts.all(connections::contains))
+        require(walkArrival !is QueryWalkArrival.Proven || walkArrival.records.all { it.fact in connections })
     }
 
     val selector: SymbolSelector
@@ -131,6 +134,12 @@ sealed interface QueryItemFailure {
         val meaning: RelationMeaning,
         val reason: RelationReadRejection,
     ) : QueryItemFailure
+
+    data class Walk(
+        val selector: SymbolSelector,
+        val meaning: RelationMeaning,
+        val reason: TraversalRejection,
+    ) : QueryItemFailure
 }
 
 sealed interface QuerySourceFailure {
@@ -143,6 +152,7 @@ data class QueryResult(
     val items: List<QuerySymbol>,
     val failures: List<QueryItemFailure>,
     val omissions: List<QueryRelationOmission> = emptyList(),
+    val walkObservations: List<QueryWalkObservation> = emptyList(),
 )
 
 enum class QueryCountFailure {
@@ -171,6 +181,7 @@ enum class QueryLimitation {
     VISIBILITY_INCOMPLETE,
     SOURCE_INCOMPLETE,
     RELATION_INCOMPLETE,
+    TRAVERSAL_INCOMPLETE,
     ROW_SELECTION_INCOMPLETE,
 }
 

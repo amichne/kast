@@ -3,7 +3,6 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 
 internal object CanonicalSymbolSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
@@ -20,11 +19,5 @@ internal object CanonicalSymbolSerializers {
             SymbolInspectResultWireDocument.serializer(),
             SymbolInspectResult::toSymbolWireDocument,
             SymbolInspectResultWireDocument::toContract,
-        )
-    val traversalResult =
-        factory.create(
-            TraversalRunResultWireDocument.serializer(),
-            TraversalRunResult::toSymbolWireDocument,
-            TraversalRunResultWireDocument::toContract,
         )
 }

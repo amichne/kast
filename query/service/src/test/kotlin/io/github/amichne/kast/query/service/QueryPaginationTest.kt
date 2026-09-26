@@ -157,6 +157,8 @@ class QueryPaginationTest {
                     ),
                     SourceReadOperations { error("No source expected") },
                     relationPages(selected, positions),
+                    unexpectedQueryTraversal(),
+                    queryTestTraversalCeiling(),
                 )
             val first =
                 request(

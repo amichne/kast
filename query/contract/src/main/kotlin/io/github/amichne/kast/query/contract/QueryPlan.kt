@@ -3,6 +3,8 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalStrategy
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 enum class QuerySymbolField {
@@ -28,6 +30,8 @@ sealed interface QueryOutputSyntax {
     data class Symbols(val fields: QuerySymbolFields) : QueryOutputSyntax
 
     data object Occurrences : QueryOutputSyntax
+
+    data object TraversalRecords : QueryOutputSyntax
 }
 
 data class QueryPlanSyntax(
@@ -52,6 +56,13 @@ sealed interface ExactQueryStage {
     data class Where(val predicate: QueryPredicate, val next: ExactQueryStage) : ExactQueryStage
 
     data class Related(val meaning: RelationMeaning, val next: ExactQueryStage) : ExactQueryStage
+
+    data class Walk(
+        val meaning: RelationMeaning,
+        val maximumDepth: TraversalDepthLimit,
+        val strategy: TraversalStrategy,
+        val next: ExactQueryStage,
+    ) : ExactQueryStage
 
     data class Distinct(val next: ExactQueryStage) : ExactQueryStage
 
@@ -126,6 +137,8 @@ object QueryPlanCompiler {
                     QueryStepSyntax.Distinct -> ExactQueryStage.Distinct(stage)
                     is QueryStepSyntax.Where -> ExactQueryStage.Where(step.predicate, stage)
                     is QueryStepSyntax.Related -> ExactQueryStage.Related(step.meaning, stage)
+                    is QueryStepSyntax.Walk ->
+                        ExactQueryStage.Walk(step.meaning, step.maximumDepth, step.strategy, stage)
                     is QueryStepSyntax.Concat -> ExactQueryStage.Concat(step.input, stage)
                     is QueryStepSyntax.Intersect ->
                         ExactQueryStage.Set(QuerySetOperator.INTERSECTION, step.right, stage)
@@ -158,5 +171,6 @@ private fun ExactQueryStage.composedInputLeases(): List<SemanticReadAuthority> =
         is ExactQueryStage.Distinct -> next.composedInputLeases()
         is ExactQueryStage.Where -> next.composedInputLeases()
         is ExactQueryStage.Related -> next.composedInputLeases()
+        is ExactQueryStage.Walk -> next.composedInputLeases()
         is ExactQueryStage.Emit -> emptyList()
     }

@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 class RelationContractTest {
@@ -121,6 +122,11 @@ class RelationContractTest {
             RelationCompilation.qualifiedResumable(batch, setOf(RelationLimitation.RESULT_LIMIT_REACHED), cursor)
                 .refined()
         val continuation = (compiled.coverage as RelationIncompleteCoverage.Resumable).continuation
+        assertThrows(UnsupportedOperationException::class.java) {
+            (continuation.retainedLimitations as MutableSet<RelationLimitation>).add(
+                RelationLimitation.UNRESOLVED_TARGET
+            )
+        }
         val resumed = RelationRequest.resume(selector, expanded.meaning, expanded.budget, continuation)
         assertEquals(RelationResumeFailure.SCOPE_MISMATCH, (resumed as Refinement.Rejected).failure)
     }

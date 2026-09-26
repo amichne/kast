@@ -87,7 +87,6 @@ internal class HostedQueryContinuations : Disposable {
 
         val diagnosticOutputs = hostedDiagnosticOutputPages(limits)
         val sourceOutputs = hostedSourceOutputPages(limits)
-        val traversalOutputs = hostedTraversalOutputPages(limits)
 
         fun issue(
             request: QueryRunRequest,
@@ -107,7 +106,6 @@ internal class HostedQueryContinuations : Disposable {
         fun clear() {
             outputs.clear()
             sourceOutputs.clear()
-            traversalOutputs.clear()
             queryState.clear()
             diagnosticCheckpoints.retire()
             diagnosticOutputs.clear()

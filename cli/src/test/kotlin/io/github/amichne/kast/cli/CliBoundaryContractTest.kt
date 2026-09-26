@@ -27,7 +27,7 @@ import org.junit.jupiter.api.io.TempDir
 
 class CliBoundaryContractTest {
     @Test
-    fun `retired relation command cannot parse into a semantic read`() {
+    fun `retired relation and traversal commands cannot parse into semantic reads`() {
         val parsed =
             commandGraphFactory()
                 .parse(
@@ -35,6 +35,7 @@ class CliBoundaryContractTest {
                     CliRequestDocumentInput.Provided(Json.encodeToString(EmptyRequest.serializer(), EmptyRequest)),
                 )
         assertTrue(parsed is CliCommandParsing.Rejected)
+        assertTrue(commandGraphFactory().parse(listOf("traversal", "run")) is CliCommandParsing.Rejected)
     }
 
     @Test
@@ -56,11 +57,6 @@ class CliBoundaryContractTest {
                     listOf("source", "read"),
                     """{"anchor":{"type":"symbol","selector":"$selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":250,"textByteLimit":65536,"page":{"type":"first"}}""",
                     CanonicalOperation.SOURCE_READ,
-                ),
-                SemanticCase(
-                    listOf("traversal", "run"),
-                    """{"exactSelector":"selector","relation":"callers","maximumDepth":2,"maximumResults":10,"position":{"type":"start"}}""",
-                    CanonicalOperation.TRAVERSAL_RUN,
                 ),
                 SemanticCase(
                     listOf("change", "plan"),
@@ -154,22 +150,6 @@ class CliBoundaryContractTest {
             ) is CliCommandParsing.Parsed
         )
         assertTrue(factory.parse(listOf("symbol", "discover", "")) is CliCommandParsing.Rejected)
-        assertTrue(
-            factory.parse(
-                listOf("traversal", "run"),
-                CliRequestDocumentInput.Provided(
-                    """{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"${traversalContinuationToken()}"}}"""
-                ),
-            ) is CliCommandParsing.Parsed
-        )
-        assertTrue(
-            factory.parse(
-                listOf("traversal", "run"),
-                CliRequestDocumentInput.Provided(
-                    """{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"bad"}}"""
-                ),
-            ) is CliCommandParsing.Rejected
-        )
     }
 
     @Test
@@ -224,16 +204,6 @@ class CliBoundaryContractTest {
                 (byte.toInt() and 0xff).toString(16).padStart(2, '0')
             }
         return "exact:v2:$encoded:$digest"
-    }
-
-    private fun traversalContinuationToken(): String {
-        val payload = "checkpoint".toByteArray(StandardCharsets.UTF_8)
-        val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return "traversal-continuation:v1:$encoded:$digest"
     }
 
     private data class SemanticCase(

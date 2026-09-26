@@ -3,6 +3,8 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.source.contract.DeclarationVisibility
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalStrategy
 
 class QueryVisibilitySelection private constructor(val values: List<DeclarationVisibility>) {
     companion object {
@@ -65,6 +67,12 @@ sealed interface QueryStepSyntax {
     data class Where(val predicate: QueryPredicate) : QueryStepSyntax
 
     data class Related(val meaning: RelationMeaning) : QueryStepSyntax
+
+    data class Walk(
+        val meaning: RelationMeaning,
+        val maximumDepth: TraversalDepthLimit,
+        val strategy: TraversalStrategy,
+    ) : QueryStepSyntax
 
     data class Concat(val input: QueryCompositionInput) : QueryStepSyntax
 

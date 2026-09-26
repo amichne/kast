@@ -46,12 +46,6 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
-import io.github.amichne.kast.protocol.contract.RelationFactDocument
-import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
-import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
-import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
@@ -79,14 +73,6 @@ import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildStatus
 import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
-import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
-import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
-import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
-import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import io.github.amichne.kast.protocol.registry.HostedVariants
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -142,11 +128,7 @@ class CanonicalOperationWireBindingsTest {
     }
 
     @Test
-    fun `every traversal and change prerequisite rejection round trips`() {
-        assertRejections(
-            CanonicalOperationWireBindings.traversalRun,
-            TraversalRunRejection.entries,
-        )
+    fun `every change prerequisite rejection round trips`() {
         assertRejections(
             CanonicalOperationWireBindings.changePlan,
             ChangePlanRejection.entries,
@@ -181,41 +163,6 @@ class CanonicalOperationWireBindingsTest {
             SymbolInspectResult(symbol("exact:v1:Target", "Target")),
             SymbolInspectQualification.EVIDENCE_INCOMPLETE,
             SymbolInspectRejection.EXACT_SELECTOR_STALE,
-        )
-        assertRoundTrips(
-            CanonicalOperationWireBindings.traversalRun,
-            TraversalRunRequest(
-                text("exact:Target"),
-                RelationKindDocument.CALLERS,
-                count(3),
-                count(100),
-            ),
-            TraversalRunResult(
-                text("/workspace"),
-                BoundedProtocolList.create(
-                        listOf(
-                            traversal(
-                                1,
-                                relation(
-                                    RelationKindDocument.CALLERS,
-                                    symbol("exact:v1:Caller", "Caller"),
-                                    symbol("exact:v1:Target", "Target"),
-                                ),
-                            ),
-                            traversal(
-                                2,
-                                relation(
-                                    RelationKindDocument.CALLERS,
-                                    symbol("exact:v1:Root", "Root"),
-                                    symbol("exact:v1:Caller", "Caller"),
-                                ),
-                            ),
-                        )
-                    )
-                    .refinedValue(),
-            ),
-            traversalQualification(),
-            TraversalRunRejection.PLAN_REJECTED,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.diagnosticCheck,
@@ -408,34 +355,6 @@ class CanonicalOperationWireBindingsTest {
             .refinedValue()
     }
 
-    private fun relation(
-        meaning: RelationKindDocument,
-        source: SymbolDocument,
-        target: SymbolDocument,
-    ): RelationFactDocument =
-        RelationFactDocument(
-            meaning,
-            source,
-            target,
-            RelationOccurrenceDocument(text("candidate:occurrence"), source.file, source.range),
-            RelationProvenanceDocument.K2_AUTHORED_SOURCE,
-            RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
-        )
-
-    private fun traversal(depth: Int, relation: RelationFactDocument): TraversalRecordDocument =
-        TraversalRecordDocument(TraversalDepthDocument.parse(depth).refinedValue(), relation)
-
-    private fun traversalQualification(): TraversalRunQualification =
-        TraversalRunQualification.resumable(
-                listOf(
-                    TraversalLimitationDocument.RECORD_LIMIT_REACHED,
-                    TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
-                ),
-                listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-                traversalContinuation("binding"),
-            )
-            .refinedValue()
-
     private fun diagnosticQualification(): DiagnosticCheckQualification =
         DiagnosticCheckQualification.create(
                 DiagnosticKnownCountDocument.parse(1).refinedValue(),
@@ -456,16 +375,6 @@ class CanonicalOperationWireBindingsTest {
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
 
     private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refinedValue()
-
-    private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
-        val payload = payloadText.toByteArray()
-        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return TraversalContinuationDocument.parse("traversal-continuation:v1:$encoded:$digest").refinedValue()
-    }
 
     private fun preview(): ChangeFilePreviewSet =
         ChangeFilePreviewSet.admit(

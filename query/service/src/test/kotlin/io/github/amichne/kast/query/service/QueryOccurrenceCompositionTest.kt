@@ -295,6 +295,8 @@ private fun QueryServiceTest.queryService(relations: RelationOperations): QueryS
         ),
         SourceReadOperations { error("No source expected") },
         relations,
+        unexpectedQueryTraversal(),
+        queryTestTraversalCeiling(),
     )
 
 private fun relationFact(read: RelationRequest, start: Int): RelationFact =

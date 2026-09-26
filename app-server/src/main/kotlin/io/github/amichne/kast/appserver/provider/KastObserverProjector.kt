@@ -61,7 +61,6 @@ internal object KastObserverProjector {
                 SYMBOL_DISCOVER -> projectDiscovery(document, evidence, directory)
                 SYMBOL_INSPECT -> projectInspection(document, evidence, directory)
                 SOURCE_READ -> projectSource(document, evidence, directory)
-                TRAVERSAL_RUN -> projectTraversal(document, evidence, directory)
                 DIAGNOSTIC_CHECK -> projectDiagnostics(document, evidence, directory)
                 CHANGE_PLAN -> projectPlannedChange(document, evidence)
                 CHANGE_RECOVER -> projectRecovery(document, evidence)
@@ -157,6 +156,13 @@ internal object KastObserverProjector {
         val items = document["items"] as? JsonArray ?: return null
         val failures = document["failures"] as? JsonArray ?: return null
         val omissions = document["omissions"] as? JsonArray ?: return null
+        val walkObservations = document["walk_observations"] as? JsonArray ?: return null
+        if (items.isNotEmpty() && items.all { (it as? JsonObject)?.strictString("type") == "traversal_record" }) {
+            return projectQueryWalk(items, walkObservations, failures, omissions, evidence, observerDirectory)
+        }
+        if (items.isEmpty() && walkObservations.isNotEmpty()) {
+            return projectQueryWalk(items, walkObservations, failures, omissions, evidence, observerDirectory)
+        }
         if (items.isNotEmpty() && items.all { (it as? JsonObject)?.strictString("type") == "occurrence" }) {
             return projectQueryOccurrences(items, failures, omissions, evidence, observerDirectory)
         }
@@ -411,111 +417,94 @@ internal object KastObserverProjector {
             .trimEnd()
     }
 
-    private fun projectTraversal(
-        document: JsonObject,
+    private fun projectQueryWalk(
+        items: JsonArray,
+        walkObservations: JsonArray,
+        failures: JsonArray,
+        omissions: JsonArray,
         evidence: ObserverEvidence,
         observerDirectory: ObserverWorkingDirectory,
     ): String? {
-        val graph = document["graph"] as? JsonObject ?: return null
-        val snapshot = graph["snapshot"] as? JsonObject ?: return null
-        val canonicalRoot = snapshot.strictString("canonicalRoot") ?: return null
-        val revision =
-            when (val basis = evidence.basis) {
-                ObserverBasis.Published ->
-                    "generation ${snapshot.strictLong("generation")?.takeIf { it >= 0L } ?: return null}"
-                is ObserverBasis.Live -> "live epoch ${basis.evidence.epoch}"
-            }
-        val proofs = admitProofs(graph["proofs"] as? JsonArray ?: return null) ?: return null
-        val nodes =
-            (graph["nodes"] as? JsonArray)?.map { candidate ->
-                admitTraversalNode(
-                    candidate as? JsonObject ?: return null,
-                    canonicalRoot,
-                    observerDirectory.path,
-                    proofs,
-                ) ?: return null
-            } ?: return null
-        if (nodes.map(TraversalSymbolObservation::id) != nodes.indices.toList()) return null
-        val nodesById = nodes.associateBy(TraversalSymbolObservation::id)
-        if (nodesById.size != nodes.size) return null
-        val edges =
-            (graph["edges"] as? JsonArray)?.map { candidate ->
-                admitTraversalEdge(candidate as? JsonObject ?: return null, nodesById) ?: return null
-            } ?: return null
-        if (edges.isEmpty() && (nodes.isNotEmpty() || proofs.isNotEmpty())) return null
-        val meaning = edges.firstOrNull()?.meaning
-        if (edges.any { edge -> edge.meaning != meaning }) return null
-        val affected = linkedMapOf<Int, AffectedSymbolObservation>()
-        edges.forEach { edge ->
-            val relatedId = edge.meaning.relatedNode(edge.source, edge.target)
-            val related = nodesById[relatedId] ?: return null
-            val existing = affected[relatedId]
-            if (existing == null || edge.depth < existing.depth) {
-                affected[relatedId] = AffectedSymbolObservation(edge.depth, related.symbol)
-            }
-        }
-        val orderedAffected =
-            affected.values.sortedWith(
-                compareBy(AffectedSymbolObservation::depth)
-                    .thenBy { observation -> observation.symbol.name }
-                    .thenBy { observation -> observation.symbol.file.value }
-            )
-        val maximumDepth = edges.maxOfOrNull(TraversalEdgeObservation::depth) ?: 0
-        val body = buildString {
-            if (orderedAffected.isEmpty()) {
-                appendLine("**No affected symbols**")
-                appendLine()
-                appendLine(
-                    if (evidence.coverage == ObserverCoverage.COMPLETE) {
-                        "_No compiler-confirmed relationships found._"
-                    } else {
-                        "_No known relationships found._"
-                    }
-                )
-            } else {
-                append("**")
-                append(orderedAffected.size)
-                append(if (orderedAffected.size == 1) " affected symbol" else " affected symbols")
-                append("** · ")
-                append(maximumDepth)
-                appendLine(if (maximumDepth == 1) " hop" else " hops")
-                appendLine()
-                appendLine("| Depth | Symbol | Kind | File |")
-                appendLine("|---:|---|---|---|")
-                orderedAffected.forEach { observation ->
-                    append("| ")
-                    append(observation.depth)
-                    append(" | ")
-                    append(inlineCode(observation.symbol.name).markdownTableCell())
-                    append(" | ")
-                    append(observation.symbol.kind)
-                    append(" | ")
-                    append(observation.symbol.file.link().markdownTableCell())
-                    appendLine(" |")
-                }
-            }
-            appendLine()
-            append("_")
-            meaning?.let { relationMeaning ->
-                append(relationMeaning.displayLabel)
-                append(" · ")
-            }
-            append(revision)
-            append(" · ")
-            append(edges.size)
-            val evidenceLabel =
-                if (evidence.coverage == ObserverCoverage.COMPLETE) {
-                    "compiler-confirmed"
-                } else {
-                    "known"
-                }
-            append(" ")
-            append(evidenceLabel)
-            append(if (edges.size == 1) " relationship_" else " relationships_")
-        }
-            .trimEnd()
-        return observerDocument("impact analysis", evidence, body)
+        val records = admitQueryWalkRecords(items, observerDirectory.path) ?: return null
+        if (walkObservations.any { !admittedWalkObservation(it, evidence.coverage) }) return null
+        return observerDocument(
+            "query walk",
+            evidence,
+            renderQueryWalk(records, failures.size, omissions.size, walkObservations.size, evidence.coverage),
+        )
     }
+
+    private fun admitQueryWalkRecords(items: JsonArray, directory: Path): List<QueryWalkRecordObservation>? =
+        items.map { candidate ->
+            val item = candidate as? JsonObject ?: return null
+            if (item.strictString("type") != "traversal_record" || item.strictString("ref") == null) return null
+            val record = item["record"] as? JsonObject ?: return null
+            val depth = record.strictInt("depth")?.takeIf { it > 0 } ?: return null
+            val relation = admitRelation(record["relation"] as? JsonObject ?: return null, directory) ?: return null
+            QueryWalkRecordObservation(depth, relation)
+        }
+
+    private fun admittedWalkObservation(
+        candidate: kotlinx.serialization.json.JsonElement,
+        status: ObserverCoverage,
+    ): Boolean {
+        val observation = candidate as? JsonObject ?: return false
+        if (observation.strictString("subject") == null) return false
+        if (observation.strictString("relation")?.let(RelationMeaningObservation::admit) == null) return false
+        if (observation.strictInt("maximum_depth")?.takeIf { it > 0 } == null) return false
+        if (observation.strictInt("expanded_frontier")?.takeIf { it >= 0 } == null) return false
+        if (observation["progress"] !is JsonObject) return false
+        if (observation["strategy"] !is JsonObject) return false
+        if (observation["partial_expansions"] !is JsonArray) return false
+        val coverage = (observation["coverage"] as? JsonObject)?.strictString("kind") ?: return false
+        return coverage in setOf("complete", "resumable", "terminal_incomplete") &&
+            (status != ObserverCoverage.COMPLETE || coverage == "complete")
+    }
+
+    private fun renderQueryWalk(
+        records: List<QueryWalkRecordObservation>,
+        failureCount: Int,
+        omissionCount: Int,
+        observationCount: Int,
+        coverage: ObserverCoverage,
+    ): String = buildString {
+        append(if (records.isEmpty()) emptyQueryWalkMessage(coverage) else renderQueryWalkRecords(records, coverage))
+        if (failureCount > 0) append("\n$failureCount item failures")
+        if (omissionCount > 0) append("\n$omissionCount relation omissions")
+        if (observationCount > 0) append("\n${countedQueryLabel(observationCount, "walk observation")}")
+    }
+        .trimEnd()
+
+    private fun emptyQueryWalkMessage(coverage: ObserverCoverage): String =
+        if (coverage == ObserverCoverage.COMPLETE) "_No compiler-confirmed relationships found._"
+        else "_No known relationships found._"
+
+    private fun renderQueryWalkRecords(records: List<QueryWalkRecordObservation>, coverage: ObserverCoverage): String =
+        buildString {
+            val meanings = records.map { it.relation.meaning }.distinct()
+            append("**")
+            append(records.size)
+            append(if (coverage == ObserverCoverage.COMPLETE) " compiler-confirmed " else " known ")
+            append(if (meanings.size == 1) meanings.single().countedLabel(records.size) else "relationships")
+            append("** · ")
+            val maximumDepth = records.maxOf(QueryWalkRecordObservation::depth)
+            append(maximumDepth)
+            appendLine(if (maximumDepth == 1) " hop" else " hops")
+            appendLine()
+            appendLine("| Depth | Symbol | Kind | File |")
+            appendLine("|---:|---|---|---|")
+            records.forEach { record ->
+                append("| ")
+                append(record.depth)
+                append(" | ")
+                append(inlineCode(record.relation.related.name).markdownTableCell())
+                append(" | ")
+                append(record.relation.related.kind)
+                append(" | ")
+                append(record.relation.related.file.link().markdownTableCell())
+                appendLine(" |")
+            }
+        }
 
     private fun admitRelation(
         relation: JsonObject,
@@ -560,61 +549,6 @@ internal object KastObserverProjector {
         )
             return null
         return RelatedSymbolObservation(name, kind, file)
-    }
-
-    private fun admitProofs(proofs: JsonArray): Set<Int>? {
-        val ids = proofs.map { candidate ->
-            val proof = candidate as? JsonObject ?: return null
-            if (proof.strictString("identity") == null) return null
-            proof.strictInt("id")?.takeIf { it >= 0 } ?: return null
-        }
-        return ids.takeIf { values ->
-                values.distinct().size == values.size && values == values.indices.toList()
-            }
-            ?.toSet()
-    }
-
-    private fun admitTraversalNode(
-        node: JsonObject,
-        canonicalRoot: String,
-        observerDirectory: Path,
-        proofs: Set<Int>,
-    ): TraversalSymbolObservation? {
-        val id = node.strictInt("id")?.takeIf { it >= 0 } ?: return null
-        node.strictInt("proof")?.takeIf(proofs::contains) ?: return null
-        val name = node.strictLabel("name") ?: return null
-        val kind = node.strictString("kind")?.let(::observerSymbolKind) ?: return null
-        val file =
-            node.strictString("file")?.let { raw ->
-                ObserverFilePath.admitSource(raw, canonicalRoot, observerDirectory)
-            } ?: return null
-        if (
-            node.strictString("selector") == null ||
-                node.strictLabel("qualifiedIdentity") == null ||
-                node["range"] !is JsonObject
-        )
-            return null
-        return TraversalSymbolObservation(id, RelatedSymbolObservation(name, kind, file))
-    }
-
-    private fun admitTraversalEdge(
-        edge: JsonObject,
-        nodes: Map<Int, TraversalSymbolObservation>,
-    ): TraversalEdgeObservation? {
-        val depth = edge.strictInt("depth")?.takeIf { it > 0 } ?: return null
-        val meaning = edge.strictString("meaning")?.let(RelationMeaningObservation::admit) ?: return null
-        val source = edge.strictInt("source")?.takeIf(nodes::containsKey) ?: return null
-        val target = edge.strictInt("target")?.takeIf(nodes::containsKey) ?: return null
-        val occurrence = edge["occurrence"] as? JsonObject ?: return null
-        if (
-            occurrence.strictString("candidateSelector") == null ||
-                occurrence.strictString("file") == null ||
-                occurrence["range"] !is JsonObject ||
-                edge.strictString("provenance") !in RELATION_PROVENANCE ||
-                edge.strictString("coverage") != "exact-compiler-confirmed"
-        )
-            return null
-        return TraversalEdgeObservation(depth, meaning, source, target)
     }
 
     private fun observerSymbolKind(value: String): String? =
@@ -706,9 +640,7 @@ internal object KastObserverProjector {
                             if (document.containsKey("qualification")) ObserverCoverage.QUALIFIED else return null
                         else -> return null
                     }
-                val snapshot =
-                    document["snapshot"] as? JsonObject
-                        ?: (document["graph"] as? JsonObject)?.get("snapshot") as? JsonObject
+                val snapshot = document["snapshot"] as? JsonObject
                 if (!document.containsKey("live")) {
                     if (snapshot?.containsKey("live") == true) return null
                     return ObserverEvidence(coverage, ObserverBasis.Published)
@@ -720,7 +652,6 @@ internal object KastObserverProjector {
                             SYMBOL_DISCOVER,
                             SYMBOL_INSPECT,
                             SOURCE_READ,
-                            TRAVERSAL_RUN,
                             DIAGNOSTIC_CHECK,
                         )
                 )
@@ -780,47 +711,29 @@ internal object KastObserverProjector {
         val file: ObserverFilePath,
     )
 
+    private data class QueryWalkRecordObservation(val depth: Int, val relation: RelationObservation)
+
     private data class RelationObservation(
         val meaning: RelationMeaningObservation,
         val related: RelatedSymbolObservation,
     )
 
-    private data class TraversalSymbolObservation(
-        val id: Int,
-        val symbol: RelatedSymbolObservation,
-    )
-
-    private data class TraversalEdgeObservation(
-        val depth: Int,
-        val meaning: RelationMeaningObservation,
-        val source: Int,
-        val target: Int,
-    )
-
-    private data class AffectedSymbolObservation(
-        val depth: Int,
-        val symbol: RelatedSymbolObservation,
-    )
-
     private enum class RelationMeaningObservation(
         private val singular: String,
         private val plural: String,
-        val displayLabel: String,
     ) {
-        REFERENCES("reference", "references", "References"),
-        CALLERS("caller", "callers", "Callers"),
-        CALLEES("callee", "callees", "Callees"),
-        IMPLEMENTATIONS("implementation", "implementations", "Implementations"),
-        INHERITORS("inheritor", "inheritors", "Inheritors"),
-        OVERRIDES("override", "overrides", "Overrides"),
-        TYPE_USES("type use", "type uses", "Type uses");
+        REFERENCES("reference", "references"),
+        CALLERS("caller", "callers"),
+        CALLEES("callee", "callees"),
+        IMPLEMENTATIONS("implementation", "implementations"),
+        INHERITORS("inheritor", "inheritors"),
+        OVERRIDES("override", "overrides"),
+        TYPE_USES("type use", "type uses");
 
         fun relatedSymbol(
             source: RelatedSymbolObservation,
             target: RelatedSymbolObservation,
         ): RelatedSymbolObservation = if (this == CALLEES) target else source
-
-        fun relatedNode(source: Int, target: Int): Int = if (this == CALLEES) target else source
 
         fun countedLabel(count: Int): String = if (count == 1) singular else plural
 
@@ -845,7 +758,6 @@ internal object KastObserverProjector {
     private const val CHANGE_APPLY = "change.apply"
     private const val CHANGE_RECOVER = "change.recover"
     private const val SOURCE_READ = "source.read"
-    private const val TRAVERSAL_RUN = "traversal.run"
     private const val DIAGNOSTIC_CHECK = "diagnostic.check"
     private const val MAXIMUM_LABEL_LENGTH = 16_384
     private val BACKTICK_RUN = Regex("`+")

@@ -8,12 +8,10 @@
     <ID>CyclomaticComplexMethod:SymbolProtocolModels.kt:private fun CompilerSignatureDocument.matchesCanonical: Boolean</ID>
     <ID>InvalidPackageDeclaration:IdeHostCapability.kt:package io.github.amichne.kast.protocol.contract</ID>
     <ID>InvalidPackageDeclaration:IdeHostCompatibility.kt:package io.github.amichne.kast.protocol.contract</ID>
-    <ID>LongMethod:QualificationProofContractTest.kt:QualificationProofContractTest$@Test fun `traversal request and qualification distinguish resumable from terminal state`</ID>
     <ID>MagicNumber:CanonicalQueryOperationModels.kt:256</ID>
     <ID>MagicNumber:CanonicalReadOperationModels.kt:0xff</ID>
     <ID>MagicNumber:CanonicalReadOperationModels.kt:16</ID>
     <ID>MagicNumber:CanonicalReadOperationModels.kt:RelationContinuationDocument.Companion$3</ID>
-    <ID>MagicNumber:CanonicalReadOperationModels.kt:TraversalContinuationDocument.Companion$3</ID>
     <ID>MagicNumber:CanonicalSourceReadOperationModels.kt:0xff</ID>
     <ID>MagicNumber:CanonicalSourceReadOperationModels.kt:16</ID>
     <ID>MagicNumber:CanonicalTopologyOperationModels.kt:TopologyBuildDigest.Companion$64</ID>

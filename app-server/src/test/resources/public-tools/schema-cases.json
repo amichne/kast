@@ -1110,5 +1110,82 @@
       }
     },
     "schema_valid": false
+  },
+  {
+    "id": "walk-rejects-zero-depth",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {"type": "all_declarations"},
+        "steps": [{"type": "walk", "relation": "callers", "maximum_depth": 0}],
+        "output": {"type": "traversal_records"}
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "walk-rejects-depth-beyond-public-bound",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {"type": "all_declarations"},
+        "steps": [{"type": "walk", "relation": "callers", "maximum_depth": 1001}],
+        "output": {"type": "traversal_records"}
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "walk-rejects-unknown-strategy",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {"type": "all_declarations"},
+        "steps": [{"type": "walk", "relation": "callers", "maximum_depth": 2, "strategy": {"type": "depth_first"}}],
+        "output": {"type": "traversal_records"}
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "walk-rejects-zero-fan-out",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {"type": "all_declarations"},
+        "steps": [{"type": "walk", "relation": "callers", "maximum_depth": 2, "strategy": {"type": "bounded_fan_out", "maximumEdgesPerNode": 0}}],
+        "output": {"type": "traversal_records"}
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "walk-rejects-standalone-position",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {"type": "all_declarations"},
+        "steps": [{"type": "walk", "relation": "callers", "maximum_depth": 2, "position": {"type": "start"}}],
+        "output": {"type": "traversal_records"}
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "read-result-rejects-traversal-record-output",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "read_result",
+        "result": "result:v1:00000000-0000-0000-0000-000000000000",
+        "output": {"type": "traversal_records"}
+      }
+    },
+    "schema_valid": false
   }
 ]

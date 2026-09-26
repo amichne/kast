@@ -8,6 +8,8 @@ import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySymbol
+import io.github.amichne.kast.query.contract.QueryWalkArrival
+import io.github.amichne.kast.query.contract.QueryWalkObservation
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.source.contract.Containment
@@ -37,6 +39,7 @@ import java.nio.charset.StandardCharsets
 private const val SOURCE_CONTEXT_LINES = 5
 private const val SOURCE_WINDOW_PROJECTION_OVERHEAD_BYTES = 64L
 private const val RELATION_OMISSION_PROJECTION_MULTIPLIER = 4
+private const val WALK_OBSERVATION_PROJECTION_MULTIPLIER = 4L
 
 /** SYMBOL already owns every Kotlin declaration family, including classes. */
 internal fun discoveryKinds(syntax: QueryDiscoverySyntax): List<SymbolNameDiscoveryKind> =
@@ -152,7 +155,9 @@ internal fun QuerySymbol.projectedUtf8Size(): Long =
                     projected.value.text.utf8Size() + SOURCE_WINDOW_PROJECTION_OVERHEAD_BYTES
                 else -> 0L
             },
-        ) + connections.map { it.canonicalProjection().utf8Size() }
+        ) +
+            connections.map { it.canonicalProjection().utf8Size() } +
+            (walkArrival as? QueryWalkArrival.Proven)?.records.orEmpty().map { it.canonicalProjection().utf8Size() }
     )
 
 internal fun QueryItemFailure.projectedUtf8Size(): Long =
@@ -176,6 +181,10 @@ internal fun QueryItemFailure.projectedUtf8Size(): Long =
         is QueryItemFailure.Source -> selector.projectedUtf8Size() + reason.toString().utf8Size()
         is QueryItemFailure.Relation ->
             saturatedSum(listOf(selector.projectedUtf8Size(), meaning.toString().utf8Size(), reason.name.utf8Size()))
+        is QueryItemFailure.Walk ->
+            saturatedSum(
+                listOf(selector.projectedUtf8Size(), meaning.toString().utf8Size(), reason.toString().utf8Size())
+            )
     }
 
 internal fun QueryRelationOmission.projectedUtf8Size(): Long {
@@ -185,6 +194,9 @@ internal fun QueryRelationOmission.projectedUtf8Size(): Long {
         saturatedSum(List(RELATION_OMISSION_PROJECTION_MULTIPLIER) { evidenceBytes }),
     )
 }
+
+internal fun QueryWalkObservation.projectedUtf8Size(): Long =
+    saturatedSum(List(WALK_OBSERVATION_PROJECTION_MULTIPLIER.toInt()) { toString().utf8Size() })
 
 private fun SymbolSelector.projectedUtf8Size(): Long = buildString {
     append(lease.workspaceRoot.value)

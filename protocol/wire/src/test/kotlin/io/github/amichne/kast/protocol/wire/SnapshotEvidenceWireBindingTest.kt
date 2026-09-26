@@ -13,7 +13,6 @@ class SnapshotEvidenceWireBindingTest {
     private val live = live("/workspace", "00000000-0000-0000-0000-000000000001", 7)
     private val published = EvidenceBasis.Published(EvidenceGeneration.parse(17).refined())
     private val source = CanonicalOperationWireBindings.sourceRead
-    private val traversal = CanonicalOperationWireBindings.traversalRun
     private val invalidPayload = WireFailure.InvalidPayload(WireValueRole.RESULT)
 
     @Test
@@ -86,32 +85,6 @@ class SnapshotEvidenceWireBindingTest {
                 live to foreignRoot,
             )) for (outcome in sourceOutcomes(basis, result)) {
             assertEquals(WireEncoding.Rejected(invalidPayload), source.encodeOutcome(outcome))
-        }
-    }
-
-    @Test
-    fun `live traversal wire root agrees with the envelope for complete and qualified outcomes`() {
-        val qualification =
-            TraversalRunQualification.terminalIncomplete(
-                    listOf(TraversalLimitationDocument.DEPTH_LIMIT_REACHED),
-                    emptyList(),
-                )
-                .refined()
-        for (root in listOf("/workspace", "/foreign")) {
-            val evidence = EvidenceEnvelope(traversal.operation.id, live, TraversalRunResult(text(root), empty()))
-            for (outcome in
-                listOf(OperationOutcome.Complete(evidence), OperationOutcome.Qualified(evidence, qualification))) {
-                if (root == "/foreign") {
-                    assertEquals(WireEncoding.Rejected(invalidPayload), traversal.encodeOutcome(outcome))
-                } else {
-                    val document = traversal.encodeOutcome(outcome).encoded()
-                    assertEquals(WireDecoding.Decoded(outcome), traversal.decodeOutcome(document.toString()))
-                    val body = document.getValue("body").jsonObject
-                    val result = body.getValue("result").jsonObject.with("snapshotRoot", JsonPrimitive("/foreign"))
-                    val conflicting = document.with("body", body.with("result", result))
-                    assertEquals(WireDecoding.Rejected(invalidPayload), traversal.decodeOutcome(conflicting.toString()))
-                }
-            }
         }
     }
 

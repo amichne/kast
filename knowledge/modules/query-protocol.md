@@ -13,7 +13,6 @@ code_sources:
   - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExactRevalidationStore.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalCheckpointDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
@@ -36,12 +35,11 @@ code_sources:
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryItemProjector.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSymbolProtocols.kt
     symbols: [CanonicalSymbolDiscoverProtocol, CanonicalSymbolInspectProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
     symbols: [CanonicalSourceReadProtocol]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalTraversalRunProtocol.kt
-    symbols: [CanonicalTraversalRunProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalDiagnosticCheckProtocol.kt
     symbols: [CanonicalDiagnosticCheckProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
@@ -57,15 +55,8 @@ code_sources:
     symbols: [SymbolSearchScope]
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceSearchScopeModel.kt
     symbols: [WorkspaceSearchScopeModel]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalRelationContinuationCodec.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt
-    symbols: [RelationContinuationDocument]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalTraversalContinuationCodec.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalContinuationDocument.kt
-    symbols: [TraversalContinuationDocument]
-  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CanonicalRelationContinuationCodecTest.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
 ---
@@ -73,7 +64,7 @@ code_sources:
 # Query protocol
 
 `query:protocol` owns reusable admission and projection for query, symbol, source,
-traversal, and diagnostic reads. Its dependencies are domain contracts
+and diagnostic reads. Its dependencies are domain contracts
 and canonical protocol contracts. It has no IntelliJ project, workspace opener,
 publication store, or worker capability.
 
@@ -120,23 +111,19 @@ or topology admission. See [source identity](../contracts/source-identity.md),
 
 An exact query's optional `SOURCE` field carries bounded normalized text and an inclusive one-based line range. Its projection admits the existing source-text and line-range types before wire encoding. Malformed source text or line coordinates reject at wire decoding; a missing requested window is reported through the finite source item failure and `SOURCE_INCOMPLETE` query qualification.
 
-Traversal upstream continuations preserve their authority version: published
-continuations use version 1 and live continuations use version 2. Structural
-schema admission does not authenticate a continuation. Decoding checks the
-authority-specific version and revision, while owner admission retains subject,
-relation, strategy, depth and scope checks. A traversal checkpoint can embed a
-relation-domain continuation while one node's relation read is unfinished;
-`CanonicalRelationContinuationCodec` and `RelationContinuationDocument` remain
-for that internal restoration. Query relation expansion returns individual
-occurrence items and structured omissions through `query.run`.
+Query walk retains the domain traversal continuation inside the bounded query
+execution checkpoint while an expansion is unfinished. The query continuation
+restores the original plan, authority, and remaining work; no separate public
+traversal or relation token is issued. Query relation expansion returns
+individual occurrence items and structured omissions through `query.run`.
 
-`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; `distinct_symbols` and set stages use the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. `QueryStateStore` shares one bounded, expiring quota between typed execution checkpoints and immutable retained results; their tokens and restoration outcomes remain separate. Traversal tokens additionally bind strategy, maximum depth and cumulative progress; older tokens without these witnesses reject. Embedded relation continuations retain earlier-page provider limitations when traversal resumes.
+`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; `distinct_symbols` and set stages use the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. `QueryStateStore` shares one bounded, expiring quota between typed execution checkpoints and immutable retained results; their tokens and restoration outcomes remain separate. An unfinished query walk keeps its domain continuation with strategy, maximum depth, cumulative progress, and earlier provider limitations inside that execution checkpoint.
 
 Query relation omission projection retains the exact subject and relation,
 provider/version, page-local observed or unmeasured omissions, bounded source
 samples and a closed remediation. Budget stops qualify that page's unmeasured
 remainder; they do not manufacture observed missing facts. Known occurrence
-facts remain separate from incomplete enumeration. Traversal
+facts remain separate from incomplete enumeration. Query walk
 projection retains cumulative progress and page-local partial node expansions;
 a bounded-fan-out remainder is explicitly unexamined rather than silently absent.
 
@@ -151,14 +138,7 @@ requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
 variants and mismatched checkpoint families.
 
-Traversal checkpoints distinguish upstream work from hosted retained output.
-The latter binds a detached suffix to the original complete, resumable, or
-terminal-incomplete coverage. Its token family does not grant permission to
-restart upstream work. Traversal token
-admission verifies canonical payload encoding and digest before the owning
-protocol checks authority, subject, strategy, scope and cumulative progress.
-
-An admitted rejection in query, source or traversal carries its existing
+An admitted rejection in query or source carries its existing
 finite reason plus the required execution-budget report. Missing metadata retains
 the unadmitted failure variant; null or malformed reports reject at the boundary.
 The [outcome contract](../contracts/operation-outcomes.md) separates this admission
@@ -209,7 +189,7 @@ across owners, or restore tokens issued before capture was installed.
 
 ## Automatic acquisition for fresh reads
 
-Fresh relation, traversal, source-symbol and query-reference reads use
+Fresh query-reference and source-symbol reads use
 `ReacquiringQueryReferences`. A missing or stale exact handle can trigger one
 bounded lookup per handle in the same invocation. The original owner, file,
 scope, kind, name and constraints remain fixed. Exact-name native indexes are

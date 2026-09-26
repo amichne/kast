@@ -15,13 +15,11 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.ReadRecoveryAction
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.recoveryAction
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.Serializable
@@ -43,13 +41,7 @@ class ReadRecoveryActionTest {
                     CanonicalSourceReadCliDocuments.project(
                         OperationOutcome.Rejected(SourceReadRejection.STALE_GENERATION)
                     ),
-                ),
-                Case(
-                    CanonicalOperation.TRAVERSAL_RUN,
-                    CanonicalReadCliDocuments.projectTraversal(
-                        OperationOutcome.Rejected(TraversalRunRejection.SELECTOR_STALE)
-                    ),
-                ),
+                )
             ) +
                 QueryReferenceRejectionReason.entries.filter(::requiresReacquisition).map { reason ->
                     Case(
@@ -80,17 +72,11 @@ class ReadRecoveryActionTest {
         assertEquals(ReadRecoveryAction.SAVE_SOURCE, SourceReadRejection.PSI_DOCUMENT_UNCOMMITTED.recoveryAction())
         assertEquals(ReadRecoveryAction.WAIT_FOR_WORKSPACE, QueryRunRejection.WorkspaceNotReady.recoveryAction())
         assertEquals(ReadRecoveryAction.RESTART_READ, SourceReadRejection.CONTINUATION_UNAVAILABLE.recoveryAction())
-        assertEquals(ReadRecoveryAction.RESTART_READ, TraversalRunRejection.CONTINUATION_UNAVAILABLE.recoveryAction())
-        assertEquals(ReadRecoveryAction.CORRECT_REQUEST, TraversalRunRejection.PLAN_REJECTED.recoveryAction())
         assertEquals(ReadRecoveryAction.REPORT_FAILURE, SourceReadRejection.CONTRACT_VIOLATION.recoveryAction())
         assertEquals(
             ReadRecoveryAction.REPORT_FAILURE,
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
                 .recoveryAction(),
-        )
-        assertEquals(
-            ReadRecoveryAction.REACQUIRE_AUTHORITY,
-            TraversalRunRejection.CONTINUATION_GENERATION_MISMATCH.recoveryAction(),
         )
     }
 

@@ -72,7 +72,8 @@ private fun PublicToolAction.lower(): Refinement<PublicToolCanonical, PublicTool
                             )
                         )
                     )
-                QueryOutputDocument.Occurrences -> Refinement.Rejected(PublicToolInputFailure.SchemaRejected)
+                QueryOutputDocument.Occurrences,
+                QueryOutputDocument.TraversalRecords -> Refinement.Rejected(PublicToolInputFailure.SchemaRejected)
             }
     }
 
@@ -226,6 +227,14 @@ private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInpu
     when (this) {
         is PublicToolWhere -> Refinement.Refined(QueryStepDocument.Where(predicate))
         is PublicToolExpandRelation -> Refinement.Refined(QueryStepDocument.Related(relation.lower()))
+        is PublicToolWalk ->
+            Refinement.Refined(
+                QueryStepDocument.Walk(
+                    relation.lower(),
+                    maximumDepth,
+                    strategy ?: TraversalStrategyDocument.BreadthFirst,
+                )
+            )
         PublicToolDistinctSymbols -> Refinement.Refined(QueryStepDocument.Distinct)
         is PublicToolConcat -> Refinement.Refined(QueryStepDocument.Concat(input.lowerCompositionInput()))
         is PublicToolIntersect -> Refinement.Refined(QueryStepDocument.Intersect(right.lowerResult()))

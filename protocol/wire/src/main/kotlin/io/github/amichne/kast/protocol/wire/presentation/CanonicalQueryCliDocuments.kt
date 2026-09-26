@@ -40,6 +40,7 @@ object CanonicalQueryCliDocuments {
                         items = result.items.values.map(QueryResultItemDocument::toCliDocument),
                         failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
                         omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
+                        walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
                         retention = result.retention,
                         nextCursor = result.nextCursor,
                         coverage = QueryCoverageCliDocument(exhaustive = true),
@@ -76,6 +77,7 @@ private fun projectQualified(
             items = result.items.values.map(QueryResultItemDocument::toCliDocument),
             failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
             omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
+            walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
             retention = result.retention,
             nextCursor = result.nextCursor,
             coverage = QueryCoverageCliDocument(exhaustive = false),
@@ -100,6 +102,7 @@ private data class QueryCompleteCliDocument(
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
     val omissions: List<QueryRelationOmissionCliDocument>,
+    @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
@@ -122,6 +125,7 @@ private data class QueryQualifiedCliDocument(
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
     val omissions: List<QueryRelationOmissionCliDocument>,
+    @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
@@ -187,6 +191,16 @@ private sealed interface QueryResultItemCliDocument {
         @SerialName("row_id")
         val rowId: String? = null,
     ) : QueryResultItemCliDocument
+
+    @Serializable
+    @SerialName("traversal_record")
+    data class TraversalRecord(
+        val ref: String,
+        val record: QueryTraversalRecordCliDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        val rowId: String? = null,
+    ) : QueryResultItemCliDocument
 }
 
 @Serializable
@@ -229,6 +243,14 @@ private sealed interface QueryItemFailureCliDocument {
         val ref: String,
         val relation: String,
         val reason: String,
+    ) : QueryItemFailureCliDocument
+
+    @Serializable
+    @SerialName("walk")
+    data class Walk(
+        val ref: String,
+        val relation: String,
+        val reason: QueryWalkFailureCliDocument,
     ) : QueryItemFailureCliDocument
 }
 
@@ -275,6 +297,8 @@ private fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument 
             )
         is QueryResultItemDocument.Occurrence ->
             QueryResultItemCliDocument.Occurrence(ref.toCliDocument(), relation.toCliDocument(), rowId?.value)
+        is QueryResultItemDocument.TraversalRecord ->
+            QueryResultItemCliDocument.TraversalRecord(ref.toCliDocument(), record.toQueryCliDocument(), rowId?.value)
     }
 
 private fun QueryRelationOmissionDocument.toCliDocument() =
@@ -295,6 +319,8 @@ private fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocumen
                 relation.cliName(),
                 reason.cliName(),
             )
+        is QueryItemFailureDocument.Walk ->
+            QueryItemFailureCliDocument.Walk(ref.toCliDocument(), relation.cliName(), reason.toQueryCliDocument())
     }
 
 /** Presentation extracts the issued token verbatim; the retained domain type still owns its family. */

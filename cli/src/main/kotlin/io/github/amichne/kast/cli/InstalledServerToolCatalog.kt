@@ -15,7 +15,6 @@ import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.registry.AgentToolDefinition
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
@@ -200,11 +199,6 @@ private enum class InstalledServerTool(
         operation = CanonicalOperation.SOURCE_READ,
         requestSerializer = SourceReadRequest.serializer(),
         route = InstalledToolRoute.Cli(listOf("source", "read")),
-    ),
-    TRAVERSAL_RUN(
-        operation = CanonicalOperation.TRAVERSAL_RUN,
-        requestSerializer = TraversalRunRequest.serializer(),
-        route = InstalledToolRoute.Cli(listOf("traversal", "run")),
     ),
     QUERY_RUN(
         operation = CanonicalOperation.QUERY_RUN,

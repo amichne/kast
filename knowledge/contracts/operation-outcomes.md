@@ -6,9 +6,11 @@ resource: file://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationO
 tags: [outcome, evidence, failure]
 timestamp: 2026-09-25T00:00:00Z
 code_sources:
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryGuidance.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadReferenceAcquisitions.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryWalkDocuments.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
     symbols: [OperationOutcome]
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
@@ -30,7 +32,7 @@ code_sources:
 - `Qualified` carries the same evidence plus a domain-owned qualification.
 - `Rejected` carries an operation-owned closed failure and no successful payload.
 
-The four canonical reads distinguish their existing finite rejection reason from
+Query, source, and diagnostic reads distinguish their finite rejection reason from
 an admitted rejection carrying that reason and a required execution-budget report.
 Wire and CLI projections preserve the reason shape and place `execution_budget`
 beside it. Missing report metadata retains the unadmitted variant; explicit null
@@ -58,7 +60,7 @@ Transport success does not imply semantic completeness. A host must preserve the
 
 The one-shot tool RPC returns a closed `complete`, `qualified`, `rejected_document`, or boundary `rejected` variant. It preserves the canonical result document under `document` for semantic outcomes, so Copilot and Pi adapters cannot turn qualified evidence into a complete result. The catalog marks `change` as `WRITE` and all direct reads as `READ`.
 
-Canonical query, source, relation and traversal failures derive a closed
+Canonical query and source failures derive a closed
 `ReadRecoveryAction`. Their CLI/tool rejected documents require `next_action`
 for both unadmitted and budget-bearing rejections. The wire retains the finite
 failure and budget; projection derives the action again after decoding rather
@@ -80,13 +82,12 @@ These directions grant no automatic retry, source write, workspace opening,
 import, or refresh capability. Qualified progress keeps its separate continuation
 actions; rejection recovery does not assert successful or complete output.
 
-Relation and traversal qualifications retain accumulated facts with explicit
-incomplete coverage. Their `recovery` list names the exhausted field and offers
-budget increases only when the reported effective limit is below the operator
-ceiling without a clamp. Otherwise it recommends reducing scope. Resumable
-qualifications direct the caller to the supplied continuation. Depth, frontier,
-indexing, omissions and provider failures have distinct guidance. None of this
-promises that a larger budget will establish completeness.
+Qualified query results retain relation omissions and walk observations alongside
+known rows. Each walk observation preserves depth, frontier progress, partial
+expansions, and complete, resumable, or terminal incomplete coverage. Query
+qualification carries the execution continuation when unfinished work is
+resumable. The query execution budget limits further work; a larger grant does
+not by itself establish completeness.
 
 Hosted hard deadline exhaustion cannot publish an unvalidated result. It returns
 `reduce_read_work` with the available admission budget; cancellation is separately

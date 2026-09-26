@@ -48,7 +48,6 @@ class OperationRegistryContractTest {
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
-                "traversal.run",
                 "diagnostic.check",
                 "change.run",
                 "change.plan",
@@ -62,6 +61,15 @@ class OperationRegistryContractTest {
         assertEquals(
             OperationLookup.Unknown(retiredRelation),
             CanonicalOperationDefinitions.registry.lookup(retiredRelation),
+        )
+        val retiredTraversal = operationId("traversal.run")
+        assertEquals(
+            CanonicalOperationResolution.Unknown(retiredTraversal),
+            CanonicalOperation.resolve(retiredTraversal),
+        )
+        assertEquals(
+            OperationLookup.Unknown(retiredTraversal),
+            CanonicalOperationDefinitions.registry.lookup(retiredTraversal),
         )
     }
 

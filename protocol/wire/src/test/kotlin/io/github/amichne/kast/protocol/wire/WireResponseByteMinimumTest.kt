@@ -5,7 +5,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -22,10 +21,6 @@ class WireResponseByteMinimumTest {
                 CanonicalOperationWireBindings.sourceRead.minimumResponseBytes to
                     CanonicalOperationWireBindings.sourceRead.encodeOutcome(
                         OperationOutcome.Rejected(SourceReadRejection.WORKSPACE_NOT_READY)
-                    ),
-                CanonicalOperationWireBindings.traversalRun.minimumResponseBytes to
-                    CanonicalOperationWireBindings.traversalRun.encodeOutcome(
-                        OperationOutcome.Rejected(TraversalRunRejection.WORKSPACE_NOT_READY)
                     ),
             )
         for ((minimum, encoded) in cases) {

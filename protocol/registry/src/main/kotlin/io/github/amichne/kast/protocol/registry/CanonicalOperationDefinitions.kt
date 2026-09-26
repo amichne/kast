@@ -56,11 +56,6 @@ import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
-import io.github.amichne.kast.protocol.contract.TraversalRunCapability
-import io.github.amichne.kast.protocol.contract.TraversalRunFailure
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 
 /** Sole metadata catalog for canonical operations and their explicit publication authority. */
 object CanonicalOperationDefinitions {
@@ -161,23 +156,6 @@ object CanonicalOperationDefinitions {
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
             schema = schema("kast.source.read.v5"),
-        )
-
-    val traversalRun =
-        definition(
-            CanonicalOperation.TRAVERSAL_RUN,
-            TraversalRunRequest::class,
-            TraversalRunResult::class,
-            TraversalRunQualification::class,
-            TraversalRunFailure::class,
-            TraversalRunCapability::class,
-            OperationLane.REGISTERED_LONG_WORK,
-            OperationEffect.NONE,
-            OperationCost.BOUNDED_READ,
-            OperationScope.SYMBOL,
-            CompletenessPolicy.QUALIFIED_ALLOWED,
-            HostedExposure.PUBLIC,
-            schema = schema("kast.traversal.run.v3"),
         )
 
     val queryRun =
@@ -290,7 +268,6 @@ object CanonicalOperationDefinitions {
             symbolDiscover,
             symbolInspect,
             sourceRead,
-            traversalRun,
             diagnosticCheck,
             change,
             changePlan,

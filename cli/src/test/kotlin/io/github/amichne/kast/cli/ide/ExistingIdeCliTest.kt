@@ -105,13 +105,12 @@ class ExistingIdeCliTest {
                 listOf("symbol", "discover"),
                 listOf("symbol", "inspect"),
                 listOf("source", "read"),
-                listOf("traversal", "run"),
                 listOf("tool", "check_diagnostics"),
             )) {
             assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(arguments))
             assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(listOf("--") + arguments))
         }
-        for (retired in listOf("query", "diagnostic")) {
+        for (retired in listOf("query", "diagnostic", "traversal")) {
             assertEquals(CliRuntimePath.INSTALLED, selectCliRuntimePath(listOf(retired)))
         }
     }

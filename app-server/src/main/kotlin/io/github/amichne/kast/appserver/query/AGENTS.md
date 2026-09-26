@@ -26,6 +26,8 @@ the full public schema bounds primitive literals and rejects unknown fields and 
 `concat` reuses the exact-reference and retained-result source DTOs. Set stages accept
 only a retained-result right operand. Issued row IDs select retained rows without
 reconstructing weaker exact references or treating a subset as complete coverage.
+The `walk` stage admits bounded depth and strategy, then projects traversal records,
+frontier progress, partial expansions, and coverage through the sole query operation.
 
 Encoding is a transport projection of retained typed syntax, not a reverse parser
 for arbitrary canonical requests. No public constructor/copy may bypass admission.

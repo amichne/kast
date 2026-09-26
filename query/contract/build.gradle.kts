@@ -14,5 +14,6 @@ dependencies {
     api(project(":relation:contract"))
     api(project(":source:contract"))
     api(project(":symbol:contract"))
+    api(project(":traversal:contract"))
     api(project(":workspace:contract"))
 }

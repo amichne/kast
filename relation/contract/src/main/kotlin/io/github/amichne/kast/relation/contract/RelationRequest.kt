@@ -9,6 +9,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 import java.nio.charset.StandardCharsets
+import java.util.Collections
 
 internal const val RELATION_CONTINUATION_FINGERPRINT_LENGTH = 64
 
@@ -277,7 +278,10 @@ private constructor(
             nextProviderCursor: RelationProviderCursor,
             limitations: Set<RelationLimitation> = emptySet(),
         ): RelationContinuation {
-            val retained = (request.retainedLimitations + limitations).filterNot { it in relationPageLimits }.toSet()
+            val retained =
+                Collections.unmodifiableSet(
+                    LinkedHashSet((request.retainedLimitations + limitations).filterNot { it in relationPageLimits })
+                )
             check(nextProviderCursor.provider == RelationProviderKind.forMeaning(request.meaning))
             val scope = request.scopeFingerprint
             return RelationContinuation(
@@ -328,7 +332,7 @@ private constructor(
                         authority,
                         nextProviderCursor,
                         fingerprint,
-                        retainedLimitations.toSet(),
+                        Collections.unmodifiableSet(LinkedHashSet(retainedLimitations)),
                     )
                 )
             } else {

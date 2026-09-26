@@ -2,7 +2,6 @@
 
 package io.github.amichne.kast.protocol.contract
 
-import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -147,6 +146,8 @@ sealed interface QueryOutputDocument {
     ) : QueryOutputDocument
 
     @Serializable @SerialName("occurrences") data object Occurrences : QueryOutputDocument
+
+    @Serializable @SerialName("traversal_records") data object TraversalRecords : QueryOutputDocument
 }
 
 @Serializable
@@ -261,6 +262,7 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
     return when (val projection = output) {
         is QueryOutputDocument.Symbols -> projection.fields.values.isUnique()
         QueryOutputDocument.Occurrences -> true
+        QueryOutputDocument.TraversalRecords -> true
     }
 }
 
@@ -287,6 +289,7 @@ private fun QueryDiscoveryDocument.isCanonical(): Boolean {
 private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
     when (this) {
         is QueryStepDocument.Related,
+        is QueryStepDocument.Walk,
         QueryStepDocument.Distinct -> true
         is QueryStepDocument.Concat ->
             when (val source = input) {
@@ -308,73 +311,6 @@ private fun <Value> List<Value>.isUniqueNonEmpty(): Boolean = isNotEmpty() && is
 private fun <Value> List<Value>.isUnique(): Boolean = size == distinct().size
 
 private val QUERY_PACKAGE_NAME = Regex("(?!.*\\.(?:[0-9.]|$))[A-Za-z_][A-Za-z0-9_.]*")
-
-data class QueryExactLocationDocument(
-    val file: ProtocolText,
-    val range: SourceRangeDocument,
-)
-
-sealed interface QueryResultItemDocument {
-    val ref: QueryReferenceDocument
-
-    data class ExactSymbol(
-        override val ref: QueryReferenceDocument.ExactSymbol,
-        val kind: SymbolKindDocument,
-        val name: ProtocolText?,
-        val location: QueryExactLocationDocument?,
-        val signature: CompilerSignatureDocument?,
-        val connections: BoundedProtocolList<RelationFactDocument>,
-        val symbolId: SymbolIdDocument,
-        val source: QuerySourceWindowDocument? = null,
-        val rowId: QueryResultRowReference? = null,
-    ) : QueryResultItemDocument
-
-    data class Occurrence(
-        override val ref: QueryReferenceDocument.ExactSymbol,
-        val relation: RelationFactDocument,
-        val rowId: QueryResultRowReference? = null,
-    ) : QueryResultItemDocument
-}
-
-/** A relation omission retains the exact subject and meaning that produced it. */
-data class QueryRelationOmissionDocument(
-    val subject: QueryReferenceDocument.ExactSymbol,
-    val relation: RelationKindDocument,
-    val evidence: RelationOmissionDocument,
-) {
-    companion object {
-        val Empty: BoundedProtocolList<QueryRelationOmissionDocument> =
-            (BoundedProtocolList.create(emptyList<QueryRelationOmissionDocument>()) as Refinement.Refined).value
-    }
-}
-
-sealed interface QueryItemFailureDocument {
-    data class Refinement(
-        val ref: QueryReferenceDocument.DeclarationCandidate,
-        val reason: QueryExactFailureDocument,
-    ) : QueryItemFailureDocument
-
-    data class ExactReference(
-        val ref: QueryReferenceDocument.ExactSymbol,
-        val reason: QueryExactFailureDocument,
-    ) : QueryItemFailureDocument
-
-    data class Predicate(
-        val ref: QueryReferenceDocument.ExactSymbol,
-        val reason: QueryPredicateFailureDocument,
-    ) : QueryItemFailureDocument
-
-    data class Source(
-        val ref: QueryReferenceDocument.ExactSymbol,
-        val reason: QuerySourceFailureDocument,
-    ) : QueryItemFailureDocument
-
-    data class Relation(
-        val ref: QueryReferenceDocument.ExactSymbol,
-        val relation: RelationKindDocument,
-        val reason: QueryRelationFailureDocument,
-    ) : QueryItemFailureDocument
-}
 
 enum class QueryExactFailureDocument {
     WORKSPACE_NOT_READY,
@@ -431,6 +367,7 @@ data class QueryRunResult(
     val items: BoundedProtocolList<QueryResultItemDocument>,
     val failures: BoundedProtocolList<QueryItemFailureDocument>,
     val omissions: BoundedProtocolList<QueryRelationOmissionDocument> = QueryRelationOmissionDocument.Empty,
+    val walkObservations: BoundedProtocolList<QueryWalkObservationDocument> = QueryWalkObservationDocument.Empty,
     val retention: QueryResultRetention = QueryResultRetention.NotRequested,
     val nextCursor: QueryResultCursor? = null,
     val executionBudget: ExecutionBudgetReport? = null,

@@ -10,6 +10,7 @@ import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryRetainedResult
+import io.github.amichne.kast.query.contract.QueryWalkCoverage
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationFact
@@ -17,6 +18,11 @@ import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
+import io.github.amichne.kast.traversal.contract.TraversalBudget
+import io.github.amichne.kast.traversal.contract.TraversalByteLimit
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalLimitation
+import io.github.amichne.kast.traversal.contract.TraversalQualification
 
 /** Mutable accounting is request-local; semantic authority remains in the typed request. */
 internal class QueryExecutionState(
@@ -42,11 +48,16 @@ internal class QueryExecutionState(
                     is QueryItemFailure.PredicateUnproven -> QueryLimitation.VISIBILITY_INCOMPLETE
                     is QueryItemFailure.Source -> QueryLimitation.SOURCE_INCOMPLETE
                     is QueryItemFailure.Relation -> QueryLimitation.RELATION_INCOMPLETE
+                    is QueryItemFailure.Walk -> QueryLimitation.TRAVERSAL_INCOMPLETE
                 }
             }
         val omissions = if (result.omissions.isEmpty()) emptyList() else listOf(QueryLimitation.RELATION_INCOMPLETE)
-        limitations += inherited + failures + omissions
-        upstreamLimitations += inherited + failures + omissions
+        val walks =
+            if (result.walkObservations.any { it.coverage.isTerminallyIncomplete() })
+                listOf(QueryLimitation.TRAVERSAL_INCOMPLETE)
+            else emptyList()
+        limitations += inherited + failures + omissions + walks
+        upstreamLimitations += inherited + failures + omissions + walks
     }
 
     fun canContinue(workRequired: Boolean): Boolean {
@@ -54,7 +65,7 @@ internal class QueryExecutionState(
             limit(QueryLimitation.WORK_LIMIT_REACHED)
             return false
         }
-        return observeTime()
+        return !workRequired || observeTime()
     }
 
     fun consume(work: Long) {
@@ -120,6 +131,50 @@ internal class QueryExecutionState(
         val resources = remainingResources(resultCapacity) ?: return null
         val bytes = childByteAllowance() ?: return null
         return RelationBudget(resources, RelationByteLimit.parse(bytes).refined())
+    }
+
+    fun traversalBudget(
+        resultCapacity: Int,
+        requestedDepth: TraversalDepthLimit,
+        ceiling: TraversalBudget,
+    ): TraversalBudget? {
+        val resources = remainingResources(minOf(resultCapacity, ceiling.records.value)) ?: return null
+        val bytes = childByteAllowance() ?: return null
+        val records = resources.resultLimit
+        val returnedBytes = TraversalByteLimit.parse(minOf(bytes, ceiling.returnedBytes.value)).refined()
+        val work = WorkUnitLimit.parse(minOf(resources.workUnitLimit.value, ceiling.workUnits.value)).refined()
+        val time =
+            ElapsedTimeLimitMillis.parse(minOf(resources.elapsedTimeLimit.value, ceiling.elapsedTime.value)).refined()
+        val oneHopResources =
+            ResourceBudget(
+                ResultLimit.parse(minOf(records.value, ceiling.oneHop.resources.resultLimit.value)).refined(),
+                WorkUnitLimit.parse(minOf(work.value, ceiling.oneHop.resources.workUnitLimit.value)).refined(),
+                ElapsedTimeLimitMillis.parse(minOf(time.value, ceiling.oneHop.resources.elapsedTimeLimit.value))
+                    .refined(),
+            )
+        val oneHop =
+            RelationBudget(
+                oneHopResources,
+                RelationByteLimit.parse(minOf(returnedBytes.value, ceiling.oneHop.returnedBytes.value)).refined(),
+            )
+        return TraversalBudget(
+            records = records,
+            returnedBytes = returnedBytes,
+            workUnits = work,
+            elapsedTime = time,
+            depth = requestedDepth,
+            frontier = ceiling.frontier,
+            oneHop = oneHop,
+        )
+    }
+
+    fun traversalLimited(qualification: TraversalQualification) {
+        if (
+            qualification is TraversalQualification.TerminalIncomplete ||
+                TraversalLimitation.ONE_HOP_INCOMPLETE in qualification.limitations
+        ) {
+            upstreamLimit(QueryLimitation.TRAVERSAL_INCOMPLETE)
+        }
     }
 
     /** Child coverage proves incomplete discovery; aggregate result capacity remains query-owned. */
@@ -251,6 +306,10 @@ internal val recoverableRelationPageLimits =
         RelationLimitation.WORK_LIMIT_REACHED,
         RelationLimitation.TIME_LIMIT_REACHED,
     )
+
+private fun QueryWalkCoverage.isTerminallyIncomplete(): Boolean =
+    this is QueryWalkCoverage.TerminalIncomplete ||
+        (this is QueryWalkCoverage.Resumable && TraversalLimitation.ONE_HOP_INCOMPLETE in limitations)
 
 private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
     when (this) {

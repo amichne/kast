@@ -34,9 +34,6 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
-import io.github.amichne.kast.protocol.contract.TraversalRunFailure
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import kotlinx.serialization.Serializable
 
 val indexSyncCliProjector =
@@ -73,15 +70,6 @@ val sourceReadCliProjector =
         SourceReadFailure,
     > { outcome ->
         CanonicalSourceReadCliDocuments.project(outcome)
-    }
-
-val traversalRunCliProjector =
-    OperationOutcomeProjector<
-        TraversalRunResult,
-        TraversalRunQualification,
-        TraversalRunFailure,
-    > { outcome ->
-        CanonicalReadCliDocuments.projectTraversal(outcome)
     }
 
 val queryRunCliProjector =

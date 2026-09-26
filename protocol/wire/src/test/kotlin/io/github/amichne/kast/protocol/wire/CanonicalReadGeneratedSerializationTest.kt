@@ -11,53 +11,15 @@ import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocume
 import io.github.amichne.kast.protocol.contract.DiagnosticLocationDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
-import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
-import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class CanonicalReadGeneratedSerializationTest {
-    @Test
-    fun `traversal request round trips closed start and resume positions`() {
-        val codec = CanonicalReadSerializers.traversalRunRequest
-        val start =
-            TraversalRunRequest(
-                text("exact:Target"),
-                RelationKindDocument.CALLEES,
-                count(3),
-                count(25),
-            )
-        val startDocument = json(requireNotNull(javaClass.getResource("/traversal/start-request.json")).readText())
-        assertEquals(WireValueEncoding.Encoded(startDocument), codec.encode(start, WireValueRole.REQUEST))
-        assertEquals(WireDecoding.Decoded(start), codec.decode(startDocument, WireValueRole.REQUEST))
-
-        val continuation = traversalContinuation("resume")
-        val resume = start.copy(position = TraversalRunPositionDocument.Resume(continuation))
-        val resumeDocument = json(requireNotNull(javaClass.getResource("/traversal/resume-request.json")).readText())
-        assertEquals(
-            WireValueEncoding.Encoded(resumeDocument),
-            codec.encode(resume, WireValueRole.REQUEST),
-        )
-        assertEquals(WireDecoding.Decoded(resume), codec.decode(resumeDocument, WireValueRole.REQUEST))
-        assertEquals(
-            WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REQUEST)),
-            codec.decode(
-                json(
-                    """{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"resume","continuation":"bad"}}"""
-                ),
-                WireValueRole.REQUEST,
-            ),
-        )
-    }
-
     @Test
     fun `generated qualification document preserves hyphenated names and closed variants`() {
         val codec = CanonicalReadSerializers.symbolDiscoverQualification
@@ -187,19 +149,7 @@ class CanonicalReadGeneratedSerializationTest {
 
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
 
-    private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refinedValue()
-
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
-
-    private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
-        val payload = payloadText.toByteArray()
-        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return TraversalContinuationDocument.parse("traversal-continuation:v1:$encoded:$digest").refinedValue()
-    }
 
     private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
         when (this) {

@@ -38,7 +38,6 @@ internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
         "tool",
         "symbol",
         "source",
-        "traversal",
         "change" -> CliRuntimePath.EXISTING_IDE
         else -> CliRuntimePath.INSTALLED
     }

@@ -41,10 +41,10 @@ This example filters public functions before finding their callers:
 | Part | Supported values |
 | --- | --- |
 | Sources | `search_declarations`, `all_declarations`, `symbol_refs`, `result` |
-| Steps | `where`, `expand_relation`, `concat`, `intersect`, `union`, `difference`, `distinct_symbols` |
+| Steps | `where`, `expand_relation`, `walk`, `concat`, `intersect`, `union`, `difference`, `distinct_symbols` |
 
 Put the source and steps inside `request` with `action: "run"`. Choose an optional
-typed `output` to present symbols or individual relation occurrences.
+typed `output` to present symbols, individual relation occurrences, or depth-bearing traversal records.
 The other actions are `resume` and `read_result`; each accepts only its own fields.
 
 Step order changes the result:
@@ -65,6 +65,7 @@ Kast preserves every explicit step in order.
 | `request.output: null` or omitted | Symbols with name and location |
 | `request.output: {"type":"symbols","fields":[]}` | Mandatory identity and kind only |
 | `request.output: {"type":"occurrences"}` | One row per relation occurrence, including repeated use sites |
+| `request.output: {"type":"traversal_records"}` | One row per reached traversal record, including its depth and relation fact |
 | Duplicate symbol projection fields | Rejected request |
 
 ## Reuse an exact symbol
@@ -194,6 +195,7 @@ through one separately supplied retained result.
 The checkpoint retains:
 
 - unfinished relation expansion
+- unfinished walk frontier and its domain continuation
 - pending output
 - identities and accumulated rows at distinct and set stages
 - pending concatenated input
@@ -247,27 +249,44 @@ define checkpoint size, count, aggregate bytes, and lifetime.
 - Preserve each exact subject reference through expansion; destinations may be in other files and packages. A returned execution continuation stays bound to the query and semantic basis.
 - Keep incomplete upstream coverage after buffered output drains.
 
-## Traverse a large graph
+## Walk relationships in a query
 
-`traverse_relations` exposes `traversal.run`.
+Add `walk` to the ordered steps and select `traversal_records` to see each
+reached record with its depth and relation fact:
 
-Use these strategy rules:
+```json
+{
+  "request": {
+    "action": "run",
+    "source": {"type":"symbol_refs","symbol_refs":["<issued exact ref>"]},
+    "steps": [{"type":"walk","relation":"callers","maximum_depth":3,"strategy":{"type":"breadth_first"}}],
+    "output": {"type":"traversal_records"}
+  }
+}
+```
 
-- Include `"strategy": {"type": "breadth_first"}` in tool requests.
-- Expect the direct CLI to supply breadth-first strategy when omitted.
-- Finish one node's resumable relation before moving to the next node.
-- Use `bounded_fan_out` with `maximumEdgesPerNode` to limit each node.
-- Keep truncated fan-out coverage explicitly incomplete.
+`maximum_depth` accepts integers from 1 to 1000. The active hosted traversal budget
+may set a lower ceiling; requests above it are rejected before traversal begins.
+Omit `strategy` to use breadth-first
+exploration, or select `{"type":"bounded_fan_out","maximumEdgesPerNode":20}`
+to cap each node's edges. The query execution budget bounds total work and
+result size. The existing traversal engine owns frontier and one-hop limits.
+
+The result's `walk_observations` report each subject, requested relation and
+depth, strategy, expanded frontier count, progress, partial expansions, and
+coverage. Query execution continuation resumes unfinished work; a walk does
+not issue a separate traversal token. Known records remain usable when
+coverage is incomplete.
 
 An exact edge from a terminal-qualified relation remains eligible for later query
-stages and traversal reads. Its omission stays attached to the aggregate after
-known work and buffered output finish. A terminal child has no continuation of
-its own; the parent can still have resumable downstream work. Fully consuming a
-child limited only by page capacity does not leave permanent incompleteness.
+stages. Its omission stays attached to the aggregate after known work and
+buffered output finish. A terminal child has no continuation of its own; the
+parent query can still have resumable downstream work. Fully consuming a child
+limited only by page capacity does not leave permanent incompleteness.
 
 Traversal cannot establish absence in omitted subtrees.
 
-Each page exposes cumulative progress:
+Each walk observation exposes cumulative progress:
 
 | Field | Meaning |
 | --- | --- |
@@ -284,8 +303,7 @@ relation output at that node, not the exploration state of every returned target
 - Every resumable page must advance its checkpoint.
 - `no-progress` is terminal.
 - Time budgets renew for each request.
-- Subject, relation, scope, strategy, and depth remain bound to the continuation.
-- Older tokens without progress and strategy witnesses require a restart.
+- Subject, relation, scope, strategy, and depth remain bound to the query continuation.
 
 Use [Symbol results](/reference/symbols) to distinguish declarations from connections.
 
@@ -295,7 +313,7 @@ Use [Read a response](/reference/responses) before interpreting an empty result.
 
 Elapsed time is an observation; the time allowance is an admitted grant.
 
-When execution exceeds the grant, traversal:
+When execution exceeds the grant, the query walk:
 
 - retains measured time and proven facts
 - stops further reads
@@ -312,10 +330,9 @@ Keep operational grants separate from semantic scope:
 | --- | --- |
 | `execution_budget` | Time, provider work, results, and encoded bytes for one request |
 | Relation `limit` | Relation page capacity |
-| Traversal `maximumResults` | Traversal page capacity |
 | Source `entityLimit` | Source-entity page capacity |
-| Traversal `maximumDepth` | Requested graph depth |
-| Traversal `strategy` | Requested exploration policy |
+| Walk `maximum_depth` | Requested graph depth |
+| Walk `strategy` | Requested exploration policy |
 
 A continuation may request a larger execution grant without changing its query.
 
@@ -353,7 +370,7 @@ Source containment is separate from recursive directory or package discovery.
 | Query symbol output | Related declarations with retained connections |
 | Query occurrence output | Individual relation facts, including repeated call sites |
 | `distinct_symbols` | Changed declaration cardinality at its pipeline stage |
-| `traverse_relations` | Bounded reachability with depth, strategy, and coverage |
+| Query traversal-record output | Bounded reachability with depth, strategy, progress, and coverage |
 
 Traversal does not predict which edits break callers or which tests must run.
 

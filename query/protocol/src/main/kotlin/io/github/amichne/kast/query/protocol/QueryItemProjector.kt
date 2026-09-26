@@ -9,9 +9,12 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceWindowDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
+import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
+import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolSource
+import io.github.amichne.kast.query.contract.QueryWalkArrival
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 
 internal class QueryItemProjector(private val authority: QueryReferenceAuthority) {
@@ -19,6 +22,25 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
         when (output) {
             is QueryOutputDocument.Symbols -> projectSymbols(output, items)
             QueryOutputDocument.Occurrences -> projectOccurrences(items)
+            QueryOutputDocument.TraversalRecords -> projectTraversalRecords(items)
+        }
+
+    private fun projectTraversalRecords(items: List<QuerySymbol>): QueryProjection<QueryResultItemDocument> =
+        items.mapProjected { symbol ->
+            val record =
+                (symbol.walkArrival as? QueryWalkArrival.Proven)?.records?.singleOrNull() ?: return@mapProjected null
+            val token =
+                when (val issued = authority.issueExact(symbol.selector)) {
+                    is ExactSelectorIssuance.Issued -> issued.selector
+                    is ExactSelectorIssuance.Rejected -> return@mapProjected null
+                }
+            val depth =
+                TraversalDepthDocument.parse(record.depth.value).refinedForQueryOrNull() ?: return@mapProjected null
+            val relation = record.fact.protocolDocument(authority) ?: return@mapProjected null
+            QueryResultItemDocument.TraversalRecord(
+                QueryReferenceDocument.ExactSymbol(token),
+                TraversalRecordDocument(depth, relation),
+            )
         }
 
     private fun projectOccurrences(items: List<QuerySymbol>): QueryProjection<QueryResultItemDocument> =

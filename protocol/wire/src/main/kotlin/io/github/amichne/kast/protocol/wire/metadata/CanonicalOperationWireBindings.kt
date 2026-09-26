@@ -17,7 +17,7 @@ private data class OperationRegistryOperationDocument(
     val intents: List<String>,
 )
 
-/** Sole generated serializer binding catalog for the thirteen production operation definitions. */
+/** Sole generated serializer binding catalog for the production operation definitions. */
 object CanonicalOperationWireBindings {
     val operationRegistryDocument: String =
         wireJson.encodeToString(
@@ -107,17 +107,6 @@ object CanonicalOperationWireBindings {
                 ReadRejectionBudgets.source,
             ),
         )
-    val traversalRun =
-        OperationWireBinding(
-            CanonicalOperationDefinitions.traversalRun,
-            GeneratedOperationSerializers(
-                CanonicalReadSerializers.traversalRunRequest,
-                CanonicalReadSerializers.traversalRunResult,
-                CanonicalReadSerializers.traversalRunQualification,
-                CanonicalReadSerializers.traversalRunRejection,
-                ReadRejectionBudgets.traversal,
-            ),
-        )
     val queryRun =
         OperationWireBinding(
             CanonicalOperationDefinitions.queryRun,
@@ -197,7 +186,6 @@ object CanonicalOperationWireBindings {
                         symbolDiscover,
                         symbolInspect,
                         sourceRead,
-                        traversalRun,
                         diagnosticCheck,
                         change,
                         changePlan,
