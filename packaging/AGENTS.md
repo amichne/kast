@@ -33,7 +33,6 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [released_upgrade_acceptance.py](released_upgrade_acceptance.py) - adjacent original-release upgrade and retained installation evidence.
 
 - [hosted_wire_schema.py](hosted_wire_schema.py) - exact staged-jar endpoint schema admission for native peer frames.
-- [hosted_raw_symbol_regression.py](hosted_raw_symbol_regression.py) - raw discovery candidates and compiler refinement through both read surfaces.
 - [released_acceptance_product.py](released_acceptance_product.py) - original release assets through the tagged public installer in an owned fixture.
 - [released_payload_identity.py](released_payload_identity.py) - installed payload comparison against original archive bytes.
 - [released_tool_inventory.py](released_tool_inventory.py) - complete installed catalog and canonical bindings.

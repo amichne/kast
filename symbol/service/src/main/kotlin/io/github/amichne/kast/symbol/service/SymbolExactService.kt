@@ -20,7 +20,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.semanticReadValidation
 
-/** Current-generation admission owner for public `symbol.resolve` and `symbol.inspect`. */
+/** Current-generation admission owner for internal exact resolution. */
 class SymbolExactService(
     private val authorities: SemanticReadValidationPort,
     private val compiler: SymbolExactCompilerPort,

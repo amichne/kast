@@ -63,7 +63,6 @@
     <ID>CyclomaticComplexMethod:SidecarBootstrapAttemptLock.kt:SidecarBootstrapAttemptLock$fun &lt;Value> withAcquired: SidecarBootstrapAttemptLockExecution&lt;Value></ID>
     <ID>CyclomaticComplexMethod:SidecarCacheLifecycle.kt:SidecarCacheIdentityFile$fun record: CacheIdentityTransition</ID>
     <ID>CyclomaticComplexMethod:SidecarCacheLifecycle.kt:private fun readIdentity: CacheIdentityRead</ID>
-    <ID>FunctionOnlyReturningConstant:CliNativeTransportTest.kt:CliNativeTransportTest$private fun symbolDiscoverDocument: String</ID>
     <ID>InvalidPackageDeclaration:CliCommandGraph.kt:package io.github.amichne.kast.cli.command</ID>
     <ID>InvalidPackageDeclaration:CliCommandModel.kt:package io.github.amichne.kast.cli.command</ID>
     <ID>InvalidPackageDeclaration:CliNativeTransportTest.kt:package io.github.amichne.kast.cli</ID>

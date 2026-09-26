@@ -29,8 +29,6 @@ import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import java.security.MessageDigest
 import java.util.Base64
@@ -145,7 +143,7 @@ class CanonicalRequestDtoSerializationTest {
     fun `all canonical requests own their wire serializer`() {
         val serializers = canonicalRequestSerializers()
 
-        assertEquals(10, serializers.size)
+        assertEquals(8, serializers.size)
         assertFalse(serializers.any { "WireDocument" in it.descriptor.serialName })
     }
 
@@ -246,8 +244,6 @@ class CanonicalRequestDtoSerializationTest {
         listOf(
             IndexSyncRequest.serializer(),
             TopologyBuildRequest.serializer(),
-            SymbolDiscoverRequest.serializer(),
-            SymbolInspectRequest.serializer(),
             SourceReadRequest.serializer(),
             QueryRunRequest.serializer(),
             DiagnosticCheckRequest.serializer(),

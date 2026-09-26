@@ -140,8 +140,7 @@ internal object McpStructuredResults {
     fun validationSummary(content: JsonObject?): String {
         val data = content?.get("data") as? JsonObject
         if (data == null) return "Workspace validation rejected: ${errorCode(content)}"
-        return listOf("discovery", "exactInspection", "sourceRead", "relation", "diagnostics").joinToString("; ") { name
-            ->
+        return listOf("declarationQuery", "sourceRead", "relation", "diagnostics").joinToString("; ") { name ->
             val probe = data[name] as? JsonObject
             "$name ${probe?.get("status")?.jsonPrimitive?.content ?: "unverified"}"
         }

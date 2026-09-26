@@ -7,21 +7,16 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.protocol.CanonicalDiagnosticCheckProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
-import io.github.amichne.kast.query.protocol.CanonicalSymbolDiscoverProtocol
-import io.github.amichne.kast.query.protocol.CanonicalSymbolInspectProtocol
 import io.github.amichne.kast.query.protocol.SourceProtocolBudget
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.source.contract.SourceTextByteLimit
 import io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
@@ -37,31 +32,8 @@ internal suspend fun evaluateHostedCanonicalQuery(
     continuations: IntellijSourceReadContinuations,
 ): HostedResponse {
     val services = HostedSemanticServices(project, context)
-    val budgets = services.budgets
-    val discovery = services.discovery
-    val exact = services.exact
-    val references = services.readReferences
     return when (request) {
         is HostedRequest.Query -> evaluateHostedQuery(project, services, context, request, continuations)
-        is HostedRequest.Discover ->
-            HostedResponse.Canonical.encode(
-                CanonicalOperationWireBindings.symbolDiscover,
-                CanonicalSymbolDiscoverProtocol(discovery, references)
-                    .execute(request.request, context.authority, budgets.hostedDiscoveryBudget),
-                limits = context.limits,
-            )
-        is HostedRequest.Inspect ->
-            HostedResponse.Canonical.encode(
-                CanonicalOperationWireBindings.symbolInspect,
-                CanonicalSymbolInspectProtocol(
-                        exact,
-                        references,
-                        services.revalidationReferences,
-                        services.revalidation,
-                    )
-                    .execute(request.request, context.authority),
-                limits = context.limits,
-            )
         is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)
         is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(project, services, context, request)
     }
@@ -151,11 +123,6 @@ internal class HostedSemanticBudgets(
             fixed(QueryByteLimit.parse(limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value.toLong())),
         )
 
-    val hostedDiscoveryBudget =
-        SymbolDiscoveryBudget(
-            hostedQueryBudget.resources,
-            fixed(SymbolDiscoveryByteLimit.parse(grant.returnedBytes.effective.value)),
-        )
     val hostedRelationBudget =
         RelationBudget(
             hostedQueryBudget.resources,

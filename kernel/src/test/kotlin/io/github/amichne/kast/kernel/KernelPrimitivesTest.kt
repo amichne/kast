@@ -6,10 +6,10 @@ import org.junit.jupiter.api.Test
 class KernelPrimitivesTest {
     @Test
     fun `permanent identities refine canonical raw values`() {
-        val operation = OperationId.parse("symbol.discover")
+        val operation = OperationId.parse("query.run")
         val capability = CapabilityId.parse("symbol.read")
 
-        assertEquals("symbol.discover", operation.refinedValue().value)
+        assertEquals("query.run", operation.refinedValue().value)
         assertEquals("symbol.read", capability.refinedValue().value)
         assertEquals(
             PermanentIdentityFailure.BLANK,
@@ -53,7 +53,7 @@ class KernelPrimitivesTest {
     fun `semantic outcomes retain operation and generation evidence`() {
         val evidence =
             EvidenceEnvelope(
-                operation = OperationId.parse("symbol.discover").refinedValue(),
+                operation = OperationId.parse("query.run").refinedValue(),
                 generation = EvidenceGeneration.parse(7).refinedValue(),
                 payload = listOf("io.github.Example"),
             )
@@ -62,7 +62,7 @@ class KernelPrimitivesTest {
         val qualified: OperationOutcome<List<String>, String, String> = OperationOutcome.Qualified(evidence, "bounded")
         val rejected: OperationOutcome<List<String>, String, String> = OperationOutcome.Rejected("not-ready")
 
-        assertEquals("symbol.discover", complete.evidence().operation.value)
+        assertEquals("query.run", complete.evidence().operation.value)
         assertEquals(EvidenceBasis.Published(EvidenceGeneration.parse(7).refinedValue()), qualified.evidence().basis)
         assertEquals("not-ready", rejected.rejectionReason())
         assertEquals(

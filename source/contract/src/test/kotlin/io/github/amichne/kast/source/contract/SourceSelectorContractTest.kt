@@ -23,7 +23,7 @@ import kotlin.test.assertNotEquals
 
 class SourceSelectorContractTest {
     @Test
-    fun `file and range source anchors retain their decoded scope constraints`() {
+    fun `range source anchors retain their decoded scope constraints`() {
         val snapshot = snapshot("fun x() = 1\n")
         val scope =
             SymbolSearchScope.Workspace(
@@ -39,15 +39,12 @@ class SourceSelectorContractTest {
                     SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("main").refined()))
                         .refined(),
             )
-        val file = CandidateSelector.restoreFile(snapshot.lease, snapshot.file, scope, constraints)
         val range = CandidateSelector.restoreRange(snapshot.lease, snapshot.file, 0, 3, scope, constraints).refined()
 
-        for (candidate in listOf(file, range)) {
-            assertEquals(
-                SourceReadScope.Constrained(scope, constraints),
-                SourceReadAnchor.Candidate(candidate).readScope(),
-            )
-        }
+        assertEquals(
+            SourceReadScope.Constrained(scope, constraints),
+            SourceReadAnchor.Candidate(range).readScope(),
+        )
     }
 
     @Test

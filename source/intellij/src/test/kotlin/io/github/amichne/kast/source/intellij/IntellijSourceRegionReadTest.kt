@@ -42,38 +42,6 @@ import org.junit.jupiter.api.Test
 
 class IntellijSourceRegionReadTest {
     @Test
-    fun `file candidate enters source port and establishes exact file authority`() {
-        val text = "fun subject() = 1\n"
-        val snapshot = snapshot(text)
-        val candidate = CandidateSelector.restoreFile(snapshot.lease, snapshot.file)
-        val fileSelector =
-            SourceSelector.issueRoot(
-                range(snapshot, 0, text.length),
-                SourceRegionKind.FILE,
-            )
-        val port =
-            IntellijSourceReadPort(
-                IntellijSourceRegionAccess { _, request, _ ->
-                    assertEquals(candidate, (request.anchor as SourceReadAnchor.Candidate).selector)
-                    IntellijSourceRegionAccessResult.Selected(
-                        IntellijSelectedSourceCapture.create(
-                                snapshot,
-                                fileSelector,
-                                fileSelector,
-                                text,
-                            )
-                            .refined()
-                    )
-                }
-            )
-
-        val result = runSuspend { port.read(context(snapshot), request(candidate)) } as SourceReadResult.Complete
-
-        assertEquals(SourceRegionKind.FILE, result.region.kind)
-        assertEquals(text, (result.text as SourceTextProjection.Returned).text)
-    }
-
-    @Test
     fun `range candidate enters source port without acquiring symbol authority`() {
         val text = "fun subject() = 1\n"
         val snapshot = snapshot(text)

@@ -28,12 +28,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
-import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import kotlinx.serialization.Serializable
 
 val indexSyncCliProjector =
@@ -43,24 +37,6 @@ val indexSyncCliProjector =
         IndexSyncRejection,
     > { outcome ->
         CanonicalIndexCliDocuments.project(outcome)
-    }
-
-val symbolDiscoverCliProjector =
-    OperationOutcomeProjector<
-        SymbolDiscoverResult,
-        SymbolDiscoverQualification,
-        SymbolDiscoverRejection,
-    > { outcome ->
-        CanonicalSymbolCliDocuments.projectDiscovery(outcome)
-    }
-
-val symbolInspectCliProjector =
-    OperationOutcomeProjector<
-        SymbolInspectResult,
-        SymbolInspectQualification,
-        SymbolInspectRejection,
-    > { outcome ->
-        CanonicalSymbolCliDocuments.projectInspection(outcome)
     }
 
 val sourceReadCliProjector =

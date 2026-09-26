@@ -23,13 +23,11 @@ internal class RecordingCatalogSource(
 
 internal fun capabilitySchema(): String {
     val policy = JsonPrimitive(CanonicalAgentToolDefinitions.policy.text)
-    val symbolDescription = JsonPrimitive(CanonicalAgentToolDefinitions.symbolLookup.description.value)
     val changeDescription = JsonPrimitive(CanonicalAgentToolDefinitions.changeApply.description.value)
     val source =
         checkNotNull(RecordingCatalogSource::class.java.getResource("/kast-provider-capability.json"))
             .readText()
             .replace("@POLICY@", policy.toString())
-            .replace("@SYMBOL_DESCRIPTION@", symbolDescription.toString())
             .replace("@CHANGE_DESCRIPTION@", changeDescription.toString())
     val json = Json { ignoreUnknownKeys = true }
     val overrides =

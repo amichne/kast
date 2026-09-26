@@ -21,22 +21,10 @@ internal object KastObserverSnapshotMain {
                 pages =
                     listOf(
                         ObserverSnapshotPage(
-                            slug = "kast-observer-symbol-source",
-                            title = "Symbol and source rendering",
+                            slug = "kast-observer-source",
+                            title = "Source rendering",
                             items =
-                                listOf(
-                                    presentation(
-                                        "symbol.discover",
-                                        KastObserverFixtures.symbolDiscovery,
-                                        observerDirectory,
-                                    ),
-                                    presentation(
-                                        "symbol.inspect",
-                                        KastObserverFixtures.symbolInspection,
-                                        observerDirectory,
-                                    ),
-                                    presentation("source.read", KastObserverFixtures.sourceRead, observerDirectory),
-                                ),
+                                listOf(presentation("source.read", KastObserverFixtures.sourceRead, observerDirectory)),
                         ),
                         ObserverSnapshotPage(
                             slug = "kast-observer-semantic-walk",

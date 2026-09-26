@@ -14,8 +14,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
@@ -106,10 +104,6 @@ internal sealed interface HostedRequest {
 
     data class Query(override val root: CanonicalWorkspaceRoot, val request: QueryRunRequest) : Read
 
-    data class Discover(override val root: CanonicalWorkspaceRoot, val request: SymbolDiscoverRequest) : Read
-
-    data class Inspect(override val root: CanonicalWorkspaceRoot, val request: SymbolInspectRequest) : Read
-
     data class Source(override val root: CanonicalWorkspaceRoot, val request: SourceReadRequest) : Read
 
     data class Diagnostic(override val root: CanonicalWorkspaceRoot, val request: DiagnosticCheckRequest) : Read
@@ -182,8 +176,6 @@ internal object HostedRequests {
                         }
                 }
                 "QUERY_RUN",
-                "SYMBOL_DISCOVER",
-                "SYMBOL_INSPECT",
                 "SOURCE_READ",
                 "DIAGNOSTIC_CHECK",
                 "CHANGE_PLAN" -> {
@@ -201,14 +193,6 @@ internal object HostedRequests {
                         "QUERY_RUN" ->
                             decode(CanonicalOperationWireBindings.queryRun.decodeRequest(envelope)) {
                                 HostedRequest.Query(root, it)
-                            }
-                        "SYMBOL_DISCOVER" ->
-                            decode(CanonicalOperationWireBindings.symbolDiscover.decodeRequest(envelope)) {
-                                HostedRequest.Discover(root, it)
-                            }
-                        "SYMBOL_INSPECT" ->
-                            decode(CanonicalOperationWireBindings.symbolInspect.decodeRequest(envelope)) {
-                                HostedRequest.Inspect(root, it)
                             }
                         "SOURCE_READ" ->
                             decode(CanonicalOperationWireBindings.sourceRead.decodeRequest(envelope)) {

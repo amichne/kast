@@ -45,7 +45,7 @@ class AgentSessionProjectionTest {
         val copilotTool = copilot.tools.single()
         assertEquals(copilotTool.name, codexTool.getValue("name").jsonPrimitive.content)
         assertEquals(copilotTool.description, codexTool.getValue("description").jsonPrimitive.content)
-        assertEquals("symbol.discover", copilotTool.operationId)
+        assertEquals("query.run", copilotTool.operationId)
         assertEquals("intellij_read", copilotTool.effect)
     }
 
@@ -65,7 +65,7 @@ class AgentSessionProjectionTest {
 }
 
 internal fun agentSessionBootstrapFixture(): AgentSessionBootstrap {
-    val metadata = CanonicalAgentToolDefinitions.symbolLookup
+    val metadata = CanonicalAgentToolDefinitions.query
     val schema =
         when (
             val compilation =

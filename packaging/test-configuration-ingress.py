@@ -70,7 +70,7 @@ class ConfigurationIngressTest(unittest.TestCase):
     def test_named_reads_and_third_party_values_are_not_blanket_rejected(self):
         source = 'System.getenv("KAST_INDEXER_MAX_HEAP"); System.getProperty("java.home"); System.getenv("GITHUB_TOKEN")'
         self.assertEqual([], violations('cli/Ingress.kt', source, {'KAST_INDEXER_MAX_HEAP'}, {'cli/Ingress.kt'}))
-        self.assertEqual([], violations('core/Pure.kt', 'val KAST_OPERATION = "symbol.inspect"', set(), set()))
+        self.assertEqual([], violations('core/Pure.kt', 'val KAST_OPERATION = "query.run"', set(), set()))
 
 if __name__ == '__main__':
     unittest.main()

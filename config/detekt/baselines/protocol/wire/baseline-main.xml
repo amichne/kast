@@ -14,7 +14,6 @@
     <ID>InvalidPackageDeclaration:CanonicalReadSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:CanonicalSourceReadDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:CanonicalSourceReadSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
-    <ID>InvalidPackageDeclaration:CanonicalSymbolSerializers.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:TopologyBuildRejectionDocument.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>InvalidPackageDeclaration:TopologyCoverageDocuments.kt:package io.github.amichne.kast.protocol.wire</ID>
     <ID>LongMethod:CanonicalSourceReadSerializers.kt:private fun SourceEntityWireDocument.toContract: WireDocumentConversion&lt;SourceEntityDocument></ID>
@@ -54,8 +53,6 @@
     <ID>NamedArguments:CanonicalSymbolDocuments.kt:SymbolWireDocument( selector.value, kind.toWireDocument(), name.value, when (val identity = qualifiedIdentity) { is SymbolQualifiedIdentityDocument.Available -> identity.value.value SymbolQualifiedIdentityDocument.Unavailable -> null }, file.value, range.toWireDocument(), compilerEvidence.toWireDocument(), )</ID>
     <ID>NamedArguments:CanonicalSymbolDocuments.kt:TextMatch( candidateSelector.value, query.value, file.value, range.toWireDocument(), )</ID>
     <ID>NamedArguments:CanonicalSymbolDocuments.kt:combineConverted( candidateSelector.toProtocolText(), file.toProtocolText(), range.toContract(), ::RelationOccurrenceDocument, )</ID>
-    <ID>NamedArguments:CanonicalSymbolDocuments.kt:combineConverted( candidateSelector.toProtocolText(), name.toProtocolText(), file.toProtocolText(), offset.toProtocolOffset(), ) { selector, name, file, offset -> SymbolDiscoveryDocument.Declaration(selector, kind.toDiscoveryKind(), name, file, offset) }</ID>
-    <ID>NamedArguments:CanonicalSymbolDocuments.kt:combineConverted( candidateSelector.toProtocolText(), query.toProtocolText(), file.toProtocolText(), range.toContract(), ) { selector, query, file, range -> SymbolDiscoveryDocument.TextMatch(selector, query, file, range) }</ID>
     <ID>NamedArguments:CanonicalSymbolDocuments.kt:combineConverted( qualifiedIdentity.toProtocolText(), receiver.toContract(), contextReceivers.toProtocolTextList(), returnType.toProtocolText(), ) { qualified, receiver, contextReceivers, returnType -> CompilerSignatureDocument.Property( qualified, receiver, contextReceivers, returnType, ) }</ID>
     <ID>NamedArguments:CanonicalSymbolDocuments.kt:combineConverted( qualifiedIdentity.toProtocolText(), receiver.toContract(), contextReceivers.toProtocolTextList(), valueParameters.toProtocolTextList(), CompilerTypeParameterCountDocument.parse(typeParameterCount).toWireDocumentConversion(), ) { qualified, receiver, contexts, parameters, typeParameters -> CompilerSignatureDocument.Function( qualified, receiver, contexts, parameters, typeParameters, ) }</ID>
     <ID>NamedArguments:CanonicalSymbolDocuments.kt:combineConverted( selector.toProtocolText(), name.toProtocolText(), qualifiedIdentity.toQualifiedIdentity(), file.toProtocolText(), range.toContract(), ) { selector, name, qualifiedIdentity, file, range -> AdmittedSymbolFields(selector, name, qualifiedIdentity, file, range) }</ID>
@@ -91,7 +88,6 @@
     <ID>UnusedPrivateFunction:CanonicalSourceReadSerializers.kt:private fun Long.sourceTextByteLimit: WireDocumentConversion&lt;SourceTextByteLimitDocument></ID>
     <ID>UnusedPrivateFunction:CanonicalSymbolDocuments.kt:private fun Int.toProtocolCount: WireDocumentConversion&lt;ProtocolCount></ID>
     <ID>UnusedPrivateFunction:CanonicalSymbolDocuments.kt:private fun SymbolCategoryWireDocument.toNameKind</ID>
-    <ID>UnusedPrivateFunction:CanonicalSymbolDocuments.kt:private fun SymbolNameKindDocument.toWireDocument</ID>
     <ID>WildcardImport:CanonicalQueryDocuments.kt:import io.github.amichne.kast.protocol.contract.*</ID>
   </CurrentIssues>
 </SmellBaseline>

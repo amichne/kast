@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+import os
 import re
 import subprocess
 import sys
@@ -17,6 +19,7 @@ RESERVED_FILENAMES = {"index.md", "log.md"}
 ISO_DATE_HEADING_RE = re.compile(r"^## \d{4}-\d{2}-\d{2}(?:\s|$)")
 GITHUB_BLOB_PATH_RE = re.compile(r"/blob/[^/]+/(?P<path>[^#)]+)")
 MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^]]+\]\((?P<target>[^)]+)\)")
+IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z_0-9]*\Z")
 
 
 def repo_relative(path: Path, repo: Path) -> str:
@@ -86,7 +89,11 @@ def parse_list_block(lines: list[str]) -> tuple[list[Any], list[str]]:
             continue
         if current is not None and ":" in stripped:
             key, raw_value = stripped.split(":", 1)
-            current[key.strip()] = parse_scalar(raw_value)
+            key = key.strip()
+            if key in current:
+                issues.append(f"duplicate YAML list field: {key}")
+            else:
+                current[key] = parse_scalar(raw_value)
             continue
         issues.append(f"unsupported YAML list line: {stripped}")
     return items, issues
@@ -143,7 +150,37 @@ def split_frontmatter(text: str) -> tuple[dict[str, Any] | None, str, list[str]]
     return None, text, ["unterminated YAML frontmatter"]
 
 
-def code_sources(frontmatter: dict[str, Any] | None, repo: Path) -> tuple[list[str], list[str]]:
+def kotlin_symbols(paths: list[Path]) -> dict[str, dict[str, Any]]:
+    if not paths:
+        return {}
+    classpath = os.environ.get("KAST_KNOWLEDGE_PARSER_CLASSPATH")
+    if not classpath:
+        raise RuntimeError("Kotlin declaration checks require the PSI parser; run ./gradlew verifyKnowledgeBase")
+    result = subprocess.run(
+        ["java", "-cp", classpath, "conventions.jsoncontracts.KnowledgeSymbolsMain", *map(str, paths)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False,
+    )
+    if result.returncode:
+        raise RuntimeError(f"Kotlin declaration parser failed: {result.stderr.strip()}")
+    return {entry["path"]: entry["result"] for entry in json.loads(result.stdout)}
+
+
+def declared_symbols(path: Path, kotlin: dict[str, dict[str, Any]]) -> set[str]:
+    if path.suffix in {".kt", ".kts"}:
+        scan = kotlin[str(path)]
+        if scan["type"] == "rejected":
+            raise ValueError(scan["reason"])
+        return set(scan["names"])
+    if path.suffix == ".py":
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        return {
+            node.name for node in ast.walk(tree)
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+    raise ValueError("symbols require Kotlin or Python source")
+
+
+def code_sources(frontmatter: dict[str, Any] | None, repo: Path, kotlin: dict[str, dict[str, Any]] | None) -> tuple[list[str], list[str]]:
     if not frontmatter:
         return [], []
     raw_sources = frontmatter.get("code_sources", [])
@@ -162,8 +199,25 @@ def code_sources(frontmatter: dict[str, Any] | None, repo: Path) -> tuple[list[s
             issues.append(f"code_sources path is invalid: {source.get('path')!r}")
             continue
         paths.append(normalized)
-        if not repo.joinpath(normalized).exists():
+        source_path = repo.joinpath(normalized)
+        if not source_path.is_file():
             issues.append(f"code_sources path does not exist: {normalized}")
+            continue
+        if "symbols" in source and kotlin is not None:
+            symbols = source["symbols"]
+            if not isinstance(symbols, list) or not symbols or any(
+                not isinstance(symbol, str) or not IDENTIFIER_RE.fullmatch(symbol) for symbol in symbols
+            ):
+                issues.append(f"code_sources symbols must be a non-empty identifier list: {normalized}")
+                continue
+            try:
+                declared = declared_symbols(source_path, kotlin)
+            except (ValueError, SyntaxError, OSError) as error:
+                issues.append(f"code_sources cannot parse {normalized}: {error}")
+                continue
+            for symbol in symbols:
+                if symbol not in declared:
+                    issues.append(f"code_sources symbol is not declared in {normalized}: {symbol}")
     return sorted(set(paths)), issues
 
 
@@ -208,7 +262,7 @@ def validate_markdown_links(path: Path, text: str) -> list[str]:
     return issues
 
 
-def parse_page(path: Path, repo: Path, docs: Path) -> dict[str, Any]:
+def parse_page(path: Path, repo: Path, docs: Path, kotlin: dict[str, dict[str, Any]] | None) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     relative = repo_relative(path, repo)
     docs_relative = path.relative_to(docs).as_posix()
@@ -231,7 +285,7 @@ def parse_page(path: Path, repo: Path, docs: Path) -> dict[str, Any]:
             type_value = frontmatter.get("type")
             if not isinstance(type_value, str) or not type_value.strip():
                 issues.append("frontmatter type is required")
-            paths, source_issues = code_sources(frontmatter, repo)
+            paths, source_issues = code_sources(frontmatter, repo, kotlin)
             source_paths.extend(paths)
             issues.extend(source_issues)
 
@@ -246,8 +300,25 @@ def parse_page(path: Path, repo: Path, docs: Path) -> dict[str, Any]:
     }
 
 
-def collect_pages(repo: Path, docs: Path) -> list[dict[str, Any]]:
-    return [parse_page(path, repo, docs) for path in markdown_files(docs)]
+def collect_pages(repo: Path, docs: Path, check_symbols: bool = False) -> list[dict[str, Any]]:
+    pages = markdown_files(docs)
+    kotlin_paths: set[Path] = set()
+    if check_symbols:
+        for path in pages:
+            frontmatter, _, _ = split_frontmatter(path.read_text(encoding="utf-8"))
+            sources = (frontmatter or {}).get("code_sources", [])
+            if not isinstance(sources, list):
+                continue
+            for source in sources:
+                if not isinstance(source, dict) or "symbols" not in source:
+                    continue
+                normalized = normalize_relative(str(source.get("path", "")))
+                if normalized is not None:
+                    source_path = repo / normalized
+                    if source_path.is_file() and source_path.suffix in {".kt", ".kts"}:
+                        kotlin_paths.add(source_path)
+    kotlin = kotlin_symbols(sorted(kotlin_paths)) if check_symbols else None
+    return [parse_page(path, repo, docs, kotlin) for path in pages]
 
 
 def changed_files_from_git(repo: Path) -> list[str]:
@@ -321,7 +392,7 @@ def write_output(payload: dict[str, Any], output_format: str) -> None:
 def command_check(args: argparse.Namespace) -> int:
     repo = args.repo.resolve()
     docs = (repo / args.docs).resolve()
-    pages = collect_pages(repo, docs)
+    pages = collect_pages(repo, docs, check_symbols=True)
     bundle_issues: list[dict[str, str]] = []
     if args.strict:
         if not docs.is_dir():

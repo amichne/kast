@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test
 
 class QueryOccurrenceCompositionTest {
     @Test
-    fun `occurrence output keeps final callsites and prior relation evidence after distinct`() = runTest {
+    fun `occurrence output keeps only the first callsite after distinct`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             val service =
@@ -66,14 +66,14 @@ class QueryOccurrenceCompositionTest {
                     QueryOutputSyntax.Occurrences,
                 )
             val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 8L)))
-            assertEquals(2, complete.result.symbolRows().size)
+            assertEquals(1, complete.result.symbolRows().size)
             assertEquals(
-                listOf(200, 202),
+                listOf(200),
                 complete.result.symbolRows().map { row ->
                     (row.arrival as QueryArrivalEvidence.Proven).facts.single().occurrence.range.startInclusive
                 },
             )
-            assertTrue(complete.result.symbolRows().all { it.connections.size == 4 })
+            assertTrue(complete.result.symbolRows().all { it.connections.size == 2 })
         }
     }
 
@@ -141,14 +141,15 @@ class QueryOccurrenceCompositionTest {
             val prefix =
                 admittedPlan(
                     QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                    listOf(QueryStepSyntax.Related(RelationMeaning.Callees), QueryStepSyntax.Distinct),
+                    listOf(QueryStepSyntax.Related(RelationMeaning.Callees)),
                     QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                 )
             val prefixResult =
                 assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(prefix, 8L)))
+            assertEquals(2, prefixResult.result.symbolRows().size)
             assertEquals(
-                2,
-                (prefixResult.result.symbolRows().single().arrival as QueryArrivalEvidence.Proven).facts.size,
+                1,
+                (prefixResult.result.symbolRows().first().arrival as QueryArrivalEvidence.Proven).facts.size,
             )
             val retained = QueryRetainedResult.capture(selected.lease, prefixResult).refined().symbolsResult()
             assertArrivalImmutable(retained)
@@ -274,11 +275,11 @@ private fun measuredPageOmission(read: RelationRequest): RelationReadResult.Qual
 }
 
 private fun assertArrivalImmutable(retained: QueryRetainedResult.Symbols) {
-    val arrival = retained.symbols.single().arrival as QueryArrivalEvidence.Proven
+    val arrival = retained.symbols.first().arrival as QueryArrivalEvidence.Proven
     assertThrows(UnsupportedOperationException::class.java) {
         (arrival.facts as MutableList<RelationFact>).clear()
     }
-    assertEquals(2, (retained.symbols.single().arrival as QueryArrivalEvidence.Proven).facts.size)
+    assertEquals(1, (retained.symbols.first().arrival as QueryArrivalEvidence.Proven).facts.size)
 }
 
 private fun QueryServiceTest.queryService(relations: RelationOperations): QueryService =

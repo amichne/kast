@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 class PreferredReadCatalogTest {
     @Test
     fun `catalog has one public compositional semantic read`() {
-        assertEquals(7, CanonicalAgentToolDefinitions.all.size)
+        assertEquals(5, CanonicalAgentToolDefinitions.all.size)
         assertEquals(
             Refinement.Rejected(AgentToolInputFailure.UNKNOWN),
             CanonicalAgentToolDefinitions.resolveInput("traverse_relations"),

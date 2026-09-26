@@ -25,8 +25,6 @@ internal val FIXTURE_COMPATIBILITY =
             listOf(
                 "index.sync",
                 "topology.build",
-                "symbol.discover",
-                "symbol.inspect",
                 "source.read",
                 "diagnostic.check",
                 "change.plan",

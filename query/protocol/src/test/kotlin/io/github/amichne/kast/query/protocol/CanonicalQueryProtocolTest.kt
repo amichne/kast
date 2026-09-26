@@ -3,9 +3,6 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.query.contract.*
-import io.github.amichne.kast.source.contract.SourceReadAnchor
-import io.github.amichne.kast.source.contract.SourceReadScope
-import io.github.amichne.kast.source.contract.readScope
 import io.github.amichne.kast.symbol.contract.*
 import io.github.amichne.kast.workspace.contract.*
 import java.nio.file.Path
@@ -29,6 +26,33 @@ class CanonicalQueryProtocolTest {
             ),
             QueryByteLimit.parse(10000).refined(),
         )
+
+    @Test
+    fun `location source is admitted as one exact-file query intent`() = runTest {
+        var observed = false
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { execution ->
+                    val source = (execution.plan as AdmittedQueryPlan.Location).source
+                    assertEquals("/workspace/src/Subject.kt", source.file.value)
+                    assertEquals(12, source.offset.value)
+                    observed = true
+                    QueryExecutionResult.Complete(
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+                        QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                    )
+                },
+                CanonicalQueryReferences(),
+            )
+        val input =
+            request()
+                .copy(from = QueryFromDocument.Location(text("src/Subject.kt"), ProtocolOffset.parse(12).refined()))
+        assertTrue(protocol.execute(input, lease, budget) is OperationOutcome.Complete)
+        assertTrue(observed)
+        val escaped =
+            request().copy(from = QueryFromDocument.Location(text("../Subject.kt"), ProtocolOffset.parse(12).refined()))
+        assertTrue(protocol.execute(escaped, lease, budget) is OperationOutcome.Rejected)
+    }
 
     @Test
     fun `host lookup expands the token before canonical authority and kind validation`() {
@@ -169,126 +193,6 @@ class CanonicalQueryProtocolTest {
     }
 
     @Test
-    fun `file and text batch references retain their original read scope`() {
-        val constraints =
-            SymbolDiscoveryConstraints(
-                SymbolDiscoveryDirectoryConstraint(
-                    SymbolDiscoveryDirectory.parse("src").refined(),
-                    SymbolDiscoveryContainment.DESCENDANTS,
-                ),
-                SymbolDiscoveryPackageConstraint(
-                    SymbolDiscoveryPackage.parse("example").refined(),
-                    SymbolDiscoveryContainment.DIRECT,
-                ),
-                sourceSets =
-                    SymbolDiscoverySourceSets.Exact.from(
-                            setOf(WorkspaceSourceSetName.parse("integrationTest").refined())
-                        )
-                        .refined(),
-            )
-        val path = Path.of("/workspace/src/Subject.kt")
-        val scope =
-            SymbolSearchScope.Workspace(
-                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                SymbolGeneratedSourcePolicy.EXCLUDE,
-                SymbolLibraryPolicy.EXCLUDE,
-            )
-        val maximum = SymbolDiscoveryBudget(budget.resources, SymbolDiscoveryByteLimit.parse(10000).refined())
-        val scopeRequest = SymbolSearchScopeRequest(lease, scope)
-        val fileRequest =
-            SymbolDiscoveryRequest(
-                scopeRequest,
-                SymbolDiscoveryTarget.All(SymbolNameDiscoveryKind.FILE),
-                maximum,
-                constraints,
-            )
-        val textRequest =
-            SymbolDiscoveryRequest(
-                scopeRequest,
-                SymbolDiscoveryTarget.Text(SymbolDiscoveryPattern.parse("Subject").refined()),
-                maximum,
-            )
-        val file =
-            SymbolDiscoveryCandidate.fromBoundary(
-                    SymbolDiscoveryKind.FILE,
-                    "Subject.kt",
-                    lease,
-                    path,
-                    path.toUri().toString(),
-                    null,
-                )
-                .refined()
-        val textCandidate =
-            SymbolDiscoveryCandidate.fromBoundary(
-                    SymbolDiscoveryKind.TEXT,
-                    "Subject",
-                    lease,
-                    path,
-                    path.toUri().toString(),
-                    0,
-                    7,
-                )
-                .refined()
-        val elapsed = SymbolDiscoveryElapsedNanoseconds.parse(0).refined()
-        val references = CanonicalQueryReferences()
-        listOf(fileRequest to file, textRequest to textCandidate).forEach { (request, candidate) ->
-            val batch =
-                SymbolDiscoveryBatch.create(
-                        request,
-                        listOf(candidate),
-                        candidate.projectedUtf8Size(),
-                        SymbolDiscoveryWorkCount.parse(1).refined(),
-                        SymbolDiscoveryTimings(elapsed, elapsed),
-                    )
-                    .refined()
-            val issued = (references.issueCandidates(batch) as CandidateSelectorIssuance.Issued).selectors.single()
-            assertTrue(issued.value.startsWith("candidate:v3:"))
-            val restored = (references.restoreCandidate(issued, lease) as CanonicalSelectorDecoding.Decoded).value
-            assertEquals(scope, restored.scope)
-            assertEquals(request.constraints, restored.constraints)
-            assertEquals(
-                SourceReadScope.Constrained(scope, request.constraints),
-                SourceReadAnchor.Candidate(restored).readScope(),
-            )
-            val downgraded = text(issued.value.replaceFirst("candidate:v3:", "candidate:v2:"))
-            assertEquals(
-                CanonicalSelectorDecodingFailure.UNSUPPORTED_REFERENCE_VERSION,
-                (references.restoreCandidate(downgraded, lease) as CanonicalSelectorDecoding.Rejected).failure,
-            )
-        }
-    }
-
-    @Test
-    fun `historical file references retain exact file semantics and bytes`() {
-        val file =
-            SymbolDiscoveryFileIdentity.Workspace(
-                CanonicalWorkspaceFilePath.fromCanonicalPath(
-                        root,
-                        Path.of("/workspace/Subject.kt"),
-                    )
-                    .refined()
-            )
-        val selector = CandidateSelector.restoreFile(lease, file)
-        val issued = (CanonicalSelectorCodec.encodeCandidate(selector) as CanonicalSelectorEncoding.Encoded).token
-        assertTrue(issued.value.startsWith("candidate:v2:"))
-        val restored =
-            (CanonicalSelectorCodec.decodeCandidate(issued, lease) as CanonicalSelectorDecoding.Decoded).value
-        assertEquals(
-            SymbolSearchScope.ExactFile(
-                file.path,
-                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                SymbolGeneratedSourcePolicy.INCLUDE,
-            ),
-            restored.scope,
-        )
-        assertEquals(SymbolDiscoveryConstraints.None, restored.constraints)
-        assertEquals(
-            issued,
-            (CanonicalSelectorCodec.encodeCandidate(restored) as CanonicalSelectorEncoding.Encoded).token,
-        )
-    }
-
-    @Test
     fun `live detached identity rejects old host epoch root and version`() {
         val current =
             LiveSemanticReadReference(
@@ -323,80 +227,18 @@ class CanonicalQueryProtocolTest {
         val raw =
             Json.encodeToString(
                 CandidateSelectorDocument.serializer(),
-                CandidateSelectorDocument.File(
+                CandidateSelectorDocument.Range(
                     root = root.value,
                     live = document,
                     file = "/workspace/Subject.kt",
+                    startInclusive = 0,
+                    endExclusive = 1,
                 ),
             )
         assertEquals(
             CanonicalSelectorDecodingFailure.LIVE_AUTHORITY_REQUIRED,
             (CanonicalSelectorCodec.decodeCandidate(token(raw)) as CanonicalSelectorDecoding.Rejected).failure,
         )
-    }
-
-    @Test
-    fun `specialist discovery uses supplied authority and intersects the host result cap`() {
-        val request =
-            SymbolDiscoverRequest(
-                SymbolDiscoverTargetDocument.Name(
-                    text("Subject"),
-                    SymbolNameKindDocument.CLASS,
-                    SymbolDiscoveryMatchDocument.EXACT_NAME,
-                ),
-                ProtocolCount.parse(20).refined(),
-            )
-        val maximum = SymbolDiscoveryBudget(budget.resources, SymbolDiscoveryByteLimit.parse(10000).refined())
-        val admitted = admitDiscoveryRequest(lease, request, maximum) as DiscoveryRequestAdmission.Admitted
-        assertSame(lease, admitted.request.scope.lease)
-        assertEquals(10, admitted.request.budget.resources.resultLimit.value)
-        assertEquals(maximum.resources.workUnitLimit, admitted.request.budget.resources.workUnitLimit)
-    }
-
-    @Test
-    fun `specialist workspace discovery excludes libraries only for live authority`() {
-        val reference =
-            LiveSemanticReadReference(
-                root,
-                IdeReadHostLifetime.fromBoundary(UUID.fromString("00000000-0000-0000-0000-000000000001")),
-                IdeReadEpochRevision.parse(1).refined(),
-                IdeReadContentView.SAVED_PSI_COMMITTED,
-                1,
-            )
-        val liveScope = specialistDiscoveryWorkspaceScope(SemanticReadIdentity.Live(reference))
-        assertEquals(
-            SymbolSearchScope.Workspace(
-                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                SymbolGeneratedSourcePolicy.EXCLUDE,
-                SymbolLibraryPolicy.EXCLUDE,
-            ),
-            liveScope,
-        )
-        val publishedScope = specialistDiscoveryWorkspaceScope(lease.identity)
-        assertEquals(
-            SymbolSearchScope.Workspace(
-                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                SymbolGeneratedSourcePolicy.EXCLUDE,
-                SymbolLibraryPolicy.INCLUDE,
-            ),
-            publishedScope,
-        )
-
-        val maximum = SymbolDiscoveryBudget(budget.resources, SymbolDiscoveryByteLimit.parse(10000).refined())
-        for (target in
-            listOf(
-                SymbolDiscoverTargetDocument.Name(
-                    text("Child"),
-                    SymbolNameKindDocument.SYMBOL,
-                    SymbolDiscoveryMatchDocument.EXACT_NAME,
-                ),
-                SymbolDiscoverTargetDocument.Text(text("Child"), SymbolTextScopeDocument.Workspace),
-            )) {
-            val request = SymbolDiscoverRequest(target, ProtocolCount.parse(10).refined())
-            val admitted = admitDiscoveryRequest(lease, request, maximum) as DiscoveryRequestAdmission.Admitted
-            assertSame(lease, admitted.request.scope.lease)
-            assertEquals(publishedScope, admitted.request.scope.scope)
-        }
     }
 
     @Test
@@ -456,7 +298,7 @@ class CanonicalQueryProtocolTest {
                     .refined()
             )
         val token =
-            (CanonicalSelectorCodec.encodeCandidate(CandidateSelector.restoreFile(lease, file))
+            (CanonicalSelectorCodec.encodeCandidate(CandidateSelector.restoreRange(lease, file, 0, 1).refined())
                     as CanonicalSelectorEncoding.Encoded)
                 .token
         return SourceReadRequest(

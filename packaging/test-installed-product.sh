@@ -112,7 +112,7 @@ projection = catalog['serverProjection']
 assert projection['namespace'] == 'kast'
 bootstrap = projection['hostedBootstrap']
 assert [tool['name'] for tool in bootstrap['tools']] == [
-    'workspace_lifecycle', 'query_symbols', 'symbol_lookup', 'symbol_inspect', 'source_read',
+    'workspace_lifecycle', 'query_symbols', 'source_read',
     'check_diagnostics', 'change',
 ]
 assert 'Use kast.query_symbols for declaration-name search' in bootstrap['policy']

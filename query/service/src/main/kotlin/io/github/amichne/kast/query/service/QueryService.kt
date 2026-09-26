@@ -26,15 +26,6 @@ import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 
-/** Monotonic clock isolated at the evaluator effect boundary. */
-fun interface QueryNanoClock {
-    fun now(): Long
-}
-
-private object SystemQueryNanoClock : QueryNanoClock {
-    override fun now(): Long = System.nanoTime()
-}
-
 /** In-process evaluator for the closed compositional exact-symbol query algebra. */
 class QueryService(
     discovery: io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations,
@@ -105,7 +96,7 @@ class QueryService(
             if (!state.canContinue(task.needsWork()) || !advance(task)) return false
             state.drainFailures().asReversed().forEach { tasks.addFirst(PipelineTask.Failure(it)) }
             progressed = true
-            return terminal == null && joinStage.terminal == null && rejection == null
+            return terminal == null && rejection == null
         }
 
         private suspend fun advance(task: PipelineTask): Boolean =
@@ -118,29 +109,16 @@ class QueryService(
                 is PipelineTask.WalkRecord -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)
+                is PipelineTask.Binding -> binding(task)
                 is PipelineTask.Related -> related(task)
                 is PipelineTask.Walk -> walk(task)
                 is PipelineTask.Feed -> feed(task)
                 is PipelineTask.FlushSet -> flushSet(task)
                 is PipelineTask.FlushDistinct -> flushDistinct(task)
-                is PipelineTask.FlushBind ->
-                    joinStage.flushBind(task, completedFailures, completedOmissions, completedWalkObservations)
                 is PipelineTask.JoinEvidence -> joinStage.emitRightEvidence(task)
                 is PipelineTask.Join -> joinStage.advance(task)
-                is PipelineTask.Discover -> {
-                    when (val result = stages.discover(task.syntax, state)) {
-                        DiscoveryExecution.NotStarted -> false
-                        is DiscoveryExecution.Rejected -> {
-                            rejection = result.result
-                            true
-                        }
-                        is DiscoveryExecution.Discovered -> {
-                            tasks.removeFirst()
-                            result.values.asReversed().forEach { tasks.addFirst(PipelineTask.Candidate(it, task.next)) }
-                            true
-                        }
-                    }
-                }
+                is PipelineTask.Discover -> discovered(stages.discover(task.syntax, state), task.next)
+                is PipelineTask.DiscoverLocation -> discovered(stages.discoverLocation(task.target, state), task.next)
                 is PipelineTask.Revalidate -> {
                     if (!state.consumeUnit()) false
                     else {
@@ -149,6 +127,20 @@ class QueryService(
                         values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, task.next)) }
                         true
                     }
+                }
+            }
+
+        private fun discovered(result: DiscoveryExecution, next: ExactQueryStage): Boolean =
+            when (result) {
+                DiscoveryExecution.NotStarted -> false
+                is DiscoveryExecution.Rejected -> {
+                    rejection = result.result
+                    true
+                }
+                is DiscoveryExecution.Discovered -> {
+                    tasks.removeFirst()
+                    result.values.asReversed().forEach { tasks.addFirst(PipelineTask.Candidate(it, next)) }
+                    true
                 }
             }
 
@@ -201,6 +193,11 @@ class QueryService(
             return true
         }
 
+        private fun contractViolation(): Boolean {
+            state.contractViolation = true
+            return false
+        }
+
         private fun emit(bytes: Long, append: () -> Unit): Boolean {
             if (!state.consumeOutput(bytes)) {
                 if (bytes > request.budget.returnedBytes.value) terminal = QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
@@ -221,6 +218,7 @@ class QueryService(
 
         private suspend fun symbol(task: PipelineTask.Symbol): Boolean =
             when (val stage = task.stage) {
+                is ExactQueryStage.ProjectBinding -> contractViolation()
                 is ExactQueryStage.Emit -> emitSymbol(task, stage)
                 is ExactQueryStage.Distinct -> {
                     when (identityRows.acceptDistinct(stage, task.value)) {
@@ -240,7 +238,6 @@ class QueryService(
                     true
                 }
                 is ExactQueryStage.Set -> set(task, stage)
-                is ExactQueryStage.Bind -> joinStage.bind(task, stage)
                 is ExactQueryStage.Join -> joinStage.enter(task, stage)
                 is ExactQueryStage.Related -> {
                     tasks.removeFirst()
@@ -252,6 +249,29 @@ class QueryService(
                     tasks.addFirst(PipelineTask.Walk(task.value, stage, null))
                     true
                 }
+            }
+
+        private fun binding(task: PipelineTask.Binding): Boolean =
+            when (val stage = task.stage) {
+                is ExactQueryStage.ProjectBinding -> {
+                    val selected =
+                        when (stage.name) {
+                            task.value.left.name -> task.value.left.value.symbol
+                            task.value.right.name -> task.value.right.value.symbol
+                            else -> {
+                                state.contractViolation = true
+                                return false
+                            }
+                        }
+                    tasks.removeFirst()
+                    tasks.addFirst(PipelineTask.Symbol(selected, stage.next))
+                    true
+                }
+                is ExactQueryStage.Emit ->
+                    if (stage.output == QueryOutputSyntax.BindingRows) {
+                        emit(task.value.projectedUtf8Size()) { joinStage.recordBinding(task.value) }
+                    } else contractViolation()
+                else -> contractViolation()
             }
 
         private suspend fun where(task: PipelineTask.Symbol, stage: ExactQueryStage.Where): Boolean =
@@ -300,28 +320,21 @@ class QueryService(
             return true
         }
 
-        private suspend fun related(task: PipelineTask.Related): Boolean {
-            return when (val result = relationStage.read(task, state)) {
+        private suspend fun related(task: PipelineTask.Related): Boolean =
+            when (val result = relationStage.read(task, state)) {
                 QueryRelationStageResult.NotStarted -> false
-                QueryRelationStageResult.ContractRejected -> {
-                    state.contractViolation = true
-                    false
-                }
+                QueryRelationStageResult.ContractRejected -> contractViolation()
                 is QueryRelationStageResult.Read -> {
                     tasks.removeFirst()
                     result.nextTasks(task).asReversed().forEach(tasks::addFirst)
                     true
                 }
             }
-        }
 
         private suspend fun walk(task: PipelineTask.Walk): Boolean =
             when (val result = walkStage.read(task, state)) {
                 QueryWalkStageResult.NotStarted -> false
-                QueryWalkStageResult.ContractRejected -> {
-                    state.contractViolation = true
-                    false
-                }
+                QueryWalkStageResult.ContractRejected -> contractViolation()
                 is QueryWalkStageResult.Read -> {
                     tasks.removeFirst()
                     result.nextTasks(task).asReversed().forEach(tasks::addFirst)
@@ -335,7 +348,8 @@ class QueryService(
             val result =
                 QueryResult(
                     when (request.plan.outputSyntax()) {
-                        QueryOutputSyntax.BindingRows -> QueryRows.Bindings.of(joinStage.bindingRows)
+                        QueryOutputSyntax.BindingRows ->
+                            QueryRows.Bindings.of(joinStage.bindingRows, request.plan.bindingMode())
                         else -> QueryRows.Symbols.of(symbols)
                     },
                     completedFailures.toList(),
@@ -364,7 +378,7 @@ class QueryService(
         }
 
         private fun continuation(): QueryContinuationState {
-            val reason = terminal ?: joinStage.terminal
+            val reason = terminal
             if (reason != null) return QueryContinuationState.Terminal(reason)
             if (tasks.isEmpty()) return QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
             if (!progressed) return QueryContinuationState.Terminal(QueryTerminalReason.NO_PROGRESS)

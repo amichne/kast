@@ -257,11 +257,14 @@ private data class QuerySourceWindowCliDocument(
 
 @Serializable private data class QueryExactLocationCliDocument(val file: String, val range: SourceRangeCliDocument)
 
+@Serializable private data class QueryRefinementLocationCliDocument(val file: String, val offset: Int)
+
 @Serializable
 private sealed interface QueryItemFailureCliDocument {
     @Serializable
     @SerialName("refinement")
-    data class Refinement(val ref: String, val reason: String) : QueryItemFailureCliDocument
+    data class Refinement(val location: QueryRefinementLocationCliDocument, val reason: String) :
+        QueryItemFailureCliDocument
 
     @Serializable
     @SerialName("exact-reference")
@@ -347,7 +350,10 @@ private fun QueryRelationOmissionDocument.toCliDocument() =
 private fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocument =
     when (this) {
         is QueryItemFailureDocument.Refinement ->
-            QueryItemFailureCliDocument.Refinement(ref.toCliDocument(), reason.cliName())
+            QueryItemFailureCliDocument.Refinement(
+                QueryRefinementLocationCliDocument(location.file.value, location.offset.value),
+                reason.cliName(),
+            )
         is QueryItemFailureDocument.ExactReference ->
             QueryItemFailureCliDocument.ExactReference(ref.toCliDocument(), reason.cliName())
         is QueryItemFailureDocument.Predicate ->

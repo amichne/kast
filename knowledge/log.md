@@ -2,7 +2,7 @@
 
 ## 2026-09-25 — Pre-1.0 agent catalog trim
 
-Removed the three overlapping declaration-search facades and the two relation-name aliases from the published and installed catalogs. `query_symbols` is the eager declaration search and pipeline entry point; file or text discovery, candidate refinement, relation occurrences, and multi-step traversal retain separate tools. Copilot input schema regression checks enforce bounded composition depth for every installed tool, and native fixtures now query through the retained public surface.
+Removed the three overlapping declaration-search facades and the two relation-name aliases from the published and installed catalogs. `query_symbols` is the eager declaration search and pipeline entry point; relation occurrences and multi-step traversal are now query stages; file/text discovery has no public route. Copilot input schema regression checks enforce bounded composition depth for every installed tool, and native fixtures now query through the retained public surface.
 
 ## 2026-09-25 — Exact-symbol source windows and read throughput
 
@@ -292,12 +292,6 @@ state offline; installation bootstrap remains explicit.
   scope integration without promoting pure checks or earlier class/supertype
   qualification into new native acceptance. Hosted cutover and manual
   qualification were pending at that stage.
-- Extended file/text candidate contracts and batch issuance to retain scope and
-  constraints through source reads. Historical raw factories now declare their
-  exact-file policy explicitly. Added current-model source-token restoration for
-  module, project, and source-set scopes, rejecting absent/mismatched owners and
-  foreign roots. Focused symbol/source contract checks passed after the missing
-  API regressions were captured.
 
 - Added exact imported Gradle source-name admission for hosted query composition,
   with most-specific ownership and explicit rejection for unmapped IDE roots.

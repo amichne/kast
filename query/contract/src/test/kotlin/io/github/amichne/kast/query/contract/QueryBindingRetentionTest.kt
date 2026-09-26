@@ -25,13 +25,15 @@ import org.junit.jupiter.api.Test
 class QueryBindingRetentionTest {
     @Test
     fun `empty binding result retains its row kind and immutable qualification`() {
-        val limitation = QueryLimitation.JOIN_INPUT_INCOMPLETE
+        val limitation = QueryLimitation.ROW_SELECTION_INCOMPLETE
         val coverage = QueryCoverage.Qualified.create(QueryCount.parse(0).refined(), setOf(limitation)).refined()
-        val result = QueryResult(QueryRows.Bindings.of(emptyList()), emptyList())
+        val mode = QueryJoinMode.Inner.create(bindingName("left"), bindingName("right")).refined()
+        val result = QueryResult(QueryRows.Bindings.of(emptyList(), mode), emptyList())
         val execution = QueryExecutionResult.Qualified(result, coverage)
         val retained = QueryRetainedResult.capture(lease(), execution).refined()
 
         val bindings = assertInstanceOf(QueryRetainedResult.Bindings::class.java, retained)
+        assertEquals(mode, bindings.mode)
         assertEquals(emptyList<QueryBindingRow>(), bindings.bindingRows)
         assertEquals(0, bindings.rowCount)
         assertEquals(0, bindings.selectRows(emptyList()).refined().rowCount)
@@ -44,6 +46,26 @@ class QueryBindingRetentionTest {
             (returnedCoverage.limitations as MutableList<QueryLimitation>).clear()
         }
         assertEquals(listOf(limitation), (bindings.coverage as QueryCoverage.Qualified).limitations)
+        assertEquals(
+            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.UnknownBindingName(bindingName("unknown"))),
+            QueryPlanCompiler.admit(
+                QueryPlanSyntax(
+                    QuerySourceSyntax.Retained(bindings),
+                    listOf(QueryStepSyntax.ProjectBinding(bindingName("unknown"))),
+                    QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+                )
+            ),
+        )
+        assertEquals(
+            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch),
+            QueryPlanCompiler.admit(
+                QueryPlanSyntax(
+                    QuerySourceSyntax.Retained(bindings),
+                    listOf(QueryStepSyntax.Distinct),
+                    QueryOutputSyntax.BindingRows,
+                )
+            ),
+        )
     }
 
     @Test
@@ -72,7 +94,7 @@ class QueryBindingRetentionTest {
         val symbol = QuerySymbol(SymbolDescription.from(selector), emptyList())
         val mode = QueryJoinMode.Inner.create(bindingName("left"), bindingName("right")).refined()
         val row = QueryBindingRow.join(mode, symbol, symbol).refined()
-        val result = QueryResult(QueryRows.Bindings.of(listOf(row)), emptyList())
+        val result = QueryResult(QueryRows.Bindings.of(listOf(row), mode), emptyList())
         val execution = QueryExecutionResult.Complete(result, QueryCoverage.Complete(QueryCount.parse(1).refined()))
 
         assertEquals(

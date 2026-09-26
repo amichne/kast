@@ -69,13 +69,13 @@ both or neither evidence basis. Source snapshot documents likewise distinguish
 published source-state identity from the live saved, PSI-committed view. A live
 stamp is never serialized as a workspace generation or source-state identity.
 
-The canonical read revisions are `query.run.v2`, `source.read.v4`, and version 3
-for symbol discovery, symbol inspection, traversal, and diagnostics.
+The canonical read revisions are `query.run.v2`, `source.read.v4`, and
+`diagnostic.check.v3`.
 Provider qualification requires
 that version and every canonical hosted tool. The build generates `provider-catalog.json`
 from the shared schema owner without CLI invocation metadata. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
-endpoint schema is version 3 and advertises the six canonical read routes plus
+endpoint schema is version 3 and advertises the three canonical read routes plus
 change planning, approval preparation, apply and recovery. Version-2 endpoint
 descriptors reject. `change.apply.v3` distinguishes `Verified`,
 `AppliedUnverified` and `RecoveryRequired`; only the first carries a receipt.
@@ -123,7 +123,7 @@ Hosted endpoint and hosted read rejection projections preserve an optional execu
 
 Hosted configuration rejections retain three closed detail shapes: an unknown parameter cause, an invalid-value cause with its parameter, or inconsistent bounds with their inner and outer parameters. The packaged schema binds parameter identities to the exact `ReadLimitParameter.environmentKey` set. Configuration details cannot appear under an unrelated failure code. Checked-in typed fixture documents are byte-compared with actual workspace and endpoint encoders, then validated against packaged and installed schemas; unknown causes, missing/null fields, unknown parameter keys and extra fields reject. Each producing test declares those shared fixture bytes as an input, so changes invalidate its cached result.
 
-Symbol inspection preserves native failure, genuine index unavailability and unsupported declaration as distinct finite wire rejections. Hosted `AddDeclaration` planning failures retain all finite relation, traversal and diagnostic limitations in the hosted endpoint detail. The separate workspace-refresh control schema preserves typed lifecycle outcomes without adding a canonical semantic operation.
+Exact symbol resolution preserves native failure, genuine index unavailability and unsupported declaration as distinct finite query rejections. Hosted `AddDeclaration` planning failures retain all finite relation, traversal and diagnostic limitations in the hosted endpoint detail. The separate workspace-refresh control schema preserves typed lifecycle outcomes without adding a canonical semantic operation.
 
 The canonical `workspace.lifecycle.v2` operation has one tagged request family and closed application lifecycle outcomes. Its `workspace_lifecycle` agent projection uses the local control route rather than a semantic endpoint. It has no CLI invocation; it remains hosted-only. Blocked lifecycle outcomes retain their finite reasons in the rejected process envelope through the separate `IdeLifecycleRejection` serializer; completed and pending outcomes retain their distinct discriminants.
 

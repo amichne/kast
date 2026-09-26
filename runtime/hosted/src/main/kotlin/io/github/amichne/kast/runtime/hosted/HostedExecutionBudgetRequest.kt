@@ -14,8 +14,6 @@ internal fun HostedRequest.Read.executionBudget(): HostedExecutionBudgetRequest 
                 is HostedRequest.Query -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Source -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Diagnostic -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
-                is HostedRequest.Discover,
-                is HostedRequest.Inspect -> RequestedExecutionBudget()
             },
         profile =
             when (this) {

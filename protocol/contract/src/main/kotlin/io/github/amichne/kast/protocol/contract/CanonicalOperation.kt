@@ -9,8 +9,6 @@ enum class CanonicalOperation(val id: OperationId) {
     INDEX_SYNC(canonicalOperationId("index.sync")),
     TOPOLOGY_BUILD(canonicalOperationId("topology.build")),
     QUERY_RUN(canonicalOperationId("query.run")),
-    SYMBOL_DISCOVER(canonicalOperationId("symbol.discover")),
-    SYMBOL_INSPECT(canonicalOperationId("symbol.inspect")),
     SOURCE_READ(canonicalOperationId("source.read")),
     DIAGNOSTIC_CHECK(canonicalOperationId("diagnostic.check")),
     CHANGE(canonicalOperationId("change.run")),

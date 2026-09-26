@@ -5,48 +5,35 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryJoinModeDocument
-import io.github.amichne.kast.protocol.contract.QueryJoinRightDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class PublicToolBindingContractTest {
     @Test
-    fun `earlier binding and inner join lower to one typed binding row output`() {
-        val input =
-            run(
-                listOf(
-                    PublicToolBind(name("saved")),
-                    PublicToolJoin(
-                        PublicToolInnerJoinMode(name("left"), name("right")),
-                        PublicToolNamedBindingSource(name("saved")),
-                    ),
-                ),
-                QueryOutputDocument.BindingRows,
-            )
-        val encoded = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
-        val request = encoded.jsonObject.getValue("request").jsonObject
-        assertEquals("binding_rows", request.getValue("output").jsonObject.getValue("type").jsonPrimitive.content)
-        assertEquals(
-            "join",
-            request.getValue("steps").jsonArray.last().jsonObject.getValue("type").jsonPrimitive.content,
+    fun `file offset source lowers to containing declaration intent`() {
+        val file = (ProtocolText.parse("src/main/kotlin/Subject.kt") as Refinement.Refined).value
+        val query = PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, 42), null))
+        val admitted = admit(query) as Refinement.Refined
+        val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        val source = request.from as io.github.amichne.kast.protocol.contract.QueryFromDocument.Location
+        assertEquals(file, source.file)
+        assertEquals(42, source.offset.value)
+        assertTrue(
+            admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, -1), null)))
+                is Refinement.Rejected
         )
-        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
-        val canonical = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
-        assertEquals(name("saved"), (canonical.steps.values.first() as QueryStepDocument.Bind).name)
-        val join = canonical.steps.values.last() as QueryStepDocument.Join
-        assertEquals(QueryJoinModeDocument.Inner(name("left"), name("right")), join.mode)
-        assertEquals(QueryJoinRightDocument.Named(name("saved")), join.right)
-        assertEquals(QueryOutputDocument.BindingRows, canonical.output)
+        val traversal = (ProtocolText.parse("../outside.kt") as Refinement.Refined).value
+        assertTrue(
+            admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(traversal, 42), null)))
+                is Refinement.Rejected
+        )
     }
 
     @Test
@@ -93,47 +80,13 @@ class PublicToolBindingContractTest {
     }
 
     @Test
-    fun `binding order output and join key violations reject at public admission`() {
-        val inner =
-            PublicToolJoin(PublicToolInnerJoinMode(name("l"), name("r")), PublicToolNamedBindingSource(name("saved")))
-        val cases =
-            listOf(
-                run(listOf(inner), QueryOutputDocument.BindingRows),
-                run(listOf(PublicToolBind(name("saved")), PublicToolBind(name("saved"))), null),
-                run(listOf(PublicToolBind(name("saved")), inner), null),
-                run(
-                    listOf(PublicToolBind(name("saved")), inner, PublicToolDistinctSymbols),
-                    QueryOutputDocument.BindingRows,
-                ),
-                run(
-                    listOf(
-                        PublicToolBind(name("saved")),
-                        PublicToolJoin(
-                            PublicToolInnerJoinMode(name("same"), name("same")),
-                            PublicToolNamedBindingSource(name("saved")),
-                        ),
-                    ),
-                    QueryOutputDocument.BindingRows,
-                ),
-                run(emptyList(), QueryOutputDocument.BindingRows),
-            )
-        cases.forEach { assertTrue(admit(it) is Refinement.Rejected) }
-
-        val valid =
-            Json.encodeToString(
-                PublicToolQuerySymbols.serializer(),
-                run(listOf(PublicToolBind(name("saved")), inner), QueryOutputDocument.BindingRows),
-            )
-        val unsupportedKey = valid.replace("\"right\":", "\"key\":\"name\",\"right\":")
-        assertTrue(
-            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(unsupportedKey))
-                is Refinement.Rejected
-        )
-        val malformedName = valid.replaceFirst("\"name\":\"saved\"", "\"name\":\"0saved\"")
-        assertTrue(
-            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(malformedName))
-                is Refinement.Rejected
-        )
+    fun `public binding projection lowers to the canonical typed stage`() {
+        val step = PublicToolProjectBinding(name("caller"))
+        val admitted = admit(run(listOf(step, PublicToolDistinctSymbols), null))
+        val request =
+            (((admitted as Refinement.Refined).value.canonical) as PublicToolCanonical.Query).request
+                as QueryRunRequest.Run
+        assertEquals(QueryStepDocument.ProjectBinding(name("caller")), request.steps.values.first())
     }
 
     private fun run(steps: List<PublicToolStep>, output: QueryOutputDocument?): PublicToolQuerySymbols {

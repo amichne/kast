@@ -9,7 +9,7 @@ import subprocess
 from released_acceptance_product import product_executable
 
 from hosted_change_acceptance import admitted_live, AcceptanceRejected
-from hosted_read_transport import ReadTransportRejected, ReadTransportFailure, ReadProviderFailure
+from hosted_read_transport import ReadTransportRejected
 from hosted_source_read_regression import source_budget_anchor_query, SourceFunctionRequest, SymbolAnchor
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 
@@ -49,133 +49,6 @@ class UnavailableSymbolReference:
     reason: str = field(default='unavailable', init=False)
 
 
-class InspectionStage(str, Enum):
-    REVALIDATE = 'revalidate_exact'
-    STRICT = 'exact'
-
-
-class InspectionOutcome(str, Enum):
-    ACCEPTED = 'accepted'
-    WIRE_REJECTED = 'wire-rejected'
-    UNKNOWN_REFUSAL = 'unknown-refusal'
-    CONTRACT_REJECTED = 'contract-rejected'
-    TRANSPORT_REJECTED = 'transport-rejected'
-
-
-class InspectionMismatch(str, Enum):
-    DOCUMENT = 'document'
-    OPERATION = 'operation'
-    STATUS = 'status'
-    ACQUISITION = 'acquisition'
-    LIVE_BASIS = 'live-basis'
-    SELECTOR = 'selector'
-    SYMBOL = 'symbol'
-
-
-class InspectionRefusal(str, Enum):
-    """CLI projection spellings used by both native transport surfaces; wire uses underscores."""
-    WORKSPACE_NOT_READY = 'workspace-not-ready'
-    SELECTOR_WRONG_KIND = 'selector-wrong-kind'
-    SELECTOR_MALFORMED = 'selector-malformed'
-    SELECTOR_WORKSPACE_MISMATCH = 'selector-workspace-mismatch'
-    CANDIDATE_STALE = 'candidate-stale'
-    CANDIDATE_NOT_DECLARATION = 'candidate-not-declaration'
-    EXACT_SELECTOR_STALE = 'exact-selector-stale'
-    AMBIGUOUS = 'ambiguous'
-    NOT_FOUND = 'not-found'
-    NATIVE_FAILURE = 'native-failure'
-    WORKSPACE_INDEX_UNAVAILABLE = 'workspace-index-unavailable'
-    UNSUPPORTED_DECLARATION = 'unsupported-declaration'
-    REVALIDATION_UNRETAINED = 'revalidation-unretained'
-    REVALIDATION_EXPIRED = 'revalidation-expired'
-    REVALIDATION_CAPACITY = 'revalidation-capacity'
-    REVALIDATION_WORK_LIMIT_REACHED = 'revalidation-work-limit-reached'
-    REVALIDATION_TIME_LIMIT_REACHED = 'revalidation-time-limit-reached'
-    REVALIDATION_RETIRED = 'revalidation-retired'
-    REVALIDATION_CAPTURE_UNAVAILABLE = 'revalidation-capture-unavailable'
-    REVALIDATION_WORKSPACE_MISMATCH = 'revalidation-workspace-mismatch'
-    REVALIDATION_OWNER_MISMATCH = 'revalidation-owner-mismatch'
-    REVALIDATION_WORKSPACE_NOT_READY = 'revalidation-workspace-not-ready'
-    REVALIDATION_BASIS_MOVED = 'revalidation-basis-moved'
-    REVALIDATION_CONTENT_CHANGED = 'revalidation-content-changed'
-    REVALIDATION_CONTENT_UNCOMMITTED = 'revalidation-content-uncommitted'
-    REVALIDATION_SCOPE_REJECTED = 'revalidation-scope-rejected'
-    REVALIDATION_DECLARATION_MISSING = 'revalidation-declaration-missing'
-    REVALIDATION_UNSUPPORTED_DECLARATION = 'revalidation-unsupported-declaration'
-    REVALIDATION_AMBIGUOUS = 'revalidation-ambiguous'
-    REVALIDATION_COMPILER_IDENTITY_CHANGED = 'revalidation-compiler-identity-changed'
-    REVALIDATION_COMPILER_UNAVAILABLE = 'revalidation-compiler-unavailable'
-
-
-@dataclass(frozen=True)
-class InspectionAccepted:
-    stage: InspectionStage
-    outcome: InspectionOutcome = field(default=InspectionOutcome.ACCEPTED, init=False)
-
-
-@dataclass(frozen=True)
-class InspectionWireRejected:
-    stage: InspectionStage
-    refusal: InspectionRefusal
-    outcome: InspectionOutcome = field(default=InspectionOutcome.WIRE_REJECTED, init=False)
-
-
-@dataclass(frozen=True)
-class InspectionUnknownRefusal:
-    stage: InspectionStage
-    outcome: InspectionOutcome = field(default=InspectionOutcome.UNKNOWN_REFUSAL, init=False)
-
-
-@dataclass(frozen=True)
-class InspectionContractRejected:
-    stage: InspectionStage
-    mismatch: InspectionMismatch
-    outcome: InspectionOutcome = field(default=InspectionOutcome.CONTRACT_REJECTED, init=False)
-
-
-@dataclass(frozen=True)
-class InspectionTransportRejected:
-    stage: InspectionStage
-    refusal: ReadTransportFailure
-    providerFailure: ReadProviderFailure | None
-    outcome: InspectionOutcome = field(default=InspectionOutcome.TRANSPORT_REJECTED, init=False)
-
-
-InspectionObservation = (InspectionAccepted | InspectionWireRejected | InspectionUnknownRefusal
-    | InspectionContractRejected | InspectionTransportRejected)
-
-
-def _inspect_observation(stage, response, current, old, expected_symbol):
-    if not isinstance(response, dict):
-        return InspectionContractRejected(stage, InspectionMismatch.DOCUMENT)
-    if response.get('operation') != 'symbol.inspect':
-        return InspectionContractRejected(stage, InspectionMismatch.OPERATION)
-    if response.get('status') == 'rejected':
-        try:
-            return InspectionWireRejected(stage, InspectionRefusal(response.get('reason')))
-        except (ValueError, TypeError):
-            return InspectionUnknownRefusal(stage)
-    if response.get('status') != 'complete':
-        return InspectionContractRejected(stage, InspectionMismatch.STATUS)
-    acquisition = 'reacquired' if stage is InspectionStage.REVALIDATE else 'strict'
-    if response.get('acquisition') != acquisition:
-        return InspectionContractRejected(stage, InspectionMismatch.ACQUISITION)
-    if response.get('live') != current:
-        return InspectionContractRejected(stage, InspectionMismatch.LIVE_BASIS)
-    symbol = response.get('symbol')
-    if not isinstance(symbol, dict):
-        return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
-    if stage is InspectionStage.REVALIDATE:
-        selector = symbol.get('selector')
-        if not isinstance(selector, str) or not selector or selector == old:
-            return InspectionContractRejected(stage, InspectionMismatch.SELECTOR)
-        if symbol.get('name') != 'ReadPageBudget':
-            return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
-    elif symbol != expected_symbol:
-        return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
-    return InspectionAccepted(stage)
-
-
 class AuthorityRejected(ValueError):
     def __init__(self, reason):
         self.reason = reason
@@ -191,24 +64,11 @@ class AuthorityCaseName(str, Enum):
     ISSUED = 'current-authority-issued'
     VALID_CURSOR = 'current-continuation-resumes'
     OLD_REFERENCE = 'old-epoch-reference-reacquired'
-    REVALIDATED = 'explicit-exact-reacquired-under-fresh-basis'
-    NEW_STRICT = 'reacquired-exact-accepted-by-strict-read'
     OLD_CURSOR = 'fresh-anchor-old-continuation-rejected'
     FRESH = 'fresh-authority-reacquired'
     RESTORED = 'restored-source-fresh-authority-reacquired'
     FOREIGN_REFERENCE = 'foreign-workspace-reference-refused'
     FOREIGN_CURSOR = 'foreign-workspace-continuation-refused'
-
-
-@dataclass(frozen=True)
-class InspectExactTarget:
-    selector: str
-    type: str = 'revalidate_exact'
-
-
-@dataclass(frozen=True)
-class InspectExactRequest:
-    target: InspectExactTarget
 
 
 @dataclass(frozen=True)
@@ -226,7 +86,6 @@ class AuthorityCase:
     reason: AuthorityRefusal | None = None
     passed: bool = True
     observedReason: AuthorityRefusal | None = None
-    inspection: InspectionObservation | None = None
 
 
 @dataclass(frozen=True)
@@ -303,28 +162,6 @@ class _AuthorityReplay:
                 and acquired[0]['current'] != reacquired_from, AuthorityFailure.REVALIDATION)
         self.record(name, surface, digest)
         return token
-
-    def inspect(self, stage, surface, selector, current, expected_symbol=None):
-        name = (AuthorityCaseName.REVALIDATED if stage is InspectionStage.REVALIDATE
-                else AuthorityCaseName.NEW_STRICT)
-        request = InspectExactRequest(InspectExactTarget(selector, stage.value))
-        try:
-            response, digest = self.call(surface, 'symbol_inspect', request)
-        except ReadTransportRejected as error:
-            observation = InspectionTransportRejected(stage, error.reason, error.provider_failure)
-            self.cases.append(AuthorityCase(name, surface, None, False, passed=False,
-                inspection=observation))
-            raise
-        observation = _inspect_observation(stage, response, current, selector, expected_symbol)
-        passed = isinstance(observation, InspectionAccepted)
-        self.cases.append(AuthorityCase(name, surface, digest, surface is AuthoritySurface.PROVIDER,
-            passed=passed, inspection=observation))
-        _demand(passed, AuthorityFailure.REVALIDATION)
-        return response['symbol']
-
-    def revalidate(self, surface, old, current):
-        symbol = self.inspect(InspectionStage.REVALIDATE, surface, old, current)
-        self.inspect(InspectionStage.STRICT, surface, symbol['selector'], current, symbol)
 
     def reject(self, name, surface, request, reason):
         response, digest = self.call(surface, 'source_read', request)
@@ -431,7 +268,6 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
             replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
                 replace(fresh, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
             replay.page(AuthorityCaseName.FRESH, surface, fresh, current, 'pageItem00')
-            replay.revalidate(surface, old.anchor.selector, current)
         report = replace(report, outcome=AuthorityOutcome.PASSED)
     except AuthorityRejected as error:
         report = replace(report, failure=error.reason)

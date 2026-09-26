@@ -76,6 +76,24 @@ class KotlinDocumentationScanner : AutoCloseable {
         )
     }
 
+    /** All named declarations, including internal and private declarations cited by repository knowledge. */
+    fun symbols(fileName: String, content: String): KotlinSymbolScan {
+        val file = factory.createFile(fileName, content)
+        if (PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java) != null) {
+            return KotlinSymbolScan.Rejected(KnowledgeDocsFailureCode.INVALID_KOTLIN)
+        }
+        val names = mutableSetOf<String>()
+        file.accept(
+            object : KtTreeVisitorVoid() {
+                override fun visitNamedDeclaration(declaration: KtNamedDeclaration) {
+                    declaration.name?.let(names::add)
+                    super.visitNamedDeclaration(declaration)
+                }
+            },
+        )
+        return KotlinSymbolScan.Accepted(names.sorted())
+    }
+
     override fun close() = Disposer.dispose(disposable)
 }
 

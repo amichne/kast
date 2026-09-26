@@ -167,20 +167,6 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 ),
             )
         CanonicalOperation.TOPOLOGY_BUILD -> topologyBuildDocumentSchema(operation)
-        CanonicalOperation.SYMBOL_DISCOVER ->
-            outcomeSchema(
-                operation,
-                ServerSchemaProperty("items", arraySchema(symbolDiscoverySchema())),
-            )
-        CanonicalOperation.SYMBOL_INSPECT ->
-            outcomeSchema(
-                operation,
-                ServerSchemaProperty("symbol", symbolSchema()),
-                ServerSchemaProperty(
-                    "acquisition",
-                    enumSchema(listOf("strict", "reacquired"), "Exact inspection authority acquisition."),
-                ),
-            )
         CanonicalOperation.SOURCE_READ -> sourceReadOutputSchema(operation)
         CanonicalOperation.QUERY_RUN -> queryRunDocumentSchema(operation)
         CanonicalOperation.DIAGNOSTIC_CHECK ->
@@ -515,7 +501,17 @@ private fun queryOutputReferenceSchema(kind: String): JsonObject =
 
 private fun queryItemFailureSchema(): JsonObject =
     unionSchema(
-        queryItemFailureVariantSchema("refinement", "declaration-candidate", queryExactFailureSchema()),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("refinement", "Candidate refinement failure.")),
+            ServerSchemaProperty(
+                "location",
+                objectSchema(
+                    ServerSchemaProperty("file", textSchema("Discovery file.")),
+                    ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
+                ),
+            ),
+            ServerSchemaProperty("reason", queryExactFailureSchema()),
+        ),
         queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),
         queryItemFailureVariantSchema("predicate", "exact-symbol", queryPredicateFailureSchema()),
         queryItemFailureVariantSchema("source", "exact-symbol", querySourceFailureSchema()),

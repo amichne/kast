@@ -11,7 +11,7 @@ code_sources:
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadLease.kt
     symbols: [SemanticReadLease]
   - path: evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/WorkspacePublication.kt
-    symbols: [WorkspacePublicationAuthority]
+    symbols: [WorkspacePublicationCommit]
   - path: settings.gradle.kts
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
 ---

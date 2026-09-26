@@ -4,7 +4,6 @@
   <CurrentIssues>
     <ID>CognitiveComplexMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
     <ID>CyclomaticComplexMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
-    <ID>FunctionOnlyReturningConstant:CliNativeTransportTest.kt:CliNativeTransportTest$private fun symbolDiscoverDocument: String</ID>
     <ID>ImplicitDefaultLocale:CliContinuationAdmissionTest.kt:"%02x".format(it)</ID>
     <ID>ImplicitDefaultLocale:ConfigurationInspectionTest.kt:ConfigurationInspectionTest$"%02x".format(it)</ID>
     <ID>ImplicitDefaultLocale:ExistingIdeCliTest.kt:ExistingIdeCliTest$"%02x".format(it)</ID>

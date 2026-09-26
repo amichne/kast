@@ -116,28 +116,6 @@ internal object KastObserverFixtures {
         """
             .trimIndent()
 
-    val symbolDiscovery =
-        """
-        {
-          "status": "completed",
-          "document": {
-            "operation": "symbol.discover",
-            "status": "complete",
-            "items": [{
-              "type": "declaration",
-              "candidateSelector": "candidate:v2:opaque",
-              "kind": "class",
-              "name": "EventConsumer",
-              "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
-              "offset": 17
-            }]
-          }
-        }
-        """
-            .trimIndent()
-
-    val symbolInspection = symbolInspectionObserverFixture()
-
     val sourceRead =
         """
         {

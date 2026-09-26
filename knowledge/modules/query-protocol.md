@@ -38,8 +38,6 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryBindingDocuments.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSymbolProtocols.kt
-    symbols: [CanonicalSymbolDiscoverProtocol, CanonicalSymbolInspectProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
     symbols: [CanonicalSourceReadProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalDiagnosticCheckProtocol.kt
@@ -86,24 +84,16 @@ root, host, epoch, version, and content view must match it. Restoration does not
 open an IDE or prove a declaration is current. Native read adapters must still
 revalidate scope, location, compiler evidence, and content.
 
-Run admission reacquires exact references from the source and `concat` steps through one bounded request capability. An invalid composed token reports its step and position. Symbol result sources and composed result operands restore immutable, basis-bound rows with their original qualification, including an empty result, without rediscovery. Issued row IDs can select a subset of one owning result; unknown or foreign row IDs reject, and a proper subset records incomplete selection. `intersect`, `union`, and `difference` accept retained right operands; plan admission rejects `difference` when the right input lacks complete coverage, has failures, or retains producer progress. Canonical admission refines bounded binding names and requires each named join input to refer to an earlier bind. Duplicate names, unknown names, inner joins followed by another stage, and incompatible output modes have distinct finite rejections before domain effects. An inner join projects a typed pair of named symbol or proven occurrence cells. The binding-row document checks equal canonical symbol IDs and verifies each occurrence fact against its cell symbol connections; wire decoding rejects forged pairs. Retained results distinguish symbol rows from binding rows; binding rows cannot seed symbol stages or join right inputs, and read-result requires the matching output kind while preserving row IDs and evidence. A resume action supplies only the issued continuation and optional new grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page. A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
+Run admission reacquires exact references from the source and `concat` steps through one bounded request capability. An invalid composed token reports its step and position. Retained symbol and binding result sources restore immutable, basis-bound rows with their original qualification, including an empty result, without rediscovery. Issued row IDs can select a subset of one owning result; unknown or foreign row IDs reject, and a proper subset records incomplete selection. `intersect` and `difference` accept retained symbol right operands; plan admission rejects `difference` when the right input lacks complete coverage, has failures, or retains producer progress. Canonical admission refines bounded binding names and restores each join right input from a retained result. Invalid row-kind transitions, unknown projected bindings, and incompatible output modes reject before domain effects. `concat` appends inputs; a following `distinct_symbols` retains the first row for each canonical identity. An inner join projects a typed pair of named symbol or proven occurrence cells. `project_binding` selects one named cell before symbol stages continue, including when the input is a selected retained binding result. The binding-row document checks equal canonical symbol IDs and verifies each occurrence fact against its cell symbol connections; wire decoding rejects forged pairs. Retained results distinguish symbol rows from binding rows and preserve column names even when no rows match. Binding rows cannot serve as symbol join right inputs; read-result requires the matching output kind while preserving row IDs and evidence. A resume action supplies only the issued continuation and optional new grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page. A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
 
 Selector documents retain directory, package, declaration-kind, and exact Gradle
-source-set constraints. Batch issuance preserves these facts for declaration,
-file, and text candidates. Legacy unrestricted published selectors retain their
-version-2 representation; live or scoped selectors use version 3. File/range
-version-3 documents retain the original read scope and constraints; a version-2
-document with those new fields rejects. Legacy decoding establishes the explicit
-historical exact-file policy. These cases have separate codec regressions, so an
-older representation cannot silently claim or discard a newer scoped history.
-
-Default portable scope decoding admits workspace and exact-file scopes. For
-source references, `CanonicalQueryReferences(model)` supplies a current
-`WorkspaceSearchScopeModel` to source-token restoration, allowing modeled module,
-project, and source-set scopes to recover only their matching strong owner
-identities. Model-free restoration still rejects those scopes. Ordinary query
-source-set selection is represented by exact named constraints on a workspace
-scope.
+source-set constraints for source-owned declaration candidates and exact symbols.
+Relation occurrences and diagnostic locations issue range candidates consumed by
+`source_read`; these do not grant exact symbol authority. No public file candidate
+or discovery-batch token issuer remains. Published selectors use version 2;
+live or scoped selectors use version 3. A version-2 decoder rejects payloads
+requiring newer authority or scope evidence. Modeled source-set selection uses
+exact named constraints on a workspace scope.
 
 Successful projection chooses `EvidenceBasis.Published` or `EvidenceBasis.Live`.
 The live variant carries detached provenance and cannot enter a published write
@@ -164,14 +154,13 @@ See [source identity](../contracts/source-identity.md#source-output-format).
 
 ## Explicit exact reacquisition
 
-`symbol.inspect` accepts `revalidate_exact` alongside unchanged `candidate` and
-`exact` targets. The previous exact token is only a key into the running owner's
+Fresh first-page query and source requests may reacquire an exact reference after
+strict restoration reports a stale handle. The previous exact token is only a key into the running owner's
 separate detached locator store. Current admission, the same host/root and model
 source owner, unchanged saved committed owning-file bytes, and one fresh exact K2
 match are required. The service checks freshness again before new issuance.
-Results encode `acquisition: strict` or `acquisition: reacquired` explicitly.
 No prior source snapshot, relation, continuation or mutation approval becomes
-current through this operation.
+current through reacquisition; those paths retain strict restoration.
 
 Capture is optional for ordinary issuance: it runs inside exact compiler lookup,
 deduplicates at most 64 files per request, and retains no source payload or platform

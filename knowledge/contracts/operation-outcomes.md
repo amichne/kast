@@ -69,11 +69,7 @@ than accepting a separate action as authority.
 
 A `concat` exact-reference rejection retains both the step and reference positions. It uses the same finite reference reason and recovery action as a source reference rejection. An unavailable retained row or incomplete right operand is a request correction, while an unavailable or stale retained result directs a fresh read.
 
-Query admission has distinct finite reasons for duplicate or unknown binding
-names, a nonterminal inner join, and a mismatched output kind. A retained
-binding-row result presented as symbols rejects rather than returning an empty
-symbol stream. An incomplete named anti-join right input keeps
-`JOIN_INPUT_INCOMPLETE` qualification and cannot prove absence.
+Query admission has distinct finite reasons for unknown projected binding names and mismatched output kinds. A retained binding-row result presented as symbols rejects rather than returning an empty symbol stream. An incomplete anti-join right input rejects before execution because absence is unproven.
 
 | Action | Required direction |
 | --- | --- |

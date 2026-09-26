@@ -26,7 +26,7 @@ code_sources:
     symbols: [InstalledConfigurationSchema]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/ConfigurationInspection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt
-    symbols: [SavedConfigurationIngress]
+    symbols: [SavedConfigurationIngressCompositionFailure]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt

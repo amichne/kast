@@ -24,8 +24,6 @@ enum class OperationExecutionBudget(operationMillis: Long) {
                 CanonicalOperation.TOPOLOGY_BUILD -> GRAPH_BUILD
                 CanonicalOperation.WORKSPACE_LIFECYCLE,
                 CanonicalOperation.INDEX_SYNC,
-                CanonicalOperation.SYMBOL_DISCOVER,
-                CanonicalOperation.SYMBOL_INSPECT,
                 CanonicalOperation.SOURCE_READ,
                 CanonicalOperation.QUERY_RUN,
                 CanonicalOperation.DIAGNOSTIC_CHECK,

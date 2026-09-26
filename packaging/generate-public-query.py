@@ -110,12 +110,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
     objects = {**{key: value for key, value in definitions.items() if 'x-kotlin-type' not in value}, **roots}
     enums = {}
     unions = {'Scope': ['DirectoryScope', 'PackageScope'],
-              'Source': ['SearchSource', 'AllSource', 'ReferenceSource', 'ResultSource'],
+              'Source': ['SearchSource', 'AllSource', 'LocationSource', 'ReferenceSource', 'ResultSource'],
               'CompositionInput': ['ReferenceSource', 'ResultSource'],
               'RetainedInput': ['ResultSource'],
-              'JoinRight': ['NamedBindingSource', 'ResultSource'],
               'JoinMode': ['InnerJoinMode', 'SemiJoinMode', 'AntiJoinMode'],
-              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'Concat', 'Intersect', 'Union', 'Difference', 'Bind', 'Join'],
+              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'ProjectBinding', 'Concat', 'Intersect', 'Union', 'Difference', 'Join'],
               'Action': ['RunAction', 'ResumeAction', 'ReadResultAction']}
     parents = {}
     for parent, children in unions.items():

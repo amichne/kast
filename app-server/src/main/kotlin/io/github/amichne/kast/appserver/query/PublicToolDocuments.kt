@@ -71,9 +71,6 @@ internal sealed interface PublicToolCompositionInput
 internal sealed interface PublicToolRetainedInput
 
 @Serializable
-internal sealed interface PublicToolJoinRight
-
-@Serializable
 internal sealed interface PublicToolJoinMode
 
 @Serializable
@@ -146,6 +143,12 @@ internal data class PublicToolWalk(
 internal data object PublicToolDistinctSymbols : PublicToolStep
 
 @Serializable
+@SerialName("project_binding")
+internal data class PublicToolProjectBinding(
+    val name: QueryBindingNameDocument,
+) : PublicToolStep
+
+@Serializable
 @SerialName("concat")
 internal data class PublicToolConcat(
     val input: PublicToolCompositionInput,
@@ -174,7 +177,7 @@ internal data class PublicToolDifference(
 internal data class PublicToolResultSource(
     val result: QueryResultReference,
     val row_ids: BoundedProtocolList<QueryResultRowReference>? = null,
-) : PublicToolSource, PublicToolCompositionInput, PublicToolRetainedInput, PublicToolJoinRight
+) : PublicToolSource, PublicToolCompositionInput, PublicToolRetainedInput
 
 @Serializable
 @SerialName("run")
@@ -209,18 +212,6 @@ internal data class PublicToolReadResultAction(
 ) : PublicToolAction
 
 @Serializable
-@SerialName("binding")
-internal data class PublicToolNamedBindingSource(
-    val name: QueryBindingNameDocument,
-) : PublicToolJoinRight
-
-@Serializable
-@SerialName("bind")
-internal data class PublicToolBind(
-    val name: QueryBindingNameDocument,
-) : PublicToolStep
-
-@Serializable
 @SerialName("inner")
 internal data class PublicToolInnerJoinMode(
     @SerialName("left_name")
@@ -243,8 +234,15 @@ internal data object PublicToolAntiJoinMode : PublicToolJoinMode
 @SerialName("join")
 internal data class PublicToolJoin(
     val mode: PublicToolJoinMode,
-    val right: PublicToolJoinRight,
+    val right: PublicToolRetainedInput,
 ) : PublicToolStep
+
+@Serializable
+@SerialName("at_location")
+internal data class PublicToolLocationSource(
+    val file: ProtocolText,
+    val offset: Int,
+) : PublicToolSource
 
 @Serializable
 internal data class PublicToolCheckDiagnostics(

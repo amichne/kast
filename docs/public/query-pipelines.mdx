@@ -5,7 +5,7 @@ icon: "workflow"
 ---
 
 `query_symbols` starts from a typed source and applies `steps` from left
-to right. Use [the first query](/search) to obtain an exact `ref`.
+to right. Use `{"type":"at_location","file":"src/main/kotlin/Subject.kt","offset":42}` to find the nearest named declaration containing that UTF-16 file offset. The result is an exact symbol, not a definition followed from a reference. Use [the first query](/search) to obtain an exact `ref`.
 
 ```json
 {
@@ -20,6 +20,11 @@ to right. Use [the first query](/search) to obtain an exact `ref`.
 
 `occurrences` keeps individual relation facts, including repeated use sites.
 An empty answer is meaningful only when the returned coverage is complete.
+
+An inner `join` yields named binding rows. Retain the result, preview it with
+`read_result`, and select issued `row_ids` in a later run. Add
+`{"type":"project_binding","name":"caller"}` before `distinct_symbols` or
+`walk` to continue from that exact cell while preserving the result's coverage.
 
 The generated **Query symbols** entry in the API / RPC tab lists every source,
 step, output variant, continuation, and finite rejection. Do not construct

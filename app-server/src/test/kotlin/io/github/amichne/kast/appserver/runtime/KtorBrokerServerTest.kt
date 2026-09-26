@@ -19,6 +19,8 @@ import io.github.amichne.kast.appserver.core.ToolPresentation
 import io.github.amichne.kast.appserver.protocol.MemoryThreadCatalogStore
 import io.github.amichne.kast.appserver.protocol.codex.CodexOwnedSchema
 import io.github.amichne.kast.appserver.protocol.codex.CodexProtocolContracts
+import io.github.amichne.kast.appserver.protocol.codex.kastToolCall
+import io.github.amichne.kast.appserver.protocol.codex.kastToolCompleted
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
@@ -106,9 +108,7 @@ class KtorBrokerServerTest {
 
                     val arguments = """{"selector":"exact:v2:opaque"}"""
                     upstream.receivedFromUpstream.send(
-                        BrokerUpstreamFrame.Text(
-                            """{"id":9,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments}}"""
-                        )
+                        BrokerUpstreamFrame.Text(kastToolCall(Json.parseToJsonElement(arguments)))
                     )
                     val modelReply = Json.parseToJsonElement(upstream.sentByBroker.receive()).jsonObject
                     assertEquals(
@@ -127,7 +127,7 @@ class KtorBrokerServerTest {
 
                     upstream.receivedFromUpstream.send(
                         BrokerUpstreamFrame.Text(
-                            """{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","completedAtMs":20,"item":{"type":"dynamicToolCall","id":"call-1","namespace":"kast","tool":"symbol_inspect","arguments":$arguments,"status":"completed","contentItems":[{"type":"inputText","text":"exact model result"}],"success":true}}}"""
+                            kastToolCompleted(Json.parseToJsonElement(arguments), "exact model result")
                         )
                     )
 
@@ -389,7 +389,7 @@ class KtorBrokerServerTest {
             )
         val tool: BrokerTool<Unit, ObserverInput, ObserverOutput, Nothing> =
             BrokerTool(
-                toolName("symbol_inspect"),
+                toolName("query_symbols"),
                 ToolDescription.admit("Inspect one symbol.").refinedValue(),
                 ToolLoading.DEFERRED,
                 input,

@@ -3,11 +3,13 @@ package io.github.amichne.kast.query.service
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryArrivalEvidence
+import io.github.amichne.kast.query.contract.QueryBindingRow
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryCompositionInput
+import io.github.amichne.kast.query.contract.QueryContainingDeclaration
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
-import io.github.amichne.kast.query.contract.QueryJoinInput
+import io.github.amichne.kast.query.contract.QueryJoinMode
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRelationOmission
@@ -53,6 +55,8 @@ internal sealed interface PipelineTask {
 
     data class Discover(val syntax: QueryDiscoverySyntax, val next: ExactQueryStage) : PipelineTask
 
+    data class DiscoverLocation(val target: QueryContainingDeclaration, val next: ExactQueryStage) : PipelineTask
+
     data class Revalidate(val selector: SymbolSelector, val next: ExactQueryStage) : PipelineTask
 
     data class Feed(val stage: ExactQueryStage.Concat) : PipelineTask
@@ -61,13 +65,13 @@ internal sealed interface PipelineTask {
 
     data class FlushDistinct(val stage: ExactQueryStage.Distinct) : PipelineTask
 
-    data class FlushBind(val stage: ExactQueryStage.Bind) : PipelineTask
-
     data class JoinEvidence(val stage: ExactQueryStage.Join) : PipelineTask
 
     data class Candidate(val value: SymbolDiscoverySelection, val stage: ExactQueryStage) : PipelineTask
 
     data class Symbol(val value: QuerySymbol, val stage: ExactQueryStage) : PipelineTask
+
+    data class Binding(val value: QueryBindingRow, val stage: ExactQueryStage) : PipelineTask
 
     data class Related(val value: QuerySymbol, val stage: ExactQueryStage.Related, val cursor: RelationContinuation?) :
         PipelineTask
@@ -91,11 +95,12 @@ internal sealed interface QueryJoinCursor {
 internal fun PipelineTask.needsWork(): Boolean =
     when (this) {
         is PipelineTask.Discover,
+        is PipelineTask.DiscoverLocation,
         is PipelineTask.Revalidate,
         is PipelineTask.Related,
         is PipelineTask.Walk,
         is PipelineTask.Join -> true
-        is PipelineTask.Symbol -> stage is ExactQueryStage.Bind
+        is PipelineTask.Binding -> false
         else -> false
     }
 
@@ -131,6 +136,7 @@ private fun PipelineTask.retainedBytes(): Long =
         is PipelineTask.Occurrence -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.WalkRecord -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Symbol -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
+        is PipelineTask.Binding -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Related ->
             saturatedAdd(
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
@@ -156,14 +162,14 @@ private fun PipelineTask.retainedBytes(): Long =
             }
         is PipelineTask.FlushSet -> stage.right.retainedBytes
         is PipelineTask.FlushDistinct -> 0L
-        is PipelineTask.FlushBind -> 0L
         is PipelineTask.JoinEvidence -> 0L
         is PipelineTask.Join ->
             saturatedAdd(
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
                 (cursor as? QueryJoinCursor.Semi)?.accumulated?.projectedUtf8Size() ?: 0L,
             )
-        is PipelineTask.Discover -> DISCOVERY_TASK_BYTES
+        is PipelineTask.Discover,
+        is PipelineTask.DiscoverLocation -> DISCOVERY_TASK_BYTES
     }
 
 private fun saturatedMultiply(left: Long, right: Long): Long =
@@ -200,9 +206,13 @@ internal fun PipelineTask.Symbol.expandOutput(output: QueryOutputSyntax): List<P
 private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
     when (plan) {
         is AdmittedQueryPlan.Symbols -> listOf(PipelineTask.Discover(plan.source, plan.stage))
+        is AdmittedQueryPlan.Location -> listOf(PipelineTask.DiscoverLocation(plan.source, plan.stage))
         is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { PipelineTask.Revalidate(it, plan.stage) }
         is AdmittedQueryPlan.Retained ->
-            plan.source.symbols.map { PipelineTask.Symbol(it, plan.stage) } +
+            (when (val source = plan.source) {
+                is QueryRetainedResult.Symbols -> source.symbols.map { PipelineTask.Symbol(it, plan.stage) }
+                is QueryRetainedResult.Bindings -> source.bindingRows.map { PipelineTask.Binding(it, plan.stage) }
+            }) +
                 plan.source.failures.map(PipelineTask::Failure) +
                 plan.source.omissions.map(PipelineTask::Omission) +
                 plan.source.walkObservations.map(PipelineTask::WalkObservation)
@@ -211,16 +221,17 @@ private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
 private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
     when (plan) {
         is AdmittedQueryPlan.Symbols -> boundaryTasks(plan.stage)
+        is AdmittedQueryPlan.Location -> boundaryTasks(plan.stage)
         is AdmittedQueryPlan.ExactReferences -> boundaryTasks(plan.stage)
         is AdmittedQueryPlan.Retained -> boundaryTasks(plan.stage)
     }
 
 private fun boundaryTasks(stage: ExactQueryStage): List<PipelineTask> =
     when (stage) {
+        is ExactQueryStage.ProjectBinding -> boundaryTasks(stage.next)
         is ExactQueryStage.Concat -> listOf(PipelineTask.Feed(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Set -> listOf(PipelineTask.FlushSet(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Distinct -> listOf(PipelineTask.FlushDistinct(stage)) + boundaryTasks(stage.next)
-        is ExactQueryStage.Bind -> listOf(PipelineTask.FlushBind(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Join -> listOf(PipelineTask.JoinEvidence(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Where -> boundaryTasks(stage.next)
         is ExactQueryStage.Related -> boundaryTasks(stage.next)
@@ -232,6 +243,7 @@ internal fun AdmittedQueryPlan.retainedInputs(): List<QueryRetainedResult> {
     val stage =
         when (this) {
             is AdmittedQueryPlan.Symbols -> stage
+            is AdmittedQueryPlan.Location -> stage
             is AdmittedQueryPlan.ExactReferences -> stage
             is AdmittedQueryPlan.Retained -> stage
         }
@@ -242,16 +254,49 @@ internal fun AdmittedQueryPlan.retainedInputs(): List<QueryRetainedResult> {
 internal fun AdmittedQueryPlan.outputSyntax(): QueryOutputSyntax =
     when (this) {
         is AdmittedQueryPlan.Symbols -> stage.outputSyntax()
+        is AdmittedQueryPlan.Location -> stage.outputSyntax()
         is AdmittedQueryPlan.ExactReferences -> stage.outputSyntax()
         is AdmittedQueryPlan.Retained -> stage.outputSyntax()
     }
 
+internal fun AdmittedQueryPlan.bindingMode(): QueryJoinMode.Inner {
+    var mode = ((this as? AdmittedQueryPlan.Retained)?.source as? QueryRetainedResult.Bindings)?.mode
+    var stage =
+        when (this) {
+            is AdmittedQueryPlan.Symbols -> stage
+            is AdmittedQueryPlan.Location -> stage
+            is AdmittedQueryPlan.ExactReferences -> stage
+            is AdmittedQueryPlan.Retained -> stage
+        }
+    while (stage !is ExactQueryStage.Emit) {
+        stage =
+            when (stage) {
+                is ExactQueryStage.Join -> {
+                    mode = stage.mode as? QueryJoinMode.Inner
+                    stage.next
+                }
+                is ExactQueryStage.ProjectBinding -> {
+                    mode = null
+                    stage.next
+                }
+                is ExactQueryStage.Concat -> stage.next
+                is ExactQueryStage.Set -> stage.next
+                is ExactQueryStage.Distinct -> stage.next
+                is ExactQueryStage.Where -> stage.next
+                is ExactQueryStage.Related -> stage.next
+                is ExactQueryStage.Walk -> stage.next
+                is ExactQueryStage.Emit -> stage
+            }
+    }
+    return requireNotNull(mode) { "Admitted binding output lost its column identity" }
+}
+
 private fun ExactQueryStage.outputSyntax(): QueryOutputSyntax =
     when (this) {
+        is ExactQueryStage.ProjectBinding -> next.outputSyntax()
         is ExactQueryStage.Concat -> next.outputSyntax()
         is ExactQueryStage.Set -> next.outputSyntax()
         is ExactQueryStage.Distinct -> next.outputSyntax()
-        is ExactQueryStage.Bind -> next.outputSyntax()
         is ExactQueryStage.Join -> next.outputSyntax()
         is ExactQueryStage.Where -> next.outputSyntax()
         is ExactQueryStage.Related -> next.outputSyntax()
@@ -262,17 +307,18 @@ private fun ExactQueryStage.outputSyntax(): QueryOutputSyntax =
 internal fun AdmittedQueryPlan.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
     when (this) {
         is AdmittedQueryPlan.Symbols -> stage.exceedsTraversalDepth(ceiling)
+        is AdmittedQueryPlan.Location -> stage.exceedsTraversalDepth(ceiling)
         is AdmittedQueryPlan.ExactReferences -> stage.exceedsTraversalDepth(ceiling)
         is AdmittedQueryPlan.Retained -> stage.exceedsTraversalDepth(ceiling)
     }
 
 private fun ExactQueryStage.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
     when (this) {
+        is ExactQueryStage.ProjectBinding -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Walk -> maximumDepth.value > ceiling.value || next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Concat -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Set -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Distinct -> next.exceedsTraversalDepth(ceiling)
-        is ExactQueryStage.Bind -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Join -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Where -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Related -> next.exceedsTraversalDepth(ceiling)
@@ -281,13 +327,12 @@ private fun ExactQueryStage.exceedsTraversalDepth(ceiling: TraversalDepthLimit):
 
 private fun ExactQueryStage.retainedInputs(): List<QueryRetainedResult> =
     when (this) {
+        is ExactQueryStage.ProjectBinding -> next.retainedInputs()
         is ExactQueryStage.Concat ->
             (input as? QueryCompositionInput.Retained)?.result?.let { listOf(it) }.orEmpty() + next.retainedInputs()
         is ExactQueryStage.Set -> listOf(right) + next.retainedInputs()
         is ExactQueryStage.Distinct -> next.retainedInputs()
-        is ExactQueryStage.Bind -> next.retainedInputs()
-        is ExactQueryStage.Join ->
-            (right as? QueryJoinInput.Retained)?.result?.let { listOf(it) }.orEmpty() + next.retainedInputs()
+        is ExactQueryStage.Join -> listOf(right) + next.retainedInputs()
         is ExactQueryStage.Where -> next.retainedInputs()
         is ExactQueryStage.Related -> next.retainedInputs()
         is ExactQueryStage.Walk -> next.retainedInputs()
@@ -300,6 +345,7 @@ private fun AdmittedQueryPlan.retainedInputBytes(): Long =
 internal fun discoverySyntax(plan: AdmittedQueryPlan): QueryDiscoverySyntax? =
     when (plan) {
         is AdmittedQueryPlan.Symbols -> plan.source
+        is AdmittedQueryPlan.Location -> null
         is AdmittedQueryPlan.ExactReferences,
         is AdmittedQueryPlan.Retained -> null
     }

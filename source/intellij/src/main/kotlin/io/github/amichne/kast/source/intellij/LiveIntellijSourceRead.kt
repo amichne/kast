@@ -289,17 +289,6 @@ internal class LiveIntellijSourceRegionAccess(
             return LiveSourceAnchorResult.Rejected(IntellijSourceReadRejection.STALE_GENERATION)
         }
         return when (selector) {
-            is CandidateSelector.File -> {
-                val range =
-                    document.snapshot.sourceRange(0, document.text.length)
-                        ?: return LiveSourceAnchorResult.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-                LiveSourceAnchorResult.Admitted(
-                    LiveSourceAnchor(
-                        SourceSelector.issueRoot(range, SourceRegionKind.FILE),
-                        document.psiFile,
-                    )
-                )
-            }
             is CandidateSelector.Range -> {
                 val range =
                     document.snapshot.sourceRange(
@@ -1216,7 +1205,6 @@ private fun KtNamedDeclaration.matchesCompilerKinds(constraints: SymbolDiscovery
 private fun CandidateSelector.workspaceFile(): SymbolDiscoveryFileIdentity.Workspace? =
     when (this) {
         is CandidateSelector.Declaration -> selection.candidate.location.file as? SymbolDiscoveryFileIdentity.Workspace
-        is CandidateSelector.File -> file
         is CandidateSelector.Range -> file
     }
 

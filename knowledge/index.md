@@ -34,3 +34,13 @@ The bundle covers architectural ownership, public semantic contracts, principal 
 ```
 
 The first command strictly validates the OKF and every `code_sources` path. The second compares the working tree with source bindings and reports affected concepts.
+
+## Citation verification
+
+Run `./gradlew verifyKnowledgeBase` after source or knowledge changes. The gate
+checks every concept's `code_sources` path and each declared `symbols` entry in
+that exact file. Kotlin names come from the Kotlin PSI syntax tree, including
+internal and private declarations; Python names come from its AST. Comments,
+string literals, and declarations in other files cannot satisfy a citation.
+Duplicate `symbols` fields and invalid source syntax fail the check. This proves
+declaration presence, not compiler name or type resolution.

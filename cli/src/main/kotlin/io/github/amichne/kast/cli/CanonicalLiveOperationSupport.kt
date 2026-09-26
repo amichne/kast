@@ -6,8 +6,6 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 internal fun CanonicalOperation.supportsLiveEvidence(): Boolean =
     when (this) {
         CanonicalOperation.QUERY_RUN,
-        CanonicalOperation.SYMBOL_DISCOVER,
-        CanonicalOperation.SYMBOL_INSPECT,
         CanonicalOperation.SOURCE_READ,
         CanonicalOperation.DIAGNOSTIC_CHECK,
         CanonicalOperation.CHANGE_PLAN,

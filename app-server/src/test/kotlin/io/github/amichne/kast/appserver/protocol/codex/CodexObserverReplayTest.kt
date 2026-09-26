@@ -106,8 +106,7 @@ class CodexObserverReplayTest {
         for ((operation, fixture) in
             listOf(
                 "source.read" to KastObserverFixtures.sourceRead,
-                "symbol.inspect" to KastObserverFixtures.symbolInspection,
-                "symbol.discover" to KastObserverFixtures.symbolDiscovery,
+                "query.run" to KastObserverFixtures.emptyQuery,
             )) {
             val output = KastInvocationOutput(Json.parseToJsonElement(fixture).jsonObject, true, directory)
             val live = KastObserverProjector.project(checkNotNull(KastOperationId.admit(operation)), output)

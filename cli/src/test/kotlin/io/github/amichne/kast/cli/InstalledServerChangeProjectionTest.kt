@@ -34,15 +34,12 @@ class InstalledServerChangeProjectionTest {
             listOf(
                 "workspace_lifecycle",
                 "query_symbols",
-                "symbol_lookup",
-                "symbol_inspect",
                 "source_read",
                 "check_diagnostics",
                 "change",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertEquals(listOf("symbol", "inspect"), invocations.invocation("symbol_inspect").cliCommand())
         assertEquals(
             HostedApprovalPolicy.NONE.name.lowercase(),
             tools.tool("change").getValue("approvalPolicy").jsonPrimitive.content,

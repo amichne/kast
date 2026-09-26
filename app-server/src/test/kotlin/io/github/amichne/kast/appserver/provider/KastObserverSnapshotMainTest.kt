@@ -22,8 +22,6 @@ class KastObserverSnapshotMainTest {
         val items = pages.flatMap { page -> page.jsonObject.getValue("items").jsonArray }
         assertEquals(
             setOf(
-                "symbol.discover",
-                "symbol.inspect",
                 "source.read",
                 "query.run",
                 "diagnostic.check",
@@ -33,7 +31,7 @@ class KastObserverSnapshotMainTest {
             ),
             items.map { item -> item.jsonObject.getValue("operation").jsonPrimitive.content }.toSet(),
         )
-        assertEquals(9, items.size)
+        assertEquals(7, items.size)
         val apply =
             items
                 .single { item ->

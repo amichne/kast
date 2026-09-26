@@ -93,7 +93,7 @@
   {
     "type": "function",
     "name": "kast_query_symbols",
-    "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from discovery, exact references, or immutable retained rows. Apply structured predicates, relation expansion, bounded walk, set composition, and typed query-local bindings and joins. Join matches canonical symbol identity and preserves both named bindings, multiplicity, and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
+    "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from declaration discovery, a containing declaration at file offset, exact references, or immutable retained rows. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join matches canonical symbol identity and preserves both named output cells, multiplicity, and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -660,7 +660,27 @@
             "type"
           ],
           "additionalProperties": false,
-          "description": "Remove duplicate symbol identities at this position only. Never insert this step implicitly."
+          "description": "Keep the first row and its evidence for each canonical symbol identity at this position."
+        },
+        "ProjectBinding": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "project_binding"
+              ]
+            },
+            "name": {
+              "$ref": "#/$defs/BindingName"
+            }
+          },
+          "required": [
+            "type",
+            "name"
+          ],
+          "additionalProperties": false,
+          "description": "Select one named symbol cell from each retained or newly joined binding row before symbol stages continue."
         },
         "ExecutionBudget": {
           "type": [
@@ -880,13 +900,16 @@
                   "$ref": "#/$defs/AllSource"
                 },
                 {
+                  "$ref": "#/$defs/LocationSource"
+                },
+                {
                   "$ref": "#/$defs/ReferenceSource"
                 },
                 {
                   "$ref": "#/$defs/ResultSource"
                 }
               ],
-              "description": "Starting declarations, exact-symbol references, or one retained result."
+              "description": "Starting declaration search, containing named declaration at file offset, exact-symbol references, or one retained result."
             },
             "steps": {
               "type": [
@@ -908,6 +931,9 @@
                     "$ref": "#/$defs/DistinctSymbols"
                   },
                   {
+                    "$ref": "#/$defs/ProjectBinding"
+                  },
+                  {
                     "$ref": "#/$defs/Concat"
                   },
                   {
@@ -920,16 +946,13 @@
                     "$ref": "#/$defs/Difference"
                   },
                   {
-                    "$ref": "#/$defs/Bind"
-                  },
-                  {
                     "$ref": "#/$defs/Join"
                   }
                 ]
               },
               "minItems": 0,
               "maxItems": 1000,
-              "description": "Ordered transformations executed left to right. null and [] mean no transformations. bind captures a symbol stream once; join references only an earlier bind or retained symbols. Inner join is terminal and requires binding_rows output. Semi and anti joins retain symbol rows; anti requires complete right coverage."
+              "description": "Ordered transformations executed left to right. null and [] mean no transformations. bind captures a symbol stream once; join references only an earlier bind or retained symbols. Inner join yields binding rows; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage."
             },
             "output": {
               "$ref": "#/$defs/Output"
@@ -1027,46 +1050,6 @@
           "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
           "description": "One bounded query-local binding name. A bind name is unique and a join may refer only to an earlier bind."
         },
-        "NamedBindingSource": {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "binding"
-              ]
-            },
-            "name": {
-              "$ref": "#/$defs/BindingName"
-            }
-          },
-          "required": [
-            "type",
-            "name"
-          ],
-          "additionalProperties": false,
-          "description": "Reuse rows captured by an earlier bind step in this run. Forward, unknown and duplicate names are rejected before execution."
-        },
-        "Bind": {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "bind"
-              ]
-            },
-            "name": {
-              "$ref": "#/$defs/BindingName"
-            }
-          },
-          "required": [
-            "type",
-            "name"
-          ],
-          "additionalProperties": false,
-          "description": "Capture the current symbol rows once under a unique name for later join steps in this run."
-        },
         "InnerJoinMode": {
           "type": "object",
           "properties": {
@@ -1148,13 +1131,10 @@
             "right": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/NamedBindingSource"
-                },
-                {
                   "$ref": "#/$defs/ResultSource"
                 }
               ],
-              "description": "An earlier named symbol binding or immutable retained symbol rows. A retained binding-row result is not a symbol right input."
+              "description": "Immutable retained symbol rows. A retained binding-row result is not a symbol right input."
             }
           },
           "required": [
@@ -1180,6 +1160,33 @@
           ],
           "additionalProperties": false,
           "description": "Present both named symbol or exact-occurrence bindings in each inner-join pair, preserving multiplicity and evidence."
+        },
+        "LocationSource": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "at_location"
+              ]
+            },
+            "file": {
+              "type": "string",
+              "description": "Canonical workspace-relative file path containing the offset."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "UTF-16 offset inside the named declaration."
+            }
+          },
+          "required": [
+            "type",
+            "file",
+            "offset"
+          ],
+          "additionalProperties": false,
+          "description": "Find the nearest named declaration containing this offset, then return its exact compiler-grounded symbol."
         }
       }
     },

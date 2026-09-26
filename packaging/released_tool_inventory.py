@@ -11,10 +11,8 @@ from released_acceptance_product import product_executable, ReleaseFailure, Rele
 OPERATIONS = (
     ('workspace_lifecycle', 'workspace.lifecycle'),
     ('query_symbols', 'query.run'),
-    ('symbol_lookup', 'symbol.discover'), ('symbol_inspect', 'symbol.inspect'),
     ('source_read', 'source.read'),
-    ('check_diagnostics', 'diagnostic.check'), ('change_plan', 'change.plan'),
-    ('change_apply', 'change.apply'), ('change_recover', 'change.recover'),
+    ('check_diagnostics', 'diagnostic.check'), ('change', 'change.run'),
 )
 
 
@@ -38,9 +36,9 @@ def admit_inventory(document, configuration, schema_digest):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     if any(line.startswith('KAST_APP_SERVER_TOOLS=') for line in configuration.splitlines()):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
-    reads = tuple(tool['name'] for tool in tools if tool['effect'] in ('none', 'intellij_read')
-                  and tool['operationId'] not in ('change.plan', 'workspace.lifecycle'))
-    if len(reads) != 5 or not {'symbol_lookup', 'symbol_inspect'} <= set(reads):
+    reads = tuple(tool['name'] for tool in tools if tool['effect'] == 'intellij_read'
+                  and tool['operationId'] != 'workspace.lifecycle')
+    if len(reads) != 3 or set(reads) != {'query_symbols', 'source_read', 'check_diagnostics'}:
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     return ReleasedToolInventory(names, names, reads, schema_digest)
 

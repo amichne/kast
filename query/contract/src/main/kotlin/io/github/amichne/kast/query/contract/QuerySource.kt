@@ -1,11 +1,13 @@
 package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 
@@ -76,10 +78,15 @@ class QueryExactReferences private constructor(val values: List<SymbolSelector>)
     override fun hashCode(): Int = values.hashCode()
 }
 
+/** A named declaration containing this UTF-16 offset in one workspace file. */
+data class QueryContainingDeclaration(val file: CanonicalWorkspaceFilePath, val offset: SymbolDiscoverySourceOffset)
+
 sealed interface QuerySourceSyntax {
     data class Symbols(val discovery: QueryDiscoverySyntax) : QuerySourceSyntax
 
+    data class Location(val target: QueryContainingDeclaration) : QuerySourceSyntax
+
     data class ExactReferences(val references: QueryExactReferences) : QuerySourceSyntax
 
-    data class Retained(val result: QueryRetainedResult.Symbols) : QuerySourceSyntax
+    data class Retained(val result: QueryRetainedResult) : QuerySourceSyntax
 }

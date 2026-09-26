@@ -76,26 +76,6 @@ object CanonicalOperationWireBindings {
                 CanonicalTopologySerializers.rejection,
             ),
         )
-    val symbolDiscover =
-        OperationWireBinding(
-            CanonicalOperationDefinitions.symbolDiscover,
-            GeneratedOperationSerializers(
-                CanonicalReadSerializers.symbolDiscoverRequest,
-                CanonicalReadSerializers.symbolDiscoverResult,
-                CanonicalReadSerializers.symbolDiscoverQualification,
-                CanonicalReadSerializers.symbolDiscoverRejection,
-            ),
-        )
-    val symbolInspect =
-        OperationWireBinding(
-            CanonicalOperationDefinitions.symbolInspect,
-            GeneratedOperationSerializers(
-                CanonicalReadSerializers.symbolInspectRequest,
-                CanonicalReadSerializers.symbolInspectResult,
-                CanonicalReadSerializers.symbolInspectQualification,
-                CanonicalReadSerializers.symbolInspectRejection,
-            ),
-        )
     val sourceRead =
         OperationWireBinding(
             CanonicalOperationDefinitions.sourceRead,
@@ -183,8 +163,6 @@ object CanonicalOperationWireBindings {
                         indexSync,
                         topologyBuild,
                         queryRun,
-                        symbolDiscover,
-                        symbolInspect,
                         sourceRead,
                         diagnosticCheck,
                         change,
