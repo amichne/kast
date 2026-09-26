@@ -160,6 +160,7 @@ protected constructor(
     internal constructor(
         lease: SemanticReadAuthority,
         rows: List<QueryBindingRow>,
+        val mode: QueryJoinMode.Inner,
         failures: List<QueryItemFailure>,
         omissions: List<QueryRelationOmission>,
         observations: List<QueryWalkObservation>,
@@ -195,6 +196,7 @@ protected constructor(
                 Bindings(
                     lease,
                     indices.map(rows::get),
+                    mode,
                     failures,
                     omissions,
                     walkObservations,
@@ -263,6 +265,7 @@ protected constructor(
                     Bindings(
                         lease,
                         rows.values,
+                        rows.mode,
                         result.failures,
                         result.omissions,
                         result.walkObservations,

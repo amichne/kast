@@ -126,7 +126,6 @@ class CanonicalQueryWireBindingTest {
             QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE to "right-input-incomplete",
             QueryExecutionRejectionDocument.DUPLICATE_BINDING_NAME to "duplicate-binding-name",
             QueryExecutionRejectionDocument.UNKNOWN_BINDING_NAME to "unknown-binding-name",
-            QueryExecutionRejectionDocument.INNER_JOIN_NOT_TERMINAL to "inner-join-not-terminal",
             QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH to "output-kind-mismatch",
         )
 

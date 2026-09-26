@@ -598,7 +598,22 @@
         "type"
       ],
       "additionalProperties": false,
-      "description": "Remove duplicate symbol identities at this position only. Never insert this step implicitly."
+      "description": "Keep the first row and its evidence for each canonical symbol identity at this position."
+    },
+    "ProjectBinding": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["project_binding"]
+        },
+        "name": {
+          "$ref": "#/$defs/BindingName"
+        }
+      },
+      "required": ["type", "name"],
+      "additionalProperties": false,
+      "description": "Select one named symbol cell from each retained or newly joined binding row before symbol stages continue."
     },
     "ExecutionBudget": {
       "type": [
@@ -849,6 +864,9 @@
                 "$ref": "#/$defs/DistinctSymbols"
               },
               {
+                "$ref": "#/$defs/ProjectBinding"
+              },
+              {
                 "$ref": "#/$defs/Concat"
               },
               {
@@ -870,7 +888,7 @@
           },
           "minItems": 0,
           "maxItems": 1000,
-          "description": "Ordered transformations executed left to right. null and [] mean no transformations. bind captures a symbol stream once; join references only an earlier bind or retained symbols. Inner join is terminal and requires binding_rows output. Semi and anti joins retain symbol rows; anti requires complete right coverage."
+          "description": "Ordered transformations executed left to right. null and [] mean no transformations. bind captures a symbol stream once; join references only an earlier bind or retained symbols. Inner join yields binding rows; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage."
         },
         "output": {
           "$ref": "#/$defs/Output"

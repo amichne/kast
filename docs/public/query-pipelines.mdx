@@ -21,6 +21,11 @@ to right. Use [the first query](/search) to obtain an exact `ref`.
 `occurrences` keeps individual relation facts, including repeated use sites.
 An empty answer is meaningful only when the returned coverage is complete.
 
+An inner `join` yields named binding rows. Retain the result, preview it with
+`read_result`, and select issued `row_ids` in a later run. Add
+`{"type":"project_binding","name":"caller"}` before `distinct_symbols` or
+`walk` to continue from that exact cell while preserving the result's coverage.
+
 The generated **Query symbols** entry in the API / RPC tab lists every source,
 step, output variant, continuation, and finite rejection. Do not construct
 `ref` values; reuse the returned token unchanged.

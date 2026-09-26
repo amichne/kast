@@ -9,7 +9,7 @@ enum class QueryBindingNameFailure {
     INVALID
 }
 
-/** A request-local name for a previously sealed stream or a joined column. */
+/** A bounded name for a sealed stream or a joined column retained with its result. */
 @JvmInline
 value class QueryBindingName private constructor(val value: String) {
     companion object {
@@ -128,17 +128,17 @@ sealed interface QueryRows {
         override fun hashCode(): Int = values.hashCode()
     }
 
-    class Bindings private constructor(private val snapshot: List<QueryBindingRow>) : QueryRows {
+    class Bindings private constructor(private val snapshot: List<QueryBindingRow>, val mode: QueryJoinMode.Inner) : QueryRows {
         val values: List<QueryBindingRow>
             get() = snapshot
 
         companion object {
-            fun of(values: List<QueryBindingRow>): Bindings =
-                Bindings(Collections.unmodifiableList(values.map(QueryBindingRow::detached)))
+            fun of(values: List<QueryBindingRow>, mode: QueryJoinMode.Inner): Bindings =
+                Bindings(Collections.unmodifiableList(values.map(QueryBindingRow::detached)), mode)
         }
 
-        override fun equals(other: Any?): Boolean = other is Bindings && values == other.values
+        override fun equals(other: Any?): Boolean = other is Bindings && values == other.values && mode == other.mode
 
-        override fun hashCode(): Int = values.hashCode()
+        override fun hashCode(): Int = 31 * values.hashCode() + mode.hashCode()
     }
 }

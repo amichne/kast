@@ -265,7 +265,6 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
         }
     if (!sourceIsCanonical) return false
     if (!steps.values.haveCanonicalBindings()) return false
-    if (!steps.values.admitOutput(output)) return false
     return when (val projection = output) {
         is QueryOutputDocument.Symbols -> projection.fields.values.isUnique()
         QueryOutputDocument.Occurrences -> true
@@ -299,6 +298,7 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
         is QueryStepDocument.Related,
         is QueryStepDocument.Walk,
         is QueryStepDocument.Bind,
+        is QueryStepDocument.ProjectBinding,
         QueryStepDocument.Distinct -> true
         is QueryStepDocument.Join ->
             when (right) {
@@ -322,11 +322,11 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
 
 private fun List<QueryStepDocument>.haveCanonicalBindings(): Boolean {
     val available = mutableSetOf<QueryBindingNameDocument>()
-    return withIndex().all { (position, step) ->
+    return all { step ->
         step.hasCanonicalSyntax() &&
             when (step) {
                 is QueryStepDocument.Bind -> available.add(step.name)
-                is QueryStepDocument.Join -> step.hasCanonicalJoinBinding(available, position == lastIndex)
+                is QueryStepDocument.Join -> step.hasCanonicalJoinBinding(available)
                 else -> true
             }
     }
@@ -334,24 +334,12 @@ private fun List<QueryStepDocument>.haveCanonicalBindings(): Boolean {
 
 private fun QueryStepDocument.Join.hasCanonicalJoinBinding(
     available: Set<QueryBindingNameDocument>,
-    isLast: Boolean,
 ): Boolean {
     val named = right as? QueryJoinRightDocument.Named
     val inner = mode as? QueryJoinModeDocument.Inner
     return (named == null || named.name in available) &&
-        (inner == null || (inner.leftName != inner.rightName && isLast))
+        (inner == null || inner.leftName != inner.rightName)
 }
-
-private fun List<QueryStepDocument>.admitOutput(output: QueryOutputDocument): Boolean =
-    when (val last = lastOrNull()) {
-        is QueryStepDocument.Join ->
-            when (last.mode) {
-                is QueryJoinModeDocument.Inner -> output == QueryOutputDocument.BindingRows
-                QueryJoinModeDocument.Semi,
-                QueryJoinModeDocument.Anti -> output != QueryOutputDocument.BindingRows
-            }
-        else -> output != QueryOutputDocument.BindingRows
-    }
 
 private fun <Value> List<Value>.isUniqueNonEmpty(): Boolean = isNotEmpty() && isUnique()
 

@@ -29,8 +29,10 @@ reconstructing weaker exact references or treating a subset as complete coverage
 The `walk` stage admits bounded depth and strategy, then projects traversal records,
 frontier progress, partial expansions, and coverage through the sole query operation.
 The `bind` stage names a completed request-local stream for later stages. `join`
-accepts an earlier binding or a retained result as its right input; an inner join
-ends in typed binding rows with both exact symbols and their independent evidence.
+accepts an earlier binding or a retained symbol result as its right input; an inner join
+yields typed binding rows with both exact symbols and their independent evidence.
+`project_binding` selects one named cell before later symbol stages. Retained
+binding results may seed another run, including selected issued row IDs.
 Semi and anti joins continue as symbol streams. A retained anti join admits only
 a complete right input; an incomplete named right input yields qualified output
 without absence claims.

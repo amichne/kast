@@ -115,7 +115,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
               'RetainedInput': ['ResultSource'],
               'JoinRight': ['NamedBindingSource', 'ResultSource'],
               'JoinMode': ['InnerJoinMode', 'SemiJoinMode', 'AntiJoinMode'],
-              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'Concat', 'Intersect', 'Union', 'Difference', 'Bind', 'Join'],
+              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'ProjectBinding', 'Concat', 'Intersect', 'Union', 'Difference', 'Bind', 'Join'],
               'Action': ['RunAction', 'ResumeAction', 'ReadResultAction']}
     parents = {}
     for parent, children in unions.items():

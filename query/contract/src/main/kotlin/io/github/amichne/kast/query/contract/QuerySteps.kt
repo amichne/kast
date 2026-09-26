@@ -64,6 +64,8 @@ enum class QueryPrimitiveOperator {
 }
 
 sealed interface QueryStepSyntax {
+    data class ProjectBinding(val name: QueryBindingName) : QueryStepSyntax
+
     data class Where(val predicate: QueryPredicate) : QueryStepSyntax
 
     data class Related(val meaning: RelationMeaning) : QueryStepSyntax

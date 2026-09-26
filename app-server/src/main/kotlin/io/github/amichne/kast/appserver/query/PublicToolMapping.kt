@@ -40,10 +40,7 @@ private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, Publ
             when (val loweredSteps = (steps ?: PublicToolDefaults.steps).values.lower()) {
                 is Refinement.Rejected -> loweredSteps
                 is Refinement.Refined ->
-                    if (!admittedOutput(loweredSteps.value, output ?: PublicToolDefaults.output)) {
-                        Refinement.Rejected(PublicToolInputFailure.SchemaRejected)
-                    } else
-                        Refinement.Refined(
+                    Refinement.Refined(
                             PublicToolCanonical.Query(
                                 QueryRunRequest.Run(
                                     from = from.value,
@@ -233,7 +230,6 @@ private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, Pu
     val result = mutableListOf<QueryStepDocument>()
     val bindings = mutableSetOf<QueryBindingNameDocument>()
     for (step in this) {
-        if (result.lastOrNull().isInnerJoin()) return Refinement.Rejected(PublicToolInputFailure.SchemaRejected)
         when (val lowered = step.lower()) {
             is Refinement.Refined -> {
                 val next = lowered.value
@@ -270,6 +266,7 @@ private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInpu
                 )
             )
         PublicToolDistinctSymbols -> Refinement.Refined(QueryStepDocument.Distinct)
+        is PublicToolProjectBinding -> Refinement.Refined(QueryStepDocument.ProjectBinding(name))
         is PublicToolBind -> Refinement.Refined(QueryStepDocument.Bind(name))
         is PublicToolJoin -> Refinement.Refined(QueryStepDocument.Join(mode.lower(), right.lowerJoinRight()))
         is PublicToolConcat -> Refinement.Refined(QueryStepDocument.Concat(input.lowerCompositionInput()))
@@ -289,20 +286,6 @@ private fun PublicToolJoinRight.lowerJoinRight(): QueryJoinRightDocument =
     when (this) {
         is PublicToolNamedBindingSource -> QueryJoinRightDocument.Named(name)
         is PublicToolResultSource -> lowerResult()
-    }
-
-private fun QueryStepDocument?.isInnerJoin(): Boolean =
-    this is QueryStepDocument.Join && mode is QueryJoinModeDocument.Inner
-
-private fun admittedOutput(steps: List<QueryStepDocument>, output: QueryOutputDocument): Boolean =
-    when (val last = steps.lastOrNull()) {
-        is QueryStepDocument.Join ->
-            when (last.mode) {
-                is QueryJoinModeDocument.Inner -> output == QueryOutputDocument.BindingRows
-                QueryJoinModeDocument.Semi,
-                QueryJoinModeDocument.Anti -> output != QueryOutputDocument.BindingRows
-            }
-        else -> output != QueryOutputDocument.BindingRows
     }
 
 private fun PublicToolDeclarationKinds.lower(): QueryDeclarationKindDocument =

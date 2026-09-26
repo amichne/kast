@@ -130,7 +130,7 @@ internal class QueryOutcomeProjection(
             }
             is QueryRetainedResult.Bindings ->
                 if (output == QueryOutputDocument.BindingRows)
-                    QueryRows.Bindings.of(retained.bindingRows.subList(start, end))
+                    QueryRows.Bindings.of(retained.bindingRows.subList(start, end), retained.mode)
                 else null
         }
 

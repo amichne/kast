@@ -102,7 +102,7 @@ private fun QueryFromDocument.admitSource(
                 ?: QueryReferenceSourceAdmission.RequestRejected
         is QueryFromDocument.References -> values.values.admitExactReferences(lease, authority)
         is QueryFromDocument.Result ->
-            (retained[this] as? QueryRetainedResult.Symbols)?.let {
+            retained[this]?.let {
                 QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Retained(it))
             } ?: QueryReferenceSourceAdmission.RequestRejected
     }
@@ -121,6 +121,9 @@ private fun QueryStepDocument.admitStep(
     retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
 ): QueryStepAdmission =
     when (this) {
+        is QueryStepDocument.ProjectBinding ->
+            name.domainName()?.let { QueryStepAdmission.Admitted(QueryStepSyntax.ProjectBinding(it)) }
+                ?: QueryStepAdmission.RequestRejected
         is QueryStepDocument.Bind ->
             name.domainName()?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Bind(it)) }
                 ?: QueryStepAdmission.RequestRejected
@@ -286,8 +289,6 @@ internal fun QueryPlanAdmissionFailure.protocolRejection(): QueryRunRejection =
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.DUPLICATE_BINDING_NAME)
         is QueryPlanAdmissionFailure.UnknownBindingName ->
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.UNKNOWN_BINDING_NAME)
-        QueryPlanAdmissionFailure.InnerJoinNotTerminal ->
-            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.INNER_JOIN_NOT_TERMINAL)
         QueryPlanAdmissionFailure.OutputTypeMismatch ->
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH)
         is QueryPlanAdmissionFailure.UnsupportedDeclarationKind ->

@@ -39,6 +39,7 @@ internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
         QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
         is QueryStepDocument.Concat,
         is QueryStepDocument.Bind,
+        is QueryStepDocument.ProjectBinding,
         is QueryStepDocument.Join,
         is QueryStepDocument.Intersect,
         is QueryStepDocument.Union,

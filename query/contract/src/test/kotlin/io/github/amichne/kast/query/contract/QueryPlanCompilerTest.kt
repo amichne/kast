@@ -108,7 +108,7 @@ class QueryPlanCompilerTest {
     }
 
     @Test
-    fun `inner join is terminal and emits only typed binding rows`() {
+    fun `inner join requires typed projection before symbol stages`() {
         val left = bindingName("left")
         val right = bindingName("right")
         val inner = QueryJoinMode.Inner.create(left, right).refined()
@@ -122,8 +122,26 @@ class QueryPlanCompilerTest {
 
         assertInstanceOf(QueryPlanAdmission.Admitted::class.java, QueryPlanCompiler.admit(syntax))
         assertEquals(
-            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.InnerJoinNotTerminal),
+            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch),
             QueryPlanCompiler.admit(syntax.copy(steps = syntax.steps + QueryStepSyntax.Distinct)),
+        )
+        assertInstanceOf(
+            QueryPlanAdmission.Admitted::class.java,
+            QueryPlanCompiler.admit(
+                syntax.copy(
+                    steps = syntax.steps + QueryStepSyntax.ProjectBinding(left) + QueryStepSyntax.Distinct,
+                    output = QueryOutputSyntax.Symbols(symbolFields()),
+                )
+            ),
+        )
+        assertEquals(
+            QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.UnknownBindingName(bindingName("missing"))),
+            QueryPlanCompiler.admit(
+                syntax.copy(
+                    steps = syntax.steps + QueryStepSyntax.ProjectBinding(bindingName("missing")),
+                    output = QueryOutputSyntax.Symbols(symbolFields()),
+                )
+            ),
         )
         assertEquals(
             QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch),

@@ -33,7 +33,6 @@ internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("right-input-incomplete") RIGHT_INPUT_INCOMPLETE,
     @SerialName("duplicate-binding-name") DUPLICATE_BINDING_NAME,
     @SerialName("unknown-binding-name") UNKNOWN_BINDING_NAME,
-    @SerialName("inner-join-not-terminal") INNER_JOIN_NOT_TERMINAL,
     @SerialName("output-kind-mismatch") OUTPUT_KIND_MISMATCH,
     @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
     @SerialName("continuation-mismatch") CONTINUATION_MISMATCH,

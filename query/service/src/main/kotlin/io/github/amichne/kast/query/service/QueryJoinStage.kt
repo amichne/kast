@@ -26,6 +26,10 @@ internal class QueryJoinStage(
     val bindingRows: List<QueryBindingRow>
         get() = emittedBindings
 
+    fun recordBinding(row: QueryBindingRow) {
+        emittedBindings += row
+    }
+
     var terminal: QueryTerminalReason? = null
         private set
 
@@ -142,16 +146,11 @@ internal class QueryJoinStage(
                 is Refinement.Refined -> joined.value
                 is Refinement.Rejected -> return contractViolation()
             }
-        val bytes = row.projectedUtf8Size()
-        if (!state.consumeOutput(bytes)) {
-            if (bytes > request.budget.returnedBytes.value) terminal = QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
-            return false
-        }
-        emittedBindings += row
         tasks.removeFirst()
         if (cursor.nextMatch + 1 < matches.size) {
             tasks.addFirst(task.copy(cursor = QueryJoinCursor.Inner(cursor.nextMatch + 1)))
         }
+        tasks.addFirst(PipelineTask.Binding(row, task.stage.next))
         return true
     }
 

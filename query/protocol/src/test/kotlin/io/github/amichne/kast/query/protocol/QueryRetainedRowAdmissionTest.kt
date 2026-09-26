@@ -97,6 +97,30 @@ class QueryRetainedRowAdmissionTest {
     }
 
     @Test
+    fun `selected retained binding row admits named projection before evaluation`() = runTest {
+        val issued = retainedBindingPairs()
+        var selected: QueryRetainedResult.Bindings? = null
+        val protocol = CanonicalQueryProtocol(
+            QueryOperations { request ->
+                selected = (request.plan as AdmittedQueryPlan.Retained).source as QueryRetainedResult.Bindings
+                emptyExecution()
+            },
+            CanonicalQueryReferences(),
+            store,
+        )
+        val source = QueryFromDocument.Result(issued.reference, bounded(listOf(issued.rowIds[1])))
+        val request = run(source).copy(
+            steps = bounded(listOf(QueryStepDocument.ProjectBinding(QueryBindingNameDocument.parse("right").refined())))
+        )
+        assertInstanceOf(OperationOutcome.Complete::class.java, protocol.execute(request, fixture.authority, budget))
+        assertEquals(1, requireNotNull(selected).bindingRows.size)
+        assertEquals(
+            listOf(QueryLimitation.ROW_SELECTION_INCOMPLETE),
+            (requireNotNull(selected).coverage as QueryCoverage.Qualified).limitations,
+        )
+    }
+
+    @Test
     fun `issued output row identity seeds a later query without reconstructing the symbol`() = runTest {
         var selected: QueryRetainedResult.Symbols? = null
         val protocol =
@@ -105,7 +129,7 @@ class QueryRetainedRowAdmissionTest {
                     when (val plan = request.plan) {
                         is AdmittedQueryPlan.Symbols -> completeRows()
                         is AdmittedQueryPlan.Retained -> {
-                            selected = plan.source
+                            selected = plan.source as QueryRetainedResult.Symbols
                             emptyExecution()
                         }
                         is AdmittedQueryPlan.ExactReferences -> error("Unexpected exact source")
@@ -134,7 +158,7 @@ class QueryRetainedRowAdmissionTest {
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { request ->
-                    selected = (request.plan as AdmittedQueryPlan.Retained).source
+                    selected = (request.plan as AdmittedQueryPlan.Retained).source as QueryRetainedResult.Symbols
                     emptyExecution()
                 },
                 CanonicalQueryReferences(),
@@ -243,7 +267,7 @@ class QueryRetainedRowAdmissionTest {
         val pair = QueryBindingRow.join(mode, symbol, symbol).refined()
         val result =
             QueryExecutionResult.Complete(
-                QueryResult(QueryRows.Bindings.of(listOf(pair, pair)), emptyList()),
+                QueryResult(QueryRows.Bindings.of(listOf(pair, pair), mode), emptyList()),
                 QueryCoverage.Complete(QueryCount.parse(2).refined()),
             )
         val retained = QueryRetainedResult.capture(fixture.authority, result).refined()

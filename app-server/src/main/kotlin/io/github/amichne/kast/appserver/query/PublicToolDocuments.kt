@@ -146,6 +146,12 @@ internal data class PublicToolWalk(
 internal data object PublicToolDistinctSymbols : PublicToolStep
 
 @Serializable
+@SerialName("project_binding")
+internal data class PublicToolProjectBinding(
+    val name: QueryBindingNameDocument,
+) : PublicToolStep
+
+@Serializable
 @SerialName("concat")
 internal data class PublicToolConcat(
     val input: PublicToolCompositionInput,

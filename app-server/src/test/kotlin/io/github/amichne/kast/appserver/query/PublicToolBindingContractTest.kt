@@ -93,18 +93,13 @@ class PublicToolBindingContractTest {
     }
 
     @Test
-    fun `binding order output and join key violations reject at public admission`() {
+    fun `binding order and join key violations reject at public admission`() {
         val inner =
             PublicToolJoin(PublicToolInnerJoinMode(name("l"), name("r")), PublicToolNamedBindingSource(name("saved")))
         val cases =
             listOf(
                 run(listOf(inner), QueryOutputDocument.BindingRows),
                 run(listOf(PublicToolBind(name("saved")), PublicToolBind(name("saved"))), null),
-                run(listOf(PublicToolBind(name("saved")), inner), null),
-                run(
-                    listOf(PublicToolBind(name("saved")), inner, PublicToolDistinctSymbols),
-                    QueryOutputDocument.BindingRows,
-                ),
                 run(
                     listOf(
                         PublicToolBind(name("saved")),
@@ -115,7 +110,6 @@ class PublicToolBindingContractTest {
                     ),
                     QueryOutputDocument.BindingRows,
                 ),
-                run(emptyList(), QueryOutputDocument.BindingRows),
             )
         cases.forEach { assertTrue(admit(it) is Refinement.Rejected) }
 
@@ -134,6 +128,14 @@ class PublicToolBindingContractTest {
             PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(malformedName))
                 is Refinement.Rejected
         )
+    }
+
+    @Test
+    fun `public binding projection lowers to the canonical typed stage`() {
+        val step = PublicToolProjectBinding(name("caller"))
+        val admitted = admit(run(listOf(step, PublicToolDistinctSymbols), null))
+        val request = (((admitted as Refinement.Refined).value.canonical) as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        assertEquals(QueryStepDocument.ProjectBinding(name("caller")), request.steps.values.first())
     }
 
     private fun run(steps: List<PublicToolStep>, output: QueryOutputDocument?): PublicToolQuerySymbols {

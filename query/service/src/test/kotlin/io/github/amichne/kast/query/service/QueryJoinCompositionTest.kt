@@ -49,6 +49,13 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.source.contract.SourceReadOperations
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalOperations
+import io.github.amichne.kast.traversal.contract.TraversalPage
+import io.github.amichne.kast.traversal.contract.TraversalProgress
+import io.github.amichne.kast.traversal.contract.TraversalResult
+import io.github.amichne.kast.traversal.contract.TraversalStrategy
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -57,6 +64,127 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class QueryJoinCompositionTest {
+    @Test
+    fun `retained binding selection projects its exact right cell into later symbol stages`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
+            val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
+            val service = countingService { }
+            val joined = admittedPlan(
+                QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                QueryOutputSyntax.BindingRows,
+            )
+            val produced = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(joined, 64L)))
+            val bindings = QueryRetainedResult.capture(selected.lease, produced).refined() as QueryRetainedResult.Bindings
+            val selectedRows = bindings.selectRows(listOf(1)).refined()
+            val projected = admittedPlan(
+                QuerySourceSyntax.Retained(selectedRows),
+                listOf(QueryStepSyntax.ProjectBinding(name("target")), QueryStepSyntax.Distinct),
+                QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+            )
+            val result = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(request(projected, 64L)))
+            assertEquals(1, result.result.symbolRows().size)
+            assertEquals(21, result.result.symbolRows().single().connections.single().occurrence.range.startInclusive)
+            assertEquals(listOf(QueryLimitation.ROW_SELECTION_INCOMPLETE), result.coverage.limitations)
+        }
+    }
+
+    @Test
+    fun `inner join projects a named cell before distinct in one request`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
+            val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
+            val plan = admittedPlan(
+                QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                listOf(
+                    QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right)),
+                    QueryStepSyntax.ProjectBinding(name("target")),
+                    QueryStepSyntax.Distinct,
+                ),
+                QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+            )
+            var descriptions = 0
+            val service = countingService { descriptions++ }
+            val result = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 64L)))
+            assertEquals(1, result.result.symbolRows().size)
+            assertEquals(20, result.result.symbolRows().single().connections.single().occurrence.range.startInclusive)
+            descriptions = 0
+            val firstRequest = request(plan, workLimit = 2L)
+            val observed = mutableListOf<QuerySymbol>()
+            var page: QueryExecutionResult = service.run(firstRequest)
+            var pages = 0
+            while (page is QueryExecutionResult.Qualified) {
+                observed += page.result.symbolRows()
+                val continuation = assertInstanceOf(QueryContinuationState.Resumable::class.java, page.continuation)
+                page = service.run(
+                    QueryExecutionRequest.create(plan, firstRequest.lease, firstRequest.budget, continuation.checkpoint)
+                        .refined()
+                )
+                pages++
+                assertTrue(pages < 16)
+            }
+            observed += assertInstanceOf(QueryExecutionResult.Complete::class.java, page).result.symbolRows()
+            assertEquals(result.result.symbolRows(), observed)
+            assertEquals(1, descriptions)
+        }
+    }
+
+    @Test
+    fun `selected retained binding projects through distinct into a depth two walk`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
+            val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
+            val joined = admittedPlan(
+                QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                QueryOutputSyntax.BindingRows,
+            )
+            val produced = assertInstanceOf(
+                QueryExecutionResult.Complete::class.java,
+                countingService { }.run(request(joined, 64L)),
+            )
+            val retained = QueryRetainedResult.capture(selected.lease, produced).refined() as QueryRetainedResult.Bindings
+            val chosen = retained.selectRows(listOf(1)).refined()
+            var walks = 0
+            val walking = QueryService(
+                discoveryEmpty(false),
+                exactOperations(describe = { error("Retained row must not be reacquired") }, resolve = { error("No discovery") }),
+                SourceReadOperations { error("No source read") },
+                io.github.amichne.kast.relation.contract.RelationOperations { error("No relation read") },
+                TraversalOperations { plan ->
+                    walks++
+                    assertEquals(selected, plan.start)
+                    assertEquals(2, plan.budget.depth.value)
+                    val progress = TraversalProgress.restore(1, 1, 0, 0).refined()
+                    TraversalResult.complete(TraversalPage.fromBoundary(plan, emptyList(), 0, 1, 1, 1, progress).refined())
+                },
+                queryTestTraversalCeiling(),
+                clock = QueryNanoClock { 0L },
+            )
+            val plan = admittedPlan(
+                QuerySourceSyntax.Retained(chosen),
+                listOf(
+                    QueryStepSyntax.ProjectBinding(name("target")),
+                    QueryStepSyntax.Distinct,
+                    QueryStepSyntax.Walk(
+                        RelationMeaning.Callers,
+                        TraversalDepthLimit.parse(2).refined(),
+                        TraversalStrategy.BreadthFirst,
+                    ),
+                ),
+                QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+            )
+            val result = assertInstanceOf(QueryExecutionResult.Qualified::class.java, walking.run(request(plan, 64L)))
+            assertEquals(1, walks)
+            assertEquals(listOf(QueryLimitation.ROW_SELECTION_INCOMPLETE), result.coverage.limitations)
+            assertEquals(selected, result.result.walkObservations.single().subject)
+        }
+    }
+
     @Test
     fun `inner join keeps repeated matching pairs and each right occurrence across result pages`() = runTest {
         QueryServiceTest().apply {

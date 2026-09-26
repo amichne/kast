@@ -118,6 +118,7 @@ class QueryService(
                 is PipelineTask.WalkRecord -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)
+                is PipelineTask.Binding -> binding(task)
                 is PipelineTask.Related -> related(task)
                 is PipelineTask.Walk -> walk(task)
                 is PipelineTask.Feed -> feed(task)
@@ -221,6 +222,10 @@ class QueryService(
 
         private suspend fun symbol(task: PipelineTask.Symbol): Boolean =
             when (val stage = task.stage) {
+                is ExactQueryStage.ProjectBinding -> {
+                    state.contractViolation = true
+                    false
+                }
                 is ExactQueryStage.Emit -> emitSymbol(task, stage)
                 is ExactQueryStage.Distinct -> {
                     when (identityRows.acceptDistinct(stage, task.value)) {
@@ -251,6 +256,34 @@ class QueryService(
                     tasks.removeFirst()
                     tasks.addFirst(PipelineTask.Walk(task.value, stage, null))
                     true
+                }
+            }
+
+        private fun binding(task: PipelineTask.Binding): Boolean =
+            when (val stage = task.stage) {
+                is ExactQueryStage.ProjectBinding -> {
+                    val selected = when (stage.name) {
+                        task.value.left.name -> task.value.left.value.symbol
+                        task.value.right.name -> task.value.right.value.symbol
+                        else -> {
+                            state.contractViolation = true
+                            return false
+                        }
+                    }
+                    tasks.removeFirst()
+                    tasks.addFirst(PipelineTask.Symbol(selected, stage.next))
+                    true
+                }
+                is ExactQueryStage.Emit ->
+                    if (stage.output == QueryOutputSyntax.BindingRows) {
+                        emit(task.value.projectedUtf8Size()) { joinStage.recordBinding(task.value) }
+                    } else {
+                        state.contractViolation = true
+                        false
+                    }
+                else -> {
+                    state.contractViolation = true
+                    false
                 }
             }
 
@@ -335,7 +368,7 @@ class QueryService(
             val result =
                 QueryResult(
                     when (request.plan.outputSyntax()) {
-                        QueryOutputSyntax.BindingRows -> QueryRows.Bindings.of(joinStage.bindingRows)
+                        QueryOutputSyntax.BindingRows -> QueryRows.Bindings.of(joinStage.bindingRows, request.plan.bindingMode())
                         else -> QueryRows.Symbols.of(symbols)
                     },
                     completedFailures.toList(),
