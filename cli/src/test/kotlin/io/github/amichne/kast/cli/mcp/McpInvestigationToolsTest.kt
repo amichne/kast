@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -157,6 +158,52 @@ class McpInvestigationToolsTest {
         )
         assertEquals(1, calls)
     }
+
+    @Test
+    fun `validation scopes a custom source set before querying its declaration`() {
+        val file = "module/custom/Registry.kt"
+        val request = TestValidationRequest(TestDeclaration("class", "Registry", file, "integrationTest"))
+        val exit =
+            validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, input ->
+                assertEquals("query_symbols", name)
+                val scope =
+                    input.getValue("request").jsonObject.getValue("source").jsonObject.getValue("scope").jsonObject
+                assertEquals("module/custom", scope.getValue("relative_directory_path").jsonPrimitive.content)
+                assertEquals(
+                    listOf("integrationTest"),
+                    scope.getValue("source_set_names").jsonArray.map { it.jsonPrimitive.content },
+                )
+                CliExit.Qualified(
+                    CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
+                        .create(TestQualifiedQuery(items = emptyList()))
+                )
+            }
+        assertTrue(exit is CliExit.Complete)
+    }
+
+    @Test
+    fun `relation endpoint uses its explicit source set`() {
+        val endpoint = McpValidationEndpoint("module/custom/Source.kt", "Source", "integrationTest")
+        val request =
+            McpValidationRequest(
+                relation = McpValidationRelation(McpValidationRelationKind.REFERENCES, endpoint, endpoint)
+            )
+        val exit =
+            validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, input ->
+                assertEquals("query_symbols", name)
+                val scope =
+                    input.getValue("request").jsonObject.getValue("source").jsonObject.getValue("scope").jsonObject
+                assertEquals(
+                    listOf("integrationTest"),
+                    scope.getValue("source_set_names").jsonArray.map { it.jsonPrimitive.content },
+                )
+                CliExit.Qualified(
+                    CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
+                        .create(TestQualifiedQuery(items = emptyList()))
+                )
+            }
+        assertTrue(exit is CliExit.Complete)
+    }
 }
 
 private fun emptyArguments(): JsonObject = Json.encodeToJsonElement(TestNoArguments()).jsonObject
@@ -176,7 +223,13 @@ private data class TestHostedStatus(
 
 @Serializable private data class TestValidationRequest(val declaration: TestDeclaration)
 
-@Serializable private data class TestDeclaration(val kind: String, val name: String, val file: String)
+@Serializable
+private data class TestDeclaration(
+    val kind: String,
+    val name: String,
+    val file: String,
+    val sourceSetName: String? = null,
+)
 
 @Serializable
 private data class TestQualifiedQuery(

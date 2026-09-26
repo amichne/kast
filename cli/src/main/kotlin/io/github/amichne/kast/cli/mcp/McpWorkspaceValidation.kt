@@ -65,7 +65,8 @@ private class WorkspaceValidator(
     private val invokeRead: (String, JsonObject) -> CliExit,
 ) {
     fun declaration(declaration: McpValidationDeclaration): QueriedDeclaration {
-        val response = queryDeclarations(declaration.name, declaration.kind)
+        val response =
+            queryDeclarations(declaration.name, declaration.file, declaration.sourceSetName, declaration.kind)
         if (response !is NativeRead.Complete)
             return QueriedDeclaration(response.unverified("Declaration query was not exhaustive"), null)
         val matching =
@@ -78,7 +79,7 @@ private class WorkspaceValidator(
         return when (matching.size) {
             0 ->
                 QueriedDeclaration(
-                    McpProbe.failed("No matching declaration in the requested file", response.evidence),
+                    McpProbe.unverified("No exact declaration was returned for the requested file", response.evidence),
                     null,
                 )
             1 ->
@@ -90,7 +91,12 @@ private class WorkspaceValidator(
         }
     }
 
-    private fun queryDeclarations(name: String, kind: McpValidationKind? = null): NativeRead<McpQuerySymbolsDocument> =
+    private fun queryDeclarations(
+        name: String,
+        file: String,
+        sourceSetName: String?,
+        kind: McpValidationKind? = null,
+    ): NativeRead<McpQuerySymbolsDocument> =
         read(
             "query_symbols",
             validationInputJson
@@ -100,12 +106,22 @@ private class WorkspaceValidator(
                             McpQueryDeclarationSource(
                                 declarationName = name,
                                 declarationKinds = kind?.let { listOf(it.queryKind) },
+                                scope = queryScope(file, sourceSetName),
                             )
                         )
                     )
                 )
                 .jsonObject,
         )
+
+    private fun queryScope(rawFile: String, sourceSetName: String?): McpQueryDirectoryScope {
+        val file = root.resolveProbePath(rawFile) ?: error("Validated probe path required")
+        val relative = root.relativize(file)
+        return McpQueryDirectoryScope(
+            relativeDirectoryPath = relative.parent?.toString() ?: ".",
+            sourceSetNames = sourceSetName?.let(::listOf),
+        )
+    }
 
     fun source(symbol: McpExactSymbol): McpProbe {
         val response =
@@ -168,7 +184,7 @@ private class WorkspaceValidator(
         val isInspectedDeclaration = declaration != null && inspected != null && endpoint.name == declaration.name
         if (isInspectedDeclaration && root.resolveProbePath(endpoint.file)?.toString() == inspected.location?.file)
             return inspected
-        val response = queryDeclarations(endpoint.name)
+        val response = queryDeclarations(endpoint.name, endpoint.file, endpoint.sourceSetName)
         if (response !is NativeRead.Complete) return null
         return response.value.items.singleOrNull {
             it.name == endpoint.name &&
@@ -318,7 +334,15 @@ private data class McpQueryDeclarationAction(
 private data class McpQueryDeclarationSource(
     @SerialName("declaration_name") val declarationName: String,
     @SerialName("declaration_kinds") val declarationKinds: List<String>? = null,
+    val scope: McpQueryDirectoryScope,
     val type: String = "search_declarations",
+)
+
+@Serializable
+private data class McpQueryDirectoryScope(
+    @SerialName("relative_directory_path") val relativeDirectoryPath: String,
+    @SerialName("source_set_names") val sourceSetNames: List<String>? = null,
+    @SerialName("include_subdirectories") val includeSubdirectories: Boolean = false,
 )
 
 @Serializable

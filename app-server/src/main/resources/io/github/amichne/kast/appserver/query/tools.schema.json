@@ -893,7 +893,7 @@
           },
           "minItems": 0,
           "maxItems": 1000,
-          "description": "Ordered transformations executed left to right. null and [] mean no transformations. bind captures a symbol stream once; join references only an earlier bind or retained symbols. Inner join yields binding rows; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage."
+          "description": "Ordered transformations executed left to right. null and [] mean no transformations. A join reads its right side from a retained symbol result. Inner join yields binding rows with named left and right cells; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage."
         },
         "output": {
           "$ref": "#/$defs/Output"
@@ -988,7 +988,7 @@
       "minLength": 1,
       "maxLength": 64,
       "x-kotlin-type": "QueryBindingNameDocument",
-      "description": "One bounded query-local binding name. A bind name is unique and a join may refer only to an earlier bind."
+      "description": "One bounded name for a cell in a binding row. Inner joins name their left and right cells; project_binding selects a cell by its name."
     },
     "InnerJoinMode": {
       "type": "object",

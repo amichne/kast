@@ -214,6 +214,12 @@ class SourceReferenceRefusal(str, Enum):
     SELECTOR_TOO_DEEP = 'selector-too-deep'
 
 
+class ReferenceMismatch(str, Enum):
+    DOCUMENT = 'document'
+    OPERATION = 'operation'
+    STATUS = 'status'
+
+
 @dataclass(frozen=True)
 class ReferenceEvidence:
     family: ReferenceFamily
@@ -222,12 +228,6 @@ class ReferenceEvidence:
     schemaDigest: str
     refusal: SourceReferenceRefusal | None = None
     mismatch: ReferenceMismatch | None = None
-
-
-class ReferenceMismatch(str, Enum):
-    DOCUMENT = 'document'
-    OPERATION = 'operation'
-    STATUS = 'status'
 
 
 def _reference_refusal(surface, response, digest):

@@ -326,10 +326,13 @@ canonical provider operations; the duplicate `kast ide classes` and
 `kast ide supertype` commands have been retired.
 After an IDE crash, the next endpoint owner may reclaim the paired socket and
 descriptor while holding the exclusive ownership lock. Reclamation requires the
-recorded PID to be absent, the descriptor to match this root and current protocol,
-and both protected artifacts to retain their admitted physical identities. Live
-or reused PIDs, malformed descriptors, symlinks and unpaired artifacts fail closed.
-Admission and retirement emit bounded stage/outcome observations.
+recorded PID to be absent, the descriptor to name this root and exact socket,
+and both protected artifacts to retain their admitted physical identities.
+Protocol, schema and operation catalogs are capabilities rather than ownership
+proof, so a dead endpoint from an older plugin can be retired after upgrade.
+Live or reused PIDs, malformed owner identity, symlinks and unpaired artifacts
+fail closed. Descriptor admission, overall admission and retirement emit bounded
+stage/outcome observations.
 
 The hosted service also records bounded VFS observations under its own lifetime.
 Receipts contain event kind, IDE-versus-refresh origin, syntactic path categories,

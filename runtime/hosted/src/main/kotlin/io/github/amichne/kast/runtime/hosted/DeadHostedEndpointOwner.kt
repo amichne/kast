@@ -1,6 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.JsonParser
+import com.google.gson.JsonObject
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.ByteBuffer
@@ -9,7 +9,6 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.READ
 import java.util.UUID
-import kotlinx.serialization.json.Json
 
 /** A descriptor proves only an absent PID. A live or reused PID is always a conflict. */
 internal class DeadHostedEndpointOwner private constructor(private val pid: Long) {
@@ -20,7 +19,6 @@ internal class DeadHostedEndpointOwner private constructor(private val pid: Long
             path: Path,
             root: CanonicalWorkspaceRoot,
             socket: Path,
-            advertisement: HostedEndpointAdvertisement = HostedEndpointAdvertisement.SEMANTIC,
         ): Refinement<DeadHostedEndpointOwner, HostedEndpointFailure> {
             return try {
                 val raw =
@@ -33,18 +31,11 @@ internal class DeadHostedEndpointOwner private constructor(private val pid: Long
                         is Refinement.Refined -> parsed.value
                         is Refinement.Rejected -> return parsed
                     }
-                val pid = descriptor.get("hostPid").asString.toLongOrNull() ?: return rejected()
+                if (!matchesIdentity(descriptor, root, socket)) return rejected()
+                val pid = descriptor.get("hostPid")?.asString?.toLongOrNull() ?: return rejected()
                 if (pid <= 0 || ProcessHandle.of(pid).isPresent) return rejected()
-                val host = descriptor.get("host").asString
+                val host = descriptor.get("host")?.asString ?: return rejected()
                 if (UUID.fromString(host).toString() != host) return rejected()
-                val expected =
-                    JsonParser.parseString(
-                        Json { encodeDefaults = true }
-                            .encodeToString(
-                                HostedEndpointDescriptorDocument.create(root, socket, pid, host, advertisement)
-                            )
-                    )
-                if (descriptor != expected) return rejected()
                 Refinement.Refined(DeadHostedEndpointOwner(pid))
             } catch (_: java.io.IOException) {
                 rejected()
@@ -64,6 +55,15 @@ internal class DeadHostedEndpointOwner private constructor(private val pid: Long
             buffer.flip()
             return Refinement.Refined(Charsets.UTF_8.newDecoder().decode(buffer).toString())
         }
+
+        private fun matchesIdentity(
+            descriptor: JsonObject,
+            root: CanonicalWorkspaceRoot,
+            socket: Path,
+        ): Boolean =
+            descriptor.get("type")?.asString == "KAST_IDE_ENDPOINT" &&
+                descriptor.get("root")?.asString == root.value &&
+                descriptor.get("socket")?.asString == socket.toString()
 
         private fun rejected() = Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
     }

@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 internal enum class HostedEndpointStage {
     BIND,
     RECLAMATION_ADMISSION,
+    RECLAMATION_DESCRIPTOR,
     RECLAMATION_RETIREMENT,
     ACCEPT,
     REQUEST,

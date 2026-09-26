@@ -110,10 +110,7 @@ private constructor(
                     channel.close()
                     return Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
                 }
-                if (
-                    HostedEndpointReclamation.prepare(directory, root, lock, observer, advertisement)
-                        is Refinement.Rejected
-                ) {
+                if (HostedEndpointReclamation.prepare(directory, root, lock, observer) is Refinement.Rejected) {
                     lock.release()
                     channel.close()
                     return Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
