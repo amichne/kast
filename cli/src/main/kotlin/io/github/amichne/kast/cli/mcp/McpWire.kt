@@ -167,9 +167,6 @@ internal data class McpResourceContent(
 
 @Serializable internal data class McpToolCall(val name: String, val arguments: JsonObject? = null)
 
-/** The variant schemas are an already generated dynamic contract; the wrapper establishes MCP's object root. */
-@Serializable internal data class McpObjectUnionInput(val type: String = "object", val allOf: List<JsonElement>)
-
 @Serializable
 internal data class McpCallResult(
     val content: List<McpTextContent>,

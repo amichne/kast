@@ -10,6 +10,7 @@ import io.github.amichne.kast.appserver.protocol.copilot.toCopilotFixtureProject
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
+import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_NAMESPACE_DESCRIPTION
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -41,8 +42,14 @@ class AgentSessionProjectionTest {
 
         assertEquals(bootstrap.policy.text, codex.developerInstructions)
         assertEquals(bootstrap.policy.text, copilot.policy)
+        assertEquals("namespace", codex.namespace.getValue("type").jsonPrimitive.content)
+        assertEquals("kast", codex.namespace.getValue("name").jsonPrimitive.content)
+        assertEquals(PUBLIC_TOOL_NAMESPACE_DESCRIPTION, codex.namespace.getValue("description").jsonPrimitive.content)
         val codexTool = codex.namespace.getValue("tools").jsonArray.single().jsonObject
         val copilotTool = copilot.tools.single()
+        assertEquals("function", codexTool.getValue("type").jsonPrimitive.content)
+        assertEquals(bootstrap.tools.definitions.single().generationSchema, codexTool.getValue("inputSchema"))
+        assertEquals(false, codexTool.getValue("deferLoading").jsonPrimitive.content.toBoolean())
         assertEquals(copilotTool.name, codexTool.getValue("name").jsonPrimitive.content)
         assertEquals(copilotTool.description, codexTool.getValue("description").jsonPrimitive.content)
         assertEquals("query.run", copilotTool.operationId)

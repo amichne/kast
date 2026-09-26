@@ -183,7 +183,7 @@ def public_scope(selected):
     fields = {"DIRECTORY": ("relative_directory_path", "include_subdirectories"),
               "PACKAGE": ("package_name", "include_subpackages")}
     path, recursive = fields[selected["type"]]
-    return {path: selected["value"], recursive: selected["containment"] == "RECURSIVE",
+    return {"type": selected["type"], path: selected["value"], recursive: selected["containment"] == "RECURSIVE",
             "source_set_names": selected.get("sourceSets")}
 
 
@@ -191,30 +191,30 @@ def invocation(case, surface):
     if surface is not ToolSurface.PUBLIC:
         raise ValueError("UNSUPPORTED_TOOL_SURFACE")
     source = case.source
-    kinds = [kind.lower() for kind in source["kinds"]] if "kinds" in source else None
+    kinds = source.get("kinds")
     if source["type"] == "SEARCH":
-        arguments = dict(declaration_name=source["query"], name_match=source["match"].lower(),
+        arguments = dict(declaration_name=source["query"], name_match=source["match"],
                          scope=public_scope(source.get("scope")), declaration_kinds=kinds)
-        lowered = dict(type="search_declarations", **arguments)
+        lowered = dict(type="SEARCH_DECLARATIONS", **arguments)
     elif source["type"] == "ALL":
-        lowered = dict(type="all_declarations", declaration_kinds=kinds, scope=public_scope(source.get("scope")))
+        lowered = dict(type="ALL_DECLARATIONS", declaration_kinds=kinds, scope=public_scope(source.get("scope")))
     elif source["type"] == "REFS":
-        lowered = dict(type="symbol_refs", symbol_refs=source["refs"])
+        lowered = dict(type="SYMBOL_REFS", symbol_refs=source["refs"])
     else:
         raise ValueError("UNSUPPORTED_REPLAY_SOURCE")
     steps = []
     for step in case.steps:
         if step["type"] == "FILTER":
-            steps.append(dict(type="where", predicate=dict(type="visibility",
-                values=[v.lower() for v in step["visibility"]])))
+            steps.append(dict(type="WHERE", predicate=dict(type="VISIBILITY",
+                values=step["visibility"])))
         elif step["type"] == "EXPAND":
-            steps.append(dict(type="expand_relation", relation=step["relation"].lower()))
+            steps.append(dict(type="EXPAND_RELATION", relation=step["relation"]))
         elif step["type"] == "DISTINCT":
-            steps.append(dict(type="distinct_symbols"))
+            steps.append(dict(type="DISTINCT_SYMBOLS"))
         else:
             raise ValueError("UNSUPPORTED_REPLAY_STEP")
-    return "query_symbols", ["tool", "query_symbols"], dict(request=dict(action="run", source=lowered,
-        steps=steps, output=dict(type="symbols", fields=[field.lower() for field in case.select])))
+    return "query_symbols", ["tool", "query_symbols"], dict(request=dict(type="RUN", source=lowered,
+        steps=steps, output=dict(type="SYMBOLS", fields=list(case.select))))
 
 
 def search(name, scope=None, match="EXACT"):

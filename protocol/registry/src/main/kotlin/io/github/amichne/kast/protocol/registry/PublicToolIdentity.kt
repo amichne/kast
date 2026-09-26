@@ -3,6 +3,8 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
+const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
+
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
 enum class PublicToolIdentity(
     val toolName: String,

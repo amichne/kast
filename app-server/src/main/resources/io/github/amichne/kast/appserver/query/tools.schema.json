@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "namespaceDescription": "Compiler-grounded Kotlin source intelligence from Kast.",
   "defaults": {
     "name_match": "EXACT",
     "source_set_names": [

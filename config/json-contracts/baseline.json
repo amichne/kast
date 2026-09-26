@@ -763,36 +763,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt",
-        "scope": "fun:toCodexSessionProjection()21:AgentSessionBootstrap",
-        "kind": "JSON_BUILDER",
-        "sha256": "9a23a60272ce49e469c729c24e0aff7d40d8a1bf932c37939579b0bda257193b"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt",
-        "scope": "fun:toCodexSessionProjection()21:AgentSessionBootstrap/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "409646d9b7f231aca452a01124ae60b08313d31570c788714c7ff00dc108990e"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt",
-        "scope": "fun:toCodexSessionProjection()21:AgentSessionBootstrap/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "6066644e329e5e214e41e83f086fa6c5e3e32e43443ff43cfe039b8ed7df2307"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt",
         "scope": "type:CodexThreadHistoryProjector/fun:changedArray(7:Boolean,4:List1:<11:JsonElement1:>)",
         "kind": "JSON_ARRAY",

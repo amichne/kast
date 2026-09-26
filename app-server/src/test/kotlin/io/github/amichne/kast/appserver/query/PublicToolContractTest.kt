@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.publicNameQuery
 import io.github.amichne.kast.appserver.publicToolCase
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_NAMESPACE_DESCRIPTION
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
@@ -507,7 +508,9 @@ class PublicToolSchemaTest {
 
     @Test
     fun `strict projections share required closed objects and their target registration formats`() {
-        val registrations = read("tools.app-server.json").jsonObject.getValue("tools").jsonArray
+        val appServer = read("tools.app-server.json").jsonObject
+        assertEquals(PUBLIC_TOOL_NAMESPACE_DESCRIPTION, appServer.getValue("description").jsonPrimitive.content)
+        val registrations = appServer.getValue("tools").jsonArray
         val responses = read("tools.responses.json").jsonArray
         PublicToolIdentity.entries.forEach { identity ->
             val app =

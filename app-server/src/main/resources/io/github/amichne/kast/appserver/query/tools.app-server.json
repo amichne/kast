@@ -1,6 +1,7 @@
 {
   "type": "namespace",
   "name": "kast",
+  "description": "Compiler-grounded Kotlin source intelligence from Kast.",
   "tools": [
     {
       "type": "function",

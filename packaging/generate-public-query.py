@@ -262,6 +262,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     identity_lines = ['// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
                       'package io.github.amichne.kast.protocol.registry\n\n',
                       'import io.github.amichne.kast.protocol.contract.CanonicalOperation\n\n',
+                      'const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = ' + json.dumps(authority['namespaceDescription']) + '\n\n',
                       '/** Closed presentation identities; canonical operations retain effect and budget ownership. */\n',
                       'enum class PublicToolIdentity(\n'
                       '    val toolName: String,\n'
@@ -291,7 +292,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
         outputs[RESOURCES / (tool['name'] + '.openai-parameters.json')] = json.dumps(strict, indent=2) + '\n'
         registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=full, deferLoading=tool['deferLoading']))
         responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
-    outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(dict(type='namespace', name='kast', tools=registrations), indent=2) + '\n'
+    outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(
+        dict(type='namespace', name='kast', description=authority['namespaceDescription'], tools=registrations),
+        indent=2,
+    ) + '\n'
     outputs[RESOURCES / 'tools.responses.json'] = json.dumps(responses, indent=2) + '\n'
     return outputs
 

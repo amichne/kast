@@ -190,8 +190,12 @@ class SourceReadProjectionTest {
         when (value) {
             is JsonObject -> {
                 if ((value["type"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "object") {
-                    assertEquals(false, value["additionalProperties"]?.jsonPrimitive?.booleanOrNull)
-                    assertTrue(value["properties"] is JsonObject)
+                    if (value["anyOf"] != null && value["properties"] == null) {
+                        assertTrue(value["anyOf"] is kotlinx.serialization.json.JsonArray)
+                    } else {
+                        assertEquals(false, value["additionalProperties"]?.jsonPrimitive?.booleanOrNull)
+                        assertTrue(value["properties"] is JsonObject)
+                    }
                 }
                 value.values.forEach(::assertClosed)
             }
