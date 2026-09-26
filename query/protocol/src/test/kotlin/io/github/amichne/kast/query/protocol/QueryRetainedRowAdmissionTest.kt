@@ -17,7 +17,6 @@ import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryJoinModeDocument
-import io.github.amichne.kast.protocol.contract.QueryJoinRightDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
@@ -271,25 +270,7 @@ class QueryRetainedRowAdmissionTest {
                 QueryCoverage.Complete(QueryCount.parse(2).refined()),
             )
         val retained = QueryRetainedResult.capture(fixture.authority, result).refined()
-        val binding = QueryBindingNameDocument.parse("earlier").refined()
-        val request =
-            run(QueryFromDocument.Symbols(discovery()))
-                .copy(
-                    steps =
-                        bounded(
-                            listOf(
-                                QueryStepDocument.Bind(binding),
-                                QueryStepDocument.Join(
-                                    QueryJoinModeDocument.Inner(
-                                        QueryBindingNameDocument.parse("left").refined(),
-                                        QueryBindingNameDocument.parse("right").refined(),
-                                    ),
-                                    QueryJoinRightDocument.Named(binding),
-                                ),
-                            )
-                        ),
-                    output = QueryOutputDocument.BindingRows,
-                )
+        val request = run(QueryFromDocument.Symbols(discovery())).copy(output = QueryOutputDocument.BindingRows)
         val issued = store.issueResult(request, retained) as QueryResultIssuance.Issued
         return issued
     }

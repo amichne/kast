@@ -84,9 +84,7 @@ sealed interface QueryStepSyntax {
 
     data class Difference(val right: QueryRetainedResult.Symbols) : QueryStepSyntax
 
-    data class Bind(val name: QueryBindingName) : QueryStepSyntax
-
-    data class Join(val mode: QueryJoinMode, val right: QueryJoinInput) : QueryStepSyntax
+    data class Join(val mode: QueryJoinMode, val right: QueryRetainedResult.Symbols) : QueryStepSyntax
 
     data object Distinct : QueryStepSyntax
 }
@@ -129,10 +127,4 @@ sealed interface QueryJoinMode {
     data object Semi : QueryJoinMode
 
     data object Anti : QueryJoinMode
-}
-
-sealed interface QueryJoinInput {
-    data class Named(val name: QueryBindingName) : QueryJoinInput
-
-    data class Retained(val result: QueryRetainedResult.Symbols) : QueryJoinInput
 }

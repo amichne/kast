@@ -20,11 +20,11 @@ enum class PublicToolIdentity(
     QUERY_SYMBOLS("query_symbols", CanonicalOperation.QUERY_RUN,
         "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from " +
             "discovery, exact references, or immutable retained rows. Apply structured predicates, rela" +
-            "tion expansion, bounded walk, set composition, and typed query-local bindings and joins. J" +
-            "oin matches canonical symbol identity and preserves both named bindings, multiplicity, and" +
-            " occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrenc" +
-            "e, traversal record, or binding row output. Retained results preserve qualification and om" +
-            "issions; execution continuation and result presentation cursor remain distinct.",
+            "tion expansion, bounded walk, set composition, and retained binding projection and joins. " +
+            "Join matches canonical symbol identity and preserves both named output cells, multiplicity" +
+            ", and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occu" +
+            "rrence, traversal record, or binding row output. Retained results preserve qualification a" +
+            "nd omissions; execution continuation and result presentation cursor remain distinct.",
         HostedToolLoading.EAGER,
     ),
 }

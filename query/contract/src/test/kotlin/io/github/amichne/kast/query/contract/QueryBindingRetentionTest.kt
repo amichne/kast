@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
 class QueryBindingRetentionTest {
     @Test
     fun `empty binding result retains its row kind and immutable qualification`() {
-        val limitation = QueryLimitation.JOIN_INPUT_INCOMPLETE
+        val limitation = QueryLimitation.ROW_SELECTION_INCOMPLETE
         val coverage = QueryCoverage.Qualified.create(QueryCount.parse(0).refined(), setOf(limitation)).refined()
         val mode = QueryJoinMode.Inner.create(bindingName("left"), bindingName("right")).refined()
         val result = QueryResult(QueryRows.Bindings.of(emptyList(), mode), emptyList())

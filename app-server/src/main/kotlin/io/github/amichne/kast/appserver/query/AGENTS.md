@@ -28,14 +28,7 @@ only a retained-result right operand. Issued row IDs select retained rows withou
 reconstructing weaker exact references or treating a subset as complete coverage.
 The `walk` stage admits bounded depth and strategy, then projects traversal records,
 frontier progress, partial expansions, and coverage through the sole query operation.
-The `bind` stage names a completed request-local stream for later stages. `join`
-accepts an earlier binding or a retained symbol result as its right input; an inner join
-yields typed binding rows with both exact symbols and their independent evidence.
-`project_binding` selects one named cell before later symbol stages. Retained
-binding results may seed another run, including selected issued row IDs.
-Semi and anti joins continue as symbol streams. A retained anti join admits only
-a complete right input; an incomplete named right input yields qualified output
-without absence claims.
+`join` accepts a retained symbol result as its right input; an inner join yields typed binding rows with both exact symbols and their independent evidence. `project_binding` selects one named cell before later symbol stages. Retained binding results may seed another run, including selected issued row IDs. Semi and anti joins continue as symbol streams. An anti join admits only a complete right input.
 
 Encoding is a transport projection of retained typed syntax, not a reverse parser
 for arbitrary canonical requests. No public constructor/copy may bypass admission.

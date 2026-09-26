@@ -57,7 +57,6 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
                 QueryExecutionRejectionDocument.RESULT_ROW_UNAVAILABLE,
                 QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE,
                 QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE,
-                QueryExecutionRejectionDocument.DUPLICATE_BINDING_NAME,
                 QueryExecutionRejectionDocument.UNKNOWN_BINDING_NAME,
                 QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH,
                 QueryExecutionRejectionDocument.REQUEST_REJECTED,

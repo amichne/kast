@@ -17,7 +17,7 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 - [QueryOutcomeProjection.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt) - canonical projection of semantic rows, qualification, retention, and result pages.
 - [QueryRetainedResult.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt) - detached semantic rows, producer progress, coverage, and failures bound to one read basis.
 - [QueryRows.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRows.kt) - closed symbol and named binding rows with canonical identity equality and retained arrival evidence.
-- [QueryJoins.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt) - bounded request-local named inputs and checkpointed equality index.
+- [QueryJoins.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt) - checkpointed equality index over retained symbol rows.
 - [QueryJoinStage.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoinStage.kt) - join build and probe tasks within the query evaluator.
 - [QueryRelationEvidence.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRelationEvidence.kt) - occurrence arrival facts and subject-linked relation omissions retained through composition.
 - [QueryWalkEvidence.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt) - traversal record arrivals and page-local coverage, progress, strategy, and partial frontier evidence.
@@ -48,4 +48,4 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 - Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
-- Begin with `QueryPlan`, then trace each stage through `QueryService` into symbol, source, relation, or traversal operations. Bind stages seal earlier request-local symbol streams; joins use canonical symbol identity and preserve both named inputs. `CanonicalQueryProtocol` restores result sources and execution checkpoints through `QueryStateStore`; presentation cursors read retained symbol or binding rows without replaying stages.
+- Begin with `QueryPlan`, then trace each stage through `QueryService` into symbol, source, relation, or traversal operations. Joins use retained symbol rows on the right, match canonical identity, and preserve both named output cells. `CanonicalQueryProtocol` restores result sources and execution checkpoints through `QueryStateStore`; presentation cursors read retained symbol or binding rows without replaying stages.

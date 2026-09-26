@@ -105,7 +105,7 @@ class QueryService(
             if (!state.canContinue(task.needsWork()) || !advance(task)) return false
             state.drainFailures().asReversed().forEach { tasks.addFirst(PipelineTask.Failure(it)) }
             progressed = true
-            return terminal == null && joinStage.terminal == null && rejection == null
+            return terminal == null && rejection == null
         }
 
         private suspend fun advance(task: PipelineTask): Boolean =
@@ -124,8 +124,6 @@ class QueryService(
                 is PipelineTask.Feed -> feed(task)
                 is PipelineTask.FlushSet -> flushSet(task)
                 is PipelineTask.FlushDistinct -> flushDistinct(task)
-                is PipelineTask.FlushBind ->
-                    joinStage.flushBind(task, completedFailures, completedOmissions, completedWalkObservations)
                 is PipelineTask.JoinEvidence -> joinStage.emitRightEvidence(task)
                 is PipelineTask.Join -> joinStage.advance(task)
                 is PipelineTask.Discover -> {
@@ -245,7 +243,6 @@ class QueryService(
                     true
                 }
                 is ExactQueryStage.Set -> set(task, stage)
-                is ExactQueryStage.Bind -> joinStage.bind(task, stage)
                 is ExactQueryStage.Join -> joinStage.enter(task, stage)
                 is ExactQueryStage.Related -> {
                     tasks.removeFirst()
@@ -397,7 +394,7 @@ class QueryService(
         }
 
         private fun continuation(): QueryContinuationState {
-            val reason = terminal ?: joinStage.terminal
+            val reason = terminal
             if (reason != null) return QueryContinuationState.Terminal(reason)
             if (tasks.isEmpty()) return QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
             if (!progressed) return QueryContinuationState.Terminal(QueryTerminalReason.NO_PROGRESS)

@@ -14,7 +14,6 @@ enum class QueryLimitationDocument {
     RELATION_INCOMPLETE,
     TRAVERSAL_INCOMPLETE,
     ROW_SELECTION_INCOMPLETE,
-    JOIN_INPUT_INCOMPLETE,
 }
 
 enum class QueryKnownMinimumFailure {

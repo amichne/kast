@@ -856,9 +856,6 @@
                 "$ref": "#/$defs/Difference"
               },
               {
-                "$ref": "#/$defs/Bind"
-              },
-              {
                 "$ref": "#/$defs/Join"
               }
             ]
@@ -960,46 +957,6 @@
       "maxLength": 64,
       "description": "One bounded query-local binding name. A bind name is unique and a join may refer only to an earlier bind."
     },
-    "NamedBindingSource": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "binding"
-          ]
-        },
-        "name": {
-          "$ref": "#/$defs/BindingName"
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false,
-      "description": "Reuse rows captured by an earlier bind step in this run. Forward, unknown and duplicate names are rejected before execution."
-    },
-    "Bind": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "bind"
-          ]
-        },
-        "name": {
-          "$ref": "#/$defs/BindingName"
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false,
-      "description": "Capture the current symbol rows once under a unique name for later join steps in this run."
-    },
     "InnerJoinMode": {
       "type": "object",
       "properties": {
@@ -1081,13 +1038,10 @@
         "right": {
           "anyOf": [
             {
-              "$ref": "#/$defs/NamedBindingSource"
-            },
-            {
               "$ref": "#/$defs/ResultSource"
             }
           ],
-          "description": "An earlier named symbol binding or immutable retained symbol rows. A retained binding-row result is not a symbol right input."
+          "description": "Immutable retained symbol rows. A retained binding-row result is not a symbol right input."
         }
       },
       "required": [

@@ -16,7 +16,6 @@ import io.github.amichne.kast.query.contract.QueryExactReferences
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryItemFailure
-import io.github.amichne.kast.query.contract.QueryJoinInput
 import io.github.amichne.kast.query.contract.QueryJoinMode
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
@@ -73,7 +72,7 @@ class QueryJoinCompositionTest {
             val service = countingService { }
             val joined = admittedPlan(
                 QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                listOf(QueryStepSyntax.Join(mode, right)),
                 QueryOutputSyntax.BindingRows,
             )
             val produced = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(joined, 64L)))
@@ -100,7 +99,7 @@ class QueryJoinCompositionTest {
             val plan = admittedPlan(
                 QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
                 listOf(
-                    QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right)),
+                    QueryStepSyntax.Join(mode, right),
                     QueryStepSyntax.ProjectBinding(name("target")),
                     QueryStepSyntax.Distinct,
                 ),
@@ -140,7 +139,7 @@ class QueryJoinCompositionTest {
             val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
             val joined = admittedPlan(
                 QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                listOf(QueryStepSyntax.Join(mode, right)),
                 QueryOutputSyntax.BindingRows,
             )
             val produced = assertInstanceOf(
@@ -194,7 +193,7 @@ class QueryJoinCompositionTest {
             val plan =
                 admittedPlan(
                     QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected, selected)).refined()),
-                    listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                    listOf(QueryStepSyntax.Join(mode, right)),
                     QueryOutputSyntax.BindingRows,
                 )
             var descriptions = 0
@@ -235,7 +234,7 @@ class QueryJoinCompositionTest {
             val plan =
                 admittedPlan(
                     QuerySourceSyntax.Retained(left),
-                    listOf(QueryStepSyntax.Join(QueryJoinMode.Semi, QueryJoinInput.Retained(right))),
+                    listOf(QueryStepSyntax.Join(QueryJoinMode.Semi, right)),
                     QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                 )
             val result = assertInstanceOf(QueryExecutionResult.Complete::class.java, service().run(request(plan, 64L)))
@@ -258,7 +257,7 @@ class QueryJoinCompositionTest {
             val plan =
                 admittedPlan(
                     QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                    listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                    listOf(QueryStepSyntax.Join(mode, right)),
                     QueryOutputSyntax.BindingRows,
                 )
             var descriptions = 0
@@ -293,73 +292,6 @@ class QueryJoinCompositionTest {
 
 class QueryJoinBoundaryTest {
     @Test
-    fun `bind capacity stops without replay and a larger grant can finish the same checkpoint`() = runTest {
-        QueryServiceTest().apply {
-            val selected = selector(selection())
-            val plan = exactReferencePlan(listOf(selected, selected), listOf(QueryStepSyntax.Bind(name("known"))))
-            var descriptions = 0
-            val service = countingService { descriptions++ }
-            val narrow = request(plan, workLimit = 8L, resultLimit = 1)
-            val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(narrow))
-            assertTrue(first.result.symbolRows().isEmpty())
-            val progress = assertInstanceOf(QueryContinuationState.Resumable::class.java, first.continuation)
-            val stored = assertInstanceOf(PipelineCheckpoint::class.java, progress.checkpoint)
-            assertThrows(UnsupportedOperationException::class.java) {
-                (stored.joinState.bindings as MutableMap).clear()
-            }
-            assertThrows(UnsupportedOperationException::class.java) {
-                (stored.joinState.bindings.values.single().values as MutableList).clear()
-            }
-            val repeated =
-                assertInstanceOf(
-                    QueryExecutionResult.Qualified::class.java,
-                    service.run(
-                        QueryExecutionRequest.create(plan, narrow.lease, narrow.budget, progress.checkpoint).refined()
-                    ),
-                )
-            assertEquals(QueryContinuationState.Terminal(QueryTerminalReason.NO_PROGRESS), repeated.continuation)
-
-            val wider = request(plan, workLimit = 8L, resultLimit = 2)
-            val finished =
-                assertInstanceOf(
-                    QueryExecutionResult.Complete::class.java,
-                    service.run(
-                        QueryExecutionRequest.create(plan, wider.lease, wider.budget, progress.checkpoint).refined()
-                    ),
-                )
-            assertEquals(2, finished.result.symbolRows().size)
-            assertEquals(2, descriptions)
-        }
-    }
-
-    @Test
-    fun `one sealed named input feeds two joins without repeating its exact read`() = runTest {
-        QueryServiceTest().apply {
-            val selected = selector(selection())
-            val name = name("known")
-            val mode = QueryJoinMode.Inner.create(name("left"), name("right")).refined()
-            val plan =
-                admittedPlan(
-                    QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                    listOf(
-                        QueryStepSyntax.Bind(name),
-                        QueryStepSyntax.Join(QueryJoinMode.Semi, QueryJoinInput.Named(name)),
-                        QueryStepSyntax.Join(mode, QueryJoinInput.Named(name)),
-                    ),
-                    QueryOutputSyntax.BindingRows,
-                )
-            var descriptions = 0
-            val result =
-                assertInstanceOf(
-                    QueryExecutionResult.Complete::class.java,
-                    countingService { descriptions++ }.run(request(plan, 64L)),
-                )
-            assertEquals(1, result.result.bindingRows().size)
-            assertEquals(1, descriptions)
-        }
-    }
-
-    @Test
     fun `empty left join still returns qualified right omission evidence`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
@@ -391,7 +323,7 @@ class QueryJoinBoundaryTest {
             val plan =
                 admittedPlan(
                     QuerySourceSyntax.Retained(left),
-                    listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                    listOf(QueryStepSyntax.Join(mode, right)),
                     QueryOutputSyntax.BindingRows,
                 )
             val result = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service().run(request(plan, 8L)))
@@ -401,74 +333,7 @@ class QueryJoinBoundaryTest {
         }
     }
 
-    @Test
-    fun `incomplete named anti join cannot establish absence from positive rows`() = runTest {
-        QueryServiceTest().apply {
-            val selected = selector(selection())
-            val other = anotherDeclaration(selected)
-            val incomplete =
-                retained(
-                    selected,
-                    listOf(QuerySymbol(SymbolDescription.from(selected), emptyList())),
-                    QueryCoverage.Qualified.create(
-                            QueryCount.parse(1).refined(),
-                            setOf(QueryLimitation.VISIBILITY_INCOMPLETE),
-                        )
-                        .refined(),
-                    listOf(QueryItemFailure.PredicateUnproven(selected)),
-                )
-            val complete = retained(selected, incomplete.symbols)
-            val service = countingService {}
-            val qualified =
-                assertInstanceOf(
-                    QueryExecutionResult.Qualified::class.java,
-                    service.run(request(namedAntiPlan(incomplete, other), 64L)),
-                )
-            assertTrue(qualified.result.symbolRows().isEmpty())
-            assertTrue(QueryLimitation.JOIN_INPUT_INCOMPLETE in qualified.coverage.limitations)
-            assertEquals(
-                QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
-                qualified.continuation,
-            )
 
-            val proven =
-                assertInstanceOf(
-                    QueryExecutionResult.Complete::class.java,
-                    service.run(request(namedAntiPlan(complete, other), 64L)),
-                )
-            assertEquals(listOf(other), proven.result.symbolRows().map(QuerySymbol::selector))
-        }
-    }
-
-    @Test
-    fun `retained page limit cannot become complete named membership`() = runTest {
-        QueryServiceTest().apply {
-            val selected = selector(selection())
-            val other = anotherDeclaration(selected)
-            val partial =
-                retained(
-                    selected,
-                    listOf(QuerySymbol(SymbolDescription.from(selected), emptyList())),
-                    QueryCoverage.Qualified.create(
-                            QueryCount.parse(1).refined(),
-                            setOf(QueryLimitation.RESULT_LIMIT_REACHED),
-                        )
-                        .refined(),
-                )
-            val result =
-                assertInstanceOf(
-                    QueryExecutionResult.Qualified::class.java,
-                    countingService {}.run(request(namedAntiPlan(partial, other), 64L)),
-                )
-            assertTrue(result.result.symbolRows().isEmpty())
-            assertTrue(QueryLimitation.RESULT_LIMIT_REACHED in result.coverage.limitations)
-            assertTrue(QueryLimitation.JOIN_INPUT_INCOMPLETE in result.coverage.limitations)
-            assertEquals(
-                QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
-                result.continuation,
-            )
-        }
-    }
 }
 
 private fun QueryServiceTest.countingService(onDescription: () -> Unit): QueryService =
@@ -481,28 +346,6 @@ private fun QueryServiceTest.countingService(onDescription: () -> Unit): QuerySe
                 },
                 resolve = { error("No discovery expected") },
             )
-    )
-
-private fun QueryServiceTest.namedAntiPlan(source: QueryRetainedResult.Symbols, other: SymbolSelector) =
-    admittedPlan(
-        QuerySourceSyntax.Retained(source),
-        listOf(
-            QueryStepSyntax.Bind(name("known")),
-            QueryStepSyntax.Where(
-                QueryPredicate.Primitive(
-                    QueryPrimitiveField.NAME,
-                    QueryPrimitiveOperator.EQUALS,
-                    QueryPrimitiveValue.parse("Missing").refined(),
-                )
-            ),
-            QueryStepSyntax.Concat(
-                io.github.amichne.kast.query.contract.QueryCompositionInput.ExactReferences(
-                    QueryExactReferences.from(listOf(other)).refined()
-                )
-            ),
-            QueryStepSyntax.Join(QueryJoinMode.Anti, QueryJoinInput.Named(name("known"))),
-        ),
-        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
     )
 
 private fun name(raw: String): QueryBindingName = QueryBindingName.parse(raw).refined()

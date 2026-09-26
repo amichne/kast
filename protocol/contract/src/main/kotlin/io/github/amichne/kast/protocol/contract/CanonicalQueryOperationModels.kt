@@ -126,7 +126,7 @@ sealed interface QueryFromDocument {
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_ids")
         val rowIds: BoundedProtocolList<QueryResultRowReference>? = null,
-    ) : QueryFromDocument, QueryCompositionInputDocument, QueryJoinRightDocument
+    ) : QueryFromDocument, QueryCompositionInputDocument
 }
 
 @Serializable
@@ -264,7 +264,7 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
             is QueryFromDocument.Result -> source.rowIds?.values?.isUnique() ?: true
         }
     if (!sourceIsCanonical) return false
-    if (!steps.values.haveCanonicalBindings()) return false
+    if (!steps.values.all(QueryStepDocument::hasCanonicalSyntax)) return false
     return when (val projection = output) {
         is QueryOutputDocument.Symbols -> projection.fields.values.isUnique()
         QueryOutputDocument.Occurrences -> true
@@ -297,14 +297,11 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
     when (this) {
         is QueryStepDocument.Related,
         is QueryStepDocument.Walk,
-        is QueryStepDocument.Bind,
         is QueryStepDocument.ProjectBinding,
         QueryStepDocument.Distinct -> true
         is QueryStepDocument.Join ->
-            when (right) {
-                is QueryJoinRightDocument.Named -> true
-                is QueryFromDocument.Result -> right.rowIds?.values?.isUnique() ?: true
-            }
+            (right.rowIds?.values?.isUnique() ?: true) &&
+                ((mode as? QueryJoinModeDocument.Inner)?.let { it.leftName != it.rightName } ?: true)
         is QueryStepDocument.Concat ->
             when (val source = input) {
                 is QueryFromDocument.References -> source.values.values.isNotEmpty()
@@ -319,27 +316,6 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
                 is QueryPredicateDocument.Primitive -> value.value.value.length <= MAX_QUERY_PRIMITIVE_VALUE_LENGTH
             }
     }
-
-private fun List<QueryStepDocument>.haveCanonicalBindings(): Boolean {
-    val available = mutableSetOf<QueryBindingNameDocument>()
-    return all { step ->
-        step.hasCanonicalSyntax() &&
-            when (step) {
-                is QueryStepDocument.Bind -> available.add(step.name)
-                is QueryStepDocument.Join -> step.hasCanonicalJoinBinding(available)
-                else -> true
-            }
-    }
-}
-
-private fun QueryStepDocument.Join.hasCanonicalJoinBinding(
-    available: Set<QueryBindingNameDocument>,
-): Boolean {
-    val named = right as? QueryJoinRightDocument.Named
-    val inner = mode as? QueryJoinModeDocument.Inner
-    return (named == null || named.name in available) &&
-        (inner == null || inner.leftName != inner.rightName)
-}
 
 private fun <Value> List<Value>.isUniqueNonEmpty(): Boolean = isNotEmpty() && isUnique()
 

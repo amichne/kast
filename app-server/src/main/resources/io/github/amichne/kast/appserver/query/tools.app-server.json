@@ -92,7 +92,7 @@
     {
       "type": "function",
       "name": "query_symbols",
-      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from discovery, exact references, or immutable retained rows. Apply structured predicates, relation expansion, bounded walk, set composition, and typed query-local bindings and joins. Join matches canonical symbol identity and preserves both named bindings, multiplicity, and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
+      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from discovery, exact references, or immutable retained rows. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join matches canonical symbol identity and preserves both named output cells, multiplicity, and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -951,9 +951,6 @@
                       "$ref": "#/$defs/Difference"
                     },
                     {
-                      "$ref": "#/$defs/Bind"
-                    },
-                    {
                       "$ref": "#/$defs/Join"
                     }
                   ]
@@ -1055,46 +1052,6 @@
             "maxLength": 64,
             "description": "One bounded query-local binding name. A bind name is unique and a join may refer only to an earlier bind."
           },
-          "NamedBindingSource": {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "binding"
-                ]
-              },
-              "name": {
-                "$ref": "#/$defs/BindingName"
-              }
-            },
-            "required": [
-              "type",
-              "name"
-            ],
-            "additionalProperties": false,
-            "description": "Reuse rows captured by an earlier bind step in this run. Forward, unknown and duplicate names are rejected before execution."
-          },
-          "Bind": {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "bind"
-                ]
-              },
-              "name": {
-                "$ref": "#/$defs/BindingName"
-              }
-            },
-            "required": [
-              "type",
-              "name"
-            ],
-            "additionalProperties": false,
-            "description": "Capture the current symbol rows once under a unique name for later join steps in this run."
-          },
           "InnerJoinMode": {
             "type": "object",
             "properties": {
@@ -1176,13 +1133,10 @@
               "right": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/NamedBindingSource"
-                  },
-                  {
                     "$ref": "#/$defs/ResultSource"
                   }
                 ],
-                "description": "An earlier named symbol binding or immutable retained symbol rows. A retained binding-row result is not a symbol right input."
+                "description": "Immutable retained symbol rows. A retained binding-row result is not a symbol right input."
               }
             },
             "required": [

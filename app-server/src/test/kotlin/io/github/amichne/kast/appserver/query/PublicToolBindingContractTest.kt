@@ -5,7 +5,6 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryJoinModeDocument
-import io.github.amichne.kast.protocol.contract.QueryJoinRightDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
@@ -20,35 +19,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class PublicToolBindingContractTest {
-    @Test
-    fun `earlier binding and inner join lower to one typed binding row output`() {
-        val input =
-            run(
-                listOf(
-                    PublicToolBind(name("saved")),
-                    PublicToolJoin(
-                        PublicToolInnerJoinMode(name("left"), name("right")),
-                        PublicToolNamedBindingSource(name("saved")),
-                    ),
-                ),
-                QueryOutputDocument.BindingRows,
-            )
-        val encoded = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
-        val request = encoded.jsonObject.getValue("request").jsonObject
-        assertEquals("binding_rows", request.getValue("output").jsonObject.getValue("type").jsonPrimitive.content)
-        assertEquals(
-            "join",
-            request.getValue("steps").jsonArray.last().jsonObject.getValue("type").jsonPrimitive.content,
-        )
-        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
-        val canonical = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
-        assertEquals(name("saved"), (canonical.steps.values.first() as QueryStepDocument.Bind).name)
-        val join = canonical.steps.values.last() as QueryStepDocument.Join
-        assertEquals(QueryJoinModeDocument.Inner(name("left"), name("right")), join.mode)
-        assertEquals(QueryJoinRightDocument.Named(name("saved")), join.right)
-        assertEquals(QueryOutputDocument.BindingRows, canonical.output)
-    }
-
     @Test
     fun `retained right input and binding result read remain typed`() {
         val result =
@@ -90,44 +60,6 @@ class PublicToolBindingContractTest {
             assertEquals(canonicalMode, (request.steps.values.first() as QueryStepDocument.Join).mode)
             assertEquals(QueryStepDocument.Distinct, request.steps.values.last())
         }
-    }
-
-    @Test
-    fun `binding order and join key violations reject at public admission`() {
-        val inner =
-            PublicToolJoin(PublicToolInnerJoinMode(name("l"), name("r")), PublicToolNamedBindingSource(name("saved")))
-        val cases =
-            listOf(
-                run(listOf(inner), QueryOutputDocument.BindingRows),
-                run(listOf(PublicToolBind(name("saved")), PublicToolBind(name("saved"))), null),
-                run(
-                    listOf(
-                        PublicToolBind(name("saved")),
-                        PublicToolJoin(
-                            PublicToolInnerJoinMode(name("same"), name("same")),
-                            PublicToolNamedBindingSource(name("saved")),
-                        ),
-                    ),
-                    QueryOutputDocument.BindingRows,
-                ),
-            )
-        cases.forEach { assertTrue(admit(it) is Refinement.Rejected) }
-
-        val valid =
-            Json.encodeToString(
-                PublicToolQuerySymbols.serializer(),
-                run(listOf(PublicToolBind(name("saved")), inner), QueryOutputDocument.BindingRows),
-            )
-        val unsupportedKey = valid.replace("\"right\":", "\"key\":\"name\",\"right\":")
-        assertTrue(
-            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(unsupportedKey))
-                is Refinement.Rejected
-        )
-        val malformedName = valid.replaceFirst("\"name\":\"saved\"", "\"name\":\"0saved\"")
-        assertTrue(
-            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(malformedName))
-                is Refinement.Rejected
-        )
     }
 
     @Test

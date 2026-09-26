@@ -63,11 +63,9 @@ sealed interface QueryStepDocument {
 
     @Serializable @SerialName("project_binding") data class ProjectBinding(val name: QueryBindingNameDocument) : QueryStepDocument
 
-    @Serializable @SerialName("bind") data class Bind(val name: QueryBindingNameDocument) : QueryStepDocument
-
     @Serializable
     @SerialName("join")
-    data class Join(val mode: QueryJoinModeDocument, val right: QueryJoinRightDocument) : QueryStepDocument
+    data class Join(val mode: QueryJoinModeDocument, val right: QueryFromDocument.Result) : QueryStepDocument
 
     @Serializable @SerialName("concat") data class Concat(val input: QueryCompositionInputDocument) : QueryStepDocument
 

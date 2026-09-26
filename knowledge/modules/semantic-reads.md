@@ -131,7 +131,7 @@ policy roots before exact source-set names are found absent from that owner.
 An unknown owner or a policy that excludes the available roots still rejects.
 Library inclusion cannot add results to that proven empty source-set scope.
 
-The query domain provides closed typed stages over these operations, including exact-reference fan-in, structured predicates, earlier-only bindings, and typed joins keyed by canonical symbol identity. `QueryPlanCompiler` rejects type-incompatible symbol and binding-row transitions, duplicate or forward bindings, unknown projected binding names, and output-kind mismatches before execution. `QueryService` then interprets only an admitted plan and retains per-item failures and limitations instead of promoting partial work to completeness.
+The query domain provides closed typed stages over these operations, including exact-reference fan-in, structured predicates, retained binding-row projection, and typed joins keyed by canonical symbol identity. `QueryPlanCompiler` rejects type-incompatible symbol and binding-row transitions, unknown projected binding names, and output-kind mismatches before execution. `QueryService` then interprets only an admitted plan and retains per-item failures and limitations instead of promoting partial work to completeness.
 
 Visibility filters consume `SourceDeclarationVisibility`, a proof for the exact
 selected declaration and snapshot. The internal self read is distinct from the
