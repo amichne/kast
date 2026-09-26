@@ -1,285 +1,35 @@
 ---
+title: "Read a Kast result"
+description: "Separate transport completion from semantic coverage."
 icon: "list-checks"
-sidebarTitle: "Read a response"
-type: "API Contract"
-title: "Read a tool response"
-description: "Separate invocation success from semantic evidence, then choose the next action."
-timestamp: "2026-09-25T00:00:00-04:00"
-code_sources:
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpReadPresentation.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"
-  - path: "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt"
-  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt"
-  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt"
-  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt"
-  - path: "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt"
 ---
 
-Read every Kast response as **invocation → semantic outcome → payload → coverage**.
+Kast returns a transport wrapper and an operation document. Read both before
+using the answer.
 
-Tool RPC returns one JSON object. Its `type` is `complete`, `qualified`,
-`rejected_document`, or `rejected`. The first three contain the Kast result
-under `document`; `rejected` carries a boundary `failure`. Read the document's
-own semantic status and coverage before using its payload. See the
-[tool RPC catalog](/reference/rpc-catalog) for the command shape.
-
-The Kast MCP transport puts a short human summary first and returns a
-consistent machine envelope in `structuredContent` for semantic reads:
-
-```json
-{
-  "status": "complete",
-  "data": {"operation": "query.run", "status": "complete", "items": [], "failures": [], "omissions": [], "retention": {"kind": "not_requested"}, "coverage": {"exhaustive": true}},
-  "coverage": {"exhaustive": true},
-  "basis": {"root": "/workspace", "host": "host-id", "epoch": 1, "contentView": "SAVED_PSI_COMMITTED", "version": 1, "hostState": "INDEXED"}
-}
-```
-
-`complete` means the requested scope was exhausted. `partial` includes
-`continuation` when available and a `stopReason`, and never proves absence.
-The finite stop reasons include budget, result limit, host interruption, and
-incomplete semantic evidence. `rejected` and `unavailable` contain a typed
-error. `data` retains the unmodified canonical document, including opaque
-references, budgets, ranges, soundness and qualifications. The second MCP text
-item also retains that document for clients that do not expose
-`structuredContent`. For diagnostics, coverage includes discovered, analyzed,
-and skipped file counts; the summary identifies IDE analysis and says a project
-build was not run.
-
-For direct MCP `change`, a schema-admitted `HOST_REJECTED` planning response
-appears as `structuredContent.status: "rejected"` with
-`error.code: "PLAN_REJECTED"`. Its `error.evidence` retains the hosted failure
-and its finite cause. For example, planning may report
-`PLANNING_EVIDENCE` with `RELATION_INCOMPLETE` and `UNSUPPORTED_ITEM` instead of
-issuing a plan identity.
-
-The older App Server integration retains one JSON envelope in the final content
-item of each model-facing tool reply. Searches and diagnostics can precede it
-with a short summary; compact source reads can precede it with the unchanged
-returned source.
-
-- Decode the final JSON envelope once.
-- Treat any preceding summary as display text; use the final envelope for evidence.
-- Display the same bounded document in clients with native structured output.
-- Preserve closed rejection variants for broker admission and capacity failures.
-
-## 1. Did the invocation produce a document?
-
-| Outer `status` | Required field | What to do |
+| Connection | Wrapper | Canonical document |
 | --- | --- | --- |
-| `completed` | `document` | Decode the document's operation or hosted rejection variant. |
-| `rejected` | `diagnostic` | Read its `boundary` and `reason`; use [Troubleshooting](/troubleshooting). |
+| Direct MCP | `result.structuredContent` | `data` for semantic reads |
+| Tool RPC | Top-level `type` | `document` for completed, qualified, or rejected documents |
+| Codex App Server | Invocation `status` | `document` when the invocation completed |
 
-A completed invocation can still contain a rejected semantic document.
+The [MCP](/reference/mcp-catalog) and [RPC](/reference/rpc-catalog) contracts
+show their exact wrappers. The generated **Query symbols** entry in this tab
+defines its canonical document.
 
-<Accordion title="Hosted rejection documents have their own shape">
-  Hosted rejection variants may use `outcome: "rejected"` instead of the
-  canonical `operation` and `status` pair.
+## What the semantic document proves
 
-  Match the complete installed union and reject unknown variants.
-</Accordion>
-
-## 2. What did the operation establish?
-
-Canonical operation documents carry `operation` and `status`:
-
-| Semantic `status` | Interpretation | Next action |
-| --- | --- | --- |
-| `complete` | The operation met its scope and completeness contract. | Use the payload within that scope; inspect any item failures. |
-| `qualified` | Results carry incomplete coverage or another explicit limitation. | Keep the qualification with the answer; narrow the request when useful. |
-| `rejected` | The operation could not establish successful semantic evidence. | Read its typed `rejection` or `reason` and correct that boundary. |
-
-This illustrative published query response is complete and empty:
-
-<Note>
-  The example is schema-valid but is not a live search record from your repository.
-</Note>
-
-```json
-{
-  "status": "completed",
-  "document": {
-    "operation": "query.run",
-    "status": "complete",
-    "items": [],
-    "failures": [],
-    "omissions": [],
-    "walk_observations": [],
-    "retention": {"kind": "not_requested"},
-    "coverage": {"exhaustive": true}
-  }
-}
-```
-
-It establishes absence only within the requested scope.
-
-This qualified illustration does not establish absence:
-
-```json
-{
-  "status": "completed",
-  "document": {
-    "operation": "query.run",
-    "status": "qualified",
-    "items": [],
-    "failures": [],
-    "omissions": [],
-    "walk_observations": [],
-    "retention": {"kind": "not_requested"},
-    "coverage": {"exhaustive": false},
-    "continuation": null,
-    "terminal_reason": "upstream-incomplete",
-    "qualification": {
-      "knownMinimum": 0,
-      "limitations": ["discovery-incomplete"],
-      "progress": {"type": "terminal_incomplete", "reason": "upstream-incomplete"}
-    }
-  }
-}
-```
-
-## 3. Open the payload for your tool
-
-Choose the payload model for the invoked tool.
-
-| Tool family | Canonical operation | Payload to inspect |
-| --- | --- | --- |
-| `query_symbols` | `query.run` | `items[]`: exact symbols, relation occurrences, depth-bearing traversal records, or named binding pairs by requested output; `walk_observations[]`: frontier, progress, strategy, partial expansions, and coverage; `failures[]` and `omissions[]`: incomplete evidence |
-| `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
-| `check_diagnostics` | `diagnostic.check` | `diagnostics[]`, `analysisKind`, and `coverage`: requested path, discovered, analyzed, and skipped files |
-| `change` | `change.run` composed from private native `change.plan`, `change.apply`, and, when needed, `change.recover` | Preview, verified receipt or failure, and any recovery evidence; see [Change source](/change) |
-
-For `source_read`, the hosted tool also accepts an exact symbol reference as
-`anchor.symbolRef`, with `region: "declaration"`, `text: {"mode":"complete","maxBytes":6000}`,
-and `entities: {"mode":"none"}`. Omit the entity limit for this form. The
-canonical source request remains available for candidate and source anchors.
-
-Use these focused references before opening a complete callable schema:
-
-- [Symbol results](/reference/symbols)
-- [Query item](/reference/models/query-item)
-- [Relation fact](/reference/models/relation-fact)
-- [Diagnostic entry](/reference/models/diagnostic)
-
-## 4. Retain coverage and failures
-
-`analysisKind: IDE_FILE_DIAGNOSTICS` reports an IDE file scan. It does not assert a project build. A zero-diagnostic result establishes no findings only for the files shown as analyzed with exhaustive coverage. A qualified result may return zero diagnostics while files remain undiscovered or unexamined.
-
-`qualification.knownMinimum` is a known returned count, not an estimate.
-
-`qualification.limitations` contains finite coverage reasons.
-
-Limits may concern results, bytes, work, time, discovery, refinement, visibility,
-or relations.
-
-Each `failures[]` entry retains its affected reference and finite reason.
-
-| Failure `type` | Additional context |
+| Canonical status | Claim |
 | --- | --- |
-| `refinement` | Candidate refinement failed |
-| `exact-reference` | Exact reference admission failed |
-| `predicate` | Predicate evaluation failed |
-| `relation` | Relation expansion failed and names the relation |
+| `complete` | The operation covered its declared scope. |
+| `qualified` | Known facts remain usable, but coverage or another obligation is incomplete. |
+| `rejected` | No successful semantic result was established. |
 
-Successful items remain usable, but failures still limit completeness claims.
-Each query `omissions[]` entry retains the exact subject, relation kind, and
-structured provider omission evidence. It qualifies relation coverage without
-discarding known occurrence rows. An occurrence item keeps `ref`, one `relation`
-fact, and an issued `row_id` when retained.
+For a negative claim, require complete coverage of the scope actually asked,
+and inspect item failures and omissions. A zero-item qualified result is not
+proof of absence. Preserve returned `ref`, continuation, qualification, and
+failure fields verbatim.
 
-An inner join returns one `binding_row` item per matching pair. Its `left` and
-`right` cells retain distinct names, exact symbol evidence, and a relation fact
-when that cell has one proven arrival occurrence. Repeated matching rows remain
-repeated pairs. `row_id` identifies the whole pair when retained.
-
-### Query result references and progress
-
-For `query_symbols`, keep five returned concepts separate:
-
-| Field | Meaning |
-| --- | --- |
-| `items[].ref` or a binding cell's `symbol.ref` | Exact-symbol reference for one declaration |
-| `items[].row_id` when the result is retained | Issued identity of this row within its owning retained result; use with `source.row_ids` or a composed result operand |
-| `retention.reference` when `retention.kind` is `retained` | Immutable retained result for another query run or a later presentation read |
-| `continuation` on a qualified response | Interrupted execution to resume with `request.action: "resume"` |
-| `next_cursor` | Next presentation page of the same retained result, read with `request.action: "read_result"` |
-
-`retention.kind` is `not_requested`, `retained`, or `capacity_exceeded`.
-Capacity failure leaves the current answer intact. A result reference is
-bounded and valid only in its original semantic basis. An empty retained result
-can be reused. A qualified retained result keeps its limitations and omissions;
-reading or composing its positive rows does not prove missing rows absent.
-An empty `row_ids` list selects no rows; selecting a proper subset records
-incomplete selection. A row ID from another result rejects during restoration.
-
-`read_result` presents saved rows without running query stages. The caller
-selects `symbols` for retained symbol rows or `binding_rows` for retained join
-pairs. A mismatched output rejects. Supply the result reference and optionally
-`cursor`; copy `next_cursor` into
-the next read when present. A `complete` semantic result can still have a
-`next_cursor`, because the field describes presentation pages. A missing
-`next_cursor` does not remove a retained qualification.
-
-### Relation omissions
-
-Relation answers separate soundness from coverage.
-
-- `soundness: "EXACT_RETURNED_FACTS"` qualifies returned facts only.
-- `omissions[]` names the provider and finite reason.
-- Each omission includes at most three proven source locations.
-- Each omission suggests one closed remediation action.
-
-| Measurement | Claim |
-| --- | --- |
-| `observed_on_page` | Counts omitted provider inputs consumed on this page |
-| `unmeasured_on_page` | Makes no missing-count claim, including inherited limitations |
-
-Neither measurement estimates every missing relation fact.
-
-`UNSUPPORTED_ITEM` can mean a provider found a candidate that Kast cannot turn
-into an exact compiler-grounded endpoint. Anonymous Kotlin object literals have
-no supported named class identity and are one such case. Retain the returned
-facts, `terminal_incomplete` qualification, and omission samples. There is no
-continuation for terminal coverage, and increasing the read budget does not
-resolve unsupported items.
-
-### Partial traversal expansion
-
-`partialExpansions[]` identifies each partially expanded subject on the current page.
-
-Each entry retains its depth and limitations.
-
-`remainder` distinguishes a continuation from unexplored neighbors.
-
-Keep partial-expansion evidence from earlier pages when assembling a traversal.
-
-Never infer an omitted-subtree count from this evidence.
-
-<AccordionGroup>
-  <Accordion title="When is an empty answer meaningful?">
-    Require all three conditions:
-
-    - semantic status is `complete`
-    - the scope matches the question
-    - no relevant item failure remains
-  </Accordion>
-  <Accordion title="What does live evidence bind?">
-    - `live.root` identifies the admitted repository.
-    - `live.host` identifies the original IDEA host incarnation.
-    - `live.epoch` identifies the observed content and model epoch.
-    - `contentView` is `SAVED_PSI_COMMITTED`.
-
-    See [Live evidence](/reference/models/live-evidence) for the complete model.
-  </Accordion>
-  <Accordion title="Why does the callable reference show POST and 200?">
-    The OpenAPI document is a documentation projection.
-
-    - `/callables/...` identifies a reference page, not an HTTP endpoint.
-    - Use the declared tool or CLI invocation.
-    - The disabled playground advertises no server.
-    - The displayed `200` groups process outcomes without promising semantic success.
-  </Accordion>
-</AccordionGroup>
+Diagnostics cover the reported IDEA analysis scope; they do not assert a
+whole-project build. A source or relation read can also return useful facts
+with explicit limits.

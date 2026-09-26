@@ -1,75 +1,21 @@
 ---
-type: "Concept"
-title: "Decide what an answer proves"
-sidebarTitle: "Evidence outcomes"
-description: "Use scope, identity, coverage, and source lifetime to make defensible claims."
-resource: "file://docs/public/concepts/evidence-boundaries.mdx"
-tags: ["evidence", "outcomes", "limits", "failures"]
-timestamp: "2026-09-14T00:00:00-04:00"
-code_sources:
-  - path: "kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt"
-    symbols: ["OperationOutcome"]
-  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt"
-    symbols: ["QueryExecutionResult", "QueryItemFailure"]
+title: "What an answer proves"
+description: "Interpret Kast's scope, identity, and coverage together."
 icon: "shield-check"
-keywords: ["complete", "qualified", "rejected", "negative answer"]
 ---
 
-Use a Kast answer only for the question its evidence supports.
+A Kast fact is useful only within its admitted workspace, source state, and
+request scope. Its status says how far the read got.
 
-Start with [Read a response](/reference/responses) for field-level decoding.
-
-## Keep the scope in the claim
-
-“Nothing matched” needs the repository, source sets, directory or package,
-matching mode, and transformations that defined the search.
-
-<Note>
-  A complete search of `main` and `test` does not establish absence from every
-  imported source set.
-</Note>
-
-| Evidence | Supported claim |
+| Result | Claim you can make |
 | --- | --- |
-| Complete result, no relevant item failures | The operation met its admitted completeness contract. |
-| Empty complete search | No match was found within the admitted scope. |
-| Qualified result | These results were established, with the attached coverage limitations. |
-| Empty qualified search | No match was returned; absence is unproven. |
-| Rejection | No successful semantic answer was established. |
+| Exact symbol, complete coverage | The compiler established that declaration within the reported scope. |
+| Exact symbol, partial coverage | The returned declaration is useful; other matches may be missing. |
+| Empty, complete coverage | No match was established in the requested scope. |
+| Empty, partial coverage | Absence remains unproven. |
+| Rejected | Resolve the reported failure before using the result. |
 
-Keep per-item failures beside successful items.
-
-## Distinguish identity from presentation
-
-| Representation | What it proves |
-| --- | --- |
-| Candidate | Discovery evidence only |
-| Exact symbol | Admitted compiler identity |
-| Name, location, or signature | Human-readable presentation |
-
-Copy exact references unchanged and let the runtime re-admit them.
-
-[Symbol results](/reference/symbols) shows both variants.
-
-## Bind evidence to the observed source
-
-Live evidence retains:
-
-- canonical repository root
-- original host incarnation
-- content and model epoch
-- saved committed content view
-
-Published evidence retains its published workspace coordinates.
-
-Neither evidence family can become the other.
-
-Search again after a saved edit, model change, owner replacement, or stale-token rejection.
-
-## Separate verification from coverage
-
-- Scoped diagnostics do not prove a whole-project build.
-- A verified receipt proves only the obligations discharged for that change.
-- A larger budget permits more work but does not guarantee completeness.
-- Timeouts and incomplete observations must remain visible in the outcome.
-- An uncertain mutation requires the [recovery workflow](/change).
+Keep qualifications, item failures, and omissions with positive facts. Copy
+opaque `ref` values unchanged and search again when the source or project
+authority changes. [Read a result](/reference/responses) explains the
+transport layers.

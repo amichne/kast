@@ -1,0 +1,12 @@
+---
+title: "MCP semantic read result"
+description: "Complete, partial, rejected, and unavailable direct MCP outcomes."
+openapi-schema: "reference/callables.openapi.json McpReadResult"
+mode: "wide"
+---
+
+`complete` includes the canonical `data`, coverage, and live basis.
+`partial` also requires a stop reason. `rejected` and `unavailable`
+carry an error. Decode `data` with the generated schema for the called
+tool; its operation-specific failures and qualifications remain intact.
+

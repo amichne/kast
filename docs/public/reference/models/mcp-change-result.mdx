@@ -1,0 +1,11 @@
+---
+title: "MCP change result"
+description: "The direct MCP result for the one-call change tool."
+openapi-schema: "reference/callables.openapi.json McpChangeResult"
+mode: "wide"
+---
+
+`complete` carries the plan identity, preview, and verified application.
+`rejected` carries a typed error and may retain recovery evidence. Keep
+that evidence until the effect has a known outcome.
+

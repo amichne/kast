@@ -94,7 +94,7 @@ class KastToolRpcBridgeTest {
     @Test
     fun `wire keeps every closed outcome and catalog discriminator`() {
         val json = Json { encodeDefaults = true }
-        val document = json.encodeToJsonElement(TestResult())
+        val document = json.encodeToJsonElement(TestResult()).jsonObject
         val cases =
             listOf(
                 ToolRpcReply.Complete(document) to "complete",

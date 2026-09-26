@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Compiler-grounded Kotlin tools: find declarations, read evidence, and make approved changes.",
+  "description": "Install Kast, query Kotlin in IntelliJ IDEA, and inspect its tool contracts.",
   "colors": {
     "primary": "#3154C7",
     "light": "#8FA7FF",
@@ -30,98 +30,58 @@
     "tabs": [
       {
         "tab": "Use Kast",
-        "groups": [
-          {
-            "group": "Start",
-            "pages": [
-              "index",
-              "start"
-            ]
-          },
-          {
-            "group": "Work with Kotlin",
-            "pages": [
-              "search",
-              "query-pipelines",
-              "change"
-            ]
-          },
-          {
-            "group": "Interpret an answer",
-            "pages": [
-              "reference/responses",
-              "reference/symbols",
-              "concepts/evidence-boundaries"
-            ]
-          },
-          {
-            "group": "Support",
-            "pages": [
-              "troubleshooting",
-              "reference/compatibility"
-            ]
-          }
+        "pages": [
+          "index",
+          "start",
+          "search"
         ]
       },
       {
         "tab": "How Kast works",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "concepts/architecture",
-              "concepts/background-startup"
-            ]
-          }
+        "pages": [
+          "concepts/architecture"
         ]
       },
       {
-        "tab": "Tool catalog",
+        "tab": "API / RPC",
         "openapi": "reference/callables.openapi.json",
         "groups": [
           {
-            "group": "Integration",
+            "group": "Transport contracts",
             "pages": [
-              "agent-harnesses",
               "reference/mcp-catalog",
               "reference/rpc-catalog",
-              "workspaces",
-              "POST /callables/workspace_lifecycle"
+              "reference/models/mcp-tool-call-result",
+              "reference/models/mcp-read-result",
+              "reference/models/mcp-investigation-result",
+              "reference/models/mcp-change-result",
+              "reference/models/tool-rpc-reply"
             ]
           },
           {
-            "group": "Search and diagnostics",
+            "group": "Semantic tools",
             "pages": [
+              "POST /callables/query_symbols",
+              "POST /callables/source_read",
               "POST /callables/check_diagnostics"
             ]
           },
           {
-            "group": "Read and explore",
+            "group": "Other tools",
             "pages": [
-              "POST /callables/query_symbols",
-              "POST /callables/source_read"
+              "POST /callables/change",
+              "POST /callables/symbol_lookup",
+              "POST /callables/symbol_inspect",
+              "POST /callables/workspace_lifecycle"
             ]
           },
           {
-            "group": "Change source",
-            "pages": [
-              "POST /callables/change"
-            ]
-          },
-          {
-            "group": "Compiler models",
+            "group": "Result models",
             "pages": [
               "reference/models/query-item",
               "reference/models/relation-fact",
               "reference/models/diagnostic",
               "reference/models/live-evidence"
-            ]
-          },
-          {
-            "group": "Candidate tools (opt-in)",
-            "pages": [
-              "POST /callables/symbol_lookup",
-              "POST /callables/symbol_inspect"
             ]
           }
         ]
@@ -147,28 +107,32 @@
     },
     "links": [
       {
-        "header": "Use Kast",
+        "header": "Learn",
         "items": [
           {
-            "label": "Install and connect",
+            "label": "Install",
             "href": "/start"
           },
           {
-            "label": "Connect a client",
-            "href": "/agent-harnesses"
+            "label": "Query",
+            "href": "/search"
+          },
+          {
+            "label": "How it works",
+            "href": "/concepts/architecture"
           }
         ]
       },
       {
-        "header": "Support",
+        "header": "Reference",
         "items": [
           {
-            "label": "Troubleshooting",
-            "href": "/troubleshooting"
+            "label": "MCP",
+            "href": "/reference/mcp-catalog"
           },
           {
-            "label": "Evidence outcomes",
-            "href": "/concepts/evidence-boundaries"
+            "label": "Tool RPC",
+            "href": "/reference/rpc-catalog"
           }
         ]
       },
@@ -220,5 +184,12 @@
       "title": "Page not found",
       "description": "The requested Kast documentation page does not exist. Return to the [documentation home](/)."
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/concepts/runtime-integration-validation",
+      "destination": "/concepts/architecture",
+      "permanent": true
+    }
+  ]
 }

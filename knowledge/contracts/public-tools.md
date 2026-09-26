@@ -70,9 +70,7 @@ Run can request `retention: "retain"`. The produced semantic rows, failures, cov
 
 The installed `source_read` input projection distributes declaration visibility alternatives into its filter choices. This preserves the canonical request variants while keeping every advertised tool input within two composition levels for Copilot catalog loading. `CopilotInputSchemaCompatibilityTest` checks both the depth limit and acceptance parity for every source filter variant.
 
-The installed projection retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; the CLI invocation projection omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. File or text lookup and candidate refinement require explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
-`EXPLICIT` exact-plan approval. The hosted planning schema admits only
-`add-declaration`; unsupported canonical intents do not enter another runtime.
+The installed projection retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; the CLI invocation projection omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. File or text lookup and candidate refinement require explicit selection. The public `change` tool composes private planning, application, verification and recovery into one call. Its hosted planning schema admits only `add-declaration`; unsupported canonical intents do not enter another runtime.
 
 The rejection corpus, typed accepted-action fixtures, earlier-only binding admission, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. They cover retired step spellings, malformed predicate fields and literals, incompatible set operands, and malformed or duplicate row IDs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 
@@ -81,10 +79,9 @@ See the [public search guide](../../docs/public/search.mdx) and [semantic query 
 ## Human-readable callable contracts
 
 The [response walkthrough](../../docs/public/reference/responses.mdx) separates
-process completion, semantic outcome, payload, and coverage. The
+transport completion, semantic outcome and coverage. The
 [symbol guide](../../docs/public/reference/symbols.mdx) distinguishes candidate
-and exact-symbol evidence and documents the closed signature variants, nullable
-projections, and compiler-rendered type-string boundary.
+and exact-symbol evidence; generated model pages carry the field-level contract.
 
 `MintlifyCallableReference` derives the OpenAPI reference from installed bindings.
 `HostedRejectionSchemas` retains each packaged rejection branch and its referenced
@@ -97,10 +94,9 @@ that require live evidence with a distinct label. Schema-model
 pages reference those generated components; authored prose does not replace the
 machine contract. The focused test compares resolved validation assertions with
 every installed input and output schema, ignoring only definition placement and
-display titles. Synthetic callable paths remain documentation routes, with no
-HTTP server or interactive playground advertised. Full-width contract pages keep
-the generated fields visible without synthesized response examples; invocation
-commands render as Bash blocks in the page content.
+display titles. The projection also publishes typed tool RPC reply and direct
+MCP result schemas as named components. Synthetic callable paths remain
+documentation routes, with no HTTP server or interactive playground advertised.
 
 Query execution continuations remain distinct from domain relation and traversal
 cursors held inside the bounded query checkpoint. The [query protocol](../modules/query-protocol.md)
@@ -171,8 +167,7 @@ The server projection advertises query occurrence output for individual relation
 
 Workspace setup belongs to the agent catalog, separately from the user CLI surface.
 The private invocation binding remains available to the harness, while root help
-and public local-command metadata omit it and the convenience `workspace open`
-command is absent. Tool guidance directs the agent through inspect, open and status
-before semantic queries, retaining exact identities and finite blockers.
+and public local-command metadata omit it. Ordinary semantic requests prepare
+the exact workspace without a separate lifecycle call.
 
-`workspace_lifecycle` is an eager canonical effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use, while source-change `EXPLICIT` approval is unchanged.
+`workspace_lifecycle` is a hosted effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use.

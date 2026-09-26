@@ -104,9 +104,103 @@ class MintlifyCallableReferenceTest {
             assertEquals("true", mintMetadata.getValue("hideApiMarker").jsonPrimitive.content)
             assertFalse("x-codeSamples" in operation)
             assertFalse("cliUsage" in kastMetadata)
-            assertTrue(content.contains("connected Kast agent session"))
+            assertTrue(content.contains("MCP contract"))
+            assertTrue(content.contains("tool RPC contract"))
             assertFalse(content.contains("```bash"))
         }
+    }
+
+    @Test
+    fun `reference publishes the closed RPC reply variants`() {
+        val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
+        val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
+        val rpc = components.getValue("ToolRpcReply").jsonObject
+        val variants = rpc.getValue("anyOf").jsonArray
+        assertEquals(
+            setOf("catalog", "complete", "qualified", "rejected_document", "rejected"),
+            variants
+                .map {
+                    it.jsonObject
+                        .getValue("properties")
+                        .jsonObject
+                        .getValue("type")
+                        .jsonObject
+                        .getValue("const")
+                        .jsonPrimitive
+                        .content
+                }
+                .toSet(),
+        )
+        assertTrue(
+            variants
+                .filter { "document" in it.jsonObject.getValue("properties").jsonObject }
+                .all {
+                    it.jsonObject
+                        .getValue("properties")
+                        .jsonObject
+                        .getValue("document")
+                        .jsonObject
+                        .getValue("type")
+                        .jsonPrimitive
+                        .content == "object"
+                }
+        )
+    }
+
+    @Test
+    fun `reference requires the RPC catalog version`() {
+        val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
+        val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
+        val variants = components.getValue("ToolRpcReply").jsonObject.getValue("anyOf").jsonArray
+        val catalog = variants.single {
+            it.jsonObject
+                .getValue("properties")
+                .jsonObject
+                .getValue("type")
+                .jsonObject
+                .getValue("const")
+                .jsonPrimitive
+                .content == "catalog"
+        }
+        assertTrue(
+            "schemaVersion" in
+                catalog.jsonObject
+                    .getValue("properties")
+                    .jsonObject
+                    .getValue("catalog")
+                    .jsonObject
+                    .getValue("required")
+                    .jsonArray
+                    .map { it.jsonPrimitive.content }
+        )
+    }
+
+    @Test
+    fun `reference publishes the direct MCP result status variants`() {
+        val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
+        val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
+        assertEquals(
+            setOf("complete", "partial", "rejected", "unavailable"),
+            components
+                .getValue("McpReadResult")
+                .jsonObject
+                .getValue("oneOf")
+                .jsonArray
+                .map {
+                    it.jsonObject
+                        .getValue("properties")
+                        .jsonObject
+                        .getValue("status")
+                        .jsonObject
+                        .getValue("const")
+                        .jsonPrimitive
+                        .content
+                }
+                .toSet(),
+        )
+        assertTrue(
+            "structuredContent" in components.getValue("McpToolCallResult").jsonObject.getValue("properties").jsonObject
+        )
     }
 
     @Test

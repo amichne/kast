@@ -1,147 +1,28 @@
 ---
-type: "Integration Guide"
-title: "Integrate an agent harness"
-description: "Load installed tool schemas, bind invocations by name, and preserve evidence and approval."
-resource: "file://docs/public/agent-harnesses.mdx"
-tags: ["agents", "harness", "server projection", "search"]
-timestamp: "2026-09-14T00:00:00-04:00"
-code_sources:
-  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
-    symbols: ["CanonicalAgentToolDefinitions"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
-    symbols: ["InstalledServerProjectionDocument", "installedServerProjection"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt"
-    symbols: ["AgentSessionBootstrap", "HostedToolCatalog"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt"
-    symbols: ["KastProviderQualifier", "KastRuntime"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerToolConfiguration.kt"
-    symbols: ["AppServerToolingMode", "KastToolSelection"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt"
-    symbols: ["BrokerServiceLaunchCommand"]
-icon: "bot"
-keywords: ["agent harness", "serverProjection", "query", "tool schemas"]
+title: "Connect an agent client"
+description: "Choose direct MCP, one-shot tool RPC, or the hosted Codex App Server."
+icon: "plug"
 ---
 
-A custom harness connects through the persistent Codex App Server broker and
-uses the hosted tool definitions admitted for its enrolled workspace.
+All connections bind requests to the exact Gradle repository or worktree.
+The installed catalog is the authority for a release's tool inputs.
 
-<Note>
-  Register the repository with the private service control described in
-  [Install and connect](/start), then continue with [Search declarations](/search).
-</Note>
-
-## Bind the catalog once at startup
-
-<Steps>
-  <Step title="Admit the hosted catalog">
-    Connect to the broker through a compatible Codex App Server client. Admit
-    the tool definitions supplied at thread start, including their names,
-    schemas, policies, and effect classifications. Reject a missing or
-    contradictory definition.
-  </Step>
-  <Step title="Register the complete tool definition">
-    Preserve every declared field:
-
-    - namespace, policy, order, name, and description
-    - input and output schemas
-    - effect and approval policy
-    - deferred-loading hint and execution budget
-
-    Invoke tools through the connected provider session. Do not translate tool
-    calls into shell commands.
-  </Step>
-  <Step title="Validate and return the whole result">
-    Admit output against the selected tool's schema and preserve both result layers.
-
-    Return semantic status, payload, qualification, item failures, and unchanged references.
-
-    [Read a response](/reference/responses) describes the dispatch rules.
-  </Step>
-</Steps>
-
-Requalify whenever the provider starts or the installed release changes.
-
-## Choose what the agent sees
-
-| Availability | Tools | Why |
+| Connection | Discover tools | Result contract |
 | --- | --- | --- |
-| Eager defaults | `query_symbols`, `check_diagnostics` | Declaration, occurrence, and walk queries; diagnostics |
-| Deferred defaults | `source_read` | Source reads |
-| Deferred changes | `change_plan`, `change_apply`, `change_recover` | Keep planning and approval attached to stored changes |
-| Explicit opt-in | `symbol_lookup`, `symbol_inspect` | Expose candidate discovery and refinement when required |
+| Direct MCP | `tools/list` | [MCP](/reference/mcp-catalog) |
+| Tool RPC | `kast-tool-rpc-complete catalog` | [Tool RPC](/reference/rpc-catalog) |
+| Codex App Server | Provider catalog for the conversation | Hosted callable schemas in this pane |
 
-Keep these administrative operations outside the agent tool catalog:
+The direct transports expose `query_symbols`, `source_read`,
+`check_diagnostics`, candidate tools, `health_check`,
+`validate_workspace`, and one-call `change`.
+The App Server additionally exposes `workspace_lifecycle` for explicit
+project control. Ordinary semantic calls prepare the workspace themselves.
 
-- service lifecycle and synchronization controls
-- topology setup and status
-- broker administration
+Read the outer result and its canonical semantic document. Keep exact
+`ref` values and qualifications unchanged. After upgrading Kast, discover
+the catalog again.
 
-Reads use the saved IDEA project and return a typed blocker when evidence is unavailable.
-
-## Preserve approval as an operation
-
-Approval follows the operation:
-
-| Operation | Approval |
-| --- | --- |
-| `change_plan` | None |
-| `change_apply` | Exact stored plan |
-| `change_recover` | Exact stored plan, approved separately |
-
-A plan ID or `EXPLICIT` catalog field is not approval.
-
-The included integration shows the stored preview and asks the current controller.
-
-Decline, cancellation, lost control, and expiration reject before writing.
-
-A custom harness must implement the installed approval contract.
-
-Follow [Change source](/change) for trust, plan lifetime, apply states, and recovery.
-
-Never render `applied_unverified` or `recovery_required` as verified success.
-
-## Configuration and migration
-
-<AccordionGroup>
-  <Accordion title="Use the complete suite">
-    The hosted catalog includes raw symbol tools and workspace lifecycle
-    operations. Mutation approval remains required.
-
-    `KAST_APP_SERVER_TOOLS` and `KAST_ENABLE_APP_SERVER` are retired. Remove them
-    from saved configuration and the launch environment; they reject startup.
-    Use the private `kast-service stop` or `disable` entry point for explicit
-    service lifecycle control.
-  </Accordion>
-  <Accordion title="Find the configuration used by a launch">
-    The installer saves App Server settings in the selected release's
-    `config/environment`.
-
-    The current release is normally available at
-    `~/.local/share/kast/current/config/environment`.
-
-    - Process values override saved values.
-    - Fresh installations materialize defaults such as `KAST_DEBUG=0`.
-    - The selected installation stores service logs under its managed state root.
-    - `KAST_DEBUG=1` also streams bounded launch diagnostics to stderr.
-  </Accordion>
-  <Accordion title="Migrate an older query integration">
-    Recreate persisted catalogs through the matched hosted provider.
-
-    - `kast.query` is not an alias in the new agent catalog.
-    - `kast.diagnostic_check` is not an alias in the new agent catalog.
-    - Use the intent tools for new registrations.
-    - Replace former CLI calls with the matching hosted tool, such as
-      `query_symbols` or `check_diagnostics`.
-  </Accordion>
-</AccordionGroup>
-
-## Relation evidence
-
-`query_symbols` returns individual relation occurrences, including separate use
-sites, when a run expands a relation and selects `output: {"type":"occurrences"}`.
-Its `omissions` retain the exact subject and structured incomplete coverage.
-`query_symbols` returns bounded multi-step reachability when a run applies `walk`
-and selects `output: {"type":"traversal_records"}`. Its walk observations retain
-depth, strategy, frontier progress, and incomplete coverage. The retired names
-`read_relations`, `traverse_relations`, `semantic_query`, and `impact_analyze` are rejected. Older
-persisted catalogs must requalify before dispatch.
+For installation, use [Install Kast](/start). The repository's
+[tool RPC guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md)
+contains the included Copilot CLI and Pi adapter setup.

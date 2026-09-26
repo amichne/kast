@@ -1,0 +1,12 @@
+---
+title: "Tool RPC reply"
+description: "The closed catalog, document, and boundary-failure variants of tool RPC."
+openapi-schema: "reference/callables.openapi.json ToolRpcReply"
+mode: "wide"
+---
+
+`catalog` lists installed tools and their input schemas.
+`complete`, `qualified`, and `rejected_document` contain a canonical
+`document`. `rejected` contains one finite process failure. Decode a
+document with the generated schema for the selected tool.
+
