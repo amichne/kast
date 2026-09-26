@@ -37,6 +37,8 @@ import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QuerySymbol
+import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -48,6 +50,36 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class QueryConcatAdmissionTest {
+    @Test
+    fun `fresh exact source reacquires once and returns exact query evidence`() = runTest {
+        val fixture = RelationPagingFixture.live()
+        val strict = object : QueryReferenceAuthority by fixture.references {
+            override fun restoreExact(token: ProtocolText, current: SemanticReadAuthority): CanonicalSelectorDecoding<SymbolSelector> =
+                CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNAVAILABLE)
+        }
+        var acquisitions = 0
+        val references = ReacquiringQueryReferences(strict, ExactReferenceReacquisition { _, _ ->
+            acquisitions++
+            CanonicalSelectorDecoding.Decoded(fixture.selector)
+        })
+        val protocol = CanonicalQueryProtocol(QueryOperations { admitted ->
+            assertEquals(listOf(fixture.selector), (admitted.plan as AdmittedQueryPlan.ExactReferences).source.values)
+            QueryExecutionResult.Complete(
+                QueryResult(QueryRows.Symbols.of(listOf(QuerySymbol(SymbolDescription.from(fixture.selector), emptyList()))), emptyList()),
+                QueryCoverage.Complete(QueryCount.parse(1).refined()),
+            )
+        }, references)
+        val input = request().copy(from = QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(fixture.exact)))))
+        val completed = protocol.execute(input, fixture.authority, budget) as OperationOutcome.Complete
+        assertEquals(1, completed.evidence.payload.items.values.size)
+        assertEquals(1, completed.evidence.payload.referenceAcquisitions?.references?.size)
+        assertEquals(1, acquisitions)
+        assertEquals(
+            CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNAVAILABLE),
+            references.restoreExact(fixture.exact, fixture.authority),
+        )
+    }
+
     private val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
     private val lease = SemanticReadLease(root, EvidenceGeneration.parse(7).refined())
     private val budget =
