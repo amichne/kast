@@ -261,30 +261,32 @@ internal fun AdmittedQueryPlan.outputSyntax(): QueryOutputSyntax =
 
 internal fun AdmittedQueryPlan.bindingMode(): QueryJoinMode.Inner {
     var mode = ((this as? AdmittedQueryPlan.Retained)?.source as? QueryRetainedResult.Bindings)?.mode
-    var stage = when (this) {
-        is AdmittedQueryPlan.Symbols -> stage
-        is AdmittedQueryPlan.Location -> stage
-        is AdmittedQueryPlan.ExactReferences -> stage
-        is AdmittedQueryPlan.Retained -> stage
-    }
-    while (stage !is ExactQueryStage.Emit) {
-        stage = when (stage) {
-            is ExactQueryStage.Join -> {
-                mode = stage.mode as? QueryJoinMode.Inner
-                stage.next
-            }
-            is ExactQueryStage.ProjectBinding -> {
-                mode = null
-                stage.next
-            }
-            is ExactQueryStage.Concat -> stage.next
-            is ExactQueryStage.Set -> stage.next
-            is ExactQueryStage.Distinct -> stage.next
-            is ExactQueryStage.Where -> stage.next
-            is ExactQueryStage.Related -> stage.next
-            is ExactQueryStage.Walk -> stage.next
-            is ExactQueryStage.Emit -> stage
+    var stage =
+        when (this) {
+            is AdmittedQueryPlan.Symbols -> stage
+            is AdmittedQueryPlan.Location -> stage
+            is AdmittedQueryPlan.ExactReferences -> stage
+            is AdmittedQueryPlan.Retained -> stage
         }
+    while (stage !is ExactQueryStage.Emit) {
+        stage =
+            when (stage) {
+                is ExactQueryStage.Join -> {
+                    mode = stage.mode as? QueryJoinMode.Inner
+                    stage.next
+                }
+                is ExactQueryStage.ProjectBinding -> {
+                    mode = null
+                    stage.next
+                }
+                is ExactQueryStage.Concat -> stage.next
+                is ExactQueryStage.Set -> stage.next
+                is ExactQueryStage.Distinct -> stage.next
+                is ExactQueryStage.Where -> stage.next
+                is ExactQueryStage.Related -> stage.next
+                is ExactQueryStage.Walk -> stage.next
+                is ExactQueryStage.Emit -> stage
+            }
     }
     return requireNotNull(mode) { "Admitted binding output lost its column identity" }
 }

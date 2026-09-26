@@ -14,7 +14,6 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [SourceReadFailureDetails.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt) - disjoint request, reference, and internal source failure causes.
 - [DiagnosticProgressDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/DiagnosticProgressDocument.kt) - diagnostic inventory, cumulative coverage, and execution stage.
 
-- [SymbolInspectionOutcomes.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolInspectionOutcomes.kt) - strict versus reacquired inspection results and finite revalidation refusals.
 
 - [ReadRecoveryAction.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt) - finite read-failure recovery directions derived from the canonical reason.
 - [AdmittedReadRejections.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt) - operation-owned admitted failures retain finite reasons and required execution reports.

@@ -46,9 +46,7 @@ internal fun validateWorkspace(
             ?: McpProbe.unverified("No diagnostic path requested")
     return CliExit.Complete(
         validationResultFactory.create(
-            McpValidationResult(
-                data = McpValidationData(declarationResult.probe, source, relation, diagnostics)
-            )
+            McpValidationResult(data = McpValidationData(declarationResult.probe, source, relation, diagnostics))
         )
     )
 }
@@ -70,15 +68,24 @@ private class WorkspaceValidator(
         val response = queryDeclarations(declaration.name, declaration.kind)
         if (response !is NativeRead.Complete)
             return QueriedDeclaration(response.unverified("Declaration query was not exhaustive"), null)
-        val matching = response.value.items.filter {
-            it.name == declaration.name &&
-                it.location?.file == root.resolveProbePath(declaration.file)?.toString() &&
-                it.kind == declaration.kind.queryResultKind &&
-                it.ref.startsWith("exact:")
-        }
+        val matching =
+            response.value.items.filter {
+                it.name == declaration.name &&
+                    it.location?.file == root.resolveProbePath(declaration.file)?.toString() &&
+                    it.kind == declaration.kind.queryResultKind &&
+                    it.ref.startsWith("exact:")
+            }
         return when (matching.size) {
-            0 -> QueriedDeclaration(McpProbe.failed("No matching declaration in the requested file", response.evidence), null)
-            1 -> QueriedDeclaration(McpProbe.passed("One exact declaration was queried", response.evidence), matching.single())
+            0 ->
+                QueriedDeclaration(
+                    McpProbe.failed("No matching declaration in the requested file", response.evidence),
+                    null,
+                )
+            1 ->
+                QueriedDeclaration(
+                    McpProbe.passed("One exact declaration was queried", response.evidence),
+                    matching.single(),
+                )
             else -> QueriedDeclaration(McpProbe.unverified("Multiple matching declarations", response.evidence), null)
         }
     }
@@ -86,16 +93,18 @@ private class WorkspaceValidator(
     private fun queryDeclarations(name: String, kind: McpValidationKind? = null): NativeRead<McpQuerySymbolsDocument> =
         read(
             "query_symbols",
-            validationInputJson.encodeToJsonElement(
-                McpQueryDeclarationRequest(
-                    McpQueryDeclarationAction(
-                        McpQueryDeclarationSource(
-                            declarationName = name,
-                            declarationKinds = kind?.let { listOf(it.queryKind) },
+            validationInputJson
+                .encodeToJsonElement(
+                    McpQueryDeclarationRequest(
+                        McpQueryDeclarationAction(
+                            McpQueryDeclarationSource(
+                                declarationName = name,
+                                declarationKinds = kind?.let { listOf(it.queryKind) },
+                            )
                         )
                     )
                 )
-            ).jsonObject,
+                .jsonObject,
         )
 
     fun source(symbol: McpExactSymbol): McpProbe {

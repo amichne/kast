@@ -3,7 +3,6 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>LargeClass:SymbolSelectorContractTest.kt:SymbolSelectorContractTest</ID>
-    <ID>LongMethod:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$private fun batch: SymbolDiscoveryBatch</ID>
     <ID>LongMethod:NativeRelationContractTest.kt:NativeRelationContractTest$@Test fun `batch rejects wrong subject family order and byte claims`</ID>
     <ID>LongMethod:NativeRelationContractTest.kt:NativeRelationContractTest$private fun selector: ExactDeclarationSelector</ID>
     <ID>LongMethod:SymbolDiscoveryContractTest.kt:SymbolDiscoveryContractTest$@Test fun `batch construction rejects overflow reordered candidates and false byte evidence`</ID>

@@ -263,7 +263,8 @@ private data class QuerySourceWindowCliDocument(
 private sealed interface QueryItemFailureCliDocument {
     @Serializable
     @SerialName("refinement")
-    data class Refinement(val location: QueryRefinementLocationCliDocument, val reason: String) : QueryItemFailureCliDocument
+    data class Refinement(val location: QueryRefinementLocationCliDocument, val reason: String) :
+        QueryItemFailureCliDocument
 
     @Serializable
     @SerialName("exact-reference")

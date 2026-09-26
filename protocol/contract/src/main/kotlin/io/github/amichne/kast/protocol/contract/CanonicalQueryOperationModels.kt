@@ -14,6 +14,12 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 private const val MAX_QUERY_PRIMITIVE_VALUE_LENGTH = 512
 
 @Serializable
+enum class SymbolDiscoveryMatchDocument {
+    @SerialName("fuzzy") FUZZY,
+    @SerialName("exact-name") EXACT_NAME,
+}
+
+@Serializable
 enum class QueryDeclarationKindDocument {
     @SerialName("class") CLASS,
     @SerialName("constructor") CONSTRUCTOR,
@@ -279,7 +285,10 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
 }
 
 private fun String.isCanonicalQueryFile(): Boolean =
-    isNotBlank() && !startsWith('/') && !contains('\\') && !Regex("^[A-Za-z]:").containsMatchIn(this) &&
+    isNotBlank() &&
+        !startsWith('/') &&
+        !contains('\\') &&
+        !Regex("^[A-Za-z]:").containsMatchIn(this) &&
         none(Char::isISOControl) &&
         split('/').none { it.isBlank() || it == "." || it == ".." }
 

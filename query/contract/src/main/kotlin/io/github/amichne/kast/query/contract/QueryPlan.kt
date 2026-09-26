@@ -123,12 +123,6 @@ sealed interface QueryPlanAdmission {
     data class Rejected(val failure: QueryPlanAdmissionFailure) : QueryPlanAdmission
 }
 
-private sealed interface AdmittedRowKind {
-    data object Symbol : AdmittedRowKind
-
-    data class Binding(val mode: QueryJoinMode.Inner) : AdmittedRowKind
-}
-
 /** Pure plan compiler; every admitted stage consumes exact semantic symbols. */
 object QueryPlanCompiler {
     fun admit(syntax: QueryPlanSyntax): QueryPlanAdmission {
@@ -141,8 +135,9 @@ object QueryPlanCompiler {
                 QueryPlanAdmissionFailure.UnsupportedDeclarationKind(CompilerSymbolKind.CONSTRUCTOR)
             )
         }
-        admitStages(source, syntax.steps, syntax.output)?.let {
-            return QueryPlanAdmission.Rejected(it)
+        when (val rows = admitQueryRows(source, syntax.steps, syntax.output)) {
+            is Refinement.Rejected -> return QueryPlanAdmission.Rejected(rows.failure)
+            is Refinement.Refined -> Unit
         }
         val stage = exactStage(syntax.steps, syntax.output)
         val plan =
@@ -154,62 +149,6 @@ object QueryPlanCompiler {
             }
         return QueryPlanAdmission.Admitted(plan)
     }
-
-    private fun admitStages(
-        source: QuerySourceSyntax,
-        steps: List<QueryStepSyntax>,
-        output: QueryOutputSyntax,
-    ): QueryPlanAdmissionFailure? {
-        if (steps.any(::hasIncompleteRight)) return QueryPlanAdmissionFailure.IncompleteRightInput
-        var rowKind: AdmittedRowKind =
-            when (source) {
-                is QuerySourceSyntax.Symbols,
-                is QuerySourceSyntax.Location,
-                is QuerySourceSyntax.ExactReferences -> AdmittedRowKind.Symbol
-                is QuerySourceSyntax.Retained ->
-                    when (val result = source.result) {
-                        is QueryRetainedResult.Symbols -> AdmittedRowKind.Symbol
-                        is QueryRetainedResult.Bindings -> AdmittedRowKind.Binding(result.mode)
-                    }
-            }
-        for (step in steps) {
-            rowKind =
-                when (val current = rowKind) {
-                    AdmittedRowKind.Symbol ->
-                        when (step) {
-                            is QueryStepSyntax.ProjectBinding -> return QueryPlanAdmissionFailure.OutputTypeMismatch
-                            is QueryStepSyntax.Join ->
-                                (step.mode as? QueryJoinMode.Inner)?.let(AdmittedRowKind::Binding)
-                                    ?: AdmittedRowKind.Symbol
-                            else -> AdmittedRowKind.Symbol
-                        }
-                    is AdmittedRowKind.Binding ->
-                        when (step) {
-                            is QueryStepSyntax.ProjectBinding -> {
-                                if (step.name != current.mode.leftName && step.name != current.mode.rightName) {
-                                    return QueryPlanAdmissionFailure.UnknownBindingName(step.name)
-                                }
-                                AdmittedRowKind.Symbol
-                            }
-                            else -> return QueryPlanAdmissionFailure.OutputTypeMismatch
-                        }
-                    }
-        }
-        return when (rowKind) {
-            AdmittedRowKind.Symbol ->
-                if (output is QueryOutputSyntax.BindingRows) QueryPlanAdmissionFailure.OutputTypeMismatch else null
-            is AdmittedRowKind.Binding ->
-                if (output is QueryOutputSyntax.BindingRows) null else QueryPlanAdmissionFailure.OutputTypeMismatch
-        }
-    }
-
-    private fun hasIncompleteRight(step: QueryStepSyntax): Boolean =
-        when (step) {
-            is QueryStepSyntax.Difference -> QueryCompleteMembership.from(step.right) is Refinement.Rejected
-            is QueryStepSyntax.Join ->
-                step.mode is QueryJoinMode.Anti && QueryCompleteMembership.from(step.right) is Refinement.Rejected
-            else -> false
-        }
 
     private fun exactStage(steps: List<QueryStepSyntax>, output: QueryOutputSyntax): ExactQueryStage {
         var stage: ExactQueryStage = ExactQueryStage.Emit(output)
@@ -226,7 +165,10 @@ object QueryPlanCompiler {
                     is QueryStepSyntax.Intersect ->
                         ExactQueryStage.Set(QuerySetOperator.INTERSECTION, step.right, stage)
                     is QueryStepSyntax.Union ->
-                        ExactQueryStage.Concat(QueryCompositionInput.Retained(step.right), ExactQueryStage.Distinct(stage))
+                        ExactQueryStage.Concat(
+                            QueryCompositionInput.Retained(step.right),
+                            ExactQueryStage.Distinct(stage),
+                        )
                     is QueryStepSyntax.Difference -> ExactQueryStage.Set(QuerySetOperator.DIFFERENCE, step.right, stage)
                     is QueryStepSyntax.Join -> ExactQueryStage.Join(step.mode, step.right, stage)
                 }

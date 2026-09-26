@@ -3,7 +3,6 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>CognitiveComplexMethod:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$private fun projectItems: QueryProjection&lt;QueryResultItemDocument></ID>
-    <ID>CognitiveComplexMethod:CanonicalQueryReferences.kt:CanonicalQueryReferences$override fun issueCandidates: CandidateSelectorIssuance</ID>
     <ID>CognitiveComplexMethod:CanonicalSelectorDocumentAdmission.kt:internal fun CandidateSelectorDocument.admitCandidateSelector: SelectorDocumentAdmission&lt;CandidateSelector></ID>
     <ID>CognitiveComplexMethod:CanonicalSelectorDocumentAdmission.kt:private fun admitAuthority: SelectorDocumentAdmission&lt;SemanticReadAuthority></ID>
     <ID>ComplexCondition:CanonicalSelectorDocumentAdmission.kt:root == reference.workspaceRoot.value &amp;&amp; live.host == reference.host.value.toString() &amp;&amp; live.epoch == reference.epoch.value &amp;&amp; live.contentView == reference.contentView.name &amp;&amp; live.version == reference.version &amp;&amp; live.version == LiveSemanticReadReference.VERSION</ID>
@@ -16,7 +15,6 @@
     <ID>LargeClass:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest</ID>
     <ID>LongMethod:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$private fun project: OperationOutcome&lt; DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection, ></ID>
     <ID>LongMethod:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$private fun projectItems: QueryProjection&lt;QueryResultItemDocument></ID>
-    <ID>LongMethod:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$@Test fun `file and text batch references retain their original read scope`</ID>
     <ID>LongMethod:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$fun encodeCandidate: CanonicalSelectorEncoding</ID>
     <ID>LongMethod:CanonicalSelectorDocumentAdmission.kt:internal fun CandidateSelectorDocument.admitCandidateSelector: SelectorDocumentAdmission&lt;CandidateSelector></ID>
     <ID>LongMethod:CanonicalSelectorDocumentAdmission.kt:internal fun ExactSelectorDocument.admitExactSelector: SelectorDocumentAdmission&lt;SymbolSelector></ID>

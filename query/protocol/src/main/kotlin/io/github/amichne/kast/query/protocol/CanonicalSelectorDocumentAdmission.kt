@@ -98,28 +98,6 @@ internal fun CandidateSelectorDocument.admitCandidateSelector(
                     }
                 SelectorDocumentAdmission.Rejected -> SelectorDocumentAdmission.Rejected
             }
-        is CandidateSelectorDocument.File -> {
-            val lease =
-                when (val admitted = admitAuthority(root, generation, live, current)) {
-                    is SelectorDocumentAdmission.Admitted -> admitted.value
-                    SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected
-                }
-            val fileIdentity =
-                when (val admitted = admitFile(WORKSPACE_FILE, file, lease.workspaceRoot)) {
-                    is SelectorDocumentAdmission.Admitted -> admitted.value
-                    SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected
-                }
-            val workspaceFile =
-                fileIdentity as? SymbolDiscoveryFileIdentity.Workspace ?: return SelectorDocumentAdmission.Rejected
-            val admittedScope =
-                when (val admitted = readScope.admitReadScope(lease.workspaceRoot, workspaceFile)) {
-                    is SelectorDocumentAdmission.Admitted -> admitted.value
-                    SelectorDocumentAdmission.Rejected -> return SelectorDocumentAdmission.Rejected
-                }
-            SelectorDocumentAdmission.Admitted(
-                CandidateSelector.restoreFile(lease, workspaceFile, admittedScope.scope, admittedScope.constraints)
-            )
-        }
         is CandidateSelectorDocument.Range -> {
             val lease =
                 when (val admitted = admitAuthority(root, generation, live, current)) {

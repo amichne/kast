@@ -128,7 +128,8 @@ sealed interface QueryRows {
         override fun hashCode(): Int = values.hashCode()
     }
 
-    class Bindings private constructor(private val snapshot: List<QueryBindingRow>, val mode: QueryJoinMode.Inner) : QueryRows {
+    class Bindings private constructor(private val snapshot: List<QueryBindingRow>, val mode: QueryJoinMode.Inner) :
+        QueryRows {
         val values: List<QueryBindingRow>
             get() = snapshot
 

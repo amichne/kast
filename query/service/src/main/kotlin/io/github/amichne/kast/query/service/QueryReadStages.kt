@@ -1,8 +1,8 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryContainingDeclaration
+import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryItemFailure
@@ -44,14 +44,15 @@ internal class QueryReadStages(
         val budget = state.discoveryBudget(remainingResults) ?: return DiscoveryExecution.NotStarted
         val request =
             SymbolDiscoveryRequest(
-                scope = SymbolSearchScopeRequest(
-                    state.request.lease,
-                    SymbolSearchScope.ExactFile(
-                        target.file,
-                        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                        SymbolGeneratedSourcePolicy.EXCLUDE,
+                scope =
+                    SymbolSearchScopeRequest(
+                        state.request.lease,
+                        SymbolSearchScope.ExactFile(
+                            target.file,
+                            SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                            SymbolGeneratedSourcePolicy.EXCLUDE,
+                        ),
                     ),
-                ),
                 target = SymbolDiscoveryTarget.Location(target.file, target.offset),
                 budget = budget,
             )
@@ -72,15 +73,16 @@ internal class QueryReadStages(
             )
         }
         if (outcome is SymbolDiscoveryOutcome.Qualified) state.discoveryLimited(outcome.qualifications.values)
-        val selections = batch.candidates.indices.mapNotNull { ordinal ->
-            when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
-                is Refinement.Refined -> selected.value
-                is Refinement.Rejected -> {
-                    state.contractViolation = true
-                    null
+        val selections =
+            batch.candidates.indices.mapNotNull { ordinal ->
+                when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected -> {
+                        state.contractViolation = true
+                        null
+                    }
                 }
             }
-        }
         return DiscoveryExecution.Discovered(selections)
     }
 

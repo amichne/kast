@@ -41,26 +41,26 @@ private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, Publ
                 is Refinement.Rejected -> loweredSteps
                 is Refinement.Refined ->
                     Refinement.Refined(
-                            PublicToolCanonical.Query(
-                                QueryRunRequest.Run(
-                                    from = from.value,
-                                    steps = bounded(loweredSteps.value),
-                                    output = output ?: PublicToolDefaults.output,
-                                    execution =
-                                        QueryExecutionDocument(
-                                            QueryExecutionKindDocument.EXHAUSTIVE,
-                                            QueryExecutionBudgetDocument.INTERACTIVE,
-                                        ),
-                                    retention =
-                                        when (retention) {
-                                            null,
-                                            PublicToolRetention.DISCARD -> QueryRetentionModeDocument.DISCARD
-                                            PublicToolRetention.RETAIN -> QueryRetentionModeDocument.RETAIN
-                                        },
-                                    executionBudget = executionBudget,
-                                )
+                        PublicToolCanonical.Query(
+                            QueryRunRequest.Run(
+                                from = from.value,
+                                steps = bounded(loweredSteps.value),
+                                output = output ?: PublicToolDefaults.output,
+                                execution =
+                                    QueryExecutionDocument(
+                                        QueryExecutionKindDocument.EXHAUSTIVE,
+                                        QueryExecutionBudgetDocument.INTERACTIVE,
+                                    ),
+                                retention =
+                                    when (retention) {
+                                        null,
+                                        PublicToolRetention.DISCARD -> QueryRetentionModeDocument.DISCARD
+                                        PublicToolRetention.RETAIN -> QueryRetentionModeDocument.RETAIN
+                                    },
+                                executionBudget = executionBudget,
                             )
                         )
+                    )
             }
     }
 
@@ -101,9 +101,7 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
                     if (file.value == "." || offset < 0) {
                         rejected(PublicToolParameter.LOCATION_FILE, PublicToolRule.WORKSPACE_RELATIVE_PATH)
                     } else {
-                        Refinement.Refined(
-                            QueryFromDocument.Location(file, proven(ProtocolOffset.parse(offset)))
-                        )
+                        Refinement.Refined(QueryFromDocument.Location(file, proven(ProtocolOffset.parse(offset))))
                     }
             }
         is PublicToolSearchSource ->

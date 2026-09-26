@@ -20,9 +20,6 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDescription
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 
 fun SymbolDescription.protocolDocument(exactSelector: ProtocolText): SymbolDocument? =
     symbolDocument(

@@ -131,7 +131,10 @@ class CliBoundaryContractTest {
     fun `retired symbol commands reject before request input`() {
         val factory = commandGraphFactory()
         for (command in listOf(listOf("symbol", "discover"), listOf("symbol", "inspect"))) {
-            assertTrue(factory.parse(command, CliRequestDocumentInput.Deferred { error("retired route read input") }) is CliCommandParsing.Rejected)
+            assertTrue(
+                factory.parse(command, CliRequestDocumentInput.Deferred { error("retired route read input") })
+                    is CliCommandParsing.Rejected
+            )
         }
     }
 

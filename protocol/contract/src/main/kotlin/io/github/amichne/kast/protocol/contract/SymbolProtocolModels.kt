@@ -5,7 +5,6 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 enum class ProtocolOffsetFailure {
@@ -71,19 +70,6 @@ private constructor(
                 Refinement.Refined(SourceRangeDocument(startInclusive, endExclusive))
             }
     }
-}
-
-@Serializable
-enum class SymbolNameKindDocument {
-    @SerialName("file") FILE,
-    @SerialName("class") CLASS,
-    @SerialName("symbol") SYMBOL,
-}
-
-@Serializable
-enum class SymbolDiscoveryMatchDocument {
-    @SerialName("fuzzy") FUZZY,
-    @SerialName("exact-name") EXACT_NAME,
 }
 
 enum class SymbolKindDocument {

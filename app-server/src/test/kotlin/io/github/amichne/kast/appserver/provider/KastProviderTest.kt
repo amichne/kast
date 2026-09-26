@@ -573,13 +573,14 @@ class KastProviderTest {
     fun `absolute Kast file paths are relative to the admitted invocation directory`(@TempDir temporary: Path) {
         val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val file = workspace.resolve("src/main/kotlin/sample/EventConsumer.kt")
-        val rendered = observer(
-            "source.read",
-            KastObserverFixtures.sourceRead
-                .replace("/workspace", workspace.toString())
-                .replace("events/core/src/main/kotlin/sample/EventConsumer.kt", file.toString()),
-            workspace,
-        )
+        val rendered =
+            observer(
+                "source.read",
+                KastObserverFixtures.sourceRead
+                    .replace("/workspace", workspace.toString())
+                    .replace("events/core/src/main/kotlin/sample/EventConsumer.kt", file.toString()),
+                workspace,
+            )
 
         check(rendered.contains("[EventConsumer.kt](<src/main/kotlin/sample/EventConsumer.kt>)"))
         check(!rendered.contains(workspace.toString()))
@@ -587,14 +588,16 @@ class KastProviderTest {
 
     @Test
     fun `unsupported malformed and contradictory observations fail closed`() {
-        val malformed = observerPresentation(
-            "query.run",
-            KastObserverFixtures.queryOccurrences.replace("\"items\"", "\"missing_items\""),
-        )
-        val mismatched = observerPresentation(
-            "query.run",
-            """{"status":"completed","document":{"operation":"source.read","status":"complete","items":[]}}""",
-        )
+        val malformed =
+            observerPresentation(
+                "query.run",
+                KastObserverFixtures.queryOccurrences.replace("\"items\"", "\"missing_items\""),
+            )
+        val mismatched =
+            observerPresentation(
+                "query.run",
+                """{"status":"completed","document":{"operation":"source.read","status":"complete","items":[]}}""",
+            )
         val unsupported =
             observerPresentation(
                 "diagnostic.check",
@@ -642,7 +645,11 @@ class KastProviderTest {
             ) as BrokerDispatch.Rejected
 
         val failure =
-            assertInstanceOf(BrokerFailure.ProviderStartupRejected::class.java, dispatch.failure, dispatch.failure.toString())
+            assertInstanceOf(
+                BrokerFailure.ProviderStartupRejected::class.java,
+                dispatch.failure,
+                dispatch.failure.toString(),
+            )
         assertEquals(ProviderFailureCode.KAST_CONTRACT_CHANGED, failure.code)
         assertEquals(2, executor.reads)
     }

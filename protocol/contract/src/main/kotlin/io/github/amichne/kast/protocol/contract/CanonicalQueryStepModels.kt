@@ -61,7 +61,9 @@ sealed interface QueryStepDocument {
 
     @Serializable @SerialName("distinct") data object Distinct : QueryStepDocument
 
-    @Serializable @SerialName("project_binding") data class ProjectBinding(val name: QueryBindingNameDocument) : QueryStepDocument
+    @Serializable
+    @SerialName("project_binding")
+    data class ProjectBinding(val name: QueryBindingNameDocument) : QueryStepDocument
 
     @Serializable
     @SerialName("join")

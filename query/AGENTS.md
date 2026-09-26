@@ -9,6 +9,9 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 ## Key Files
 
+- [QueryRowAdmission.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRowAdmission.kt) - pure symbol/binding row transitions and complete-right admission before effects.
+- [QueryLocationFailure.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryLocationFailure.kt) - workspace-relative location refinement with closed path/offset failures.
+
 - [DiagnosticCheckpointStore.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt) - detached diagnostic progress and immutable replay under bounded retention.
 - [SourceRequestAdmission.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceRequestAdmission.kt) - source request predicates retain precise field and finite cause.
 

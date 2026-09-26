@@ -24,9 +24,7 @@ internal object KastObserverSnapshotMain {
                             slug = "kast-observer-source",
                             title = "Source rendering",
                             items =
-                                listOf(
-                                    presentation("source.read", KastObserverFixtures.sourceRead, observerDirectory),
-                                ),
+                                listOf(presentation("source.read", KastObserverFixtures.sourceRead, observerDirectory)),
                         ),
                         ObserverSnapshotPage(
                             slug = "kast-observer-semantic-walk",

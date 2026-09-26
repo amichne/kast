@@ -16,7 +16,6 @@ import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
-import io.github.amichne.kast.protocol.contract.QueryJoinModeDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
@@ -99,18 +98,24 @@ class QueryRetainedRowAdmissionTest {
     fun `selected retained binding row admits named projection before evaluation`() = runTest {
         val issued = retainedBindingPairs()
         var selected: QueryRetainedResult.Bindings? = null
-        val protocol = CanonicalQueryProtocol(
-            QueryOperations { request ->
-                selected = (request.plan as AdmittedQueryPlan.Retained).source as QueryRetainedResult.Bindings
-                emptyExecution()
-            },
-            CanonicalQueryReferences(),
-            store,
-        )
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { request ->
+                    selected = (request.plan as AdmittedQueryPlan.Retained).source as QueryRetainedResult.Bindings
+                    emptyExecution()
+                },
+                CanonicalQueryReferences(),
+                store,
+            )
         val source = QueryFromDocument.Result(issued.reference, bounded(listOf(issued.rowIds[1])))
-        val request = run(source).copy(
-            steps = bounded(listOf(QueryStepDocument.ProjectBinding(QueryBindingNameDocument.parse("right").refined())))
-        )
+        val request =
+            run(source)
+                .copy(
+                    steps =
+                        bounded(
+                            listOf(QueryStepDocument.ProjectBinding(QueryBindingNameDocument.parse("right").refined()))
+                        )
+                )
         assertInstanceOf(OperationOutcome.Complete::class.java, protocol.execute(request, fixture.authority, budget))
         assertEquals(1, requireNotNull(selected).bindingRows.size)
         assertEquals(

@@ -21,10 +21,16 @@ internal fun kastDynamicItem(arguments: JsonElement, result: String, completed: 
     }
 
 internal fun kastToolCompleted(arguments: JsonElement, result: String): String =
-    fixtureJson.encodeToString(ToolCompletedNotification(ToolCompletedParameters(kastDynamicItem(arguments, result, true))))
+    fixtureJson.encodeToString(
+        ToolCompletedNotification(ToolCompletedParameters(kastDynamicItem(arguments, result, true)))
+    )
 
 @Serializable
-private data class ToolCallRequest(val params: ToolCallParameters, val id: Int = 9, val method: String = "item/tool/call")
+private data class ToolCallRequest(
+    val params: ToolCallParameters,
+    val id: Int = 9,
+    val method: String = "item/tool/call",
+)
 
 @Serializable
 private data class ToolCallParameters(
@@ -59,8 +65,7 @@ private data class CompletedToolItem(
     val durationMs: Int = 17,
 )
 
-@Serializable
-private data class ToolText(val text: String, val type: String = "inputText")
+@Serializable private data class ToolText(val text: String, val type: String = "inputText")
 
 @Serializable
 private data class ToolCompletedNotification(val params: ToolCompletedParameters, val method: String = "item/completed")

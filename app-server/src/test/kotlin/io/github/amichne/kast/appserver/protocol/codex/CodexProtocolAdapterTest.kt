@@ -348,9 +348,7 @@ class CodexProtocolAdapterTest {
             store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
             val adapter = CodexProtocolAdapter(broker, protocolContracts(), store)
             val arguments = buildJsonObject {}
-            adapter.fromUpstream(
-                kastToolCall(arguments)
-            )
+            adapter.fromUpstream(kastToolCall(arguments))
             val completed = buildJsonObject {
                 put("method", "item/completed")
                 put(
@@ -419,9 +417,7 @@ class CodexProtocolAdapterTest {
         store.write(ThreadCatalogBinding.admit("thread-1", broker.catalog.digest, cwd).refinedValue())
         val adapter = CodexProtocolAdapter(broker, protocolContractsWithoutAgentMessages(), store)
         val arguments = Json.parseToJsonElement("""{"selector":"exact:v2:opaque"}""")
-        adapter.fromUpstream(
-            kastToolCall(arguments)
-        )
+        adapter.fromUpstream(kastToolCall(arguments))
         val completed = buildJsonObject {
             put("method", "item/completed")
             put(
@@ -473,10 +469,7 @@ class CodexProtocolAdapterTest {
             )
         val arguments = Json.parseToJsonElement("""{"selector":"exact:v2:opaque"}""")
 
-        val reply =
-            adapter.fromUpstream(
-                kastToolCall(arguments)
-            )
+        val reply = adapter.fromUpstream(kastToolCall(arguments))
         val completed = buildJsonObject {
             put("method", "item/completed")
             put(

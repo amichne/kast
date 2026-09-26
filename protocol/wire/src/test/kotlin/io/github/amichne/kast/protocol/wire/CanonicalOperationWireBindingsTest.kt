@@ -45,7 +45,6 @@ import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
-import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.TopologyBuildDigest
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
@@ -188,7 +187,8 @@ class CanonicalOperationWireBindingsTest {
     @Test
     fun `production binding rejects unknown operation schema and invalid refined payload`() {
         val binding = CanonicalOperationWireBindings.diagnosticCheck
-        val encoded = binding.encodeRequest(DiagnosticCheckRequest(text("project:fixture"), count(100))).encodedDocument()
+        val encoded =
+            binding.encodeRequest(DiagnosticCheckRequest(text("project:fixture"), count(100))).encodedDocument()
         val unknownSchema = SchemaIdentity.parse("kast.unknown.v1").refinedValue()
         val unknownOperation = OperationId.parse("symbol.missing").refinedValue()
 
@@ -269,10 +269,12 @@ class CanonicalOperationWireBindingsTest {
                 DiagnosticKnownCountDocument.parse(1).refinedValue(),
                 resultLimitReached = true,
                 analyzedFiles = listOf(text("src/Target.kt")),
-                limitations = listOf(
-                    DiagnosticLimitationDocument(text("src/Other.kt"), DiagnosticLimitationReasonDocument.INDEXING)
-                ),
-            ).refinedValue()
+                limitations =
+                    listOf(
+                        DiagnosticLimitationDocument(text("src/Other.kt"), DiagnosticLimitationReasonDocument.INDEXING)
+                    ),
+            )
+            .refinedValue()
 
     private fun offset(raw: Int): ProtocolOffset = ProtocolOffset.parse(raw).refinedValue()
 

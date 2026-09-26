@@ -92,7 +92,7 @@ uses an explicit source-context admission port. Installed constructors adapt
 published workspace inspection to these ports; live hosts supply their own
 current-read validation. The pure owners do not inspect or acquire an IDE.
 
-Discovery constraints survive declaration, file, and text candidate selection,
+Discovery constraints survive declaration candidate selection,
 exact refinement, relation endpoints, source snapshots, and continuation
 fingerprints. Relation and diagnostic facts retain detached `SemanticReadIdentity`.
 Published write and topology boundaries continue to require publication evidence.

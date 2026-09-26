@@ -86,7 +86,6 @@ object CanonicalSelectorCodec {
         val retainedScopeNeeded =
             when (selector) {
                 is CandidateSelector.Declaration -> false
-                is CandidateSelector.File -> !selector.hasHistoricalFileScope(selector.file)
                 is CandidateSelector.Range -> !selector.hasHistoricalFileScope(selector.file)
             }
         val retainedScope =
@@ -136,14 +135,6 @@ object CanonicalSelectorCodec {
                         offset = location.offset.value,
                     )
                 }
-                is CandidateSelector.File ->
-                    CandidateSelectorDocument.File(
-                        root = selector.lease.workspaceRoot.value,
-                        generation = (selector.lease as? SemanticReadLease)?.generation?.value,
-                        live = (selector.lease as? LiveSemanticReadAuthority)?.reference?.selectorDocument(),
-                        file = selector.file.path.value,
-                        readScope = retainedScope,
-                    )
                 is CandidateSelector.Range ->
                     CandidateSelectorDocument.Range(
                         root = selector.lease.workspaceRoot.value,
@@ -197,7 +188,6 @@ object CanonicalSelectorCodec {
                 (document.live != null ||
                     when (document) {
                         is CandidateSelectorDocument.Declaration -> document.constraints != null
-                        is CandidateSelectorDocument.File -> document.readScope != null
                         is CandidateSelectorDocument.Range -> document.readScope != null
                     })
         ) {

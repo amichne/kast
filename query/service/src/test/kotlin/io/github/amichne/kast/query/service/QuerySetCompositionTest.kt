@@ -237,10 +237,11 @@ class QuerySetCompositionTest {
             val left = retainedRows(selected, listOf(QuerySymbol(SymbolDescription.from(selected), listOf(first))))
             val right = retainedRows(selected, listOf(QuerySymbol(SymbolDescription.from(selected), listOf(second))))
             val service = service()
-            for ((step, expected) in listOf(
-                QueryStepSyntax.Union(right) to listOf(first),
-                QueryStepSyntax.Intersect(right) to listOf(first, second).sorted(),
-            )) {
+            for ((step, expected) in
+                listOf(
+                    QueryStepSyntax.Union(right) to listOf(first),
+                    QueryStepSyntax.Intersect(right) to listOf(first, second).sorted(),
+                )) {
                 val plan =
                     admittedPlan(
                         QuerySourceSyntax.Retained(left),

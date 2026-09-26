@@ -53,23 +53,48 @@ class QueryConcatAdmissionTest {
     @Test
     fun `fresh exact source reacquires once and returns exact query evidence`() = runTest {
         val fixture = RelationPagingFixture.live()
-        val strict = object : QueryReferenceAuthority by fixture.references {
-            override fun restoreExact(token: ProtocolText, current: SemanticReadAuthority): CanonicalSelectorDecoding<SymbolSelector> =
-                CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNAVAILABLE)
-        }
+        val strict =
+            object : QueryReferenceAuthority by fixture.references {
+                override fun restoreExact(
+                    token: ProtocolText,
+                    current: SemanticReadAuthority,
+                ): CanonicalSelectorDecoding<SymbolSelector> =
+                    CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNAVAILABLE)
+            }
         var acquisitions = 0
-        val references = ReacquiringQueryReferences(strict, ExactReferenceReacquisition { _, _ ->
-            acquisitions++
-            CanonicalSelectorDecoding.Decoded(fixture.selector)
-        })
-        val protocol = CanonicalQueryProtocol(QueryOperations { admitted ->
-            assertEquals(listOf(fixture.selector), (admitted.plan as AdmittedQueryPlan.ExactReferences).source.values)
-            QueryExecutionResult.Complete(
-                QueryResult(QueryRows.Symbols.of(listOf(QuerySymbol(SymbolDescription.from(fixture.selector), emptyList()))), emptyList()),
-                QueryCoverage.Complete(QueryCount.parse(1).refined()),
+        val references =
+            ReacquiringQueryReferences(
+                strict,
+                ExactReferenceReacquisition { _, _ ->
+                    acquisitions++
+                    CanonicalSelectorDecoding.Decoded(fixture.selector)
+                },
             )
-        }, references)
-        val input = request().copy(from = QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(fixture.exact)))))
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { admitted ->
+                    assertEquals(
+                        listOf(fixture.selector),
+                        (admitted.plan as AdmittedQueryPlan.ExactReferences).source.values,
+                    )
+                    QueryExecutionResult.Complete(
+                        QueryResult(
+                            QueryRows.Symbols.of(
+                                listOf(QuerySymbol(SymbolDescription.from(fixture.selector), emptyList()))
+                            ),
+                            emptyList(),
+                        ),
+                        QueryCoverage.Complete(QueryCount.parse(1).refined()),
+                    )
+                },
+                references,
+            )
+        val input =
+            request()
+                .copy(
+                    from =
+                        QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(fixture.exact))))
+                )
         val completed = protocol.execute(input, fixture.authority, budget) as OperationOutcome.Complete
         assertEquals(1, completed.evidence.payload.items.values.size)
         assertEquals(1, completed.evidence.payload.referenceAcquisitions?.references?.size)

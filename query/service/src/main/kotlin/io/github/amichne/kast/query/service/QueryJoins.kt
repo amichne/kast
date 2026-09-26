@@ -18,20 +18,29 @@ private class MutableJoinIndex(
     var consumed: Int,
     val positions: MutableMap<CanonicalSymbolId, MutableList<Int>>,
 ) {
-    constructor(snapshot: QueryJoinIndex) : this(
+    constructor(
+        snapshot: QueryJoinIndex
+    ) : this(
         snapshot.consumed,
         snapshot.positions.mapValuesTo(linkedMapOf()) { (_, values) -> values.toMutableList() },
     )
 
-    fun snapshot(): QueryJoinIndex = QueryJoinIndex(
-        consumed,
-        Collections.unmodifiableMap(positions.mapValues { (_, values) -> Collections.unmodifiableList(values.toList()) }),
-    )
+    fun snapshot(): QueryJoinIndex =
+        QueryJoinIndex(
+            consumed,
+            Collections.unmodifiableMap(
+                positions.mapValues { (_, values) -> Collections.unmodifiableList(values.toList()) }
+            ),
+        )
 }
 
 internal data class QueryJoinSnapshot(val indexes: Map<ExactQueryStage.Join, QueryJoinIndex>)
 
-internal enum class QueryJoinBuild { BUILT, COMPLETE, BYTE_LIMIT }
+internal enum class QueryJoinBuild {
+    BUILT,
+    COMPLETE,
+    BYTE_LIMIT,
+}
 
 /** Request-local, bounded build state; snapshots contain no compiler or host objects. */
 internal class QueryJoins(restored: QueryJoinSnapshot = QueryJoinSnapshot(emptyMap())) {
@@ -61,9 +70,10 @@ internal class QueryJoins(restored: QueryJoinSnapshot = QueryJoinSnapshot(emptyM
     }
 
     fun retainedBytes(): Long {
-        val indexEntries = indexes.values.fold(0L) { total, index ->
-            index.positions.values.fold(total) { count, positions -> saturatedAdd(count, positions.size.toLong()) }
-        }
+        val indexEntries =
+            indexes.values.fold(0L) { total, index ->
+                index.positions.values.fold(total) { count, positions -> saturatedAdd(count, positions.size.toLong()) }
+            }
         return saturatedAdd(
             saturatedMultiply(indexes.size.toLong(), JOIN_STATE_OVERHEAD_BYTES),
             saturatedMultiply(indexEntries, JOIN_INDEX_ENTRY_BYTES),

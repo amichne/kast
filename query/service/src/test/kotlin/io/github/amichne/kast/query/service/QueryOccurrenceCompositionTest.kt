@@ -147,7 +147,10 @@ class QueryOccurrenceCompositionTest {
             val prefixResult =
                 assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(prefix, 8L)))
             assertEquals(2, prefixResult.result.symbolRows().size)
-            assertEquals(1, (prefixResult.result.symbolRows().first().arrival as QueryArrivalEvidence.Proven).facts.size)
+            assertEquals(
+                1,
+                (prefixResult.result.symbolRows().first().arrival as QueryArrivalEvidence.Proven).facts.size,
+            )
             val retained = QueryRetainedResult.capture(selected.lease, prefixResult).refined().symbolsResult()
             assertArrivalImmutable(retained)
             val suffix = admittedPlan(QuerySourceSyntax.Retained(retained), emptyList(), QueryOutputSyntax.Occurrences)

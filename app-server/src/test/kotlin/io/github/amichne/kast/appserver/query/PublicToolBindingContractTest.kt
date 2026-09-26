@@ -11,9 +11,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -28,9 +25,15 @@ class PublicToolBindingContractTest {
         val source = request.from as io.github.amichne.kast.protocol.contract.QueryFromDocument.Location
         assertEquals(file, source.file)
         assertEquals(42, source.offset.value)
-        assertTrue(admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, -1), null))) is Refinement.Rejected)
+        assertTrue(
+            admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, -1), null)))
+                is Refinement.Rejected
+        )
         val traversal = (ProtocolText.parse("../outside.kt") as Refinement.Refined).value
-        assertTrue(admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(traversal, 42), null))) is Refinement.Rejected)
+        assertTrue(
+            admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(traversal, 42), null)))
+                is Refinement.Rejected
+        )
     }
 
     @Test
@@ -80,7 +83,9 @@ class PublicToolBindingContractTest {
     fun `public binding projection lowers to the canonical typed stage`() {
         val step = PublicToolProjectBinding(name("caller"))
         val admitted = admit(run(listOf(step, PublicToolDistinctSymbols), null))
-        val request = (((admitted as Refinement.Refined).value.canonical) as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        val request =
+            (((admitted as Refinement.Refined).value.canonical) as PublicToolCanonical.Query).request
+                as QueryRunRequest.Run
         assertEquals(QueryStepDocument.ProjectBinding(name("caller")), request.steps.values.first())
     }
 

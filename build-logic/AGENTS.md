@@ -9,6 +9,8 @@ Defines reusable Gradle conventions, module roles, release assembly, generated c
 
 ## Key Files
 
+- [KnowledgeSymbolsMain.kt](src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt) - isolated Kotlin PSI declaration inventory for every OKF citation; Python AST checks and bundle validation live in `.github/scripts/code_kb.py`.
+
 - [settings.gradle.kts](settings.gradle.kts) - included-build plugin management.
 - [src/main/kotlin/kast.architecture.gradle.kts](src/main/kotlin/kast.architecture.gradle.kts) - architecture verification plugin.
 - [src/main/kotlin/kast.kotlin-library.gradle.kts](src/main/kotlin/kast.kotlin-library.gradle.kts) - common Kotlin library convention.

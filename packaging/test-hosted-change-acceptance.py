@@ -490,7 +490,7 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
 
     def test_authority_summary_requires_every_revalidation_case_and_provider_envelope(self):
         evidence = asdict(ExpectedAuthorityReplay())
-        self.assertEqual(18, len(evidence['cases']))
+        self.assertEqual(14, len(evidence['cases']))
         self.assertTrue(qualified_authority_replay(evidence))
         for index in range(len(evidence['cases'])):
             missing = copy.deepcopy(evidence)

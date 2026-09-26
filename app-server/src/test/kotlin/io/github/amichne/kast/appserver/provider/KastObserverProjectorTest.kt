@@ -20,10 +20,7 @@ class KastObserverProjectorTest {
 
     @Test
     fun `live read previews retain the saved content basis without inventing a generation`() {
-        for ((operation, raw) in
-            listOf(
-                "source.read" to KastObserverFixtures.sourceRead,
-            )) {
+        for ((operation, raw) in listOf("source.read" to KastObserverFixtures.sourceRead)) {
             val envelope = withLiveEvidence(raw)
             val presentation = project(operation, envelope.toString()) as ObserverPresentation.Markdown
             assertTrue(presentation.source.value.contains("Live IDE evidence"))

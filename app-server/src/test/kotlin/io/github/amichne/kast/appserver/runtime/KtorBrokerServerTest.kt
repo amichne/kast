@@ -1,7 +1,5 @@
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.protocol.codex.kastToolCall
-import io.github.amichne.kast.appserver.protocol.codex.kastToolCompleted
 import io.github.amichne.kast.appserver.BrokerSocketReachability
 import io.github.amichne.kast.appserver.JdkBrokerSocketProbe
 import io.github.amichne.kast.appserver.core.Broker
@@ -21,6 +19,8 @@ import io.github.amichne.kast.appserver.core.ToolPresentation
 import io.github.amichne.kast.appserver.protocol.MemoryThreadCatalogStore
 import io.github.amichne.kast.appserver.protocol.codex.CodexOwnedSchema
 import io.github.amichne.kast.appserver.protocol.codex.CodexProtocolContracts
+import io.github.amichne.kast.appserver.protocol.codex.kastToolCall
+import io.github.amichne.kast.appserver.protocol.codex.kastToolCompleted
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
@@ -108,9 +108,7 @@ class KtorBrokerServerTest {
 
                     val arguments = """{"selector":"exact:v2:opaque"}"""
                     upstream.receivedFromUpstream.send(
-                        BrokerUpstreamFrame.Text(
-                            kastToolCall(Json.parseToJsonElement(arguments))
-                        )
+                        BrokerUpstreamFrame.Text(kastToolCall(Json.parseToJsonElement(arguments)))
                     )
                     val modelReply = Json.parseToJsonElement(upstream.sentByBroker.receive()).jsonObject
                     assertEquals(

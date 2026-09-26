@@ -1,14 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
-import io.github.amichne.kast.kernel.EvidenceEnvelope
-import io.github.amichne.kast.kernel.EvidenceGeneration
-import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
-import io.github.amichne.kast.protocol.wire.WireFailure
-import io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluationOutcome
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
@@ -17,9 +9,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedConnectionOutcomeTest {

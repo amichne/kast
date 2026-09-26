@@ -503,10 +503,13 @@ private fun queryItemFailureSchema(): JsonObject =
     unionSchema(
         objectSchema(
             ServerSchemaProperty("type", constantSchema("refinement", "Candidate refinement failure.")),
-            ServerSchemaProperty("location", objectSchema(
-                ServerSchemaProperty("file", textSchema("Discovery file.")),
-                ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
-            )),
+            ServerSchemaProperty(
+                "location",
+                objectSchema(
+                    ServerSchemaProperty("file", textSchema("Discovery file.")),
+                    ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
+                ),
+            ),
             ServerSchemaProperty("reason", queryExactFailureSchema()),
         ),
         queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),

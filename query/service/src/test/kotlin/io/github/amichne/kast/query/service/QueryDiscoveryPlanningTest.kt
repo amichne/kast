@@ -1,8 +1,8 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryContainingDeclaration
+import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryMatch
@@ -14,8 +14,8 @@ import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbolFields
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
@@ -25,8 +25,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
@@ -40,43 +40,85 @@ import org.junit.jupiter.api.Test
 
 class QueryDiscoveryPlanningTest {
     @Test
+    fun `location without a containing declaration is complete and empty`() = runTest {
+        val fixture = QueryServiceTest()
+        val selected = fixture.selector(fixture.selection())
+        val file =
+            CanonicalWorkspaceFilePath.fromCanonicalPath(
+                    selected.lease.workspaceRoot,
+                    Path.of("/workspace/services/payments/PaymentService.kt"),
+                )
+                .refined()
+        val target = QueryContainingDeclaration(file, SymbolDiscoverySourceOffset.parse(7).refined())
+        val plan = locationPlan(target)
+        val missing =
+            fixture
+                .service(
+                    discovery = fixture.discoveryEmpty(qualified = false),
+                    exact = fixture.exactOperations { error("No declaration may be refined") },
+                )
+                .run(fixture.request(plan, workLimit = 8L)) as QueryExecutionResult.Complete
+        assertEquals(emptyList<io.github.amichne.kast.query.contract.QuerySymbol>(), missing.result.symbolRows())
+    }
+
+    @Test
+    fun `location with multiple candidates rejects before refinement`() = runTest {
+        val fixture = QueryServiceTest()
+        val selected = fixture.selector(fixture.selection())
+        val file =
+            CanonicalWorkspaceFilePath.fromCanonicalPath(
+                    selected.lease.workspaceRoot,
+                    Path.of("/workspace/services/payments/PaymentService.kt"),
+                )
+                .refined()
+        val target = QueryContainingDeclaration(file, SymbolDiscoverySourceOffset.parse(7).refined())
+        val plan = locationPlan(target)
+        val invalid =
+            fixture
+                .service(
+                    discovery = twoCandidates(),
+                    exact =
+                        fixture.exactOperations { error("Multiple location candidates must reject before refinement") },
+                )
+                .run(fixture.request(plan, workLimit = 8L)) as QueryExecutionResult.Rejected
+        assertEquals(
+            io.github.amichne.kast.query.contract.QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION,
+            invalid.reason,
+        )
+    }
+
+    @Test
     fun `location source refines the containing declaration to one exact row`() = runTest {
         val fixture = QueryServiceTest()
         val selected = fixture.selector(fixture.selection())
-        val file = CanonicalWorkspaceFilePath.fromCanonicalPath(
-            selected.lease.workspaceRoot,
-            Path.of("/workspace/services/payments/PaymentService.kt"),
-        ).refined()
+        val file =
+            CanonicalWorkspaceFilePath.fromCanonicalPath(
+                    selected.lease.workspaceRoot,
+                    Path.of("/workspace/services/payments/PaymentService.kt"),
+                )
+                .refined()
         val target = QueryContainingDeclaration(file, SymbolDiscoverySourceOffset.parse(7).refined())
         val requests = mutableListOf<SymbolDiscoveryRequest>()
-        val service = fixture.service(
-            discovery = SymbolDiscoveryOperations { child ->
-                requests += child
-                twoCandidates(listOf(7)).discover(child)
-            },
-            exact = fixture.exactOperations { _ ->
-                SymbolResolutionResult.Resolved(io.github.amichne.kast.symbol.contract.ResolvedSymbol(selected))
-            },
-        )
-        val plan = (QueryPlanCompiler.admit(QueryPlanSyntax(
-            QuerySourceSyntax.Location(target),
-            emptyList(),
-            QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
-        )) as QueryPlanAdmission.Admitted).plan
+        val service =
+            fixture.service(
+                discovery =
+                    SymbolDiscoveryOperations { child ->
+                        requests += child
+                        twoCandidates(listOf(7)).discover(child)
+                    },
+                exact =
+                    fixture.exactOperations { _ ->
+                        SymbolResolutionResult.Resolved(io.github.amichne.kast.symbol.contract.ResolvedSymbol(selected))
+                    },
+            )
+        val plan = locationPlan(target)
         val result = service.run(fixture.request(plan, workLimit = 8L)) as QueryExecutionResult.Complete
         assertEquals(listOf(selected), result.result.symbolRows().map { it.selector })
         assertEquals(SymbolDiscoveryTarget.Location(file, target.offset), requests.single().target)
-        assertEquals(file, (requests.single().scope.scope as io.github.amichne.kast.symbol.contract.SymbolSearchScope.ExactFile).file)
-        val missing = fixture.service(
-            discovery = fixture.discoveryEmpty(qualified = false),
-            exact = fixture.exactOperations { error("No declaration may be refined") },
-        ).run(fixture.request(plan, workLimit = 8L)) as QueryExecutionResult.Complete
-        assertEquals(emptyList<io.github.amichne.kast.query.contract.QuerySymbol>(), missing.result.symbolRows())
-        val invalid = fixture.service(
-            discovery = twoCandidates(),
-            exact = fixture.exactOperations { error("Multiple location candidates must reject before refinement") },
-        ).run(fixture.request(plan, workLimit = 8L)) as QueryExecutionResult.Rejected
-        assertEquals(io.github.amichne.kast.query.contract.QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION, invalid.reason)
+        assertEquals(
+            file,
+            (requests.single().scope.scope as io.github.amichne.kast.symbol.contract.SymbolSearchScope.ExactFile).file,
+        )
     }
 
     @Test
@@ -151,9 +193,9 @@ class QueryDiscoveryPlanningTest {
         assertEquals(4, refinements)
     }
 
-    private fun twoCandidates(offsets: List<Int> = listOf(7, 8)): SymbolDiscoveryOperations = SymbolDiscoveryOperations { child ->
-        val candidates =
-            offsets.map { offset ->
+    private fun twoCandidates(offsets: List<Int> = listOf(7, 8)): SymbolDiscoveryOperations =
+        SymbolDiscoveryOperations { child ->
+            val candidates = offsets.map { offset ->
                 SymbolDiscoveryCandidate.fromBoundary(
                         SymbolDiscoveryKind.CLASS,
                         "PaymentService",
@@ -164,25 +206,35 @@ class QueryDiscoveryPlanningTest {
                     )
                     .refined()
             }
-        val ordered = candidates.sortedWith(child.candidateOrder())
-        val batch =
-            SymbolDiscoveryBatch.create(
-                    child,
-                    ordered,
-                    SymbolDiscoveryByteCount.parse(ordered.sumOf { it.projectedUtf8Size().value }).refined(),
-                    SymbolDiscoveryWorkCount.parse(2L).refined(),
-                    SymbolDiscoveryTimings(
-                        SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-                        SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
-                    ),
-                )
-                .refined()
-        SymbolDiscoveryResult.Discovered(SymbolDiscoveryOutcome.Complete(batch))
-    }
+            val ordered = candidates.sortedWith(child.candidateOrder())
+            val batch =
+                SymbolDiscoveryBatch.create(
+                        child,
+                        ordered,
+                        SymbolDiscoveryByteCount.parse(ordered.sumOf { it.projectedUtf8Size().value }).refined(),
+                        SymbolDiscoveryWorkCount.parse(2L).refined(),
+                        SymbolDiscoveryTimings(
+                            SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                            SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                        ),
+                    )
+                    .refined()
+            SymbolDiscoveryResult.Discovered(SymbolDiscoveryOutcome.Complete(batch))
+        }
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
         when (this) {
             is Refinement.Refined -> value
             is Refinement.Rejected -> error(failure.toString())
         }
+
+    private fun locationPlan(target: QueryContainingDeclaration) =
+        (QueryPlanCompiler.admit(
+                QueryPlanSyntax(
+                    QuerySourceSyntax.Location(target),
+                    emptyList(),
+                    QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+                )
+            ) as QueryPlanAdmission.Admitted)
+            .plan
 }

@@ -139,14 +139,22 @@ class McpInvestigationToolsTest {
                             TestQualifiedQuery(
                                 items =
                                     listOf(
-                                        TestExactSymbol("exact:v5:opaque", "classlike", "Registry", TestExactLocation(root.resolve(file).toString()))
+                                        TestExactSymbol(
+                                            "exact:v5:opaque",
+                                            "classlike",
+                                            "Registry",
+                                            TestExactLocation(root.resolve(file).toString()),
+                                        )
                                     )
                             )
                         )
                 )
             }
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
-        assertEquals("unverified", data.getValue("declarationQuery").jsonObject.getValue("status").jsonPrimitive.content)
+        assertEquals(
+            "unverified",
+            data.getValue("declarationQuery").jsonObject.getValue("status").jsonPrimitive.content,
+        )
         assertEquals(1, calls)
     }
 }
@@ -178,5 +186,7 @@ private data class TestQualifiedQuery(
     val qualification: String = "result-limit",
 )
 
-@Serializable private data class TestExactSymbol(val ref: String, val kind: String, val name: String, val location: TestExactLocation)
+@Serializable
+private data class TestExactSymbol(val ref: String, val kind: String, val name: String, val location: TestExactLocation)
+
 @Serializable private data class TestExactLocation(val file: String)

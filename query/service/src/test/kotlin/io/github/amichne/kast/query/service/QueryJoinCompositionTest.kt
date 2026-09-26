@@ -19,10 +19,6 @@ import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryJoinMode
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
-import io.github.amichne.kast.query.contract.QueryPredicate
-import io.github.amichne.kast.query.contract.QueryPrimitiveField
-import io.github.amichne.kast.query.contract.QueryPrimitiveOperator
-import io.github.amichne.kast.query.contract.QueryPrimitiveValue
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
@@ -31,7 +27,6 @@ import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolFields
-import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationEndpoint
@@ -44,11 +39,11 @@ import io.github.amichne.kast.relation.contract.RelationOmissionMeasurement
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationProviderKind
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.traversal.contract.TraversalPage
@@ -69,21 +64,26 @@ class QueryJoinCompositionTest {
             val selected = selector(selection())
             val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
             val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
-            val service = countingService { }
-            val joined = admittedPlan(
-                QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                listOf(QueryStepSyntax.Join(mode, right)),
-                QueryOutputSyntax.BindingRows,
-            )
-            val produced = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(joined, 64L)))
-            val bindings = QueryRetainedResult.capture(selected.lease, produced).refined() as QueryRetainedResult.Bindings
+            val service = countingService {}
+            val joined =
+                admittedPlan(
+                    QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                    listOf(QueryStepSyntax.Join(mode, right)),
+                    QueryOutputSyntax.BindingRows,
+                )
+            val produced =
+                assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(joined, 64L)))
+            val bindings =
+                QueryRetainedResult.capture(selected.lease, produced).refined() as QueryRetainedResult.Bindings
             val selectedRows = bindings.selectRows(listOf(1)).refined()
-            val projected = admittedPlan(
-                QuerySourceSyntax.Retained(selectedRows),
-                listOf(QueryStepSyntax.ProjectBinding(name("target")), QueryStepSyntax.Distinct),
-                QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
-            )
-            val result = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(request(projected, 64L)))
+            val projected =
+                admittedPlan(
+                    QuerySourceSyntax.Retained(selectedRows),
+                    listOf(QueryStepSyntax.ProjectBinding(name("target")), QueryStepSyntax.Distinct),
+                    QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+                )
+            val result =
+                assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(request(projected, 64L)))
             assertEquals(1, result.result.symbolRows().size)
             assertEquals(21, result.result.symbolRows().single().connections.single().occurrence.range.startInclusive)
             assertEquals(listOf(QueryLimitation.ROW_SELECTION_INCOMPLETE), result.coverage.limitations)
@@ -96,15 +96,16 @@ class QueryJoinCompositionTest {
             val selected = selector(selection())
             val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
             val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
-            val plan = admittedPlan(
-                QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                listOf(
-                    QueryStepSyntax.Join(mode, right),
-                    QueryStepSyntax.ProjectBinding(name("target")),
-                    QueryStepSyntax.Distinct,
-                ),
-                QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
-            )
+            val plan =
+                admittedPlan(
+                    QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                    listOf(
+                        QueryStepSyntax.Join(mode, right),
+                        QueryStepSyntax.ProjectBinding(name("target")),
+                        QueryStepSyntax.Distinct,
+                    ),
+                    QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+                )
             var descriptions = 0
             val service = countingService { descriptions++ }
             val result = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 64L)))
@@ -118,10 +119,16 @@ class QueryJoinCompositionTest {
             while (page is QueryExecutionResult.Qualified) {
                 observed += page.result.symbolRows()
                 val continuation = assertInstanceOf(QueryContinuationState.Resumable::class.java, page.continuation)
-                page = service.run(
-                    QueryExecutionRequest.create(plan, firstRequest.lease, firstRequest.budget, continuation.checkpoint)
-                        .refined()
-                )
+                page =
+                    service.run(
+                        QueryExecutionRequest.create(
+                                plan,
+                                firstRequest.lease,
+                                firstRequest.budget,
+                                continuation.checkpoint,
+                            )
+                            .refined()
+                    )
                 pages++
                 assertTrue(pages < 16)
             }
@@ -135,48 +142,44 @@ class QueryJoinCompositionTest {
     fun `selected retained binding projects through distinct into a depth two walk`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
-            val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
-            val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
-            val joined = admittedPlan(
-                QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                listOf(QueryStepSyntax.Join(mode, right)),
-                QueryOutputSyntax.BindingRows,
-            )
-            val produced = assertInstanceOf(
-                QueryExecutionResult.Complete::class.java,
-                countingService { }.run(request(joined, 64L)),
-            )
-            val retained = QueryRetainedResult.capture(selected.lease, produced).refined() as QueryRetainedResult.Bindings
+            val retained = joinedBindings(selected)
             val chosen = retained.selectRows(listOf(1)).refined()
             var walks = 0
-            val walking = QueryService(
-                discoveryEmpty(false),
-                exactOperations(describe = { error("Retained row must not be reacquired") }, resolve = { error("No discovery") }),
-                SourceReadOperations { error("No source read") },
-                io.github.amichne.kast.relation.contract.RelationOperations { error("No relation read") },
-                TraversalOperations { plan ->
-                    walks++
-                    assertEquals(selected, plan.start)
-                    assertEquals(2, plan.budget.depth.value)
-                    val progress = TraversalProgress.restore(1, 1, 0, 0).refined()
-                    TraversalResult.complete(TraversalPage.fromBoundary(plan, emptyList(), 0, 1, 1, 1, progress).refined())
-                },
-                queryTestTraversalCeiling(),
-                clock = QueryNanoClock { 0L },
-            )
-            val plan = admittedPlan(
-                QuerySourceSyntax.Retained(chosen),
-                listOf(
-                    QueryStepSyntax.ProjectBinding(name("target")),
-                    QueryStepSyntax.Distinct,
-                    QueryStepSyntax.Walk(
-                        RelationMeaning.Callers,
-                        TraversalDepthLimit.parse(2).refined(),
-                        TraversalStrategy.BreadthFirst,
+            val walking =
+                QueryService(
+                    discoveryEmpty(false),
+                    exactOperations(
+                        describe = { error("Retained row must not be reacquired") },
+                        resolve = { error("No discovery") },
                     ),
-                ),
-                QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
-            )
+                    SourceReadOperations { error("No source read") },
+                    io.github.amichne.kast.relation.contract.RelationOperations { error("No relation read") },
+                    TraversalOperations { plan ->
+                        walks++
+                        assertEquals(selected, plan.start)
+                        assertEquals(2, plan.budget.depth.value)
+                        val progress = TraversalProgress.restore(1, 1, 0, 0).refined()
+                        TraversalResult.complete(
+                            TraversalPage.fromBoundary(plan, emptyList(), 0, 1, 1, 1, progress).refined()
+                        )
+                    },
+                    queryTestTraversalCeiling(),
+                    clock = QueryNanoClock { 0L },
+                )
+            val plan =
+                admittedPlan(
+                    QuerySourceSyntax.Retained(chosen),
+                    listOf(
+                        QueryStepSyntax.ProjectBinding(name("target")),
+                        QueryStepSyntax.Distinct,
+                        QueryStepSyntax.Walk(
+                            RelationMeaning.Callers,
+                            TraversalDepthLimit.parse(2).refined(),
+                            TraversalStrategy.BreadthFirst,
+                        ),
+                    ),
+                    QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+                )
             val result = assertInstanceOf(QueryExecutionResult.Qualified::class.java, walking.run(request(plan, 64L)))
             assertEquals(1, walks)
             assertEquals(listOf(QueryLimitation.ROW_SELECTION_INCOMPLETE), result.coverage.limitations)
@@ -332,8 +335,6 @@ class QueryJoinBoundaryTest {
             assertTrue(QueryLimitation.RELATION_INCOMPLETE in result.coverage.limitations)
         }
     }
-
-
 }
 
 private fun QueryServiceTest.countingService(onDescription: () -> Unit): QueryService =
@@ -434,3 +435,20 @@ private fun QueryBindingRow.rightOccurrenceStart(): Int =
     (right.value as QueryBindingValue.Occurrence).fact.occurrence.range.startInclusive
 
 private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = (this as Refinement.Refined).value
+
+private suspend fun QueryServiceTest.joinedBindings(selected: SymbolSelector): QueryRetainedResult.Bindings {
+    val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
+    val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
+    val joined =
+        admittedPlan(
+            QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+            listOf(QueryStepSyntax.Join(mode, right)),
+            QueryOutputSyntax.BindingRows,
+        )
+    val produced =
+        assertInstanceOf(
+            QueryExecutionResult.Complete::class.java,
+            countingService {}.run(request(joined, 64L)),
+        )
+    return QueryRetainedResult.capture(selected.lease, produced).refined() as QueryRetainedResult.Bindings
+}

@@ -39,16 +39,6 @@ internal sealed interface CandidateSelectorDocument {
     ) : CandidateSelectorDocument, SelectorScopeDocumentFields
 
     @Serializable
-    @SerialName("file")
-    data class File(
-        override val root: String,
-        override val generation: Long? = null,
-        override val live: LiveSelectorAuthorityDocument? = null,
-        val file: String,
-        val readScope: SelectorReadScopeDocument? = null,
-    ) : CandidateSelectorDocument
-
-    @Serializable
     @SerialName("range")
     data class Range(
         override val root: String,
@@ -104,7 +94,7 @@ internal data class SelectorConstraintsDocument(
     val sourceSets: List<String>? = null,
 )
 
-/** Scope proof retained by file and text candidates; absent only for historical exact-file tokens. */
+/** Scope proof retained by range candidates; absent for exact-file scope. */
 @Serializable
 internal data class SelectorReadScopeDocument(
     override val sourceKinds: String,
