@@ -21,6 +21,7 @@ import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.query.contract.QueryBindingName
 import io.github.amichne.kast.query.contract.QueryCompositionInput
+import io.github.amichne.kast.query.contract.QueryContainingDeclaration
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExactReferences
@@ -33,6 +34,8 @@ import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
@@ -46,6 +49,8 @@ import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
+import java.nio.file.InvalidPathException
+import java.nio.file.Path
 
 internal sealed interface QuerySyntaxAdmission {
     data class Admitted(val syntax: QueryPlanSyntax) : QuerySyntaxAdmission
@@ -95,6 +100,25 @@ private fun QueryFromDocument.admitSource(
     retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
 ): QueryReferenceSourceAdmission =
     when (this) {
+        is QueryFromDocument.Location -> {
+            val path = try { Path.of(file.value) } catch (_: InvalidPathException) {
+                return QueryReferenceSourceAdmission.RequestRejected
+            }
+            if (path.isAbsolute || path.toString() != file.value || file.value.contains('\\') ||
+                Regex("^[A-Za-z]:").containsMatchIn(file.value) ||
+                file.value.split('/').any { it.isBlank() || it == "." || it == ".." } ||
+                file.value.any(Char::isISOControl)
+            ) return QueryReferenceSourceAdmission.RequestRejected
+            val canonical = CanonicalWorkspaceFilePath.fromCanonicalPath(
+                lease.workspaceRoot,
+                Path.of(lease.workspaceRoot.value).resolve(path).normalize(),
+            ).refinedOrNull() ?: return QueryReferenceSourceAdmission.RequestRejected
+            val position = SymbolDiscoverySourceOffset.parse(offset.value).refinedOrNull()
+                ?: return QueryReferenceSourceAdmission.RequestRejected
+            QueryReferenceSourceAdmission.Admitted(
+                QuerySourceSyntax.Location(QueryContainingDeclaration(canonical, position))
+            )
+        }
         is QueryFromDocument.Symbols ->
             discovery.syntax()?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Symbols(it)) }
                 ?: QueryReferenceSourceAdmission.RequestRejected

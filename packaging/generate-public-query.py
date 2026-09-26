@@ -110,7 +110,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     objects = {**{key: value for key, value in definitions.items() if 'x-kotlin-type' not in value}, **roots}
     enums = {}
     unions = {'Scope': ['DirectoryScope', 'PackageScope'],
-              'Source': ['SearchSource', 'AllSource', 'ReferenceSource', 'ResultSource'],
+              'Source': ['SearchSource', 'AllSource', 'LocationSource', 'ReferenceSource', 'ResultSource'],
               'CompositionInput': ['ReferenceSource', 'ResultSource'],
               'RetainedInput': ['ResultSource'],
               'JoinMode': ['InnerJoinMode', 'SemiJoinMode', 'AntiJoinMode'],

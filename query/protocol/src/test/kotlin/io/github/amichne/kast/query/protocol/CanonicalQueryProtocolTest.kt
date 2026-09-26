@@ -31,6 +31,29 @@ class CanonicalQueryProtocolTest {
         )
 
     @Test
+    fun `location source is admitted as one exact-file query intent`() = runTest {
+        var observed = false
+        val protocol = CanonicalQueryProtocol(
+            QueryOperations { execution ->
+                val source = (execution.plan as AdmittedQueryPlan.Location).source
+                assertEquals("/workspace/src/Subject.kt", source.file.value)
+                assertEquals(12, source.offset.value)
+                observed = true
+                QueryExecutionResult.Complete(
+                    QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+                    QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                )
+            },
+            CanonicalQueryReferences(),
+        )
+        val input = request().copy(from = QueryFromDocument.Location(text("src/Subject.kt"), ProtocolOffset.parse(12).refined()))
+        assertTrue(protocol.execute(input, lease, budget) is OperationOutcome.Complete)
+        assertTrue(observed)
+        val escaped = request().copy(from = QueryFromDocument.Location(text("../Subject.kt"), ProtocolOffset.parse(12).refined()))
+        assertTrue(protocol.execute(escaped, lease, budget) is OperationOutcome.Rejected)
+    }
+
+    @Test
     fun `host lookup expands the token before canonical authority and kind validation`() {
         val handle = text("candidate:v4:" + "a".repeat(64))
         val tokens = mutableMapOf<ProtocolText, ProtocolText>()

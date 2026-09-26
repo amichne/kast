@@ -841,13 +841,16 @@
               "$ref": "#/$defs/AllSource"
             },
             {
+              "$ref": "#/$defs/LocationSource"
+            },
+            {
               "$ref": "#/$defs/ReferenceSource"
             },
             {
               "$ref": "#/$defs/ResultSource"
             }
           ],
-          "description": "Starting declarations, exact-symbol references, or one retained result."
+          "description": "Starting declaration search, containing named declaration at file offset, exact-symbol references, or one retained result."
         },
         "steps": {
           "type": [
@@ -1098,6 +1101,35 @@
       "additionalProperties": false,
       "x-kotlin-type": "QueryOutputDocument.BindingRows",
       "description": "Present both named symbol or exact-occurrence bindings in each inner-join pair, preserving multiplicity and evidence."
+    },
+    "LocationSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "at_location"
+          ]
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1048576,
+          "description": "Canonical workspace-relative file path containing the offset."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "UTF-16 offset inside the named declaration."
+        }
+      },
+      "required": [
+        "type",
+        "file",
+        "offset"
+      ],
+      "additionalProperties": false,
+      "description": "Find the nearest named declaration containing this offset, then return its exact compiler-grounded symbol."
     }
   },
   "tools": [
@@ -1145,7 +1177,7 @@
     },
     {
       "name": "query_symbols",
-      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from discovery, exact references, or immutable retained rows. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join matches canonical symbol identity and preserves both named output cells, multiplicity, and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
+      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from declaration discovery, a containing declaration at file offset, exact references, or immutable retained rows. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join matches canonical symbol identity and preserves both named output cells, multiplicity, and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
       "deferLoading": false,
       "schema": {
         "type": "object",

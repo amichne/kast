@@ -7,6 +7,9 @@ data class QueryExactLocationDocument(
     val range: SourceRangeDocument,
 )
 
+/** A bounded discovery location without an issuable candidate selector. */
+data class QueryRefinementLocationDocument(val file: ProtocolText, val offset: ProtocolOffset)
+
 enum class QueryBindingRowDocumentFailure {
     DUPLICATE_NAME,
     DIFFERENT_SYMBOL_IDENTITIES,
@@ -91,7 +94,7 @@ data class QueryRelationOmissionDocument(
 
 sealed interface QueryItemFailureDocument {
     data class Refinement(
-        val ref: QueryReferenceDocument.DeclarationCandidate,
+        val location: QueryRefinementLocationDocument,
         val reason: QueryExactFailureDocument,
     ) : QueryItemFailureDocument
 

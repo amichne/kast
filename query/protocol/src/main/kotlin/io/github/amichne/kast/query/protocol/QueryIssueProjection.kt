@@ -3,6 +3,9 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryRefinementLocationDocument
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
@@ -12,6 +15,7 @@ import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QuerySourceFailure
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 
 internal fun QueryRelationOmission.projectIssue(authority: QueryReferenceAuthority): QueryRelationOmissionDocument? =
@@ -24,11 +28,11 @@ internal fun QueryRelationOmission.projectIssue(authority: QueryReferenceAuthori
 internal fun QueryItemFailure.projectIssue(authority: QueryReferenceAuthority): QueryItemFailureDocument? =
     when (this) {
         is QueryItemFailure.Refinement -> {
-            val token =
-                (authority.issueDeclarationCandidate(candidate) as? CandidateSelectorTokenIssuance.Issued)?.selector
-                    ?: return null
+            val location = candidate.candidate.location as? SymbolDiscoveryCandidateLocation.Declaration ?: return null
+            val file = (ProtocolText.parse(location.file.stableValue) as? io.github.amichne.kast.kernel.Refinement.Refined)?.value ?: return null
+            val offset = (ProtocolOffset.parse(location.offset.value) as? io.github.amichne.kast.kernel.Refinement.Refined)?.value ?: return null
             QueryItemFailureDocument.Refinement(
-                QueryReferenceDocument.DeclarationCandidate(token),
+                QueryRefinementLocationDocument(file, offset),
                 QueryExactFailureDocument.valueOf(reason.name),
             )
         }

@@ -93,6 +93,19 @@ private fun PublicToolReadResultAction.lowerReadResult(): Refinement<PublicToolC
 
 private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolInputFailure> =
     when (this) {
+        is PublicToolLocationSource ->
+            when (WorkspaceRelativePath.parse(file.value)) {
+                is Refinement.Rejected ->
+                    rejected(PublicToolParameter.LOCATION_FILE, PublicToolRule.WORKSPACE_RELATIVE_PATH)
+                is Refinement.Refined ->
+                    if (file.value == "." || offset < 0) {
+                        rejected(PublicToolParameter.LOCATION_FILE, PublicToolRule.WORKSPACE_RELATIVE_PATH)
+                    } else {
+                        Refinement.Refined(
+                            QueryFromDocument.Location(file, proven(ProtocolOffset.parse(offset)))
+                        )
+                    }
+            }
         is PublicToolSearchSource ->
             searchSource(
                 declaration_name,

@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
+import io.github.amichne.kast.query.contract.QueryContainingDeclaration
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryMatch
@@ -14,6 +15,7 @@ import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbolFields
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
@@ -24,6 +26,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
@@ -36,6 +39,46 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class QueryDiscoveryPlanningTest {
+    @Test
+    fun `location source refines the containing declaration to one exact row`() = runTest {
+        val fixture = QueryServiceTest()
+        val selected = fixture.selector(fixture.selection())
+        val file = CanonicalWorkspaceFilePath.fromCanonicalPath(
+            selected.lease.workspaceRoot,
+            Path.of("/workspace/services/payments/PaymentService.kt"),
+        ).refined()
+        val target = QueryContainingDeclaration(file, SymbolDiscoverySourceOffset.parse(7).refined())
+        val requests = mutableListOf<SymbolDiscoveryRequest>()
+        val service = fixture.service(
+            discovery = SymbolDiscoveryOperations { child ->
+                requests += child
+                twoCandidates(listOf(7)).discover(child)
+            },
+            exact = fixture.exactOperations { _ ->
+                SymbolResolutionResult.Resolved(io.github.amichne.kast.symbol.contract.ResolvedSymbol(selected))
+            },
+        )
+        val plan = (QueryPlanCompiler.admit(QueryPlanSyntax(
+            QuerySourceSyntax.Location(target),
+            emptyList(),
+            QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+        )) as QueryPlanAdmission.Admitted).plan
+        val result = service.run(fixture.request(plan, workLimit = 8L)) as QueryExecutionResult.Complete
+        assertEquals(listOf(selected), result.result.symbolRows().map { it.selector })
+        assertEquals(SymbolDiscoveryTarget.Location(file, target.offset), requests.single().target)
+        assertEquals(file, (requests.single().scope.scope as io.github.amichne.kast.symbol.contract.SymbolSearchScope.ExactFile).file)
+        val missing = fixture.service(
+            discovery = fixture.discoveryEmpty(qualified = false),
+            exact = fixture.exactOperations { error("No declaration may be refined") },
+        ).run(fixture.request(plan, workLimit = 8L)) as QueryExecutionResult.Complete
+        assertEquals(emptyList<io.github.amichne.kast.query.contract.QuerySymbol>(), missing.result.symbolRows())
+        val invalid = fixture.service(
+            discovery = twoCandidates(),
+            exact = fixture.exactOperations { error("Multiple location candidates must reject before refinement") },
+        ).run(fixture.request(plan, workLimit = 8L)) as QueryExecutionResult.Rejected
+        assertEquals(io.github.amichne.kast.query.contract.QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION, invalid.reason)
+    }
+
     @Test
     fun `mixed declaration families use one symbol discovery pass with all constraints retained`() = runTest {
         val kinds =
@@ -108,9 +151,9 @@ class QueryDiscoveryPlanningTest {
         assertEquals(4, refinements)
     }
 
-    private fun twoCandidates(): SymbolDiscoveryOperations = SymbolDiscoveryOperations { child ->
+    private fun twoCandidates(offsets: List<Int> = listOf(7, 8)): SymbolDiscoveryOperations = SymbolDiscoveryOperations { child ->
         val candidates =
-            listOf(7, 8).map { offset ->
+            offsets.map { offset ->
                 SymbolDiscoveryCandidate.fromBoundary(
                         SymbolDiscoveryKind.CLASS,
                         "PaymentService",

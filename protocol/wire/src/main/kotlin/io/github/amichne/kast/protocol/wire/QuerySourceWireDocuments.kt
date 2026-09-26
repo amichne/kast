@@ -10,11 +10,14 @@ import kotlinx.serialization.Serializable
 internal data class QuerySourceWindowWireDocument(val text: String, val lines: SourceLineRangeWireDocument)
 
 @Serializable
+internal data class QueryRefinementLocationWireDocument(val file: String, val offset: Int)
+
+@Serializable
 internal sealed interface QueryItemFailureWireDocument {
     @Serializable
     @SerialName("refinement")
     data class Refinement(
-        val ref: QueryReferenceWireDocument.DeclarationCandidate,
+        val location: QueryRefinementLocationWireDocument,
         val reason: QueryExactFailureWireDocument,
     ) : QueryItemFailureWireDocument
 

@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
+import io.github.amichne.kast.query.contract.QueryContainingDeclaration
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryItemFailure
@@ -37,6 +38,52 @@ internal class QueryReadStages(
     private val exact: SymbolExactOperations,
     private val source: SourceReadOperations,
 ) {
+    /** The native target selects the containing named declaration; exact resolution stays inside the query. */
+    suspend fun discoverLocation(target: QueryContainingDeclaration, state: QueryExecutionState): DiscoveryExecution {
+        val remainingResults = state.remainingResultCapacity(0) ?: return DiscoveryExecution.NotStarted
+        val budget = state.discoveryBudget(remainingResults) ?: return DiscoveryExecution.NotStarted
+        val request =
+            SymbolDiscoveryRequest(
+                scope = SymbolSearchScopeRequest(
+                    state.request.lease,
+                    SymbolSearchScope.ExactFile(
+                        target.file,
+                        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                        SymbolGeneratedSourcePolicy.EXCLUDE,
+                    ),
+                ),
+                target = SymbolDiscoveryTarget.Location(target.file, target.offset),
+                budget = budget,
+            )
+        val outcome =
+            when (val result = discovery.discover(request)) {
+                is SymbolDiscoveryResult.Discovered -> result.outcome
+                is SymbolDiscoveryResult.Rejected ->
+                    return DiscoveryExecution.Rejected(
+                        QueryExecutionResult.Rejected(QueryExecutionRejection.DISCOVERY_REJECTED, result.reason)
+                    )
+            }
+        state.observeTime()
+        val batch = outcome.batch()
+        state.consume(batch.examinedWorkUnits.value)
+        if (batch.candidates.size > 1) {
+            return DiscoveryExecution.Rejected(
+                QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
+            )
+        }
+        if (outcome is SymbolDiscoveryOutcome.Qualified) state.discoveryLimited(outcome.qualifications.values)
+        val selections = batch.candidates.indices.mapNotNull { ordinal ->
+            when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> {
+                    state.contractViolation = true
+                    null
+                }
+            }
+        }
+        return DiscoveryExecution.Discovered(selections)
+    }
+
     suspend fun discover(
         syntax: QueryDiscoverySyntax,
         state: QueryExecutionState,

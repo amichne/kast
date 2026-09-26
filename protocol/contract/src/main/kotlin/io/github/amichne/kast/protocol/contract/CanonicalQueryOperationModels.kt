@@ -77,10 +77,6 @@ sealed interface QueryReferenceDocument {
     val token: ProtocolText
 
     @Serializable
-    @SerialName("declaration-candidate")
-    data class DeclarationCandidate(override val token: ProtocolText) : QueryReferenceDocument
-
-    @Serializable
     @SerialName("exact-symbol")
     data class ExactSymbol(override val token: ProtocolText) : QueryReferenceDocument
 }
@@ -90,6 +86,14 @@ sealed interface QueryReferenceDocument {
 
 @Serializable
 sealed interface QueryFromDocument {
+    /** The nearest named declaration containing a UTF-16 offset in a workspace-relative file. */
+    @Serializable
+    @SerialName("location")
+    data class Location(
+        val file: ProtocolText,
+        val offset: ProtocolOffset,
+    ) : QueryFromDocument
+
     @Serializable
     @SerialName("symbols")
     data class Symbols(
@@ -259,6 +263,7 @@ private fun QueryRunRequest.Run.requireCanonicalSyntax(): QueryRunRequest.Run =
 private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
     val sourceIsCanonical =
         when (val source = from) {
+            is QueryFromDocument.Location -> source.file.value.isCanonicalQueryFile()
             is QueryFromDocument.Symbols -> source.discovery.isCanonical()
             is QueryFromDocument.References -> source.values.values.isNotEmpty()
             is QueryFromDocument.Result -> source.rowIds?.values?.isUnique() ?: true
@@ -272,6 +277,11 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
         QueryOutputDocument.BindingRows -> true
     }
 }
+
+private fun String.isCanonicalQueryFile(): Boolean =
+    isNotBlank() && !startsWith('/') && !contains('\\') && !Regex("^[A-Za-z]:").containsMatchIn(this) &&
+        none(Char::isISOControl) &&
+        split('/').none { it.isBlank() || it == "." || it == ".." }
 
 private fun QueryDiscoveryDocument.isCanonical(): Boolean {
     if (!scope.sourceSets.values.isUniqueNonEmpty() || !declarationKinds.values.isUniqueNonEmpty()) return false

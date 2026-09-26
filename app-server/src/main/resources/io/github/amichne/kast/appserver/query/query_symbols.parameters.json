@@ -813,13 +813,16 @@
               "$ref": "#/$defs/AllSource"
             },
             {
+              "$ref": "#/$defs/LocationSource"
+            },
+            {
               "$ref": "#/$defs/ReferenceSource"
             },
             {
               "$ref": "#/$defs/ResultSource"
             }
           ],
-          "description": "Starting declarations, exact-symbol references, or one retained result."
+          "description": "Starting declaration search, containing named declaration at file offset, exact-symbol references, or one retained result."
         },
         "steps": {
           "type": [
@@ -1067,6 +1070,35 @@
       ],
       "additionalProperties": false,
       "description": "Present both named symbol or exact-occurrence bindings in each inner-join pair, preserving multiplicity and evidence."
+    },
+    "LocationSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "at_location"
+          ]
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1048576,
+          "description": "Canonical workspace-relative file path containing the offset."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "UTF-16 offset inside the named declaration."
+        }
+      },
+      "required": [
+        "type",
+        "file",
+        "offset"
+      ],
+      "additionalProperties": false,
+      "description": "Find the nearest named declaration containing this offset, then return its exact compiler-grounded symbol."
     }
   }
 }

@@ -98,6 +98,12 @@ sealed interface AdmittedQueryPlan {
         val stage: ExactQueryStage,
     ) : AdmittedQueryPlan
 
+    data class Location
+    internal constructor(
+        val source: QueryContainingDeclaration,
+        val stage: ExactQueryStage,
+    ) : AdmittedQueryPlan
+
     data class ExactReferences
     internal constructor(
         val source: QueryExactReferences,
@@ -142,6 +148,7 @@ object QueryPlanCompiler {
         val plan =
             when (source) {
                 is QuerySourceSyntax.Symbols -> AdmittedQueryPlan.Symbols(source.discovery, stage)
+                is QuerySourceSyntax.Location -> AdmittedQueryPlan.Location(source.target, stage)
                 is QuerySourceSyntax.ExactReferences -> AdmittedQueryPlan.ExactReferences(source.references, stage)
                 is QuerySourceSyntax.Retained -> AdmittedQueryPlan.Retained(source.result, stage)
             }
@@ -157,6 +164,7 @@ object QueryPlanCompiler {
         var rowKind: AdmittedRowKind =
             when (source) {
                 is QuerySourceSyntax.Symbols,
+                is QuerySourceSyntax.Location,
                 is QuerySourceSyntax.ExactReferences -> AdmittedRowKind.Symbol
                 is QuerySourceSyntax.Retained ->
                     when (val result = source.result) {
@@ -230,6 +238,7 @@ object QueryPlanCompiler {
 internal fun AdmittedQueryPlan.composedInputLeases(): List<SemanticReadAuthority> =
     when (this) {
         is AdmittedQueryPlan.Symbols -> stage.composedInputLeases()
+        is AdmittedQueryPlan.Location -> stage.composedInputLeases()
         is AdmittedQueryPlan.ExactReferences -> stage.composedInputLeases()
         is AdmittedQueryPlan.Retained -> stage.composedInputLeases()
     }

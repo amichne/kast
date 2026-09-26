@@ -6,6 +6,7 @@ import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryBindingRow
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryCompositionInput
+import io.github.amichne.kast.query.contract.QueryContainingDeclaration
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryJoinMode
@@ -54,6 +55,8 @@ internal sealed interface PipelineTask {
 
     data class Discover(val syntax: QueryDiscoverySyntax, val next: ExactQueryStage) : PipelineTask
 
+    data class DiscoverLocation(val target: QueryContainingDeclaration, val next: ExactQueryStage) : PipelineTask
+
     data class Revalidate(val selector: SymbolSelector, val next: ExactQueryStage) : PipelineTask
 
     data class Feed(val stage: ExactQueryStage.Concat) : PipelineTask
@@ -92,6 +95,7 @@ internal sealed interface QueryJoinCursor {
 internal fun PipelineTask.needsWork(): Boolean =
     when (this) {
         is PipelineTask.Discover,
+        is PipelineTask.DiscoverLocation,
         is PipelineTask.Revalidate,
         is PipelineTask.Related,
         is PipelineTask.Walk,
@@ -164,7 +168,8 @@ private fun PipelineTask.retainedBytes(): Long =
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
                 (cursor as? QueryJoinCursor.Semi)?.accumulated?.projectedUtf8Size() ?: 0L,
             )
-        is PipelineTask.Discover -> DISCOVERY_TASK_BYTES
+        is PipelineTask.Discover,
+        is PipelineTask.DiscoverLocation -> DISCOVERY_TASK_BYTES
     }
 
 private fun saturatedMultiply(left: Long, right: Long): Long =
@@ -201,6 +206,7 @@ internal fun PipelineTask.Symbol.expandOutput(output: QueryOutputSyntax): List<P
 private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
     when (plan) {
         is AdmittedQueryPlan.Symbols -> listOf(PipelineTask.Discover(plan.source, plan.stage))
+        is AdmittedQueryPlan.Location -> listOf(PipelineTask.DiscoverLocation(plan.source, plan.stage))
         is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { PipelineTask.Revalidate(it, plan.stage) }
         is AdmittedQueryPlan.Retained ->
             (when (val source = plan.source) {
@@ -215,6 +221,7 @@ private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
 private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
     when (plan) {
         is AdmittedQueryPlan.Symbols -> boundaryTasks(plan.stage)
+        is AdmittedQueryPlan.Location -> boundaryTasks(plan.stage)
         is AdmittedQueryPlan.ExactReferences -> boundaryTasks(plan.stage)
         is AdmittedQueryPlan.Retained -> boundaryTasks(plan.stage)
     }
@@ -236,6 +243,7 @@ internal fun AdmittedQueryPlan.retainedInputs(): List<QueryRetainedResult> {
     val stage =
         when (this) {
             is AdmittedQueryPlan.Symbols -> stage
+            is AdmittedQueryPlan.Location -> stage
             is AdmittedQueryPlan.ExactReferences -> stage
             is AdmittedQueryPlan.Retained -> stage
         }
@@ -246,6 +254,7 @@ internal fun AdmittedQueryPlan.retainedInputs(): List<QueryRetainedResult> {
 internal fun AdmittedQueryPlan.outputSyntax(): QueryOutputSyntax =
     when (this) {
         is AdmittedQueryPlan.Symbols -> stage.outputSyntax()
+        is AdmittedQueryPlan.Location -> stage.outputSyntax()
         is AdmittedQueryPlan.ExactReferences -> stage.outputSyntax()
         is AdmittedQueryPlan.Retained -> stage.outputSyntax()
     }
@@ -254,6 +263,7 @@ internal fun AdmittedQueryPlan.bindingMode(): QueryJoinMode.Inner {
     var mode = ((this as? AdmittedQueryPlan.Retained)?.source as? QueryRetainedResult.Bindings)?.mode
     var stage = when (this) {
         is AdmittedQueryPlan.Symbols -> stage
+        is AdmittedQueryPlan.Location -> stage
         is AdmittedQueryPlan.ExactReferences -> stage
         is AdmittedQueryPlan.Retained -> stage
     }
@@ -295,6 +305,7 @@ private fun ExactQueryStage.outputSyntax(): QueryOutputSyntax =
 internal fun AdmittedQueryPlan.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
     when (this) {
         is AdmittedQueryPlan.Symbols -> stage.exceedsTraversalDepth(ceiling)
+        is AdmittedQueryPlan.Location -> stage.exceedsTraversalDepth(ceiling)
         is AdmittedQueryPlan.ExactReferences -> stage.exceedsTraversalDepth(ceiling)
         is AdmittedQueryPlan.Retained -> stage.exceedsTraversalDepth(ceiling)
     }
@@ -332,6 +343,7 @@ private fun AdmittedQueryPlan.retainedInputBytes(): Long =
 internal fun discoverySyntax(plan: AdmittedQueryPlan): QueryDiscoverySyntax? =
     when (plan) {
         is AdmittedQueryPlan.Symbols -> plan.source
+        is AdmittedQueryPlan.Location -> null
         is AdmittedQueryPlan.ExactReferences,
         is AdmittedQueryPlan.Retained -> null
     }

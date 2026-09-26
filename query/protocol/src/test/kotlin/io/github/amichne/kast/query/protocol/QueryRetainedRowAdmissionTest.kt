@@ -132,6 +132,7 @@ class QueryRetainedRowAdmissionTest {
                             emptyExecution()
                         }
                         is AdmittedQueryPlan.ExactReferences -> error("Unexpected exact source")
+                        is AdmittedQueryPlan.Location -> error("Unexpected location source")
                     }
                 },
                 CanonicalQueryReferences(),

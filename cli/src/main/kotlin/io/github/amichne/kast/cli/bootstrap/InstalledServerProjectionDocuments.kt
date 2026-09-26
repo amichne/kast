@@ -515,7 +515,14 @@ private fun queryOutputReferenceSchema(kind: String): JsonObject =
 
 private fun queryItemFailureSchema(): JsonObject =
     unionSchema(
-        queryItemFailureVariantSchema("refinement", "declaration-candidate", queryExactFailureSchema()),
+        objectSchema(
+            ServerSchemaProperty("type", constantSchema("refinement", "Candidate refinement failure.")),
+            ServerSchemaProperty("location", objectSchema(
+                ServerSchemaProperty("file", textSchema("Discovery file.")),
+                ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
+            )),
+            ServerSchemaProperty("reason", queryExactFailureSchema()),
+        ),
         queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),
         queryItemFailureVariantSchema("predicate", "exact-symbol", queryPredicateFailureSchema()),
         queryItemFailureVariantSchema("source", "exact-symbol", querySourceFailureSchema()),

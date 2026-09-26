@@ -238,6 +238,13 @@ internal data class PublicToolJoin(
 ) : PublicToolStep
 
 @Serializable
+@SerialName("at_location")
+internal data class PublicToolLocationSource(
+    val file: ProtocolText,
+    val offset: Int,
+) : PublicToolSource
+
+@Serializable
 internal data class PublicToolCheckDiagnostics(
     val relative_path: ProtocolText,
     val max_diagnostics: Int? = null,

@@ -140,6 +140,20 @@ class QueryService(
                         }
                     }
                 }
+                is PipelineTask.DiscoverLocation -> {
+                    when (val result = stages.discoverLocation(task.target, state)) {
+                        DiscoveryExecution.NotStarted -> false
+                        is DiscoveryExecution.Rejected -> {
+                            rejection = result.result
+                            true
+                        }
+                        is DiscoveryExecution.Discovered -> {
+                            tasks.removeFirst()
+                            result.values.asReversed().forEach { tasks.addFirst(PipelineTask.Candidate(it, task.next)) }
+                            true
+                        }
+                    }
+                }
                 is PipelineTask.Revalidate -> {
                     if (!state.consumeUnit()) false
                     else {

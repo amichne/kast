@@ -20,6 +20,20 @@ import org.junit.jupiter.api.Test
 
 class PublicToolBindingContractTest {
     @Test
+    fun `file offset source lowers to containing declaration intent`() {
+        val file = (ProtocolText.parse("src/main/kotlin/Subject.kt") as Refinement.Refined).value
+        val query = PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, 42), null))
+        val admitted = admit(query) as Refinement.Refined
+        val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        val source = request.from as io.github.amichne.kast.protocol.contract.QueryFromDocument.Location
+        assertEquals(file, source.file)
+        assertEquals(42, source.offset.value)
+        assertTrue(admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, -1), null))) is Refinement.Rejected)
+        val traversal = (ProtocolText.parse("../outside.kt") as Refinement.Refined).value
+        assertTrue(admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(traversal, 42), null))) is Refinement.Rejected)
+    }
+
+    @Test
     fun `retained right input and binding result read remain typed`() {
         val result =
             (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined).value

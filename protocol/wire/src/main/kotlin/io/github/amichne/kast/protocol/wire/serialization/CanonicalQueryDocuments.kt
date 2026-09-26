@@ -16,10 +16,6 @@ internal sealed interface QueryReferenceWireDocument {
     val token: String
 
     @Serializable
-    @SerialName("declaration-candidate")
-    data class DeclarationCandidate(override val token: String) : QueryReferenceWireDocument
-
-    @Serializable
     @SerialName("exact-symbol")
     data class ExactSymbol(override val token: String) : QueryReferenceWireDocument
 }
@@ -155,7 +151,6 @@ internal object CanonicalQuerySerializers {
 
 private fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
     when (this) {
-        is QueryReferenceDocument.DeclarationCandidate -> QueryReferenceWireDocument.DeclarationCandidate(token.value)
         is QueryReferenceDocument.ExactSymbol -> QueryReferenceWireDocument.ExactSymbol(token.value)
     }
 
@@ -219,7 +214,7 @@ private fun QueryItemFailureDocument.toWire(): QueryItemFailureWireDocument =
     when (this) {
         is QueryItemFailureDocument.Refinement ->
             QueryItemFailureWireDocument.Refinement(
-                ref.toWire() as QueryReferenceWireDocument.DeclarationCandidate,
+                QueryRefinementLocationWireDocument(location.file.value, location.offset.value),
                 QueryExactFailureWireDocument.valueOf(reason.name),
             )
         is QueryItemFailureDocument.ExactReference ->
@@ -254,11 +249,13 @@ private fun QueryItemFailureDocument.toWire(): QueryItemFailureWireDocument =
 private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<QueryItemFailureDocument> =
     when (this) {
         is QueryItemFailureWireDocument.Refinement ->
-            ref.token.protocolText().mapConverted { token ->
-                QueryItemFailureDocument.Refinement(
-                    QueryReferenceDocument.DeclarationCandidate(token),
-                    QueryExactFailureDocument.valueOf(reason.name),
-                )
+            location.file.protocolText().flatMapConverted { file ->
+                location.offset.protocolOffset().mapConverted { offset ->
+                    QueryItemFailureDocument.Refinement(
+                        QueryRefinementLocationDocument(file, offset),
+                        QueryExactFailureDocument.valueOf(reason.name),
+                    )
+                }
             }
         is QueryItemFailureWireDocument.ExactReference ->
             ref.token.protocolText().mapConverted { token ->
