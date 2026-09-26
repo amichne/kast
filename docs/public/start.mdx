@@ -1,153 +1,52 @@
 ---
-type: "Installation Guide"
-title: "Install and connect Kast"
-sidebarTitle: "Install and connect"
-description: "Install Kast and make compiler-grounded Kotlin search available to an agent."
-resource: "file://docs/public/start.mdx"
-tags: ["installation", "agents", "Codex", "IntelliJ"]
-timestamp: "2026-09-14T00:00:00-04:00"
-code_sources:
-  - path: "install.sh"
-  - path: "gradle/libs.versions.toml"
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt"
-    symbols: ["KastCodexMain"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServer.kt"
-    symbols: ["InstalledBrokerServerConfiguration"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/InstalledCodexClientLauncher.kt"
-    symbols: ["InstalledCodexClientLauncher"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt"
-    symbols: ["BrokerServiceLaunchCommand"]
-icon: "rocket"
-keywords: ["install", "Codex", "IntelliJ", "agent integration"]
+title: "Install Kast"
+description: "Install the matched IDEA plugin, connect a client, and run a first query."
+icon: "download"
+keywords: ["install", "Codex", "IntelliJ IDEA", "MCP"]
 ---
 
-Install the IDEA plugin, connect an agent client, and find a declaration in your repository.
-
-<Note>See [Compatibility](/reference/compatibility) for tested hosts and client boundaries.</Note>
-
-## Requirements
-
-| Boundary | Requirement |
-| --- | --- |
-| Platform | macOS on Apple silicon |
-| Repository | An on-disk Kotlin Gradle repository |
-| IDE | IntelliJ IDEA in the `262` release line |
-| Kotlin | The Kotlin plugin bundled with that IDEA installation |
-| Runtime | The Java 25 JBR bundled with IDEA |
-| Agent | A compatible MCP client, Copilot CLI or Pi with its tool RPC adapter, or a compatible Codex App Server client |
+You need macOS on Apple silicon, a Kotlin Gradle repository, and IntelliJ IDEA
+`262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
 <Steps>
   <Step title="Install the matched release">
-    Run:
-
     ```shell
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    The installer reports the detected IntelliJ version, verifies Kast and the
-    matching IDEA plugin and enables the Kast service and its
-    per-user macOS login LaunchAgent. The LaunchAgent keeps the service
-    available across logins and restarts it after an unexpected exit.
-
-    In an interactive terminal, the installer asks whether to register a
-    user-level `kast` MCP server with Codex. If another installation or plugin
-    already supplies the declaration, choose **No**. To skip the prompt in a
-    script, pass `-- --skip-codex-mcp`:
+    The installer checks the IDEA release line and installs its matching
+    plugin and Kast service. In an interactive terminal, it offers to register
+    a user-level Kast MCP server with Codex.
+  </Step>
+  <Step title="Restart IDEA and open your agent">
+    Restart IDEA to load the plugin. Start the agent from the repository or
+    worktree:
 
     ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-      -- --skip-codex-mcp
-    ```
-
-    Pass `-- --register-codex-mcp` to select global registration explicitly.
-    Non-interactive installs register by default. Skipping registration does
-    not inspect or change existing Codex MCP entries. The Kast MCP executable
-    remains installed for an external declaration to launch.
-
-    It does not install IDEA.
-
-    If the Kast release has no plugin for the installed IDEA release line, the
-    installer names the mismatch and installs nothing.
-
-    The installer does not add a Kast command to `PATH`.
-  </Step>
-  <Step title="Prepare IDEA">
-    - Restart IDEA to load the plugin.
-    Kast starts opening the bound repository on the first valid MCP request.
-    Semantic requests save project editor buffers, refresh changed files or
-    the Gradle model, and wait for import and indexing. Resolve project trust
-    or a failed save if the agent reports it; see [troubleshooting](/troubleshooting).
-  </Step>
-  <Step title="Connect from a Gradle repository">
-    ```console
     cd /path/to/kotlin-repository
     codex
     ```
 
-    Kast starts its MCP process for the session, discovers the exact Gradle
-    root, and starts preparing the IDEA project in the background. It uses the
-    selected IDEA without deliberately taking focus. No worktree
-    registration is needed. [How Kast runs](/concepts/architecture) shows the
-    process flow.
+    Kast binds the request to that Gradle root and prepares its IDEA project.
+    A semantic call waits for the required import and indexing state.
   </Step>
-  <Step title="Ask for a declaration">
-    Ask: **“Use Kast to find the class OrderService.”** Replace `OrderService`
-    with a class in your project.
+  <Step title="Ask a project-independent question">
+    > Use Kast to query declarations in this workspace. Show one exact
+    > compiler-backed symbol with its signature, location, `ref`, and coverage.
+    > If no symbol is proven, report the reason.
 
-    A successful request returns matches with names, locations, and reusable
-    `ref` values. Read the semantic status: a qualified result has limits;
-    a rejected request needs the reported problem resolved.
-
-    Continue with [Search declarations](/search) or [Read a response](/reference/responses).
+    See [query examples](/search) for the tool input and follow-up prompts.
   </Step>
 </Steps>
 
-## Setup alternatives
+## Other clients and install options
 
-<AccordionGroup>
-  <Accordion title="Try the latest developer build">
-    A developer build is published as a public prerelease after its exact
-    source commit passes the product gate. Install the current developer
-    pointer with:
+The [MCP contract](/reference/mcp-catalog) and
+[tool RPC contract](/reference/rpc-catalog) show how other clients discover
+tools. The installer does not add a `kast` command to `PATH`. If another
+integration provides the Codex MCP declaration, pass `-- --skip-codex-mcp`
+to the installer.
 
-    ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-      -- --developer-latest
-    ```
-
-    The installer resolves an immutable developer release, verifies its
-    checksums and matched IDEA plugin, and reports its exact source revision.
-    Use `--dry-run` to inspect the installation plan first.
-  </Accordion>
-  <Accordion title="Connect Copilot CLI or Pi">
-    The installed release includes extensions that use Kast's tool RPC without
-    MCP. Copy the adapter for your client using the
-    [tool RPC guide](/reference/rpc-catalog), then start that client from the
-    Kotlin Gradle repository or worktree.
-  </Accordion>
-  <Accordion title="Choose among multiple IDEA installations">
-    ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-      -- --idea-home "/Applications/IntelliJ IDEA.app"
-    ```
-
-    See [Compatibility](/reference/compatibility) for tested IDEA builds.
-  </Accordion>
-  <Accordion title="Uninstall Kast">
-    ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-      -- uninstall
-    ```
-
-    Uninstall removes Kast-owned links, installations, runtime state,
-    configuration, services, and the Kast-owned Codex MCP registration.
-
-    Repositories and unrelated JetBrains state remain.
-  </Accordion>
-</AccordionGroup>
-
-## Next steps
-
-- Continue with [Search declarations](/search) when the first request succeeds.
-- Use [Troubleshooting](/troubleshooting) when tools are absent or a request rejects.
-- Complete the broker-trust step in [Change source](/change) before a source change.
+For a second IDEA installation, pass
+`-- --idea-home "/Applications/IntelliJ IDEA.app"`.
+If setup reports a blocker, use the [troubleshooting guide](/troubleshooting).

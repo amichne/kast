@@ -1,67 +1,12 @@
 ---
-type: "Workflow Guide"
-title: "Add a Kotlin declaration"
-sidebarTitle: "Change source"
-description: "Add a declaration in one tool call and inspect the verified or recovery outcome."
-resource: "file://docs/public/change.mdx"
-tags: ["change", "verification", "recovery"]
-timestamp: "2026-09-14T00:00:00-04:00"
-code_sources:
-  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
-  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangePlanning.kt"
-  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt"
-  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt"
-  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt"
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt"
+title: "Add a declaration"
+description: "Use Kast's one-call, exact-target source change."
 icon: "file-pen-line"
 ---
 
-Kast can add one declaration to an existing Kotlin source file in the open IntelliJ project.
-
-<Note>
-  The hosted workflow supports only the `add-declaration` wire intent.
-  It rejects new files, replacements, multi-file renames, and arbitrary text edits.
-</Note>
-
-## Before changing source
-
-Complete these prerequisites:
-
-- [Install and connect Kast](/start).
-- Use the selected IntelliJ installation with the matched Kast plugin.
-- Save your work before planning.
-
-The installer creates or preserves the matching private change key pair in
-`~/.kast/approval`. Partial or conflicting keys reject installation without replacing
-the surviving keys. Re-running the installer preserves valid enrollment.
-
-Kast prepares the exact workspace and waits for IDEA readiness
-before planning or applying a change. A trust or import blocker is
-returned for you to resolve.
-
-- A change does not enroll trust automatically.
-- Direct MCP, tool RPC, and App Server expose one `change` tool. The native plan,
-  apply, and recovery phases remain private. RPC adapters request client write
-  permission before invocation.
-
-## Add a declaration
-
-1. [Search](/search) for the target declaration.
-2. Pass its unchanged `ref` to `change` as `intent.exactTarget`.
-3. Include `intent.kind: "add-declaration"` and the Kotlin source in `intent.declaration`.
-4. Inspect the returned `plan` preview and `application` outcome. A `complete`
-   result contains a verified receipt. A failed result retains any uncertain
-   application and attempted recovery evidence.
-
-The one-call tool plans, signs the exact stored plan through the installed
-private key, applies it, and verifies the result. It does not ask for a separate
-terminal approval. Planning rejection or unavailable signing leaves source
-unchanged. Applying still rechecks the IDE owner, epoch, project model and saved
-source before mutation.
-
-Use this planning shape with a returned token and the intended Kotlin source:
+`change` adds one declaration to an existing Kotlin file. It uses an exact
+symbol `ref` returned by Kast to identify the target. The
+generated **Change** entry in the API / RPC tab defines the admitted intent.
 
 ```json
 {
@@ -73,73 +18,10 @@ Use this planning shape with a returned token and the intended Kotlin source:
 }
 ```
 
-The placeholder describes the schema.
+Replace the placeholder with a returned exact `ref`. Kast plans the edit,
+applies it, verifies the result, and returns a receipt or a finite failure
+with recovery evidence. A rejected or lost response does not prove that no
+write occurred; retain its plan identity and recovery evidence.
 
-It is not an admitted identity.
-
-## Write boundary
-
-The stored plan still binds the intent, target, source preimage and write set.
-The host rejects a stale plan before mutation. Search again after reopening an
-unloaded or closed project owner.
-
-## Decide what happened from the response
-
-| `application.state` | Meaning | Next action |
-| --- | --- | --- |
-| `verified` | The write and required semantic obligations are recorded in a durable receipt. | Keep the receipt; obtain fresh references for further work. |
-| `applied_unverified` | A write occurred, but verification or receipt persistence did not complete. | Inspect the automatic recovery result and retain the plan identity. |
-| `recovery_required` | An attempted effect remains uncertain or needs reconciliation. | Inspect the automatic recovery result and retain the plan identity. |
-
-Read the top-level `status` first, or the RPC `type` followed by its `document`.
-On a rejected result, inspect
-`error.application` and `error.recovery` for the retained phase outcomes.
-
-- A verified apply is `complete`.
-- Direct MCP, tool RPC, and App Server report uncertain outcomes as `rejected` with the
-  retained plan, application, and recovery evidence.
-- A pre-mutation rejection proves that the attempt wrote nothing.
-- A lost response does not prove that nothing was written.
-
-[Read a response](/reference/responses) explains the result layers.
-
-<Warning>
-  Keep `applied_unverified` and `recovery_required` visible until recovery
-  establishes a final state.
-</Warning>
-
-A verified receipt records the exact change and its discharged verification scope.
-
-Scoped diagnostics do not establish a whole-project build.
-
-## Recover an interrupted change
-
-Repeating a verified apply returns its stored receipt without another insertion.
-
-An attempted plan without a verified receipt cannot become a fresh mutation.
-
-The `change` call attempts recovery before returning a failed
-application outcome. It returns the original application and the recovery
-response together; a missing or rejected recovery remains a failure and must
-not be described as a verified write.
-
-Recovery can confirm the exact preimage or roll back an exact matching postimage.
-
-Recovery does not overwrite dirty documents, divergent saved content, or later user edits.
-
-Missing records and incomplete observations remain `recovery_required`.
-
-A newly opened project owner may perform recovery but cannot apply the retired owner's plan.
-
-### Workspace recovery blocker
-
-`WORKSPACE_RECOVERY_REQUIRED` blocks all workspace operations, including recovery.
-
-1. Replace the broker while retaining its invocation journal and thread store.
-2. Keep the IDE's durable change records.
-3. Preserve the returned plan identity and recovery evidence for manual repair.
-
-Broker replacement does not erase an effect or revive an attempted plan.
-
-Use [Troubleshooting](/troubleshooting) for status collection and
-[Compatibility](/reference/compatibility) for the qualified integration boundary.
+Use [query](/search) to obtain the target. The tool does not support new
+files, replacements, multi-file renames, or arbitrary text edits.

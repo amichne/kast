@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.mcp.McpCallResult
+import io.github.amichne.kast.cli.mcp.McpStructuredResults
+import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExactSymbolSelector
@@ -45,11 +48,23 @@ internal object MintlifyCallableReference {
 internal fun mintlifyCallableReference(): CanonicalJsonDocument {
     val bindings = installedHostedBindings()
     val components =
-        bindings
-            .flatMap { binding ->
+        (bindings.flatMap { binding ->
                 binding.tool.inputSchema.documentationComponents(binding.requestComponentName()) +
                     binding.tool.outputSchema.documentationComponents(binding.responseComponentName())
-            }
+            } +
+                generatedRequestSchema(ToolRpcReply.serializer())
+                    .documentationComponents(MintlifyCallableComponentName.named("ToolRpcReply")) +
+                generatedRequestSchema(McpCallResult.serializer())
+                    .documentationComponents(MintlifyCallableComponentName.named("McpToolCallResult")) +
+                McpStructuredResults.readSchema.documentationComponents(
+                    MintlifyCallableComponentName.named("McpReadResult")
+                ) +
+                McpStructuredResults.investigationSchema.documentationComponents(
+                    MintlifyCallableComponentName.named("McpInvestigationResult")
+                ) +
+                McpStructuredResults.changeSchema.documentationComponents(
+                    MintlifyCallableComponentName.named("McpChangeResult")
+                ))
             .toMap(linkedMapOf())
     return mintlifyCallableReferenceFactory.create(
         MintlifyCallableReferenceDocument(
@@ -134,10 +149,10 @@ private fun InstalledHostedBinding.mintDocument() =
                 title = tool.name.replace('_', ' ').replaceFirstChar { it.uppercaseChar() },
             ),
         content =
-            "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
-                "Invoke this tool in a connected Kast agent session.\n\n" +
-                "Read [response outcomes](/reference/responses) before using the payload. " +
-                "For compiler fields and reference reuse, see [symbol results](/reference/symbols).",
+            "This callable is not an HTTP endpoint. Its schemas describe the hosted tool. " +
+                "Direct MCP and tool RPC wrap the same semantic document differently. " +
+                "See the [MCP contract](/reference/mcp-catalog) or " +
+                "[tool RPC contract](/reference/rpc-catalog).",
     )
 
 private fun InstalledHostedBinding.requestComponentName(): MintlifyCallableComponentName =
@@ -211,6 +226,8 @@ private fun JsonObject.documentationTitle(): String? {
 @JvmInline
 private value class MintlifyCallableComponentName private constructor(val value: String) {
     companion object {
+        fun named(value: String): MintlifyCallableComponentName = MintlifyCallableComponentName(value)
+
         fun request(toolName: String): MintlifyCallableComponentName =
             MintlifyCallableComponentName("${toolName}Request")
 

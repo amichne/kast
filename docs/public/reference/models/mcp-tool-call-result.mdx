@@ -1,0 +1,12 @@
+---
+title: "MCP tool call result"
+description: "The JSON-RPC tools/call result wrapper returned by direct Kast MCP."
+openapi-schema: "reference/callables.openapi.json McpToolCallResult"
+mode: "wide"
+---
+
+`content[]` carries display text. For semantic reads, `structuredContent`
+carries a [read result](/reference/models/mcp-read-result); its `data` is the
+canonical document for the selected tool. Check `isError` and the semantic
+status before interpreting that document.
+

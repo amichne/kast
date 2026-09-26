@@ -1,197 +1,69 @@
 ---
-type: "Usage Guide"
-title: "Find Kotlin declarations"
-description: "Query declarations, narrow scope, and reuse the exact compiler result."
-resource: "file://docs/public/search.mdx"
-tags: ["search", "query", "agents", "Kotlin"]
-timestamp: "2026-09-14T00:00:00-04:00"
-code_sources:
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt"
-    symbols: ["PublicToolContract", "AdmittedPublicTool", "PublicToolRequestSerializer"]
-  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
-    symbols: ["CanonicalAgentToolDefinitions"]
-  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySource.kt"
-    symbols: ["QuerySourceSyntax"]
-  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt"
-    symbols: ["AdmittedQueryPlan"]
-  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt"
-    symbols: ["QueryStepSyntax"]
-  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt"
-    symbols: ["QueryExecutionResult", "QueryCoverage"]
-icon: "scan-search"
-keywords: ["kast.query_symbols", "symbol search", "semantic relationships", "agent use"]
+title: "Query your Kotlin project"
+description: "Copy two questions that work in any Kotlin Gradle repository."
+icon: "search"
+keywords: ["query_symbols", "Kotlin", "compiler references", "relations"]
 ---
 
-Ask your agent to use Kast to find a declaration by name. For example:
-**“Use Kast to find OrderService, then show its callers.”**
+Start your agent from a Kotlin Gradle repository. Kast uses its saved, indexed
+IDEA project; the agent does not need to know a class name in advance.
 
-The examples below show the tool inputs for direct calls or harness integration.
+## 1. Find a compiler-backed symbol
 
-<Note>
-  Every search uses the session workspace's saved, indexed IntelliJ state.
-</Note>
+> Use Kast `query_symbols` to enumerate declarations in this workspace.
+> Show one returned exact symbol's kind, signature, source location, and
+> unchanged `ref`. Include query coverage and any limitation. If there is no
+> symbol, state whether Kast proved the scope empty.
 
-| Intent | Tool |
-|---|---|
-| Declaration names, enumeration, returned references, or ordered transformations | `kast.query_symbols` |
-| File, location, name, or source-text candidate discovery | `kast.symbol_lookup` |
-| Candidate refinement or exact-selector revalidation | `kast.symbol_inspect` |
-| Individual relation occurrences | `kast.query_symbols` with `expand_relation` and occurrence output |
-| Multi-step reachability | `kast.query_symbols` with `walk` and traversal-record output |
-| Compiler diagnostics for a file or directory | `kast.check_diagnostics` |
-
-## Find your first declaration
-
-Call `kast.query_symbols` with:
-
-```json
-{"request":{"action":"run","source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":["class"],"scope":null},"steps":null,"output":{"type":"symbols","fields":["name","location","signature"]}}}
-```
-
-Send that input to the hosted `kast.query_symbols` tool in the connected session.
-
-Use these request rules:
-
-- Set `declaration_kinds` to `["function"]` for methods or `["property"]` for properties.
-- Include `action`, `source`, and `steps` inside `request`; `output` and other run controls are optional.
-- Use `null` for exact, case-sensitive matching under recursive directory `.`.
-- Expect the default source sets to be exactly `main` and `test`.
-- Use a package scope when a simple declaration name needs qualification.
-- Set `"name_match":"fuzzy"` explicitly because Kast never retries fuzzily.
-
-Each match retains its name, location, signature, completeness evidence, and
-opaque `ref`.
-
-Matching overloads remain separate.
-
-Copy `ref` verbatim into subsequent requests. The token retains its original
-scope and requires admission by the owning host. Candidate and exact references
-remain distinct families; no token spelling establishes compiler authority.
-
-Canonical equality remains internal. To collapse repeated declarations, request
-an explicit `distinct_symbols` query step. The public API does not expose an
-equality key.
-
-### Search properties or mixed kinds
-
-For a property or an unknown declaration kind, use `query_symbols`:
+The direct tool input is:
 
 ```json
 {
   "request": {
     "action": "run",
-    "source": {"type": "search_declarations", "declaration_name": "retryCount", "name_match": null, "scope": null, "declaration_kinds": ["property"]},
+    "source": {"type": "all_declarations"},
     "steps": null,
-    "output": null
+    "output": {"type": "symbols", "fields": ["name", "location", "signature"]},
+    "execution_budget": {"max_results": 5}
   }
 }
 ```
 
-`declaration_kinds: null` includes `class`, `function`, `property`, and
-`type_alias`.
+This is a bounded sample. Reaching the result limit can make the answer
+partial. With no explicit scope, Kast searches the workspace's `main` and
+`test` source sets recursively. The returned `ref` names a compiler-backed
+declaration; keep it unchanged for the next call.
 
-Empty or duplicate selections reject.
+## 2. Show an exact relationship
 
-Constructor discovery is not advertised.
-
-## Include source with a symbol query
-
-Request `source` in `query_symbols.request.output.fields` when the symbol result needs code as well as identity:
+> For that Kast `ref`, use `query_symbols` to find references. Show the
+> individual occurrence facts and their locations. Report omissions or
+> incomplete coverage, even if no occurrences were returned.
 
 ```json
 {
   "request": {
     "action": "run",
-    "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": "exact", "declaration_kinds": ["function"], "scope": null},
-    "steps": [],
-    "output": {"type":"symbols","fields":["name", "location", "source"]}
+    "source": {"type": "symbol_refs", "symbol_refs": ["<returned ref>"]},
+    "steps": [{"type": "expand_relation", "relation": "references"}],
+    "output": {"type": "occurrences"}
   }
 }
 ```
 
-Each exact symbol receives its committed declaration lines plus up to five whole lines before and after them, clipped to the file. The result includes the text and its one-based start and end lines. This projection costs one source read per emitted symbol and shares the query's work, time, and output limits. If a window cannot be proved, Kast qualifies the query with `SOURCE_INCOMPLETE` and a finite per-item source failure.
+Replace the placeholder with an exact `ref` from step 1. A reference fact
+connects the compiler's subject and source location. An empty result proves
+absence only when Kast reports complete coverage for the requested scope.
 
-## Narrow the search
+## Read the answer
 
-A directory scope uses paths relative to the session workspace root:
+| Direct MCP status | Meaning |
+| --- | --- |
+| `complete` | The requested scope was covered. |
+| `partial` | Keep the returned facts and the stop reason; absence is unproven. |
+| `rejected` or `unavailable` | Follow the typed error before making a semantic claim. |
 
-```json
-{
-  "request": {
-    "action": "run",
-    "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": null, "declaration_kinds": ["function"], "scope": {
-      "relative_directory_path": "services/orders",
-      "include_subdirectories": true,
-      "source_set_names": ["main"]
-    }},
-    "steps": null,
-    "output": null
-  }
-}
-```
-
-A package scope instead uses semantic Kotlin package names:
-
-```json
-{
-  "request": {
-    "action": "run",
-    "source": {"type": "search_declarations", "declaration_name": "OrderService", "name_match": null, "declaration_kinds": ["class"], "scope": {
-      "package_name": "com.example.orders",
-      "include_subpackages": false,
-      "source_set_names": null
-    }},
-    "steps": null,
-    "output": null
-  }
-}
-```
-
-Use either directory or package scope, with paths relative to the repository.
-`source_set_names: null` selects `main` and `test`; other source sets must belong
-to the imported Gradle model. Generated and library sources are excluded from
-live discovery. Scope restricts discovery subjects; later relationship expansion
-can reach other declarations.
-
-Use the **Tool contracts** tab for the complete input schemas.
-
-## Check diagnostics separately
-
-Call `kast.check_diagnostics`:
-
-```json
-{"relative_path":"src/main/kotlin/orders/OrderService.kt","max_diagnostics":null}
-```
-
-A path may name a file or directory.
-
-- Use `.` for the workspace root.
-- Use `null` to return at most 100 entries.
-- Use a positive limit up to 1000.
-- Do not treat this request as a project build.
-- Keep the host's diagnostic scope policy separate from logging detail.
-
-## Use the result
-
-1. Read the outer `status`, then the semantic outcome in `document`.
-2. Inspect each match's `kind`, `name`, `location`, and `signature`. Keep overloads separate.
-3. Retain `ref` verbatim for a follow-up query or change plan.
-4. Read `failures` and any `qualification` before making a completeness claim.
-
-[Read a response](/reference/responses) explains the result layers.
-
-[Symbol results](/reference/symbols) explains the compiler fields.
-
-Use [Query pipelines](/query-pipelines) for callers, implementations,
-enumeration, or returned-reference input.
-
-Query expansion can present related declarations or individual use-site facts.
-For the latter, set `"output":{"type":"occurrences"}` on a run with an
-`expand_relation` step.
-
-<Accordion title="Why did a search miss a saved edit?">
-  - Save the file.
-  - Let IDEA finish indexing.
-  - Follow the typed blocker when the host is unready.
-  - Repeat discovery when a reference is stale.
-</Accordion>
+Tool RPC uses `type: "qualified"` for a partial document. The
+[MCP](/reference/mcp-catalog) and [RPC](/reference/rpc-catalog) pages show
+their exact wrappers. See the generated **Query symbols** entry in the API / RPC tab
+for every supported source, step, and output.

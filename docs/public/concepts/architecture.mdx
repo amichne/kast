@@ -1,58 +1,69 @@
 ---
-type: "Concept"
-title: "How Kast runs"
-description: "A short map of the client, Kast service, and IntelliJ IDEA processes."
-resource: "file://docs/public/concepts/architecture.mdx"
-tags: ["architecture", "processes", "IntelliJ"]
-timestamp: "2026-09-25T00:00:00-04:00"
-code_sources:
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt"
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt"
-  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt"
+title: "How Kast works"
+description: "Follow a request from an agent to IDEA and back to a qualified result."
 icon: "workflow"
-keywords: ["architecture", "startup", "background IntelliJ", "daemon"]
+mode: "wide"
+keywords: ["architecture", "IntelliJ IDEA", "query", "evidence"]
 ---
 
-Kast lets an agent ask questions about the Kotlin project in IntelliJ IDEA.
-The agent connection carries the request; IDEA's Kast plugin uses the open
-project and its compiler state to answer it.
+Kast answers from the exact Kotlin Gradle project admitted in IntelliJ IDEA.
+The installed service prepares that project; the IDEA plugin performs the
+semantic read.
 
 ```mermaid
 flowchart TB
-  Client[Agent client] -->|MCP session or tool RPC call| Bridge[Kast client process]
-  Client -->|optional Codex App Server connection| Broker[Kast App Server]
-  Bridge -->|prepare workspace| Service[Kast service]
-  Broker -->|prepare workspace| Service
-  Service -->|open or reuse project| IDE[IntelliJ IDEA with Kast plugin]
-  Bridge -->|semantic request| IDE
-  Broker -->|semantic request| IDE
-  IDE --> Project[Open Kotlin Gradle project]
+  A["Agent"] --> B{"Connection"}
+  B -->|MCP| C["Session process"]
+  B -->|Tool RPC| D["One call process"]
+  B -->|Codex App Server| E["Broker"]
+  C --> F["Kast service"]
+  D --> F
+  E --> F
+  F --> G["IntelliJ IDEA + Kast plugin"]
+  G --> H["Exact Gradle repository or worktree"]
 ```
 
-The installer sets up a per user Kast service. It can remain available between
-agent sessions. The direct MCP process belongs to one client session; an RPC
-process handles one `catalog` or `call`. The optional Codex App Server
-connection manages its own conversations and asks the same service to prepare
-workspaces. Semantic requests then use the IDEA plugin's project state. The
-selected IDEA application owns project opening and evaluation.
+## From request to ready project
 
-## What happens on the first request
+The client starts in a repository. Kast finds its Gradle root, reuses or starts
+the selected IDEA, opens that project, and waits for the required model and
+indexing state. A trust, save, or import blocker returns as a failure.
 
-Kast finds the exact Gradle root from the client's working directory. For MCP,
-preparation starts with the first valid protocol request. An RPC tool call starts
-preparation for its request. The service attaches to the selected IDEA when it
-is running or launches it in the background, then opens the requested project.
-Kast waits for the Gradle model and indexing before a compiler backed answer.
-Later calls reuse the prepared project when it is still valid.
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Kast as Kast session
+  participant Service as Kast service
+  participant IDEA as IntelliJ IDEA
+  Agent->>Kast: query_symbols(request)
+  Kast->>Service: prepare exact Gradle root
+  Service->>IDEA: reuse or open project
+  IDEA-->>Service: model and indexing readiness
+  Service-->>Kast: admitted project
+  Kast->>IDEA: semantic query
+  IDEA-->>Kast: symbols, coverage, failures
+  Kast-->>Agent: result and unchanged refs
+```
 
-The IDE is launched without deliberately taking focus. You may still need to
-respond in IDEA if it asks whether to trust a project or reports an import or
-save problem. Kast returns a specific failure when it cannot establish the
-required state.
+## From declaration to claim
 
-[Background startup](/concepts/background-startup) follows those stages in
-more detail. [Connect an agent client](/agent-harnesses) compares the public
-connections.
+Kast first restricts discovery by the requested name, kind, and scope. It
+refines candidates through the compiler before issuing exact `ref` values.
+The result keeps evidence and limits together.
+
+```mermaid
+flowchart TB
+  A["Scope and kind"] --> B["Candidate discovery"]
+  B --> C["Compiler refinement"]
+  C --> D["Exact symbol + ref"]
+  D --> E["Query steps / relation facts"]
+  E --> F{"Coverage"}
+  F -->|exhaustive| G["Complete answer"]
+  F -->|limit or omission| H["Partial answer"]
+  B -->|cannot establish evidence| I["Typed rejection"]
+```
+
+An exact `ref` can be reused while its owning workspace and evidence remain
+valid. A partial result preserves known facts but cannot prove that missing
+facts do not exist. See [query examples](/search) and the
+[transport contracts](/reference/mcp-catalog).

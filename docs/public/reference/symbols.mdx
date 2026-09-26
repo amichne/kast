@@ -1,180 +1,23 @@
 ---
+title: "Read a symbol"
+description: "Use exact compiler references, locations, and signatures without guessing identity."
 icon: "braces"
-sidebarTitle: "Symbol results"
-type: "API Contract"
-title: "Understand a symbol result"
-description: "Read exact identity, source coordinates, signature variants, and relation evidence."
-timestamp: "2026-09-14T00:00:00-04:00"
-code_sources:
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
 ---
 
-A `query_symbols` item is an **exact symbol** when the request selects symbol
-output. Occurrence output carries an exact reference and one relation fact per
-row. Candidate discovery remains a separate `symbol_lookup` capability.
+`query_symbols` returns exact Kotlin symbols. A result can carry a kind,
+name, source location, signature, and an opaque `ref`. The
+[query item schema](/reference/models/query-item) defines the full shape.
 
-Read `type` before every other field.
-
-## Inspect an exact symbol
-
-| Field | Contract | Use it for |
-| --- | --- | --- |
-| `type` | `exact-symbol` | Selecting the exact-symbol variant |
-| `ref` | Opaque exact-symbol token | Passing the same declaration to another tool |
-| `kind` | `classlike`, `constructor`, `function`, `property`, or `type-alias` | Identifying the compiler declaration family |
-| `name` | String or `null` | Displaying the projected name |
-| `location` | File and range, or `null` | Navigating to the projected declaration |
-| `signature` | A closed signature variant, or `null` | Distinguishing compiler identities and callable shapes |
-| `connections` | Array of relation facts | Reading projected semantic relationships |
-| `source` | Committed text with one-based `startLine` and `endLine`, when requested and available | Reading up to five context lines around the exact symbol |
-
-The original optional fields remain present when their projection is `null`. `source` is omitted unless requested and returned.
-
-- `null` does not mean an empty name or signature.
-- `null` does not weaken the exact identity.
-- `request.output: {"type":"symbols","fields":[]}` requests only mandatory identity and kind values.
-- `request.output: {"type":"symbols","fields":["source"]}` requests the fixed source window; a rejected or withheld window appears as a per-item source failure with `SOURCE_INCOMPLETE` coverage.
-
-[Open the complete query-item model](/reference/models/query-item).
-
-## Read a compiler signature
-
-Dispatch on `signature.type`.
-
-The signature tag is `class-like`, while the item kind is `classlike`.
-
-<Tabs>
-  <Tab title="Function">
-    - `qualifiedIdentity` is the compiler-qualified callable identity.
-    - `valueParameters` contains ordered compiler type strings.
-    - `contextReceivers` contains ordered compiler type strings.
-    - `typeParameterCount` is a nonnegative integer.
-    - `receiver` is an `absent` or `present` variant.
-    - A function signature does not expose its return type.
-
-    Do not infer parameter names or defaults from type strings.
-
-    This illustrative signature preserves a function's ordered parameter types:
-
-    ```json
-    {
-      "type": "function",
-      "qualifiedIdentity": "com.example.orders.submitOrder",
-      "receiver": {"type": "absent"},
-      "contextReceivers": [],
-      "valueParameters": ["com.example.orders.Order", "kotlin.Int"],
-      "typeParameterCount": 0
-    }
-    ```
-  </Tab>
-  <Tab title="Property">
-    A property signature contains:
-
-    - `qualifiedIdentity`
-    - the same receiver variants
-    - `contextReceivers`
-    - compiler-rendered `returnType`
-
-    Preserve `returnType` instead of parsing it as a full type AST.
-  </Tab>
-  <Tab title="Class or type alias">
-    `class-like` and `type-alias` signatures carry `qualifiedIdentity`.
-
-    Their missing callable fields are part of the closed variants.
-
-    Use related-symbol queries or source reads for more detail.
-  </Tab>
-</Tabs>
-
-Compiler type strings are a deliberate textual boundary.
-
-Signature, receiver, item, failure, and relation variants remain structured.
-
-Neither a rendered type nor a qualified name can replace `ref`.
-
-## Reuse identity
-
-Reuse rules:
-
-- Copy `ref` unchanged into `query_symbols.request.source` with `type: "symbol_refs"`.
-- Keep overloads separate even when their names and files match.
-- Expect re-admission against workspace, owner lifetime, epoch, and scope.
-- Repeat discovery after saved-source or imported-model changes.
-- Never reconstruct a token from its location.
-- Do not treat syntax-valid tokens as admission proof.
-
-Canonical declaration equality remains internal. Use an explicit `distinct_symbols`
-query step to collapse repeated declarations within the admitted snapshot.
-Reference equality does not prove declaration equality across scopes or epochs.
-The public API does not expose `symbol_id`.
-
-- Hosted exact references normally use 31-character handles.
-- Digest collisions fall back to the full token.
-
-See [Query pipelines](/query-pipelines) for the request shape.
-
-## Read locations and relationships
-
-| Tool family | `file` value |
+| Field | Use |
 | --- | --- |
-| Convenience query and search | Workspace-relative path |
-| `symbol_lookup` and `symbol_inspect` | Absolute physical path |
+| `ref` | Pass unchanged to Kast for a later read. |
+| `location` | Show where the declaration was proven. |
+| `signature` | Display the compiler's declaration details. |
+| `source` | Show a bounded committed source window when requested. |
 
-An exact location also contains a half-open `range`.
+`symbol_lookup` can return candidates without exact compiler identity.
+Use `symbol_inspect` to refine a candidate. Do not treat a matching name,
+file path, or reconstructed token as an exact `ref`.
 
-- `startInclusive` belongs to the range.
-- `endExclusive` does not belong to the range.
-- The values are source offsets, not line numbers.
-- A separately returned `symbol_lookup` candidate has one `offset` instead of an exact range.
-- Use locations only with the corresponding source state.
-
-An `expand_relation` step can present related **declarations** with symbol output
-or individual **occurrences** with `output: {"type":"occurrences"}`.
-
-A relation fact can describe one **use site**.
-
-For occurrence output, inspect each row's tagged
-[relation model](/reference/models/relation-fact) and the response's structured
-`omissions` before claiming complete coverage.
-
-Preserve relation kind, endpoints, use-site location, and unavailable evidence.
-
-<Accordion title="Separate candidate lookup carries weaker evidence">
-  A `symbol_lookup` candidate has:
-
-  - `type: "candidate"` and an opaque scalar `ref`
-  - `kind: "class"` or `"symbol"`
-  - nullable name and location
-
-  It lacks a compiler signature and connections.
-
-  Refine it with `symbol_inspect` before using an operation that requires exact identity.
-
-  Candidate discovery alone does not establish overload identity. It is not a
-  `query_symbols` output variant.
-</Accordion>
-
-Before judging the whole answer, return to [response outcomes](/reference/responses).
-
-## Explicitly reacquire an exact reference
-
-For a reference retained by the running host, `symbol_inspect` can explicitly
-reacquire the declaration after unrelated epoch movement:
-
-```json
-{"target":{"type":"revalidate_exact","selector":"<previous exact ref>"}}
-```
-
-A successful response has `acquisition: "reacquired"`, a newly issued selector,
-and the current evidence basis. The owning file must have unchanged saved,
-committed content, the same imported source owner, and one fresh compiler match.
-The ordinary `exact` target remains strict and still rejects the previous stale
-reference.
-
-This capability is conservative: capture is available only for supported exact
-lookups, records expire after five minutes, and the host retains at most 256
-records during its project-service lifetime. Expired slots remain occupied until
-disposal. An unavailable or expired locator requires fresh discovery. Reacquisition
-does not make an earlier source snapshot, relation, continuation, or approved
-change plan current.
+The [symbol query example](/search) works without knowing a project-specific
+name. Keep the result's coverage with any symbol you report.

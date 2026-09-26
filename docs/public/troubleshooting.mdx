@@ -1,182 +1,22 @@
 ---
-type: "Runbook"
 title: "Troubleshoot Kast"
-description: "Use the reported failure layer to choose a bounded corrective action."
-resource: "file://docs/public/troubleshooting.mdx"
-tags: ["troubleshooting", "failures", "runtime", "support"]
-timestamp: "2026-09-14T00:00:00-04:00"
-code_sources:
-  - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleModelInputs.kt"
-    symbols: ["InstalledGradleModelInputs"]
-  - path: "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredConfigurationSetting.kt"
-    symbols: ["RetiredConfigurationSetting"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerServerRunner.kt"
-    symbols: ["BrokerServerFailure"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServer.kt"
-    symbols: ["InstalledBrokerServerConfiguration"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/BrokerInvocationActivity.kt"
-    symbols: ["BrokerInvocationActivity", "BrokerInvocationCompletion"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/ProductInspectionDocuments.kt"
-    symbols: ["ProductInspectionDocuments"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt"
-    symbols: ["CliBoundaryDocuments"]
+description: "Act on the reported installation, readiness, or semantic failure."
 icon: "life-buoy"
-keywords: ["errors", "rejected", "qualified", "bootstrap", "support"]
 ---
 
-Start with the symptom below, then collect status from the affected repository.
+Use the failure returned by Kast. An empty partial or rejected query is not
+evidence that the symbol is absent.
 
-See [Read a response](/reference/responses) for field names and result layers.
-
-## Choose the next action
-
-| Symptom | First action |
+| Symptom | First check |
 | --- | --- |
-| Tools are missing in terminal Codex | Run `codex mcp list --json` to inspect the effective `kast` entry, then start a fresh `codex` session in the repository. |
-| Copilot CLI or Pi cannot load Kast tools | Check that the installed adapter and `kast-tool-rpc-complete` exist; see [Tool RPC catalog](/reference/rpc-catalog). |
-| Outer `status: rejected` | Preserve `diagnostic.boundary` and `diagnostic.reason`; collect status below. |
-| The document rejects | Follow its finite reason. Open the intended IDEA project or correct the named input as appropriate. |
-| The answer is qualified | Read limitations and item failures. Narrow scope or relation expansion before increasing bounds. |
-| `BUDGET_EXCEEDED` | Inspect the rejected stage and `execution_budget`, then check `kast_semantic_read` stage durations. A capture or readiness delay can exhaust the host deadline before search starts; its recovery is `increase_host_deadline`. A semantic timeout instead reports `reduce_read_work`. |
-| `MODEL_CAPTURE_REJECTED` | Inspect the finite capture cause. For `CAPTURE_LIMIT`, compare the receipt's IDEA module count with the effective `MODEL_MODULES` limit; apply a larger admitted IDE setting only when the project needs it. |
-| A reference is stale | Search again and reuse the new token unchanged. |
-| A change response is lost or uncertain | Keep the plan ID and durable records; follow [Change recovery](/change#recover-an-interrupted-change). |
+| No Kast tools | Restart the client, then inspect its [MCP](/reference/mcp-catalog) or [RPC](/reference/rpc-catalog) catalog. |
+| Installer reports no matching plugin | Check the IDEA release line in [compatibility](/reference/compatibility). |
+| Project trust, import, or indexing blocker | Resolve the reported IDEA state, then repeat the read. |
+| Wrong workspace | Start the client from the intended Gradle repository or worktree. |
+| Partial query | Keep returned facts and limitations; narrow scope before retrying. |
+| Stale `ref` | Search again and use the newly returned reference unchanged. |
+| Uncertain change | Keep the plan and recovery evidence; see [change](/change). |
 
-## Collect status from the same repository
-
-For terminal Codex, run `codex mcp list --json` and retry the semantic call after
-resolving the reported IDEA blocker. The installed configuration and service logs are under
-`${XDG_DATA_HOME:-$HOME/.local/share}/kast/current`.
-
-`admission_ready` establishes:
-
-- the exact project is open and initialized
-- its cached Gradle model is complete
-- indexing is in smart mode
-- host admission checks passed
-
-Every query still checks saved documents, source epoch, and semantic authority.
-
-`unavailable` retains its typed recovery guidance.
-
-An older host without `readiness` provides no readiness evidence.
-
-### Recover a missing Gradle model
-
-For `GRADLE_MODEL_UNAVAILABLE`, expect recovery to identify:
-
-- action `IDE_STATUS`
-- required state `CACHED_GRADLE_MODEL_COMPLETE`
-- observation `OBSERVE_IDE_GRADLE_MODEL`
-
-The installed read path waits for an active import. If the imported model is
-still unavailable, it requests one linked-project reload. If this fails,
-inspect IDEA's Gradle error and the returned lifecycle failure before retrying.
-
-A missing cached model does not prove that import is running.
-
-The installed Kast service prepares the IDEA project for direct tool calls.
-If IDEA rejects or stalls during Gradle import, the read returns a
-failure rather than an empty successful search. The app-server
-`workspace_lifecycle` tool remains available for explicitly requested control.
-
-Older output without `recovery` provides no automated retry instruction.
-
-Normal terminal MCP reads prepare the exact project and wait for indexing inside
-the call. If the cached Gradle model is missing and no import is active, Kast
-requests one linked-project reload and waits for its admission. For an explicit
-`workspace_lifecycle` operation in a connected app-server session, call `status`
-with its returned request ID until the exact project is ready or a finite
-failure is reported. A pending result does not establish a failed search.
-If indexing starts between preparation and read admission, Kast waits briefly
-for smart mode and retries once when semantic evaluation has not begun.
-The host also refreshes the project VFS and waits for its completion before
-semantic dispatch, including while IDEA is in the background. An unavailable
-root returns `IO_UNAVAILABLE`; a refresh deadline returns `DEADLINE_EXCEEDED`.
-Kast saves unsaved editor buffers under the selected project root before this
-refresh. A buffer that cannot be saved returns `UNSAVED_DOCUMENTS`; buffers in
-other projects are left alone. A changed Gradle input blocks semantic dispatch
-until the coordinator completes native model import and retries a safe read once.
-An import failure remains a finite rejection. When a relation is `qualified`, keep its known facts and omission
-reasons. Resume only when a continuation is returned; terminal incomplete
-coverage has no resumable upstream work. A query relation expansion can find callees in
-another package even when the subject was found with a narrow discovery scope.
-
-If Codex MCP registration fails, the installer reports the collision or
-configuration failure. The older private `kast-service register` action writes
-a finite reason to stderr.
-
-Set `KAST_DEBUG=1` for bounded launch-stage output.
-
-## Automatic refresh of a linked workspace
-
-Ordinary reads save project-owned editor buffers and wait for native incremental
-recursive VFS refresh before semantic admission. Explicit workspace file refresh
-forces disk reconciliation for external writes. Kast waits for a missing cached Gradle
-model through native import and requests one linked-project reload on first
-attach, after changed Gradle inputs, or when the cached model is missing.
-Agents do not choose `FILE_REFRESH` or `GRADLE_MODEL_RELOAD` through
-`workspace_lifecycle`. An import failure remains a finite blocker; inspect the
-IDE's Gradle error, correct its cause, and retry the semantic operation.
-
-## Resolve the common boundaries
-
-<AccordionGroup>
-  <Accordion title="The Codex App Server connection cannot start">
-    - Register the intended Kotlin Gradle root through the private service control.
-    - Verify the selected installation and connected Codex client.
-    - Remove retired `KAST_ENABLE_APP_SERVER` and `KAST_APP_SERVER_TOOLS` assignments.
-
-    If the service reports `upstream-socket-alias-owner-unproven`,
-    `upstream-socket-path-rejected`, or `SERVICE_OWNERSHIP_UNPROVEN`, preserve
-    the service log and [report the failure](#report-a-reproducible-defect).
-    Do not remove an unfamiliar socket or change the saved executable to force
-    startup; Kast cannot establish ownership from that path alone.
-  </Accordion>
-  <Accordion title="The IDE host is unavailable or source is unready">
-    - Open the exact repository in a compatible IDEA installation.
-    - Confirm that the Kast plugin is loaded.
-    - Finish import and indexing.
-    - Save edited files.
-    - Follow the reported reason when readiness still rejects.
-  </Accordion>
-  <Accordion title="A search is incomplete">
-    Inspect `qualification.limitations` and `failures[]`.
-
-    Reduce work with a smaller directory, explicit source set, or narrower discovery.
-
-    Change bounds only through the admitted configuration or request schema.
-  </Accordion>
-  <Accordion title="The broker reports WORKSPACE_RECOVERY_REQUIRED">
-    1. Retain the invocation journal, thread store, and IDE change records.
-    2. Replace the broker.
-    3. Preserve the plan identity and recovery evidence for manual repair.
-
-    Broker replacement does not undo an effect or permit replay.
-
-    Follow the [change workflow](/change#recover-an-interrupted-change).
-  </Accordion>
-</AccordionGroup>
-
-For an installation that cannot start or uninstall, use the [offline recovery
-runbook](https://github.com/amichne/kast/blob/main/docs/installation-recovery.md).
-
-## Report a reproducible defect
-
-Include:
-
-- Kast version and source revision
-- macOS architecture
-- IDEA, Kotlin plugin, and JBR versions
-- outer diagnostic
-- semantic status and finite reasons
-- passive status report
-- minimal reproduction
-
-Remove sensitive host paths or source before sharing.
-
-Apply your host's retention policy to broker trace files.
-
-Broker activity records contain bounded identities and completion states, not tool arguments or source.
-
-Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).
+`health_check` reports the bound workspace and IDEA readiness. It does not
+prove that every semantic query will succeed. `validate_workspace` runs
+specific read-only probes when you need stronger evidence.

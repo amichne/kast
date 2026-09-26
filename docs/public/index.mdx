@@ -1,63 +1,35 @@
 ---
-type: "Documentation Index"
 title: "Kast"
-description: "Find Kotlin declarations, interpret compiler evidence, and make approved source changes."
-resource: "file://docs/public/index.mdx"
-tags: ["Kotlin", "compiler", "agents", "search"]
-timestamp: "2026-09-15T00:00:00-04:00"
-code_sources:
-  - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
-    symbols: ["CanonicalAgentToolDefinitions"]
-  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt"
-    symbols: ["KastProviderQualifier", "KastRuntime"]
-mode: "wide"
+description: "Install Kast and ask your first compiler-backed question."
 icon: "scan-search"
-keywords: ["Kotlin", "compiler", "coding agents", "semantic search"]
+keywords: ["Kotlin", "IntelliJ IDEA", "coding agents", "semantic query"]
 ---
 
-Kast gives coding agents compiler-grounded search, diagnostics, and approved
-source changes for the Kotlin project open in IntelliJ IDEA.
+Kast lets your agent ask the Kotlin compiler about the repository open in
+IntelliJ IDEA. Start with one query that needs no project-specific name.
 
-## Start with one search
+## Try Kast
 
-1. [Install Kast and connect your agent](/start).
-2. Ask: **“Use Kast to find the class OrderService.”** Use a class from your project.
-3. Check the returned status and matches, then reuse the result for follow-up work.
+1. [Install and connect](/start).
+2. Start your agent from a Kotlin Gradle repository.
+3. Ask:
 
-<Note>
-  Kast reads saved, indexed project state. Keep the repository open in IDEA,
-  finish Gradle import and indexing, and save edits before requesting evidence.
-</Note>
+> Use Kast to query declarations in this workspace. Show one compiler-backed
+> symbol with its signature, source location, exact `ref`, and coverage. If
+> the query is incomplete or empty, explain what that result proves.
 
-## What can you do next?
+A returned `ref` is Kast's exact symbol handle. Reuse it unchanged for a
+source read or a relation query. The result also says whether the requested
+scope was fully covered.
 
-<CardGroup cols={2}>
-  <Card title="Find declarations" icon="scan-search" href="/search">
-    Search classes, functions, and properties by name and scope.
+<CardGroup cols={3}>
+  <Card title="Install" icon="download" href="/start">
+    Set up IDEA and connect an agent.
   </Card>
-  <Card title="Follow relationships" icon="network" href="/query-pipelines">
-    Find callers and implementations with reusable compiler references.
+  <Card title="Query" icon="search" href="/search">
+    Copy prompts and inspect their results.
   </Card>
-  <Card title="Change source" icon="file-pen" href="/change">
-    Preview a declaration, approve its exact plan, and inspect verification.
-  </Card>
-  <Card title="Resolve a blocker" icon="life-buoy" href="/troubleshooting">
-    Check the connection and act on the reported failure.
+  <Card title="How it works" icon="workflow" href="/concepts/architecture">
+    See where compiler evidence comes from.
   </Card>
 </CardGroup>
-
-## Know what an answer proves
-
-| Status | How to use it |
-| --- | --- |
-| **complete** | Rely on the answer within its declared scope and limits. |
-| **qualified** | Read the attached limitations before drawing conclusions. |
-| **rejected** | Resolve the reported problem before using the answer. |
-
-Keep returned `ref` values unchanged for follow-up tools.
-[Read a response](/reference/responses) explains the result fields.
-
-To understand the processes and background IDEA startup, read
-[How Kast runs](/concepts/architecture). For client integration, see
-[Connect an agent client](/agent-harnesses), the [MCP catalog](/reference/mcp-catalog),
-and the [tool RPC catalog](/reference/rpc-catalog).

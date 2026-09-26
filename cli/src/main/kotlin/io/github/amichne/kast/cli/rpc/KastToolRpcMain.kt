@@ -6,12 +6,12 @@ import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import java.nio.file.Path
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /** One-shot, harness-neutral process boundary for semantic tool calls. */
@@ -45,14 +45,19 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
                 OperationEffect.entries.singleOrNull { it.name.lowercase() == tool.effect }
                     ?: error("Unknown canonical operation effect")
             check(effect == OperationEffect.NONE || effect == OperationEffect.INTELLIJ_READ)
-            ToolRpcTool(tool.name, tool.description, ToolRpcToolEffect.READ, tool.inputSchema)
+            ToolRpcTool(
+                tool.name,
+                tool.description,
+                ToolRpcToolEffect.READ,
+                tool.inputSchema as? JsonObject ?: error("A tool input schema must be an object"),
+            )
         } +
             session.supplemental.map { tool ->
                 ToolRpcTool(
                     tool.name,
                     tool.description,
                     if (tool.readOnly) ToolRpcToolEffect.READ else ToolRpcToolEffect.WRITE,
-                    tool.inputSchema,
+                    tool.inputSchema as? JsonObject ?: error("A tool input schema must be an object"),
                 )
             }
 
@@ -98,16 +103,16 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
 internal sealed interface ToolRpcReply {
     @Serializable @SerialName("catalog") data class Catalog(val catalog: ToolRpcCatalog) : ToolRpcReply
 
-    @Serializable @SerialName("complete") data class Complete(val document: JsonElement) : ToolRpcReply
+    @Serializable @SerialName("complete") data class Complete(val document: JsonObject) : ToolRpcReply
 
-    @Serializable @SerialName("qualified") data class Qualified(val document: JsonElement) : ToolRpcReply
+    @Serializable @SerialName("qualified") data class Qualified(val document: JsonObject) : ToolRpcReply
 
-    @Serializable @SerialName("rejected_document") data class RejectedDocument(val document: JsonElement) : ToolRpcReply
+    @Serializable @SerialName("rejected_document") data class RejectedDocument(val document: JsonObject) : ToolRpcReply
 
     @Serializable @SerialName("rejected") data class Rejected(val failure: ToolRpcFailure) : ToolRpcReply
 }
 
-@Serializable internal data class ToolRpcCatalog(val tools: List<ToolRpcTool>, val schemaVersion: Int = 1)
+@Serializable internal data class ToolRpcCatalog(val tools: List<ToolRpcTool>, @Required val schemaVersion: Int = 1)
 
 @Serializable
 internal data class ToolRpcTool(
@@ -115,7 +120,7 @@ internal data class ToolRpcTool(
     val description: String,
     val effect: ToolRpcToolEffect,
     /** Generated canonical request schema, retained unchanged until the ToolRpc projection. */
-    val inputSchema: JsonElement,
+    val inputSchema: JsonObject,
 )
 
 @Serializable

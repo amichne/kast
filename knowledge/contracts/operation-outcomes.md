@@ -57,7 +57,7 @@ is asserted; withheld or unrecognized source output remains partial. Native
 semantic incompleteness has its own stop reason rather than
 being mislabeled as budget exhaustion or host interruption.
 
-Transport success does not imply semantic completeness. A host must preserve the distinction when projecting output, and it must not attach a successful payload to rejection. The [README](../../README.md) exposes the same complete/qualified/rejected semantics to users.
+Transport success does not imply semantic completeness. A host must preserve the distinction when projecting output, and it must not attach a successful payload to rejection. The public [result guide](../../docs/public/reference/responses.mdx) gives the user-facing interpretation.
 
 The one-shot tool RPC returns a closed `complete`, `qualified`, `rejected_document`, or boundary `rejected` variant. It preserves the canonical result document under `document` for semantic outcomes, so Copilot and Pi adapters cannot turn qualified evidence into a complete result. The catalog marks `change` as `WRITE` and all direct reads as `READ`.
 
