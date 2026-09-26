@@ -242,7 +242,7 @@ class PublicToolContractTest {
         assertEquals(cursor, request.cursor)
         assertEquals(
             listOf(QuerySymbolFieldDocument.SIGNATURE),
-            request.symbolOutput.fields.values,
+            (request.output as QueryOutputDocument.Symbols).fields.values,
         )
         assertEquals(
             7,

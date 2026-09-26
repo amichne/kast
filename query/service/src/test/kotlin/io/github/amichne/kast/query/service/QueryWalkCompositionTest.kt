@@ -62,9 +62,9 @@ class QueryWalkCompositionTest {
                     QueryExecutionResult.Complete::class.java,
                     service.run(request(walkPlan(selected), 20, resultLimit = 1)),
                 )
-            assertTrue(complete.result.items.isEmpty())
+            assertTrue(complete.result.symbolRows().isEmpty())
             assertEquals(1, complete.result.walkObservations.single().expandedFrontier.value)
-            val retained = QueryRetainedResult.capture(selected.lease, complete).refined()
+            val retained = QueryRetainedResult.capture(selected.lease, complete).refined().symbolsResult()
             assertTrue(retained.symbols.isEmpty())
             assertEquals(complete.result.walkObservations, retained.walkObservations)
         }
@@ -90,8 +90,9 @@ class QueryWalkCompositionTest {
             val complete =
                 assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 20, 3)))
             assertEquals(1, calls)
-            assertEquals(2, complete.result.items.size)
-            val occurrences = complete.result.items.map { (it.walkArrival as QueryWalkArrival.Proven).records.single() }
+            assertEquals(2, complete.result.symbolRows().size)
+            val occurrences =
+                complete.result.symbolRows().map { (it.walkArrival as QueryWalkArrival.Proven).records.single() }
             assertEquals(listOf(100, 101), occurrences.map { it.fact.occurrence.range.startInclusive })
             assertEquals(occurrences[0].related.fingerprint, occurrences[1].related.fingerprint)
             assertEquals(1, occurrences[0].depth.value)
@@ -135,7 +136,7 @@ class QueryWalkCompositionTest {
                 )
             val initial = request(walkPlan(selected), 20, 2)
             val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(initial))
-            assertEquals(1, first.result.items.size)
+            assertEquals(1, first.result.symbolRows().size)
             assertEquals(1, first.result.walkObservations.size)
             assertEquals(1, calls)
             assertEquals(1, descriptions)
@@ -146,7 +147,7 @@ class QueryWalkCompositionTest {
             val resumed =
                 QueryExecutionRequest.create(initial.plan, initial.lease, initial.budget, cursor.checkpoint).refined()
             val last = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(resumed))
-            assertTrue(last.result.items.isEmpty())
+            assertTrue(last.result.symbolRows().isEmpty())
             assertEquals(1, last.result.walkObservations.size)
             assertEquals(2, calls)
             assertEquals(1, descriptions)
@@ -217,7 +218,7 @@ class QueryWalkCompositionTest {
                     QueryExecutionResult.Qualified::class.java,
                     service.run(request(walkPlan(selected), 20, resultLimit = 2, elapsedMillis = 1)),
                 )
-            assertEquals(1, qualified.result.items.size)
+            assertEquals(1, qualified.result.symbolRows().size)
             assertEquals(1, qualified.result.walkObservations.size)
             assertEquals(1, qualified.result.walkObservations.single().progress.totalEdges)
             assertTrue(QueryLimitation.TRAVERSAL_INCOMPLETE in qualified.coverage.limitations)

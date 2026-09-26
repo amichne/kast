@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
+import java.util.Collections
 
 private const val RETAINED_STATE_BASE_BYTES = 512L
 private const val RETAINED_STATE_OVERHEAD_MULTIPLIER = 8L
@@ -15,59 +16,90 @@ enum class QueryRetainedResultFailure {
     DUPLICATE_ROW,
 }
 
-/** Detached, immutable semantic rows from one read basis. Presentation fields are selected later. */
-class QueryRetainedResult
-private constructor(
+enum class QueryMembershipFailure {
+    INCOMPLETE
+}
+
+/** A proof bound to the exact retained input whose entire membership is known. */
+class QueryCompleteMembership private constructor(val source: QueryRetainedResult.Symbols) {
+    val lease: SemanticReadAuthority
+        get() = source.lease
+
+    val symbols: List<QuerySymbol>
+        get() = source.symbols
+
+    companion object {
+        fun from(result: QueryRetainedResult.Symbols): Refinement<QueryCompleteMembership, QueryMembershipFailure> =
+            if (result.coverage !is QueryCoverage.Complete) {
+                Refinement.Rejected(QueryMembershipFailure.INCOMPLETE)
+            } else if (
+                result.failures.isNotEmpty() || result.omissions.isNotEmpty() || result.producerProgress != null
+            ) {
+                Refinement.Rejected(QueryMembershipFailure.INCOMPLETE)
+            } else {
+                Refinement.Refined(QueryCompleteMembership(result))
+            }
+    }
+}
+
+/** Detached, immutable semantic rows from one read basis. Row kind survives retention and selection. */
+sealed class QueryRetainedResult
+protected constructor(
     val lease: SemanticReadAuthority,
-    private val rows: List<QuerySymbol>,
-    private val itemFailures: List<QueryItemFailure>,
-    private val relationOmissions: List<QueryRelationOmission>,
-    private val traversalObservations: List<QueryWalkObservation>,
-    private val resultCoverage: QueryCoverage,
+    itemFailures: List<QueryItemFailure>,
+    relationOmissions: List<QueryRelationOmission>,
+    traversalObservations: List<QueryWalkObservation>,
+    resultCoverage: QueryCoverage,
     val producerProgress: QueryContinuationState?,
 ) {
-    val symbols: List<QuerySymbol>
-        get() = rows.map { row -> row.copy(connections = row.connections.toList()) }
+    private val itemFailures = Collections.unmodifiableList(itemFailures.toList())
+    private val relationOmissions = Collections.unmodifiableList(relationOmissions.toList())
+    private val traversalObservations = Collections.unmodifiableList(traversalObservations.toList())
+    private val resultCoverage = resultCoverage.copyCoverage()
 
     val failures: List<QueryItemFailure>
-        get() = itemFailures.toList()
+        get() = itemFailures
 
     val omissions: List<QueryRelationOmission>
-        get() = relationOmissions.toList()
+        get() = relationOmissions
 
     val walkObservations: List<QueryWalkObservation>
-        get() = traversalObservations.toList()
+        get() = traversalObservations
 
     val coverage: QueryCoverage
-        get() = resultCoverage.copyCoverage()
+        get() = resultCoverage
 
     /** Conservative detached-state accounting includes source text and unfinished producer work. */
-    val retainedBytes: Long =
-        retainedStorageBytes(
-            rows,
-            itemFailures,
-            relationOmissions,
-            traversalObservations,
-            resultCoverage,
-            producerProgress,
-            lease,
-        )
+    abstract val rowCount: Int
+
+    abstract val retainedBytes: Long
+
+    abstract fun selectRows(indices: List<Int>): Refinement<QueryRetainedResult, QueryRetainedResultFailure>
+
+    fun completeMembership(): Refinement<QueryCompleteMembership, QueryMembershipFailure> =
+        if (this is Symbols) {
+            QueryCompleteMembership.from(this)
+        } else {
+            Refinement.Rejected(QueryMembershipFailure.INCOMPLETE)
+        }
 
     /** Select original proven rows; excluded rows remain unchecked rather than proven nonmatches. */
-    fun selectRows(indices: List<Int>): Refinement<QueryRetainedResult, QueryRetainedResultFailure> {
-        if (indices.any { it !in rows.indices }) return Refinement.Rejected(QueryRetainedResultFailure.UNKNOWN_ROW)
-        if (indices.distinct().size != indices.size)
-            return Refinement.Rejected(QueryRetainedResultFailure.DUPLICATE_ROW)
-        val selected = indices.map(rows::get)
+    protected fun validateIndices(indices: List<Int>): QueryRetainedResultFailure? {
+        if (indices.any { it !in 0 until rowCount }) return QueryRetainedResultFailure.UNKNOWN_ROW
+        if (indices.distinct().size != indices.size) return QueryRetainedResultFailure.DUPLICATE_ROW
+        return null
+    }
+
+    protected fun selectionCoverage(selectedCount: Int): Pair<QueryCoverage, QueryContinuationState?> {
         val coverage =
-            if (selected.size == rows.size) {
+            if (selectedCount == rowCount) {
                 resultCoverage.copyCoverage()
             } else {
                 val prior = (resultCoverage as? QueryCoverage.Qualified)?.limitations.orEmpty()
                 when (
                     val refined =
                         QueryCoverage.Qualified.create(
-                            QueryCount.parse(selected.size).refinedCount(),
+                            QueryCount.parse(selectedCount).refinedCount(),
                             prior.toSet() + QueryLimitation.ROW_SELECTION_INCOMPLETE,
                         )
                 ) {
@@ -81,17 +113,96 @@ private constructor(
             } else {
                 producerProgress
             }
-        return Refinement.Refined(
-            QueryRetainedResult(
-                lease,
-                selected,
-                itemFailures,
-                relationOmissions,
-                traversalObservations,
-                coverage,
-                progress,
+        return coverage to progress
+    }
+
+    class Symbols
+    internal constructor(
+        lease: SemanticReadAuthority,
+        rows: List<QuerySymbol>,
+        failures: List<QueryItemFailure>,
+        omissions: List<QueryRelationOmission>,
+        observations: List<QueryWalkObservation>,
+        coverage: QueryCoverage,
+        progress: QueryContinuationState?,
+    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress) {
+        private val rows = Collections.unmodifiableList(rows.map(QuerySymbol::detached))
+
+        val symbols: List<QuerySymbol>
+            get() = rows
+
+        override val rowCount: Int
+            get() = rows.size
+
+        override val retainedBytes: Long =
+            retainedStorageBytes(rows, failures, omissions, observations, coverage, progress, lease)
+
+        override fun selectRows(indices: List<Int>): Refinement<Symbols, QueryRetainedResultFailure> {
+            validateIndices(indices)?.let {
+                return Refinement.Rejected(it)
+            }
+            val (selectedCoverage, selectedProgress) = selectionCoverage(indices.size)
+            return Refinement.Refined(
+                Symbols(
+                    lease,
+                    indices.map(rows::get),
+                    failures,
+                    omissions,
+                    walkObservations,
+                    selectedCoverage,
+                    selectedProgress,
+                )
             )
-        )
+        }
+    }
+
+    class Bindings
+    internal constructor(
+        lease: SemanticReadAuthority,
+        rows: List<QueryBindingRow>,
+        failures: List<QueryItemFailure>,
+        omissions: List<QueryRelationOmission>,
+        observations: List<QueryWalkObservation>,
+        coverage: QueryCoverage,
+        progress: QueryContinuationState?,
+    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress) {
+        private val rows = Collections.unmodifiableList(rows.map(QueryBindingRow::detached))
+
+        val bindingRows: List<QueryBindingRow>
+            get() = rows
+
+        override val rowCount: Int
+            get() = rows.size
+
+        override val retainedBytes: Long =
+            retainedStorageBytes(
+                    rows.flatMap { listOf(it.left.value.symbol, it.right.value.symbol) },
+                    failures,
+                    omissions,
+                    observations,
+                    coverage,
+                    progress,
+                    lease,
+                )
+                .saturatedAdd(rows.size.toLong().saturatedMultiply(RETAINED_STATE_BASE_BYTES))
+
+        override fun selectRows(indices: List<Int>): Refinement<Bindings, QueryRetainedResultFailure> {
+            validateIndices(indices)?.let {
+                return Refinement.Rejected(it)
+            }
+            val (selectedCoverage, selectedProgress) = selectionCoverage(indices.size)
+            return Refinement.Refined(
+                Bindings(
+                    lease,
+                    indices.map(rows::get),
+                    failures,
+                    omissions,
+                    walkObservations,
+                    selectedCoverage,
+                    selectedProgress,
+                )
+            )
+        }
     }
 
     companion object {
@@ -122,25 +233,43 @@ private constructor(
                 is QueryExecutionResult.Rejected ->
                     return Refinement.Rejected(QueryRetainedResultFailure.EXECUTION_REJECTED)
             }
-            val symbols = result.items
             if (
                 result.hasForeignBasis(lease) ||
                     (progress as? QueryContinuationState.Resumable)?.checkpoint?.lease?.let { it != lease } == true
             ) {
                 return Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH)
             }
-            return Refinement.Refined(
-                QueryRetainedResult(
-                    lease,
-                    symbols.map { it.copy(connections = it.connections.toList()) },
-                    result.failures.toList(),
-                    result.omissions.toList(),
-                    result.walkObservations.toList(),
-                    coverage.copyCoverage(),
-                    progress,
-                )
-            )
+            return Refinement.Refined(captureRows(lease, result, coverage, progress))
         }
+
+        private fun captureRows(
+            lease: SemanticReadAuthority,
+            result: QueryResult,
+            coverage: QueryCoverage,
+            progress: QueryContinuationState?,
+        ): QueryRetainedResult =
+            when (val rows = result.rows) {
+                is QueryRows.Symbols ->
+                    Symbols(
+                        lease,
+                        rows.values,
+                        result.failures,
+                        result.omissions,
+                        result.walkObservations,
+                        coverage,
+                        progress,
+                    )
+                is QueryRows.Bindings ->
+                    Bindings(
+                        lease,
+                        rows.values,
+                        result.failures,
+                        result.omissions,
+                        result.walkObservations,
+                        coverage,
+                        progress,
+                    )
+            }
     }
 }
 
@@ -170,7 +299,13 @@ private fun QuerySymbol.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
         }
 
 private fun QueryResult.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    items.any { it.hasForeignBasis(lease) } ||
+    (when (val resultRows = rows) {
+        is QueryRows.Symbols -> resultRows.values.any { it.hasForeignBasis(lease) }
+        is QueryRows.Bindings ->
+            resultRows.values.any { row ->
+                row.left.value.symbol.hasForeignBasis(lease) || row.right.value.symbol.hasForeignBasis(lease)
+            }
+    }) ||
         failures.any { it.hasForeignBasis(lease) } ||
         omissions.any { it.subject.lease != lease } ||
         walkObservations.any { it.subject.lease != lease }

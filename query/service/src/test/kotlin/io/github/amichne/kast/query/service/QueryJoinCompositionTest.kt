@@ -1,0 +1,465 @@
+package io.github.amichne.kast.query.service
+
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.query.contract.QueryArrivalEvidence
+import io.github.amichne.kast.query.contract.QueryBindingName
+import io.github.amichne.kast.query.contract.QueryBindingRow
+import io.github.amichne.kast.query.contract.QueryBindingValue
+import io.github.amichne.kast.query.contract.QueryContinuationState
+import io.github.amichne.kast.query.contract.QueryCount
+import io.github.amichne.kast.query.contract.QueryCoverage
+import io.github.amichne.kast.query.contract.QueryExactReferences
+import io.github.amichne.kast.query.contract.QueryExecutionRequest
+import io.github.amichne.kast.query.contract.QueryExecutionResult
+import io.github.amichne.kast.query.contract.QueryItemFailure
+import io.github.amichne.kast.query.contract.QueryJoinInput
+import io.github.amichne.kast.query.contract.QueryJoinMode
+import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
+import io.github.amichne.kast.query.contract.QueryPredicate
+import io.github.amichne.kast.query.contract.QueryPrimitiveField
+import io.github.amichne.kast.query.contract.QueryPrimitiveOperator
+import io.github.amichne.kast.query.contract.QueryPrimitiveValue
+import io.github.amichne.kast.query.contract.QueryRelationOmission
+import io.github.amichne.kast.query.contract.QueryResult
+import io.github.amichne.kast.query.contract.QueryRetainedResult
+import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QuerySourceSyntax
+import io.github.amichne.kast.query.contract.QueryStepSyntax
+import io.github.amichne.kast.query.contract.QuerySymbol
+import io.github.amichne.kast.query.contract.QuerySymbolFields
+import io.github.amichne.kast.query.contract.QueryTerminalReason
+import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.relation.contract.RelationByteLimit
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationFact
+import io.github.amichne.kast.relation.contract.RelationLimitation
+import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.relation.contract.RelationOmissionEvidence
+import io.github.amichne.kast.relation.contract.RelationOmissionMeasurement
+import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationProviderKind
+import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.SymbolDescription
+import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+
+class QueryJoinCompositionTest {
+    @Test
+    fun `inner join keeps repeated matching pairs and each right occurrence across result pages`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
+            val mode = QueryJoinMode.Inner.create(name("left"), name("right")).refined()
+            val plan =
+                admittedPlan(
+                    QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected, selected)).refined()),
+                    listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                    QueryOutputSyntax.BindingRows,
+                )
+            var descriptions = 0
+            val service = countingService { descriptions++ }
+            val unsplit = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 64L)))
+            val expected = unsplit.result.bindingRows()
+            assertEquals(4, expected.size)
+            assertEquals(4, unsplit.coverage.resultCount.value)
+            assertEquals(listOf(20, 21, 20, 21), expected.map { it.rightOccurrenceStart() })
+            assertEquals(2, descriptions)
+
+            descriptions = 0
+            val pageRequest = request(plan, 64L, resultLimit = 2)
+            val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(pageRequest))
+            assertEquals(2, first.coverage.knownMinimum.value)
+            val checkpoint = assertInstanceOf(QueryContinuationState.Resumable::class.java, first.continuation)
+            val stored = assertInstanceOf(PipelineCheckpoint::class.java, checkpoint.checkpoint)
+            assertEquals(2, stored.joinState.indexes.values.single().consumed)
+            assertThrows(UnsupportedOperationException::class.java) {
+                (stored.joinState.indexes.values.single().positions as MutableMap).clear()
+            }
+            assertThrows(UnsupportedOperationException::class.java) {
+                (stored.joinState.indexes.values.single().positions.values.single() as MutableList).clear()
+            }
+            val second =
+                service.run(QueryExecutionRequest.create(plan, pageRequest.lease, pageRequest.budget, stored).refined())
+            assertEquals(expected, first.result.bindingRows() + second.bindingRows())
+            assertEquals(2, descriptions)
+        }
+    }
+
+    @Test
+    fun `semi join retains left multiplicity and merges every matching right occurrence`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val left = retained(selected, listOf(row(selected, 10), row(selected, 11)))
+            val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
+            val plan =
+                admittedPlan(
+                    QuerySourceSyntax.Retained(left),
+                    listOf(QueryStepSyntax.Join(QueryJoinMode.Semi, QueryJoinInput.Retained(right))),
+                    QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+                )
+            val result = assertInstanceOf(QueryExecutionResult.Complete::class.java, service().run(request(plan, 64L)))
+            assertEquals(2, result.result.symbolRows().size)
+            assertEquals(
+                listOf(listOf(10, 20, 21), listOf(11, 20, 21)),
+                result.result.symbolRows().map { symbol ->
+                    symbol.connections.map { it.occurrence.range.startInclusive }
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `join resumes mid build without repeating the completed exact prefix`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val right = retained(selected, listOf(row(selected, 20), row(selected, 21), row(selected, 22)))
+            val mode = QueryJoinMode.Inner.create(name("left"), name("right")).refined()
+            val plan =
+                admittedPlan(
+                    QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                    listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                    QueryOutputSyntax.BindingRows,
+                )
+            var descriptions = 0
+            val service = countingService { descriptions++ }
+            val firstRequest = request(plan, workLimit = 2L)
+            var result = service.run(firstRequest)
+            val observed = mutableListOf<QueryBindingRow>()
+            var pages = 0
+            while (result is QueryExecutionResult.Qualified) {
+                observed += result.result.bindingRows()
+                val progress = assertInstanceOf(QueryContinuationState.Resumable::class.java, result.continuation)
+                if (pages == 0) {
+                    val checkpoint = assertInstanceOf(PipelineCheckpoint::class.java, progress.checkpoint)
+                    assertEquals(1, checkpoint.joinState.indexes.values.single().consumed)
+                }
+                result =
+                    service.run(
+                        QueryExecutionRequest.create(plan, firstRequest.lease, firstRequest.budget, progress.checkpoint)
+                            .refined()
+                    )
+                pages++
+                assertTrue(pages < 8)
+            }
+            val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, result)
+            observed += complete.result.bindingRows()
+            assertEquals(listOf(20, 21, 22), observed.map(QueryBindingRow::rightOccurrenceStart))
+            assertEquals(1, descriptions)
+            assertTrue(pages >= 2)
+        }
+    }
+}
+
+class QueryJoinBoundaryTest {
+    @Test
+    fun `bind capacity stops without replay and a larger grant can finish the same checkpoint`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val plan = exactReferencePlan(listOf(selected, selected), listOf(QueryStepSyntax.Bind(name("known"))))
+            var descriptions = 0
+            val service = countingService { descriptions++ }
+            val narrow = request(plan, workLimit = 8L, resultLimit = 1)
+            val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(narrow))
+            assertTrue(first.result.symbolRows().isEmpty())
+            val progress = assertInstanceOf(QueryContinuationState.Resumable::class.java, first.continuation)
+            val stored = assertInstanceOf(PipelineCheckpoint::class.java, progress.checkpoint)
+            assertThrows(UnsupportedOperationException::class.java) {
+                (stored.joinState.bindings as MutableMap).clear()
+            }
+            assertThrows(UnsupportedOperationException::class.java) {
+                (stored.joinState.bindings.values.single().values as MutableList).clear()
+            }
+            val repeated =
+                assertInstanceOf(
+                    QueryExecutionResult.Qualified::class.java,
+                    service.run(
+                        QueryExecutionRequest.create(plan, narrow.lease, narrow.budget, progress.checkpoint).refined()
+                    ),
+                )
+            assertEquals(QueryContinuationState.Terminal(QueryTerminalReason.NO_PROGRESS), repeated.continuation)
+
+            val wider = request(plan, workLimit = 8L, resultLimit = 2)
+            val finished =
+                assertInstanceOf(
+                    QueryExecutionResult.Complete::class.java,
+                    service.run(
+                        QueryExecutionRequest.create(plan, wider.lease, wider.budget, progress.checkpoint).refined()
+                    ),
+                )
+            assertEquals(2, finished.result.symbolRows().size)
+            assertEquals(2, descriptions)
+        }
+    }
+
+    @Test
+    fun `one sealed named input feeds two joins without repeating its exact read`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val name = name("known")
+            val mode = QueryJoinMode.Inner.create(name("left"), name("right")).refined()
+            val plan =
+                admittedPlan(
+                    QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                    listOf(
+                        QueryStepSyntax.Bind(name),
+                        QueryStepSyntax.Join(QueryJoinMode.Semi, QueryJoinInput.Named(name)),
+                        QueryStepSyntax.Join(mode, QueryJoinInput.Named(name)),
+                    ),
+                    QueryOutputSyntax.BindingRows,
+                )
+            var descriptions = 0
+            val result =
+                assertInstanceOf(
+                    QueryExecutionResult.Complete::class.java,
+                    countingService { descriptions++ }.run(request(plan, 64L)),
+                )
+            assertEquals(1, result.result.bindingRows().size)
+            assertEquals(1, descriptions)
+        }
+    }
+
+    @Test
+    fun `empty left join still returns qualified right omission evidence`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val left = retained(selected, emptyList())
+            val omission =
+                QueryRelationOmission.create(
+                        selected,
+                        RelationMeaning.Callees,
+                        RelationOmissionEvidence.fromObservedPage(
+                            RelationProviderKind.forMeaning(RelationMeaning.Callees),
+                            RelationLimitation.UNSUPPORTED_ITEM,
+                            RelationOmissionMeasurement.UnmeasuredOnPage,
+                            emptyList(),
+                        ),
+                    )
+                    .refined()
+            val right =
+                retained(
+                    selected,
+                    emptyList(),
+                    QueryCoverage.Qualified.create(
+                            QueryCount.parse(0).refined(),
+                            setOf(QueryLimitation.RELATION_INCOMPLETE),
+                        )
+                        .refined(),
+                    omissions = listOf(omission),
+                )
+            val mode = QueryJoinMode.Inner.create(name("left"), name("right")).refined()
+            val plan =
+                admittedPlan(
+                    QuerySourceSyntax.Retained(left),
+                    listOf(QueryStepSyntax.Join(mode, QueryJoinInput.Retained(right))),
+                    QueryOutputSyntax.BindingRows,
+                )
+            val result = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service().run(request(plan, 8L)))
+            assertTrue(result.result.bindingRows().isEmpty())
+            assertEquals(listOf(omission), result.result.omissions)
+            assertTrue(QueryLimitation.RELATION_INCOMPLETE in result.coverage.limitations)
+        }
+    }
+
+    @Test
+    fun `incomplete named anti join cannot establish absence from positive rows`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val other = anotherDeclaration(selected)
+            val incomplete =
+                retained(
+                    selected,
+                    listOf(QuerySymbol(SymbolDescription.from(selected), emptyList())),
+                    QueryCoverage.Qualified.create(
+                            QueryCount.parse(1).refined(),
+                            setOf(QueryLimitation.VISIBILITY_INCOMPLETE),
+                        )
+                        .refined(),
+                    listOf(QueryItemFailure.PredicateUnproven(selected)),
+                )
+            val complete = retained(selected, incomplete.symbols)
+            val service = countingService {}
+            val qualified =
+                assertInstanceOf(
+                    QueryExecutionResult.Qualified::class.java,
+                    service.run(request(namedAntiPlan(incomplete, other), 64L)),
+                )
+            assertTrue(qualified.result.symbolRows().isEmpty())
+            assertTrue(QueryLimitation.JOIN_INPUT_INCOMPLETE in qualified.coverage.limitations)
+            assertEquals(
+                QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
+                qualified.continuation,
+            )
+
+            val proven =
+                assertInstanceOf(
+                    QueryExecutionResult.Complete::class.java,
+                    service.run(request(namedAntiPlan(complete, other), 64L)),
+                )
+            assertEquals(listOf(other), proven.result.symbolRows().map(QuerySymbol::selector))
+        }
+    }
+
+    @Test
+    fun `retained page limit cannot become complete named membership`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val other = anotherDeclaration(selected)
+            val partial =
+                retained(
+                    selected,
+                    listOf(QuerySymbol(SymbolDescription.from(selected), emptyList())),
+                    QueryCoverage.Qualified.create(
+                            QueryCount.parse(1).refined(),
+                            setOf(QueryLimitation.RESULT_LIMIT_REACHED),
+                        )
+                        .refined(),
+                )
+            val result =
+                assertInstanceOf(
+                    QueryExecutionResult.Qualified::class.java,
+                    countingService {}.run(request(namedAntiPlan(partial, other), 64L)),
+                )
+            assertTrue(result.result.symbolRows().isEmpty())
+            assertTrue(QueryLimitation.RESULT_LIMIT_REACHED in result.coverage.limitations)
+            assertTrue(QueryLimitation.JOIN_INPUT_INCOMPLETE in result.coverage.limitations)
+            assertEquals(
+                QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
+                result.continuation,
+            )
+        }
+    }
+}
+
+private fun QueryServiceTest.countingService(onDescription: () -> Unit): QueryService =
+    service(
+        exact =
+            exactOperations(
+                describe = {
+                    onDescription()
+                    SymbolDescriptionResult.Described(SymbolDescription.from(it))
+                },
+                resolve = { error("No discovery expected") },
+            )
+    )
+
+private fun QueryServiceTest.namedAntiPlan(source: QueryRetainedResult.Symbols, other: SymbolSelector) =
+    admittedPlan(
+        QuerySourceSyntax.Retained(source),
+        listOf(
+            QueryStepSyntax.Bind(name("known")),
+            QueryStepSyntax.Where(
+                QueryPredicate.Primitive(
+                    QueryPrimitiveField.NAME,
+                    QueryPrimitiveOperator.EQUALS,
+                    QueryPrimitiveValue.parse("Missing").refined(),
+                )
+            ),
+            QueryStepSyntax.Concat(
+                io.github.amichne.kast.query.contract.QueryCompositionInput.ExactReferences(
+                    QueryExactReferences.from(listOf(other)).refined()
+                )
+            ),
+            QueryStepSyntax.Join(QueryJoinMode.Anti, QueryJoinInput.Named(name("known"))),
+        ),
+        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+    )
+
+private fun name(raw: String): QueryBindingName = QueryBindingName.parse(raw).refined()
+
+private fun retained(
+    owner: SymbolSelector,
+    rows: List<QuerySymbol>,
+    coverage: QueryCoverage = QueryCoverage.Complete(QueryCount.parse(rows.size).refined()),
+    failures: List<QueryItemFailure> = emptyList(),
+    omissions: List<QueryRelationOmission> = emptyList(),
+): QueryRetainedResult.Symbols {
+    val result = QueryResult(QueryRows.Symbols.of(rows), failures, omissions)
+    val execution =
+        when (coverage) {
+            is QueryCoverage.Complete -> QueryExecutionResult.Complete(result, coverage)
+            is QueryCoverage.Qualified -> QueryExecutionResult.Qualified(result, coverage)
+        }
+    return assertInstanceOf(
+        QueryRetainedResult.Symbols::class.java,
+        QueryRetainedResult.capture(owner.lease, execution).refined(),
+    )
+}
+
+private fun row(selector: SymbolSelector, start: Int): QuerySymbol {
+    val fact = relationFact(selector, start)
+    return QuerySymbol(
+        SymbolDescription.from(selector),
+        listOf(fact),
+        arrival = QueryArrivalEvidence.Proven.one(fact),
+    )
+}
+
+private fun anotherDeclaration(source: SymbolSelector): SymbolSelector =
+    SymbolSelector.issue(
+        source.lease,
+        source.scope,
+        CompilerGroundedSymbolEvidence.fromBoundary(
+                source.file,
+                source.range.startInclusive,
+                source.range.endExclusive + 1,
+                source.name.value,
+                "sample.PaymentService",
+                source.kind,
+                source.signature,
+            )
+            .refined(),
+    )
+
+private fun relationFact(source: SymbolSelector, start: Int): RelationFact {
+    val read =
+        RelationRequest.start(
+            source,
+            RelationMeaning.Callees,
+            RelationBudget(
+                ResourceBudget(
+                    ResultLimit.parse(8).refined(),
+                    WorkUnitLimit.parse(32L).refined(),
+                    ElapsedTimeLimitMillis.parse(1_000L).refined(),
+                ),
+                RelationByteLimit.parse(100_000L).refined(),
+            ),
+        )
+    val target =
+        RelationEndpoint.resolve(source.lease, source.scope, CompilerGroundedSymbolEvidence.fromSelector(source))
+            .refined()
+    return RelationFact.create(
+            read,
+            read.subject,
+            target,
+            RelationOccurrence.fromBoundary(source.file, start, start + 1).refined(),
+            RelationProvenance.K2_AUTHORED_SOURCE,
+        )
+        .refined()
+}
+
+private fun QueryResult.bindingRows(): List<QueryBindingRow> = (rows as QueryRows.Bindings).values
+
+private fun QueryExecutionResult.bindingRows(): List<QueryBindingRow> =
+    when (this) {
+        is QueryExecutionResult.Complete -> result.bindingRows()
+        is QueryExecutionResult.Qualified -> result.bindingRows()
+        is QueryExecutionResult.Rejected -> error("Unexpected rejection: $reason")
+    }
+
+private fun QueryBindingRow.rightOccurrenceStart(): Int =
+    (right.value as QueryBindingValue.Occurrence).fact.occurrence.range.startInclusive
+
+private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = (this as Refinement.Refined).value

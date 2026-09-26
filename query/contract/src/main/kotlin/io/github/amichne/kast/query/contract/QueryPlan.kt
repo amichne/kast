@@ -32,6 +32,8 @@ sealed interface QueryOutputSyntax {
     data object Occurrences : QueryOutputSyntax
 
     data object TraversalRecords : QueryOutputSyntax
+
+    data object BindingRows : QueryOutputSyntax
 }
 
 data class QueryPlanSyntax(
@@ -44,6 +46,14 @@ sealed interface QueryPlanAdmissionFailure {
     data class UnsupportedDeclarationKind(val kind: CompilerSymbolKind) : QueryPlanAdmissionFailure
 
     data object IncompleteRightInput : QueryPlanAdmissionFailure
+
+    data class DuplicateBindingName(val name: QueryBindingName) : QueryPlanAdmissionFailure
+
+    data class UnknownBindingName(val name: QueryBindingName) : QueryPlanAdmissionFailure
+
+    data object InnerJoinNotTerminal : QueryPlanAdmissionFailure
+
+    data object OutputTypeMismatch : QueryPlanAdmissionFailure
 }
 
 enum class QuerySetOperator {
@@ -71,7 +81,15 @@ sealed interface ExactQueryStage {
     data class Set
     internal constructor(
         val operator: QuerySetOperator,
-        val right: QueryRetainedResult,
+        val right: QueryRetainedResult.Symbols,
+        val next: ExactQueryStage,
+    ) : ExactQueryStage
+
+    data class Bind(val name: QueryBindingName, val next: ExactQueryStage) : ExactQueryStage
+
+    data class Join(
+        val mode: QueryJoinMode,
+        val right: QueryJoinInput,
         val next: ExactQueryStage,
     ) : ExactQueryStage
 
@@ -93,7 +111,7 @@ sealed interface AdmittedQueryPlan {
 
     data class Retained
     internal constructor(
-        val source: QueryRetainedResult,
+        val source: QueryRetainedResult.Symbols,
         val stage: ExactQueryStage,
     ) : AdmittedQueryPlan
 }
@@ -116,8 +134,8 @@ object QueryPlanCompiler {
                 QueryPlanAdmissionFailure.UnsupportedDeclarationKind(CompilerSymbolKind.CONSTRUCTOR)
             )
         }
-        if (syntax.steps.filterIsInstance<QueryStepSyntax.Difference>().any { !it.right.provesAbsence() }) {
-            return QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.IncompleteRightInput)
+        admitStages(syntax.steps, syntax.output)?.let {
+            return QueryPlanAdmission.Rejected(it)
         }
         val stage = exactStage(syntax.steps, syntax.output)
         val plan =
@@ -127,6 +145,64 @@ object QueryPlanCompiler {
                 is QuerySourceSyntax.Retained -> AdmittedQueryPlan.Retained(source.result, stage)
             }
         return QueryPlanAdmission.Admitted(plan)
+    }
+
+    private fun admitStages(steps: List<QueryStepSyntax>, output: QueryOutputSyntax): QueryPlanAdmissionFailure? {
+        admitBindingOrder(steps)?.let {
+            return it
+        }
+        if (steps.any(::hasIncompleteRight)) return QueryPlanAdmissionFailure.IncompleteRightInput
+        val terminalJoin = steps.lastOrNull() as? QueryStepSyntax.Join
+        val emitsBindings = output is QueryOutputSyntax.BindingRows
+        return if (emitsBindings != (terminalJoin?.mode is QueryJoinMode.Inner)) {
+            QueryPlanAdmissionFailure.OutputTypeMismatch
+        } else {
+            null
+        }
+    }
+
+    private fun admitBindingOrder(steps: List<QueryStepSyntax>): QueryPlanAdmissionFailure? {
+        val bindings = mutableSetOf<QueryBindingName>()
+        for ((index, step) in steps.withIndex()) {
+            val failure =
+                when (step) {
+                    is QueryStepSyntax.Bind ->
+                        if (bindings.add(step.name)) null else QueryPlanAdmissionFailure.DuplicateBindingName(step.name)
+                    is QueryStepSyntax.Join -> admitJoin(step, index, steps.lastIndex, bindings)
+                    else -> null
+                }
+            if (failure != null) return failure
+        }
+        return null
+    }
+
+    private fun hasIncompleteRight(step: QueryStepSyntax): Boolean =
+        when (step) {
+            is QueryStepSyntax.Difference -> QueryCompleteMembership.from(step.right) is Refinement.Rejected
+            is QueryStepSyntax.Join -> {
+                val right = step.right
+                right is QueryJoinInput.Retained &&
+                    step.mode is QueryJoinMode.Anti &&
+                    QueryCompleteMembership.from(right.result) is Refinement.Rejected
+            }
+            else -> false
+        }
+
+    private fun admitJoin(
+        step: QueryStepSyntax.Join,
+        index: Int,
+        lastIndex: Int,
+        bindings: Set<QueryBindingName>,
+    ): QueryPlanAdmissionFailure? {
+        val right = step.right
+        if (right is QueryJoinInput.Named && right.name !in bindings) {
+            return QueryPlanAdmissionFailure.UnknownBindingName(right.name)
+        }
+        return if (step.mode is QueryJoinMode.Inner && index != lastIndex) {
+            QueryPlanAdmissionFailure.InnerJoinNotTerminal
+        } else {
+            null
+        }
     }
 
     private fun exactStage(steps: List<QueryStepSyntax>, output: QueryOutputSyntax): ExactQueryStage {
@@ -144,14 +220,13 @@ object QueryPlanCompiler {
                         ExactQueryStage.Set(QuerySetOperator.INTERSECTION, step.right, stage)
                     is QueryStepSyntax.Union -> ExactQueryStage.Set(QuerySetOperator.UNION, step.right, stage)
                     is QueryStepSyntax.Difference -> ExactQueryStage.Set(QuerySetOperator.DIFFERENCE, step.right, stage)
+                    is QueryStepSyntax.Bind -> ExactQueryStage.Bind(step.name, stage)
+                    is QueryStepSyntax.Join -> ExactQueryStage.Join(step.mode, step.right, stage)
                 }
         }
         return stage
     }
 }
-
-private fun QueryRetainedResult.provesAbsence(): Boolean =
-    coverage is QueryCoverage.Complete && failures.isEmpty() && omissions.isEmpty() && producerProgress == null
 
 internal fun AdmittedQueryPlan.composedInputLeases(): List<SemanticReadAuthority> =
     when (this) {
@@ -168,6 +243,12 @@ private fun ExactQueryStage.composedInputLeases(): List<SemanticReadAuthority> =
                 is QueryCompositionInput.Retained -> listOf(source.result.lease)
             }) + next.composedInputLeases()
         is ExactQueryStage.Set -> listOf(right.lease) + next.composedInputLeases()
+        is ExactQueryStage.Bind -> next.composedInputLeases()
+        is ExactQueryStage.Join ->
+            (when (val input = right) {
+                is QueryJoinInput.Named -> emptyList()
+                is QueryJoinInput.Retained -> listOf(input.result.lease)
+            }) + next.composedInputLeases()
         is ExactQueryStage.Distinct -> next.composedInputLeases()
         is ExactQueryStage.Where -> next.composedInputLeases()
         is ExactQueryStage.Related -> next.composedInputLeases()

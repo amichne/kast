@@ -81,5 +81,5 @@ sealed interface QuerySourceSyntax {
 
     data class ExactReferences(val references: QueryExactReferences) : QuerySourceSyntax
 
-    data class Retained(val result: QueryRetainedResult) : QuerySourceSyntax
+    data class Retained(val result: QueryRetainedResult.Symbols) : QuerySourceSyntax
 }

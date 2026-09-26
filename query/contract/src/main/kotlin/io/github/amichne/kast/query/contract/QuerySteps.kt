@@ -76,11 +76,15 @@ sealed interface QueryStepSyntax {
 
     data class Concat(val input: QueryCompositionInput) : QueryStepSyntax
 
-    data class Intersect(val right: QueryRetainedResult) : QueryStepSyntax
+    data class Intersect(val right: QueryRetainedResult.Symbols) : QueryStepSyntax
 
-    data class Union(val right: QueryRetainedResult) : QueryStepSyntax
+    data class Union(val right: QueryRetainedResult.Symbols) : QueryStepSyntax
 
-    data class Difference(val right: QueryRetainedResult) : QueryStepSyntax
+    data class Difference(val right: QueryRetainedResult.Symbols) : QueryStepSyntax
+
+    data class Bind(val name: QueryBindingName) : QueryStepSyntax
+
+    data class Join(val mode: QueryJoinMode, val right: QueryJoinInput) : QueryStepSyntax
 
     data object Distinct : QueryStepSyntax
 }
@@ -89,5 +93,44 @@ sealed interface QueryStepSyntax {
 sealed interface QueryCompositionInput {
     data class ExactReferences(val references: QueryExactReferences) : QueryCompositionInput
 
-    data class Retained(val result: QueryRetainedResult) : QueryCompositionInput
+    data class Retained(val result: QueryRetainedResult.Symbols) : QueryCompositionInput
+}
+
+enum class QueryJoinModeFailure {
+    DUPLICATE_OUTPUT_NAME
+}
+
+sealed interface QueryJoinMode {
+    class Inner
+    private constructor(
+        val leftName: QueryBindingName,
+        val rightName: QueryBindingName,
+    ) : QueryJoinMode {
+        companion object {
+            fun create(
+                leftName: QueryBindingName,
+                rightName: QueryBindingName,
+            ): Refinement<Inner, QueryJoinModeFailure> =
+                if (leftName == rightName) {
+                    Refinement.Rejected(QueryJoinModeFailure.DUPLICATE_OUTPUT_NAME)
+                } else {
+                    Refinement.Refined(Inner(leftName, rightName))
+                }
+        }
+
+        override fun equals(other: Any?): Boolean =
+            other is Inner && leftName == other.leftName && rightName == other.rightName
+
+        override fun hashCode(): Int = 31 * leftName.hashCode() + rightName.hashCode()
+    }
+
+    data object Semi : QueryJoinMode
+
+    data object Anti : QueryJoinMode
+}
+
+sealed interface QueryJoinInput {
+    data class Named(val name: QueryBindingName) : QueryJoinInput
+
+    data class Retained(val result: QueryRetainedResult.Symbols) : QueryJoinInput
 }

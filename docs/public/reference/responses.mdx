@@ -147,7 +147,7 @@ Choose the payload model for the invoked tool.
 
 | Tool family | Canonical operation | Payload to inspect |
 | --- | --- | --- |
-| `query_symbols` | `query.run` | `items[]`: exact symbols, relation occurrences, or depth-bearing traversal records by requested output; `walk_observations[]`: frontier, progress, strategy, partial expansions, and coverage; `failures[]` and `omissions[]`: incomplete evidence |
+| `query_symbols` | `query.run` | `items[]`: exact symbols, relation occurrences, depth-bearing traversal records, or named binding pairs by requested output; `walk_observations[]`: frontier, progress, strategy, partial expansions, and coverage; `failures[]` and `omissions[]`: incomplete evidence |
 | `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
 | `check_diagnostics` | `diagnostic.check` | `diagnostics[]`, `analysisKind`, and `coverage`: requested path, discovered, analyzed, and skipped files |
 | `change` | `change.run` composed from private native `change.plan`, `change.apply`, and, when needed, `change.recover` | Preview, verified receipt or failure, and any recovery evidence; see [Change source](/change) |
@@ -190,13 +190,18 @@ structured provider omission evidence. It qualifies relation coverage without
 discarding known occurrence rows. An occurrence item keeps `ref`, one `relation`
 fact, and an issued `row_id` when retained.
 
+An inner join returns one `binding_row` item per matching pair. Its `left` and
+`right` cells retain distinct names, exact symbol evidence, and a relation fact
+when that cell has one proven arrival occurrence. Repeated matching rows remain
+repeated pairs. `row_id` identifies the whole pair when retained.
+
 ### Query result references and progress
 
 For `query_symbols`, keep five returned concepts separate:
 
 | Field | Meaning |
 | --- | --- |
-| `items[].ref` | Exact-symbol reference for one declaration |
+| `items[].ref` or a binding cell's `symbol.ref` | Exact-symbol reference for one declaration |
 | `items[].row_id` when the result is retained | Issued identity of this row within its owning retained result; use with `source.row_ids` or a composed result operand |
 | `retention.reference` when `retention.kind` is `retained` | Immutable retained result for another query run or a later presentation read |
 | `continuation` on a qualified response | Interrupted execution to resume with `request.action: "resume"` |
@@ -211,7 +216,9 @@ An empty `row_ids` list selects no rows; selecting a proper subset records
 incomplete selection. A row ID from another result rejects during restoration.
 
 `read_result` presents saved rows without running query stages. The caller
-supplies the result reference and may supply `cursor`; copy `next_cursor` into
+selects `symbols` for retained symbol rows or `binding_rows` for retained join
+pairs. A mismatched output rejects. Supply the result reference and optionally
+`cursor`; copy `next_cursor` into
 the next read when present. A `complete` semantic result can still have a
 `next_cursor`, because the field describes presentation pages. A missing
 `next_cursor` does not remove a retained qualification.

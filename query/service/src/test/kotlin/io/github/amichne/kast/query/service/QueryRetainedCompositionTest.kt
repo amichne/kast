@@ -18,6 +18,7 @@ import io.github.amichne.kast.query.contract.QueryPrimitiveValue
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbol
@@ -30,6 +31,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -56,7 +58,7 @@ class QueryRetainedCompositionTest {
             val prefixRequest = request(exactReferencePlan(listOf(selected)), 8L)
             val prefix = service.run(prefixRequest)
             assertEquals(2, descriptions)
-            val retained = QueryRetainedResult.capture(prefixRequest.lease, prefix).refined()
+            val retained = QueryRetainedResult.capture(prefixRequest.lease, prefix).refined().symbolsResult()
             assertNull(retained.producerProgress)
             val split = service.run(request(retainedPlan(retained, suffix), 8L))
             assertEquals(2, descriptions)
@@ -82,7 +84,8 @@ class QueryRetainedCompositionTest {
                         )
                 )
             val prefixRequest = request(exactReferencePlan(listOf(selected), listOf(nameEquals("Missing"))), 8L)
-            val retained = QueryRetainedResult.capture(prefixRequest.lease, service.run(prefixRequest)).refined()
+            val retained =
+                QueryRetainedResult.capture(prefixRequest.lease, service.run(prefixRequest)).refined().symbolsResult()
             val result = service.run(request(retainedPlan(retained, listOf(nameEquals("PaymentService"))), 8L))
             assertInstanceOf(QueryExecutionResult.Complete::class.java, result)
             assertTrue(result.rows().isEmpty())
@@ -108,7 +111,7 @@ class QueryRetainedCompositionTest {
                 )
             val prefixRequest = request(exactReferencePlan(listOf(selected, selected)), 8L, resultLimit = 1)
             val prefix = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(prefixRequest))
-            val retained = QueryRetainedResult.capture(prefixRequest.lease, prefix).refined()
+            val retained = QueryRetainedResult.capture(prefixRequest.lease, prefix).refined().symbolsResult()
             val suffix = service.run(request(retainedPlan(retained, listOf(nameEquals("PaymentService"))), 8L))
             val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, suffix)
             assertEquals(1, qualified.rows().size)
@@ -135,7 +138,7 @@ class QueryRetainedCompositionTest {
                 )
             val prefixRequest = request(exactReferencePlan(listOf(selected)), 8L)
             val prefix = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(prefixRequest))
-            val producerRows = prefix.result.items.toMutableList()
+            val producerRows = prefix.result.symbolRows().toMutableList()
             val producerFailures = mutableListOf<QueryItemFailure>(QueryItemFailure.PredicateUnproven(selected))
             val retained =
                 QueryRetainedResult.capture(
@@ -143,7 +146,7 @@ class QueryRetainedCompositionTest {
                         QueryExecutionResult.Qualified(
                             result =
                                 prefix.result.copy(
-                                    items = producerRows,
+                                    rows = QueryRows.Symbols.of(producerRows),
                                     failures = producerFailures,
                                 ),
                             coverage =
@@ -155,9 +158,10 @@ class QueryRetainedCompositionTest {
                         ),
                     )
                     .refined()
+                    .symbolsResult()
             producerRows.clear()
             producerFailures.clear()
-            (retained.symbols as MutableList).clear()
+            assertThrows(UnsupportedOperationException::class.java) { (retained.symbols as MutableList).clear() }
             assertEquals(1, retained.symbols.size)
             assertEquals(1, retained.failures.size)
         }
@@ -173,7 +177,9 @@ class QueryRetainedCompositionTest {
                         selected.lease,
                         QueryExecutionResult.Qualified(
                             QueryResult(
-                                listOf(QuerySymbol(SymbolDescription.from(selected), emptyList())),
+                                QueryRows.Symbols.of(
+                                    listOf(QuerySymbol(SymbolDescription.from(selected), emptyList()))
+                                ),
                                 listOf(failure),
                             ),
                             QueryCoverage.Qualified.create(
@@ -184,10 +190,11 @@ class QueryRetainedCompositionTest {
                         ),
                     )
                     .refined()
+                    .symbolsResult()
             val service = service()
             val pageRequest = request(retainedPlan(retained, emptyList()), 8L, resultLimit = 1)
             val firstPage = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(pageRequest))
-            assertEquals(1, firstPage.result.items.size)
+            assertEquals(1, firstPage.result.symbolRows().size)
             assertTrue(firstPage.result.failures.isEmpty())
             val progress = assertInstanceOf(QueryContinuationState.Resumable::class.java, firstPage.continuation)
             val secondPage =
@@ -201,7 +208,7 @@ class QueryRetainedCompositionTest {
                         .refined()
                 )
             val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, secondPage)
-            assertTrue(qualified.result.items.isEmpty())
+            assertTrue(qualified.result.symbolRows().isEmpty())
             assertEquals(listOf(failure), qualified.result.failures)
             assertTrue(QueryLimitation.VISIBILITY_INCOMPLETE in qualified.coverage.limitations)
         }
@@ -266,7 +273,7 @@ class QueryRetainedCompositionTest {
     }
 
     private fun QueryServiceTest.retainedPlan(
-        retained: QueryRetainedResult,
+        retained: QueryRetainedResult.Symbols,
         steps: List<QueryStepSyntax>,
     ) =
         admittedPlan(
@@ -286,10 +293,13 @@ class QueryRetainedCompositionTest {
 
     private fun QueryExecutionResult.rows() =
         when (this) {
-            is QueryExecutionResult.Complete -> result.items
-            is QueryExecutionResult.Qualified -> result.items
+            is QueryExecutionResult.Complete -> result.symbolRows()
+            is QueryExecutionResult.Qualified -> result.symbolRows()
             is QueryExecutionResult.Rejected -> error("Unexpected rejection: $reason")
         }
+
+    private fun QueryRetainedResult.symbolsResult(): QueryRetainedResult.Symbols =
+        assertInstanceOf(QueryRetainedResult.Symbols::class.java, this)
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = (this as Refinement.Refined).value
 }

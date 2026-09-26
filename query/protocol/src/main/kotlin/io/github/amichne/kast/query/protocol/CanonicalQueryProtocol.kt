@@ -186,6 +186,7 @@ private fun QueryRunRequest.Run.resultInputs(): List<QueryFromDocument.Result> =
     steps.values.forEach { step ->
         when (step) {
             is QueryStepDocument.Concat -> (step.input as? QueryFromDocument.Result)?.let(::add)
+            is QueryStepDocument.Join -> (step.right as? QueryFromDocument.Result)?.let(::add)
             is QueryStepDocument.Intersect -> add(step.right)
             is QueryStepDocument.Union -> add(step.right)
             is QueryStepDocument.Difference -> add(step.right)

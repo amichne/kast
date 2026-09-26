@@ -30,6 +30,7 @@ import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.LiveReadAuthorityFixture
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -62,7 +63,7 @@ class QueryCheckpointReplayTest {
         val snapshot = QueryRetainedResult.capture(lease, complete()).refined()
         val issued = store.issueResult(request(), snapshot) as QueryResultIssuance.Issued
         val restored = store.restoreResult(issued.reference, lease) as QueryResultRestoration.Restored
-        assertEquals(emptyList<Any>(), restored.result.symbols)
+        assertEquals(emptyList<Any>(), (restored.result as QueryRetainedResult.Symbols).symbols)
         val different = SemanticReadLease(root, EvidenceGeneration.parse(8).refined())
         assertEquals(QueryResultRestoration.StaleBasis, store.restoreResult(issued.reference, different))
         now = 600_000_000_001L
@@ -87,7 +88,7 @@ class QueryCheckpointReplayTest {
                             override val retainedBytes = 1024L
                         }
                     QueryExecutionResult.Complete(
-                        QueryResult(emptyList(), emptyList()),
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
                 },
@@ -251,7 +252,7 @@ class QueryCheckpointReplayTest {
 
     private fun complete() =
         QueryExecutionResult.Complete(
-            QueryResult(emptyList(), emptyList()),
+            QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(0).refined()),
         )
 

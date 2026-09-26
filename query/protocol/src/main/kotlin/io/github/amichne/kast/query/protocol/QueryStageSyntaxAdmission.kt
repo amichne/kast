@@ -38,6 +38,8 @@ internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
             )
         QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
         is QueryStepDocument.Concat,
+        is QueryStepDocument.Bind,
+        is QueryStepDocument.Join,
         is QueryStepDocument.Intersect,
         is QueryStepDocument.Union,
         is QueryStepDocument.Difference -> null // Inputs are admitted with the complete plan.
@@ -74,6 +76,7 @@ internal fun QueryOutputDocument.syntax(): QueryOutputSyntax? =
         }
         QueryOutputDocument.Occurrences -> QueryOutputSyntax.Occurrences
         QueryOutputDocument.TraversalRecords -> QueryOutputSyntax.TraversalRecords
+        QueryOutputDocument.BindingRows -> QueryOutputSyntax.BindingRows
     }
 
 private fun RelationKindDocument.meaning(): RelationMeaning =

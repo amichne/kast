@@ -61,6 +61,12 @@ sealed interface QueryStepDocument {
 
     @Serializable @SerialName("distinct") data object Distinct : QueryStepDocument
 
+    @Serializable @SerialName("bind") data class Bind(val name: QueryBindingNameDocument) : QueryStepDocument
+
+    @Serializable
+    @SerialName("join")
+    data class Join(val mode: QueryJoinModeDocument, val right: QueryJoinRightDocument) : QueryStepDocument
+
     @Serializable @SerialName("concat") data class Concat(val input: QueryCompositionInputDocument) : QueryStepDocument
 
     @Serializable @SerialName("intersect") data class Intersect(val right: QueryFromDocument.Result) : QueryStepDocument

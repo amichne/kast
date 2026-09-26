@@ -22,9 +22,6 @@ legacy command graph retained for migration, and hosted output projections.
 
 - [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
 
-- [CanonicalDiagnosticRejectedDocument.kt](src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalDiagnosticRejectedDocument.kt) - finite diagnostic recovery directions and admitted rejection grants.
-
-- [CanonicalReadRejectedDocument.kt](src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalReadRejectedDocument.kt) - rejected read shapes retain their derived recovery direction and admitted budget.
 - [CanonicalReadRejectionSchemas.kt](src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt) - canonical finite source-read and symbol-inspection rejection schemas.
 - [RelationOmissionSchema.kt](src/main/kotlin/io/github/amichne/kast/cli/RelationOmissionSchema.kt) - bounded provider-omission schema.
 - [InstalledBootstrapSchemas.kt](src/main/kotlin/io/github/amichne/kast/cli/InstalledBootstrapSchemas.kt) - shared installed process and bootstrap schemas.

@@ -106,38 +106,35 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
         destination[id] = merged
         return Refinement.Refined(Unit)
     }
+}
 
-    private fun mergeRows(
-        first: QuerySymbol,
-        second: QuerySymbol,
-    ): Refinement<QuerySymbol, QueryIdentityRowFailure> {
-        if (!sameDescription(first.description, second.description)) {
-            return Refinement.Rejected(QueryIdentityRowFailure.CONFLICTING_DESCRIPTION)
-        }
-        val source =
-            when {
-                first.source == second.source -> first.source
-                first.source is QuerySymbolSource.Pending -> second.source
-                second.source is QuerySymbolSource.Pending -> first.source
-                first.source is QuerySymbolSource.Returned && second.source is QuerySymbolSource.Withheld ->
-                    first.source
-                first.source is QuerySymbolSource.Withheld && second.source is QuerySymbolSource.Returned ->
-                    second.source
-                first.source is QuerySymbolSource.Returned && second.source is QuerySymbolSource.Rejected ->
-                    first.source
-                first.source is QuerySymbolSource.Rejected && second.source is QuerySymbolSource.Returned ->
-                    second.source
-                else -> return Refinement.Rejected(QueryIdentityRowFailure.CONFLICTING_SOURCE)
-            }
-        return Refinement.Refined(
-            first.copy(
-                connections = (first.connections + second.connections).distinct().sorted(),
-                source = source,
-                arrival = first.arrival.merge(second.arrival),
-                walkArrival = first.walkArrival.merge(second.walkArrival),
-            )
-        )
+/** Preserve both proven evidence sets when a semi-join retains one left row. */
+internal fun mergeRows(
+    first: QuerySymbol,
+    second: QuerySymbol,
+): Refinement<QuerySymbol, QueryIdentityRowFailure> {
+    if (!sameDescription(first.description, second.description)) {
+        return Refinement.Rejected(QueryIdentityRowFailure.CONFLICTING_DESCRIPTION)
     }
+    val source =
+        when {
+            first.source == second.source -> first.source
+            first.source is QuerySymbolSource.Pending -> second.source
+            second.source is QuerySymbolSource.Pending -> first.source
+            first.source is QuerySymbolSource.Returned && second.source is QuerySymbolSource.Withheld -> first.source
+            first.source is QuerySymbolSource.Withheld && second.source is QuerySymbolSource.Returned -> second.source
+            first.source is QuerySymbolSource.Returned && second.source is QuerySymbolSource.Rejected -> first.source
+            first.source is QuerySymbolSource.Rejected && second.source is QuerySymbolSource.Returned -> second.source
+            else -> return Refinement.Rejected(QueryIdentityRowFailure.CONFLICTING_SOURCE)
+        }
+    return Refinement.Refined(
+        first.copy(
+            connections = (first.connections + second.connections).distinct().sorted(),
+            source = source,
+            arrival = first.arrival.merge(second.arrival),
+            walkArrival = first.walkArrival.merge(second.walkArrival),
+        )
+    )
 }
 
 private fun sameDescription(first: SymbolDescription, second: SymbolDescription): Boolean {

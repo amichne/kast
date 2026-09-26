@@ -130,7 +130,7 @@ class QueryStateStore(
     ): QueryResultIssuance {
         expire()
         val normalized = request.copy(executionBudget = null)
-        val rowCount = result.symbols.size
+        val rowCount = result.rowCount
         val rowBytes = rowCount.toLong().saturatedMultiply(ROW_REFERENCE_CHARGE_BYTES)
         val bytes =
             entryBytes(result.retainedBytes.saturatedAdd(rowBytes), normalized)

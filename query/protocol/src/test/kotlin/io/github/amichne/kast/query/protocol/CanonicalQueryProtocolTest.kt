@@ -40,7 +40,7 @@ class CanonicalQueryProtocolTest {
                 QueryOperations {
                     executions++
                     QueryExecutionResult.Complete(
-                        QueryResult(emptyList(), emptyList()),
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
                 },
@@ -95,7 +95,7 @@ class CanonicalQueryProtocolTest {
                                 override val retainedBytes = 1024L
                             }
                         QueryExecutionResult.Qualified(
-                            QueryResult(emptyList(), emptyList()),
+                            QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                             QueryCoverage.Qualified.create(
                                     QueryCount.parse(0).refined(),
                                     setOf(QueryLimitation.WORK_LIMIT_REACHED),
@@ -105,7 +105,7 @@ class CanonicalQueryProtocolTest {
                         )
                     } else
                         QueryExecutionResult.Complete(
-                            QueryResult(emptyList(), emptyList()),
+                            QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                             QueryCoverage.Complete(QueryCount.parse(0).refined()),
                         )
                 },
@@ -209,7 +209,7 @@ class CanonicalQueryProtocolTest {
                         (scope.sourceSets as SymbolDiscoverySourceSets.Exact).values.map { it.value }.toSet(),
                     )
                     QueryExecutionResult.Complete(
-                        QueryResult(emptyList(), emptyList()),
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
                 },
@@ -231,7 +231,7 @@ class CanonicalQueryProtocolTest {
             CanonicalQueryProtocol(
                 QueryOperations {
                     QueryExecutionResult.Qualified(
-                        QueryResult(emptyList(), emptyList()),
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         coverage,
                     )
                 },

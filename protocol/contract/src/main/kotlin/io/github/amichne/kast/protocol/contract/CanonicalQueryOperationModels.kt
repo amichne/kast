@@ -126,7 +126,7 @@ sealed interface QueryFromDocument {
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_ids")
         val rowIds: BoundedProtocolList<QueryResultRowReference>? = null,
-    ) : QueryFromDocument, QueryCompositionInputDocument
+    ) : QueryFromDocument, QueryCompositionInputDocument, QueryJoinRightDocument
 }
 
 @Serializable
@@ -148,6 +148,8 @@ sealed interface QueryOutputDocument {
     @Serializable @SerialName("occurrences") data object Occurrences : QueryOutputDocument
 
     @Serializable @SerialName("traversal_records") data object TraversalRecords : QueryOutputDocument
+
+    @Serializable @SerialName("binding_rows") data object BindingRows : QueryOutputDocument
 }
 
 @Serializable
@@ -204,6 +206,7 @@ sealed interface QueryRunRequest : OperationRequest {
 
     @Serializable
     @SerialName("read-result")
+    @ConsistentCopyVisibility
     data class ReadResult
     private constructor(
         val result: QueryResultReference,
@@ -214,13 +217,10 @@ sealed interface QueryRunRequest : OperationRequest {
         override val executionBudget: ExecutionBudgetDocument? = null,
     ) : QueryRunRequest {
         init {
-            if (output !is QueryOutputDocument.Symbols) {
-                throw kotlinx.serialization.SerializationException("read-result output must be symbols")
+            if (output !is QueryOutputDocument.Symbols && output != QueryOutputDocument.BindingRows) {
+                throw kotlinx.serialization.SerializationException("read-result output must be symbols or binding rows")
             }
         }
-
-        val symbolOutput: QueryOutputDocument.Symbols
-            get() = output as QueryOutputDocument.Symbols
 
         companion object {
             fun symbols(
@@ -229,6 +229,12 @@ sealed interface QueryRunRequest : OperationRequest {
                 output: QueryOutputDocument.Symbols,
                 executionBudget: ExecutionBudgetDocument? = null,
             ): ReadResult = ReadResult(result, cursor, output, executionBudget)
+
+            fun bindingRows(
+                result: QueryResultReference,
+                cursor: QueryResultCursor = QueryResultCursor.Start,
+                executionBudget: ExecutionBudgetDocument? = null,
+            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.BindingRows, executionBudget)
         }
     }
 }
@@ -258,11 +264,13 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
             is QueryFromDocument.Result -> source.rowIds?.values?.isUnique() ?: true
         }
     if (!sourceIsCanonical) return false
-    if (steps.values.any { !it.hasCanonicalSyntax() }) return false
+    if (!steps.values.haveCanonicalBindings()) return false
+    if (!steps.values.admitOutput(output)) return false
     return when (val projection = output) {
         is QueryOutputDocument.Symbols -> projection.fields.values.isUnique()
         QueryOutputDocument.Occurrences -> true
         QueryOutputDocument.TraversalRecords -> true
+        QueryOutputDocument.BindingRows -> true
     }
 }
 
@@ -290,7 +298,13 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
     when (this) {
         is QueryStepDocument.Related,
         is QueryStepDocument.Walk,
+        is QueryStepDocument.Bind,
         QueryStepDocument.Distinct -> true
+        is QueryStepDocument.Join ->
+            when (right) {
+                is QueryJoinRightDocument.Named -> true
+                is QueryFromDocument.Result -> right.rowIds?.values?.isUnique() ?: true
+            }
         is QueryStepDocument.Concat ->
             when (val source = input) {
                 is QueryFromDocument.References -> source.values.values.isNotEmpty()
@@ -304,6 +318,39 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
                 is QueryPredicateDocument.Visibility -> value.values.values.isUniqueNonEmpty()
                 is QueryPredicateDocument.Primitive -> value.value.value.length <= MAX_QUERY_PRIMITIVE_VALUE_LENGTH
             }
+    }
+
+private fun List<QueryStepDocument>.haveCanonicalBindings(): Boolean {
+    val available = mutableSetOf<QueryBindingNameDocument>()
+    return withIndex().all { (position, step) ->
+        step.hasCanonicalSyntax() &&
+            when (step) {
+                is QueryStepDocument.Bind -> available.add(step.name)
+                is QueryStepDocument.Join -> step.hasCanonicalJoinBinding(available, position == lastIndex)
+                else -> true
+            }
+    }
+}
+
+private fun QueryStepDocument.Join.hasCanonicalJoinBinding(
+    available: Set<QueryBindingNameDocument>,
+    isLast: Boolean,
+): Boolean {
+    val named = right as? QueryJoinRightDocument.Named
+    val inner = mode as? QueryJoinModeDocument.Inner
+    return (named == null || named.name in available) &&
+        (inner == null || (inner.leftName != inner.rightName && isLast))
+}
+
+private fun List<QueryStepDocument>.admitOutput(output: QueryOutputDocument): Boolean =
+    when (val last = lastOrNull()) {
+        is QueryStepDocument.Join ->
+            when (last.mode) {
+                is QueryJoinModeDocument.Inner -> output == QueryOutputDocument.BindingRows
+                QueryJoinModeDocument.Semi,
+                QueryJoinModeDocument.Anti -> output != QueryOutputDocument.BindingRows
+            }
+        else -> output != QueryOutputDocument.BindingRows
     }
 
 private fun <Value> List<Value>.isUniqueNonEmpty(): Boolean = isNotEmpty() && isUnique()

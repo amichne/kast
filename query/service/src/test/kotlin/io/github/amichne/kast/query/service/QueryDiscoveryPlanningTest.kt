@@ -103,8 +103,8 @@ class QueryDiscoveryPlanningTest {
 
         val repeated = service.run(fixture.request(plan(emptyList()), workLimit = 8L))
         val distinct = service.run(fixture.request(plan(listOf(QueryStepSyntax.Distinct)), workLimit = 8L))
-        assertEquals(2, (repeated as QueryExecutionResult.Complete).result.items.size)
-        assertEquals(1, (distinct as QueryExecutionResult.Complete).result.items.size)
+        assertEquals(2, (repeated as QueryExecutionResult.Complete).result.symbolRows().size)
+        assertEquals(1, (distinct as QueryExecutionResult.Complete).result.symbolRows().size)
         assertEquals(4, refinements)
     }
 

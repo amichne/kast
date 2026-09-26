@@ -223,7 +223,8 @@ references instead of falling back to a publication or another IDE.
 `symbol.discover`, `symbol.inspect`, `source.read`, and `diagnostic.check`.
 Query expansion supplies one-hop relation facts through occurrence output;
 query walk composes the traversal domain operation and projects depth-bearing
-records and coverage. The host supplies pure services, project-bound
+records and coverage. Query bind and join stages retain named symbol streams,
+both cells of each inner-join pair, and a typed binding-row presentation. The host supplies pure services, project-bound
 ports, current-model reference restoration, and explicit budgets to the reusable
 [`query:protocol`](../modules/query-protocol.md) boundary. Query evaluation keeps
 one request budget across its stages; specialist request limits intersect bounded
@@ -432,7 +433,8 @@ serialized output budget is checked after compact exact references and selected
 projection fields are encoded.
 When a result is retained, the store issues row IDs scoped to that result and the
 query projection returns them with its rows. A composed run can select issued
-rows without turning their IDs into exact-symbol references.
+symbol rows without turning their IDs into exact-symbol references; binding
+rows remain readable as typed retained results.
 
 Transport output cursors are replayable until expiry or eviction. Equal retained requests
 and outcomes have equal child identities; replay does not refresh expiry. The

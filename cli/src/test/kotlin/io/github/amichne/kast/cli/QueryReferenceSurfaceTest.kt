@@ -10,6 +10,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryBindingCellDocument
+import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
@@ -74,6 +76,24 @@ class QueryReferenceSurfaceTest {
         val output = document.getValue("items").jsonArray.single().jsonObject
         assertEquals(JsonPrimitive(rowId.value), output["row_id"])
         assertEquals(JsonPrimitive(exactToken), output["ref"])
+    }
+
+    @Test
+    fun `joined binding row retains both named exact cells in the installed output schema`() {
+        val row =
+            QueryResultItemDocument.BindingRow.create(
+                    QueryBindingCellDocument.Symbol(QueryBindingNameDocument.parse("left").refined(), exact()),
+                    QueryBindingCellDocument.Symbol(QueryBindingNameDocument.parse("right").refined(), exact()),
+                )
+                .refined()
+        val document = project(listOf(row))
+        schema.assertAdmits(CanonicalOperation.QUERY_RUN, document)
+        val item = document.getValue("items").jsonArray.single().jsonObject
+        assertEquals(JsonPrimitive("binding_row"), item["type"])
+        assertEquals(JsonPrimitive("left"), item.getValue("left").jsonObject["name"])
+        assertEquals(JsonPrimitive("right"), item.getValue("right").jsonObject["name"])
+        assertEquals(JsonPrimitive(exactToken), item.getValue("left").jsonObject.getValue("symbol").jsonObject["ref"])
+        assertEquals(JsonPrimitive(exactToken), item.getValue("right").jsonObject.getValue("symbol").jsonObject["ref"])
     }
 
     @Test

@@ -7,11 +7,18 @@ data class QueryExactLocationDocument(
     val range: SourceRangeDocument,
 )
 
+enum class QueryBindingRowDocumentFailure {
+    DUPLICATE_NAME,
+    DIFFERENT_SYMBOL_IDENTITIES,
+    UNPROVEN_OCCURRENCE,
+    NESTED_ROW_ID,
+}
+
 sealed interface QueryResultItemDocument {
-    val ref: QueryReferenceDocument
+    val rowId: QueryResultRowReference?
 
     data class ExactSymbol(
-        override val ref: QueryReferenceDocument.ExactSymbol,
+        val ref: QueryReferenceDocument.ExactSymbol,
         val kind: SymbolKindDocument,
         val name: ProtocolText?,
         val location: QueryExactLocationDocument?,
@@ -19,21 +26,56 @@ sealed interface QueryResultItemDocument {
         val connections: BoundedProtocolList<RelationFactDocument>,
         val symbolId: SymbolIdDocument,
         val source: QuerySourceWindowDocument? = null,
-        val rowId: QueryResultRowReference? = null,
+        override val rowId: QueryResultRowReference? = null,
     ) : QueryResultItemDocument
 
     data class Occurrence(
-        override val ref: QueryReferenceDocument.ExactSymbol,
+        val ref: QueryReferenceDocument.ExactSymbol,
         val relation: RelationFactDocument,
-        val rowId: QueryResultRowReference? = null,
+        override val rowId: QueryResultRowReference? = null,
     ) : QueryResultItemDocument
 
     data class TraversalRecord(
-        override val ref: QueryReferenceDocument.ExactSymbol,
+        val ref: QueryReferenceDocument.ExactSymbol,
         val record: TraversalRecordDocument,
-        val rowId: QueryResultRowReference? = null,
+        override val rowId: QueryResultRowReference? = null,
     ) : QueryResultItemDocument
+
+    /** One inner-join pair; neither cell nor repeated pair occurrences are collapsed. */
+    @ConsistentCopyVisibility
+    data class BindingRow
+    private constructor(
+        val left: QueryBindingCellDocument,
+        val right: QueryBindingCellDocument,
+        override val rowId: QueryResultRowReference? = null,
+    ) : QueryResultItemDocument {
+        fun withRowId(value: QueryResultRowReference): BindingRow = copy(rowId = value)
+
+        companion object {
+            fun create(
+                left: QueryBindingCellDocument,
+                right: QueryBindingCellDocument,
+                rowId: QueryResultRowReference? = null,
+            ): Refinement<BindingRow, QueryBindingRowDocumentFailure> =
+                when {
+                    left.name == right.name -> Refinement.Rejected(QueryBindingRowDocumentFailure.DUPLICATE_NAME)
+                    left.symbol.symbolId != right.symbol.symbolId ->
+                        Refinement.Rejected(QueryBindingRowDocumentFailure.DIFFERENT_SYMBOL_IDENTITIES)
+                    left.symbol.rowId != null || right.symbol.rowId != null ->
+                        Refinement.Rejected(QueryBindingRowDocumentFailure.NESTED_ROW_ID)
+                    !left.hasEstablishedOccurrence() || !right.hasEstablishedOccurrence() ->
+                        Refinement.Rejected(QueryBindingRowDocumentFailure.UNPROVEN_OCCURRENCE)
+                    else -> Refinement.Refined(BindingRow(left, right, rowId))
+                }
+        }
+    }
 }
+
+private fun QueryBindingCellDocument.hasEstablishedOccurrence(): Boolean =
+    when (this) {
+        is QueryBindingCellDocument.Symbol -> true
+        is QueryBindingCellDocument.Occurrence -> relation in symbol.connections.values
+    }
 
 /** A relation omission retains the exact subject and meaning that produced it. */
 data class QueryRelationOmissionDocument(
