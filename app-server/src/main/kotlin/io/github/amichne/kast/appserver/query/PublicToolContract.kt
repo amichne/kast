@@ -26,7 +26,6 @@ enum class PublicToolParameter(val path: String) {
     DIRECTORY("scope.relative_directory_path"),
     PACKAGE("scope.package_name"),
     DIAGNOSTIC_PATH("relative_path"),
-    JQ_EXPRESSION("steps.expression"),
 }
 
 @Serializable
@@ -34,9 +33,6 @@ enum class PublicToolRule(val correction: String) {
     SIMPLE_NAME("Supply an unqualified declaration name; put its package in scope.package_name."),
     WORKSPACE_RELATIVE_PATH("Use a canonical workspace-relative path, or '.' for the root."),
     PACKAGE_NAME("Supply a Kotlin package name such as com.example.orders."),
-    SUPPORTED_JQ_FILTER(
-        "Use select(.name == \"value\") or select(.file | endswith(\".kt\")); see the query pipeline contract."
-    ),
 }
 
 /** Closed lowering result. The operation retains execution, effect, and compiler authority. */

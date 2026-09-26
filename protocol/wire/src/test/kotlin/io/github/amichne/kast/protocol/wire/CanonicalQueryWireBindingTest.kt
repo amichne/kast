@@ -5,6 +5,9 @@ import io.github.amichne.kast.protocol.contract.*
 import java.util.UUID
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -69,6 +72,56 @@ class CanonicalQueryWireBindingTest {
                 WireValueRole.QUALIFICATION,
             ) is WireDecoding.Rejected
         )
+    }
+
+    @Test
+    fun `row selection limitation and finite composition rejections retain wire identity`() {
+        val qualification =
+            QueryRunQualification.create(
+                    QueryKnownMinimum.parse(0).refinedValue(),
+                    listOf(QueryLimitationDocument.ROW_SELECTION_INCOMPLETE),
+                    QueryQualifiedProgressDocument.TerminalIncomplete(QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE),
+                )
+                .refinedValue()
+        val encodedQualification =
+            CanonicalQuerySerializers.qualification.encode(qualification, WireValueRole.QUALIFICATION)
+                as WireValueEncoding.Encoded
+        assertEquals(
+            "row-selection-incomplete",
+            encodedQualification.value.jsonObject.getValue("limitations").jsonArray.single().jsonPrimitive.content,
+        )
+        assertEquals(
+            qualification,
+            (CanonicalQuerySerializers.qualification.decode(encodedQualification.value, WireValueRole.QUALIFICATION)
+                    as WireDecoding.Decoded)
+                .value,
+        )
+
+        for ((reason, name) in
+            mapOf(
+                QueryExecutionRejectionDocument.RESULT_ROW_UNAVAILABLE to "result-row-unavailable",
+                QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE to "result-field-unavailable",
+                QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE to "right-input-incomplete",
+            )) {
+            val rejection = QueryRunRejection.ExecutionRejected(reason)
+            val encoded =
+                CanonicalQuerySerializers.rejection.encode(rejection, WireValueRole.REJECTION)
+                    as WireValueEncoding.Encoded
+            assertEquals("execution-rejected", encoded.value.jsonObject.getValue("type").jsonPrimitive.content)
+            assertEquals(name, encoded.value.jsonObject.getValue("reason").jsonPrimitive.content)
+            assertEquals(
+                rejection,
+                (CanonicalQuerySerializers.rejection.decode(encoded.value, WireValueRole.REJECTION)
+                        as WireDecoding.Decoded)
+                    .value,
+            )
+            assertTrue(
+                CanonicalQuerySerializers.rejection.decode(
+                    Json.parseToJsonElement(encoded.value.toString().replace(name, "retired-rejection")),
+                    WireValueRole.REJECTION,
+                ) is WireDecoding.Rejected
+            )
+        }
     }
 
     @Test
@@ -179,16 +232,8 @@ class CanonicalQueryWireBindingTest {
     }
 
     @Test
-    fun `exact query source window retains bounded text and rejects malformed wire evidence`() {
-        val live =
-            LiveReadEvidence.create(
-                    "/workspace",
-                    UUID.fromString("b41c43b0-1f11-4ca9-9ec0-b6fc88cd31c4"),
-                    7,
-                    LiveReadContentView.SAVED_PSI_COMMITTED,
-                    1,
-                )
-                .refinedValue()
+    fun `exact query source window and row identity retain bounded wire evidence`() {
+        val live = queryLiveEvidence()
         val source =
             QuerySourceWindowDocument(
                 ProtocolSourceText.parse("fun payment() = 1\n").refinedValue(),
@@ -204,6 +249,7 @@ class CanonicalQueryWireBindingTest {
                 bounded(emptyList()),
                 SymbolIdDocument.parse("sym:" + "A".repeat(43)).refinedValue(),
                 source,
+                QueryResultRowReference.parse("result-row:v1:00000000-0000-0000-0000-000000000002").refinedValue(),
             )
         val outcome =
             OperationOutcome.Complete(
@@ -215,13 +261,30 @@ class CanonicalQueryWireBindingTest {
             )
         val encoded = CanonicalOperationWireBindings.queryRun.encodeOutcome(outcome) as WireEncoding.Encoded
         assertTrue(encoded.document.contains("\"source\":{\"text\":\"fun payment() = 1\\n\""))
+        assertTrue(encoded.document.contains("\"row_id\":\"result-row:v1:00000000-0000-0000-0000-000000000002\""))
         assertEquals(
             outcome,
             (CanonicalOperationWireBindings.queryRun.decodeOutcome(encoded.document) as WireDecoding.Decoded).value,
         )
         val malformed = encoded.document.replace("\"startInclusive\":1", "\"startInclusive\":0")
         assertTrue(CanonicalOperationWireBindings.queryRun.decodeOutcome(malformed) is WireDecoding.Rejected)
+        val wrongFamily =
+            encoded.document.replace(
+                "result-row:v1:00000000-0000-0000-0000-000000000002",
+                "result:v1:00000000-0000-0000-0000-000000000002",
+            )
+        assertTrue(CanonicalOperationWireBindings.queryRun.decodeOutcome(wrongFamily) is WireDecoding.Rejected)
     }
+
+    private fun queryLiveEvidence() =
+        LiveReadEvidence.create(
+                "/workspace",
+                UUID.fromString("b41c43b0-1f11-4ca9-9ec0-b6fc88cd31c4"),
+                7,
+                LiveReadContentView.SAVED_PSI_COMMITTED,
+                1,
+            )
+            .refinedValue()
 
     private fun qualification(progress: QueryQualifiedProgressDocument) =
         QueryRunQualification.create(

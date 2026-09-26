@@ -25,6 +25,7 @@ code_sources:
   - path: packaging/hosted_resume_budget_regression.py
   - path: packaging/test-hosted-resume-budget-regression.py
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
@@ -430,6 +431,9 @@ presentation cursor and no semantic provider call. Host admission precedes each
 lookup. No retained entry holds PSI, K2 symbols or an IDE observer callback. The
 serialized output budget is checked after compact exact references and selected
 projection fields are encoded.
+When a result is retained, the store issues row IDs scoped to that result and the
+query projection returns them with its rows. A composed run can select issued
+rows without turning their IDs into exact-symbol references.
 
 Relation output uses the same detached output-page retention implementation as
 query output. If the full encoded relation response exceeds its byte cap, the

@@ -8,8 +8,11 @@ timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QuerySyntaxAdmission.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryStepModels.kt
   - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryRetainedCompositionTest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
@@ -28,6 +31,7 @@ code_sources:
     symbols: [QueryExecutionState]
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
     symbols: [QueryService]
+  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryIdentityRows.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
     symbols: [visibilityRequest]
   - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryServiceTest.kt
@@ -65,13 +69,13 @@ read-result   -> immutable retained rows -> presentation page
 
 The pure plan compiler admits only exact-symbol stages and selects discovery, exact references, or a retained result as its source. Discovery still refines internal candidates before a row enters the exact pipeline. Execution tracks `SemanticReadAuthority`, time, work units, encoded bytes, result capacity, limitations, and item failures. A live authority is supplied by its admitted host; decoding a reference never creates one. Query candidate output and its inspect stage have been removed; separate symbol lookup and inspection still own those capabilities.
 
-An append-reference stage admits exact outputs from earlier queries under the current authority, then schedules them after the upstream stream. Later predicates, relation hops, and distinct stages see both inputs. Appended items share the parent work and checkpoint budget; distinct is the explicit set-union choice. The public bounded jq spelling is refined to a typed predicate over compiler-grounded name, kind, or file text before the service evaluates it without a source read. A resume action supplies only an issued execution continuation and optional new grant. `QueryStateStore` restores the admitted plan and pending work, so completed prefix stages and old tokens are not reacquired.
+The `where` stage admits a closed visibility or primitive predicate. Primitive predicates compare compiler-grounded name, kind, or file text without a source read. `concat` admits exact references or retained rows at any stage and schedules them after the upstream stream, preserving order and multiplicity. Later predicates and relation hops see both inputs. `intersect`, `union`, and `difference` use canonical semantic identity; matching rows merge evidence, while `difference` requires complete right coverage without failures or producer progress to establish absence. `distinct_symbols` removes repeated identities only where requested. Composed inputs share the parent work and checkpoint budget. A resume action supplies only an issued execution continuation and optional new grant. `QueryStateStore` restores the admitted plan and pending work, so completed prefix stages and old tokens are not reacquired.
 
-`QueryRetainedResult` captures immutable exact rows, item failures, coverage, producer progress, and their semantic basis. `QueryStateStore` holds result references and execution checkpoints as distinct typed entries under one entry, byte, and lifetime bound. A run sourced from a retained result seeds the service from those proven rows, including an empty set, without rediscovery or re-description. Qualified positives remain usable with their original limitations and omissions. Restoration rejects unavailable or stale-basis results. A requested retention can fail for capacity without erasing the current query output. The read-result action presents a bounded page from retained rows using a result cursor; it does not invoke semantic providers.
+`QueryRetainedResult` captures immutable exact rows, item failures, coverage, producer progress, and their semantic basis. `QueryStateStore` holds result references and execution checkpoints as distinct typed entries under one entry, byte, and lifetime bound. It issues row handles tied to each retained result, and the result projection returns those handles with retained rows. A run sourced from a retained result seeds the service from proven rows, including an empty set, without rediscovery or re-description. Optional row IDs select original rows in order; a proper subset retains incomplete-selection qualification and cannot establish absence for excluded rows. Qualified positives remain usable with their original limitations and omissions. Restoration rejects unavailable, foreign-row, or stale-basis results. A requested retention can fail for capacity without erasing the current query output. The read-result action presents a bounded page from retained rows using a distinct result cursor; it does not invoke semantic providers.
 
 An exact-symbol output may request `SOURCE`. At its emit stage, the service calls the existing source port with the same exact selector and read authority, a file region, no entity enumeration, and a fixed five-line window on each side. Returned text keeps its normalized committed-text proof and one-based line range. Source rejection or withheld text qualifies the query with a finite item cause; output and checkpoint bytes account for returned text. This adds one source read per emitted symbol and does not alter discovery refinement.
 
-Discovery candidates are refined to exact symbols before query output. Failed refinements remain visible as limitations. Relation continuations and child budgets are derived from remaining parent capacity.
+Discovery candidates are refined to exact symbols before query output. Query-local refinement preserves repeated rows in their source order; an explicit `distinct_symbols` stage groups equal canonical identities when requested. Failed refinements remain visible as limitations. Relation continuations and child budgets are derived from remaining parent capacity.
 
 Broad native discovery now filters index names by the admitted scope's coarse
 project-content or project-plus-library ID policy before the name cap, then
@@ -134,12 +138,14 @@ then retains any remaining transport output separately from query execution
 checkpoints and requested immutable results. Resume restores the original plan
 and semantic snapshot without retransmission. Expiry, eviction and mismatch
 reject rather than restarting the query. The pure service retains an ordered
-task stack, relation cursors, stage-local distinct identities, pending output
+task stack, relation cursors, stage-local distinct and set identities, pending output
 and finite upstream failures. Intermediate expansion does not consume final
 projection byte capacity.
 
-Distinct stages preserve the first canonical declaration occurrence and that
-occurrence's connections. Later duplicates cannot mutate an emitted page.
+Distinct stages group rows by canonical declaration identity and merge their
+relation connections before emitting one row per identity. A later duplicate
+cannot mutate an already emitted page because the stage completes its group
+before projection.
 Incomplete upstream coverage remains qualified after the final buffered page.
 An indivisible oversized output item, unavailable checkpoint capacity, or
 unproven progress produces a finite terminal reason without a continuation.

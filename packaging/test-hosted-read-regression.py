@@ -149,13 +149,9 @@ def enum_response(names):
 
 class HostedReadRegressionTest(unittest.TestCase):
     def test_native_search_and_entity_free_source_requests_use_current_fields(self):
-        searches = (
-            name_query('Mode', ('class',)),
-            source_budget_anchor_query(),
-            name_query('Mode', ('class',)),
-        )
-        for request in searches:
-            payload = asdict(request)
+        for request in (name_query('Mode', ('class',)), source_budget_anchor_query()):
+            payload = asdict(request)['request']
+            self.assertEqual('run', payload['action'])
             self.assertIn('source', payload)
             self.assertNotIn('class_name', payload)
         source = asdict(BudgetSource(SymbolAnchor('exact:source'), WorkBudget()))
@@ -272,12 +268,12 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertEqual(6, len(replay.rows))
         self.assertTrue(all(row['passed'] for row in replay.rows))
         requests = [call.args[2] for call in replay.transport.invoke.call_args_list]
-        self.assertTrue(all(request['execution_budget']['max_work_units'] == 32 for request in requests))
+        self.assertTrue(all(request['request']['execution_budget']['max_work_units'] == 32 for request in requests))
         self.assertEqual(['private-reference-0', 'private-reference-1'],
-                         list(requests[-2]['source']['symbol_refs']))
-        self.assertEqual(('name', 'signature'), requests[-1]['return_fields'])
-        self.assertEqual([{'type': 'distinct_symbols'}], list(requests[-1]['steps']))
-        self.assertEqual(4, len(requests[-1]['source']['symbol_refs']))
+                         list(requests[-2]['request']['source']['symbol_refs']))
+        self.assertEqual(('name', 'signature'), requests[-1]['request']['return_fields'])
+        self.assertEqual([{'type': 'distinct_symbols'}], list(requests[-1]['request']['steps']))
+        self.assertEqual(4, len(requests[-1]['request']['source']['symbol_refs']))
         self.assertNotIn('private-', json.dumps(replay.rows))
 
     def test_enum_oracle_rejects_entries_in_any_class_search(self):

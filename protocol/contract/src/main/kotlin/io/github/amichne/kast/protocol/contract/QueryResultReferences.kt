@@ -41,6 +41,36 @@ object QueryResultReferenceSerializer : KSerializer<QueryResultReference> {
         }
 }
 
+enum class QueryResultRowReferenceFailure {
+    MALFORMED
+}
+
+/** Issued identity of one row in one retained result; its owning result is checked on restoration. */
+@Serializable(with = QueryResultRowReferenceSerializer::class)
+@JvmInline
+value class QueryResultRowReference private constructor(val value: String) {
+    companion object {
+        private val syntax = Regex("result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+        fun parse(raw: String): Refinement<QueryResultRowReference, QueryResultRowReferenceFailure> =
+            if (syntax.matches(raw)) Refinement.Refined(QueryResultRowReference(raw))
+            else Refinement.Rejected(QueryResultRowReferenceFailure.MALFORMED)
+    }
+}
+
+object QueryResultRowReferenceSerializer : KSerializer<QueryResultRowReference> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("QueryResultRowReference", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: QueryResultRowReference) = encoder.encodeString(value.value)
+
+    override fun deserialize(decoder: Decoder): QueryResultRowReference =
+        when (val parsed = QueryResultRowReference.parse(decoder.decodeString())) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> throw SerializationException("Malformed retained query row reference")
+        }
+}
+
 enum class QueryResultCursorFailure {
     OUT_OF_RANGE
 }

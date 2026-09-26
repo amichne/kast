@@ -168,6 +168,9 @@ private sealed interface QueryResultItemCliDocument {
         val connections: List<RelationFactCliDocument>,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         val source: QuerySourceWindowCliDocument? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        val rowId: String? = null,
     ) : QueryResultItemCliDocument
 }
 
@@ -246,6 +249,7 @@ private fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument 
                         it.lines.endInclusive.value,
                     )
                 },
+                rowId?.value,
             )
     }
 
@@ -279,7 +283,7 @@ private fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
             )
         is QueryRunRejection.StepReferenceRejected ->
             QueryRejectionCliDocument.ReferenceRejected(
-                "steps[${stepPosition.value}].values[${referencePosition.value}]",
+                "steps[${stepPosition.value}].input.values[${referencePosition.value}]",
                 reason.cliName(),
             )
         is QueryRunRejection.SourceRejected ->

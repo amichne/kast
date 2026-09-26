@@ -11,12 +11,25 @@ import io.github.amichne.kast.query.contract.QueryPlanCompiler
 import io.github.amichne.kast.query.contract.QueryPlanSyntax
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
+import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbolFields
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
+import io.github.amichne.kast.symbol.contract.candidateOrder
+import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -56,6 +69,72 @@ class QueryDiscoveryPlanningTest {
         assertEquals(1, requests.size)
         assertEquals(SymbolDiscoveryTarget.All(SymbolNameDiscoveryKind.SYMBOL), requests.single().target)
         assertEquals(kinds, requests.single().constraints.declarationKinds!!.values.toSet())
+    }
+
+    @Test
+    fun `distinct candidate selections resolving one canonical symbol require explicit distinct`() = runTest {
+        val fixture = QueryServiceTest()
+        val selected = fixture.selector(fixture.selection())
+        var refinements = 0
+        val service =
+            fixture.service(
+                discovery = twoCandidates(),
+                exact =
+                    fixture.exactOperations { _ ->
+                        refinements++
+                        SymbolResolutionResult.Resolved(io.github.amichne.kast.symbol.contract.ResolvedSymbol(selected))
+                    },
+            )
+        val syntax =
+            QueryDiscoverySyntax(
+                QueryMatch.All,
+                QueryScope.Unrestricted,
+                QueryDeclarationKinds.from(setOf(CompilerSymbolKind.CLASSLIKE)).refined(),
+            )
+        fun plan(steps: List<QueryStepSyntax>) =
+            (QueryPlanCompiler.admit(
+                    QueryPlanSyntax(
+                        QuerySourceSyntax.Symbols(syntax),
+                        steps,
+                        QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
+                    )
+                ) as QueryPlanAdmission.Admitted)
+                .plan
+
+        val repeated = service.run(fixture.request(plan(emptyList()), workLimit = 8L))
+        val distinct = service.run(fixture.request(plan(listOf(QueryStepSyntax.Distinct)), workLimit = 8L))
+        assertEquals(2, (repeated as QueryExecutionResult.Complete).result.items.size)
+        assertEquals(1, (distinct as QueryExecutionResult.Complete).result.items.size)
+        assertEquals(4, refinements)
+    }
+
+    private fun twoCandidates(): SymbolDiscoveryOperations = SymbolDiscoveryOperations { child ->
+        val candidates =
+            listOf(7, 8).map { offset ->
+                SymbolDiscoveryCandidate.fromBoundary(
+                        SymbolDiscoveryKind.CLASS,
+                        "PaymentService",
+                        child.scope.lease,
+                        Path.of("/workspace/services/payments/PaymentService.kt"),
+                        "file:///workspace/services/payments/PaymentService.kt",
+                        offset,
+                    )
+                    .refined()
+            }
+        val ordered = candidates.sortedWith(child.candidateOrder())
+        val batch =
+            SymbolDiscoveryBatch.create(
+                    child,
+                    ordered,
+                    SymbolDiscoveryByteCount.parse(ordered.sumOf { it.projectedUtf8Size().value }).refined(),
+                    SymbolDiscoveryWorkCount.parse(2L).refined(),
+                    SymbolDiscoveryTimings(
+                        SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                        SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                    ),
+                )
+                .refined()
+        SymbolDiscoveryResult.Discovered(SymbolDiscoveryOutcome.Complete(batch))
     }
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =

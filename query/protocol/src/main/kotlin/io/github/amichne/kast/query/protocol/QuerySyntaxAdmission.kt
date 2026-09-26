@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
@@ -16,12 +17,14 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
+import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExactReferences
 import io.github.amichne.kast.query.contract.QueryMatch
 import io.github.amichne.kast.query.contract.QueryPlanAdmissionFailure
 import io.github.amichne.kast.query.contract.QueryPlanSyntax
+import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
@@ -60,47 +63,95 @@ internal sealed interface QuerySyntaxAdmission {
 internal fun QueryRunRequest.Run.admitSyntax(
     lease: SemanticReadAuthority,
     authority: QueryReferenceAuthority,
-    retained: io.github.amichne.kast.query.contract.QueryRetainedResult? = null,
+    retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
 ): QuerySyntaxAdmission {
     val source =
-        when (val value = from) {
-            is QueryFromDocument.Symbols ->
-                value.discovery.syntax()?.let(QuerySourceSyntax::Symbols) ?: return QuerySyntaxAdmission.RequestRejected
-            is QueryFromDocument.References ->
-                when (val references = value.values.values.admitExactReferences(lease, authority)) {
-                    is QueryReferenceSourceAdmission.Admitted -> references.source
-                    is QueryReferenceSourceAdmission.Rejected ->
-                        return QuerySyntaxAdmission.ReferenceRejected(
-                            references.position,
-                            references.reason,
-                        )
-                    QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
-                }
-            is QueryFromDocument.Result ->
-                retained?.let(QuerySourceSyntax::Retained) ?: return QuerySyntaxAdmission.RequestRejected
+        when (val admitted = from.admitSource(lease, authority, retained)) {
+            is QueryReferenceSourceAdmission.Admitted -> admitted.source
+            is QueryReferenceSourceAdmission.Rejected ->
+                return QuerySyntaxAdmission.ReferenceRejected(admitted.position, admitted.reason)
+            QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
         }
     val querySteps = mutableListOf<QueryStepSyntax>()
     steps.values.forEachIndexed { index, step ->
-        if (step is QueryStepDocument.AppendReferences) {
-            val references = step.values.values.map(QueryReferenceDocument::ExactSymbol)
-            when (val admitted = references.admitExactReferences(lease, authority)) {
-                is QueryReferenceSourceAdmission.Admitted -> {
-                    val source =
-                        admitted.source as? QuerySourceSyntax.ExactReferences
-                            ?: return QuerySyntaxAdmission.RequestRejected
-                    querySteps += QueryStepSyntax.AppendReferences(source.references)
-                }
-                is QueryReferenceSourceAdmission.Rejected ->
-                    return QuerySyntaxAdmission.StepReferenceRejected(index, admitted.position, admitted.reason)
-                QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
-            }
-        } else {
-            querySteps += step.syntax() ?: return QuerySyntaxAdmission.RequestRejected
+        when (val admitted = step.admitStep(lease, authority, retained)) {
+            is QueryStepAdmission.Admitted -> querySteps += admitted.step
+            is QueryStepAdmission.ReferenceRejected ->
+                return QuerySyntaxAdmission.StepReferenceRejected(index, admitted.position, admitted.reason)
+            QueryStepAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
         }
     }
     val queryOutput = output.syntax() ?: return QuerySyntaxAdmission.RequestRejected
     return QuerySyntaxAdmission.Admitted(QueryPlanSyntax(source, querySteps, queryOutput))
 }
+
+private fun QueryFromDocument.admitSource(
+    lease: SemanticReadAuthority,
+    authority: QueryReferenceAuthority,
+    retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
+): QueryReferenceSourceAdmission =
+    when (this) {
+        is QueryFromDocument.Symbols ->
+            discovery.syntax()?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Symbols(it)) }
+                ?: QueryReferenceSourceAdmission.RequestRejected
+        is QueryFromDocument.References -> values.values.admitExactReferences(lease, authority)
+        is QueryFromDocument.Result ->
+            retained[this]?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Retained(it)) }
+                ?: QueryReferenceSourceAdmission.RequestRejected
+    }
+
+private sealed interface QueryStepAdmission {
+    data class Admitted(val step: QueryStepSyntax) : QueryStepAdmission
+
+    data class ReferenceRejected(val position: Int, val reason: QueryReferenceRejectionReason) : QueryStepAdmission
+
+    data object RequestRejected : QueryStepAdmission
+}
+
+private fun QueryStepDocument.admitStep(
+    lease: SemanticReadAuthority,
+    authority: QueryReferenceAuthority,
+    retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
+): QueryStepAdmission =
+    when (this) {
+        is QueryStepDocument.Concat -> admitConcat(lease, authority, retained)
+        is QueryStepDocument.Intersect ->
+            retained[right]?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Intersect(it)) }
+                ?: QueryStepAdmission.RequestRejected
+        is QueryStepDocument.Union ->
+            retained[right]?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Union(it)) }
+                ?: QueryStepAdmission.RequestRejected
+        is QueryStepDocument.Difference ->
+            retained[right]?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Difference(it)) }
+                ?: QueryStepAdmission.RequestRejected
+        else -> syntax()?.let(QueryStepAdmission::Admitted) ?: QueryStepAdmission.RequestRejected
+    }
+
+private fun QueryStepDocument.Concat.admitConcat(
+    lease: SemanticReadAuthority,
+    authority: QueryReferenceAuthority,
+    retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
+): QueryStepAdmission =
+    when (val value = input) {
+        is QueryFromDocument.References ->
+            when (val admitted = value.values.values.admitExactReferences(lease, authority)) {
+                is QueryReferenceSourceAdmission.Admitted -> {
+                    val source =
+                        admitted.source as? QuerySourceSyntax.ExactReferences
+                            ?: return QueryStepAdmission.RequestRejected
+                    QueryStepAdmission.Admitted(
+                        QueryStepSyntax.Concat(QueryCompositionInput.ExactReferences(source.references))
+                    )
+                }
+                is QueryReferenceSourceAdmission.Rejected ->
+                    QueryStepAdmission.ReferenceRejected(admitted.position, admitted.reason)
+                QueryReferenceSourceAdmission.RequestRejected -> QueryStepAdmission.RequestRejected
+            }
+        is QueryFromDocument.Result ->
+            retained[value]?.let {
+                QueryStepAdmission.Admitted(QueryStepSyntax.Concat(QueryCompositionInput.Retained(it)))
+            } ?: QueryStepAdmission.RequestRejected
+    }
 
 private sealed interface QueryReferenceSourceAdmission {
     data class Admitted(val source: QuerySourceSyntax) : QueryReferenceSourceAdmission
@@ -187,6 +238,8 @@ private fun QueryDeclarationKindDocument.compilerKind(): CompilerSymbolKind =
 
 internal fun QueryPlanAdmissionFailure.protocolRejection(): QueryRunRejection =
     when (this) {
+        QueryPlanAdmissionFailure.IncompleteRightInput ->
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE)
         is QueryPlanAdmissionFailure.UnsupportedDeclarationKind ->
             QueryRunRejection.SourceRejected(
                 when (kind) {

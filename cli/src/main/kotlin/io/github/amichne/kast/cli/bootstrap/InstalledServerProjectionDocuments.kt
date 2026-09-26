@@ -440,7 +440,9 @@ private fun queryQualificationSchema(): JsonObject =
                         "discovery-incomplete",
                         "refinement-incomplete",
                         "visibility-incomplete",
+                        "source-incomplete",
                         "relation-incomplete",
+                        "row-selection-incomplete",
                     ),
                     "Every aggregate query limitation.",
                 )
@@ -482,6 +484,14 @@ private fun queryResultItemSchema(): JsonObject =
         ),
         ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
         ServerSchemaProperty("source", querySourceWindowSchema(), required = false),
+        ServerSchemaProperty(
+            "row_id",
+            patternTextSchema(
+                "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "Opaque row identity scoped to one retained result.",
+            ),
+            required = false,
+        ),
     )
 
 /** Syntax identifies the reference family; only the existing semantic owner can admit its authority. */
@@ -614,8 +624,10 @@ private fun queryRejectionSchema(): JsonObject =
                         "continuation-mismatch",
                         "result-unavailable",
                         "result-stale-basis",
+                        "result-row-unavailable",
                         "result-cursor-out-of-range",
                         "result-field-unavailable",
+                        "right-input-incomplete",
                         "request-rejected",
                         "discovery-rejected",
                         "reference-stale",

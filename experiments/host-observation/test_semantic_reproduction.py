@@ -25,14 +25,16 @@ class SemanticReproductionTest(unittest.TestCase):
             dict(type="DISTINCT")), select=())
         tool, command, request = r.invocation(case, r.ToolSurface.PUBLIC)
         self.assertEqual("query_symbols", tool)
-        self.assertEqual(["filter_visibility", "expand_relation", "distinct_symbols"],
-                         [step["type"] for step in request["steps"]])
-        self.assertEqual([], request["return_fields"])
+        self.assertEqual("run", request["request"]["action"])
+        self.assertEqual(["where", "expand_relation", "distinct_symbols"],
+                         [step["type"] for step in request["request"]["steps"]])
+        self.assertEqual({"type": "visibility", "values": ["private"]},
+                         request["request"]["steps"][0]["predicate"])
+        self.assertEqual([], request["request"]["return_fields"])
 
-    def test_legacy_replay_preserves_original_request_and_ambiguous_catalog_rejects(self):
-        case = r.Case("legacy", r.search("helper"))
-        tool, command, request = r.invocation(case, r.ToolSurface.LEGACY)
-        self.assertEqual(("query", ["query", "run"], case.request()), (tool, command, request))
+    def test_retired_query_route_is_not_admitted(self):
+        with self.assertRaises(ValueError):
+            r.ToolSurface.admit([dict(name="query")])
         with self.assertRaises(ValueError):
             r.ToolSurface.admit([dict(name="query"), dict(name="query_symbols")])
 

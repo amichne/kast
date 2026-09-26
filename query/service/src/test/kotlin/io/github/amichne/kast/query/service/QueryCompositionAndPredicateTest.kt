@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryExactReferences
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
@@ -17,9 +18,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
-class QueryAppendAndPrimitiveFilterTest {
+class QueryCompositionAndPredicateTest {
     @Test
-    fun `kind and file jq predicates filter compiler-grounded primitives without source reads`() = runTest {
+    fun `structured kind and file predicates filter compiler-grounded facts without source reads`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             val service =
@@ -69,7 +70,7 @@ class QueryAppendAndPrimitiveFilterTest {
     }
 
     @Test
-    fun `appended exact outputs flow through later primitive filtering and distinct`() = runTest {
+    fun `concatenated exact outputs flow through later structured filtering and distinct`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             var descriptions = 0
@@ -85,7 +86,9 @@ class QueryAppendAndPrimitiveFilterTest {
                 exactReferencePlan(
                     listOf(selected),
                     listOf(
-                        QueryStepSyntax.AppendReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                        QueryStepSyntax.Concat(
+                            QueryCompositionInput.ExactReferences(QueryExactReferences.from(listOf(selected)).refined())
+                        ),
                         QueryStepSyntax.Where(
                             QueryPredicate.Primitive(
                                 QueryPrimitiveField.NAME,
@@ -103,7 +106,7 @@ class QueryAppendAndPrimitiveFilterTest {
     }
 
     @Test
-    fun `append sentinel survives a result page and does not rerun the first reference`() = runTest {
+    fun `concat survives a result page and does not rerun the first reference`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             var descriptions = 0
@@ -118,7 +121,11 @@ class QueryAppendAndPrimitiveFilterTest {
             val plan =
                 exactReferencePlan(
                     listOf(selected),
-                    listOf(QueryStepSyntax.AppendReferences(QueryExactReferences.from(listOf(selected)).refined())),
+                    listOf(
+                        QueryStepSyntax.Concat(
+                            QueryCompositionInput.ExactReferences(QueryExactReferences.from(listOf(selected)).refined())
+                        )
+                    ),
                 )
             val service = service(exact = exact)
             val firstRequest = request(plan, workLimit = 8L, resultLimit = 1)

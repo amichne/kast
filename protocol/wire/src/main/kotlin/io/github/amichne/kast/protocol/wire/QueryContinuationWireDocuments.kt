@@ -25,8 +25,10 @@ internal data class QueryRunResultWireDocument(
 internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("result-unavailable") RESULT_UNAVAILABLE,
     @SerialName("result-stale-basis") RESULT_STALE_BASIS,
+    @SerialName("result-row-unavailable") RESULT_ROW_UNAVAILABLE,
     @SerialName("result-cursor-out-of-range") RESULT_CURSOR_OUT_OF_RANGE,
     @SerialName("result-field-unavailable") RESULT_FIELD_UNAVAILABLE,
+    @SerialName("right-input-incomplete") RIGHT_INPUT_INCOMPLETE,
     @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
     @SerialName("continuation-mismatch") CONTINUATION_MISMATCH,
     @SerialName("request-rejected") REQUEST_REJECTED,
@@ -54,4 +56,5 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("visibility-incomplete") VISIBILITY_INCOMPLETE,
     @SerialName("source-incomplete") SOURCE_INCOMPLETE,
     @SerialName("relation-incomplete") RELATION_INCOMPLETE,
+    @SerialName("row-selection-incomplete") ROW_SELECTION_INCOMPLETE,
 }

@@ -47,6 +47,9 @@ internal sealed interface QueryResultItemWireDocument {
         val symbolId: String,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         val source: QuerySourceWindowWireDocument? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        val rowId: String? = null,
     ) : QueryResultItemWireDocument
 }
 
@@ -218,6 +221,7 @@ private fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
                         SourceLineRangeWireDocument(it.lines.startInclusive.value, it.lines.endInclusive.value),
                     )
                 },
+                rowId?.value,
             )
     }
 
@@ -231,20 +235,23 @@ private fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<Que
                             connections.convertEach(RelationFactWireDocument::toContract).flatMapConverted { facts ->
                                 facts.bounded().flatMapConverted { boundedFacts ->
                                     source.toContract().flatMapConverted { projectedSource ->
-                                        io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(symbolId)
-                                            .toWireDocumentConversion()
-                                            .mapConverted { identity ->
-                                                QueryResultItemDocument.ExactSymbol(
-                                                    QueryReferenceDocument.ExactSymbol(token),
-                                                    kind.toContract(),
-                                                    projectedName,
-                                                    projectedLocation,
-                                                    projectedSignature,
-                                                    boundedFacts,
-                                                    identity,
-                                                    projectedSource,
-                                                )
-                                            }
+                                        optionalRowId(rowId).flatMapConverted { projectedRowId ->
+                                            io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(symbolId)
+                                                .toWireDocumentConversion()
+                                                .mapConverted { identity ->
+                                                    QueryResultItemDocument.ExactSymbol(
+                                                        QueryReferenceDocument.ExactSymbol(token),
+                                                        kind.toContract(),
+                                                        projectedName,
+                                                        projectedLocation,
+                                                        projectedSignature,
+                                                        boundedFacts,
+                                                        identity,
+                                                        projectedSource,
+                                                        projectedRowId,
+                                                    )
+                                                }
+                                        }
                                     }
                                 }
                             }
@@ -265,6 +272,10 @@ private fun QueryExactLocationWireDocument?.toContract(): WireDocumentConversion
 
 private fun optionalText(value: String?): WireDocumentConversion<ProtocolText?> =
     value?.protocolText()?.mapConverted { it } ?: WireDocumentConversion.Converted(null)
+
+private fun optionalRowId(value: String?): WireDocumentConversion<QueryResultRowReference?> =
+    value?.let { QueryResultRowReference.parse(it).toWireDocumentConversion() }
+        ?: WireDocumentConversion.Converted(null)
 
 private fun optionalSignature(
     value: CompilerSignatureWireDocument?

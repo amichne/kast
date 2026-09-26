@@ -12,6 +12,7 @@ enum class QueryLimitationDocument {
     VISIBILITY_INCOMPLETE,
     SOURCE_INCOMPLETE,
     RELATION_INCOMPLETE,
+    ROW_SELECTION_INCOMPLETE,
 }
 
 enum class QueryKnownMinimumFailure {

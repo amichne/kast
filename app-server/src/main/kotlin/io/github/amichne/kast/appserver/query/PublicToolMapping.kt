@@ -99,18 +99,31 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
                         )
                     )
             }
-        is PublicToolReferenceSource ->
-            Refinement.Refined(
-                QueryFromDocument.References(
-                    bounded(
-                        symbol_refs.values.map {
-                            // The exact-reference owner admits authenticity, generation and workspace at execution.
-                            QueryReferenceDocument.ExactSymbol(it)
-                        }
-                    )
-                )
-            )
-        is PublicToolResultSource -> Refinement.Refined(QueryFromDocument.Result(result))
+        is PublicToolReferenceSource -> Refinement.Refined(lowerReferences())
+        is PublicToolResultSource -> Refinement.Refined(lowerResult())
+    }
+
+private fun PublicToolCompositionInput.lowerCompositionInput(): QueryCompositionInputDocument =
+    when (this) {
+        is PublicToolReferenceSource -> lowerReferences()
+        is PublicToolResultSource -> lowerResult()
+    }
+
+private fun PublicToolReferenceSource.lowerReferences(): QueryFromDocument.References =
+    QueryFromDocument.References(
+        bounded(
+            symbol_refs.values.map {
+                // The exact-reference owner admits authenticity, generation and workspace at execution.
+                QueryReferenceDocument.ExactSymbol(it)
+            }
+        )
+    )
+
+private fun PublicToolResultSource.lowerResult(): QueryFromDocument.Result = QueryFromDocument.Result(result, row_ids)
+
+private fun PublicToolRetainedInput.lowerResult(): QueryFromDocument.Result =
+    when (this) {
+        is PublicToolResultSource -> lowerResult()
     }
 
 /** The spelling remains unchanged; no qualification stripping, wildcard expansion or fuzzy retry. */
@@ -210,20 +223,13 @@ private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, Pu
 
 private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInputFailure> =
     when (this) {
-        is PublicToolFilterVisibility ->
-            Refinement.Refined(
-                QueryStepDocument.Where(
-                    QueryPredicateDocument.Visibility(bounded(visibilities.values.map { it.lower() }))
-                )
-            )
+        is PublicToolWhere -> Refinement.Refined(QueryStepDocument.Where(predicate))
         is PublicToolExpandRelation -> Refinement.Refined(QueryStepDocument.Related(relation.lower()))
         PublicToolDistinctSymbols -> Refinement.Refined(QueryStepDocument.Distinct)
-        is PublicToolAppendSymbolRefs -> Refinement.Refined(QueryStepDocument.AppendReferences(symbol_refs))
-        is PublicToolFilterJq ->
-            when (val predicate = PrimitiveJqFilter.admit(expression)) {
-                is Refinement.Refined -> Refinement.Refined(QueryStepDocument.Where(predicate.value))
-                is Refinement.Rejected -> predicate
-            }
+        is PublicToolConcat -> Refinement.Refined(QueryStepDocument.Concat(input.lowerCompositionInput()))
+        is PublicToolIntersect -> Refinement.Refined(QueryStepDocument.Intersect(right.lowerResult()))
+        is PublicToolUnion -> Refinement.Refined(QueryStepDocument.Union(right.lowerResult()))
+        is PublicToolDifference -> Refinement.Refined(QueryStepDocument.Difference(right.lowerResult()))
     }
 
 private fun PublicToolDeclarationKinds.lower(): QueryDeclarationKindDocument =
@@ -232,15 +238,6 @@ private fun PublicToolDeclarationKinds.lower(): QueryDeclarationKindDocument =
         PublicToolDeclarationKinds.FUNCTION -> QueryDeclarationKindDocument.FUNCTION
         PublicToolDeclarationKinds.PROPERTY -> QueryDeclarationKindDocument.PROPERTY
         PublicToolDeclarationKinds.TYPE_ALIAS -> QueryDeclarationKindDocument.TYPE_ALIAS
-    }
-
-private fun PublicToolVisibilities.lower(): QueryVisibilityDocument =
-    when (this) {
-        PublicToolVisibilities.PUBLIC -> QueryVisibilityDocument.PUBLIC
-        PublicToolVisibilities.PROTECTED -> QueryVisibilityDocument.PROTECTED
-        PublicToolVisibilities.INTERNAL -> QueryVisibilityDocument.INTERNAL
-        PublicToolVisibilities.PRIVATE -> QueryVisibilityDocument.PRIVATE
-        PublicToolVisibilities.LOCAL -> QueryVisibilityDocument.LOCAL
     }
 
 private fun PublicToolRelation.lower(): RelationKindDocument =

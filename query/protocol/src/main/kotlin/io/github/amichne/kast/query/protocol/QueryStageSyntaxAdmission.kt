@@ -21,7 +21,10 @@ internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
     when (this) {
         is QueryStepDocument.Related -> QueryStepSyntax.Related(relation.meaning())
         QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
-        is QueryStepDocument.AppendReferences -> null // Bound and restored by admitSyntax above.
+        is QueryStepDocument.Concat,
+        is QueryStepDocument.Intersect,
+        is QueryStepDocument.Union,
+        is QueryStepDocument.Difference -> null // Inputs are admitted with the complete plan.
         is QueryStepDocument.Where ->
             when (val value = predicate) {
                 is QueryPredicateDocument.Visibility -> {

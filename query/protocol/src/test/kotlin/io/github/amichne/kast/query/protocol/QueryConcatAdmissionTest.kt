@@ -17,6 +17,7 @@ import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
@@ -45,7 +46,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
-class QueryAppendAdmissionTest {
+class QueryConcatAdmissionTest {
     private val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
     private val lease = SemanticReadLease(root, EvidenceGeneration.parse(7).refined())
     private val budget =
@@ -59,15 +60,13 @@ class QueryAppendAdmissionTest {
         )
 
     @Test
-    fun `unissued appended reference reports its step and token position before execution`() = runTest {
+    fun `unissued concatenated reference reports its step and token position before execution`() = runTest {
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { error("Rejected references must not execute") },
                 CanonicalQueryReferences(),
             )
-        val input =
-            request()
-                .copy(steps = bounded(listOf(QueryStepDocument.AppendReferences(bounded(listOf(text("NON_ISSUED")))))))
+        val input = request().copy(steps = bounded(listOf(concat(text("NON_ISSUED")))))
         val rejection = (protocol.execute(input, lease, budget) as OperationOutcome.Rejected).reason
         val step = assertInstanceOf(QueryRunRejection.StepReferenceRejected::class.java, rejection)
         assertEquals(0, step.stepPosition.value)
@@ -75,7 +74,7 @@ class QueryAppendAdmissionTest {
     }
 
     @Test
-    fun `fresh discovery query reacquires appended exact references before plan admission`() = runTest {
+    fun `fresh discovery query reacquires concatenated exact references before plan admission`() = runTest {
         val fixture = RelationPagingFixture.live()
         val strict =
             object : QueryReferenceAuthority by fixture.references {
@@ -102,14 +101,17 @@ class QueryAppendAdmissionTest {
                     val stage = (admitted.plan as AdmittedQueryPlan.Symbols).stage
                     assertEquals(
                         fixture.selector,
-                        (stage as ExactQueryStage.AppendReferences).references.values.single(),
+                        ((stage as ExactQueryStage.Concat).input
+                                as io.github.amichne.kast.query.contract.QueryCompositionInput.ExactReferences)
+                            .references
+                            .values
+                            .single(),
                     )
                     qualifiedThenComplete(admitted, executions)
                 },
                 references,
             )
-        val input =
-            request().copy(steps = bounded(listOf(QueryStepDocument.AppendReferences(bounded(listOf(fixture.exact))))))
+        val input = request().copy(steps = bounded(listOf(concat(fixture.exact))))
         val first = protocol.execute(input, fixture.authority, budget) as OperationOutcome.Qualified
         val continuation = first.qualification.progress.continuationToken!!
         assertInstanceOf(
@@ -156,6 +158,11 @@ class QueryAppendAdmissionTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+        )
+
+    private fun concat(reference: ProtocolText) =
+        QueryStepDocument.Concat(
+            QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(reference))))
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

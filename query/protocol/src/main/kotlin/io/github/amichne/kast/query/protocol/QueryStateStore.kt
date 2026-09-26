@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryResultReference
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryRetainedResult
@@ -13,6 +14,7 @@ import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
 
 private const val REQUEST_RETENTION_MULTIPLIER = 4L
+private const val ROW_REFERENCE_CHARGE_BYTES = 256L
 
 sealed interface QueryCheckpointRestoration {
     data class Restored(val request: QueryRunRequest.Run, val checkpoint: QueryCheckpoint) : QueryCheckpointRestoration
@@ -29,7 +31,11 @@ sealed interface QueryCheckpointIssuance {
 }
 
 sealed interface QueryResultRestoration {
-    data class Restored(val request: QueryRunRequest.Run, val result: QueryRetainedResult) : QueryResultRestoration
+    data class Restored(
+        val request: QueryRunRequest.Run,
+        val result: QueryRetainedResult,
+        val rowIds: List<QueryResultRowReference>,
+    ) : QueryResultRestoration
 
     data object Unavailable : QueryResultRestoration
 
@@ -37,7 +43,8 @@ sealed interface QueryResultRestoration {
 }
 
 sealed interface QueryResultIssuance {
-    data class Issued(val reference: QueryResultReference) : QueryResultIssuance
+    data class Issued(val reference: QueryResultReference, val rowIds: List<QueryResultRowReference>) :
+        QueryResultIssuance
 
     data object CapacityExceeded : QueryResultIssuance
 }
@@ -72,6 +79,7 @@ class QueryStateStore(
         data class Result(
             val request: QueryRunRequest.Run,
             val result: QueryRetainedResult,
+            val rowIds: List<QueryResultRowReference>,
             override val createdAt: Long,
             override val bytes: Long,
         ) : Entry {
@@ -122,15 +130,20 @@ class QueryStateStore(
     ): QueryResultIssuance {
         expire()
         val normalized = request.copy(executionBudget = null)
-        val bytes = entryBytes(result.retainedBytes, normalized) ?: return QueryResultIssuance.CapacityExceeded
+        val rowCount = result.symbols.size
+        val rowBytes = rowCount.toLong().saturatedMultiply(ROW_REFERENCE_CHARGE_BYTES)
+        val bytes =
+            entryBytes(result.retainedBytes.saturatedAdd(rowBytes), normalized)
+                ?: return QueryResultIssuance.CapacityExceeded
         if (!evictFor(bytes, protectedCheckpoint?.let(Key::Checkpoint))) return QueryResultIssuance.CapacityExceeded
         val reference =
             when (val parsed = QueryResultReference.parse("result:v1:" + UUID.randomUUID())) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> error("A generated result reference must satisfy its syntax")
             }
-        entries[Key.Result(reference)] = Entry.Result(normalized, result, clock(), bytes)
-        return QueryResultIssuance.Issued(reference)
+        val rowIds = java.util.Collections.unmodifiableList(List(rowCount) { generatedRowReference() })
+        entries[Key.Result(reference)] = Entry.Result(normalized, result, rowIds, clock(), bytes)
+        return QueryResultIssuance.Issued(reference, rowIds)
     }
 
     @Synchronized
@@ -138,7 +151,7 @@ class QueryStateStore(
         expire()
         val entry = entries[Key.Result(reference)] as? Entry.Result ?: return QueryResultRestoration.Unavailable
         if (entry.lease != lease) return QueryResultRestoration.StaleBasis
-        return QueryResultRestoration.Restored(entry.request, entry.result)
+        return QueryResultRestoration.Restored(entry.request, entry.result, entry.rowIds)
     }
 
     @Synchronized
@@ -186,3 +199,15 @@ private fun generatedPipelineContinuation(): QueryExecutionContinuation.Pipeline
         is Refinement.Refined -> parsed.value
         is Refinement.Rejected -> error("A generated query continuation must satisfy its syntax")
     }
+
+private fun generatedRowReference(): QueryResultRowReference =
+    when (val parsed = QueryResultRowReference.parse("result-row:v1:" + UUID.randomUUID())) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("A generated query row reference must satisfy its syntax")
+    }
+
+private fun Long.saturatedAdd(other: Long): Long =
+    if (this < 0L || other < 0L || this > Long.MAX_VALUE - other) Long.MAX_VALUE else this + other
+
+private fun Long.saturatedMultiply(other: Long): Long =
+    if (this < 0L || other < 0L || this > Long.MAX_VALUE / other) Long.MAX_VALUE else this * other

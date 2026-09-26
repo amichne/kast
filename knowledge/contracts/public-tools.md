@@ -24,10 +24,12 @@ code_sources:
     symbols: [InstalledDaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryStepModels.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PrimitiveJqFilter.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastQueryInput.kt
@@ -51,15 +53,15 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The hosted `query_symbols` and `check_diagnostics` presentations lower to canonical query and diagnostic operations. The former CLI routes are retired; provider admission retains distinct schemas for these presentations.
 
-`query_symbols` and `check_diagnostics` are eager. The query tool takes one required `request` object with a closed `run`, `resume`, or `read_result` action. Run admits discovery, exact-symbol references, or an immutable retained-result reference as its source, plus ordered steps, return fields, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, return fields, and optional grant; it does not execute query stages. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+`query_symbols` and `check_diagnostics` are eager. The query tool takes one required `request` object with a closed `run`, `resume`, or `read_result` action. Run admits discovery, exact-symbol references, or an immutable retained-result reference with optional issued row IDs as its source, plus ordered steps, return fields, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, return fields, and optional grant; it does not execute query stages. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
 The pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items expose exact-symbol `ref` values; query candidate output and its inspect stage have been removed. Separate symbol lookup still uses candidate references. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors are distinct typed values. No token spelling creates authority: runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
-Run can request `retention: "retain"`. The produced semantic rows, failures, coverage and producer progress are captured immutably under one bounded query-state lifetime. A qualified retained result may seed a later run, including when its row set is empty; its original omissions and qualification remain attached. Result reuse rejects an unavailable or stale basis. Retention capacity failure is reported without erasing the run result. Read-result pages a retained result without semantic provider work, while `resume` restores pending execution from the original plan without resending it.
+Run can request `retention: "retain"`. The produced semantic rows, failures, coverage and producer progress are captured immutably under one bounded query-state lifetime. Issued `row_id` handles identify rows within that result. A qualified retained result may seed a later run, including when its row set is empty; its original omissions and qualification remain attached. Optional `row_ids` select rows in order; an empty list is valid and a proper subset retains incomplete-selection qualification. Row handles must belong to the supplied result. Result reuse rejects an unavailable or stale basis. Retention capacity failure is reported without erasing the run result. Read-result pages a retained result without semantic provider work, while `resume` restores pending execution from the original plan without resending it.
 
-The `append_symbol_refs` step accepts prior exact query outputs at any pipeline position. It revalidates each reference in the current read authority, appends it after the upstream stream, and sends it through later steps under the same query budget. `distinct_symbols` is the explicit set-union operation. `filter_jq` admits only bounded `select` predicates over compiler-grounded `name`, `kind`, and `file` primitives; the facade refines their spelling into a closed predicate before execution, and unsupported jq syntax rejects.
+`where` admits a closed visibility or primitive predicate. Primitive predicates select compiler-grounded `name`, `kind`, or `file`, a finite comparison operator, and a nonblank literal bounded to 512 characters at public admission. The facade uses the canonical predicate type directly. `concat` accepts the same exact-reference or retained-result input shapes used as query sources, preserves stream order and multiplicity, and revalidates exact references under the current authority and query budget. `intersect`, `union`, and `difference` require a retained result on the right and compare canonical semantic identity, not names or token spelling. `difference` requires complete right coverage and no right failures or producer progress before it can establish absence. `distinct_symbols` removes duplicates only at its explicit stage.
 
 `query_symbols.request.return_fields` accepts `source` for a run. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text. Read-result can present a retained source window only when that evidence was captured in the original run.
 
@@ -69,7 +71,7 @@ Installed projection 15 retains the full canonical hosted tool inventory. App Se
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
-The 36-case rejection corpus, typed accepted-action fixtures, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
+The rejection corpus, typed accepted-action fixtures, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. They cover retired step spellings, malformed predicate fields and literals, incompatible set operands, and malformed or duplicate row IDs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).
 
@@ -130,7 +132,7 @@ optional presentation cursor. Qualified query output derives execution
 `continuation` and `terminal_reason` from its required closed qualification
 progress state. The result payload separately reports retention outcome and an
 optional next result cursor. Exact items expose the scalar `ref` capability;
-canonical equality remains internal to `distinct_symbols`, and `symbol_id` has
+canonical equality remains internal to set and distinct stages, and `symbol_id` has
 no public accessor.
 Traversal output includes progress, strategy and page-local partial expansions.
 Relation output separates exact returned-fact soundness from bounded provider

@@ -21,9 +21,12 @@ import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
+import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
@@ -83,6 +86,53 @@ class CanonicalRequestDtoSerializationTest {
         assertTrue(readShape.getValue("output").jsonObject.getValue("fields").jsonArray.isEmpty())
         assertThrows(SerializationException::class.java) {
             strictJson.decodeFromString(QueryRunRequest.serializer(), read.replace("\"cursor\":0", "\"cursor\":-1"))
+        }
+    }
+
+    @Test
+    fun `query composition encodes typed inputs and rejects retired append syntax`() {
+        val result =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined).value
+        val row =
+            (QueryResultRowReference.parse("result-row:v1:00000000-0000-0000-0000-000000000002") as Refinement.Refined)
+                .value
+        val selected = QueryFromDocument.Result(result, bounded(listOf(row)))
+        val references =
+            QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(text("exact:v2:opaque")))))
+        val request =
+            canonicalQueryRequest()
+                .copy(
+                    steps =
+                        bounded(
+                            listOf(
+                                QueryStepDocument.Concat(references),
+                                QueryStepDocument.Concat(selected),
+                                QueryStepDocument.Intersect(selected),
+                                QueryStepDocument.Union(selected),
+                                QueryStepDocument.Difference(selected),
+                            )
+                        )
+                )
+        val encoded = strictJson.encodeToString(QueryRunRequest.serializer(), request)
+        val steps = strictJson.parseToJsonElement(encoded).jsonObject.getValue("steps").jsonArray
+        assertEquals(
+            listOf("concat", "concat", "intersect", "union", "difference"),
+            steps.map { it.jsonObject.getValue("type").jsonPrimitive.content },
+        )
+        assertEquals(
+            "references",
+            steps[0].jsonObject.getValue("input").jsonObject.getValue("type").jsonPrimitive.content,
+        )
+        val selectedInput = steps[1].jsonObject.getValue("input").jsonObject
+        assertEquals("result", selectedInput.getValue("type").jsonPrimitive.content)
+        assertEquals(result.value, selectedInput.getValue("reference").jsonPrimitive.content)
+        assertEquals(row.value, selectedInput.getValue("row_ids").jsonArray.single().jsonPrimitive.content)
+        assertEquals(request, strictJson.decodeFromString(QueryRunRequest.serializer(), encoded))
+        assertThrows(SerializationException::class.java) {
+            strictJson.decodeFromString(
+                QueryRunRequest.serializer(),
+                encoded.replaceFirst("\"type\":\"concat\"", "\"type\":\"append-references\""),
+            )
         }
     }
 
@@ -198,6 +248,11 @@ class CanonicalRequestDtoSerializationTest {
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
         )
     }
+
+    private fun <Value> bounded(values: List<Value>): BoundedProtocolList<Value> =
+        (BoundedProtocolList.create(values) as Refinement.Refined).value
+
+    private fun text(raw: String): ProtocolText = (ProtocolText.parse(raw) as Refinement.Refined).value
 
     private fun selector(family: String): String {
         val payload = "{}".encodeToByteArray()

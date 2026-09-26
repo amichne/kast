@@ -17,8 +17,10 @@ import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
+import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -107,6 +109,7 @@ internal class QueryOutcomeProjection(
             output = request.output,
             progressItemCount = rows.size,
             presentedRetention = QueryResultRetention.Retained(request.result),
+            presentedRowIds = restored.rowIds.subList(start, end),
             protectedResult = request.result,
             nextCursor = next,
         )
@@ -122,6 +125,7 @@ internal class QueryOutcomeProjection(
         progressItemCount: Int? = null,
         retainedExecution: QueryExecutionResult? = null,
         presentedRetention: QueryResultRetention? = null,
+        presentedRowIds: List<QueryResultRowReference>? = null,
         protectedResult: QueryResultReference? = null,
         nextCursor: QueryResultCursor? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
@@ -135,41 +139,100 @@ internal class QueryOutcomeProjection(
                 is QueryProjection.Projected -> projected.values
                 QueryProjection.Rejected -> return contractRejected()
             }
-        val boundedItems = BoundedProtocolList.create(items).refinedForQueryOrNull() ?: return contractRejected()
         val boundedFailures = BoundedProtocolList.create(failures).refinedForQueryOrNull() ?: return contractRejected()
+        val projectedQualification =
+            projectQualification(request, coverage, continuationState, progressItemCount ?: items.size, protectedResult)
         val qualification =
-            when (
-                val projected =
-                    projectQualification(
-                        request,
-                        coverage,
-                        continuationState,
-                        progressItemCount ?: items.size,
-                        protectedResult,
-                    )
-            ) {
-                is Refinement.Refined -> projected.value
+            when (projectedQualification) {
+                is Refinement.Refined -> projectedQualification.value
                 is Refinement.Rejected -> return contractRejected()
             }
-        val retention =
-            presentedRetention
-                ?: requestedRetention(request, lease, retainedExecution, qualification?.progress)
-                    .refinedForQueryOrNull()
-                ?: return contractRejected()
+        val projectedRows =
+            presentRows(
+                request,
+                lease,
+                items,
+                retainedExecution,
+                qualification?.progress,
+                presentedRetention,
+                presentedRowIds,
+            )
+        val presented =
+            when (projectedRows) {
+                is Refinement.Refined -> projectedRows.value
+                is Refinement.Rejected -> return contractRejected()
+            }
         val envelope =
             EvidenceEnvelope(
                 CanonicalOperation.QUERY_RUN.id,
                 lease.evidenceBasis(),
                 QueryRunResult(
-                    items = boundedItems,
+                    items = presented.items,
                     failures = boundedFailures,
-                    retention = retention,
+                    retention = presented.retention,
                     nextCursor = nextCursor,
                     referenceAcquisitions = authority.readAcquisitions(),
                 ),
             )
         return if (qualification == null) OperationOutcome.Complete(envelope)
         else OperationOutcome.Qualified(envelope, qualification)
+    }
+
+    private data class PresentedRows(
+        val items: BoundedProtocolList<QueryResultItemDocument>,
+        val retention: QueryResultRetention,
+    )
+
+    private fun presentRows(
+        request: QueryRunRequest.Run,
+        lease: SemanticReadAuthority,
+        items: List<QueryResultItemDocument>,
+        retainedExecution: QueryExecutionResult?,
+        progress: QueryQualifiedProgressDocument?,
+        presentedRetention: QueryResultRetention?,
+        presentedRowIds: List<QueryResultRowReference>?,
+    ): Refinement<PresentedRows, QueryExecutionRejectionDocument> {
+        val issuance =
+            if (presentedRetention != null) null
+            else
+                when (val requested = requestedRetention(request, lease, retainedExecution, progress)) {
+                    is Refinement.Refined -> requested.value
+                    is Refinement.Rejected -> return presentationRejected()
+                }
+        val retention =
+            presentedRetention
+                ?: when (issuance) {
+                    null -> QueryResultRetention.NotRequested
+                    is QueryResultIssuance.Issued -> QueryResultRetention.Retained(issuance.reference)
+                    QueryResultIssuance.CapacityExceeded -> QueryResultRetention.CapacityExceeded
+                }
+        val rowIds = presentedRowIds ?: (issuance as? QueryResultIssuance.Issued)?.rowIds
+        if (retention is QueryResultRetention.Retained && rowIds == null) return presentationRejected()
+        val identified =
+            when (val projected = identifyRows(items, rowIds)) {
+                is QueryProjection.Projected -> projected.values
+                QueryProjection.Rejected -> return presentationRejected()
+            }
+        val bounded = BoundedProtocolList.create(identified).refinedForQueryOrNull() ?: return presentationRejected()
+        return Refinement.Refined(PresentedRows(bounded, retention))
+    }
+
+    private fun presentationRejected(): Refinement.Rejected<QueryExecutionRejectionDocument> =
+        Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
+
+    private fun identifyRows(
+        items: List<QueryResultItemDocument>,
+        rowIds: List<QueryResultRowReference>?,
+    ): QueryProjection<QueryResultItemDocument> {
+        if (rowIds == null) return QueryProjection.Projected(items)
+        if (rowIds.size != items.size) return QueryProjection.Rejected
+        return QueryProjection.Projected(
+            items.mapIndexed { index, item ->
+                when (item) {
+                    is QueryResultItemDocument.ExactSymbol -> item.copy(rowId = rowIds[index])
+                }
+            }
+        )
     }
 
     private fun projectQualification(
@@ -206,9 +269,9 @@ internal class QueryOutcomeProjection(
         lease: SemanticReadAuthority,
         execution: QueryExecutionResult?,
         progress: QueryQualifiedProgressDocument?,
-    ): Refinement<QueryResultRetention, QueryExecutionRejectionDocument> {
+    ): Refinement<QueryResultIssuance?, QueryExecutionRejectionDocument> {
         if (request.retention == QueryRetentionModeDocument.DISCARD) {
-            return Refinement.Refined(QueryResultRetention.NotRequested)
+            return Refinement.Refined(null)
         }
         val retained =
             execution ?: return Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
@@ -221,12 +284,7 @@ internal class QueryOutcomeProjection(
         val protectedCheckpoint =
             ((progress as? QueryQualifiedProgressDocument.Resumable)?.checkpoint as? QueryCheckpointDocument.Upstream)
                 ?.token
-        return Refinement.Refined(
-            when (val issued = state.issueResult(request, captured, protectedCheckpoint)) {
-                is QueryResultIssuance.Issued -> QueryResultRetention.Retained(issued.reference)
-                QueryResultIssuance.CapacityExceeded -> QueryResultRetention.CapacityExceeded
-            }
-        )
+        return Refinement.Refined(state.issueResult(request, captured, protectedCheckpoint))
     }
 
     private fun projectFailure(failure: QueryItemFailure): QueryItemFailureDocument? =

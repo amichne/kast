@@ -537,11 +537,14 @@
         },
         "steps": [
           {
-            "type": "filter_visibility",
-            "visibilities": [
-              "public",
-              "public"
-            ]
+            "type": "where",
+            "predicate": {
+              "type": "visibility",
+              "values": [
+                "public",
+                "public"
+              ]
+            }
           }
         ],
         "return_fields": null
@@ -669,6 +672,400 @@
       "request": {
         "action": "resume",
         "continuation": "query:v1:EXAMPLE_NOT_ISSUED"
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "retired-filter-visibility-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "filter_visibility",
+            "visibilities": [
+              "public"
+            ]
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "retired-filter-jq-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "filter_jq",
+            "expression": "select(.kind == \"class\")"
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "unknown-predicate-type",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "where",
+            "predicate": {
+              "type": "jq",
+              "field": "kind",
+              "operator": "equals",
+              "value": "class"
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "unknown-predicate-field",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "where",
+            "predicate": {
+              "type": "primitive",
+              "field": "signature",
+              "operator": "equals",
+              "value": "class"
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "unknown-predicate-operator",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "where",
+            "predicate": {
+              "type": "primitive",
+              "field": "name",
+              "operator": "regex",
+              "value": "Order"
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "predicate-value-must-be-text",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "where",
+            "predicate": {
+              "type": "primitive",
+              "field": "kind",
+              "operator": "equals",
+              "value": {
+                "name": "class"
+              }
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "predicate-value-must-be-nonblank",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "where",
+            "predicate": {
+              "type": "primitive",
+              "field": "name",
+              "operator": "equals",
+              "value": " \t "
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "predicate-value-is-bounded",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "where",
+            "predicate": {
+              "type": "primitive",
+              "field": "file",
+              "operator": "ends_with",
+              "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "predicate-visibility-is-nonempty",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "where",
+            "predicate": {
+              "type": "visibility",
+              "values": []
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "retired-append-symbol-refs-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "append_symbol_refs",
+            "symbol_refs": [
+              "NON_ISSUED_SCHEMA_TEST_ONLY"
+            ]
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "concat-discovery-source-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "concat",
+            "input": {
+              "type": "all_declarations",
+              "declaration_kinds": null,
+              "scope": null
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "difference-exact-right-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "difference",
+            "right": {
+              "type": "symbol_refs",
+              "symbol_refs": [
+                "NON_ISSUED_SCHEMA_TEST_ONLY"
+              ]
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "malformed-retained-row-id-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "concat",
+            "input": {
+              "type": "result",
+              "result": "result:v1:00000000-0000-0000-0000-000000000000",
+              "row_ids": [
+                "result-row:v1:NOT_ISSUED"
+              ]
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "duplicate-retained-row-ids-rejected",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "union",
+            "right": {
+              "type": "result",
+              "result": "result:v1:00000000-0000-0000-0000-000000000000",
+              "row_ids": [
+                "result-row:v1:00000000-0000-0000-0000-000000000001",
+                "result-row:v1:00000000-0000-0000-0000-000000000001"
+              ]
+            }
+          }
+        ],
+        "return_fields": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "row-id-is-not-result-reference",
+    "tool": "query_symbols",
+    "arguments": {
+      "request": {
+        "action": "run",
+        "source": {
+          "type": "all_declarations",
+          "declaration_kinds": null,
+          "scope": null
+        },
+        "steps": [
+          {
+            "type": "intersect",
+            "right": {
+              "type": "result",
+              "result": "result-row:v1:00000000-0000-0000-0000-000000000001"
+            }
+          }
+        ],
+        "return_fields": null
       }
     },
     "schema_valid": false
