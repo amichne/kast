@@ -16,7 +16,7 @@ class ReleasedCoordinatorReceipt:
     codexExecutableSha256: str
     controlWrapperSha256: str
     facadeWrapperSha256: str
-    installedSchemaSha256: str
+    installedCatalogSha256: str
     configuredTools: tuple[str, ...]
     lifecycle: HostLifecycleReceipt
 
@@ -50,7 +50,7 @@ def qualify_released_coordinator(isolation, installed, inventory, fixture):
     except (AcceptanceFailure, subprocess.SubprocessError, OSError) as error:
         raise ReleaseRejected(ReleaseFailure.COORDINATOR) from error
     return ReleasedCoordinatorReceipt(version, digest(codex), digest(control), digest(facade),
-        inventory.installedSchemaSha256, inventory.configuredDefaultTools, receipt)
+        inventory.installedCatalogSha256, inventory.configuredDefaultTools, receipt)
 
 
 def coordinator_qualified(receipt):

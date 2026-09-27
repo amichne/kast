@@ -16,7 +16,10 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, and IntelliJ IDEA
 
     The installer checks the IDEA release line and installs its matching
     plugin and Kast service. In an interactive terminal, it offers to register
-    a user-level Kast MCP server with Codex.
+    a user-level Kast MCP server with Codex. On an upgrade, it removes prior
+    versions that pass ownership checks. It asks before removing each older
+    Kast entry it cannot fully verify; type `yes` for that exact entry, or
+    leave it in place. Noninteractive upgrades report and retain those entries.
   </Step>
   <Step title="Restart IDEA and open your agent">
     Restart IDEA to load the plugin. Start the agent from the repository or

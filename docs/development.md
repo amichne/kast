@@ -79,6 +79,38 @@ then run the repository-required guards for changed contracts, architecture and
 documentation. Full build/release gates remain separate evidence; these focused
 checks do not replace them.
 
+Run all offline packaging suites in an isolated Linux container with:
+
+```shell
+./packaging/run-portable-tests-container.sh
+```
+
+The runner mounts the checkout read-only, disables network access, and gives each
+test process an owned home, executable temp directory for fixture scripts, and
+tool path. Installer policy tests supply a private `uname` observation for the
+supported macOS case and separately assert rejection of Linux. It includes every
+`packaging/test-*.py` suite except `test-installed-codex-host.py`, which requires
+an installed macOS product, IntelliJ IDEA, and an installed Codex executable.
+Platform-specific cases inside those suites remain gated to macOS; the Linux
+container does not qualify them. The runner rejects unexpected skips and reports
+the expected platform skip count (currently 17 on Linux, zero on macOS arm64).
+CI runs this container suite on a disposable Ubuntu runner for every pull request
+and main push, alongside the macOS product checks.
+Run the same offline inventory without Docker using
+`.venv/bin/python packaging/run-portable-tests.py` after provisioning the pinned
+Python test environment. A container pass proves the offline contract and
+process tests on Linux; native IDEA and Codex evidence comes from its separate
+macOS runner.
+
+On a macOS host, qualify the installed Codex integration with explicitly
+selected IDEA and Codex binaries:
+
+```shell
+KAST_ACCEPTANCE_IDEA_HOME=/absolute/path/to/IDEA.app/Contents \
+KAST_ACCEPTANCE_CODEX_EXECUTABLE=/absolute/path/to/codex \
+  ./gradlew runtimeQualification
+```
+
 Report the command, observed result and evidence level: pure policy, private
 filesystem/process adapter, compiler/platform fixture or native composition. Name
 skips and anything not verified. The [configuration and retirement verification

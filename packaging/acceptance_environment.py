@@ -83,17 +83,11 @@ def admitted_tools() -> dict[str, Path]:
                  "awk", "grep", "find", "sort", "unzip", "shasum", "pgrep", "mkdir",
                  "cat", "head", "tail", "tr", "cut", "xargs", "expr", "sleep", "date", "ls", "which", "env",
                  "tar", "curl", "wc", "mktemp", "mv", "cp", "chmod", "ln", "rm", "touch"):
-        for directory in (Path("/usr/bin"), Path("/bin")):
-            candidate = directory / name
-            if candidate.is_file():
-                tools[name] = candidate
-                break
+        selected = shutil.which(name)
+        if selected is not None:
+            tools[name] = Path(selected).resolve()
     for name in ("java", "node"):
         selected = os.environ.get("KAST_ACCEPTANCE_" + name.upper() + "_EXECUTABLE")
-        if selected is None and name == "java" and "JAVA_HOME" in os.environ:
-            selected = str(Path(os.environ["JAVA_HOME"]) / "bin/java")
-        if selected is None:
-            selected = shutil.which(name)
         if selected is not None:
             tools[name] = Path(selected)
     return tools
@@ -102,7 +96,7 @@ def admitted_tools() -> dict[str, Path]:
 class AcceptanceEnvironment:
     """One exclusively created root; only handles launched here may be terminated."""
 
-    def __init__(self, tools: Mapping[str, Path], *, parent: Path = Path("/tmp"),
+    def __init__(self, tools: Mapping[str, Path], *, parent: Path | None = None,
                  network: NetworkPolicy = NetworkPolicy.CLOSED_PROXY):
         if not isinstance(network, NetworkPolicy):
             raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
@@ -116,10 +110,9 @@ class AcceptanceEnvironment:
             validated[name] = path
         if not validated:
             raise EnvironmentRejected(EnvironmentFailure.INVALID_TOOL)
+        parent = Path(tempfile.gettempdir()).resolve() if parent is None else Path(parent)
         if not parent.is_absolute() or not parent.is_dir() or parent.is_symlink():
-            # /tmp is an OS-owned symlink on macOS; its canonical target is admitted.
-            if parent != Path("/tmp") or not parent.is_dir():
-                raise EnvironmentRejected(EnvironmentFailure.INVALID_ROOT)
+            raise EnvironmentRejected(EnvironmentFailure.INVALID_ROOT)
         self.root = Path(tempfile.mkdtemp(prefix="kast-a-", dir=parent.resolve())).resolve()
         self.root.chmod(0o700)
         self._identity = self.root.stat().st_dev, self.root.stat().st_ino

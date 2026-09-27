@@ -19,6 +19,7 @@ class ServiceControlTest(unittest.TestCase):
             legacy = ServiceControl.admit(product, kast)
             self.assertEqual(ServiceControlKind.LEGACY, legacy.kind)
             self.assertEqual([str(kast), "app-server", "disable"], legacy.command(ServiceControlAction.DISABLE))
+            self.assertEqual([str(kast), "app-server", "status"], legacy.status_command())
 
             private = product / "share/kast/libexec/kast-service"
             private.parent.mkdir(parents=True)
@@ -27,6 +28,7 @@ class ServiceControlTest(unittest.TestCase):
             selected = ServiceControl.admit(product, kast)
             self.assertEqual(ServiceControlKind.PRIVATE, selected.kind)
             self.assertEqual([str(private), "enable"], selected.command(ServiceControlAction.ENABLE))
+            self.assertEqual([str(private), "status"], selected.status_command())
 
             private.chmod(0o600)
             with self.assertRaises(AcceptanceFailure):

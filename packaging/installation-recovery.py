@@ -24,6 +24,7 @@ class Status(str, Enum):
     PREPARED = 'Prepared'
     PLANNED = 'Planned'
     ACTIVE = 'Active'
+    SEALED = 'UpgradeFinalized'
     CLEAN = 'CleanBaselineRestored'
     UNRESOLVED = 'DetachedWithUnresolvedState'
     BLOCKED = 'RecoveryBlocked'
@@ -442,6 +443,29 @@ def activate_plugin(root, staged, plugin_root, *, force=False):
     return Report(Status.ACTIVE, [Failure.RESTART], str(retained_script(bundle)))
 
 
+def seal_upgrade(root):
+    outer, bundle = location(root)
+    receipt = load(bundle / 'receipt.json')
+    validate(root, receipt)
+    selector = outer / 'current'
+    if (not selector.is_symlink() or os.readlink(selector) != receipt.links[0].target
+            or Identity.observe(selector).owner != os.getuid()):
+        raise Rejected(Failure.OWNERSHIP)
+    if receipt.stage is not Status.ACTIVE or receipt.plugin is None:
+        raise Rejected(Failure.RECEIPT)
+    plugin = receipt.plugin
+    if (plugin_layout(plugin) is not PluginLayout.RETAINED
+            or Identity.observe(physical(Path(plugin.destination))) != plugin.candidateIdentity):
+        raise Rejected(Failure.PLUGIN)
+    # Activation has already copied legacy plugin evidence into the retained layout.
+    # Revalidate the entire prior chain before removing its dependency from this receipt.
+    receipt = migrate_plugin_chain(root)
+    selected_link = replace(receipt.links[0], priorTarget=None)
+    sealed = replace(receipt, priorInstallation=None, links=[selected_link, *receipt.links[1:]])
+    save(bundle / 'receipt.json', sealed)
+    return Report(Status.SEALED, [], str(retained_script(bundle)))
+
+
 @dataclass(frozen=True)
 class RecoveryFence:
     schemaVersion: int
@@ -654,7 +678,7 @@ def detach(root, dry_run):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('prepare', 'activate-plugin', 'detach'))
+    parser.add_argument('operation', choices=('prepare', 'activate-plugin', 'seal-upgrade', 'detach'))
     parser.add_argument('--installation', required=True, type=Path)
     parser.add_argument('--bin-directory', type=Path)
     parser.add_argument('--plugin-root', type=Path)
@@ -681,6 +705,8 @@ def main():
                     report = prepare(arguments.installation, arguments.bin_directory, arguments.plugin_root)
                 elif arguments.operation == 'activate-plugin' and arguments.staged_plugin is not None and arguments.plugin_root is not None:
                     report = activate_plugin(arguments.installation, arguments.staged_plugin, arguments.plugin_root, force=arguments.force)
+                elif arguments.operation == 'seal-upgrade':
+                    report = seal_upgrade(arguments.installation)
                 elif arguments.operation == 'detach':
                     report = detach(arguments.installation, False)
                 else:
@@ -692,7 +718,7 @@ def main():
     except (OSError, ValueError, TypeError, KeyError):
         report = Report(Status.BLOCKED, [Failure.FILESYSTEM], '')
     print(encode(report))
-    return 0 if report.status in (Status.PREPARED, Status.PLANNED, Status.ACTIVE, Status.CLEAN) else 1
+    return 0 if report.status in (Status.PREPARED, Status.PLANNED, Status.ACTIVE, Status.SEALED, Status.CLEAN) else 1
 
 
 if __name__ == '__main__':

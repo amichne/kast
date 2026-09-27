@@ -8,6 +8,7 @@ from contextlib import redirect_stderr
 from unittest.mock import patch
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import unittest
 import uuid
@@ -167,6 +168,46 @@ class LifecycleTest(unittest.TestCase):
         self.assertTrue(result.stdout, result.stderr)
         self.last_stderr = result.stderr
         return result.returncode, json.loads(result.stdout)
+    def prior_version(self):
+        prior = self.root.with_name('0.36.0-' + 'd' * 64)
+        shutil.copytree(self.root, prior)
+        document = dict(self.manifest,
+            semanticVersion='0.36.0', installationRoot=str(prior), payloadIdentity='sha256:' + 'd' * 64,
+            stateRoot=str(prior / 'state'), configuration=str(prior / 'config/environment'),
+            workspaceRegistry=str(prior / 'config/workspaces.json'))
+        (prior / 'installation.json').write_text(json.dumps(document))
+        (self.outer / 'current').symlink_to('versions/' + self.root.name)
+        return prior
+    def test_prune_removes_only_admitted_unselected_version(self):
+        prior = self.prior_version()
+        marker = (self.outer / 'foreign').write_text('preserve')
+        code, result = self.invoke('prune')
+        self.assertEqual(0, code, result)
+        self.assertEqual('pruned', result['status'])
+        self.assertEqual([str(prior)], result['removed'])
+        self.assertFalse(prior.exists())
+        self.assertEqual('versions/' + self.root.name, (self.outer / 'current').readlink().as_posix())
+        self.assertTrue(self.root.exists())
+        self.assertEqual('preserve', (self.outer / 'foreign').read_text())
+    def test_prune_refuses_untrusted_version_before_any_deletion(self):
+        prior = self.prior_version()
+        foreign = self.outer / 'versions/foreign'
+        foreign.mkdir()
+        code, result = self.invoke('prune')
+        self.assertNotEqual(0, code)
+        self.assertEqual('MANIFEST_REJECTED', result['failure'])
+        self.assertTrue(prior.exists())
+        self.assertTrue(foreign.exists())
+        self.assertTrue(self.root.exists())
+    def test_prune_refuses_changed_selection(self):
+        prior = self.prior_version()
+        (self.outer / 'current').unlink()
+        (self.outer / 'current').symlink_to('versions/' + prior.name)
+        code, result = self.invoke('prune')
+        self.assertNotEqual(0, code)
+        self.assertEqual('ANCHOR_OWNERSHIP_UNPROVEN', result['failure'])
+        self.assertTrue(prior.exists())
+        self.assertTrue(self.root.exists())
     def test_remove_deletes_only_matching_version_anchors_and_retains_outer_lock(self):
         current = self.outer / 'current'
         target = 'versions/' + self.root.name
@@ -367,6 +408,30 @@ class LifecycleTest(unittest.TestCase):
         self.assertFalse(self.log.exists())
     def test_missing_registry_does_not_manufacture_zero_workers(self):
         (self.root / 'config/workspaces.json').unlink()
+        code, result = self.invoke('reset')
+        self.assertNotEqual(0, code)
+        self.assertEqual('REGISTRY_REJECTED', result['failure'])
+        self.assertFalse(self.log.exists())
+    def test_stopped_broker_without_registry_has_no_workspace_roots(self):
+        (self.root / 'config/workspaces.json').unlink()
+        profile = self.root / 'state/broker' / ('a' * 16)
+        profile.mkdir()
+        (profile / 'stopped').write_bytes(b'stopped\n')
+        (profile / 'launch-environment').write_text('private fixture')
+        (profile / 'service-start.lock').touch()
+        shutil.rmtree(self.root / 'state/broker/profile')
+        code, result = self.invoke('reset')
+        self.assertEqual(0, code, result)
+        self.assertEqual('reset', result['status'])
+        self.assertEqual(0, result['workspaceCount'])
+        self.assertEqual(['app-server disable'], self.log.read_text().splitlines())
+    def test_unknown_broker_evidence_without_registry_blocks_retirement(self):
+        (self.root / 'config/workspaces.json').unlink()
+        profile = self.root / 'state/broker' / ('a' * 16)
+        profile.mkdir()
+        (profile / 'stopped').write_bytes(b'stopped\n')
+        (profile / 'unexpected-worker').write_text('unproven')
+        shutil.rmtree(self.root / 'state/broker/profile')
         code, result = self.invoke('reset')
         self.assertNotEqual(0, code)
         self.assertEqual('REGISTRY_REJECTED', result['failure'])

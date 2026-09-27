@@ -69,7 +69,8 @@ def stage_versioned_product(isolation, source: Path, plugin: Path) -> Path:
         'hostedPluginSha256': 'sha256:' + plugin_digest, 'codexHome': isolation.environment['CODEX_HOME'],
         'configuration': str(root / 'config/environment'), 'workspaceRegistry': str(root / 'config/workspaces.json'),
         'stateRoot': str(root / 'state'), 'payloadFiles': inventory, 'externalAnchors': anchors,
-        'retention': {'payload': 'until-explicit-uninstall', 'config': 'until-explicit-uninstall',
+        'retention': {'payload': 'until-successful-upgrade-or-explicit-uninstall',
+                      'config': 'until-successful-upgrade-or-explicit-uninstall',
                       'state': 'after-exact-process-retirement', 'externalAnchors': 'after-live-identity-match'}}
     (root / 'installation.json').write_text(json.dumps(manifest, separators=(',', ':')) + '\n')
     (root / 'installation.json').chmod(0o600)

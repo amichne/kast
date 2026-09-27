@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from acceptance_environment import AcceptanceEnvironment, EnvironmentFailure, EnvironmentRejected, GradleDaemonIdentity, GradleRetirement
+from acceptance_environment import AcceptanceEnvironment, EnvironmentFailure, EnvironmentRejected, GradleDaemonIdentity, GradleRetirement, admitted_tools
 
 
 def load_script(name):
@@ -67,7 +67,7 @@ class StartupEnvironmentTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "bin").mkdir()
-            for name in ("kast", "kast-codex", "codex"):
+            for name in ("kast-complete", "kast-codex-complete", "codex"):
                 path = root / "bin" / name
                 path.write_text("#!/bin/sh\nexit 0\n")
                 path.chmod(0o700)
@@ -78,9 +78,13 @@ class StartupEnvironmentTest(unittest.TestCase):
                 raise ProbeComplete()
 
             try:
-                with patch.object(sys, "argv", ["host", str(root), str(root), str(root / "report")]), \
+                with patch.object(sys, "argv", ["host", str(root), str(root), str(root / "report"),
+                                                str(root / 'control'), str(root / 'plugin')]), \
                         patch.dict(os.environ, {"KAST_ACCEPTANCE_CODEX_EXECUTABLE": str(root / "bin/codex"),
+                                                "KAST_ACCEPTANCE_IDEA_HOME": str(root),
                                                 "OPENAI_API_KEY": "fixture-secret"}), \
+                        patch.object(script, 'prepare_installed_product', return_value=root), \
+                        patch.object(script, 'product_executable', return_value=root / 'bin/kast-complete'), \
                         patch.object(script.subprocess, "run", side_effect=probe):
                     with self.assertRaises(ProbeComplete):
                         script.main()
@@ -93,6 +97,12 @@ class StartupEnvironmentTest(unittest.TestCase):
 
 
 class PrivateEnvironmentTest(unittest.TestCase):
+    def test_optional_runtimes_require_explicit_admission(self):
+        with patch.dict(os.environ, {'JAVA_HOME': '/foreign/java', 'PATH': os.defpath}, clear=True):
+            selected = admitted_tools()
+        self.assertNotIn('java', selected)
+        self.assertNotIn('node', selected)
+
     def test_terminal_report_never_passes_before_successful_tree_removal(self):
         with tempfile.TemporaryDirectory() as directory:
             report = Path(directory).resolve() / 'report.json'
@@ -142,7 +152,7 @@ class PrivateEnvironmentTest(unittest.TestCase):
             fixture.mark_passed()
 
     def test_gradle_observation_requires_private_classpath_and_carries_start_and_command(self):
-        with AcceptanceEnvironment({'ps': Path('/bin/ps')}) as fixture:
+        with AcceptanceEnvironment({'ps': Path(shutil.which('ps')).resolve()}) as fixture:
             private = f'/jdk/bin/java -cp {fixture.root}/gradle/wrapper/dists/gradle-9.4.1/x/gradle-9.4.1/lib/gradle-daemon-main-9.4.1.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 9.4.1'
             foreign = private.replace(str(fixture.root), '/foreign')
             result = subprocess.CompletedProcess([], 0,

@@ -101,6 +101,9 @@ of the latest stable release.
 Development builds use packaging/install-checkout.sh session|persistent.
 
 Installation enables the app server and its macOS login LaunchAgent by default.
+Upgrades review historical Kast entries one at a time when current ownership
+checks cannot admit them. Only an exact `yes` removes a reviewed entry; without
+a terminal, uncertain entries are retained and reported.
 Interactive persistent installs ask whether to register a user-level Codex MCP
 server. Pass --register-codex-mcp or --skip-codex-mcp to make the choice without
 a prompt. Non-interactive installs default to registration for compatibility.
@@ -572,7 +575,34 @@ control_name="kast-control-v$version-macos-aarch64.tar.gz"
 plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"
-cleanup() { rm -rf -- "$temporary_root"; }
+upgrade_in_progress=0
+[[ ! -L "$install_root/current" ]] || upgrade_in_progress=1
+installation_complete=0
+cleanup() {
+  local status=$?
+  local selected
+  trap - EXIT
+  if [[ "$status" == 0 && "$installation_complete" == 1 && "$upgrade_in_progress" == 1 ]]; then
+    if ! selected="$(CDPATH='' cd -- "$install_root/current" && pwd -P)"; then
+      ui_line error 31 'kast-install: upgraded installation selection is unavailable; prior versions were retained'
+      status=1
+    elif ! python3 "$control_root/share/kast/installation-recovery.py" seal-upgrade \
+      --installation "$selected" >&2; then
+      ui_line error 31 'kast-install: upgrade recovery could not be finalized; prior versions were retained'
+      status=1
+    elif ! python3 "$control_root/share/kast/prune-prior-installations.py" \
+      --installation "$selected" >&2; then
+      ui_line error 31 'kast-install: prior installation review could not be completed'
+      status=1
+    fi
+  fi
+  if ! rm -rf -- "$temporary_root"; then status=1; fi
+  if [[ "$status" == 0 && "$installation_complete" == 1 ]]; then
+    success "installed Kast $version and the plugin for IntelliJ IDEA $idea_version (build $idea_build)"
+    info "Restart IntelliJ IDEA, then start a fresh Codex session in a Gradle repository."
+  fi
+  exit "$status"
+}
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
@@ -633,6 +663,5 @@ else
     [[ -x "$install_root/current/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
     python3 "$install_root/current/share/kast/codex-mcp-registration.py" install "$install_root"
   fi
-  success "installed Kast $version and the plugin for IntelliJ IDEA $idea_version (build $idea_build)"
-  info "Restart IntelliJ IDEA, then start a fresh Codex session in a Gradle repository."
+  installation_complete=1
 fi

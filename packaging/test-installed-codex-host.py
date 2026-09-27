@@ -13,6 +13,9 @@ import shutil
 import subprocess
 import sys
 from acceptance_environment import AcceptanceEnvironment, admitted_tools
+from acceptance_idea import digest
+from hosted_acceptance_fixture import admit_hosted_idea
+from released_acceptance_product import admit_release_assets, install_release, product_executable, ReleaseRejected
 import zipfile
 
 
@@ -47,17 +50,13 @@ def codex_protocol_digest(root: Path) -> str:
     return "sha256:" + digest.hexdigest()
 
 
-def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
-    execution = subprocess.run(
-        [str(kast), "--schema"],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=20,
-        env=environment,
-    )
+def installed_catalog_evidence(kast: Path) -> dict:
+    catalog = kast.parent.parent / "share/kast/provider-catalog.json"
+    if (catalog.resolve() != catalog or not catalog.is_file() or catalog.is_symlink()
+            or not 0 < catalog.stat().st_size <= 4 * 1024 * 1024):
+        raise AcceptanceFailure("installed Kast catalog was unavailable")
     try:
-        contract = json.loads(execution.stdout)
+        contract = json.loads(catalog.read_text())
         bootstrap = contract["serverProjection"]["hostedBootstrap"]
         policy = bootstrap["policy"]
         tools = bootstrap["tools"]
@@ -97,32 +96,66 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
     }
 
 
-def executable(candidate: str | None, name: str) -> Path:
-    selected = candidate or shutil.which(name)
-    if selected is None:
-        raise AcceptanceFailure(f"installed {name} executable is unavailable")
+def executable(candidate: str, name: str) -> Path:
     # Preserve the installed launcher directory: a Node shim may need its sibling node.
-    path = Path(os.path.abspath(selected))
-    if not path.is_file() or not os.access(path, os.X_OK):
+    path = Path(candidate)
+    if not path.is_absolute() or not path.is_file() or not os.access(path, os.X_OK):
         raise AcceptanceFailure(f"installed {name} executable is unavailable")
     return path
 
 
+def prepare_installed_product(isolation, source: Path, project: Path, control: Path, plugin: Path,
+                              idea_home: Path) -> Path:
+    if any(not path.is_absolute() or not path.is_file() or path.is_symlink()
+           or path.resolve() != path for path in (control, plugin)):
+        raise AcceptanceFailure('assembled artifact identity rejected')
+    metadata = json.loads((source / 'share/kast/ide-host.json').read_text())
+    version = metadata['productVersion']
+    original_hashes = {path: digest(path) for path in (control, plugin)}
+    catalog_hash = sha256_file(source / 'share/kast/provider-catalog.json')
+    assets = isolation.root / 'input-assets'
+    assets.mkdir(mode=0o700)
+    for original in (control, plugin):
+        copied = assets / original.name
+        shutil.copyfile(original, copied)
+        if digest(copied) != original_hashes[original]:
+            raise AcceptanceFailure('assembled artifact changed during staging')
+        copied.with_name(copied.name + '.sha256').write_text(f'{digest(copied)}  {copied.name}\n')
+    idea = admit_hosted_idea(idea_home, project / 'gradle/libs.versions.toml')
+    admitted = admit_release_assets(assets, version, idea, project / 'install.sh', 'a' * 40)
+    installed = install_release(isolation, admitted, idea)
+    product = Path(installed.product)
+    if (sha256_file(product / 'share/kast/provider-catalog.json') != catalog_hash
+            or sha256_file(source / 'share/kast/provider-catalog.json') != catalog_hash
+            or any(digest(path) != expected for path, expected in original_hashes.items())):
+        raise AcceptanceFailure('installed catalog differs from assembled product')
+    return product
+
+
 def main() -> int:
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 6:
         raise AcceptanceFailure(
-            "expected staged-product, project-root, and report-file arguments"
+            "expected staged-product, project-root, report-file, control archive, and plugin archive"
         )
     product = Path(sys.argv[1]).resolve()
     project = Path(sys.argv[2]).resolve()
     report = Path(sys.argv[3]).resolve()
-    codex = executable(os.environ.get("KAST_ACCEPTANCE_CODEX_EXECUTABLE"), "codex")
+    control = Path(sys.argv[4]).resolve()
+    plugin = Path(sys.argv[5]).resolve()
+    idea_value = os.environ.get('KAST_ACCEPTANCE_IDEA_HOME')
+    if not idea_value:
+        raise AcceptanceFailure('KAST_ACCEPTANCE_IDEA_HOME is required for installed runtime qualification')
+    idea_home = Path(idea_value)
+    codex_value = os.environ.get('KAST_ACCEPTANCE_CODEX_EXECUTABLE')
+    if not codex_value:
+        raise AcceptanceFailure('KAST_ACCEPTANCE_CODEX_EXECUTABLE is required for installed runtime qualification')
+    codex = executable(codex_value, "codex")
     tools = admitted_tools()
     tools["codex"] = codex
     with AcceptanceEnvironment(tools) as isolation:
-        product = isolation.stage_product(product)
-        facade = executable(str(product / "bin/kast-codex"), "kast-codex")
-        kast = executable(str(product / "bin/kast"), "kast")
+        product = prepare_installed_product(isolation, product, project, control, plugin, idea_home)
+        facade = executable(str(product / "bin/kast-codex-complete"), "kast-codex-complete")
+        kast = product_executable(product, isolation.root)
         home = Path(isolation.environment["HOME"])
         project = isolation.root / "workspace"
         (project / "settings.gradle.kts").write_text('rootProject.name = "installed-host-fixture"\n')
@@ -130,7 +163,7 @@ def main() -> int:
         environment.update({
             "KAST_REAL_CODEX_EXECUTABLE": str(codex),
             "CODEX_EXECUTABLE": str(codex),
-            "CODEX_HOME": str(home / "c"),
+            "KAST_APP_SERVER_PUBLIC_ENDPOINT": "private",
         })
         version = subprocess.run(
             [str(codex), "--version"], check=True, capture_output=True,
@@ -139,7 +172,7 @@ def main() -> int:
         expected_version = os.environ.get("KAST_CODEX_ACCEPTANCE_VERSION")
         if expected_version is not None and version != f"codex-cli {expected_version}":
             raise AcceptanceFailure("installed Codex version did not match the admitted authority")
-        catalog_evidence = installed_catalog_evidence(kast, environment)
+        catalog_evidence = installed_catalog_evidence(kast)
         schemas = home / "generated-codex-schema"
         subprocess.run(
             [
@@ -194,6 +227,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (AcceptanceFailure, OSError, subprocess.SubprocessError) as failure:
+    except (AcceptanceFailure, ReleaseRejected, OSError, ValueError, KeyError,
+            TypeError, subprocess.SubprocessError) as failure:
         print(f"installed-codex-host: {failure}", file=sys.stderr)
         raise SystemExit(1)

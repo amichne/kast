@@ -1,7 +1,6 @@
 """Bind the installed advertised catalog and complete installed suite to acceptance evidence."""
 from dataclasses import dataclass
 import json
-import subprocess
 
 from acceptance_idea import digest
 from released_acceptance_product import product_executable, ReleaseFailure, ReleaseRejected
@@ -21,38 +20,50 @@ class ReleasedToolInventory:
     advertisedTools: tuple[str, ...]
     configuredDefaultTools: tuple[str, ...]
     explicitReadTools: tuple[str, ...]
-    installedSchemaSha256: str
+    installedCatalogSha256: str
 
 
-def admit_inventory(document, configuration, schema_digest):
-    tools = document['serverProjection']['hostedBootstrap']['tools']
-    cli = document['serverProjection']['cliInvocations']['operations']
+def admit_inventory(document, configuration, catalog_digest):
     expected = dict(OPERATIONS)
-    names = tuple(tool['name'] for tool in tools)
-    cli_expected = {name: operation for name, operation in expected.items() if name != 'workspace_lifecycle'}
-    if (len(tools) != len(expected) or len(cli) != len(cli_expected) or set(names) != expected.keys()
-            or any(tool['operationId'] != expected[tool['name']] for tool in tools)
-            or {item['toolName']: item['operationId'] for item in cli} != cli_expected):
+    try:
+        projection = document['serverProjection']
+        tools = projection['hostedBootstrap']['tools']
+        names = tuple(tool['name'] for tool in tools)
+        valid = (document['schemaVersion'] == 1 and projection['schemaVersion'] == 15
+                 and projection['hostedBootstrap']['schemaVersion'] == 1
+                 and projection['namespace'] == 'kast' and len(tools) == len(expected)
+                 and set(names) == expected.keys()
+                 and all(tool['operationId'] == expected[tool['name']] for tool in tools))
+    except (KeyError, TypeError, ValueError):
+        valid = False
+    if not valid:
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     if any(line.startswith('KAST_APP_SERVER_TOOLS=') for line in configuration.splitlines()):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
-    reads = tuple(tool['name'] for tool in tools if tool['effect'] == 'intellij_read'
-                  and tool['operationId'] != 'workspace.lifecycle')
+    try:
+        effects = {tool['name']: tool['effect'] for tool in tools}
+    except (KeyError, TypeError):
+        raise ReleaseRejected(ReleaseFailure.INVENTORY) from None
+    if (effects.get('workspace_lifecycle') != 'intellij_read_and_persistence_write'
+            or effects.get('change') != 'intellij_write'):
+        raise ReleaseRejected(ReleaseFailure.INVENTORY)
+    reads = tuple(name for name in names if effects[name] == 'intellij_read')
     if len(reads) != 3 or set(reads) != {'query_symbols', 'source_read', 'check_diagnostics'}:
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
-    return ReleasedToolInventory(names, names, reads, schema_digest)
+    return ReleasedToolInventory(names, names, reads, catalog_digest)
 
 
 def inspect_installed_inventory(isolation, product):
-    executable = product_executable(product, isolation.root)
+    product_executable(product, isolation.root)
     configuration = product / 'config/environment'
     if configuration.resolve() != configuration or configuration.stat().st_size > 65536:
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
-    schema = isolation.root / 'released-schema.private.json'
-    with schema.open('xb') as output:
-        schema.chmod(0o600)
-        result = subprocess.run([str(executable), '--schema'], cwd=isolation.root / 'workspace', env=isolation.environment,
-                                stdout=output, stderr=subprocess.PIPE, timeout=30)
-    if result.returncode != 0 or not 0 < schema.stat().st_size <= 4 * 1024 * 1024:
+    catalog = product / 'share/kast/provider-catalog.json'
+    if (catalog.resolve() != catalog or not catalog.is_file() or catalog.is_symlink()
+            or not 0 < catalog.stat().st_size <= 4 * 1024 * 1024):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
-    return admit_inventory(json.loads(schema.read_text()), configuration.read_text(), digest(schema))
+    manifest = json.loads((product / 'installation.json').read_text())
+    entries = [entry for entry in manifest['payloadFiles'] if entry['path'] == 'share/kast/provider-catalog.json']
+    if len(entries) != 1 or entries[0]['sha256'] != 'sha256:' + digest(catalog):
+        raise ReleaseRejected(ReleaseFailure.PAYLOAD)
+    return admit_inventory(json.loads(catalog.read_text()), configuration.read_text(), digest(catalog))

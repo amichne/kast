@@ -58,6 +58,11 @@ class ServiceControl:
             return [str(self.executable), action.value]
         return [str(self.executable), "app-server", action.value]
 
+    def status_command(self) -> list[str]:
+        if self.kind is ServiceControlKind.PRIVATE:
+            return [str(self.executable), "status"]
+        return [str(self.executable), "app-server", "status"]
+
 
 @dataclass(frozen=True)
 class ServiceObservation:
@@ -144,7 +149,7 @@ def exercise_private_service(kast: Path, environment: dict[str, str], home: Path
         raise AcceptanceFailure("selected Kast service socket is unavailable")
     if stat.S_IMODE(socket.lstat().st_mode) != 0o600:
         raise AcceptanceFailure("selected socket permissions are not private")
-    status = subprocess.run([str(kast), "app-server", "status"], cwd=project,
+    status = subprocess.run(ServiceControl.admit(product, kast).status_command(), cwd=project,
                             env=environment, check=True, capture_output=True, text=True, timeout=15)
     evidence = home / f"status-{phase.name.lower()}.json"
     encoded = status.stdout.encode("utf-8")

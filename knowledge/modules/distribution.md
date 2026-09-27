@@ -35,6 +35,8 @@ code_sources:
   - path: packaging/released_upgrade_acceptance.py
   - path: packaging/released_acceptance_product.py
   - path: packaging/released_tool_inventory.py
+  - path: packaging/run-portable-tests.py
+  - path: packaging/run-portable-tests-container.sh
   - path: packaging/released_payload_identity.py
   - path: packaging/run-hosted-change-acceptance.py
   - path: packaging/hosted_read_regression.py
@@ -51,6 +53,7 @@ code_sources:
   - path: packaging/configuration-schema.json
   - path: packaging/installation-lifecycle.py
   - path: packaging/installation-recovery.py
+  - path: packaging/prune-prior-installations.py
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationRecoveryReceipt.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
   - path: install.sh
@@ -89,7 +92,7 @@ Distribution contracts own configuration keys, defaults, owners, operational lim
 
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and acceptance. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. Installed-product acceptance also installs the assembled archive and plugin in a private session fixture, exercising the real installer and private service entry point. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
-The control product also includes `kast-tool-rpc`. Installation publishes its configured `kast-tool-rpc-complete` wrapper alongside the existing command wrappers. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
+The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the selected version and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 
 Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull-request CI and pre-push fetch the published release catalog anew for each gate invocation, select its highest stable semantic version, and pass that version to the checkout build. Missing release authority rejects without a local-tag or placeholder fallback. Exact release-candidate builds retain their explicitly resolved candidate version. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
 
@@ -146,7 +149,7 @@ Installation child processes emit `kast_installation` records by default with a 
 
 `ControlPayloadInventory` counts paths globally, including the three payload roots, before sorting or hashing. Installer and broker use that same admission; `verifyReleaseRuntimeAdmission` exercises the runtime identity owner on the actual staged control product. Limit diagnostics retain the resource and observed lower bound. The hosted-plugin ZIP has a separate archive budget.
 
-Before prior-service retirement and activation, `prepareInstallationRecovery` validates or saves a typed receipt and an offline Python bundle outside the immutable version payload. Ordinary upgrades retain the exact prior-installation recovery chain; corrupt candidate metadata rejects before stopping the selected release. Active plugin bytes alone occupy `plugins/kast-ide-hosted`; candidate, baseline and detached copies remain in the private sibling `.kast-plugin-recovery` on the same filesystem. Recovery admits exactly the legacy discovery-root layout or this retained layout, with one shared token and inode ownership proofs. Standalone recovery on retained historical receipts migrates receipt-listed legacy copies through the exact prior-installation chain; it saves the updated recovery script and location intent before atomic renames so interruption can resume. Standalone recovery rejects missing, cyclic, oversized or corrupt chains and foreign replacement identities. Only mutable recovery metadata and owned plugin paths change: prior payloads, configuration, installation manifests and workspace registries remain unchanged. `installation-recovery.py detach` fences launches, detaches matching command links and receipted plugin directories, and retains previous plugin backups outside discovery. It executes retirement only after full payload admission. Verified retired state is quarantined; uncertain processes and journals remain preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports older installations without requiring their executable to run. Python and JVM installation transitions use compatible POSIX record locks.
+Before prior-service retirement and activation, `prepareInstallationRecovery` validates or saves a typed receipt and an offline Python bundle outside the immutable version payload. Ordinary upgrades retain the exact prior-installation recovery chain until the public installer completes plugin activation and Codex registration; corrupt candidate metadata rejects before stopping the selected release. Active plugin bytes alone occupy `plugins/kast-ide-hosted`; candidate, baseline and detached copies remain in the private sibling `.kast-plugin-recovery` on the same filesystem. Recovery admits exactly the legacy discovery-root layout or this retained layout, with one shared token and inode ownership proofs. Standalone recovery on retained historical receipts migrates receipt-listed legacy copies through the exact prior-installation chain; it saves the updated recovery script and location intent before atomic renames so interruption can resume. Standalone recovery rejects missing, cyclic, oversized or corrupt chains and foreign replacement identities. After successful activation, the installer exit trap validates the selected plugin and recovery chain, seals the selected receipt so it no longer depends on the prior payload, then asks the checksum-bound lifecycle helper to admit every version directory and retire unselected payloads. A failed effect retains prior evidence and reports an incomplete upgrade. `installation-recovery.py detach` fences launches, detaches matching command links and receipted plugin directories, and retains previous plugin backups outside discovery. It executes retirement only after full payload admission. Verified retired state is quarantined; uncertain processes and journals remain preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports older installations without requiring their executable to run. Python and JVM installation transitions use compatible POSIX record locks.
 
 `install.sh --force` uses the same verified release path with explicit reset authority.
 Under the activation lock it fences and retires the selected and same-version target
@@ -212,14 +215,15 @@ Deterministic fixture tests and schema checks do not themselves qualify a native
 IDE run; [hosted query qualification](../flows/hosted-query.md) keeps those evidence
 boundaries separate.
 
-The native acceptance runner also accepts `--release-assets` and `--release-version` in place of source-built `--product` and `--plugin`. This mode requires a clean checkout at the exact version tag and a harness carrying that source commit. It invokes the tagged public `install.sh` with original checksum-bound control and plugin archives in an exclusively owned fixture. It verifies the checksum-derived installed version directory, manifest inventory, and original archive file bytes, then routes CLI and provider calls through the installed `bin/kast-complete`. The hosted plugin stays in the installer's private JetBrains plugin directory; only the separately identified test probe is added. Login-service and App Server activation are disabled during installation. This admission mode alone proves neither native behavior nor upgrade or persistent-session behavior; those require the corresponding completed runtime receipts. Temporary fake-installer tests qualify the admission boundary only.
+The native acceptance runner also accepts `--release-assets` and `--release-version` in place of source-built `--product` and `--plugin`. This mode requires a clean checkout at the exact version tag and a harness carrying that source commit. It invokes the tagged public `install.sh` with original checksum-bound control and plugin archives in an exclusively owned fixture. It verifies the checksum-derived installed version directory, manifest inventory, original archive file bytes, version-owned launcher, and installed catalog. The hosted plugin stays in the installer's private JetBrains plugin directory; only the separately identified test probe is added. Login-service and App Server activation are disabled during installation. This admission mode alone proves neither native behavior nor upgrade or persistent-session behavior; those require the corresponding completed runtime receipts. Temporary fake-installer tests qualify the admission boundary only.
 
-Release acceptance binds all five advertised tools to their canonical operations
-and confirms that the installed configuration contains no retired tool-selection
-assignment. The native read harness exercises the three read tools from that complete
-suite; lifecycle and change tools retain their own effect and approval contracts.
+Release acceptance reads the checksum-bound installed `provider-catalog.json`, binds
+all five advertised tools to their canonical operations and effects, and confirms
+that the installed configuration contains no retired tool-selection assignment.
+The native read harness remains a separate runtime gate for the three read tools;
+lifecycle and change tools retain their own effect and approval contracts.
 
-Released mode checks two fresh noninteractive Bash sessions without reading startup files: command resolution, exact version, saved runtime configuration, and installation identity. Optional `--previous-release-assets` and `--previous-release-version` first install a compatible immediately preceding patch through the same tagged target installer, then register the owned empty workspace through that prior wrapper. The upgrade requires completed prior admission, retirement, configuration validation and command qualification observations, unchanged prior payload/configuration, and exact populated workspace-registry retention. Original archives and invocation output digests remain bound to the receipt. These child-shell observations do not qualify login-service activation, a persistent coordinator, or stock Codex UI; those remain explicit runtime gates.
+Released mode checks two fresh noninteractive Bash sessions without reading startup files: absolute version-owned wrapper resolution, exact version, saved runtime file, and installation identity. Optional `--previous-release-assets` and `--previous-release-version` first install a compatible immediately preceding patch through the same tagged target installer, then register the owned empty workspace through that prior wrapper. The upgrade requires completed prior admission, retirement, configuration validation and command qualification observations, removal of the prior version directory after full installation, and exact populated workspace-registry retention in the selected version. Original archives and invocation output digests remain bound to the receipt. These child-shell observations do not qualify login-service activation, a persistent coordinator, or stock Codex UI; those remain explicit runtime gates.
 
 Released native qualification also requires an explicitly admitted Codex executable and
 the original installed `kast-complete` and `kast-codex-complete` wrappers. The shared
@@ -237,18 +241,18 @@ Passive runtime identity inspection emits accepted inventory counters only to an
 explicit typed diagnostic sink. Coordinator startup retains its existing success
 report, and rejected inventory admission retains bounded finite stderr evidence.
 The original-release session helper requires the current target's successful
-`config show` and `config explain` calls to keep stderr empty. It passes the owned
-JVM home/temp options through launcher `JAVA_OPTS`, without filtering stderr or
-relaxing diagnostics. Previous-release sessions retain their historical stderr
+saved-configuration read and installation inspection to keep stderr empty. It passes
+the owned JVM home/temp options through launcher `JAVA_OPTS`, without filtering stderr
+or relaxing diagnostics. Previous-release sessions retain their historical stderr
 as evidence so an adjacent upgrade can qualify the repaired target.
 
-The source-built Codex host acceptance now selects the canonical control endpoint
-and requires matched ownership, mode 0600, live launchd observation, native protocol
-and catalog readiness, stock daemon version discovery, fresh thread creation and
-owned cleanup. Its schema-2 receipt retains bounded status hashes and distinct
-unqualified Desktop evidence. Original-release acceptance explicitly selects the
-private compatibility policy. These receipts do not prove a model-driven tool
-invocation through the existing IDEA runtime.
+The installed Codex host acceptance installs the assembled control and plugin
+artifacts in a private fixture and selects the private service endpoint. It requires
+matched ownership, mode 0600, real Codex initialize and thread-start responses,
+prepared host after detach, and owned cleanup. Its schema-2 receipt retains bounded
+status hashes and distinct unqualified Desktop and ordinary daemon discovery
+evidence. These receipts do not prove a model-driven tool invocation through the
+existing IDEA runtime.
 
 Disposable native fixture readiness explicitly marks its fixed, canonical
 `src/main/kotlin` directory and `Fixture.kt` file for a nonrecursive rescan before
@@ -260,9 +264,20 @@ invoke it. A quiet readiness receipt still does not prove a future epoch is stab
 
 Workspace registry retention emits a bounded `kast_installation_registry`
 observation with its exact outcome. A corrupt prior registry fails prior lifecycle
-admission and keeps the selected installation and command links. Failure to stop an exact prior service,
+admission and keeps the selected installation and declared activation anchors. Failure to stop an exact prior service,
 filesystem failure, and interruption remain explicit failures, rather than being
 reported as successful retirement.
+
+After the selected upgrade receipt is sealed, historical cleanup admits each
+prior version through the lifecycle boundary. A separate review enumerates
+prior Kast processes, login items, recovery bundles, plugin backups, external
+anchors, and version entries that no longer pass admission. It preserves the selected
+version and the plugin backup named by its recovery receipt. A terminal user
+must answer `yes` for each uncertain entry; a declined or unattended entry is
+retained with a finite reason. Process command lines supply runtime evidence
+for version-root tracing, and an exact Kast launchd label is booted out before
+its reviewed login item is removed. A process or entry that changes during
+review is retained.
 
 Selected IDEA discovery retains one canonical home across upgrades. Typed metadata resolution identifies its macOS ARM bundle and executable, rejects ambiguity and escapes, and admits the 262 release line rather than an exact patch. Installation inspection includes the launch observation and persists the derived receipt. A legacy selection can still attach to its live lifecycle endpoint when cold-launch metadata is unavailable.
 
