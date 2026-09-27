@@ -12,34 +12,34 @@ class NameSource:
     name_match: str
     declaration_kinds: tuple[str, ...] | None
     scope: object | None
-    type: str = field(default='search_declarations', init=False)
+    type: str = field(default='SEARCH_DECLARATIONS', init=False)
 
 
 @dataclass(frozen=True)
 class SymbolReferences:
     symbol_refs: tuple[str, ...]
-    type: Literal['symbol_refs'] = field(default='symbol_refs', init=False)
+    type: Literal['SYMBOL_REFS'] = field(default='SYMBOL_REFS', init=False)
 
 
 @dataclass(frozen=True)
 class SymbolOutput:
     fields: tuple[str, ...]
-    type: Literal['symbols'] = field(default='symbols', init=False)
+    type: Literal['SYMBOLS'] = field(default='SYMBOLS', init=False)
 
 
 @dataclass(frozen=True)
 class OccurrenceOutput:
-    type: Literal['occurrences'] = field(default='occurrences', init=False)
+    type: Literal['OCCURRENCES'] = field(default='OCCURRENCES', init=False)
 
 
 @dataclass(frozen=True)
 class TraversalRecordOutput:
-    type: Literal['traversal_records'] = field(default='traversal_records', init=False)
+    type: Literal['TRAVERSAL_RECORDS'] = field(default='TRAVERSAL_RECORDS', init=False)
 
 
 @dataclass(frozen=True)
 class BreadthFirstWalk:
-    type: Literal['breadth_first'] = field(default='breadth_first', init=False)
+    type: Literal['BREADTH_FIRST'] = field(default='BREADTH_FIRST', init=False)
 
 
 @dataclass(frozen=True)
@@ -47,13 +47,13 @@ class Walk:
     relation: str
     maximum_depth: int
     strategy: BreadthFirstWalk = field(default_factory=BreadthFirstWalk)
-    type: Literal['walk'] = field(default='walk', init=False)
+    type: Literal['WALK'] = field(default='WALK', init=False)
 
 
 @dataclass(frozen=True)
 class ExpandRelation:
     relation: str
-    type: Literal['expand_relation'] = field(default='expand_relation', init=False)
+    type: Literal['EXPAND_RELATION'] = field(default='EXPAND_RELATION', init=False)
 
 
 @dataclass(frozen=True)
@@ -62,14 +62,14 @@ class QueryRun(Generic[Source]):
     steps: tuple[object, ...] | None = None
     output: SymbolOutput | OccurrenceOutput | TraversalRecordOutput | None = None
     execution_budget: object | None = None
-    action: Literal['run'] = field(default='run', init=False)
+    type: Literal['RUN'] = field(default='RUN', init=False)
 
 
 @dataclass(frozen=True)
 class QueryResume:
     continuation: str
     execution_budget: object | None = None
-    action: Literal['resume'] = field(default='resume', init=False)
+    type: Literal['RESUME'] = field(default='RESUME', init=False)
 
 
 @dataclass(frozen=True)
@@ -78,17 +78,17 @@ class QueryInput(Generic[Source]):
 
 
 def name_query(name, kinds=None, scope=None, match='exact', budget=None):
-    return QueryInput(QueryRun(NameSource(name, match, tuple(kinds) if kinds is not None else None, scope),
-                               output=SymbolOutput(('name', 'location', 'signature')), execution_budget=budget))
+    return QueryInput(QueryRun(NameSource(name, match.upper(), tuple(kind.upper() for kind in kinds) if kinds is not None else None, scope),
+                               output=SymbolOutput(('NAME', 'LOCATION', 'SIGNATURE')), execution_budget=budget))
 
 
 def relation_query(reference, relation='callees', budget=None):
-    return QueryInput(QueryRun(SymbolReferences((reference,)), (ExpandRelation(relation),),
+    return QueryInput(QueryRun(SymbolReferences((reference,)), (ExpandRelation(relation.upper()),),
                                OccurrenceOutput(), budget))
 
 
 def walk_query(reference, relation='callers', maximum_depth=4, budget=None):
-    return QueryInput(QueryRun(SymbolReferences((reference,)), (Walk(relation, maximum_depth),),
+    return QueryInput(QueryRun(SymbolReferences((reference,)), (Walk(relation.upper(), maximum_depth),),
                                TraversalRecordOutput(), budget))
 
 

@@ -26,10 +26,10 @@ internal data class McpValidationDeclaration(
 
 @Serializable
 internal enum class McpValidationKind(val queryKind: String, val queryResultKind: String) {
-    @SerialName("class") CLASS("class", "classlike"),
-    @SerialName("function") FUNCTION("function", "function"),
-    @SerialName("property") PROPERTY("property", "property"),
-    @SerialName("type_alias") TYPE_ALIAS("type_alias", "type-alias"),
+    @SerialName("class") CLASS("CLASS", "classlike"),
+    @SerialName("function") FUNCTION("FUNCTION", "function"),
+    @SerialName("property") PROPERTY("PROPERTY", "property"),
+    @SerialName("type_alias") TYPE_ALIAS("TYPE_ALIAS", "type-alias"),
 }
 
 @Serializable

@@ -160,6 +160,27 @@ class McpInvestigationToolsTest {
     }
 
     @Test
+    fun `exhaustive declaration absence fails the probe`() {
+        val request = TestValidationRequest(TestDeclaration("class", "Missing", "src/main/kotlin/sample/Registry.kt"))
+        val exit =
+            validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, _ ->
+                assertEquals("query_symbols", name)
+                CliExit.Complete(
+                    CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
+                        .create(TestQualifiedQuery(status = "complete", items = emptyList()))
+                )
+            }
+        val probe =
+            Json.parseToJsonElement(exit.document.value)
+                .jsonObject
+                .getValue("data")
+                .jsonObject
+                .getValue("declarationQuery")
+                .jsonObject
+        assertEquals("failed", probe.getValue("status").jsonPrimitive.content)
+    }
+
+    @Test
     fun `validation scopes a custom source set before querying its declaration`() {
         val file = "module/custom/Registry.kt"
         val request = TestValidationRequest(TestDeclaration("class", "Registry", file, "integrationTest"))
@@ -168,10 +189,34 @@ class McpInvestigationToolsTest {
                 assertEquals("query_symbols", name)
                 val scope =
                     input.getValue("request").jsonObject.getValue("source").jsonObject.getValue("scope").jsonObject
+                assertEquals("RUN", input.getValue("request").jsonObject.getValue("type").jsonPrimitive.content)
+                assertEquals(
+                    "SEARCH_DECLARATIONS",
+                    input
+                        .getValue("request")
+                        .jsonObject
+                        .getValue("source")
+                        .jsonObject
+                        .getValue("type")
+                        .jsonPrimitive
+                        .content,
+                )
+                assertEquals("DIRECTORY", scope.getValue("type").jsonPrimitive.content)
                 assertEquals("module/custom", scope.getValue("relative_directory_path").jsonPrimitive.content)
                 assertEquals(
                     listOf("integrationTest"),
                     scope.getValue("source_set_names").jsonArray.map { it.jsonPrimitive.content },
+                )
+                assertEquals(
+                    listOf("CLASS"),
+                    input
+                        .getValue("request")
+                        .jsonObject
+                        .getValue("source")
+                        .jsonObject
+                        .getValue("declaration_kinds")
+                        .jsonArray
+                        .map { it.jsonPrimitive.content },
                 )
                 CliExit.Qualified(
                     CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())

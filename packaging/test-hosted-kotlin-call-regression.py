@@ -234,7 +234,7 @@ class SearchResponse:
 class KotlinCallRegressionTest(unittest.TestCase):
     def test_inline_relation_resume_shape_and_canonical_parity_key(self):
         request = QueryInput(QueryResume('next'))
-        self.assertEqual({'request': {'action': 'resume', 'continuation': 'next',
+        self.assertEqual({'request': {'type': 'RESUME', 'continuation': 'next',
                                       'execution_budget': None}}, asdict(request))
         fact = ObservedFact(NativeSymbol(Range(), '/fixture/Calls.kt'))
         inverse = replace(fact, meaning='callers', target=replace(fact.target, selector='new-handle'))
@@ -278,7 +278,7 @@ class KotlinCallRegressionTest(unittest.TestCase):
                 status='qualified', omissions=(omitted('Fetcher { client.fetch()', 'Fetcher { client.', 'fetch'),)),
         }
         def invoke(surface, tool, request):
-            if request['request']['source']['type'] == 'search_declarations':
+            if request['request']['source']['type'] == 'SEARCH_DECLARATIONS':
                 return json.loads(json.dumps(asdict(SearchResponse((SearchItem(request['request']['source']['declaration_name']),)))))
             return json.loads(json.dumps(asdict(responses[request['request']['source']['symbol_refs'][0]])))
         replay = SimpleNamespace(live='same-test-authority', surface='test', transport=SimpleNamespace(invoke=invoke))
@@ -378,28 +378,28 @@ class KotlinCallRegressionTest(unittest.TestCase):
 
     def test_cycle_request_retains_semantic_limits_across_resume(self):
         request = cycle_query('issued-ref', CallPageBudget(1))
-        expected = {'request': {'action': 'run', 'source': {'type': 'symbol_refs', 'symbol_refs': ('issued-ref',)},
-                    'steps': ({'type': 'walk', 'relation': 'callees', 'maximum_depth': 2,
-                               'strategy': {'type': 'breadth_first'}},),
-                    'output': {'type': 'traversal_records'},
+        expected = {'request': {'type': 'RUN', 'source': {'type': 'SYMBOL_REFS', 'symbol_refs': ('issued-ref',)},
+                    'steps': ({'type': 'WALK', 'relation': 'CALLEES', 'maximum_depth': 2,
+                               'strategy': {'type': 'BREADTH_FIRST'}},),
+                    'output': {'type': 'TRAVERSAL_RECORDS'},
                     'execution_budget': {'max_results': 1, 'max_elapsed_ms': 5000}}}
         self.assertEqual(expected, asdict(request))
-        self.assertEqual({'request': {'action': 'resume', 'continuation': 'issued-cursor',
+        self.assertEqual({'request': {'type': 'RESUME', 'continuation': 'issued-cursor',
                                      'execution_budget': {'max_results': 1, 'max_elapsed_ms': 5000}}},
                          asdict(QueryInput(QueryResume('issued-cursor', CallPageBudget(1)))))
 
     def test_fixed_request_shapes(self):
-        self.assertEqual({'request': {'action': 'run',
-                          'source': {'type': 'search_declarations', 'declaration_name': 'outer',
-                                     'name_match': 'exact', 'declaration_kinds': ('function',),
-                                     'scope': {'package_name': 'fixture.calls', 'include_subpackages': False,
+        self.assertEqual({'request': {'type': 'RUN',
+                          'source': {'type': 'SEARCH_DECLARATIONS', 'declaration_name': 'outer',
+                                     'name_match': 'EXACT', 'declaration_kinds': ('FUNCTION',),
+                                     'scope': {'type': 'PACKAGE', 'package_name': 'fixture.calls', 'include_subpackages': False,
                                                'source_set_names': ('main',)}},
-                          'steps': None, 'output': {'fields': ('name', 'location', 'signature'), 'type': 'symbols'},
+                          'steps': None, 'output': {'fields': ('NAME', 'LOCATION', 'SIGNATURE'), 'type': 'SYMBOLS'},
                           'execution_budget': None}},
                          asdict(name_query('outer', ('function',), KotlinCallScope())))
-        self.assertEqual({'request': {'action': 'run', 'source': {'symbol_refs': ('issued-ref',),
-                          'type': 'symbol_refs'}, 'steps': ({'relation': 'callees', 'type': 'expand_relation'},),
-                          'output': {'type': 'occurrences'}, 'execution_budget': None}},
+        self.assertEqual({'request': {'type': 'RUN', 'source': {'symbol_refs': ('issued-ref',),
+                          'type': 'SYMBOL_REFS'}, 'steps': ({'relation': 'CALLEES', 'type': 'EXPAND_RELATION'},),
+                          'output': {'type': 'OCCURRENCES'}, 'execution_budget': None}},
                          asdict(relation_query('issued-ref')))
 
     def test_occurrence_offsets_distinguish_repeated_calls(self):

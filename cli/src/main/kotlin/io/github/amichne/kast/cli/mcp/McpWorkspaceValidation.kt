@@ -79,7 +79,7 @@ private class WorkspaceValidator(
         return when (matching.size) {
             0 ->
                 QueriedDeclaration(
-                    McpProbe.unverified("No exact declaration was returned for the requested file", response.evidence),
+                    McpProbe.failed("No matching declaration in the requested file", response.evidence),
                     null,
                 )
             1 ->
@@ -157,7 +157,7 @@ private class WorkspaceValidator(
                         McpQueryRelationRequest(
                             McpQueryRunAction(
                                 McpQuerySymbolRefs(listOf(subject)),
-                                listOf(McpQueryExpandRelation(probe.kind)),
+                                listOf(McpQueryExpandRelation(probe.kind.queryRelation())),
                             )
                         )
                     )
@@ -327,7 +327,7 @@ private data class McpDiagnosticDocument(
 private data class McpQueryDeclarationAction(
     val source: McpQueryDeclarationSource,
     val steps: List<McpQueryExpandRelation>? = null,
-    val action: McpQueryAction = McpQueryAction.RUN,
+    val type: McpQueryAction = McpQueryAction.RUN,
 )
 
 @Serializable
@@ -335,15 +335,26 @@ private data class McpQueryDeclarationSource(
     @SerialName("declaration_name") val declarationName: String,
     @SerialName("declaration_kinds") val declarationKinds: List<String>? = null,
     val scope: McpQueryDirectoryScope,
-    val type: String = "search_declarations",
+    val type: McpQueryDeclarationSourceKind = McpQueryDeclarationSourceKind.SEARCH_DECLARATIONS,
 )
+
+@Serializable
+private enum class McpQueryDeclarationSourceKind {
+    @SerialName("SEARCH_DECLARATIONS") SEARCH_DECLARATIONS
+}
 
 @Serializable
 private data class McpQueryDirectoryScope(
     @SerialName("relative_directory_path") val relativeDirectoryPath: String,
     @SerialName("source_set_names") val sourceSetNames: List<String>? = null,
     @SerialName("include_subdirectories") val includeSubdirectories: Boolean = false,
+    val type: McpQueryDirectoryScopeKind = McpQueryDirectoryScopeKind.DIRECTORY,
 )
+
+@Serializable
+private enum class McpQueryDirectoryScopeKind {
+    @SerialName("DIRECTORY") DIRECTORY
+}
 
 @Serializable
 private data class McpSourceRequest(

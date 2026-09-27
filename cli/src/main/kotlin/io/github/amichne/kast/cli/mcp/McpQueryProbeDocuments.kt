@@ -22,12 +22,12 @@ internal data class McpQueryRunAction(
     val source: McpQuerySymbolRefs,
     val steps: List<McpQueryExpandRelation>,
     val output: McpQueryOccurrenceOutput = McpQueryOccurrenceOutput(),
-    val action: McpQueryAction = McpQueryAction.RUN,
+    val type: McpQueryAction = McpQueryAction.RUN,
 )
 
 @Serializable
 internal enum class McpQueryAction {
-    @SerialName("run") RUN
+    @SerialName("RUN") RUN
 }
 
 @Serializable
@@ -38,18 +38,40 @@ internal data class McpQuerySymbolRefs(
 
 @Serializable
 internal enum class McpQuerySourceKind {
-    @SerialName("symbol_refs") SYMBOL_REFS
+    @SerialName("SYMBOL_REFS") SYMBOL_REFS
 }
 
 @Serializable
 internal data class McpQueryExpandRelation(
-    val relation: McpValidationRelationKind,
+    val relation: McpQueryRelationKind,
     val type: McpQueryStepKind = McpQueryStepKind.EXPAND_RELATION,
 )
 
 @Serializable
+internal enum class McpQueryRelationKind {
+    REFERENCES,
+    CALLERS,
+    CALLEES,
+    IMPLEMENTATIONS,
+    INHERITORS,
+    OVERRIDES,
+    TYPE_USES,
+}
+
+internal fun McpValidationRelationKind.queryRelation(): McpQueryRelationKind =
+    when (this) {
+        McpValidationRelationKind.REFERENCES -> McpQueryRelationKind.REFERENCES
+        McpValidationRelationKind.CALLERS -> McpQueryRelationKind.CALLERS
+        McpValidationRelationKind.CALLEES -> McpQueryRelationKind.CALLEES
+        McpValidationRelationKind.IMPLEMENTATIONS -> McpQueryRelationKind.IMPLEMENTATIONS
+        McpValidationRelationKind.INHERITORS -> McpQueryRelationKind.INHERITORS
+        McpValidationRelationKind.OVERRIDES -> McpQueryRelationKind.OVERRIDES
+        McpValidationRelationKind.TYPE_USES -> McpQueryRelationKind.TYPE_USES
+    }
+
+@Serializable
 internal enum class McpQueryStepKind {
-    @SerialName("expand_relation") EXPAND_RELATION
+    @SerialName("EXPAND_RELATION") EXPAND_RELATION
 }
 
 @Serializable
@@ -57,5 +79,5 @@ internal data class McpQueryOccurrenceOutput(val type: McpQueryOutputKind = McpQ
 
 @Serializable
 internal enum class McpQueryOutputKind {
-    @SerialName("occurrences") OCCURRENCES
+    @SerialName("OCCURRENCES") OCCURRENCES
 }

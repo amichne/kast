@@ -50,7 +50,7 @@ def run_budget_read_regression(replay):
         axis = next(iter(asdict(budget)))
         cases = (
             ('query-symbols', 'query_symbols', QueryInput(QueryRun(SymbolReferences((replay.seeds['logger']['ref'],)),
-                output=SymbolOutput(('name',)), execution_budget=budget))),
+                output=SymbolOutput(('NAME',)), execution_budget=budget))),
             ('source-read', 'source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['ref']), budget)),
             ('query-occurrences', 'query_symbols', relation_query(replay.seeds['helper']['ref'], 'callers', budget)),
             ('query-walk', 'query_symbols', walk_query(replay.seeds['helper']['ref'], budget=budget)),

@@ -13,16 +13,19 @@ from collections import Counter
 from unittest.mock import Mock
 from unittest.mock import patch
 from contextlib import nullcontext
+from jsonschema import Draft202012Validator
 from threading import Barrier
 from hosted_concurrent_read import run_concurrent_read_regression
 from hosted_peer_probe import PeerAttempt, PeerCase, PeerFailure, PeerOutcome, TerminalReply
 from hosted_transport_observation import TransportSummary, TransportWitnessFailure, TransportWitnessRejected
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
-from hosted_enum_read_regression import run_enum_read_regression
+from hosted_enum_read_regression import (AllEnumClasses, DistinctSymbols, EnumMemberReferences,
+    EnumScope, run_enum_read_regression)
 from hosted_budget_read_regression import BudgetSource, WorkBudget
 from hosted_source_read_regression import SymbolAnchor, source_budget_anchor_query
-from query_name_request import name_query
+from query_name_request import (QueryInput, QueryResume, QueryRun, SymbolOutput, name_query,
+    relation_query, walk_query)
 from hosted_read_regression import (_ReadReplay, _read_observation, _reproduction,
     ReadRegressionStage, regression_rejection, MAX_READ_RECEIPTS, ReadReceiptRejected, ReadReceiptFailure)
 from hosted_peer_probe import EndpointAdmissionRejected, EndpointAdmissionFailure
@@ -148,10 +151,27 @@ def enum_response(names):
 
 
 class HostedReadRegressionTest(unittest.TestCase):
+    def test_query_request_helpers_match_app_server_tool_schema(self):
+        contract_path = (Path(__file__).resolve().parents[1] / 'app-server' / 'src' / 'main' / 'resources' /
+                         'io' / 'github' / 'amichne' / 'kast' / 'appserver' / 'query' / 'tools.schema.json')
+        contract = json.loads(contract_path.read_text())
+        query = next(tool for tool in contract['tools'] if tool['name'] == 'query_symbols')
+        validator = Draft202012Validator({**query['schema'], '$defs': contract['$defs']})
+        for request in (name_query('Mode', ('class',)), relation_query('exact:opaque'),
+                        walk_query('exact:opaque'),
+                        name_query('Mode', ('class',), EnumScope()),
+                        QueryInput(QueryRun(AllEnumClasses())),
+                        QueryInput(QueryRun(EnumMemberReferences(('exact:opaque',)),
+                                            (DistinctSymbols(),), SymbolOutput(('NAME', 'SIGNATURE')))),
+                        QueryInput(QueryResume('query:v1:00000000-0000-0000-0000-000000000000'))):
+            with self.subTest(request=request):
+                encoded = json.loads(json.dumps(asdict(request)))
+                self.assertEqual([], list(validator.iter_errors(encoded)))
+
     def test_native_search_and_entity_free_source_requests_use_current_fields(self):
         for request in (name_query('Mode', ('class',)), source_budget_anchor_query()):
             payload = asdict(request)['request']
-            self.assertEqual('run', payload['action'])
+            self.assertEqual('RUN', payload['type'])
             self.assertIn('source', payload)
             self.assertNotIn('class_name', payload)
         source = asdict(BudgetSource(SymbolAnchor('exact:source'), WorkBudget()))
@@ -271,8 +291,8 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertTrue(all(request['request']['execution_budget']['max_work_units'] == 32 for request in requests))
         self.assertEqual(['private-reference-0', 'private-reference-1'],
                          list(requests[-2]['request']['source']['symbol_refs']))
-        self.assertEqual({'type': 'symbols', 'fields': ('name', 'signature')}, requests[-1]['request']['output'])
-        self.assertEqual([{'type': 'distinct_symbols'}], list(requests[-1]['request']['steps']))
+        self.assertEqual({'type': 'SYMBOLS', 'fields': ('NAME', 'SIGNATURE')}, requests[-1]['request']['output'])
+        self.assertEqual([{'type': 'DISTINCT_SYMBOLS'}], list(requests[-1]['request']['steps']))
         self.assertEqual(4, len(requests[-1]['request']['source']['symbol_refs']))
         self.assertNotIn('private-', json.dumps(replay.rows))
 
@@ -472,12 +492,12 @@ class HostedReadRegressionTest(unittest.TestCase):
         replay.walk('original-reference', Counter({'caller': 1}), 'helper')
         self.assertEqual(2, transport.invoke.call_count)
         initial, resumed = [call.args[2] for call in transport.invoke.call_args_list]
-        self.assertEqual({'request': {'source': {'type': 'symbol_refs', 'symbol_refs': ['original-reference']},
-                          'steps': [{'type': 'walk', 'relation': 'callers', 'maximum_depth': 4,
-                                     'strategy': {'type': 'breadth_first'}}],
-                          'output': {'type': 'traversal_records'}, 'execution_budget': None,
-                          'action': 'run'}}, json.loads(json.dumps(initial)))
-        self.assertEqual({'request': {'action': 'resume', 'continuation': 'private-checkpoint',
+        self.assertEqual({'request': {'source': {'type': 'SYMBOL_REFS', 'symbol_refs': ['original-reference']},
+                          'steps': [{'type': 'WALK', 'relation': 'CALLERS', 'maximum_depth': 4,
+                                     'strategy': {'type': 'BREADTH_FIRST'}}],
+                          'output': {'type': 'TRAVERSAL_RECORDS'}, 'execution_budget': None,
+                          'type': 'RUN'}}, json.loads(json.dumps(initial)))
+        self.assertEqual({'request': {'type': 'RESUME', 'continuation': 'private-checkpoint',
                                      'execution_budget': None}}, resumed)
         self.assertTrue(all(row['passed'] for row in replay.rows))
         self.assertEqual('complete', replay.rows[-1]['observation']['status'])
