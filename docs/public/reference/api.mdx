@@ -1,0 +1,44 @@
+---
+title: "API and RPC reference"
+description: "Choose the right Kast contract before reading detailed callable and result schemas."
+icon: "book-open"
+---
+
+Kast has three agent-facing connections. They share the canonical operation
+documents, but each connection has its own outer result. Start with the
+contract for the connection you use.
+
+| Connection | Start here | Discover the installed inputs |
+| --- | --- | --- |
+| Direct MCP | [MCP contract](/reference/mcp-catalog) | `tools/list` |
+| One-shot tool RPC | [Tool RPC contract](/reference/rpc-catalog) | `kast-tool-rpc-complete catalog` |
+| Hosted Codex App Server | [Callable schemas](/api-reference/query-symbols) | Provider catalog for the conversation |
+
+## Read a result
+
+[Read a Kast result](/reference/responses) explains the outer reply and the
+canonical document together. A successful transport call can still contain a
+qualified or rejected semantic result. Preserve exact `ref` values, scope,
+coverage, and failure details when continuing a read.
+
+For the common workflow, start with [Find Kotlin declarations](/search), then
+[Compose a query](/query-pipelines). [Read a symbol](/reference/symbols)
+explains the fields carried by one exact compiler result.
+
+## Find a callable
+
+| Callable | Use it to |
+| --- | --- |
+| [Query symbols](/api-reference/query-symbols) | Find declarations and compose semantic query steps. |
+| [Source read](/api-reference/source-read) | Read bounded source for an admitted selector. |
+| [Check diagnostics](/api-reference/check-diagnostics) | Inspect IDEA diagnostics for a path. |
+| [Change](/api-reference/change) | Apply one exact-target declaration change. |
+| [Workspace lifecycle](/api-reference/workspace-lifecycle) | Explicitly control a hosted IDEA project. |
+
+## Detailed schemas
+
+Expand **Callable schemas** in the sidebar for the hosted tool inputs and
+responses. Expand **Transport results** or **Semantic results** for their
+component schemas. The `POST /callables/...` labels organize documentation;
+Kast does not expose them as HTTP endpoints. These generated pages preserve
+the complete installed contract, including less common outcome variants.
