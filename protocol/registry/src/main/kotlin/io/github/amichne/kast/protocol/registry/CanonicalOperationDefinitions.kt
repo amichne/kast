@@ -41,16 +41,6 @@ import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverCapability
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SymbolInspectCapability
-import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
-import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildCapability
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
@@ -105,40 +95,6 @@ object CanonicalOperationDefinitions {
             CompletenessPolicy.COMPLETE_REQUIRED,
             HostedExposure.INTERNAL_ONLY,
             schema = schema("kast.topology.build.v2"),
-        )
-
-    val symbolDiscover =
-        definition(
-            CanonicalOperation.SYMBOL_DISCOVER,
-            SymbolDiscoverRequest::class,
-            SymbolDiscoverResult::class,
-            SymbolDiscoverQualification::class,
-            SymbolDiscoverRejection::class,
-            SymbolDiscoverCapability::class,
-            OperationLane.INDEX_LOOKUP,
-            OperationEffect.INTELLIJ_READ,
-            OperationCost.BOUNDED_READ,
-            OperationScope.WORKSPACE,
-            CompletenessPolicy.QUALIFIED_ALLOWED,
-            HostedExposure.PUBLIC,
-            schema = schema("kast.symbol.discover.v3"),
-        )
-
-    val symbolInspect =
-        definition(
-            CanonicalOperation.SYMBOL_INSPECT,
-            SymbolInspectRequest::class,
-            SymbolInspectResult::class,
-            SymbolInspectQualification::class,
-            SymbolInspectRejection::class,
-            SymbolInspectCapability::class,
-            OperationLane.SCOPED_SEMANTIC_READ,
-            OperationEffect.INTELLIJ_READ,
-            OperationCost.BOUNDED_READ,
-            OperationScope.SYMBOL,
-            CompletenessPolicy.COMPLETE_REQUIRED,
-            HostedExposure.PUBLIC,
-            schema = schema("kast.symbol.inspect.v4"),
         )
 
     val sourceRead =
@@ -265,8 +221,6 @@ object CanonicalOperationDefinitions {
             indexSync,
             topologyBuild,
             queryRun,
-            symbolDiscover,
-            symbolInspect,
             sourceRead,
             diagnosticCheck,
             change,

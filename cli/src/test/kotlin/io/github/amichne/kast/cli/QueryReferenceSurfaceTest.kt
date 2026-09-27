@@ -9,6 +9,7 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingCellDocument
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
@@ -17,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryRefinementLocationDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
@@ -47,7 +49,6 @@ class QueryReferenceSurfaceTest {
     private val json = Json { encodeDefaults = true }
     private val schema = LiveReadOutputSchemaTest()
     private val exactToken = "exact:v5:" + "A".repeat(22)
-    private val candidateToken = "candidate:v5:" + "A".repeat(22)
 
     @Test
     fun `query items expose the issued reference once without canonical identity reconstruction`() {
@@ -149,7 +150,7 @@ class QueryReferenceSurfaceTest {
         val failures =
             listOf(
                 QueryItemFailureDocument.Refinement(
-                    QueryReferenceDocument.DeclarationCandidate(text(candidateToken)),
+                    QueryRefinementLocationDocument(text("/workspace/Subject.kt"), ProtocolOffset.parse(42).refined()),
                     QueryExactFailureDocument.STALE_GENERATION,
                 ),
                 QueryItemFailureDocument.ExactReference(exact, QueryExactFailureDocument.STALE_GENERATION),
@@ -164,9 +165,11 @@ class QueryReferenceSurfaceTest {
         schema.assertAdmits(CanonicalOperation.QUERY_RUN, document)
         val output = document.getValue("failures").jsonArray.map { it.jsonObject }
         assertEquals(
-            listOf(candidateToken, exactToken, exactToken, exactToken),
-            output.map { it.getValue("ref").jsonPrimitive.content },
+            listOf(exactToken, exactToken, exactToken),
+            output.drop(1).map { it.getValue("ref").jsonPrimitive.content },
         )
+        assertEquals(null, output.first()["ref"])
+        assertEquals(JsonPrimitive(42), output.first().getValue("location").jsonObject.getValue("offset"))
         assertEquals(
             listOf("refinement", "exact-reference", "predicate", "relation"),
             output.map { it.getValue("type").jsonPrimitive.content },
@@ -181,11 +184,10 @@ class QueryReferenceSurfaceTest {
     @Test
     fun `reference families have named reusable standalone output schemas`() {
         val definitions = installedServerOutputSchema(CanonicalOperation.QUERY_RUN).getValue("\$defs").jsonObject
-        for (name in listOf("CandidateRef", "ExactSymbolRef", "ContinuationRef")) {
+        for (name in listOf("ExactSymbolRef", "ContinuationRef")) {
             assertEquals(JsonPrimitive("string"), definitions.getValue(name).jsonObject["type"], name)
         }
         assertEquals(JsonPrimitive("^exact:v[2345]:"), definitions.getValue("ExactSymbolRef").jsonObject["pattern"])
-        assertEquals(JsonPrimitive("^candidate:v[2345]:"), definitions.getValue("CandidateRef").jsonObject["pattern"])
     }
 
     private fun exact(token: String = exactToken) =

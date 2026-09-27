@@ -23,9 +23,6 @@ value class CandidateOffset private constructor(val value: Int) : Comparable<Can
 }
 
 enum class CandidateSelectorFailure {
-    NEGATIVE_ORDINAL,
-    ORDINAL_OUT_OF_RANGE,
-    EXTERNAL_SOURCE,
     WRONG_LOCATION_KIND,
     REVERSED_RANGE,
 }
@@ -45,14 +42,6 @@ sealed interface CandidateSelector {
         override val constraints: SymbolDiscoveryConstraints = selection.constraints
     }
 
-    data class File
-    internal constructor(
-        override val lease: SemanticReadAuthority,
-        val file: SymbolDiscoveryFileIdentity.Workspace,
-        override val scope: SymbolSearchScope,
-        override val constraints: SymbolDiscoveryConstraints,
-    ) : CandidateSelector
-
     data class Range
     internal constructor(
         override val lease: SemanticReadAuthority,
@@ -71,78 +60,6 @@ sealed interface CandidateSelector {
             } else {
                 Refinement.Rejected(CandidateSelectorFailure.WRONG_LOCATION_KIND)
             }
-
-        /** Issues a raw file candidate with explicit exact-file policy and no discovery restrictions. */
-        fun file(candidate: SymbolDiscoveryCandidate): Refinement<File, CandidateSelectorFailure> {
-            val location =
-                candidate.location as? SymbolDiscoveryCandidateLocation.File
-                    ?: return Refinement.Rejected(CandidateSelectorFailure.WRONG_LOCATION_KIND)
-            val file =
-                location.file as? SymbolDiscoveryFileIdentity.Workspace
-                    ?: return Refinement.Rejected(CandidateSelectorFailure.EXTERNAL_SOURCE)
-            return Refinement.Refined(restoreFile(candidate.lease, file))
-        }
-
-        /** Retains the exact file candidate and read restrictions proven by its discovery batch. */
-        fun file(
-            batch: SymbolDiscoveryBatch,
-            rawOrdinal: Int,
-        ): Refinement<File, CandidateSelectorFailure> {
-            val candidate =
-                when (val selected = selectCandidate(batch, rawOrdinal)) {
-                    is Refinement.Refined -> selected.value
-                    is Refinement.Rejected -> return selected
-                }
-            val location =
-                candidate.location as? SymbolDiscoveryCandidateLocation.File
-                    ?: return Refinement.Rejected(CandidateSelectorFailure.WRONG_LOCATION_KIND)
-            val file =
-                location.file as? SymbolDiscoveryFileIdentity.Workspace
-                    ?: return Refinement.Rejected(CandidateSelectorFailure.EXTERNAL_SOURCE)
-            return Refinement.Refined(restoreFile(batch.lease, file, batch.scope, batch.constraints))
-        }
-
-        /** Issues a raw range candidate with explicit exact-file policy and no discovery restrictions. */
-        fun range(candidate: SymbolDiscoveryCandidate): Refinement<Range, CandidateSelectorFailure> {
-            val location =
-                candidate.location as? SymbolDiscoveryCandidateLocation.Text
-                    ?: return Refinement.Rejected(CandidateSelectorFailure.WRONG_LOCATION_KIND)
-            val file =
-                location.file as? SymbolDiscoveryFileIdentity.Workspace
-                    ?: return Refinement.Rejected(CandidateSelectorFailure.EXTERNAL_SOURCE)
-            return restoreRange(
-                candidate.lease,
-                file,
-                location.range.startInclusive.value,
-                location.range.endExclusive.value,
-            )
-        }
-
-        /** Retains the exact text candidate and read restrictions proven by its discovery batch. */
-        fun range(
-            batch: SymbolDiscoveryBatch,
-            rawOrdinal: Int,
-        ): Refinement<Range, CandidateSelectorFailure> {
-            val candidate =
-                when (val selected = selectCandidate(batch, rawOrdinal)) {
-                    is Refinement.Refined -> selected.value
-                    is Refinement.Rejected -> return selected
-                }
-            val location =
-                candidate.location as? SymbolDiscoveryCandidateLocation.Text
-                    ?: return Refinement.Rejected(CandidateSelectorFailure.WRONG_LOCATION_KIND)
-            val file =
-                location.file as? SymbolDiscoveryFileIdentity.Workspace
-                    ?: return Refinement.Rejected(CandidateSelectorFailure.EXTERNAL_SOURCE)
-            return restoreRange(
-                batch.lease,
-                file,
-                location.range.startInclusive.value,
-                location.range.endExclusive.value,
-                batch.scope,
-                batch.constraints,
-            )
-        }
 
         /** Restores a decoded range only when its coordinate invariants still hold. */
         fun restoreRange(
@@ -169,25 +86,6 @@ sealed interface CandidateSelector {
                 Refinement.Refined(Range(lease, file, start, end, scope, constraints))
             }
         }
-
-        /** Restores a decoded file candidate without introducing file-system authority. */
-        fun restoreFile(
-            lease: SemanticReadAuthority,
-            file: SymbolDiscoveryFileIdentity.Workspace,
-            scope: SymbolSearchScope = historicalFileScope(file),
-            constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
-        ): File = File(lease, file, scope, constraints)
-
-        private fun selectCandidate(
-            batch: SymbolDiscoveryBatch,
-            rawOrdinal: Int,
-        ): Refinement<SymbolDiscoveryCandidate, CandidateSelectorFailure> =
-            when {
-                rawOrdinal < 0 -> Refinement.Rejected(CandidateSelectorFailure.NEGATIVE_ORDINAL)
-                rawOrdinal >= batch.candidates.size ->
-                    Refinement.Rejected(CandidateSelectorFailure.ORDINAL_OUT_OF_RANGE)
-                else -> Refinement.Refined(batch.candidates[rawOrdinal])
-            }
     }
 }
 

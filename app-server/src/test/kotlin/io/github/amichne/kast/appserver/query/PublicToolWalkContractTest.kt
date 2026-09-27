@@ -24,30 +24,30 @@ class PublicToolWalkContractTest {
         val source =
             PublicToolReferenceSource((BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value)
         val depth = (ProtocolCount.parse(3) as Refinement.Refined).value
-        val fanOut = TraversalStrategyDocument.BoundedFanOut((ProtocolCount.parse(2) as Refinement.Refined).value)
+        val fanOut = PublicToolBoundedFanOutStrategy(2)
         for ((provided, expected) in
             listOf(
                 null to TraversalStrategyDocument.BreadthFirst,
-                fanOut to fanOut,
+                fanOut to TraversalStrategyDocument.BoundedFanOut((ProtocolCount.parse(2) as Refinement.Refined).value),
             )) {
             val steps =
                 (BoundedProtocolList.create(
                         listOf<PublicToolStep>(PublicToolWalk(PublicToolRelation.CALLERS, depth, provided))
                     ) as Refinement.Refined)
                     .value
-            val input = PublicToolQuerySymbols(PublicToolRunAction(source, steps, QueryOutputDocument.TraversalRecords))
+            val input = PublicToolQuerySymbols(PublicToolRunAction(source, steps, PublicToolTraversalRecordsOutput))
             val encoded = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
             val request = encoded.jsonObject.getValue("request").jsonObject
             val walk = request.getValue("steps").jsonArray.single().jsonObject
-            assertEquals("walk", walk.getValue("type").jsonPrimitive.content)
+            assertEquals("WALK", walk.getValue("type").jsonPrimitive.content)
             assertEquals(3, walk.getValue("maximum_depth").jsonPrimitive.int)
             assertEquals(
-                "traversal_records",
+                "TRAVERSAL_RECORDS",
                 request.getValue("output").jsonObject.getValue("type").jsonPrimitive.content,
             )
             if (provided == fanOut) {
                 val strategy = walk.getValue("strategy").jsonObject
-                assertEquals("bounded_fan_out", strategy.getValue("type").jsonPrimitive.content)
+                assertEquals("BOUNDED_FAN_OUT", strategy.getValue("type").jsonPrimitive.content)
                 assertEquals(2, strategy.getValue("maximumEdgesPerNode").jsonPrimitive.int)
             }
             val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined

@@ -92,7 +92,7 @@ uses an explicit source-context admission port. Installed constructors adapt
 published workspace inspection to these ports; live hosts supply their own
 current-read validation. The pure owners do not inspect or acquire an IDE.
 
-Discovery constraints survive declaration, file, and text candidate selection,
+Discovery constraints survive declaration candidate selection,
 exact refinement, relation endpoints, source snapshots, and continuation
 fingerprints. Relation and diagnostic facts retain detached `SemanticReadIdentity`.
 Published write and topology boundaries continue to require publication evidence.
@@ -131,7 +131,7 @@ policy roots before exact source-set names are found absent from that owner.
 An unknown owner or a policy that excludes the available roots still rejects.
 Library inclusion cannot add results to that proven empty source-set scope.
 
-The query domain provides closed typed stages over these operations, including exact-reference fan-in, structured predicates, earlier-only bindings, and typed joins keyed by canonical symbol identity. `QueryPlanCompiler` rejects type-incompatible transitions, duplicate or forward bindings, terminal inner-join violations, and output-kind mismatches before execution. `QueryService` then interprets only an admitted plan and retains per-item failures and limitations instead of promoting partial work to completeness.
+The query domain provides closed typed stages over these operations, including exact-reference fan-in, structured predicates, retained binding-row projection, and typed joins keyed by canonical symbol identity. `QueryPlanCompiler` rejects type-incompatible symbol and binding-row transitions, unknown projected binding names, and output-kind mismatches before execution. `QueryService` then interprets only an admitted plan and retains per-item failures and limitations instead of promoting partial work to completeness.
 
 Visibility filters consume `SourceDeclarationVisibility`, a proof for the exact
 selected declaration and snapshot. The internal self read is distinct from the
@@ -312,4 +312,4 @@ applies during publication, including interleaved admissions. Resume requests do
 not restart implicitly, and expiry, capacity and semantic request checks retain
 their existing authority.
 
-Exact symbol lookup rejects invalid PSI as stale and a matching declaration without a source range as unsupported. Unexpected native failures remain distinct from genuine index unavailability through symbol inspection and wire projection; the existing native diagnostic receipt retains the correlated failure stage and class. Neither rejection becomes a complete empty result.
+Internal exact symbol resolution rejects invalid PSI as stale and a matching declaration without a source range as unsupported. Unexpected native failures remain distinct from genuine index unavailability through query and wire projection; the existing native diagnostic receipt retains the correlated failure stage and class. Neither rejection becomes a complete empty result.

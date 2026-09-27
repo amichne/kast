@@ -11,12 +11,8 @@ import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Serializable
-internal data class SymbolDiscoverQualificationDocument(val limitations: List<SymbolDiscoverLimitationWireDocument>)
 
 @Serializable
 internal data class DiagnosticCheckResultDocument(
@@ -51,65 +47,6 @@ internal enum class DiagnosticSeverityWireDocument {
     @SerialName("error") ERROR,
     @SerialName("warning") WARNING,
     @SerialName("info") INFO,
-}
-
-@Serializable
-internal enum class SymbolDiscoverLimitationWireDocument {
-    @SerialName("result-limit") RESULT_LIMIT,
-    @SerialName("byte-limit") BYTE_LIMIT,
-    @SerialName("work-limit") WORK_LIMIT,
-    @SerialName("time-limit") TIME_LIMIT,
-    @SerialName("dumb-mode-transition") DUMB_MODE_TRANSITION,
-    @SerialName("provider-failure") PROVIDER_FAILURE,
-    @SerialName("unscoped-provider") UNSCOPED_PROVIDER,
-    @SerialName("unsupported-item") UNSUPPORTED_ITEM,
-    @SerialName("exact-definition-unavailable") EXACT_DEFINITION_UNAVAILABLE,
-}
-
-@Serializable
-internal enum class SymbolDiscoverRejectionWireDocument {
-    @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
-    @SerialName("query_rejected") QUERY_REJECTED,
-}
-
-@Serializable
-internal enum class SymbolInspectQualificationWireDocument {
-    @SerialName("evidence_incomplete") EVIDENCE_INCOMPLETE
-}
-
-@Serializable
-internal enum class SymbolInspectRejectionWireDocument {
-    @SerialName("workspace_index_unavailable") WORKSPACE_INDEX_UNAVAILABLE,
-    @SerialName("native_failure") NATIVE_FAILURE,
-    @SerialName("unsupported_declaration") UNSUPPORTED_DECLARATION,
-    @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
-    @SerialName("selector_wrong_kind") SELECTOR_WRONG_KIND,
-    @SerialName("selector_malformed") SELECTOR_MALFORMED,
-    @SerialName("selector_workspace_mismatch") SELECTOR_WORKSPACE_MISMATCH,
-    @SerialName("candidate_stale") CANDIDATE_STALE,
-    @SerialName("candidate_not_declaration") CANDIDATE_NOT_DECLARATION,
-    @SerialName("exact_selector_stale") EXACT_SELECTOR_STALE,
-    @SerialName("ambiguous") AMBIGUOUS,
-    @SerialName("not_found") NOT_FOUND,
-    @SerialName("revalidation_unretained") REVALIDATION_UNRETAINED,
-    @SerialName("revalidation_expired") REVALIDATION_EXPIRED,
-    @SerialName("revalidation_capacity") REVALIDATION_CAPACITY,
-    @SerialName("revalidation_work_limit_reached") REVALIDATION_WORK_LIMIT_REACHED,
-    @SerialName("revalidation_time_limit_reached") REVALIDATION_TIME_LIMIT_REACHED,
-    @SerialName("revalidation_retired") REVALIDATION_RETIRED,
-    @SerialName("revalidation_capture_unavailable") REVALIDATION_CAPTURE_UNAVAILABLE,
-    @SerialName("revalidation_workspace_mismatch") REVALIDATION_WORKSPACE_MISMATCH,
-    @SerialName("revalidation_owner_mismatch") REVALIDATION_OWNER_MISMATCH,
-    @SerialName("revalidation_workspace_not_ready") REVALIDATION_WORKSPACE_NOT_READY,
-    @SerialName("revalidation_basis_moved") REVALIDATION_BASIS_MOVED,
-    @SerialName("revalidation_content_changed") REVALIDATION_CONTENT_CHANGED,
-    @SerialName("revalidation_content_uncommitted") REVALIDATION_CONTENT_UNCOMMITTED,
-    @SerialName("revalidation_scope_rejected") REVALIDATION_SCOPE_REJECTED,
-    @SerialName("revalidation_declaration_missing") REVALIDATION_DECLARATION_MISSING,
-    @SerialName("revalidation_unsupported_declaration") REVALIDATION_UNSUPPORTED_DECLARATION,
-    @SerialName("revalidation_ambiguous") REVALIDATION_AMBIGUOUS,
-    @SerialName("revalidation_compiler_identity_changed") REVALIDATION_COMPILER_IDENTITY_CHANGED,
-    @SerialName("revalidation_compiler_unavailable") REVALIDATION_COMPILER_UNAVAILABLE,
 }
 
 @Serializable
@@ -199,18 +136,6 @@ internal enum class DiagnosticCheckRejectionWireDocument {
     @SerialName("scope_limit_exceeded") SCOPE_LIMIT_EXCEEDED,
     @SerialName("scope_unavailable") SCOPE_UNAVAILABLE,
 }
-
-internal fun SymbolDiscoverQualification.toReadDocument(): SymbolDiscoverQualificationDocument =
-    SymbolDiscoverQualificationDocument(limitations.map { it.toWireDocument() })
-
-/**
- * Proof transition: `SymbolDiscoverQualificationDocument -> SymbolDiscoverQualification`.
- *
- * Establishes a non-empty, canonical limitation set. [WireDocumentConversion.Rejected] is the closed expected failure.
- * Raw document collections remain inside this wire adapter.
- */
-internal fun SymbolDiscoverQualificationDocument.toContract(): WireDocumentConversion<SymbolDiscoverQualification> =
-    SymbolDiscoverQualification.from(limitations.map { it.toContract() }.toSet()).toWireDocumentConversion()
 
 internal fun DiagnosticCheckResult.toReadDocument(): DiagnosticCheckResultDocument =
     DiagnosticCheckResultDocument(diagnostics.values.map { it.toWireDocument() }, progress)

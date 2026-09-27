@@ -22,7 +22,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.semanticReadValidation
 
-/** Current-generation admission owner for the public `symbol.discover` operation. */
+/** Current-generation admission owner for query declaration discovery. */
 class SymbolDiscoveryService(
     private val authorities: SemanticReadValidationPort,
     private val compiler: SymbolCompilerPort,

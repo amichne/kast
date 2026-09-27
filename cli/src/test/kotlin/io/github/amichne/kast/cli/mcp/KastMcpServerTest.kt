@@ -179,7 +179,6 @@ class KastMcpServerTest {
                         data =
                             McpValidationData(
                                 McpProbe.passed("Found declaration"),
-                                McpProbe.passed("Exact identity"),
                                 McpProbe.unverified("Source not requested"),
                                 McpProbe.unverified("Relation not requested"),
                                 McpProbe.passed("No diagnostics"),
@@ -237,7 +236,7 @@ class KastMcpServerTest {
         val call = results[0]
         assertEquals("complete", call.getValue("resultType").jsonPrimitive.content)
         assertEquals(
-            "discovery passed; exactInspection passed; sourceRead unverified; relation unverified; diagnostics passed",
+            "declarationQuery passed; sourceRead unverified; relation unverified; diagnostics passed",
             call.getValue("content").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content,
         )
         assertEquals(

@@ -20,7 +20,6 @@ from hosted_concurrent_read import run_concurrent_read_regression
 from hosted_authority_read_regression import run_authority_read_regression
 from hosted_budget_read_regression import progress_advances, run_budget_read_regression
 from hosted_resume_budget_regression import Checkpoint, Finished, admit_progress, run_resume_budget_regression
-from hosted_raw_symbol_regression import run_raw_symbol_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_repair_budget_regression import run_repair_time_regression
 from hosted_kotlin_call_regression import run_kotlin_call_regression
@@ -150,7 +149,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
               and authority is not None and authority['outcome'] == 'passed')
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
             'failureDetails': failure_details, 'providerQualification': qualification,
-            'scope': 'complete-authored-base-semantic-matrix-and-ten-explicit-read-tools',
+            'scope': 'complete-authored-base-semantic-matrix-and-three-semantic-read-tools',
             'fixture': read_fixture.evidence(), 'sourceUnchanged': unchanged,
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
             'stockCodexUi': 'unqualified', 'caseCount': len(rows),
@@ -176,7 +175,6 @@ class _ReadReplay:
         run_kotlin_call_regression(self)
         run_compact_source_regression(self)
         run_source_failure_regression(self)
-        run_raw_symbol_regression(self)
 
     def query(self, case):
         tool, _, request = self.oracle.invocation(case, self.oracle.ToolSurface.PUBLIC)

@@ -24,6 +24,13 @@
     "DirectoryScope": {
       "type": "object",
       "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DIRECTORY"
+          ],
+          "default": "DIRECTORY"
+        },
         "relative_directory_path": {
           "type": "string",
           "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission.",
@@ -32,7 +39,8 @@
         },
         "include_subdirectories": {
           "type": "boolean",
-          "description": "true includes the named directory and nested directories; false selects only the named directory."
+          "description": "true includes the named directory and nested directories; false selects only the named directory.",
+          "default": true
         },
         "source_set_names": {
           "type": [
@@ -52,6 +60,7 @@
         }
       },
       "required": [
+        "type",
         "relative_directory_path"
       ],
       "additionalProperties": false
@@ -59,6 +68,13 @@
     "PackageScope": {
       "type": "object",
       "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PACKAGE"
+          ],
+          "default": "PACKAGE"
+        },
         "package_name": {
           "type": "string",
           "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar.",
@@ -67,7 +83,8 @@
         },
         "include_subpackages": {
           "type": "boolean",
-          "description": "true includes the named package and subpackages; false selects only the named package."
+          "description": "true includes the named package and subpackages; false selects only the named package.",
+          "default": true
         },
         "source_set_names": {
           "type": [
@@ -87,6 +104,7 @@
         }
       },
       "required": [
+        "type",
         "package_name"
       ],
       "additionalProperties": false
@@ -97,8 +115,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "search_declarations"
-          ]
+            "SEARCH_DECLARATIONS"
+          ],
+          "default": "SEARCH_DECLARATIONS"
         },
         "declaration_name": {
           "type": "string",
@@ -112,8 +131,8 @@
             "null"
           ],
           "enum": [
-            "exact",
-            "fuzzy",
+            "EXACT",
+            "FUZZY",
             null
           ],
           "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
@@ -126,10 +145,10 @@
           "items": {
             "type": "string",
             "enum": [
-              "class",
-              "function",
-              "property",
-              "type_alias"
+              "CLASS",
+              "FUNCTION",
+              "PROPERTY",
+              "TYPE_ALIAS"
             ]
           },
           "minItems": 1,
@@ -165,8 +184,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "all_declarations"
-          ]
+            "ALL_DECLARATIONS"
+          ],
+          "default": "ALL_DECLARATIONS"
         },
         "declaration_kinds": {
           "type": [
@@ -176,10 +196,10 @@
           "items": {
             "type": "string",
             "enum": [
-              "class",
-              "function",
-              "property",
-              "type_alias"
+              "CLASS",
+              "FUNCTION",
+              "PROPERTY",
+              "TYPE_ALIAS"
             ]
           },
           "minItems": 1,
@@ -214,8 +234,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "symbol_refs"
-          ]
+            "SYMBOL_REFS"
+          ],
+          "default": "SYMBOL_REFS"
         },
         "symbol_refs": {
           "type": "array",
@@ -275,18 +296,19 @@
         "type": {
           "type": "string",
           "enum": [
-            "symbols"
-          ]
+            "SYMBOLS"
+          ],
+          "default": "SYMBOLS"
         },
         "fields": {
           "type": "array",
           "items": {
             "type": "string",
             "enum": [
-              "name",
-              "location",
-              "signature",
-              "source"
+              "NAME",
+              "LOCATION",
+              "SIGNATURE",
+              "SOURCE"
             ]
           },
           "minItems": 0,
@@ -307,8 +329,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "occurrences"
-          ]
+            "OCCURRENCES"
+          ],
+          "default": "OCCURRENCES"
         }
       },
       "required": [
@@ -322,8 +345,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "traversal_records"
-          ]
+            "TRAVERSAL_RECORDS"
+          ],
+          "default": "TRAVERSAL_RECORDS"
         }
       },
       "required": [
@@ -349,19 +373,20 @@
         "type": {
           "type": "string",
           "enum": [
-            "visibility"
-          ]
+            "VISIBILITY"
+          ],
+          "default": "VISIBILITY"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string",
             "enum": [
-              "public",
-              "protected",
-              "internal",
-              "private",
-              "local"
+              "PUBLIC",
+              "PROTECTED",
+              "INTERNAL",
+              "PRIVATE",
+              "LOCAL"
             ]
           },
           "minItems": 1,
@@ -382,25 +407,26 @@
         "type": {
           "type": "string",
           "enum": [
-            "primitive"
-          ]
+            "PRIMITIVE"
+          ],
+          "default": "PRIMITIVE"
         },
         "field": {
           "type": "string",
           "enum": [
-            "name",
-            "kind",
-            "file"
+            "NAME",
+            "KIND",
+            "FILE"
           ],
           "description": "Compiler-grounded name, declaration kind, or stable file identity."
         },
         "operator": {
           "type": "string",
           "enum": [
-            "equals",
-            "not_equals",
-            "starts_with",
-            "ends_with"
+            "EQUALS",
+            "NOT_EQUALS",
+            "STARTS_WITH",
+            "ENDS_WITH"
           ]
         },
         "value": {
@@ -425,8 +451,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "where"
-          ]
+            "WHERE"
+          ],
+          "default": "WHERE"
         },
         "predicate": {
           "$ref": "#/$defs/Predicate"
@@ -445,19 +472,20 @@
         "type": {
           "type": "string",
           "enum": [
-            "expand_relation"
-          ]
+            "EXPAND_RELATION"
+          ],
+          "default": "EXPAND_RELATION"
         },
         "relation": {
           "type": "string",
           "enum": [
-            "references",
-            "callers",
-            "callees",
-            "implementations",
-            "inheritors",
-            "overrides",
-            "type_uses"
+            "REFERENCES",
+            "CALLERS",
+            "CALLEES",
+            "IMPLEMENTATIONS",
+            "INHERITORS",
+            "OVERRIDES",
+            "TYPE_USES"
           ],
           "description": "One semantic hop. callers means declarations calling the current symbols; callees means declarations called by them. Choose output type occurrences to return individual relation facts, including repeated use sites."
         }
@@ -494,8 +522,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "breadth_first"
-          ]
+            "BREADTH_FIRST"
+          ],
+          "default": "BREADTH_FIRST"
         }
       },
       "required": [
@@ -509,8 +538,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "bounded_fan_out"
-          ]
+            "BOUNDED_FAN_OUT"
+          ],
+          "default": "BOUNDED_FAN_OUT"
         },
         "maximumEdgesPerNode": {
           "type": "integer",
@@ -530,19 +560,20 @@
         "type": {
           "type": "string",
           "enum": [
-            "walk"
-          ]
+            "WALK"
+          ],
+          "default": "WALK"
         },
         "relation": {
           "type": "string",
           "enum": [
-            "references",
-            "callers",
-            "callees",
-            "implementations",
-            "inheritors",
-            "overrides",
-            "type_uses"
+            "REFERENCES",
+            "CALLERS",
+            "CALLEES",
+            "IMPLEMENTATIONS",
+            "INHERITORS",
+            "OVERRIDES",
+            "TYPE_USES"
           ]
         },
         "maximum_depth": {
@@ -566,15 +597,37 @@
         "type": {
           "type": "string",
           "enum": [
-            "distinct_symbols"
-          ]
+            "DISTINCT_SYMBOLS"
+          ],
+          "default": "DISTINCT_SYMBOLS"
         }
       },
       "required": [
         "type"
       ],
       "additionalProperties": false,
-      "description": "Remove duplicate symbol identities at this position only. Never insert this step implicitly."
+      "description": "Keep the first row and its evidence for each canonical symbol identity at this position."
+    },
+    "ProjectBinding": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PROJECT_BINDING"
+          ],
+          "default": "PROJECT_BINDING"
+        },
+        "name": {
+          "$ref": "#/$defs/BindingName"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "Select one named symbol cell from each retained or newly joined binding row before symbol stages continue."
     },
     "ExecutionBudget": {
       "type": [
@@ -625,8 +678,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "concat"
-          ]
+            "CONCAT"
+          ],
+          "default": "CONCAT"
         },
         "input": {
           "anyOf": [
@@ -653,8 +707,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "intersect"
-          ]
+            "INTERSECT"
+          ],
+          "default": "INTERSECT"
         },
         "right": {
           "anyOf": [
@@ -677,8 +732,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "union"
-          ]
+            "UNION"
+          ],
+          "default": "UNION"
         },
         "right": {
           "anyOf": [
@@ -701,8 +757,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "difference"
-          ]
+            "DIFFERENCE"
+          ],
+          "default": "DIFFERENCE"
         },
         "right": {
           "anyOf": [
@@ -748,8 +805,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "result"
-          ]
+            "RESULT"
+          ],
+          "default": "RESULT"
         },
         "result": {
           "$ref": "#/$defs/ResultReference"
@@ -778,11 +836,12 @@
     "RunAction": {
       "type": "object",
       "properties": {
-        "action": {
+        "type": {
           "type": "string",
           "enum": [
-            "run"
-          ]
+            "RUN"
+          ],
+          "default": "RUN"
         },
         "source": {
           "anyOf": [
@@ -793,13 +852,16 @@
               "$ref": "#/$defs/AllSource"
             },
             {
+              "$ref": "#/$defs/LocationSource"
+            },
+            {
               "$ref": "#/$defs/ReferenceSource"
             },
             {
               "$ref": "#/$defs/ResultSource"
             }
           ],
-          "description": "Starting declarations, exact-symbol references, or one retained result."
+          "description": "Starting declaration search, containing named declaration at file offset, exact-symbol references, or one retained result."
         },
         "steps": {
           "type": [
@@ -821,6 +883,9 @@
                 "$ref": "#/$defs/DistinctSymbols"
               },
               {
+                "$ref": "#/$defs/ProjectBinding"
+              },
+              {
                 "$ref": "#/$defs/Concat"
               },
               {
@@ -833,16 +898,13 @@
                 "$ref": "#/$defs/Difference"
               },
               {
-                "$ref": "#/$defs/Bind"
-              },
-              {
                 "$ref": "#/$defs/Join"
               }
             ]
           },
           "minItems": 0,
           "maxItems": 1000,
-          "description": "Ordered transformations executed left to right. null and [] mean no transformations. bind captures a symbol stream once; join references only an earlier bind or retained symbols. Inner join is terminal and requires binding_rows output. Semi and anti joins retain symbol rows; anti requires complete right coverage."
+          "description": "Ordered transformations executed left to right. null and [] mean no transformations. A join reads its right side from a retained symbol result. Inner join yields binding rows with named left and right cells; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage."
         },
         "output": {
           "$ref": "#/$defs/Output"
@@ -853,8 +915,8 @@
             "null"
           ],
           "enum": [
-            "discard",
-            "retain",
+            "DISCARD",
+            "RETAIN",
             null
           ],
           "description": "Omission or null discards the completed result after returning it. retain publishes an immutable bounded same-basis result reference; publication failure is reported without erasing the query result."
@@ -864,7 +926,7 @@
         }
       },
       "required": [
-        "action",
+        "type",
         "source",
         "steps"
       ],
@@ -874,11 +936,12 @@
     "ResumeAction": {
       "type": "object",
       "properties": {
-        "action": {
+        "type": {
           "type": "string",
           "enum": [
-            "resume"
-          ]
+            "RESUME"
+          ],
+          "default": "RESUME"
         },
         "continuation": {
           "$ref": "#/$defs/ExecutionContinuation"
@@ -888,7 +951,7 @@
         }
       },
       "required": [
-        "action",
+        "type",
         "continuation"
       ],
       "additionalProperties": false,
@@ -897,11 +960,12 @@
     "ReadResultAction": {
       "type": "object",
       "properties": {
-        "action": {
+        "type": {
           "type": "string",
           "enum": [
-            "read_result"
-          ]
+            "READ_RESULT"
+          ],
+          "default": "READ_RESULT"
         },
         "result": {
           "$ref": "#/$defs/ResultReference"
@@ -917,7 +981,7 @@
         }
       },
       "required": [
-        "action",
+        "type",
         "result"
       ],
       "additionalProperties": false,
@@ -935,47 +999,7 @@
       "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
       "minLength": 1,
       "maxLength": 64,
-      "description": "One bounded query-local binding name. A bind name is unique and a join may refer only to an earlier bind."
-    },
-    "NamedBindingSource": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "binding"
-          ]
-        },
-        "name": {
-          "$ref": "#/$defs/BindingName"
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false,
-      "description": "Reuse rows captured by an earlier bind step in this run. Forward, unknown and duplicate names are rejected before execution."
-    },
-    "Bind": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "bind"
-          ]
-        },
-        "name": {
-          "$ref": "#/$defs/BindingName"
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false,
-      "description": "Capture the current symbol rows once under a unique name for later join steps in this run."
+      "description": "One bounded name for a cell in a binding row. Inner joins name their left and right cells; project_binding selects a cell by its name."
     },
     "InnerJoinMode": {
       "type": "object",
@@ -983,8 +1007,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "inner"
-          ]
+            "INNER"
+          ],
+          "default": "INNER"
         },
         "left_name": {
           "$ref": "#/$defs/BindingName"
@@ -1007,8 +1032,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "semi"
-          ]
+            "SEMI"
+          ],
+          "default": "SEMI"
         }
       },
       "required": [
@@ -1023,8 +1049,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "anti"
-          ]
+            "ANTI"
+          ],
+          "default": "ANTI"
         }
       },
       "required": [
@@ -1039,8 +1066,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "join"
-          ]
+            "JOIN"
+          ],
+          "default": "JOIN"
         },
         "mode": {
           "anyOf": [
@@ -1058,13 +1086,10 @@
         "right": {
           "anyOf": [
             {
-              "$ref": "#/$defs/NamedBindingSource"
-            },
-            {
               "$ref": "#/$defs/ResultSource"
             }
           ],
-          "description": "An earlier named symbol binding or immutable retained symbol rows. A retained binding-row result is not a symbol right input."
+          "description": "Immutable retained symbol rows. A retained binding-row result is not a symbol right input."
         }
       },
       "required": [
@@ -1081,8 +1106,9 @@
         "type": {
           "type": "string",
           "enum": [
-            "binding_rows"
-          ]
+            "BINDING_ROWS"
+          ],
+          "default": "BINDING_ROWS"
         }
       },
       "required": [
@@ -1090,6 +1116,36 @@
       ],
       "additionalProperties": false,
       "description": "Present both named symbol or exact-occurrence bindings in each inner-join pair, preserving multiplicity and evidence."
+    },
+    "LocationSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "AT_LOCATION"
+          ],
+          "default": "AT_LOCATION"
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1048576,
+          "description": "Canonical workspace-relative file path containing the offset."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "UTF-16 offset inside the named declaration."
+        }
+      },
+      "required": [
+        "type",
+        "file",
+        "offset"
+      ],
+      "additionalProperties": false,
+      "description": "Find the nearest named declaration containing this offset, then return its exact compiler-grounded symbol."
     }
   }
 }

@@ -21,7 +21,7 @@ class CompilerEvidenceAdmissionTest {
         val admitted =
             IdeHostCapabilitySet.parse(
                     listOf(
-                        CanonicalOperation.SYMBOL_INSPECT.id.value,
+                        CanonicalOperation.SOURCE_READ.id.value,
                         CanonicalOperation.QUERY_RUN.id.value,
                     )
                 )
@@ -31,7 +31,7 @@ class CompilerEvidenceAdmissionTest {
             @Suppress("UNCHECKED_CAST") (admitted.capabilities as MutableList<IdeHostCapability>).clear()
         }
         assertEquals(
-            listOf(CanonicalOperation.SYMBOL_INSPECT, CanonicalOperation.QUERY_RUN),
+            listOf(CanonicalOperation.SOURCE_READ, CanonicalOperation.QUERY_RUN),
             admitted.capabilities.map(IdeHostCapability::operation),
         )
     }

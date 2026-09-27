@@ -68,7 +68,8 @@ private constructor(
                 when (plan) {
                     is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { it.lease }
                     is AdmittedQueryPlan.Retained -> listOf(plan.source.lease)
-                    is AdmittedQueryPlan.Symbols -> emptyList()
+                    is AdmittedQueryPlan.Symbols,
+                    is AdmittedQueryPlan.Location -> emptyList()
                 }
             if (checkpoint != null && (checkpoint.plan != plan || checkpoint.lease != lease)) {
                 return Refinement.Rejected(QueryExecutionRequestFailure.CHECKPOINT_MISMATCH)
@@ -183,7 +184,6 @@ enum class QueryLimitation {
     SOURCE_INCOMPLETE,
     RELATION_INCOMPLETE,
     TRAVERSAL_INCOMPLETE,
-    JOIN_INPUT_INCOMPLETE,
     ROW_SELECTION_INCOMPLETE,
 }
 

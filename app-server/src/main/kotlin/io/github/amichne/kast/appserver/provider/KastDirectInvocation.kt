@@ -18,8 +18,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.OperationRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
@@ -161,8 +159,6 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
             CanonicalOperation.INDEX_SYNC,
             CanonicalOperation.TOPOLOGY_BUILD -> Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
             CanonicalOperation.QUERY_RUN,
-            CanonicalOperation.SYMBOL_DISCOVER,
-            CanonicalOperation.SYMBOL_INSPECT,
             CanonicalOperation.SOURCE_READ,
             CanonicalOperation.DIAGNOSTIC_CHECK -> ExistingIdeOperation.Read.admit(request)
         }
@@ -177,10 +173,6 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                 }
             is KastInvocationInput.Canonical ->
                 when (input.operation) {
-                    CanonicalOperation.SYMBOL_DISCOVER ->
-                        decode(input, SymbolDiscoverRequest.serializer(), preparers.symbolDiscover)
-                    CanonicalOperation.SYMBOL_INSPECT ->
-                        decode(input, SymbolInspectRequest.serializer(), preparers.symbolInspect)
                     CanonicalOperation.CHANGE_PLAN ->
                         decode(input, ChangePlanRequest.serializer(), preparers.changePlan)
                     CanonicalOperation.CHANGE -> Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)

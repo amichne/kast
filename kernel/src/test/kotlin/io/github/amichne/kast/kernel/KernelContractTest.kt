@@ -7,7 +7,7 @@ class KernelContractTest {
     @Test
     fun `boundary primitives refine into closed kernel proof types`() {
         val root = NamedRoot.parse("workspace.primary").refinedValue()
-        val operation = OperationId.parse("symbol.discover").refinedValue()
+        val operation = OperationId.parse("query.run").refinedValue()
         val capability = CapabilityId.parse("symbol.read").refinedValue()
         val typedCapability: CapabilityMarker = SymbolReadCapability(capability)
         val generation = EvidenceGeneration.parse(7).refinedValue()

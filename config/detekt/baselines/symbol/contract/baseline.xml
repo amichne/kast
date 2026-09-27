@@ -15,7 +15,6 @@
     <ID>InvalidPackageDeclaration:SymbolSearchScope.kt:package io.github.amichne.kast.symbol.contract</ID>
     <ID>InvalidPackageDeclaration:SymbolSelector.kt:package io.github.amichne.kast.symbol.contract</ID>
     <ID>LargeClass:SymbolSelectorContractTest.kt:SymbolSelectorContractTest</ID>
-    <ID>LongMethod:CandidateSelectorContractTest.kt:CandidateSelectorContractTest$private fun batch: SymbolDiscoveryBatch</ID>
     <ID>LongMethod:NativeRelationContractTest.kt:NativeRelationContractTest$@Test fun `batch rejects wrong subject family order and byte claims`</ID>
     <ID>LongMethod:NativeRelationContractTest.kt:NativeRelationContractTest$private fun selector: ExactDeclarationSelector</ID>
     <ID>LongMethod:SymbolDiscoveryCandidate.kt:SymbolDiscoveryCandidate.Companion$fun fromBoundary: Refinement&lt;SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure></ID>

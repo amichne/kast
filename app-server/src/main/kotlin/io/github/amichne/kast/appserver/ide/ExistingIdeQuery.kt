@@ -109,8 +109,6 @@ sealed interface ExistingIdeOperation {
 @kotlinx.serialization.Serializable
 enum class ExistingIdeReadOperation(val canonical: CanonicalOperation) {
     QUERY_RUN(CanonicalOperation.QUERY_RUN),
-    SYMBOL_DISCOVER(CanonicalOperation.SYMBOL_DISCOVER),
-    SYMBOL_INSPECT(CanonicalOperation.SYMBOL_INSPECT),
     SOURCE_READ(CanonicalOperation.SOURCE_READ),
     DIAGNOSTIC_CHECK(CanonicalOperation.DIAGNOSTIC_CHECK);
 

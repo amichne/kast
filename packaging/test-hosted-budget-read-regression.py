@@ -58,10 +58,10 @@ class HostedBudgetReadRegressionTest(unittest.TestCase):
                          asdict(name_query('pageItem00', budget=ResultsBudget(1)))['request']['execution_budget'])
 
     def test_declaration_search_retains_unrestricted_kind_and_exact_name_contract(self):
-        self.assertEqual({'request': {'action': 'run',
-                          'source': {'type': 'search_declarations', 'declaration_name': 'pageItem00',
-                                     'name_match': 'exact', 'scope': None, 'declaration_kinds': None},
-                          'steps': None, 'output': {'type': 'symbols', 'fields': ('name', 'location', 'signature')},
+        self.assertEqual({'request': {'type': 'RUN',
+                          'source': {'type': 'SEARCH_DECLARATIONS', 'declaration_name': 'pageItem00',
+                                     'name_match': 'EXACT', 'scope': None, 'declaration_kinds': None},
+                          'steps': None, 'output': {'type': 'SYMBOLS', 'fields': ('NAME', 'LOCATION', 'SIGNATURE')},
                           'execution_budget': {'max_work_units': 100000}}},
                          asdict(name_query('pageItem00', budget=WorkBudget())))
 

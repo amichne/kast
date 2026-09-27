@@ -14,7 +14,6 @@ internal object HostedEndpointReclamation {
         root: CanonicalWorkspaceRoot,
         lock: FileLock,
         observer: HostedEndpointObserver,
-        advertisement: HostedEndpointAdvertisement = HostedEndpointAdvertisement.SEMANTIC,
     ): Refinement<Unit, HostedEndpointFailure> {
         val socket = directory.resolve("host.sock")
         val descriptor = directory.resolve("endpoint.json")
@@ -22,7 +21,7 @@ internal object HostedEndpointReclamation {
             return Refinement.Refined(Unit)
         observer.observe(HostedEndpointStage.RECLAMATION_ADMISSION, HostedEndpointOutcome.STARTED)
         return try {
-            when (val admitted = DeadHostedEndpoint.admit(directory, root, lock, advertisement)) {
+            when (val admitted = DeadHostedEndpoint.admit(directory, root, lock, observer)) {
                 is Refinement.Rejected -> reject(observer)
                 is Refinement.Refined -> {
                     observer.observe(HostedEndpointStage.RECLAMATION_ADMISSION, HostedEndpointOutcome.COMPLETED)
@@ -79,7 +78,7 @@ private constructor(
             directory: Path,
             root: CanonicalWorkspaceRoot,
             lock: FileLock,
-            advertisement: HostedEndpointAdvertisement = HostedEndpointAdvertisement.SEMANTIC,
+            observer: HostedEndpointObserver,
         ): Refinement<DeadHostedEndpoint, HostedEndpointFailure> {
             if (!lock.isValid) return rejected()
             val parent =
@@ -107,7 +106,7 @@ private constructor(
                 }
             if (listOf(lockFile, socket, descriptor).any { it.owner != parent.owner }) return rejected()
             val owner =
-                when (val parsed = DeadHostedEndpointOwner.read(descriptor.path, root, socket.path, advertisement)) {
+                when (val parsed = readOwner(descriptor.path, root, socket.path, observer)) {
                     is Refinement.Refined -> parsed.value
                     is Refinement.Rejected -> return parsed
                 }
@@ -122,6 +121,25 @@ private constructor(
                     owner = owner,
                 )
             )
+        }
+
+        private fun readOwner(
+            descriptor: Path,
+            root: CanonicalWorkspaceRoot,
+            socket: Path,
+            observer: HostedEndpointObserver,
+        ): Refinement<DeadHostedEndpointOwner, HostedEndpointFailure> {
+            observer.observe(HostedEndpointStage.RECLAMATION_DESCRIPTOR, HostedEndpointOutcome.STARTED)
+            return when (val parsed = DeadHostedEndpointOwner.read(descriptor, root, socket)) {
+                is Refinement.Refined -> {
+                    observer.observe(HostedEndpointStage.RECLAMATION_DESCRIPTOR, HostedEndpointOutcome.COMPLETED)
+                    parsed
+                }
+                is Refinement.Rejected -> {
+                    observer.rejected(HostedEndpointStage.RECLAMATION_DESCRIPTOR, parsed.failure)
+                    parsed
+                }
+            }
         }
 
         private fun rejected() = Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)

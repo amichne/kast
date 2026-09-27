@@ -48,7 +48,7 @@ code_sources:
   - path: source/contract/src/test/kotlin/io/github/amichne/kast/source/contract/SourceSelectorTokenContractTest.kt
   - path: symbol/contract/src/test/kotlin/io/github/amichne/kast/symbol/contract/SymbolSelectorContractTest.kt
   - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/Utf16Coordinate.kt
-    symbols: [Utf16Coordinate]
+    symbols: [Utf16CodeUnitOffset, Utf16CodeUnitCount]
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedSymbolHandle.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadSimpleRequest.kt
@@ -80,16 +80,11 @@ cannot change after fingerprinting. Candidate-to-exact issuance checks that
 compiler evidence satisfies the candidate's declaration-kind restriction;
 relation-derived exact targets retain their separate issuance path.
 
-File and text candidates also retain scope and constraints. Their batch-backed
-factories select a candidate by a checked ordinal and preserve the batch's read
-restrictions. Historical raw factories retain an explicit exact-file scope with
-production-and-test, generated-source inclusion, and no discovery constraints;
-they do not claim an unavailable discovery history.
-
-File/range selector version 3 retains the scope and constraints in its read-scope
-document. A version-2 document cannot carry those new fields; omitting them retains
-only the explicit historical exact-file semantics. Batch issuance and restoration
-therefore preserve the same proof rather than silently widening a source read.
+Source-owned declaration candidates preserve discovery scope and constraints.
+Relation and diagnostic locations issue range candidates with explicit exact-file
+scope. Neither candidate family grants compiler identity. `source_read` refines
+these locations through its current authority and committed-document boundary.
+The file-candidate family and batch candidate-token issuance have been removed.
 
 `SourceReadScope.Constrained` carries every candidate or exact selector's scope
 and restrictions into the source snapshot. Source selectors bind this scope in

@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.publicNameQuery
 import io.github.amichne.kast.appserver.publicToolCase
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_NAMESPACE_DESCRIPTION
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
@@ -25,7 +26,9 @@ class PublicToolContractTest {
             (BoundedProtocolList.create(
                     listOf<PublicToolStep>(
                         PublicToolConcat(PublicToolReferenceSource(refs)),
-                        PublicToolWhere(predicate),
+                        PublicToolWhere(
+                            PublicToolPrimitivePredicate(PublicToolField.KIND, PublicToolOperator.EQUALS, value)
+                        ),
                         PublicToolDistinctSymbols,
                     )
                 ) as Refinement.Refined)
@@ -72,8 +75,15 @@ class PublicToolContractTest {
                     operator,
                     (ProtocolText.parse(rawValue) as Refinement.Refined).value,
                 )
+            val publicPredicate =
+                PublicToolPrimitivePredicate(
+                    PublicToolField.valueOf(field.name),
+                    PublicToolOperator.valueOf(operator.name),
+                    predicate.value,
+                )
             val steps =
-                (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolWhere(predicate))) as Refinement.Refined)
+                (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolWhere(publicPredicate)))
+                        as Refinement.Refined)
                     .value
             val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource(), steps, null))
             val admitted =
@@ -96,7 +106,7 @@ class PublicToolContractTest {
             (BoundedProtocolList.create(listOf((ProtocolText.parse("NON_ISSUED") as Refinement.Refined).value))
                     as Refinement.Refined)
                 .value
-        val fields = (BoundedProtocolList.create(listOf(QuerySymbolFieldDocument.SOURCE)) as Refinement.Refined).value
+        val fields = (BoundedProtocolList.create(listOf(PublicToolFields.SOURCE)) as Refinement.Refined).value
         val admitted =
             PublicToolContract.admit(
                 PublicToolIdentity.QUERY_SYMBOLS,
@@ -106,7 +116,7 @@ class PublicToolContractTest {
                         PublicToolRunAction(
                             PublicToolReferenceSource(refs),
                             PublicToolDefaults.steps,
-                            QueryOutputDocument.Symbols(fields),
+                            PublicToolSymbolsOutput(fields),
                         )
                     ),
                 ),
@@ -165,7 +175,7 @@ class PublicToolContractTest {
         assertEquals(QueryFromDocument.Result(reference), run.from)
         assertEquals(QueryRetentionModeDocument.RETAIN, run.retention)
         assertEquals(
-            "result",
+            "RESULT",
             PublicToolContract.encode(admitted.value)
                 .jsonObject
                 .getValue("request")
@@ -228,10 +238,9 @@ class PublicToolContractTest {
         val reference =
             (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
         val cursor = (QueryResultCursor.parse(7) as Refinement.Refined).value
-        val fields =
-            (BoundedProtocolList.create(listOf(QuerySymbolFieldDocument.SIGNATURE)) as Refinement.Refined).value
+        val fields = (BoundedProtocolList.create(listOf(PublicToolFields.SIGNATURE)) as Refinement.Refined).value
         val input =
-            PublicToolQuerySymbols(PublicToolReadResultAction(reference, cursor, QueryOutputDocument.Symbols(fields)))
+            PublicToolQuerySymbols(PublicToolReadResultAction(reference, cursor, PublicToolSymbolsOutput(fields)))
         val admitted =
             PublicToolContract.admit(
                 PublicToolIdentity.QUERY_SYMBOLS,
@@ -265,12 +274,12 @@ class PublicToolContractTest {
                     "OrderService",
                     listOf(PublicToolDeclarationKinds.CLASS),
                     output =
-                        QueryOutputDocument.Symbols(
+                        PublicToolSymbolsOutput(
                             (BoundedProtocolList.create(
                                     listOf(
-                                        QuerySymbolFieldDocument.NAME,
-                                        QuerySymbolFieldDocument.LOCATION,
-                                        QuerySymbolFieldDocument.SIGNATURE,
+                                        PublicToolFields.NAME,
+                                        PublicToolFields.LOCATION,
+                                        PublicToolFields.SIGNATURE,
                                     )
                                 ) as Refinement.Refined)
                                 .value
@@ -335,8 +344,7 @@ class PublicToolSchemaTest {
             (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000000")
                     as Refinement.Refined)
                 .value
-        val emptyFields =
-            (BoundedProtocolList.create(emptyList<QuerySymbolFieldDocument>()) as Refinement.Refined).value
+        val emptyFields = (BoundedProtocolList.create(emptyList<PublicToolFields>()) as Refinement.Refined).value
         val cases =
             listOf(
                 PublicToolIdentity.CHECK_DIAGNOSTICS to
@@ -346,7 +354,7 @@ class PublicToolSchemaTest {
                     Json.encodeToJsonElement(
                         PublicToolQuerySymbols.serializer(),
                         PublicToolQuerySymbols(
-                            PublicToolRunAction(PublicToolAllSource(), null, QueryOutputDocument.Symbols(emptyFields))
+                            PublicToolRunAction(PublicToolAllSource(), null, PublicToolSymbolsOutput(emptyFields))
                         ),
                     ),
                 PublicToolIdentity.QUERY_SYMBOLS to
@@ -404,9 +412,8 @@ class PublicToolSchemaTest {
             (BoundedProtocolList.create(
                     listOf<PublicToolStep>(
                         PublicToolWhere(
-                            QueryPredicateDocument.Visibility(
-                                (BoundedProtocolList.create(listOf(QueryVisibilityDocument.PUBLIC))
-                                        as Refinement.Refined)
+                            PublicToolVisibilityPredicate(
+                                (BoundedProtocolList.create(listOf(PublicToolValues.PUBLIC)) as Refinement.Refined)
                                     .value
                             )
                         ),
@@ -415,11 +422,11 @@ class PublicToolSchemaTest {
                     )
                 ) as Refinement.Refined)
                 .value
-        val fields = (BoundedProtocolList.create(emptyList<QuerySymbolFieldDocument>()) as Refinement.Refined).value
+        val fields = (BoundedProtocolList.create(emptyList<PublicToolFields>()) as Refinement.Refined).value
         val input =
             Json.encodeToJsonElement(
                 PublicToolQuerySymbols.serializer(),
-                PublicToolQuerySymbols(PublicToolRunAction(source, steps, QueryOutputDocument.Symbols(fields))),
+                PublicToolQuerySymbols(PublicToolRunAction(source, steps, PublicToolSymbolsOutput(fields))),
             )
         val admitted = (PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input) as Refinement.Refined).value
         val request = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
@@ -501,7 +508,9 @@ class PublicToolSchemaTest {
 
     @Test
     fun `strict projections share required closed objects and their target registration formats`() {
-        val registrations = read("tools.app-server.json").jsonObject.getValue("tools").jsonArray
+        val appServer = read("tools.app-server.json").jsonObject
+        assertEquals(PUBLIC_TOOL_NAMESPACE_DESCRIPTION, appServer.getValue("description").jsonPrimitive.content)
+        val registrations = appServer.getValue("tools").jsonArray
         val responses = read("tools.responses.json").jsonArray
         PublicToolIdentity.entries.forEach { identity ->
             val app =

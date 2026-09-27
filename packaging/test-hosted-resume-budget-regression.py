@@ -193,7 +193,7 @@ class WalkPage:
 
 
 def request(reference='exact:a'):
-    return QueryInput(QueryRun(SymbolReferences((reference,)), output=SymbolOutput(('name',)),
+    return QueryInput(QueryRun(SymbolReferences((reference,)), output=SymbolOutput(('NAME',)),
                                execution_budget=ResultsBudget(100)))
 
 
@@ -233,7 +233,7 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
         self.assertIsInstance(observed, Drained)
         self.assertEqual(['upstream', 'retained'], [r['request']['continuation'] for r in runner.transport.requests])
         self.assertTrue(all(r['request']['execution_budget'] == {'max_results': 100}
-                            and r['request']['action'] == 'resume' for r in runner.transport.requests))
+                            and r['request']['type'] == 'RESUME' for r in runner.transport.requests))
         self.assertEqual(2, len(runner.transport.validations))
         reference = Drained((asdict(Complete(grant(100), (Record('a'), Record('b'), Record('c')))),))
         self.assertTrue(payload_parity('query_symbols', observed, reference))

@@ -50,11 +50,10 @@ they do not claim a publication generation.
 ## Historical default route and authority
 
 [`selectCliRuntimePath`](../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt)
-selects `query`, `symbol`, `source`, `relation`, `traversal`, and `diagnostic`
+selected the former query, symbol, source, relation, traversal, and diagnostic commands
 before installed-runtime bootstrap. [`KastCliMain`](../../cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt)
-then uses the existing-host socket client. The closed read operation set is
-`query.run`, `symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`,
-`traversal.run`, and `diagnostic.check`. Missing hosts reject; these reads do not
+then used the existing-host socket client. The current closed public read operation set is
+`query.run`, `source.read`, and `diagnostic.check`. Missing hosts reject; these reads do not
 fall back to opening a workspace, importing Gradle, starting a worker, or
 publishing a snapshot. The optional root delimiter was admitted before command
 selection, so `kast -- query run` took the same path as `kast query run`; the

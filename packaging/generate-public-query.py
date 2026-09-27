@@ -8,6 +8,7 @@ It does not generate semantic admission or compiler authority.
 from __future__ import annotations
 import argparse
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +33,6 @@ import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -54,6 +54,37 @@ def enum_entry(value: str) -> str:
     return value.replace('-', '_').upper()
 
 
+def validate_authority(authority: dict) -> None:
+    """Keep one discriminator and enum convention in the authored contract."""
+    def visit(node: object, path: str) -> None:
+        if isinstance(node, list):
+            for index, child in enumerate(node):
+                visit(child, f'{path}[{index}]')
+            return
+        if not isinstance(node, dict):
+            return
+        if 'enum' in node:
+            values = node['enum']
+            if not values or any(value is not None and
+                                 (not isinstance(value, str) or not re.fullmatch(r'[A-Z][A-Z0-9_]*', value))
+                                 for value in values):
+                raise ValueError(f'{path}: enum values must be CAPS_CASE')
+            if len(values) == 1 and ('default' not in node or node['default'] != values[0]):
+                raise ValueError(f'{path}: singleton enum requires its value as default')
+        if node.get('type') == 'object' and 'properties' in node:
+            properties = node['properties']
+            if 'action' in properties:
+                raise ValueError(f'{path}: discriminator must be named type')
+            if any(len(prop.get('enum', [])) == 1 for prop in properties.values()):
+                tag = properties.get('type')
+                if tag is None or len(tag.get('enum', [])) != 1 or 'type' not in node.get('required', []):
+                    raise ValueError(f'{path}: tagged object requires a required type discriminator')
+        for key, child in node.items():
+            visit(child, f'{path}.{key}')
+    visit(authority['$defs'], '$defs')
+    visit(authority['tools'], 'tools')
+
+
 def project(schema: dict, *, strict: bool) -> dict:
     """Provider syntax projection, NOT the server's full admission schema.
 
@@ -61,9 +92,9 @@ def project(schema: dict, *, strict: bool) -> dict:
     length/uniqueness keywords not listed in the targeted supported keyword set.
     The full admission schema and Kotlin canonical admission still enforce them.
     """
-    drop = {'$schema', '$id', 'discriminator', 'default', 'examples', 'title', 'x-kotlin-type', 'x-kotlin-variants'}
+    drop = {'$schema', '$id', 'discriminator', 'examples', 'title', 'x-kotlin-type', 'x-kotlin-variants'}
     if strict:
-        drop |= {'uniqueItems', 'minLength', 'maxLength'}
+        drop |= {'default', 'uniqueItems', 'minLength', 'maxLength'}
     # Traverse schema positions only; property names are data, never keywords.
     result = {key: value for key, value in schema.items() if key not in drop}
     for table in ('properties', '$defs'):
@@ -103,20 +134,25 @@ def referenced_schema(root: dict, definitions: dict) -> dict:
 
 
 def render_tools(authority: dict) -> dict[Path, str]:
-    """Generate this closed facade slice, including nullable untagged scope syntax."""
+    """Generate this closed facade slice with tagged union variants."""
+    validate_authority(authority)
     import copy
     definitions = copy.deepcopy(authority['$defs'])
     roots = {''.join(part.title() for part in tool['name'].split('_')): tool['schema'] for tool in authority['tools']}
-    objects = {**{key: value for key, value in definitions.items() if 'x-kotlin-type' not in value}, **roots}
     enums = {}
     unions = {'Scope': ['DirectoryScope', 'PackageScope'],
-              'Source': ['SearchSource', 'AllSource', 'ReferenceSource', 'ResultSource'],
+              'Source': ['SearchSource', 'AllSource', 'LocationSource', 'ReferenceSource', 'ResultSource'],
+              'Output': ['SymbolsOutput', 'OccurrencesOutput', 'TraversalRecordsOutput', 'BindingRowsOutput'],
+              'ReadResultOutput': ['SymbolsOutput', 'BindingRowsOutput'],
+              'Predicate': ['VisibilityPredicate', 'PrimitivePredicate'],
+              'WalkStrategy': ['BreadthFirstStrategy', 'BoundedFanOutStrategy'],
               'CompositionInput': ['ReferenceSource', 'ResultSource'],
               'RetainedInput': ['ResultSource'],
-              'JoinRight': ['NamedBindingSource', 'ResultSource'],
               'JoinMode': ['InnerJoinMode', 'SemiJoinMode', 'AntiJoinMode'],
-              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'Concat', 'Intersect', 'Union', 'Difference', 'Bind', 'Join'],
+              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'ProjectBinding', 'Concat', 'Intersect', 'Union', 'Difference', 'Join'],
               'Action': ['RunAction', 'ResumeAction', 'ReadResultAction']}
+    objects = {**{key: value for key, value in definitions.items()
+                  if 'x-kotlin-type' not in value and key not in unions}, **roots}
     parents = {}
     for parent, children in unions.items():
         for child in children:
@@ -127,7 +163,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
             external = definitions.get(key, {})
             if 'x-kotlin-type' in external:
                 return external['x-kotlin-type'] + ('?' if nullable(external) else '')
-            return 'PublicTool' + key
+            return 'PublicTool' + key + ('?' if nullable(external) else '')
         if 'anyOf' in spec:
             branches = [s['$ref'].split('/')[-1] for s in spec['anyOf'] if '$ref' in s]
             union = next(key for key, values in unions.items() if values == branches)
@@ -153,11 +189,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
     body = []
     for key, spec in objects.items():
         inherited = parents.get(key, [])
-        discriminator = 'action' if 'Action' in inherited else 'type'
+        discriminator = 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
         suffix = ' : ' + ', '.join('PublicTool' + parent for parent in inherited) if inherited else ' : PublicToolDocument'
         annotation = '@Serializable\n'
-        if inherited and 'Scope' not in inherited:
+        if inherited:
             annotation += '@SerialName(' + json.dumps(spec['properties'][discriminator]['enum'][0]) + ')\n'
         if not props:
             body.append(annotation + f'internal data object PublicTool{key}{suffix}\n\n')
@@ -185,20 +221,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
             lines.append(f'    @SerialName({json.dumps(value)}) {enum_entry(value)},\n')
         lines.append('}\n\n')
     for union in unions:
-        annotation = '@Serializable(with = PublicToolScopeSerializer::class)' if union == 'Scope' else '@Serializable'
-        if union == 'Action':
-            annotation += '\n@kotlinx.serialization.json.JsonClassDiscriminator("action")'
-        lines.append(f'{annotation}\ninternal sealed interface PublicTool{union}\n\n')
+        lines.append(f'@Serializable\ninternal sealed interface PublicTool{union}\n\n')
     lines += body
-    lines.append('''internal object PublicToolScopeSerializer : JsonContentPolymorphicSerializer<PublicToolScope>(PublicToolScope::class) {
-    override fun selectDeserializer(element: JsonElement): kotlinx.serialization.DeserializationStrategy<PublicToolScope> = when {
-        "relative_directory_path" in element.jsonObject -> PublicToolDirectoryScope.serializer()
-        "package_name" in element.jsonObject -> PublicToolPackageScope.serializer()
-        else -> throw SerializationException("scope requires a directory or package target")
-    }
-}
-
-''')
     # Defaults are data in the authority and are compiled here, never copied into a provider.
     defaults = authority['defaults']
     def text_value(value): return 'toolDefault(ProtocolText.parse(' + json.dumps(value) + '))'
@@ -208,7 +232,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     lines.append('    val sourceSets = ' + bounded([text_value(s) for s in defaults['source_set_names']]) + '\n')
     lines.append('    val declarationKinds = ' + bounded(['PublicToolDeclarationKinds.' + enum_entry(s) for s in defaults['declaration_kinds']]) + '\n')
     output = defaults['output']
-    if output['type'] != 'symbols': raise ValueError('Only symbols default output is supported')
+    if output['type'] != 'SYMBOLS': raise ValueError('Only symbols default output is supported')
     lines.append('    val output: QueryOutputDocument.Symbols =\n')
     lines.append('        QueryOutputDocument.Symbols(\n')
     lines.append('            toolDefault(\n')
@@ -224,6 +248,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     if defaults['steps'] != []: raise ValueError('Only empty default transformations are supported')
     lines.append(f'    const val maxDiagnostics = {defaults["max_diagnostics"]}\n')
     scope = defaults['scope']
+    if scope['type'] != 'DIRECTORY': raise ValueError('Only directory default scope is supported')
     if scope['source_set_names'] != defaults['source_set_names']: raise ValueError('Default scope source sets disagree')
     lines.append('    val scope: PublicToolScope = PublicToolDirectoryScope(' + text_value(scope['relative_directory_path']) + ', ' + str(scope['include_subdirectories']).lower() + ', sourceSets)\n}\n\n')
     lines.append('internal fun decodePublicTool(identity: PublicToolIdentity, raw: JsonElement, json: Json): PublicToolDocument = when (identity) {\n')
@@ -237,6 +262,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     identity_lines = ['// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
                       'package io.github.amichne.kast.protocol.registry\n\n',
                       'import io.github.amichne.kast.protocol.contract.CanonicalOperation\n\n',
+                      'const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = ' + json.dumps(authority['namespaceDescription']) + '\n\n',
                       '/** Closed presentation identities; canonical operations retain effect and budget ownership. */\n',
                       'enum class PublicToolIdentity(\n'
                       '    val toolName: String,\n'
@@ -266,7 +292,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
         outputs[RESOURCES / (tool['name'] + '.openai-parameters.json')] = json.dumps(strict, indent=2) + '\n'
         registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=full, deferLoading=tool['deferLoading']))
         responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
-    outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(dict(type='namespace', name='kast', tools=registrations), indent=2) + '\n'
+    outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(
+        dict(type='namespace', name='kast', description=authority['namespaceDescription'], tools=registrations),
+        indent=2,
+    ) + '\n'
     outputs[RESOURCES / 'tools.responses.json'] = json.dumps(responses, indent=2) + '\n'
     return outputs
 

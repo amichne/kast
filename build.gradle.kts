@@ -303,11 +303,23 @@ val localInstallationTest = tasks.register<Exec>("localInstallationTest") {
     commandLine("python3", layout.projectDirectory.file("packaging/test-install-local.py"))
 }
 
+val productGateVersionTest = tasks.register<Exec>("productGateVersionTest") {
+    group = "verification"
+    description = "Proves routine gates refresh published release authority before invoking Gradle."
+    inputs.files(
+        "distribution/release/resolve_version.py",
+        "distribution/release/run_product_gate.py",
+        "distribution/release/test_run_product_gate.py",
+    )
+    commandLine("python3", layout.projectDirectory.file("distribution/release/test_run_product_gate.py"))
+}
+
 val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
     description = "Builds every module and verifies deterministic contracts, architecture and packaging without runtime qualification."
     dependsOn(
         "check",
+        productGateVersionTest,
         isolatedAcceptanceEnvironmentTest,
         acceptanceIdeaInputTest,
         installationLifecycleTest,
@@ -360,9 +372,16 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
         "--snapshot", layout.projectDirectory.file("packaging/configuration-schema.json"))
 }
 
+val knowledgeParserClasspath = files(
+    JsonContractScanRequest::class.java.protectionDomain.codeSource.location,
+    jsonContractParser,
+)
+
 val knowledgeBaseTest = tasks.register<Exec>("knowledgeBaseTest") {
     group = "verification"
     description = "Exercises repository knowledge-base validation behavior."
+    inputs.files(knowledgeParserClasspath)
+    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
     inputs.files(
         layout.projectDirectory.file(".github/scripts/code_kb.py"),
         layout.projectDirectory.file(".github/scripts/test_code_kb.py"),
@@ -373,6 +392,8 @@ val knowledgeBaseTest = tasks.register<Exec>("knowledgeBaseTest") {
 val verifyKnowledgeBase = tasks.register<Exec>("verifyKnowledgeBase") {
     group = "verification"
     description = "Strictly validates the source-bound OKF repository knowledge base."
+    inputs.files(knowledgeParserClasspath)
+    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
     dependsOn(knowledgeBaseTest)
     inputs.dir(layout.projectDirectory.dir("knowledge"))
     inputs.file(layout.projectDirectory.file(".github/scripts/code_kb.py"))
@@ -508,7 +529,6 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
         "experiments/host-observation/semantic-fixture/read-reliability/ReadDiagnosticPages.kt",
         "packaging/hosted_resume_budget_regression.py", "packaging/test-hosted-resume-budget-regression.py",
         "packaging/hosted_generated_fixture.py",
-        "packaging/hosted_raw_symbol_regression.py", "packaging/test-hosted-raw-symbol-regression.py",
         "packaging/released_acceptance_product.py", "packaging/released_payload_identity.py",
         "packaging/released_tool_inventory.py", "packaging/test-released-tool-inventory.py",
         "packaging/test-released-acceptance-product.py",

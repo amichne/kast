@@ -55,12 +55,6 @@ sealed interface QueryJoinModeDocument {
     @Serializable @SerialName("anti") data object Anti : QueryJoinModeDocument
 }
 
-/** A join's right input is either an earlier captured stream or retained symbol rows. */
-@Serializable
-sealed interface QueryJoinRightDocument {
-    @Serializable @SerialName("binding") data class Named(val name: QueryBindingNameDocument) : QueryJoinRightDocument
-}
-
 /** Each cell carries its exact symbol identity and established compiler evidence. */
 sealed interface QueryBindingCellDocument {
     val name: QueryBindingNameDocument

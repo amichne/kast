@@ -1,12 +1,19 @@
 package io.github.amichne.kast.cli.rpc
 
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.installedHostedBootstrap
+import io.github.amichne.kast.cli.mcp.KastMcpServer
 import io.github.amichne.kast.cli.mcp.McpSupplementalTool
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import java.io.BufferedInputStream
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
@@ -24,6 +31,55 @@ import org.junit.jupiter.api.io.TempDir
 
 class KastToolRpcBridgeTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `MCP and RPC catalogs preserve the same installed input schemas`() {
+        val installed = installedHostedBootstrap().tools
+        val readTools = installed.filter { it.effect == "none" || it.effect == "intellij_read" }
+        val change = installed.single { it.name == "change" }
+        val session =
+            KastDirectToolSession(
+                catalog = readTools,
+                supplemental =
+                    listOf(
+                        McpSupplementalTool("change", change.description, change.inputSchema, readOnly = false) {
+                            error("no call expected")
+                        }
+                    ),
+                root = { CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND) },
+                start = { error("no preparation expected") },
+                invokeCanonical = { _, _ -> error("no call expected") },
+            )
+        val rpc = (KastToolRpcBridge(session).catalog() as ToolRpcReply.Catalog).catalog.tools.associateBy { it.name }
+        val output = ByteArrayOutputStream()
+        val requests =
+            listOf(TestCatalogRequest(1, "initialize"), TestCatalogRequest(2, "tools/list")).joinToString(
+                "\n",
+                postfix = "\n",
+            ) {
+                Json.encodeToString(it)
+            }
+        KastMcpServer(
+                catalog = session.catalog,
+                supplemental = session.supplemental,
+                invoke = session.invokeCanonical,
+                root = session.root,
+                diagnostic = PrintStream(ByteArrayOutputStream()),
+            )
+            .run(BufferedInputStream(ByteArrayInputStream(requests.toByteArray())), PrintStream(output))
+        val mcp =
+            Json.parseToJsonElement(output.toString(Charsets.UTF_8).lineSequence().last { it.isNotBlank() })
+                .jsonObject
+                .getValue("result")
+                .jsonObject
+                .getValue("tools")
+                .jsonArray
+                .associateBy { it.jsonObject.getValue("name").jsonPrimitive.content }
+        assertEquals(rpc.keys, mcp.keys)
+        rpc.forEach { (name, tool) ->
+            assertEquals(tool.inputSchema, mcp.getValue(name).jsonObject.getValue("inputSchema"), name)
+        }
+    }
 
     @Test
     fun `catalog exposes direct tools and invokes one native read without an MCP exchange`() {
@@ -126,6 +182,8 @@ class KastToolRpcBridgeTest {
 }
 
 @Serializable private data class TestInputSchema(val type: String = "object")
+
+@Serializable private data class TestCatalogRequest(val id: Int, val method: String, val jsonrpc: String = "2.0")
 
 @Serializable private class TestEmptyRequest
 

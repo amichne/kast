@@ -20,10 +20,10 @@ The direct tool input is:
 ```json
 {
   "request": {
-    "action": "run",
-    "source": {"type": "all_declarations"},
+    "type": "RUN",
+    "source": {"type": "ALL_DECLARATIONS"},
     "steps": null,
-    "output": {"type": "symbols", "fields": ["name", "location", "signature"]},
+    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]},
     "execution_budget": {"max_results": 5}
   }
 }
@@ -43,10 +43,10 @@ declaration; keep it unchanged for the next call.
 ```json
 {
   "request": {
-    "action": "run",
-    "source": {"type": "symbol_refs", "symbol_refs": ["<returned ref>"]},
-    "steps": [{"type": "expand_relation", "relation": "references"}],
-    "output": {"type": "occurrences"}
+    "type": "RUN",
+    "source": {"type": "SYMBOL_REFS", "symbol_refs": ["<returned ref>"]},
+    "steps": [{"type": "EXPAND_RELATION", "relation": "REFERENCES"}],
+    "output": {"type": "OCCURRENCES"}
   }
 }
 ```

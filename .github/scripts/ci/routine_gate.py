@@ -7,15 +7,14 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
-GRADLE = ["./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g"]
-PRODUCT_GATE_COMMAND = GRADLE + ["-Pversion=0.0.0", "productBuildGate"]
+PRODUCT_GATE_COMMAND = ["python3", "distribution/release/run_product_gate.py"]
 QUALIFICATION = frozenset({
     ":installedTwoWorkspaceTest", ":installedCodexHostTest",
     ":app-server:generateCodexHostIntegrationManifest", ":runtimeQualification",
     ":hostedChangeAcceptance",
 })
 REQUIRED = frozenset({
-    ":productBuildGate", ":cli:test", ":cli:nativeTest", ":app-server:test",
+    ":productBuildGate", ":productGateVersionTest", ":cli:test", ":cli:nativeTest", ":app-server:test",
     ":runtime:hosted:test", ":workspace:intellij-read:test", ":query:protocol:test", ":evidence:sqlite:test",
     ":topology:contract:test", ":topology:build:test", ":topology:service:test", ":topology:intellij:test",
     ":evidence:topology-sqlite:test",
@@ -40,7 +39,7 @@ def inspect(output):
 
 
 def main():
-    command = PRODUCT_GATE_COMMAND + ["--dry-run", "--console=plain"]
+    command = PRODUCT_GATE_COMMAND + ["--dry-run"]
     result = subprocess.run(command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, check=False)
     if result.returncode:

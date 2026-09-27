@@ -22,7 +22,7 @@ class PublicToolCommandTest {
                 PublicToolIdentity.QUERY_SYMBOLS to
                     PublicQueryInputFixture.search(
                         "order",
-                        kinds = listOf("property", "type_alias"),
+                        kinds = listOf("PROPERTY", "TYPE_ALIAS"),
                         fields = emptyList(),
                     ),
             )

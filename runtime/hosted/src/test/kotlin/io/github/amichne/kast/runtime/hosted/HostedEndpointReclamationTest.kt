@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.Gson
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
@@ -10,6 +9,8 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -30,6 +31,8 @@ class HostedEndpointReclamationTest {
         assertEquals(
             listOf(
                 HostedEndpointStage.RECLAMATION_ADMISSION to HostedEndpointOutcome.STARTED,
+                HostedEndpointStage.RECLAMATION_DESCRIPTOR to HostedEndpointOutcome.STARTED,
+                HostedEndpointStage.RECLAMATION_DESCRIPTOR to HostedEndpointOutcome.COMPLETED,
                 HostedEndpointStage.RECLAMATION_ADMISSION to HostedEndpointOutcome.COMPLETED,
                 HostedEndpointStage.RECLAMATION_RETIREMENT to HostedEndpointOutcome.STARTED,
                 HostedEndpointStage.RECLAMATION_RETIREMENT to HostedEndpointOutcome.COMPLETED,
@@ -37,6 +40,22 @@ class HostedEndpointReclamationTest {
             observations,
         )
         assertTrue(opened is Refinement.Refined, opened.toString())
+        (opened as Refinement.Refined).value.close()
+    }
+
+    @Test
+    fun `dead endpoint with retired catalog is reclaimed and observed`() = fixture { directory, root, host ->
+        stale(directory, root, deadPid(), retiredOperations, 1, "kast.query.run.v1")
+        val observations = mutableListOf<Pair<HostedEndpointStage, HostedEndpointOutcome>>()
+        val opened =
+            OwnedHostedEndpoint.open(
+                directory,
+                root,
+                host,
+                HostedEndpointObserver { stage, outcome -> observations += stage to outcome },
+            )
+        assertTrue(opened is Refinement.Refined, opened.toString())
+        assertTrue(HostedEndpointStage.RECLAMATION_DESCRIPTOR to HostedEndpointOutcome.COMPLETED in observations)
         (opened as Refinement.Refined).value.close()
     }
 
@@ -64,12 +83,19 @@ class HostedEndpointReclamationTest {
             val descriptor = directory.resolve("endpoint.json")
             val before = mutation(Files.readString(descriptor))
             Files.writeString(descriptor, before)
+            val observations = mutableListOf<Pair<HostedEndpointStage, HostedEndpointOutcome>>()
             assertEquals(
                 Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT),
-                OwnedHostedEndpoint.open(directory, root, host),
+                OwnedHostedEndpoint.open(
+                    directory,
+                    root,
+                    host,
+                    HostedEndpointObserver { stage, outcome -> observations += stage to outcome },
+                ),
             )
             assertEquals(before, Files.readString(descriptor))
             assertTrue(Files.exists(directory.resolve("host.sock")))
+            assertTrue(HostedEndpointStage.RECLAMATION_DESCRIPTOR to HostedEndpointOutcome.REJECTED in observations)
         }
     }
 
@@ -117,26 +143,49 @@ class HostedEndpointReclamationTest {
         }
     }
 
-    private fun stale(directory: Path, root: CanonicalWorkspaceRoot, pid: Long) {
+    private fun stale(
+        directory: Path,
+        root: CanonicalWorkspaceRoot,
+        pid: Long,
+        operations: List<String> = HostedEndpointCapabilities.operations,
+        protocol: Int = HostedEndpointCapabilities.protocol,
+        querySchema: String = HostedReadCapabilities.querySchema,
+    ) {
         val socket = directory.resolve("host.sock")
         ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { it.bind(UnixDomainSocketAddress.of(socket)) }
         Files.writeString(
             directory.resolve("endpoint.json"),
-            Gson()
-                .toJson(
-                    mapOf(
-                        "type" to "KAST_IDE_ENDPOINT",
-                        "protocol" to HostedEndpointCapabilities.protocol,
-                        "root" to root.value,
-                        "socket" to socket.toString(),
-                        "hostPid" to pid,
-                        "host" to UUID.randomUUID().toString(),
-                        "querySchema" to HostedReadCapabilities.querySchema,
-                        "operations" to HostedEndpointCapabilities.operations,
-                    )
+            Json { encodeDefaults = true }
+                .encodeToString(
+                    HostedEndpointDescriptorDocument.create(
+                            root,
+                            socket,
+                            pid,
+                            UUID.randomUUID().toString(),
+                            HostedEndpointAdvertisement.SEMANTIC,
+                        )
+                        .copy(protocol = protocol, querySchema = querySchema, operations = operations)
                 ),
         )
     }
+
+    private val retiredOperations =
+        listOf(
+            "DESCRIBE",
+            "CLASS_LOOKUP",
+            "DIRECT_SUPERTYPE",
+            "QUERY_RUN",
+            "SYMBOL_DISCOVER",
+            "SYMBOL_INSPECT",
+            "SOURCE_READ",
+            "RELATION_READ",
+            "TRAVERSAL_RUN",
+            "DIAGNOSTIC_CHECK",
+            "CHANGE_PLAN",
+            "CHANGE_APPROVAL_PREPARE",
+            "CHANGE_APPLY",
+            "CHANGE_RECOVER",
+        )
 
     private fun deadPid(): Long {
         val process = ProcessBuilder("/usr/bin/true").start()

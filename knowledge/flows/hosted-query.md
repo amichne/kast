@@ -100,8 +100,6 @@ code_sources:
     symbols: [HostedPeerTermination, dispatchUntilPeerTermination]
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellationTest.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalDiscoveryAdmission.kt
-    symbols: [admitDiscoveryRequest, specialistDiscoveryWorkspaceScope]
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ProjectBoundIntellijSymbolPorts.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/ProjectBoundIntellijSourceReadPort.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ProjectBoundIntellijRelationPort.kt
@@ -133,8 +131,6 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveSelectedGradleModuleRoots.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IdeRootMappingFailure.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/NamedSourceScopeFailureDocument.kt
-  - path: packaging/run-gradle-source-scope-acceptance.py
-  - path: experiments/host-observation/gradle-source-scope-fixture.kts.template
   - path: experiments/host-observation/run_hosted_query.py
   - path: experiments/host-observation/hosted-query.kts.template
   - path: experiments/host-observation/hosted-plugin-unload.kts.template
@@ -186,20 +182,6 @@ including generated, excluded and resource roots; an unknown nested source-folde
 kind rejects rather than inheriting an allowed parent. This gate performs no import
 or sync.
 
-The native Gradle ownership fixture imports a composite project in a private IDEA
-profile, finds `NativeChangeTarget` through exact `symbol.discover`, then adds an
-unavailable source folder to the included build and repeats the successful search.
-It adds the equivalent folder to the selected build and requires a rejection with
-module/root identity that validates against the hosted schema. Run it after
-`:runtime:hosted:hostedPlugin`, with a new report path:
-
-```sh
-uv run --with jsonschema==4.26.0 python packaging/run-gradle-source-scope-acceptance.py \
-  --idea-home /path/to/pinned/idea/home \
-  --plugin /path/to/hosted-plugin.zip \
-  --report build/reports/gradle-source-scope/native.json
-```
-
 The symbol scope compiler retains a typed `IntellijScopePopulation`. After valid
 owner and source/generated-policy roots have been established, an exact source-set
 name absent from all roots of that owner produces `KNOWN_EMPTY` and an empty native
@@ -219,12 +201,12 @@ evaluation, and ends its context before returning. Saved documents and committed
 PSI remain live obligations. Original-owner retirement and epoch movement reject
 references instead of falling back to a publication or another IDE.
 
-`HostedCanonicalQuery` composes five public canonical reads: `query.run`,
-`symbol.discover`, `symbol.inspect`, `source.read`, and `diagnostic.check`.
+`HostedCanonicalQuery` composes three public canonical reads: `query.run`,
+`source.read`, and `diagnostic.check`.
 Query expansion supplies one-hop relation facts through occurrence output;
 query walk composes the traversal domain operation and projects depth-bearing
-records and coverage. Query bind and join stages retain named symbol streams,
-both cells of each inner-join pair, and a typed binding-row presentation. The host supplies pure services, project-bound
+records and coverage. Retained result rows project typed bindings for later query
+stages. The host supplies pure services, project-bound
 ports, current-model reference restoration, and explicit budgets to the reusable
 [`query:protocol`](../modules/query-protocol.md) boundary. Query evaluation keeps
 one request budget across its stages; specialist request limits intersect bounded
@@ -232,12 +214,9 @@ host caps. Evaluation and wire projection share the admitted read lifetime and
 the executor's whole-request deadline. Output carries live evidence without a
 workspace generation.
 
-Specialist `symbol.discover` name and workspace-text requests under live authority
-use authored production and test roots from the admitted project, excluding
-generated sources and libraries. Published authority retains its existing
-library-inclusive scope policy. This explicit distinction keeps supported live
-requests executable without claiming library-read parity; wider native library
-coverage remains a separate qualification boundary.
+Declaration name and containing-location queries use the admitted project's
+authored source scope. Exact references carry the owner and freshness checks
+through query and source read admission.
 
 `HostedConnectionAdmission` admits up to `HOST_CONNECTIONS` frame exchanges
 (default 16); the native accept backlog is `HOST_ACCEPT_BACKLOG` (default 64).
@@ -347,10 +326,13 @@ canonical provider operations; the duplicate `kast ide classes` and
 `kast ide supertype` commands have been retired.
 After an IDE crash, the next endpoint owner may reclaim the paired socket and
 descriptor while holding the exclusive ownership lock. Reclamation requires the
-recorded PID to be absent, the descriptor to match this root and current protocol,
-and both protected artifacts to retain their admitted physical identities. Live
-or reused PIDs, malformed descriptors, symlinks and unpaired artifacts fail closed.
-Admission and retirement emit bounded stage/outcome observations.
+recorded PID to be absent, the descriptor to name this root and exact socket,
+and both protected artifacts to retain their admitted physical identities.
+Protocol, schema and operation catalogs are capabilities rather than ownership
+proof, so a dead endpoint from an older plugin can be retired after upgrade.
+Live or reused PIDs, malformed owner identity, symlinks and unpaired artifacts
+fail closed. Descriptor admission, overall admission and retirement emit bounded
+stage/outcome observations.
 
 The hosted service also records bounded VFS observations under its own lifetime.
 Receipts contain event kind, IDE-versus-refresh origin, syntactic path categories,
@@ -373,7 +355,7 @@ The shared schemas and operation registry live in `protocol:contract`; the CLI
 loads those resources directly from its dependency. Production packaging no
 longer reads protocol assets or host properties from the acceptance experiment.
 
-The opt-in [semantic reproduction runner](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md) separates fixture creation/import, runtime pinning, and read-only public CLI/provider replay. The hosted service publishes one bounded native diagnostic receipt by default after a request drains, including effective configuration/provenance, stage durations, remaining outer deadline, contributor counts and precise termination reasons. Diagnostics carry only finite categories and bounded counts; they do not alter budgets or strengthen qualified coverage. An epoch change invalidates cross-request reference evidence.
+The opt-in [semantic reproduction runner](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md) separates fixture creation/import, runtime pinning, and read-only public CLI/provider replay. Its public requests use the shared `type` discriminator and `CAPS_CASE` enum values, and validate against the installed full tool schema before replay. The hosted service publishes one bounded native diagnostic receipt by default after a request drains, including effective configuration/provenance, stage durations, remaining outer deadline, contributor counts and precise termination reasons. Diagnostics carry only finite categories and bounded counts; they do not alter budgets or strengthen qualified coverage. An epoch change invalidates cross-request reference evidence.
 
 ## Hosted change admission
 

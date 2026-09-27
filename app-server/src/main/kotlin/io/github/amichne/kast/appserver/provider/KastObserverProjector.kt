@@ -58,8 +58,6 @@ internal object KastObserverProjector {
         val markdown =
             when (operation.value) {
                 "query.run" -> projectQuery(document, evidence, directory)
-                SYMBOL_DISCOVER -> projectDiscovery(document, evidence, directory)
-                SYMBOL_INSPECT -> projectInspection(document, evidence, directory)
                 SOURCE_READ -> projectSource(document, evidence, directory)
                 DIAGNOSTIC_CHECK -> projectDiagnostics(document, evidence, directory)
                 CHANGE_PLAN -> projectPlannedChange(document, evidence)
@@ -183,106 +181,6 @@ internal object KastObserverProjector {
 
     private fun countedQueryLabel(count: Int, singular: String): String =
         "$count $singular${if (count == 1) "" else "s"}"
-
-    private fun projectDiscovery(
-        document: JsonObject,
-        evidence: ObserverEvidence,
-        observerDirectory: ObserverWorkingDirectory,
-    ): String? {
-        val candidates =
-            (document["items"] as? JsonArray)?.map { candidate ->
-                admitDiscovery(candidate as? JsonObject ?: return null, observerDirectory) ?: return null
-            } ?: return null
-        val body =
-            when (candidates.size) {
-                0 -> "_No matching symbols._"
-                1 -> candidates.single().render()
-                else -> buildString {
-                        appendLine("| Symbol | Kind | File |")
-                        appendLine("|---|---|---|")
-                        candidates.forEach { candidate ->
-                            append("| ")
-                            append(inlineCode(candidate.name).markdownTableCell())
-                            append(" | ")
-                            append(candidate.kind)
-                            append(" | ")
-                            append(candidate.file.link().markdownTableCell())
-                            appendLine(" |")
-                        }
-                    }
-                        .trimEnd()
-            }
-        return observerDocument("symbol", evidence, body)
-    }
-
-    private fun admitDiscovery(
-        item: JsonObject,
-        observerDirectory: ObserverWorkingDirectory,
-    ): DiscoveredSymbolObservation? {
-        val file =
-            item.strictString("file")?.let { raw -> ObserverFilePath.admit(raw, observerDirectory.path) } ?: return null
-        return when (item.strictString("type")) {
-            "file" ->
-                DiscoveredSymbolObservation(
-                    name = item.strictLabel("name") ?: return null,
-                    kind = "file",
-                    file = file,
-                )
-            "declaration" ->
-                DiscoveredSymbolObservation(
-                    name = item.strictLabel("name") ?: return null,
-                    kind =
-                        when (item.strictString("kind")) {
-                            "file" -> "file"
-                            "class" -> "class"
-                            "symbol" -> "symbol"
-                            else -> return null
-                        },
-                    file = file,
-                )
-            "text-match" ->
-                DiscoveredSymbolObservation(
-                    name = item.strictLabel("query") ?: return null,
-                    kind = "text match",
-                    file = file,
-                )
-            else -> null
-        }
-    }
-
-    private fun projectInspection(
-        document: JsonObject,
-        evidence: ObserverEvidence,
-        observerDirectory: ObserverWorkingDirectory,
-    ): String? {
-        val acquisition = ObserverSymbolAcquisition.from(document)?.label ?: return null
-        val symbol = document["symbol"] as? JsonObject ?: return null
-        val name = symbol.strictLabel("name") ?: return null
-        val kind = ObserverSymbolKind.from(symbol.strictString("kind"))?.label ?: return null
-        val file =
-            symbol.strictString("file")?.let { raw -> ObserverFilePath.admit(raw, observerDirectory.path) }
-                ?: return null
-        val qualifiedIdentity =
-            when (val candidate = symbol["qualifiedIdentity"]) {
-                null -> return null
-                is JsonPrimitive -> candidate.takeIf(JsonPrimitive::isString)?.contentOrNull?.takeIf(::isSafeLabel)
-                else -> return null
-            }
-        if (symbol["range"] !is JsonObject || symbol["compilerEvidence"] !is JsonObject) return null
-        val summary = buildString {
-            append(inlineCode(name))
-            append(" · ")
-            append(kind)
-            if (evidence.coverage == ObserverCoverage.COMPLETE) append(" · $acquisition")
-        }
-        val body = buildList {
-            add(summary)
-            add(file.link())
-            qualifiedIdentity?.let { identity -> add(inlineCode(identity)) }
-        }
-            .joinToString("\n\n")
-        return observerDocument("symbol", evidence, body)
-    }
 
     private fun projectSource(
         document: JsonObject,
@@ -649,8 +547,6 @@ internal object KastObserverProjector {
                     document.strictString("operation") !in
                         setOf(
                             "query.run",
-                            SYMBOL_DISCOVER,
-                            SYMBOL_INSPECT,
                             SOURCE_READ,
                             DIAGNOSTIC_CHECK,
                         )
@@ -695,14 +591,6 @@ internal object KastObserverProjector {
                 return ObserverEvidence(coverage, ObserverBasis.Live(live))
             }
         }
-    }
-
-    private data class DiscoveredSymbolObservation(
-        val name: String,
-        val kind: String,
-        val file: ObserverFilePath,
-    ) {
-        fun render(): String = "${inlineCode(name)} · $kind\n\n${file.link()}"
     }
 
     private data class RelatedSymbolObservation(
@@ -752,8 +640,6 @@ internal object KastObserverProjector {
         }
     }
 
-    private const val SYMBOL_DISCOVER = "symbol.discover"
-    private const val SYMBOL_INSPECT = "symbol.inspect"
     private const val CHANGE_PLAN = "change.plan"
     private const val CHANGE_APPLY = "change.apply"
     private const val CHANGE_RECOVER = "change.recover"

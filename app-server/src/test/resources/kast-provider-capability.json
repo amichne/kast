@@ -8,30 +8,6 @@
       "policy": @POLICY@,
       "tools": [
       {
-        "operationId": "symbol.discover",
-        "name": "symbol_lookup",
-        "description": @SYMBOL_DESCRIPTION@,
-        "deferLoading": true,
-        "effect": "intellij_read",
-        "approvalPolicy": "none",
-        "executionBudget": {"readinessMillis": 1020000, "operationMillis": 60000},
-        "inputSchema": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["query"],
-          "properties": { "query": { "type": "string", "minLength": 1 } }
-        },
-        "outputSchema": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["status", "document"],
-          "properties": {
-            "status": { "const": "completed" },
-            "document": { "type": "object" }
-          }
-        }
-      },
-      {
         "operationId": "change.apply",
         "name": "change_apply",
         "description": @CHANGE_DESCRIPTION@,
@@ -60,15 +36,6 @@
     "cliInvocations": {
       "schemaVersion": 4,
       "operations": [
-        {
-          "operationId": "symbol.discover",
-          "toolName": "symbol_lookup",
-          "cliUsage": "symbol discover < request.json",
-          "invocation": {
-            "type": "CLI",
-            "command": ["symbol", "discover"]
-          }
-        },
         {
           "operationId": "change.apply",
           "toolName": "change_apply",

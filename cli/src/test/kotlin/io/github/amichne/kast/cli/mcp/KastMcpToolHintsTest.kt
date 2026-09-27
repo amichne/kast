@@ -24,8 +24,6 @@ class KastMcpToolHintsTest {
                 "check_diagnostics",
                 "query_symbols",
                 "source_read",
-                "symbol_inspect",
-                "symbol_lookup",
             )
         val installed = installedHostedBootstrap().tools
         val reads = installed.filter { it.name in readNames }

@@ -4,7 +4,6 @@
   <CurrentIssues>
     <ID>ImplicitDefaultLocale:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$"%02x".format(it.toInt() and 255)</ID>
     <ID>LargeClass:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest</ID>
-    <ID>LongMethod:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$@Test fun `file and text batch references retain their original read scope`</ID>
     <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$LiveSelectorAuthorityDocument(current.host.value.toString(), 4, current.contentView.name, 1)</ID>
     <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$LiveSemanticReadReference( root, IdeReadHostLifetime.fromBoundary(UUID.fromString("00000000-0000-0000-0000-000000000001")), IdeReadEpochRevision.parse(1).refined(), IdeReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>
     <ID>NamedArguments:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$LiveSemanticReadReference( root, IdeReadHostLifetime.fromBoundary(UUID.randomUUID()), IdeReadEpochRevision.parse(4).refined(), IdeReadContentView.SAVED_PSI_COMMITTED, 1, )</ID>

@@ -34,7 +34,7 @@ value class CompilerSymbolIdentity private constructor(val value: String) {
     }
 }
 
-/** Closed compiler declaration families exposed by `symbol.inspect`. */
+/** Closed compiler declaration families exposed by internal exact resolution. */
 enum class CompilerSymbolKind {
     CLASSLIKE,
     CONSTRUCTOR,

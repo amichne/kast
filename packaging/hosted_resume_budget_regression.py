@@ -289,7 +289,7 @@ def run_resume_budget_regression(replay):
     """Sixteen receipt cases per surface; internal pages never consume receipt rows."""
     requests = (
         ('query_symbols', QueryInput(QueryRun(SymbolReferences(tuple(replay.seeds[key]['ref']
-            for key in ('logger', 'helper'))), output=SymbolOutput(('name', 'location', 'signature')),
+            for key in ('logger', 'helper'))), output=SymbolOutput(('NAME', 'LOCATION', 'SIGNATURE')),
             execution_budget=ResultsBudget()))),
         ('source_read', ResumeSource(SymbolAnchor(replay.seeds['logger']['ref']), ResultsBudget())),
         ('query_occurrences', relation_query(replay.seeds['helper']['ref'], 'callers', ResultsBudget())),

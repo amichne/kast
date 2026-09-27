@@ -21,14 +21,15 @@ internal data class McpValidationDeclaration(
     val kind: McpValidationKind,
     val name: String,
     val file: String,
+    val sourceSetName: String? = null,
 )
 
 @Serializable
-internal enum class McpValidationKind(val lookupKind: String, val discoveryKind: String, val inspectedKind: String) {
-    @SerialName("class") CLASS("class", "class", "classlike"),
-    @SerialName("function") FUNCTION("symbol", "function", "function"),
-    @SerialName("property") PROPERTY("symbol", "property", "property"),
-    @SerialName("type_alias") TYPE_ALIAS("symbol", "type-alias", "type-alias"),
+internal enum class McpValidationKind(val queryKind: String, val queryResultKind: String) {
+    @SerialName("class") CLASS("CLASS", "classlike"),
+    @SerialName("function") FUNCTION("FUNCTION", "function"),
+    @SerialName("property") PROPERTY("PROPERTY", "property"),
+    @SerialName("type_alias") TYPE_ALIAS("TYPE_ALIAS", "type-alias"),
 }
 
 @Serializable
@@ -49,10 +50,13 @@ internal enum class McpValidationRelationKind {
     @SerialName("type_uses") TYPE_USES,
 }
 
-@Serializable internal data class McpValidationEndpoint(val file: String, val name: String)
+@Serializable
+internal data class McpValidationEndpoint(val file: String, val name: String, val sourceSetName: String? = null)
 
 internal fun McpValidationRequest.valid(root: Path): Boolean =
     listOfNotNull(declaration?.name, relation?.source?.name, relation?.target?.name).all { it.isNotBlank() } &&
+        listOfNotNull(declaration?.sourceSetName, relation?.source?.sourceSetName, relation?.target?.sourceSetName)
+            .all { it.isNotBlank() } &&
         listOfNotNull(declaration?.file, relation?.source?.file, relation?.target?.file, diagnosticPath).all {
             root.resolveProbePath(it) != null
         }
@@ -76,8 +80,7 @@ internal data class McpValidationResult(
 
 @Serializable
 internal data class McpValidationData(
-    val discovery: McpProbe,
-    val exactInspection: McpProbe,
+    val declarationQuery: McpProbe,
     val sourceRead: McpProbe,
     val relation: McpProbe,
     val diagnostics: McpProbe,
@@ -152,6 +155,10 @@ private data class McpValidationDeclarationProperties(
         McpValidationStringSchema(options = listOf("class", "function", "property", "type_alias")),
     val name: McpValidationStringSchema = McpValidationStringSchema(),
     val file: McpValidationStringSchema = McpValidationStringSchema(),
+    val sourceSetName: McpValidationStringSchema =
+        McpValidationStringSchema(
+            description = "Exact imported Gradle source-set name when the file is outside main or test."
+        ),
 )
 
 @Serializable
@@ -185,6 +192,10 @@ private data class McpValidationEndpointSchema(
 private data class McpValidationEndpointProperties(
     val file: McpValidationStringSchema = McpValidationStringSchema(),
     val name: McpValidationStringSchema = McpValidationStringSchema(),
+    val sourceSetName: McpValidationStringSchema =
+        McpValidationStringSchema(
+            description = "Exact imported Gradle source-set name when the file is outside main or test."
+        ),
 )
 
 @Serializable
@@ -192,6 +203,7 @@ private data class McpValidationStringSchema(
     val type: String = "string",
     @SerialName("enum") val options: List<String>? = null,
     val minLength: Int = 1,
+    val description: String? = null,
 )
 
 private val validationSchemaJson = Json {

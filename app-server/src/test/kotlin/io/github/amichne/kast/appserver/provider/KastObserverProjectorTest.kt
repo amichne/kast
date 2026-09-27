@@ -19,26 +19,8 @@ class KastObserverProjectorTest {
             .jsonObject
 
     @Test
-    fun `inspection preview distinguishes explicit reacquisition and rejects unknown acquisition`() {
-        val raw = KastObserverFixtures.symbolInspection
-        val strict = project("symbol.inspect", withLiveEvidence(raw).toString()) as ObserverPresentation.Markdown
-        assertTrue(strict.source.value.contains("compiler-confirmed"))
-        val reacquired = raw.replace("\"strict\"", "\"reacquired\"")
-        val fresh = project("symbol.inspect", withLiveEvidence(reacquired).toString()) as ObserverPresentation.Markdown
-        assertTrue(fresh.source.value.contains("freshly reacquired"))
-        assertEquals(
-            ObserverPresentation.None,
-            project("symbol.inspect", withLiveEvidence(raw.replace("\"strict\"", "\"unknown\"")).toString()),
-        )
-    }
-
-    @Test
     fun `live read previews retain the saved content basis without inventing a generation`() {
-        for ((operation, raw) in
-            listOf(
-                "symbol.discover" to KastObserverFixtures.symbolDiscovery,
-                "source.read" to KastObserverFixtures.sourceRead,
-            )) {
+        for ((operation, raw) in listOf("source.read" to KastObserverFixtures.sourceRead)) {
             val envelope = withLiveEvidence(raw)
             val presentation = project(operation, envelope.toString()) as ObserverPresentation.Markdown
             assertTrue(presentation.source.value.contains("Live IDE evidence"))

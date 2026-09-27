@@ -71,7 +71,7 @@ class QueryWalkCompositionTest {
     }
 
     @Test
-    fun `walk distinct retains repeated compiler occurrences and page observation`() = runTest {
+    fun `walk distinct retains first compiler occurrence and page observation`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             val plan = walkPlan(selected, distinct = true)
@@ -90,11 +90,10 @@ class QueryWalkCompositionTest {
             val complete =
                 assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 20, 3)))
             assertEquals(1, calls)
-            assertEquals(2, complete.result.symbolRows().size)
+            assertEquals(1, complete.result.symbolRows().size)
             val occurrences =
                 complete.result.symbolRows().map { (it.walkArrival as QueryWalkArrival.Proven).records.single() }
-            assertEquals(listOf(100, 101), occurrences.map { it.fact.occurrence.range.startInclusive })
-            assertEquals(occurrences[0].related.fingerprint, occurrences[1].related.fingerprint)
+            assertEquals(listOf(100), occurrences.map { it.fact.occurrence.range.startInclusive })
             assertEquals(1, occurrences[0].depth.value)
             val observation = complete.result.walkObservations.single()
             assertEquals(selected.fingerprint, observation.subject.fingerprint)

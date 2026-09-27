@@ -14,11 +14,6 @@ import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
-import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolTextScopeDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
@@ -65,7 +60,7 @@ class CliCommandGraphContractTest {
         val rootHelp = cli.execute(listOf("-h"), Path.of("/missing"))
         val nestedHelp =
             cli.execute(
-                listOf("symbol", "discover", "--help"),
+                listOf("source", "read", "--help"),
                 Path.of("/missing"),
             )
 
@@ -78,53 +73,6 @@ class CliCommandGraphContractTest {
         assertFalse(Regex("(?m)^\\s+broker\\s").containsMatchIn(rootHelp.document.value))
         assertTrue(nestedHelp.document.value.contains("standard input"))
         assertFalse(boundaryTouched)
-    }
-
-    @Test
-    fun `canonical discovery documents preserve existing typed requests`() {
-        val cases =
-            listOf(
-                SymbolDiscoverRequest(
-                    SymbolDiscoverTargetDocument.Name(
-                        text("Example"),
-                        SymbolNameKindDocument.SYMBOL,
-                        SymbolDiscoveryMatchDocument.FUZZY,
-                    ),
-                    count(10),
-                ),
-                SymbolDiscoverRequest(
-                    SymbolDiscoverTargetDocument.Location(text("A.kt"), offset(7)),
-                    count(10),
-                ),
-                SymbolDiscoverRequest(
-                    SymbolDiscoverTargetDocument.Text(
-                        text("TODO"),
-                        SymbolTextScopeDocument.Workspace,
-                    ),
-                    count(10),
-                ),
-                SymbolDiscoverRequest(
-                    SymbolDiscoverTargetDocument.Text(
-                        text("TODO"),
-                        SymbolTextScopeDocument.File(text("A.kt")),
-                    ),
-                    count(10),
-                ),
-            )
-
-        cases.forEach { expected ->
-            val request =
-                preparedRequest(
-                        listOf("symbol", "discover"),
-                        SymbolDiscoverRequest.serializer(),
-                        expected,
-                    )
-                    .admittedWireRequest()
-            assertEquals(
-                WireDecoding.Decoded(expected),
-                CanonicalOperationWireBindings.symbolDiscover.decodeRequest(request),
-            )
-        }
     }
 
     @Test

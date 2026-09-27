@@ -25,12 +25,12 @@ class SemanticReproductionTest(unittest.TestCase):
             dict(type="DISTINCT")), select=())
         tool, command, request = r.invocation(case, r.ToolSurface.PUBLIC)
         self.assertEqual("query_symbols", tool)
-        self.assertEqual("run", request["request"]["action"])
-        self.assertEqual(["where", "expand_relation", "distinct_symbols"],
+        self.assertEqual("RUN", request["request"]["type"])
+        self.assertEqual(["WHERE", "EXPAND_RELATION", "DISTINCT_SYMBOLS"],
                          [step["type"] for step in request["request"]["steps"]])
-        self.assertEqual({"type": "visibility", "values": ["private"]},
+        self.assertEqual({"type": "VISIBILITY", "values": ["PRIVATE"]},
                          request["request"]["steps"][0]["predicate"])
-        self.assertEqual({"type": "symbols", "fields": []}, request["request"]["output"])
+        self.assertEqual({"type": "SYMBOLS", "fields": []}, request["request"]["output"])
 
     def test_retired_query_route_is_not_admitted(self):
         with self.assertRaises(ValueError):

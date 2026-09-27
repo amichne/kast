@@ -7,8 +7,6 @@ internal object HostedReadCapabilities {
     private val bindings =
         listOf(
             CanonicalOperationWireBindings.queryRun,
-            CanonicalOperationWireBindings.symbolDiscover,
-            CanonicalOperationWireBindings.symbolInspect,
             CanonicalOperationWireBindings.sourceRead,
             CanonicalOperationWireBindings.diagnosticCheck,
         )

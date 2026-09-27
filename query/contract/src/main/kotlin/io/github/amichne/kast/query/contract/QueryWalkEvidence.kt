@@ -16,7 +16,7 @@ import io.github.amichne.kast.traversal.contract.TraversalRecord
 import io.github.amichne.kast.traversal.contract.TraversalResult
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
 
-/** The traversal records producing this row. A later distinct or set stage merges their exact facts. */
+/** The traversal records producing this row. Combining operators may merge their exact facts. */
 sealed interface QueryWalkArrival {
     data object None : QueryWalkArrival
 

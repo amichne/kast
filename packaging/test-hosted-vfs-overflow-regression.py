@@ -110,7 +110,7 @@ class OverflowHelperTest(unittest.TestCase):
         with self.assertRaises(subject.OverflowRejected):
             subject._create_burst(link, [])
 
-    def run_fake(self, receipt=True, strict=True, restoration=None):
+    def run_fake(self, receipt=True, restoration=None):
         workspace = self.root / 'workspace'
         source = workspace / 'src/main/kotlin/Fixture.kt'
         source.parent.mkdir(parents=True)
@@ -118,7 +118,7 @@ class OverflowHelperTest(unittest.TestCase):
         self.log = self.root / 'ide/log/idea.log'
         self.log.parent.mkdir(parents=True)
         self.log.write_bytes(b'')
-        state = SimpleNamespace(epoch=1, ready=0, strict=0, cursor=0, revalidated=0, oldsource=0, diagnostic=0)
+        state = SimpleNamespace(epoch=1, ready=0, cursor=0, diagnostic=0)
         live = lambda: {'host': HOST, 'epoch': state.epoch}
         class Replay:
             def __init__(self, *_):
@@ -133,20 +133,7 @@ class OverflowHelperTest(unittest.TestCase):
                 if state.ready == 2 and restoration == 'page':
                     raise subject.AuthorityRejected(subject.AuthorityFailure.ISSUER)
                 return 'opaque-cursor'
-            def inspect(self, stage, surface, selector, current, expected_symbol=None):
-                if stage is subject.InspectionStage.REVALIDATE:
-                    self_test.assertEqual('opaque-1', selector)
-                    state.revalidated += 1
-                    return {'selector': 'reacquired-2', 'name': 'ReadPageBudget'}
-                self_test.assertEqual('reacquired-2', selector)
-                return expected_symbol
             def call(self, surface, tool, request):
-                if tool == 'symbol_lookup':
-                    return {'status': 'complete', 'items': [{'type': 'declaration', 'name': 'NativeChangeTarget',
-                        'file': str(source), 'candidateSelector': 'issued-candidate'}]}, 'schema-candidate'
-                if tool == 'symbol_inspect' and request.target.type == 'candidate':
-                    return ({'status': 'complete', 'live': live()} if state.epoch == 1 else
-                            {'operation': 'symbol.inspect', 'status': 'rejected', 'reason': 'candidate-stale'}), 'schema-candidate'
                 if tool == 'source_read':
                     if state.epoch == 1:
                         return {'status': 'qualified', 'content': [{'type': 'structure',
@@ -157,20 +144,10 @@ class OverflowHelperTest(unittest.TestCase):
                     state.diagnostic += 1
                     return (asdict(DiagnosticPage(live=live())) if request.continuation is None
                             else asdict(DiagnosticRefused())), 'sha256:' + 'b' * 64
-                self_test.assertEqual('symbol_inspect', tool)
-                self_test.assertEqual('exact', request.target.type)
-                self_test.assertEqual('opaque-1', request.target.selector)
-                state.strict += 1
-                return {'status': 'rejected' if strict else 'complete', 'operation': 'symbol.inspect',
-                        'reason': 'exact-selector-stale'}, 'sha256:' + 'a' * 64
             def reject(self, name, surface, request, reason):
-                if name is subject.AuthorityCaseName.OLD_REFERENCE:
-                    self_test.assertEqual('opaque-1', request.anchor.selector)
-                    state.oldsource += 1
-                else:
-                    self_test.assertEqual('opaque-cursor', request.page.continuation)
-                    self_test.assertIn(request.anchor.selector, ('opaque-2', 'reacquired-2'))
-                    state.cursor += 1
+                self_test.assertEqual('opaque-cursor', request.page.continuation)
+                self_test.assertEqual(f'opaque-{state.epoch}', request.anchor.selector)
+                state.cursor += 1
         self_test = self
         def ready(*_):
             state.epoch += 1
@@ -196,10 +173,9 @@ class OverflowHelperTest(unittest.TestCase):
         (report, successor), state = self.run_fake()
         self.assertEqual(subject.OverflowOutcome.PASSED, report.outcome)
         self.assertEqual(3, successor['epoch'])
-        self.assertEqual((4, 4), (state.strict, state.cursor))
-        self.assertEqual((2, 2, 4), (state.revalidated, state.oldsource, state.diagnostic))
+        self.assertEqual((2, 4), (state.cursor, state.diagnostic))
         self.assertEqual(8, len(report.diagnosticObservations))
-        self.assertEqual(4, len(report.referenceObservations))
+        self.assertEqual(2, len(report.referenceObservations))
         self.assertTrue(all(item.passed for item in report.referenceObservations))
         self.assertEqual(3, report.filesCreated)
         self.assertTrue(report.filesRestored)
@@ -209,29 +185,9 @@ class OverflowHelperTest(unittest.TestCase):
         (report, successor), state = self.run_fake(receipt=False)
         self.assertEqual(subject.OverflowFailure.RECEIPT, report.failure)
         self.assertEqual(subject.OverflowOutcome.REJECTED, report.outcome)
-        self.assertEqual(0, state.strict)
         self.assertEqual(3, successor['epoch'])
 
-    def test_strict_success_cannot_pass_stale_refusal_gate(self):
-        (report, _), _ = self.run_fake(strict=False)
-        self.assertEqual(subject.OverflowFailure.STRICT, report.failure)
-        self.assertEqual(subject.OverflowOutcome.REJECTED, report.outcome)
-        self.assertTrue(report.filesRestored)
 
-    def test_strict_observation_retains_known_refusal_and_exact_mismatch_without_payload(self):
-        valid = {'operation': 'symbol.inspect', 'status': 'rejected', 'reason': 'exact-selector-stale'}
-        observed = subject._strict_observation(valid)
-        self.assertEqual(subject.InspectionRefusal.EXACT_SELECTOR_STALE, observed.refusal)
-        for raw in [dict(valid, reason='exact_selector_stale'), dict(valid, reason='private-token-payload')]:
-            observed = subject._strict_observation(raw)
-            self.assertIsInstance(observed, subject.InspectionUnknownRefusal)
-            self.assertNotIn('private-token', json.dumps(asdict(observed)))
-        for raw, expected in [(None, subject.InspectionMismatch.DOCUMENT),
-                              (dict(valid, operation='wrong'), subject.InspectionMismatch.OPERATION),
-                              (dict(valid, status='complete'), subject.InspectionMismatch.STATUS)]:
-            self.assertEqual(expected, subject._strict_observation(raw).mismatch)
-        observed = subject._strict_observation(dict(valid, reason='workspace-not-ready'))
-        self.assertEqual(subject.InspectionRefusal.WORKSPACE_NOT_READY, observed.refusal)
 
     def test_restoration_preserves_failed_predicate_and_original_failure(self):
         for mode, stage, cause in [('epoch', subject.RestorationStage.EPOCH_ADVANCE, subject.OverflowFailure.EPOCH),
@@ -242,14 +198,11 @@ class OverflowHelperTest(unittest.TestCase):
                 # Each fake run owns a distinct disposable root.
                 with tempfile.TemporaryDirectory() as directory:
                     self.root = Path(directory).resolve()
-                    (report, successor), _ = self.run_fake(strict=False, restoration=mode)
+                    (report, successor), _ = self.run_fake(restoration=mode)
                 self.assertIsNone(successor)
-                self.assertEqual(subject.OverflowFailure.STRICT, report.failure)
+                self.assertEqual(subject.OverflowFailure.RESTORATION, report.failure)
                 self.assertEqual(stage, report.restorationStage)
                 self.assertEqual(cause, report.restorationFailure)
-                self.assertEqual(1, len(report.strictObservations))
-                self.assertEqual(subject.InspectionMismatch.STATUS,
-                                 report.strictObservations[0].observation.mismatch)
                 if cause is subject.OverflowFailure.AUTHORITY:
                     self.assertEqual(subject.AuthorityFailure.ISSUER, report.restorationAuthorityFailure)
 
@@ -336,28 +289,13 @@ class OverflowHelperTest(unittest.TestCase):
         self.assertNotIn('fresh-page', json.dumps(asdict(result)))
 
 
-    def test_candidate_and_source_refusal_oracles_keep_families_distinct(self):
-        @dataclass(frozen=True)
-        class SourceReason:
-            reason: str = 'snapshot-rejected'
-            type: str = 'reference-rejected'
-            role: str = 'source'
-        @dataclass(frozen=True)
-        class Refused:
-            operation: str
-            reason: str | SourceReason
-            status: str = 'rejected'
+    def test_source_anchor_refusal_requires_snapshot_rejection(self):
         surface = subject.AuthoritySurface.PROVIDER
-        source = asdict(Refused('source.read', SourceReason()))
-        candidate = asdict(Refused('symbol.inspect', 'candidate-stale'))
-        self.assertTrue(subject._reference_refusal(subject.ReferenceFamily.SOURCE, surface, source, 'schema').passed)
-        self.assertTrue(subject._reference_refusal(subject.ReferenceFamily.CANDIDATE, surface, candidate, 'schema').passed)
-        source['reason']['role'] = 'symbol'
-        self.assertFalse(subject._reference_refusal(subject.ReferenceFamily.SOURCE, surface, source, 'schema').passed)
-        candidate['reason'] = 'exact-selector-stale'
-        observed = subject._reference_refusal(subject.ReferenceFamily.CANDIDATE, surface, candidate, 'schema')
-        self.assertFalse(observed.passed)
-        self.assertEqual(subject.InspectionRefusal.EXACT_SELECTOR_STALE, observed.refusal)
+        response = {'operation': 'source.read', 'status': 'rejected',
+                    'reason': {'type': 'reference-rejected', 'role': 'source', 'reason': 'snapshot-rejected'}}
+        self.assertTrue(subject._reference_refusal(surface, response, 'schema').passed)
+        response['reason']['role'] = 'symbol'
+        self.assertFalse(subject._reference_refusal(surface, response, 'schema').passed)
 
 
 if __name__ == '__main__':

@@ -78,7 +78,7 @@ data class SymbolDiscoveryBudget(
     val returnedBytes: SymbolDiscoveryByteLimit,
 )
 
-/** Closed domain meaning for the existing `symbol.discover` operation. */
+/** Closed domain meaning for the query declaration discovery. */
 sealed interface SymbolDiscoveryTarget {
     /** Finite result-kind admission owned by the semantic target. */
     fun admits(candidate: SymbolDiscoveryKind): Boolean

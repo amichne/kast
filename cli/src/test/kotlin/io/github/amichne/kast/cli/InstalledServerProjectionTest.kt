@@ -129,8 +129,6 @@ class InstalledServerProjectionTest {
             listOf(
                 "workspace.lifecycle",
                 "query.run",
-                "symbol.discover",
-                "symbol.inspect",
                 "source.read",
                 "diagnostic.check",
                 "change.run",
@@ -191,7 +189,7 @@ class InstalledServerProjectionTest {
             }
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
-        assertEquals(7, tools.size)
+        assertEquals(5, tools.size)
         assertEquals(15, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
@@ -202,8 +200,6 @@ class InstalledServerProjectionTest {
             listOf(
                 "workspace_lifecycle",
                 "query_symbols",
-                "symbol_lookup",
-                "symbol_inspect",
                 "source_read",
                 "check_diagnostics",
                 "change",
@@ -220,37 +216,9 @@ class InstalledServerProjectionTest {
         )
         assertFalse(tools.any { it.getValue("operationId").jsonPrimitive.content in internalOperations })
 
-        val discover = tools.tool("symbol_lookup")
-        val targetVariants =
-            discover
-                .getValue("inputSchema")
-                .jsonObject
-                .getValue("properties")
-                .jsonObject
-                .getValue("target")
-                .jsonObject
-                .getValue("anyOf")
-                .jsonArray
-                .map { it.jsonObject }
-        assertEquals(3, targetVariants.size)
-        assertEquals(
-            listOf("location", "name", "text"),
-            targetVariants.map { variant ->
-                variant
-                    .getValue("properties")
-                    .jsonObject
-                    .getValue("type")
-                    .jsonObject
-                    .getValue("const")
-                    .jsonPrimitive
-                    .content
-            },
-        )
         assertEquals(
             linkedMapOf(
                 "query_symbols" to listOf("tool", "query_symbols"),
-                "symbol_lookup" to listOf("symbol", "discover"),
-                "symbol_inspect" to listOf("symbol", "inspect"),
                 "source_read" to listOf("source", "read"),
                 "check_diagnostics" to listOf("tool", "check_diagnostics"),
             ),
@@ -259,14 +227,7 @@ class InstalledServerProjectionTest {
             },
         )
         assertTrue(invocations.all { "bindings" !in it.getValue("invocation").jsonObject })
-        assertEquals(7, tools.map { it.getValue("outputSchema") }.distinct().size)
-
-        assertTrue(
-            tools
-                .tool("symbol_inspect")
-                .completedDocumentRequiredProperties()
-                .containsAll(listOf("operation", "status", "symbol"))
-        )
+        assertEquals(5, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         val changeIntentVariants =
             tools
@@ -310,53 +271,7 @@ class InstalledServerProjectionTest {
                 """"completedPhases":2,"totalPhases":7,"cause":"gradle-import-failed",""" +
                 """"correctiveAction":"Run the repository Gradle wrapper successfully with the admitted import inputs, then run kast start again.","gradleJvm":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionObservation.Observed","report":{"distribution":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleDistributionEvidence.Observed","version":"9.4.1"},"requiredJava":[17,21,25],"candidates":[{"java":25,"homeIdentity":"d3bb48e3f4a12b8eafcd37372767714786c6efe55d2683b57822d8d5a69b8923","authority":"AMBIENT_JAVA_HOME","decision":"SELECTED"}],"outcome":{"type":"io.github.amichne.kast.distribution.contract.gradle.GradleJvmSelectionOutcome.Selected","candidate":{"java":25,"homeIdentity":"d3bb48e3f4a12b8eafcd37372767714786c6efe55d2683b57822d8d5a69b8923","authority":"AMBIENT_JAVA_HOME","decision":"SELECTED"}}}}}}}"""
 
-        installedServerOutputSchema(CanonicalOperation.SYMBOL_DISCOVER).assertAdmits(runtimeRejection)
-    }
-
-    @Test
-    fun `symbol output schema rejects proof contradictions`() {
-        val schema = projectionTools().tool("symbol_inspect").outputSchema()
-        val valid =
-            symbolInspectProcessDocument(
-                kind = "classlike",
-                qualifiedIdentity = "\"sample.Controller\"",
-                signature = """{"type":"class-like","qualifiedIdentity":"sample.Controller"}""",
-            )
-        val unavailableIdentity =
-            symbolInspectProcessDocument(
-                kind = "classlike",
-                qualifiedIdentity = "null",
-                signature = """{"type":"class-like","qualifiedIdentity":"sample.Controller"}""",
-            )
-        val incompatibleKind =
-            symbolInspectProcessDocument(
-                kind = "function",
-                qualifiedIdentity = "\"sample.Controller\"",
-                signature = """{"type":"class-like","qualifiedIdentity":"sample.Controller"}""",
-            )
-        val property =
-            symbolInspectProcessDocument(
-                kind = "property",
-                qualifiedIdentity = "\"sample.Controller\"",
-                signature =
-                    """{"type":"property","qualifiedIdentity":"sample.Controller","receiver":{"type":"present",""" +
-                        """"compilerType":"kotlin.String"},"contextReceivers":["sample.Context"],""" +
-                        """"returnType":"kotlin.Int"}""",
-            )
-        val propertyWithoutReceiverProof =
-            symbolInspectProcessDocument(
-                kind = "property",
-                qualifiedIdentity = "\"sample.Controller\"",
-                signature = """{"type":"property","qualifiedIdentity":"sample.Controller","returnType":"kotlin.Int"}""",
-            )
-
-        assertAll(
-            { schema.assertAdmits(valid) },
-            { schema.assertAdmits(property) },
-            { schema.assertRejects(unavailableIdentity) },
-            { schema.assertRejects(incompatibleKind) },
-            { schema.assertRejects(propertyWithoutReceiverProof) },
-        )
+        installedServerOutputSchema(CanonicalOperation.QUERY_RUN).assertAdmits(runtimeRejection)
     }
 
     @Test
@@ -489,9 +404,6 @@ class InstalledServerProjectionTest {
 
     private fun JsonObject.validate(document: String): Set<String> =
         schemaRegistry.getSchema(toString()).validate(document, InputFormat.JSON).mapTo(linkedSetOf()) { it.message }
-
-    private fun symbolInspectProcessDocument(kind: String, qualifiedIdentity: String, signature: String): String =
-        SymbolInspectionFixture.process(kind, qualifiedIdentity, signature)
 
     private fun JsonObject.completedDocumentSchema(): JsonObject =
         getValue("outputSchema")

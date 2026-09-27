@@ -12,7 +12,6 @@ import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryJoinModeDocument
-import io.github.amichne.kast.protocol.contract.QueryJoinRightDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason
@@ -25,7 +24,6 @@ import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExactReferences
-import io.github.amichne.kast.query.contract.QueryJoinInput
 import io.github.amichne.kast.query.contract.QueryJoinMode
 import io.github.amichne.kast.query.contract.QueryMatch
 import io.github.amichne.kast.query.contract.QueryPlanAdmissionFailure
@@ -97,12 +95,18 @@ private fun QueryFromDocument.admitSource(
     retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
 ): QueryReferenceSourceAdmission =
     when (this) {
+        is QueryFromDocument.Location ->
+            when (val admitted = admitLocation(lease)) {
+                is Refinement.Refined ->
+                    QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Location(admitted.value))
+                is Refinement.Rejected -> QueryReferenceSourceAdmission.RequestRejected
+            }
         is QueryFromDocument.Symbols ->
             discovery.syntax()?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Symbols(it)) }
                 ?: QueryReferenceSourceAdmission.RequestRejected
         is QueryFromDocument.References -> values.values.admitExactReferences(lease, authority)
         is QueryFromDocument.Result ->
-            (retained[this] as? QueryRetainedResult.Symbols)?.let {
+            retained[this]?.let {
                 QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Retained(it))
             } ?: QueryReferenceSourceAdmission.RequestRejected
     }
@@ -121,8 +125,8 @@ private fun QueryStepDocument.admitStep(
     retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
 ): QueryStepAdmission =
     when (this) {
-        is QueryStepDocument.Bind ->
-            name.domainName()?.let { QueryStepAdmission.Admitted(QueryStepSyntax.Bind(it)) }
+        is QueryStepDocument.ProjectBinding ->
+            name.domainName()?.let { QueryStepAdmission.Admitted(QueryStepSyntax.ProjectBinding(it)) }
                 ?: QueryStepAdmission.RequestRejected
         is QueryStepDocument.Join -> admitJoin(retained)
         is QueryStepDocument.Concat -> admitConcat(lease, authority, retained)
@@ -171,14 +175,7 @@ private fun QueryStepDocument.Join.admitJoin(
     retained: Map<QueryFromDocument.Result, QueryRetainedResult>
 ): QueryStepAdmission {
     val admittedMode = mode.domainMode() ?: return QueryStepAdmission.RequestRejected
-    val admittedRight =
-        when (val input = right) {
-            is QueryJoinRightDocument.Named ->
-                input.name.domainName()?.let(QueryJoinInput::Named) ?: return QueryStepAdmission.RequestRejected
-            is QueryFromDocument.Result ->
-                (retained[input] as? QueryRetainedResult.Symbols)?.let(QueryJoinInput::Retained)
-                    ?: return QueryStepAdmission.RequestRejected
-        }
+    val admittedRight = retained[right] as? QueryRetainedResult.Symbols ?: return QueryStepAdmission.RequestRejected
     return QueryStepAdmission.Admitted(QueryStepSyntax.Join(admittedMode, admittedRight))
 }
 
@@ -282,12 +279,8 @@ internal fun QueryPlanAdmissionFailure.protocolRejection(): QueryRunRejection =
     when (this) {
         QueryPlanAdmissionFailure.IncompleteRightInput ->
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE)
-        is QueryPlanAdmissionFailure.DuplicateBindingName ->
-            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.DUPLICATE_BINDING_NAME)
         is QueryPlanAdmissionFailure.UnknownBindingName ->
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.UNKNOWN_BINDING_NAME)
-        QueryPlanAdmissionFailure.InnerJoinNotTerminal ->
-            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.INNER_JOIN_NOT_TERMINAL)
         QueryPlanAdmissionFailure.OutputTypeMismatch ->
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH)
         is QueryPlanAdmissionFailure.UnsupportedDeclarationKind ->

@@ -56,16 +56,6 @@ class ExistingIdeSemanticReadTest {
                 PublicQueryInputFixture.all(fields = emptyList()),
             ),
             Triple(
-                "symbol discover",
-                ExistingIdeReadOperation.SYMBOL_DISCOVER,
-                """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}""",
-            ),
-            Triple(
-                "symbol inspect",
-                ExistingIdeReadOperation.SYMBOL_INSPECT,
-                """{"target":{"type":"exact","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"}}""",
-            ),
-            Triple(
                 "source read",
                 ExistingIdeReadOperation.SOURCE_READ,
                 """{"anchor":{"type":"symbol","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}""",
@@ -127,8 +117,6 @@ class ExistingIdeSemanticReadTest {
 
     private fun canonicalKind(read: DaemonCanonicalRead): ExistingIdeReadOperation =
         when (read) {
-            is DaemonCanonicalRead.SymbolDiscover -> ExistingIdeReadOperation.SYMBOL_DISCOVER
-            is DaemonCanonicalRead.SymbolInspect -> ExistingIdeReadOperation.SYMBOL_INSPECT
             is DaemonCanonicalRead.SourceRead -> ExistingIdeReadOperation.SOURCE_READ
         }
 
@@ -191,10 +179,6 @@ class ExistingIdeSemanticReadTest {
                 ExistingIdeReadOperation.QUERY_RUN to
                     { basis ->
                         encoded(CanonicalOperationWireBindings.queryRun, QueryRunResult(empty(), empty()), basis)
-                    },
-                ExistingIdeReadOperation.SYMBOL_DISCOVER to
-                    { basis ->
-                        encoded(CanonicalOperationWireBindings.symbolDiscover, SymbolDiscoverResult(empty()), basis)
                     },
                 ExistingIdeReadOperation.DIAGNOSTIC_CHECK to
                     { basis ->

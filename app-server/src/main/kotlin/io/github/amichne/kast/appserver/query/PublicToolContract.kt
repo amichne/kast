@@ -23,6 +23,7 @@ sealed interface PublicToolInputFailure {
 @Serializable
 enum class PublicToolParameter(val path: String) {
     SOURCE_DECLARATION_NAME("source.declaration_name"),
+    LOCATION_FILE("source.file"),
     DIRECTORY("scope.relative_directory_path"),
     PACKAGE("scope.package_name"),
     DIAGNOSTIC_PATH("relative_path"),

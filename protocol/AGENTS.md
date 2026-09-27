@@ -14,7 +14,6 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [SourceReadFailureDetails.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt) - disjoint request, reference, and internal source failure causes.
 - [DiagnosticProgressDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/DiagnosticProgressDocument.kt) - diagnostic inventory, cumulative coverage, and execution stage.
 
-- [SymbolInspectionOutcomes.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolInspectionOutcomes.kt) - strict versus reacquired inspection results and finite revalidation refusals.
 
 - [ReadRecoveryAction.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt) - finite read-failure recovery directions derived from the canonical reason.
 - [AdmittedReadRejections.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt) - operation-owned admitted failures retain finite reasons and required execution reports.
@@ -25,7 +24,7 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt) - canonical operation domain.
 - [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt) - query operation models.
 - [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt) - query result items, omissions, and finite item failures.
-- [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryBindingDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryBindingDocuments.kt) - named bind and join request documents.
+- [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryBindingDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryBindingDocuments.kt) - join mode and binding cell documents.
 - [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryWalkDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryWalkDocuments.kt) - traversal record and progress projections within query results.
 - [registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt](registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt) - authoritative operation catalog.
 - [registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationDefinitionFactory.kt](registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationDefinitionFactory.kt) - shared typed definition construction and budgets.

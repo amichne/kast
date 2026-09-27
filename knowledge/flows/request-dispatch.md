@@ -76,7 +76,7 @@ The Codex-facing provider prepends a bounded search or diagnostic summary when t
 
 The optional exact-symbol source projection is performed by the query evaluator inside this same hosted read, before typed query result projection. It uses the source read port rather than a second client exchange, preserving the query's authority, budget, and finite source failure.
 
-For the five reads, a supplied byte limit below the serialized wire schema and
+For the three reads, a supplied byte limit below the serialized wire schema and
 operation identity rejects before handler selection. No semantic grant is invented
 for this rejection. Satisfying that necessary lower bound does not establish that a
 complete response body can fit; encoded output remains the publication authority.
@@ -97,7 +97,7 @@ The host remains responsible for current workspace or live IDE authority and
 budgets. Shared protocol code does not launch workers or admit projects.
 
 The default hosted dispatch has a closed request case and canonical wire binding
-for each of the seven public semantic reads. The existing-IDE client uses the same
+for each of the three public semantic reads. The existing-IDE client uses the same
 operation-specific decoders, rejects published evidence, and checks a successful
 live envelope against the requested root and admitted descriptor host. A typed host
 rejection can be returned before read authority exists; it does not become a
@@ -111,7 +111,7 @@ resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Provider invocation uses the App Server-owned
 IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings. The installed coordinator first prepares the exact root, validates the live application/project identity, and retains that project through descriptor admission. Preparation failures are known pre-execution rejections with typed causes and operation IDs.
 The one-call `change` route prepares the host challenge through the same direct client and signs it internally before any source effect.
-Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` now selects the seven existing-IDE reads before
+Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` selects the three existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final distribution's complete/qualified native matrix and a successful

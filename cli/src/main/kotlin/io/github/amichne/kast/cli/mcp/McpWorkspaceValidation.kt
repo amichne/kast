@@ -5,8 +5,6 @@ import io.github.amichne.kast.protocol.wire.CompactSourceTextDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.CompactSourceContentDocument
 import io.github.amichne.kast.protocol.wire.presentation.DiagnosticCoverageCliDocument
-import io.github.amichne.kast.protocol.wire.presentation.SymbolCliDocument
-import io.github.amichne.kast.protocol.wire.presentation.SymbolDiscoveryCliDocument
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -34,26 +32,21 @@ internal fun validateWorkspace(
     if (!request.valid(root)) return invalidValidationRequest()
     val validation = WorkspaceValidator(root, invokeRead)
     val declaration = request.declaration
-    val discovery =
-        declaration?.let { validation.discover(it) }
-            ?: ExactDiscovery(McpProbe.unverified("No declaration probe requested"), null)
-    val inspection =
-        if (declaration != null && discovery.candidate != null) validation.inspect(declaration, discovery.candidate)
-        else ExactInspection(McpProbe.unverified("Exact inspection requires one discovered declaration"), null)
+    val declarationResult =
+        declaration?.let { validation.declaration(it) }
+            ?: QueriedDeclaration(McpProbe.unverified("No declaration probe requested"), null)
     val source =
-        inspection.symbol?.let { validation.source(it) }
-            ?: McpProbe.unverified("Source read requires one exact inspected symbol")
+        declarationResult.symbol?.let { validation.source(it) }
+            ?: McpProbe.unverified("Source read requires one exact queried symbol")
     val relation =
-        request.relation?.let { validation.relation(it, declaration, inspection.symbol) }
+        request.relation?.let { validation.relation(it, declaration, declarationResult.symbol) }
             ?: McpProbe.unverified("No relation probe requested")
     val diagnostics =
         request.diagnosticPath?.let { validation.diagnostics(it) }
             ?: McpProbe.unverified("No diagnostic path requested")
     return CliExit.Complete(
         validationResultFactory.create(
-            McpValidationResult(
-                data = McpValidationData(discovery.probe, inspection.probe, source, relation, diagnostics)
-            )
+            McpValidationResult(data = McpValidationData(declarationResult.probe, source, relation, diagnostics))
         )
     )
 }
@@ -71,67 +64,70 @@ private class WorkspaceValidator(
     private val root: Path,
     private val invokeRead: (String, JsonObject) -> CliExit,
 ) {
-    fun discover(declaration: McpValidationDeclaration): ExactDiscovery {
+    fun declaration(declaration: McpValidationDeclaration): QueriedDeclaration {
         val response =
-            read<McpDiscoveryDocument>(
-                "symbol_lookup",
-                validationInputJson
-                    .encodeToJsonElement(
-                        McpDiscoveryRequest(target = McpDiscoveryTarget(declaration.kind.lookupKind, declaration.name))
-                    )
-                    .jsonObject,
-            )
+            queryDeclarations(declaration.name, declaration.file, declaration.sourceSetName, declaration.kind)
         if (response !is NativeRead.Complete)
-            return ExactDiscovery(response.unverified("Declaration discovery was not exhaustive"), null)
+            return QueriedDeclaration(response.unverified("Declaration query was not exhaustive"), null)
         val matching =
-            response.value.items.filterIsInstance<SymbolDiscoveryCliDocument.Declaration>().filter {
+            response.value.items.filter {
                 it.name == declaration.name &&
-                    root.resolveProbePath(declaration.file)?.toString() == it.file &&
-                    it.kind == declaration.kind.discoveryKind
+                    it.location?.file == root.resolveProbePath(declaration.file)?.toString() &&
+                    it.kind == declaration.kind.queryResultKind &&
+                    it.ref.startsWith("exact:")
             }
         return when (matching.size) {
             0 ->
-                ExactDiscovery(
+                QueriedDeclaration(
                     McpProbe.failed("No matching declaration in the requested file", response.evidence),
                     null,
                 )
             1 ->
-                ExactDiscovery(
-                    McpProbe.passed("One exact declaration candidate was discovered", response.evidence),
-                    matching.single().candidateSelector,
+                QueriedDeclaration(
+                    McpProbe.passed("One exact declaration was queried", response.evidence),
+                    matching.single(),
                 )
-            else ->
-                ExactDiscovery(McpProbe.unverified("Multiple matching declaration candidates", response.evidence), null)
+            else -> QueriedDeclaration(McpProbe.unverified("Multiple matching declarations", response.evidence), null)
         }
     }
 
-    fun inspect(declaration: McpValidationDeclaration, candidate: String): ExactInspection {
-        val response =
-            read<McpInspectionDocument>(
-                "symbol_inspect",
-                validationInputJson
-                    .encodeToJsonElement(McpInspectionRequest(McpInspectionTarget(candidate)))
-                    .jsonObject,
-            )
-        if (response !is NativeRead.Complete)
-            return ExactInspection(response.unverified("Exact inspection was incomplete"), null)
-        val symbol = response.value.symbol
-        val nameAndKindMatch = symbol.name == declaration.name && symbol.kind == declaration.kind.inspectedKind
-        val fileAndSelectorMatch =
-            symbol.file == root.resolveProbePath(declaration.file)?.toString() && symbol.selector.startsWith("exact:")
-        if (!nameAndKindMatch || !fileAndSelectorMatch)
-            return ExactInspection(
-                McpProbe.failed("Inspected identity differs from the requested declaration", response.evidence),
-                null,
-            )
-        return ExactInspection(McpProbe.passed("Candidate refined to an exact symbol", response.evidence), symbol)
+    private fun queryDeclarations(
+        name: String,
+        file: String,
+        sourceSetName: String?,
+        kind: McpValidationKind? = null,
+    ): NativeRead<McpQuerySymbolsDocument> =
+        read(
+            "query_symbols",
+            validationInputJson
+                .encodeToJsonElement(
+                    McpQueryDeclarationRequest(
+                        McpQueryDeclarationAction(
+                            McpQueryDeclarationSource(
+                                declarationName = name,
+                                declarationKinds = kind?.let { listOf(it.queryKind) },
+                                scope = queryScope(file, sourceSetName),
+                            )
+                        )
+                    )
+                )
+                .jsonObject,
+        )
+
+    private fun queryScope(rawFile: String, sourceSetName: String?): McpQueryDirectoryScope {
+        val file = root.resolveProbePath(rawFile) ?: error("Validated probe path required")
+        val relative = root.relativize(file)
+        return McpQueryDirectoryScope(
+            relativeDirectoryPath = relative.parent?.toString() ?: ".",
+            sourceSetNames = sourceSetName?.let(::listOf),
+        )
     }
 
-    fun source(symbol: SymbolCliDocument): McpProbe {
+    fun source(symbol: McpExactSymbol): McpProbe {
         val response =
             read<McpSourceDocument>(
                 "source_read",
-                validationInputJson.encodeToJsonElement(McpSourceRequest(McpSourceAnchor(symbol.selector))).jsonObject,
+                validationInputJson.encodeToJsonElement(McpSourceRequest(McpSourceAnchor(symbol.ref))).jsonObject,
             )
         if (response !is NativeRead.Complete) return response.unverified("Source text was incomplete or unavailable")
         val returned =
@@ -144,7 +140,7 @@ private class WorkspaceValidator(
     fun relation(
         probe: McpValidationRelation,
         declaration: McpValidationDeclaration?,
-        inspected: SymbolCliDocument?,
+        inspected: McpExactSymbol?,
     ): McpProbe {
         val source =
             endpoint(probe.source, declaration, inspected)
@@ -152,7 +148,7 @@ private class WorkspaceValidator(
         val target =
             endpoint(probe.target, declaration, inspected)
                 ?: return McpProbe.unverified("Relation target could not be inspected exactly")
-        val subject = probe.kind.subjectSelector(source.selector, target.selector)
+        val subject = probe.kind.subjectSelector(source.ref, target.ref)
         val response =
             read<McpQueryOccurrenceDocument>(
                 "query_symbols",
@@ -161,7 +157,7 @@ private class WorkspaceValidator(
                         McpQueryRelationRequest(
                             McpQueryRunAction(
                                 McpQuerySymbolRefs(listOf(subject)),
-                                listOf(McpQueryExpandRelation(probe.kind)),
+                                listOf(McpQueryExpandRelation(probe.kind.queryRelation())),
                             )
                         )
                     )
@@ -173,7 +169,7 @@ private class WorkspaceValidator(
                 is NativeRead.Partial -> response.value.items.map { it.relation }
                 is NativeRead.Rejected -> return response.unverified("Query relation read was unavailable")
             }
-        if (facts.any { it.source.selector == source.selector && it.target.selector == target.selector })
+        if (facts.any { it.source.selector == source.ref && it.target.selector == target.ref })
             return McpProbe.passed("Exact relation fact was returned", response.evidence)
         return if (response is NativeRead.Complete)
             McpProbe.failed("Exhaustive relation set did not contain the requested fact", response.evidence)
@@ -183,32 +179,17 @@ private class WorkspaceValidator(
     private fun endpoint(
         endpoint: McpValidationEndpoint,
         declaration: McpValidationDeclaration?,
-        inspected: SymbolCliDocument?,
-    ): SymbolCliDocument? {
+        inspected: McpExactSymbol?,
+    ): McpExactSymbol? {
         val isInspectedDeclaration = declaration != null && inspected != null && endpoint.name == declaration.name
-        if (isInspectedDeclaration && root.resolveProbePath(endpoint.file)?.toString() == inspected.file)
+        if (isInspectedDeclaration && root.resolveProbePath(endpoint.file)?.toString() == inspected.location?.file)
             return inspected
-        val response =
-            read<McpDiscoveryDocument>(
-                "symbol_lookup",
-                validationInputJson
-                    .encodeToJsonElement(McpDiscoveryRequest(target = McpDiscoveryTarget("symbol", endpoint.name)))
-                    .jsonObject,
-            )
+        val response = queryDeclarations(endpoint.name, endpoint.file, endpoint.sourceSetName)
         if (response !is NativeRead.Complete) return null
-        val candidate =
-            response.value.items.filterIsInstance<SymbolDiscoveryCliDocument.Declaration>().singleOrNull {
-                it.name == endpoint.name && it.file == root.resolveProbePath(endpoint.file)?.toString()
-            } ?: return null
-        val inspectedEndpoint =
-            read<McpInspectionDocument>(
-                "symbol_inspect",
-                validationInputJson
-                    .encodeToJsonElement(McpInspectionRequest(McpInspectionTarget(candidate.candidateSelector)))
-                    .jsonObject,
-            )
-        return (inspectedEndpoint as? NativeRead.Complete)?.value?.symbol?.takeIf {
-            it.name == endpoint.name && it.file == candidate.file && it.selector.startsWith("exact:")
+        return response.value.items.singleOrNull {
+            it.name == endpoint.name &&
+                it.location?.file == root.resolveProbePath(endpoint.file)?.toString() &&
+                it.ref.startsWith("exact:")
         }
     }
 
@@ -291,9 +272,7 @@ internal fun McpValidationRelationKind.subjectSelector(source: String, target: S
         McpValidationRelationKind.TYPE_USES -> target
     }
 
-private data class ExactDiscovery(val probe: McpProbe, val candidate: String?)
-
-private data class ExactInspection(val probe: McpProbe, val symbol: SymbolCliDocument?)
+private data class QueriedDeclaration(val probe: McpProbe, val symbol: McpExactSymbol?)
 
 private sealed interface NativeRead<out T> {
     val evidence: JsonElement?
@@ -316,9 +295,17 @@ private enum class McpValidationReadStatus {
     @SerialName("rejected") REJECTED,
 }
 
-@Serializable private data class McpDiscoveryDocument(val items: List<SymbolDiscoveryCliDocument>)
+@Serializable private data class McpQuerySymbolsDocument(val items: List<McpExactSymbol>)
 
-@Serializable private data class McpInspectionDocument(val symbol: SymbolCliDocument)
+@Serializable
+private data class McpExactSymbol(
+    val ref: String,
+    val kind: String,
+    val name: String?,
+    val location: McpExactLocation?,
+)
+
+@Serializable private data class McpExactLocation(val file: String)
 
 @Serializable private data class McpSourceDocument(val content: List<CompactSourceContentDocument>)
 
@@ -334,19 +321,40 @@ private data class McpDiagnosticDocument(
 
 @Serializable private data class McpDiagnosticProgress(val analyzedFiles: List<String>)
 
-@Serializable private data class McpDiscoveryRequest(val limit: Int = 128, val target: McpDiscoveryTarget)
+@Serializable private data class McpQueryDeclarationRequest(val request: McpQueryDeclarationAction)
 
 @Serializable
-private data class McpDiscoveryTarget(
-    val kind: String,
-    val query: String,
-    val type: String = "name",
-    val match: String = "exact-name",
+private data class McpQueryDeclarationAction(
+    val source: McpQueryDeclarationSource,
+    val steps: List<McpQueryExpandRelation>? = null,
+    val type: McpQueryAction = McpQueryAction.RUN,
 )
 
-@Serializable private data class McpInspectionRequest(val target: McpInspectionTarget)
+@Serializable
+private data class McpQueryDeclarationSource(
+    @SerialName("declaration_name") val declarationName: String,
+    @SerialName("declaration_kinds") val declarationKinds: List<String>? = null,
+    val scope: McpQueryDirectoryScope,
+    val type: McpQueryDeclarationSourceKind = McpQueryDeclarationSourceKind.SEARCH_DECLARATIONS,
+)
 
-@Serializable private data class McpInspectionTarget(val selector: String, val type: String = "candidate")
+@Serializable
+private enum class McpQueryDeclarationSourceKind {
+    @SerialName("SEARCH_DECLARATIONS") SEARCH_DECLARATIONS
+}
+
+@Serializable
+private data class McpQueryDirectoryScope(
+    @SerialName("relative_directory_path") val relativeDirectoryPath: String,
+    @SerialName("source_set_names") val sourceSetNames: List<String>? = null,
+    @SerialName("include_subdirectories") val includeSubdirectories: Boolean = false,
+    val type: McpQueryDirectoryScopeKind = McpQueryDirectoryScopeKind.DIRECTORY,
+)
+
+@Serializable
+private enum class McpQueryDirectoryScopeKind {
+    @SerialName("DIRECTORY") DIRECTORY
+}
 
 @Serializable
 private data class McpSourceRequest(

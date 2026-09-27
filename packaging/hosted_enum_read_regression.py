@@ -6,6 +6,7 @@ from query_name_request import QueryInput, QueryRun, SymbolOutput, name_query
 
 @dataclass(frozen=True)
 class EnumScope:
+    type: str = field(default='PACKAGE', init=False)
     package_name: str = field(default='reliability.discovery', init=False)
     include_subpackages: bool = field(default=False, init=False)
     source_set_names: tuple[str, ...] = field(default=('main',), init=False)
@@ -21,20 +22,20 @@ class EnumBudget:
 
 @dataclass(frozen=True)
 class AllEnumClasses:
-    type: str = field(default='all_declarations', init=False)
-    declaration_kinds: tuple[str, ...] = field(default=('class',), init=False)
+    type: str = field(default='ALL_DECLARATIONS', init=False)
+    declaration_kinds: tuple[str, ...] = field(default=('CLASS',), init=False)
     scope: EnumScope = field(default_factory=EnumScope, init=False)
 
 
 @dataclass(frozen=True)
 class EnumMemberReferences:
     symbol_refs: tuple[str, ...]
-    type: str = field(default='symbol_refs', init=False)
+    type: str = field(default='SYMBOL_REFS', init=False)
 
 
 @dataclass(frozen=True)
 class DistinctSymbols:
-    type: str = field(default='distinct_symbols', init=False)
+    type: str = field(default='DISTINCT_SYMBOLS', init=False)
 
 
 def run_enum_read_regression(replay):
@@ -69,7 +70,7 @@ def _roundtrip_members(replay, discovery):
         replay.record('enum-entry-member-reference-reuse', 'query_symbols', {'issuerAvailable': False})
         return
     response = replay.transport.invoke(replay.surface, 'query_symbols',
-        asdict(QueryInput(QueryRun(EnumMemberReferences(references), (), SymbolOutput(('name', 'signature')), EnumBudget()))))
+        asdict(QueryInput(QueryRun(EnumMemberReferences(references), (), SymbolOutput(('NAME', 'SIGNATURE')), EnumBudget()))))
     exact = response.get('items', [])
     replay.record('enum-entry-member-reference-reuse', 'query_symbols', {
         'complete': response.get('status') == 'complete',
@@ -88,7 +89,7 @@ def _roundtrip_members(replay, discovery):
         return
     distinct = replay.transport.invoke(replay.surface, 'query_symbols',
         asdict(QueryInput(QueryRun(EnumMemberReferences(references + restored),
-                                   (DistinctSymbols(),), SymbolOutput(('name', 'signature')), EnumBudget()))))
+                                   (DistinctSymbols(),), SymbolOutput(('NAME', 'SIGNATURE')), EnumBudget()))))
     unique = distinct.get('items', [])
     replay.record('enum-entry-member-canonical-equality', 'query_symbols', {
         'complete': distinct.get('status') == 'complete',

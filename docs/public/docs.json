@@ -70,8 +70,6 @@
             "group": "Other tools",
             "pages": [
               "POST /callables/change",
-              "POST /callables/symbol_lookup",
-              "POST /callables/symbol_inspect",
               "POST /callables/workspace_lifecycle"
             ]
           },

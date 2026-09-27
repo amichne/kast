@@ -92,11 +92,22 @@ Gradle provisions the pinned Python dependencies for its schema tests in
 packages or the interpreter search path retained by an existing Gradle daemon.
 
 Install the repository's pre-push gate once per Git clone. It preserves other
-hooks and runs `productBuildGate` on a clean checked-out commit before a push:
+hooks and runs `productBuildGate` on a clean checked-out commit before a push.
+Pre-push and routine PR CI fetch the published GitHub release catalog on every
+invocation and build the checkout with the highest stable semantic version. They
+require authenticated `gh` access and fail if the catalog is unavailable or has no
+published stable version. Local tags and a previous gate run cannot supply a fallback:
 
 ```shell
 ./.githooks/install.sh
+# Run the same gate manually, refreshing the published version first:
+python3 distribution/release/run_product_gate.py
 ```
+
+The wrapper logs the selected release version before starting Gradle. It builds
+the current checkout with that version; it does not download or validate released
+binaries. Exact release-candidate builds continue to pass their intended version
+explicitly.
 
 After a change reaches `main`, publish its tested artifacts before a stable
 release with `gh workflow run developer-release.yml --ref main`. The public

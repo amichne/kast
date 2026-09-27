@@ -12,6 +12,7 @@ from hosted_budget_read_regression import ResultsBudget
 
 @dataclass(frozen=True)
 class KotlinCallScope:
+    type: str = field(default='PACKAGE', init=False)
     package_name: str = field(default='fixture.calls', init=False)
     include_subpackages: bool = field(default=False, init=False)
     source_set_names: tuple[str, ...] = field(default=('main',), init=False)
@@ -583,8 +584,8 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
 def run_inline_composition(replay, selector):
     query = replay.transport.invoke(replay.surface, 'query_symbols',
                                     asdict(QueryInput(QueryRun(SymbolReferences((selector,)),
-                                        (ExpandRelation('callees'), ExpandRelation('callees')),
-                                        SymbolOutput(('name', 'location', 'signature')), CallPageBudget(100)))))
+                                        (ExpandRelation('CALLEES'), ExpandRelation('CALLEES')),
+                                        SymbolOutput(('NAME', 'LOCATION', 'SIGNATURE')), CallPageBudget(100)))))
     items = query.get('items', [])
     connections = [fact for item in items for fact in item.get('connections', [])]
     chain = Counter((fact.get('source', {}).get('qualifiedIdentity'), fact.get('target', {}).get('qualifiedIdentity'))

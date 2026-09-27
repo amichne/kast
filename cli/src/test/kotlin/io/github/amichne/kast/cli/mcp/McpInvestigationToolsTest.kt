@@ -7,13 +7,13 @@ import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
-import io.github.amichne.kast.protocol.wire.presentation.SymbolDiscoveryCliDocument
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -121,31 +121,30 @@ class McpInvestigationToolsTest {
         val exit = validateWorkspace(emptyArguments(), root) { _, _ -> error("no read expected") }
         assertTrue(exit is CliExit.Complete)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
-        assertEquals(5, data.size)
+        assertEquals(4, data.size)
         assertTrue(data.values.all { it.jsonObject.getValue("status").jsonPrimitive.content == "unverified" })
     }
 
     @Test
-    fun `incomplete discovery cannot pass a present candidate`() {
+    fun `incomplete declaration query cannot pass a present exact row`() {
         val file = "src/main/kotlin/sample/Registry.kt"
         val request = TestValidationRequest(TestDeclaration("class", "Registry", file))
         var calls = 0
         val exit =
             validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, _ ->
-                assertEquals("symbol_lookup", name)
+                assertEquals("query_symbols", name)
                 calls++
                 CliExit.Qualified(
-                    CanonicalJsonDocument.generated(TestQualifiedDiscovery.serializer())
+                    CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
                         .create(
-                            TestQualifiedDiscovery(
+                            TestQualifiedQuery(
                                 items =
                                     listOf(
-                                        SymbolDiscoveryCliDocument.Declaration(
-                                            "candidate:opaque",
-                                            "class",
+                                        TestExactSymbol(
+                                            "exact:v5:opaque",
+                                            "classlike",
                                             "Registry",
-                                            root.resolve(file).toString(),
-                                            0,
+                                            TestExactLocation(root.resolve(file).toString()),
                                         )
                                     )
                             )
@@ -153,9 +152,102 @@ class McpInvestigationToolsTest {
                 )
             }
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
-        assertEquals("unverified", data.getValue("discovery").jsonObject.getValue("status").jsonPrimitive.content)
-        assertEquals("unverified", data.getValue("exactInspection").jsonObject.getValue("status").jsonPrimitive.content)
+        assertEquals(
+            "unverified",
+            data.getValue("declarationQuery").jsonObject.getValue("status").jsonPrimitive.content,
+        )
         assertEquals(1, calls)
+    }
+
+    @Test
+    fun `exhaustive declaration absence fails the probe`() {
+        val request = TestValidationRequest(TestDeclaration("class", "Missing", "src/main/kotlin/sample/Registry.kt"))
+        val exit =
+            validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, _ ->
+                assertEquals("query_symbols", name)
+                CliExit.Complete(
+                    CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
+                        .create(TestQualifiedQuery(status = "complete", items = emptyList()))
+                )
+            }
+        val probe =
+            Json.parseToJsonElement(exit.document.value)
+                .jsonObject
+                .getValue("data")
+                .jsonObject
+                .getValue("declarationQuery")
+                .jsonObject
+        assertEquals("failed", probe.getValue("status").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `validation scopes a custom source set before querying its declaration`() {
+        val file = "module/custom/Registry.kt"
+        val request = TestValidationRequest(TestDeclaration("class", "Registry", file, "integrationTest"))
+        val exit =
+            validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, input ->
+                assertEquals("query_symbols", name)
+                val scope =
+                    input.getValue("request").jsonObject.getValue("source").jsonObject.getValue("scope").jsonObject
+                assertEquals("RUN", input.getValue("request").jsonObject.getValue("type").jsonPrimitive.content)
+                assertEquals(
+                    "SEARCH_DECLARATIONS",
+                    input
+                        .getValue("request")
+                        .jsonObject
+                        .getValue("source")
+                        .jsonObject
+                        .getValue("type")
+                        .jsonPrimitive
+                        .content,
+                )
+                assertEquals("DIRECTORY", scope.getValue("type").jsonPrimitive.content)
+                assertEquals("module/custom", scope.getValue("relative_directory_path").jsonPrimitive.content)
+                assertEquals(
+                    listOf("integrationTest"),
+                    scope.getValue("source_set_names").jsonArray.map { it.jsonPrimitive.content },
+                )
+                assertEquals(
+                    listOf("CLASS"),
+                    input
+                        .getValue("request")
+                        .jsonObject
+                        .getValue("source")
+                        .jsonObject
+                        .getValue("declaration_kinds")
+                        .jsonArray
+                        .map { it.jsonPrimitive.content },
+                )
+                CliExit.Qualified(
+                    CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
+                        .create(TestQualifiedQuery(items = emptyList()))
+                )
+            }
+        assertTrue(exit is CliExit.Complete)
+    }
+
+    @Test
+    fun `relation endpoint uses its explicit source set`() {
+        val endpoint = McpValidationEndpoint("module/custom/Source.kt", "Source", "integrationTest")
+        val request =
+            McpValidationRequest(
+                relation = McpValidationRelation(McpValidationRelationKind.REFERENCES, endpoint, endpoint)
+            )
+        val exit =
+            validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, input ->
+                assertEquals("query_symbols", name)
+                val scope =
+                    input.getValue("request").jsonObject.getValue("source").jsonObject.getValue("scope").jsonObject
+                assertEquals(
+                    listOf("integrationTest"),
+                    scope.getValue("source_set_names").jsonArray.map { it.jsonPrimitive.content },
+                )
+                CliExit.Qualified(
+                    CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
+                        .create(TestQualifiedQuery(items = emptyList()))
+                )
+            }
+        assertTrue(exit is CliExit.Complete)
     }
 }
 
@@ -176,12 +268,23 @@ private data class TestHostedStatus(
 
 @Serializable private data class TestValidationRequest(val declaration: TestDeclaration)
 
-@Serializable private data class TestDeclaration(val kind: String, val name: String, val file: String)
+@Serializable
+private data class TestDeclaration(
+    val kind: String,
+    val name: String,
+    val file: String,
+    val sourceSetName: String? = null,
+)
 
 @Serializable
-private data class TestQualifiedDiscovery(
-    val operation: String = "symbol.discover",
+private data class TestQualifiedQuery(
+    val operation: String = "query.run",
     val status: String = "qualified",
-    val items: List<SymbolDiscoveryCliDocument>,
+    val items: List<TestExactSymbol>,
     val qualification: String = "result-limit",
 )
+
+@Serializable
+private data class TestExactSymbol(val ref: String, val kind: String, val name: String, val location: TestExactLocation)
+
+@Serializable private data class TestExactLocation(val file: String)

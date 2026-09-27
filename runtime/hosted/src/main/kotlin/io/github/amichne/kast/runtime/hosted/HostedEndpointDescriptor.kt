@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
@@ -10,37 +9,42 @@ import io.github.amichne.kast.kernel.Refinement
 
 internal object HostedEndpointDescriptor {
     fun parse(raw: String): Refinement<JsonObject, HostedEndpointFailure> {
-        val result = JsonObject()
         JsonReader(java.io.StringReader(raw)).use { reader ->
             reader.isLenient = false
-            reader.beginObject()
-            while (reader.hasNext()) {
-                val key = reader.nextName()
-                if (result.has(key)) return rejected()
-                when (val field = field(key, reader)) {
-                    is Refinement.Refined -> result.add(key, field.value)
-                    is Refinement.Rejected -> return field
-                }
-            }
-            reader.endObject()
-            if (reader.peek() != JsonToken.END_DOCUMENT) return rejected()
+            return readDocument(reader)
         }
-        return Refinement.Refined(result)
     }
 
-    private fun field(key: String, reader: JsonReader): Refinement<JsonElement, HostedEndpointFailure> =
+    private fun readDocument(reader: JsonReader): Refinement<JsonObject, HostedEndpointFailure> {
+        val result = JsonObject()
+        val names = mutableSetOf<String>()
+        reader.beginObject()
+        while (reader.hasNext()) {
+            val key = reader.nextName()
+            if (!names.add(key)) return rejected()
+            when (val value = field(key, reader)) {
+                null -> Unit
+                is Refinement.Refined -> result.add(key, value.value)
+                is Refinement.Rejected -> return value
+            }
+        }
+        reader.endObject()
+        return if (reader.peek() == JsonToken.END_DOCUMENT) Refinement.Refined(result) else rejected()
+    }
+
+    private fun field(key: String, reader: JsonReader): Refinement<JsonElement, HostedEndpointFailure>? =
         when (key) {
-            "protocol",
             "hostPid" -> number(reader)
             "type",
             "root",
             "socket",
-            "host",
-            "querySchema" ->
+            "host" ->
                 if (reader.peek() == JsonToken.STRING) Refinement.Refined(JsonPrimitive(reader.nextString()))
                 else rejected()
-            "operations" -> operations(reader)
-            else -> rejected()
+            else -> {
+                reader.skipValue()
+                null
+            }
         }
 
     private fun number(reader: JsonReader): Refinement<JsonElement, HostedEndpointFailure> {
@@ -50,18 +54,5 @@ internal object HostedEndpointDescriptor {
         return Refinement.Refined(JsonPrimitive(number.toLong()))
     }
 
-    private fun operations(reader: JsonReader): Refinement<JsonElement, HostedEndpointFailure> {
-        val operations = JsonArray()
-        reader.beginArray()
-        while (reader.hasNext()) {
-            if (reader.peek() != JsonToken.STRING || operations.size() >= MAX_ENDPOINT_OPERATIONS) return rejected()
-            operations.add(reader.nextString())
-        }
-        reader.endArray()
-        return Refinement.Refined(operations)
-    }
-
     private fun rejected() = Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
 }
-
-private const val MAX_ENDPOINT_OPERATIONS = 32

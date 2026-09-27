@@ -67,7 +67,9 @@ The project service owns a private directory under
 `~/.kast/ide-hosted/<root-digest>/`, an exclusive file lock, `host.sock`, and
 `endpoint.json`. The digest is the first 16 SHA-256 bytes of the canonical root.
 The descriptor binds that root, socket path, host PID, protocol version, and
-closed operation list. A competing owner or unknown socket/descriptor is
+closed operation list. Reclamation of a dead endpoint checks the exact root,
+socket and absent PID under the lock; protocol and operation metadata do not
+prove ownership. A competing live owner or malformed owner identity is
 rejected. Retirement removes only files whose filesystem identity matches the
 original owner; it retains the lock file for later attachment.
 

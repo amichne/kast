@@ -25,8 +25,6 @@ data class IdeHostCapability private constructor(val operation: CanonicalOperati
 
         val INDEX_SYNC = byOperation.getValue(CanonicalOperation.INDEX_SYNC)
         val TOPOLOGY_BUILD = byOperation.getValue(CanonicalOperation.TOPOLOGY_BUILD)
-        val SYMBOL_DISCOVER = byOperation.getValue(CanonicalOperation.SYMBOL_DISCOVER)
-        val SYMBOL_INSPECT = byOperation.getValue(CanonicalOperation.SYMBOL_INSPECT)
         val SOURCE_READ = byOperation.getValue(CanonicalOperation.SOURCE_READ)
         val DIAGNOSTIC_CHECK = byOperation.getValue(CanonicalOperation.DIAGNOSTIC_CHECK)
         val CHANGE_PLAN = byOperation.getValue(CanonicalOperation.CHANGE_PLAN)

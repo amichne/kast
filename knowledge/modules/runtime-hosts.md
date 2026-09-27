@@ -35,7 +35,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
     symbols: [DaemonOperationProtocol, DaemonOperationSelection]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
-    symbols: [InstalledDaemonOperationClient]
+    symbols: [DaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorRoutes.kt
@@ -77,7 +77,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt
     symbols: [InstalledCoordinator]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
-    symbols: [KastCliMain]
+    symbols: [main]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/IndexingWait.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
@@ -191,7 +191,7 @@ and mutation planning do not use this capability. The
 [query protocol](query-protocol.md#automatic-acquisition-for-fresh-reads) specifies
 the identity checks and returned handle metadata.
 
-The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation. Existing-project opening waits through active import and requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once. Canonical reads discard and replay results invalidated by a moved VFS epoch within the same host deadline; change workflows retain one evaluation.
+The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. A dead endpoint with the same root and socket can be reclaimed after a plugin upgrade without matching its old capability catalog; the absent PID, exclusive lock and unchanged file identities still govern retirement. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation. Existing-project opening waits through active import and requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once. Canonical reads discard and replay results invalidated by a moved VFS epoch within the same host deadline; change workflows retain one evaluation.
 
 App Server qualifies its complete tool catalog from the bounded packaged provider
 contract and canonical registry. It has no Kast process executor or CLI version

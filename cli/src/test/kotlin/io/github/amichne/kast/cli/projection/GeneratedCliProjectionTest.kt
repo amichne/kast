@@ -8,9 +8,6 @@ import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
-import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
-import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
-import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.DiagnosticDocument
@@ -23,19 +20,11 @@ import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolDocument
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.changeRecoverCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.diagnosticCheckCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.queryRunCliProjector
-import io.github.amichne.kast.protocol.wire.presentation.symbolDiscoverCliProjector
-import io.github.amichne.kast.protocol.wire.presentation.symbolInspectCliProjector
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
@@ -88,116 +77,6 @@ class GeneratedCliProjectionTest {
             assertTrue("symbol_ref" !in item.jsonObject)
             assertTrue("symbol_id" !in item.jsonObject)
         }
-    }
-
-    @Test
-    fun `generated discovery serializer preserves every closed item variant`() {
-        val result =
-            SymbolDiscoverResult(
-                bounded(
-                    listOf(
-                        SymbolDiscoveryDocument.File(
-                            text("candidate:file"),
-                            text("A.kt"),
-                            text("src/A.kt"),
-                        ),
-                        SymbolDiscoveryDocument.Declaration(
-                            candidateSelector = text("candidate:A"),
-                            kind = SymbolDiscoveryKindDocument.CLASS,
-                            name = text("A"),
-                            file = text("src/A.kt"),
-                            offset = offset(3),
-                        ),
-                        SymbolDiscoveryDocument.TextMatch(
-                            candidateSelector = text("candidate:range"),
-                            query = text("TODO"),
-                            file = text("src/A.kt"),
-                            range = range(4, 8),
-                        ),
-                    )
-                )
-            )
-
-        val projected =
-            symbolDiscoverCliProjector.project(
-                OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_DISCOVER, result))
-            ) as ProjectedOperationOutcome.Complete
-
-        assertEquals(
-            "{\"operation\":\"symbol.discover\",\"status\":\"complete\",\"items\":[" +
-                "{\"type\":\"file\",\"candidateSelector\":\"candidate:file\"," +
-                "\"name\":\"A.kt\",\"file\":\"src/A.kt\"}," +
-                "{\"type\":\"declaration\",\"candidateSelector\":\"candidate:A\"," +
-                "\"kind\":\"class\",\"name\":\"A\",\"file\":\"src/A.kt\",\"offset\":3}," +
-                "{\"type\":\"text-match\",\"candidateSelector\":\"candidate:range\"," +
-                "\"query\":\"TODO\",\"file\":\"src/A.kt\"," +
-                "\"range\":{\"startInclusive\":4,\"endExclusive\":8}}]}",
-            projected.document.value,
-        )
-    }
-
-    @Test
-    fun `generated symbol serializer preserves coherent compiler evidence`() {
-        val signature = CompilerSignatureDocument.ClassLike(text("A"))
-        val compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined()
-        val result =
-            SymbolInspectResult(
-                SymbolDocument.create(
-                        selector = text("exact:A"),
-                        kind = SymbolKindDocument.CLASSLIKE,
-                        name = text("A"),
-                        qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(text("A")),
-                        file = text("src/A.kt"),
-                        range = range(0, 7),
-                        compilerEvidence = compilerEvidence,
-                    )
-                    .refined()
-            )
-
-        val projected =
-            symbolInspectCliProjector.project(
-                OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_INSPECT, result))
-            ) as ProjectedOperationOutcome.Complete
-
-        assertEquals(
-            io.github.amichne.kast.cli.SymbolInspectionFixture.expectedClass(compilerEvidence.identity.value),
-            projected.document.value,
-        )
-    }
-
-    @Test
-    fun `generated symbol serializer retains extension property receiver proof`() {
-        val signature =
-            CompilerSignatureDocument.Property(
-                qualifiedIdentity = text("sample.tag"),
-                receiver = CompilerReceiverDocument.Present(text("kotlin.String")),
-                contextReceivers = BoundedProtocolList.create(listOf(text("sample.Context"))).refined(),
-                returnType = text("kotlin.Int"),
-            )
-        val compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).refined()
-        val result =
-            SymbolInspectResult(
-                SymbolDocument.create(
-                        selector = text("exact:tag"),
-                        kind = SymbolKindDocument.PROPERTY,
-                        name = text("tag"),
-                        qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(text("sample.tag")),
-                        file = text("src/Extensions.kt"),
-                        range = range(0, 12),
-                        compilerEvidence = compilerEvidence,
-                    )
-                    .refined()
-            )
-
-        val projected =
-            symbolInspectCliProjector.project(
-                OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_INSPECT, result))
-            ) as ProjectedOperationOutcome.Complete
-
-        assertTrue(
-            projected.document.value.contains("\"receiver\":{\"type\":\"present\",\"compilerType\":\"kotlin.String\"}")
-        )
-        assertTrue(projected.document.value.contains("\"contextReceivers\":[\"sample.Context\"]"))
     }
 
     @Test

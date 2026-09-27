@@ -10,9 +10,9 @@ import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
 import java.io.BufferedInputStream
 import java.io.PrintStream
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -114,7 +114,7 @@ internal class KastMcpServer(
                 McpTool(
                     it.name,
                     it.description,
-                    objectInputSchema(it.inputSchema),
+                    requireObjectInputSchema(it.inputSchema),
                     McpStructuredResults.schemaFor(it.name),
                     annotations =
                         ToolAnnotations(
@@ -129,7 +129,7 @@ internal class KastMcpServer(
                     McpTool(
                         it.name,
                         it.description,
-                        objectInputSchema(it.inputSchema),
+                        requireObjectInputSchema(it.inputSchema),
                         McpStructuredResults.schemaFor(it.name),
                         annotations =
                             ToolAnnotations(
@@ -143,12 +143,10 @@ internal class KastMcpServer(
                 })
             .sortedBy(McpTool::name)
 
-    private fun objectInputSchema(schema: JsonElement): JsonObject {
+    private fun requireObjectInputSchema(schema: JsonElement): JsonObject {
         val source = schema as? JsonObject ?: error("MCP tool input schema must be an object")
-        if (source["type"] != null) return source
-        val variants = source["anyOf"] as? JsonArray ?: error("Unsupported MCP tool input schema")
-        require(variants.isNotEmpty()) { "MCP tool input variants cannot be empty" }
-        return mcpWire.encodeToJsonElement(McpObjectUnionInput(allOf = listOf(source))).jsonObject
+        require(source["type"] == JsonPrimitive("object")) { "MCP tool input schema must have an object root" }
+        return source
     }
 
     @Suppress("MagicNumber")

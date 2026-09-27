@@ -18,7 +18,9 @@ internal fun sourceReadToolInputSchema(generated: JsonObject, intent: JsonObject
             .single { (it["properties"] as? JsonObject)?.containsKey("anchor") == true }
     val choices =
         expandEntities(canonical, "type") + generatedChoices.filter { it != canonical } + expandEntities(intent, "mode")
-    return Json.encodeToJsonElement(mapOf("anyOf" to schemaArray(choices.map(::foldNullablePrimitives)))).jsonObject
+    return Json.encodeToJsonElement(mapOf("anyOf" to schemaArray(choices.map(::foldNullablePrimitives))))
+        .jsonObject
+        .withField("type", JsonPrimitive("object"))
 }
 
 /** Distribute the exact visibility variants into each declaration filter, then hoist entity choices. */

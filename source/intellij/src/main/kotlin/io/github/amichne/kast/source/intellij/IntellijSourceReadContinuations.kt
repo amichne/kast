@@ -281,15 +281,6 @@ private fun CandidateSelector.canonical(): String =
                 selection.constraints.fingerprintFields().forEach { appendBoundedField(it) }
                 appendBoundedField(selection.candidate.toString())
             }
-        is CandidateSelector.File ->
-            buildString {
-                appendBoundedField(lease.identity.revisionKey.value)
-                appendBoundedField(lease.workspaceRoot.value)
-                appendBoundedField("file")
-                appendBoundedField(SymbolSearchScope.snapshot(scope).toString())
-                constraints.fingerprintFields().forEach { appendBoundedField(it) }
-                appendBoundedField(file.path.value)
-            }
         is CandidateSelector.Range ->
             buildString {
                 appendBoundedField(lease.identity.revisionKey.value)

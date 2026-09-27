@@ -16,58 +16,13 @@ import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
-import io.github.amichne.kast.protocol.contract.SymbolInspectAcquisition
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
-import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Serializable internal data class SymbolDiscoverResultWireDocument(val items: List<SymbolDiscoveryWireDocument>)
-
-@Serializable
-internal sealed interface SymbolDiscoveryWireDocument {
-    @Serializable
-    @SerialName("file")
-    data class File(
-        val candidateSelector: String,
-        val name: String,
-        val file: String,
-    ) : SymbolDiscoveryWireDocument
-
-    @Serializable
-    @SerialName("declaration")
-    data class Declaration(
-        val candidateSelector: String,
-        val kind: SymbolCategoryWireDocument,
-        val name: String,
-        val file: String,
-        val offset: Int,
-    ) : SymbolDiscoveryWireDocument
-
-    @Serializable
-    @SerialName("text-match")
-    data class TextMatch(
-        val candidateSelector: String,
-        val query: String,
-        val file: String,
-        val range: SourceRangeWireDocument,
-    ) : SymbolDiscoveryWireDocument
-}
-
-@Serializable
-internal data class SymbolInspectResultWireDocument(
-    val symbol: SymbolWireDocument,
-    val acquisition: SymbolInspectAcquisition,
-)
 
 @Serializable
 internal data class RelationFactWireDocument(
@@ -181,88 +136,6 @@ internal enum class SymbolKindWireDocument {
     @SerialName("property") PROPERTY,
     @SerialName("type-alias") TYPE_ALIAS,
 }
-
-internal fun SymbolDiscoverResult.toSymbolWireDocument() =
-    SymbolDiscoverResultWireDocument(items.values.map { it.toWireDocument() })
-
-/**
- * Proof transition: `SymbolDiscoverResultWireDocument -> WireDocumentConversion<SymbolDiscoverResult>`. Establishes
- * refined, bounded discovery evidence; raw item fields are extracted only at this wire boundary.
- */
-internal fun SymbolDiscoverResultWireDocument.toContract(): WireDocumentConversion<SymbolDiscoverResult> =
-    items
-        .convertEach { it.toContract() }
-        .flatMapConverted { values -> values.toBoundedList() }
-        .mapConverted(::SymbolDiscoverResult)
-
-private fun SymbolDiscoveryDocument.toWireDocument(): SymbolDiscoveryWireDocument =
-    when (this) {
-        is SymbolDiscoveryDocument.File ->
-            SymbolDiscoveryWireDocument.File(
-                candidateSelector.value,
-                name.value,
-                file.value,
-            )
-        is SymbolDiscoveryDocument.Declaration ->
-            SymbolDiscoveryWireDocument.Declaration(
-                candidateSelector.value,
-                kind.toWireDocument(),
-                name.value,
-                file.value,
-                offset.value,
-            )
-        is SymbolDiscoveryDocument.TextMatch ->
-            SymbolDiscoveryWireDocument.TextMatch(
-                candidateSelector.value,
-                query.value,
-                file.value,
-                range.toWireDocument(),
-            )
-    }
-
-/**
- * Proof transition: `SymbolDiscoveryWireDocument -> WireDocumentConversion<SymbolDiscoveryDocument>`. Establishes one
- * closed evidence variant with refined fields; raw evidence primitives exist only at this wire boundary.
- */
-private fun SymbolDiscoveryWireDocument.toContract(): WireDocumentConversion<SymbolDiscoveryDocument> =
-    when (this) {
-        is SymbolDiscoveryWireDocument.File ->
-            combineConverted(
-                candidateSelector.toProtocolText(),
-                name.toProtocolText(),
-                file.toProtocolText(),
-            ) { selector, name, file ->
-                SymbolDiscoveryDocument.File(selector, name, file)
-            }
-        is SymbolDiscoveryWireDocument.Declaration ->
-            combineConverted(
-                candidateSelector.toProtocolText(),
-                name.toProtocolText(),
-                file.toProtocolText(),
-                offset.toProtocolOffset(),
-            ) { selector, name, file, offset ->
-                SymbolDiscoveryDocument.Declaration(selector, kind.toDiscoveryKind(), name, file, offset)
-            }
-        is SymbolDiscoveryWireDocument.TextMatch ->
-            combineConverted(
-                candidateSelector.toProtocolText(),
-                query.toProtocolText(),
-                file.toProtocolText(),
-                range.toContract(),
-            ) { selector, query, file, range ->
-                SymbolDiscoveryDocument.TextMatch(selector, query, file, range)
-            }
-    }
-
-internal fun SymbolInspectResult.toSymbolWireDocument() =
-    SymbolInspectResultWireDocument(symbol.toWireDocument(), acquisition)
-
-/**
- * `SymbolInspectResultWireDocument -> SymbolInspectResult` establishes one exact symbol; invalid raw fields become
- * `WireFailure.InvalidPayload` at this wire boundary.
- */
-internal fun SymbolInspectResultWireDocument.toContract(): WireDocumentConversion<SymbolInspectResult> =
-    symbol.toContract().mapConverted { SymbolInspectResult(it, acquisition) }
 
 internal fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
     RelationFactWireDocument(
@@ -534,46 +407,6 @@ private fun RelationFactCoverageWireDocument.toContract(): RelationFactCoverageD
     when (this) {
         RelationFactCoverageWireDocument.EXACT_COMPILER_CONFIRMED ->
             RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED
-    }
-
-private fun SymbolNameKindDocument.toWireDocument() =
-    when (this) {
-        SymbolNameKindDocument.FILE -> SymbolCategoryWireDocument.FILE
-        SymbolNameKindDocument.CLASS -> SymbolCategoryWireDocument.CLASS
-        SymbolNameKindDocument.SYMBOL -> SymbolCategoryWireDocument.SYMBOL
-    }
-
-private fun SymbolCategoryWireDocument.toNameKind() =
-    when (this) {
-        SymbolCategoryWireDocument.FILE -> SymbolNameKindDocument.FILE
-        SymbolCategoryWireDocument.CLASS -> SymbolNameKindDocument.CLASS
-        SymbolCategoryWireDocument.SYMBOL -> SymbolNameKindDocument.SYMBOL
-    }
-
-internal fun SymbolDiscoveryKindDocument.toWireDocument() =
-    when (this) {
-        SymbolDiscoveryKindDocument.FILE -> SymbolCategoryWireDocument.FILE
-        SymbolDiscoveryKindDocument.CLASS -> SymbolCategoryWireDocument.CLASS
-        SymbolDiscoveryKindDocument.SYMBOL -> SymbolCategoryWireDocument.SYMBOL
-    }
-
-internal fun SymbolCategoryWireDocument.toDiscoveryKind() =
-    when (this) {
-        SymbolCategoryWireDocument.FILE -> SymbolDiscoveryKindDocument.FILE
-        SymbolCategoryWireDocument.CLASS -> SymbolDiscoveryKindDocument.CLASS
-        SymbolCategoryWireDocument.SYMBOL -> SymbolDiscoveryKindDocument.SYMBOL
-    }
-
-internal fun SymbolDiscoveryMatchDocument.toWireDocument() =
-    when (this) {
-        SymbolDiscoveryMatchDocument.FUZZY -> SymbolDiscoveryMatchWireDocument.FUZZY
-        SymbolDiscoveryMatchDocument.EXACT_NAME -> SymbolDiscoveryMatchWireDocument.EXACT_NAME
-    }
-
-internal fun SymbolDiscoveryMatchWireDocument.toContract() =
-    when (this) {
-        SymbolDiscoveryMatchWireDocument.FUZZY -> SymbolDiscoveryMatchDocument.FUZZY
-        SymbolDiscoveryMatchWireDocument.EXACT_NAME -> SymbolDiscoveryMatchDocument.EXACT_NAME
     }
 
 internal fun SymbolKindDocument.toWireDocument() =

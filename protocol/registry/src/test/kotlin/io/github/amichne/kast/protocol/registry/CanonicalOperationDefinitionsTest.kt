@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 
 class CanonicalOperationDefinitionsTest {
     @Test
-    fun `production registry owns exactly twelve distinct typed operation definitions`() {
+    fun `production registry owns exactly ten distinct typed operation definitions`() {
         val definitions = CanonicalOperationDefinitions.all
         val expectedIds =
             listOf(
@@ -14,8 +14,6 @@ class CanonicalOperationDefinitionsTest {
                 "index.sync",
                 "topology.build",
                 "query.run",
-                "symbol.discover",
-                "symbol.inspect",
                 "source.read",
                 "diagnostic.check",
                 "change.run",
@@ -26,11 +24,11 @@ class CanonicalOperationDefinitionsTest {
 
         assertEquals(expectedIds, CanonicalOperation.entries.map { it.id.value })
         assertEquals(CanonicalOperation.entries, definitions.map { it.operation })
-        assertEquals(12, definitions.map { it.requestType }.toSet().size)
-        assertEquals(12, definitions.map { it.resultType }.toSet().size)
-        assertEquals(12, definitions.map { it.qualificationType }.toSet().size)
-        assertEquals(12, definitions.map { it.rejectionType }.toSet().size)
-        assertEquals(12, definitions.map { it.schema }.toSet().size)
+        assertEquals(10, definitions.map { it.requestType }.toSet().size)
+        assertEquals(10, definitions.map { it.resultType }.toSet().size)
+        assertEquals(10, definitions.map { it.qualificationType }.toSet().size)
+        assertEquals(10, definitions.map { it.rejectionType }.toSet().size)
+        assertEquals(10, definitions.map { it.schema }.toSet().size)
         assertEquals(definitions, CanonicalOperationDefinitions.registry.definitions)
         assertEquals(OperationLane.REGISTERED_LONG_WORK, CanonicalOperationDefinitions.topologyBuild.lane)
         assertEquals(
@@ -51,10 +49,8 @@ class CanonicalOperationDefinitionsTest {
             val version =
                 when (definition.operation) {
                     CanonicalOperation.SOURCE_READ -> 5
-                    CanonicalOperation.SYMBOL_INSPECT,
                     CanonicalOperation.DIAGNOSTIC_CHECK -> 4
                     CanonicalOperation.QUERY_RUN -> 2
-                    CanonicalOperation.SYMBOL_DISCOVER,
                     CanonicalOperation.CHANGE_APPLY -> 3
                     else -> 2
                 }

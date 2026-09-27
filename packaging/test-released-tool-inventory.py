@@ -43,7 +43,7 @@ class Schema:
 
 class InventoryTest(unittest.TestCase):
     def setUp(self):
-        self.tools = tuple(Tool(name, operation, 'none' if name == 'change_plan' else ('intellij_write' if name.startswith('change_') else 'intellij_read'))
+        self.tools = tuple(Tool(name, operation, 'intellij_write' if name == 'change' else 'intellij_read')
                            for name, operation in OPERATIONS)
         self.cli = Invocations(tuple(Invocation(name, operation) for name, operation in OPERATIONS
                                      if name != 'workspace_lifecycle'))
@@ -53,17 +53,15 @@ class InventoryTest(unittest.TestCase):
     def schema(self, tools):
         return asdict(Schema(Projection(Bootstrap(tools), self.cli)))
 
-    def test_nine_advertised_tools_and_defaults_are_distinct_from_five_explicit_reads(self):
+    def test_five_advertised_tools_and_defaults_are_distinct_from_three_explicit_reads(self):
         admitted = admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
-        self.assertEqual(len(admitted.advertisedTools), 9)
-        self.assertEqual(len(admitted.configuredDefaultTools), 9)
-        self.assertEqual(len(admitted.explicitReadTools), 5)
-        self.assertIn('symbol_lookup', admitted.explicitReadTools)
-        self.assertIn('symbol_lookup', admitted.configuredDefaultTools)
+        self.assertEqual(len(admitted.advertisedTools), 5)
+        self.assertEqual(len(admitted.configuredDefaultTools), 5)
+        self.assertEqual(set(admitted.explicitReadTools), {'query_symbols', 'source_read', 'check_diagnostics'})
 
     def test_missing_tool_duplicate_name_and_changed_operation_are_refused(self):
         for tools in (self.tools[:-1], self.tools[:-1] + self.tools[:1],
-                      (replace(self.tools[0], operationId='symbol.discover'),) + self.tools[1:]):
+                      (replace(self.tools[0], operationId='query.run'),) + self.tools[1:]):
             with self.subTest(tools=tools), self.assertRaises(ReleaseRejected):
                 admit_inventory(self.schema(tools), self.configuration, 'a' * 64)
 
@@ -73,7 +71,7 @@ class InventoryTest(unittest.TestCase):
             admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
 
     def test_retired_tool_selection_is_refused(self):
-        for config in ('KAST_APP_SERVER_TOOLS=symbol_lookup\n', 'KAST_APP_SERVER_TOOLS=\n'):
+        for config in ('KAST_APP_SERVER_TOOLS=query_symbols\n', 'KAST_APP_SERVER_TOOLS=\n'):
             with self.subTest(config=config), self.assertRaises(ReleaseRejected):
                 admit_inventory(self.schema(self.tools), config, 'a' * 64)
 

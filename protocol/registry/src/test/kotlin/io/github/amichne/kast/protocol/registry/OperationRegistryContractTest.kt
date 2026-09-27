@@ -45,8 +45,6 @@ class OperationRegistryContractTest {
                 "index.sync",
                 "topology.build",
                 "query.run",
-                "symbol.discover",
-                "symbol.inspect",
                 "source.read",
                 "diagnostic.check",
                 "change.run",
@@ -112,7 +110,7 @@ class OperationRegistryContractTest {
             OperationRegistry.create(definitions + unknown),
         )
 
-        val untypedOperation = CanonicalOperation.SYMBOL_DISCOVER
+        val untypedOperation = CanonicalOperation.QUERY_RUN
         val withoutTypedDefinition = definitions.filterNot { it.operation == untypedOperation }
         assertEquals(
             OperationRegistryConstruction.Rejected(
@@ -127,7 +125,7 @@ class OperationRegistryContractTest {
 
     @Test
     fun `lookup and outcome binding preserve canonical identity`() {
-        val definition = definition(CanonicalOperation.SYMBOL_DISCOVER)
+        val definition = definition(CanonicalOperation.QUERY_RUN)
         val registry = OperationRegistry.create(canonicalDefinitions()).createdRegistry()
         assertEquals(OperationLookup.Found(definition), registry.lookup(definition.id))
         assertEquals(
@@ -157,7 +155,7 @@ class OperationRegistryContractTest {
 
         val completeOnly =
             definition(
-                CanonicalOperation.SYMBOL_DISCOVER,
+                CanonicalOperation.QUERY_RUN,
                 CompletenessPolicy.COMPLETE_REQUIRED,
             )
         assertEquals(
@@ -165,7 +163,7 @@ class OperationRegistryContractTest {
             completeOnly.bindQualified(evidence, TestQualification.TRUNCATED),
         )
 
-        val mismatched = evidence.copy(operation = CanonicalOperation.SYMBOL_INSPECT.id)
+        val mismatched = evidence.copy(operation = CanonicalOperation.SOURCE_READ.id)
         assertEquals(
             OperationOutcomeBinding.Rejected(
                 OperationOutcomeBindingFailure.EvidenceOperationMismatch(

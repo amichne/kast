@@ -91,8 +91,6 @@ private data class PreparedEndpointDocument(
             "CLASS_LOOKUP",
             "DIRECT_SUPERTYPE",
             "QUERY_RUN",
-            "SYMBOL_DISCOVER",
-            "SYMBOL_INSPECT",
             "SOURCE_READ",
             "DIAGNOSTIC_CHECK",
             "CHANGE_PLAN",
