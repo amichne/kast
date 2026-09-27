@@ -24,28 +24,6 @@ _spec.loader.exec_module(_fixture)
 
 
 @dataclass(frozen=True)
-class Assignment:
-    value: str
-    key: str = 'KAST_RUNTIME_DIRECTORY'
-    source: str = 'SAVED_INSTALLATION'
-
-
-@dataclass(frozen=True)
-class Configuration:
-    resolvedNextLaunch: tuple[Assignment, ...]
-    operation: str = 'config-show'
-    status: str = 'complete'
-    desiredSavedConfiguration: str = 'LOADED'
-
-
-@dataclass(frozen=True)
-class Explanation:
-    operation: str = 'config-explain'
-    status: str = 'complete'
-    key: str = 'KAST_APP_SERVER_PUBLIC_ENDPOINT'
-
-
-@dataclass(frozen=True)
 class Inspection:
     installation: str
     state: str
@@ -99,20 +77,20 @@ class ReleasedUpgradeTest(unittest.TestCase):
             ('PRIOR_ADMISSION', 'PRIOR_RETIREMENT', 'CONFIGURATION_VALIDATION', 'COMMAND_QUALIFICATION'))
         self.observations = f.base / 'observations'
         self.observations.write_text(observations + '\n')
-        f.installer.write_text('#!/bin/bash\nset -eu\n'
+        f.installer.write_text(f'#!{f.isolation.tools["bash"]}\nset -eu\n'
             f'[[ "$HOME" == {q(f.root / "home")} && "$KAST_INSTALL_PROFILE" == session ]]\n'
             '[[ "$1" == --version && "$3" == --idea-home ]]\n'
             f'case "$2" in 1.2.2) template={q(self.prior_template)}; product={q(self.prior_product)};; '
             f'1.2.3) template={q(f.template)}; product={q(f.product)};; *) exit 21;; esac\n'
-            f'/bin/mkdir -p {q(f.product.parent)} {q(f.root / "bin")} {q(f.plugins / "kast-ide-hosted/lib")}\n'
-            '/bin/cp -R "$template" "$product"\n'
+            f'mkdir -p {q(f.product.parent)} {q(f.root / "bin")} {q(f.plugins / "kast-ide-hosted/lib")}\n'
+            'cp -R "$template" "$product"\n'
             'if [[ "$2" == 1.2.3 ]]; then\n'
-            f' /bin/cp {q(self.prior_product / "config/workspaces.json")} "$product/config/workspaces.json"\n'
-            f' /bin/cat {q(self.observations)}\nfi\n'
-            f'/bin/rm -f {q(f.root / "installation/current")} {q(f.root / "bin/kast")}\n'
-            f'/bin/ln -s "$product" {q(f.root / "installation/current")}\n'
-            f'/bin/ln -s "$product/bin/kast-complete" {q(f.root / "bin/kast")}\n'
-            f'/bin/echo -n "original plugin fixture" > {q(f.plugins / "kast-ide-hosted/lib/released.jar")}\n')
+            f' cp {q(self.prior_product / "config/workspaces.json")} "$product/config/workspaces.json"\n'
+            f' cat {q(self.observations)}\nfi\n'
+            f'rm -f {q(f.root / "installation/current")}\n'
+            f'ln -s "$product" {q(f.root / "installation/current")}\n'
+            f'[[ "$2" != 1.2.3 ]] || rm -rf -- {q(self.prior_product)}\n'
+            f'printf %s "original plugin fixture" > {q(f.plugins / "kast-ide-hosted/lib/released.jar")}\n')
         self.target = replace(f.release, installerSha256=digest(f.installer))
         self.previous = replace(self.target, version='1.2.2', commit='b' * 40, control=originals[0], plugin=originals[1])
 
@@ -120,9 +98,7 @@ class ReleasedUpgradeTest(unittest.TestCase):
         f = self.fixture
         workspace = str(f.root / 'workspace')
         documents = (
-            ('configuration.json', Configuration((Assignment(str(product / 'state/run')),))),
             ('inspection.json', Inspection(str(product), str(product / 'state'))),
-            ('explanation.json', Explanation()),
             ('registration.json', Registration(hashlib.sha256(workspace.encode()).hexdigest(), workspace)),
             ('registry.json', Registry((workspace,))))
         for name, document in documents:
@@ -130,15 +106,13 @@ class ReleasedUpgradeTest(unittest.TestCase):
         (template / 'config/environment').write_text('KAST_RUNTIME_DIRECTORY=' + str(product / 'state/run') + '\n')
         q = lambda value: shlex.quote(str(value))
         wrapper = template / 'bin/kast-complete'
-        wrapper.write_text('#!/bin/bash\nset -eu\n'
+        wrapper.write_text(f'#!{f.isolation.tools["bash"]}\nset -eu\n'
             '[[ -z "${KAST_RUNTIME_DIRECTORY+x}" && -z "${KAST_CONFIGURATION_FILE+x}" ]]\n'
             'case "$*" in\n'
-            f' --version) /bin/echo "kast {version} (IntelliJ plugin)";;\n'
-            f' "config show --json") /bin/cat {q(product / "config/configuration.json")};;\n'
-            f' "config explain KAST_APP_SERVER_PUBLIC_ENDPOINT") /bin/cat {q(product / "config/explanation.json")};;\n'
-            f' "installation inspect --json") /bin/cat {q(product / "config/inspection.json")};;\n'
-            f' "app-server register") /bin/cp {q(product / "config/registry.json")} {q(product / "config/workspaces.json")}; '
-            f'/bin/cat {q(product / "config/registration.json")};;\n *) exit 23;;\nesac\n')
+            f' --version) printf "%s\\n" "kast {version} (IntelliJ plugin)";;\n'
+            f' "installation inspect --json") cat {q(product / "config/inspection.json")};;\n'
+            f' "app-server register") cp {q(product / "config/registry.json")} {q(product / "config/workspaces.json")}; '
+            f'cat {q(product / "config/registration.json")};;\n *) exit 23;;\nesac\n')
         inventory = tuple(_fixture.PayloadFile(path.relative_to(template).as_posix(), 'sha256:' + digest(path),
                           path.stat().st_mode & 0o777) for path in sorted((template / 'bin').iterdir()))
         manifest = replace(f.manifest, semanticVersion=version, installationRoot=str(product),
@@ -152,25 +126,26 @@ class ReleasedUpgradeTest(unittest.TestCase):
         self.assertEqual(receipt.previous.version, '1.2.2')
         self.assertEqual(receipt.target.version, '1.2.3')
         self.assertEqual(receipt.installerSourceCommit, self.target.commit)
-        self.assertEqual([len(session.invocations) for session in (*receipt.previousSessions, *receipt.targetSessions)], [4, 4, 5, 5])
+        self.assertFalse(self.prior_product.exists())
+        self.assertEqual([len(session.invocations) for session in (*receipt.previousSessions, *receipt.targetSessions)], [4, 4, 4, 4])
         self.assertEqual(json.loads((f.product / 'config/workspaces.json').read_text())['roots'], [str(f.root / 'workspace')])
-        self.assertEqual((f.root / 'bin/kast').resolve(), f.product / 'bin/kast-complete')
+        self.assertFalse((f.root / 'bin/kast').exists())
         self.assertEqual(list((f.root / 'workspace').iterdir()), [])
         self.assertEqual(digest(self.target.control), self.target.controlSha256)
         self.assertEqual(digest(self.previous.control), self.previous.controlSha256)
 
-    def test_successful_current_config_show_rejects_stderr(self):
-        self.rejects_current_stderr(('config', 'show', '--json'))
+    def test_successful_current_saved_configuration_read_rejects_stderr(self):
+        self.rejects_current_stderr((str(self.fixture.product / 'config/environment'),))
 
-    def test_successful_current_config_explain_rejects_stderr(self):
-        self.rejects_current_stderr(('config', 'explain', 'KAST_APP_SERVER_PUBLIC_ENDPOINT'))
+    def test_successful_current_installation_inspect_rejects_stderr(self):
+        self.rejects_current_stderr(('installation', 'inspect', '--json'))
 
     def rejects_current_stderr(self, command):
         original_run = subprocess.run
 
         def noisy(arguments, **kwargs):
             result = original_run(arguments, **kwargs)
-            current = (self.fixture.root / 'bin/kast').resolve() == self.fixture.product / 'bin/kast-complete'
+            current = str(self.fixture.product / 'bin/kast-complete') in arguments
             if current and tuple(arguments[-len(command):]) == command:
                 result.stderr += b'bounded successful inventory observation\n'
             return result
@@ -188,9 +163,10 @@ class ReleasedUpgradeTest(unittest.TestCase):
 
         def observe(arguments, **kwargs):
             result = original_run(arguments, **kwargs)
-            if tuple(arguments[-3:]) == ('config', 'show', '--json'):
+            if arguments[-1] in (str(self.prior_product / 'config/environment'),
+                                 str(self.fixture.product / 'config/environment')):
                 environments.append(dict(kwargs['env']))
-                prior = (self.fixture.root / 'bin/kast').resolve() == self.prior_product / 'bin/kast-complete'
+                prior = str(self.prior_product / 'bin/kast-complete') in arguments
                 if prior:
                     result.stderr += noise
             return result
@@ -234,8 +210,8 @@ class ReleasedUpgradeTest(unittest.TestCase):
         self.assertEqual(result.exception.failure, ReleaseFailure.UPGRADE)
 
     def test_wrong_saved_runtime_rejects_with_bounded_invocation_identity(self):
-        path = self.fixture.template / 'config/configuration.json'
-        path.write_text(json.dumps(asdict(Configuration((Assignment('/wrong/runtime'),)))))
+        path = self.fixture.template / 'config/environment'
+        path.write_text('KAST_RUNTIME_DIRECTORY=/wrong/runtime\n')
         with self.assertRaises(SessionRejected) as result:
             prepare_release_upgrade(self.fixture.isolation, self.previous, self.target, self.fixture.idea)
         self.assertEqual(result.exception.invocation.command.value, 'saved-configuration')

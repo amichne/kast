@@ -18,7 +18,7 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, and IntelliJ IDEA
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    In an interactive terminal, the installer offers to register Kast as a user-level MCP server with Codex. It installs the IDEA plugin and Kast service for the matched release line.
+    In an interactive terminal, the installer offers to register Kast as a user-level MCP server with Codex. It installs the IDEA plugin and Kast service for the matched release line. On an upgrade, it removes prior versions that pass ownership checks. It asks before removing each older Kast entry it cannot fully verify; type `yes` for that exact entry, or leave it in place. Noninteractive upgrades report and retain those entries.
   </Step>
   <Step title="Restart IDEA and open your agent">
     Restart IntelliJ IDEA so it loads the plugin. Start the agent from the Kotlin repository or worktree you want Kast to inspect:

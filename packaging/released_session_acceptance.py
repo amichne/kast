@@ -15,7 +15,6 @@ class SessionCommand(str, Enum):
     RESOLVE = 'resolve-command'
     VERSION = 'version'
     CONFIGURATION = 'saved-configuration'
-    EXPLANATION = 'configuration-explanation'
     INSTALLATION = 'installation-inspect'
 
 
@@ -48,8 +47,11 @@ class ShellSessionReceipt:
 
 def _invoke(isolation, installed, directory, index, command, arguments, environment):
     shell = str(isolation.tools['bash'])
-    script = 'command -v kast' if command is SessionCommand.RESOLVE else 'exec kast "$@"'
-    invocation = (shell, '--noprofile', '--norc', '-c', script, 'kast-release-session', *arguments)
+    executable = product_executable(Path(installed.product), isolation.root)
+    script = ('command -v "$1"' if command is SessionCommand.RESOLVE else
+              'while IFS= read -r line || [ -n "$line" ]; do printf "%s\\n" "$line"; done < "$2"'
+              if command is SessionCommand.CONFIGURATION else 'exec "$@"')
+    invocation = (shell, '--noprofile', '--norc', '-c', script, 'kast-release-session', str(executable), *arguments)
     output = directory / f'{index}-{command.value}.private.log'
     try:
         result = subprocess.run(invocation, cwd=isolation.root / 'workspace', env=environment,
@@ -73,7 +75,6 @@ def _invoke(isolation, installed, directory, index, command, arguments, environm
 
 def _shell_environment(isolation):
     environment = dict(isolation.environment)
-    environment['PATH'] = str(isolation.root / 'bin') + ':' + environment['PATH']
     # The wrapper must select saved state without a caller-provided runtime/config selector.
     environment.pop('KAST_RUNTIME_DIRECTORY', None)
     environment.pop('KAST_CONFIGURATION_FILE', None)
@@ -121,41 +122,23 @@ def inspect_shell_sessions(isolation, installed, *, previous=False):
         observations = []
         resolved, call = _invoke(isolation, installed, directory, index, SessionCommand.RESOLVE, (), environment)
         observations.append(call)
-        if resolved.strip() != str(isolation.root / 'bin/kast') or Path(resolved.strip()).resolve() != executable:
+        if resolved.strip() != str(executable):
             raise SessionRejected(call)
         version, call = _invoke(isolation, installed, directory, index, SessionCommand.VERSION, ('--version',), environment)
         observations.append(call)
         if version.strip() != f'kast {installed.version} (IntelliJ plugin)':
             raise SessionRejected(call)
         raw, call = _invoke(isolation, installed, directory, index, SessionCommand.CONFIGURATION,
-                            ('config', 'show', '--json'), environment)
+                            (str(configuration),), environment)
         observations.append(call)
-        try:
-            document = json.loads(raw)
-            assignments = document['resolvedNextLaunch']
-            runtime = [entry for entry in assignments if entry['key'] == 'KAST_RUNTIME_DIRECTORY']
-            valid = (document['operation'] == 'config-show' and document['status'] == 'complete'
-                     and document['desiredSavedConfiguration'] == 'LOADED' and len(runtime) == 1
-                     and runtime[0]['source'] == 'SAVED_INSTALLATION'
-                     and runtime[0]['value'] == str(product / 'state/run'))
-        except (ValueError, KeyError, TypeError):
-            valid = False
+        runtime = [line.partition('=')[2] for line in raw.splitlines()
+                   if line.startswith('KAST_RUNTIME_DIRECTORY=')]
+        valid = len(runtime) == 1 and runtime[0] == str(product / 'state/run')
         if not valid:
             raise SessionRejected(call)
         if not previous:
             # Previous releases retain their original diagnostics as evidence; the current target must be quiet.
             if call.stderrSha256 != hashlib.sha256(b'').hexdigest():
-                raise SessionRejected(call)
-            raw, call = _invoke(isolation, installed, directory, index, SessionCommand.EXPLANATION,
-                                ('config', 'explain', 'KAST_APP_SERVER_PUBLIC_ENDPOINT'), environment)
-            observations.append(call)
-            try:
-                explanation = json.loads(raw)
-                explained = (explanation['operation'] == 'config-explain' and explanation['status'] == 'complete'
-                             and explanation['key'] == 'KAST_APP_SERVER_PUBLIC_ENDPOINT')
-            except (ValueError, KeyError, TypeError):
-                explained = False
-            if not explained or call.stderrSha256 != hashlib.sha256(b'').hexdigest():
                 raise SessionRejected(call)
         raw, call = _invoke(isolation, installed, directory, index, SessionCommand.INSTALLATION,
                             ('installation', 'inspect', '--json'), environment)
@@ -166,7 +149,8 @@ def inspect_shell_sessions(isolation, installed, *, previous=False):
                      and document['installation'] == str(product) and document['state'] == str(product / 'state'))
         except (ValueError, KeyError, TypeError):
             valid = False
-        if not valid or digest(configuration) != configuration_digest:
+        if (not valid or digest(configuration) != configuration_digest
+                or (not previous and call.stderrSha256 != hashlib.sha256(b'').hexdigest())):
             raise SessionRejected(call)
         receipts.append(ShellSessionReceipt(str(product), installed.payloadIdentity, str(executable),
                         configuration_digest, str(product / 'state/run'), tuple(observations)))

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Lifecycle orchestration checks with controlled child boundaries; no service is launched."""
 from dataclasses import asdict, dataclass
+from contextlib import chdir
 import io
 import json
 from pathlib import Path
@@ -160,7 +161,8 @@ class CoordinatorLifecycleTest(unittest.TestCase):
 
     def test_status_requires_exact_attachment_and_ownership_without_payload_receipt(self):
         with socket.socket(socket.AF_UNIX) as private:
-            private.bind(str(self.product / 'state/run/c.sock'))
+            with chdir(self.product / 'state/run'):
+                private.bind('c.sock')
             (self.product / 'state/run/c.sock').chmod(0o600)
             def status(phase):
                 return subprocess.CompletedProcess([], 0, json.dumps(asdict(Status(Attachment(phase)))), '')
@@ -190,7 +192,7 @@ class CoordinatorLifecycleTest(unittest.TestCase):
         codex.write_text('admitted authority')
         isolation = SimpleNamespace(root=self.root, tools=dict(codex=codex))
         installed = SimpleNamespace(product=str(self.product))
-        inventory = SimpleNamespace(configuredDefaultTools=('registry_selected_read',), installedSchemaSha256='a' * 64)
+        inventory = SimpleNamespace(configuredDefaultTools=('registry_selected_read',), installedCatalogSha256='a' * 64)
         private = dict(HOME=str(self.home), CODEX_HOME=str(self.home / '.codex'),
                        JAVA_TOOL_OPTIONS='private JVM home', KAST_RUNTIME_DIRECTORY=str(self.product / 'state/run'))
         fixture = SimpleNamespace(environment=private, workspace=self.root)

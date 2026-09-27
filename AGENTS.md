@@ -42,6 +42,12 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - Codex MCP main: `cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt`.
 - Harness-neutral tool RPC main: `cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt`.
 
+## New Thread Remote Refresh
+
+- At the start of every new thread, inspect the current branch, working tree, and configured upstream, then fetch that upstream's remote before changing repository files.
+- If the working tree is clean and the local branch can fast-forward to the fetched upstream head, fast-forward it and verify the resulting `HEAD` matches the upstream.
+- If the upstream is missing, the histories diverge, or local changes block the fast-forward, preserve the branch, working tree, and stashes. Report the exact state and get a base decision before moving commits or applying stashes.
+
 ## Navigation Hints
 
 - For repository-wide orientation, start with `knowledge/index.md`, choose one concept, and follow its `code_sources` only when source detail is required.

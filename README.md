@@ -18,6 +18,13 @@ Codex; other MCP clients and the included tool RPC adapters can use the same
 installation. See [install and connect](https://kast.michne.com/start/) for
 client setup and options.
 
+On an upgrade, Kast removes prior versions that pass installation admission.
+For older Kast processes, login items, plugin backups, install directories, or
+manifest-listed anchors whose ownership is incomplete, the installer shows
+each exact item and asks before removing it. Answer `yes` for an individual
+item; every other answer keeps it. A noninteractive upgrade keeps uncertain
+items and reports them.
+
 ## Ask a question
 
 Start your agent from the Kotlin repository or worktree, then ask:

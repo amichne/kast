@@ -40,6 +40,10 @@ class KastServiceMainTest {
             ServiceControlSelection.Selected(ServiceControlAction.STOP),
             selectServiceControl(listOf("stop")),
         )
+        assertEquals(
+            ServiceControlSelection.Selected(ServiceControlAction.STATUS),
+            selectServiceControl(listOf("status")),
+        )
         assertEquals(ServiceControlSelection.Trust, selectServiceControl(listOf("enroll-trust")))
         for (arguments in
             listOf(
@@ -80,6 +84,27 @@ class KastServiceMainTest {
         for (arguments in invalid) {
             assertEquals(ServiceControlSelection.Rejected, selectServiceControl(arguments))
         }
+    }
+
+    @Test
+    fun `private status preserves the manager document and finite rejection`() {
+        val document = Json.encodeToJsonElement(RegistrationFixture()).jsonObject
+        val workspace = Path.of("/owned/workspace")
+        val manager = AppServerManager { action, root ->
+            assertEquals(AppServerAction.Status, action)
+            assertEquals(workspace, root)
+            AppServerManagementResult.Completed(document)
+        }
+        assertEquals(
+            ServiceControlOutcome.Inspected(document),
+            executeServiceControl(ServiceControlAction.STATUS, manager, workspace),
+        )
+        assertEquals(
+            ServiceControlOutcome.Rejected(
+                ServiceControlFailureDocument.Management(AppServerManagementFailure.SERVICE_UNAVAILABLE, null)
+            ),
+            executeServiceControl(ServiceControlAction.STATUS, UnavailableAppServerManager, workspace),
+        )
     }
 
     @Test

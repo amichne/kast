@@ -24,7 +24,7 @@ class OwnedRuntimeObservationTest(unittest.TestCase):
         self.log = self.root / 'ide/log/idea.log'
         self.log.parent.mkdir(parents=True)
         self.log.write_text(self.resolution())
-        self.observer = OwnedRuntimeObserver(self.root, self.product, self.workspace, Path('/bin/ps'))
+        self.observer = OwnedRuntimeObserver(self.root, self.product, self.workspace, self.root / 'ps')
 
     def resolution(self):
         return ('date INFO - #c.i.o.e.u.ExternalSystemUtil - External project [' + str(self.workspace)

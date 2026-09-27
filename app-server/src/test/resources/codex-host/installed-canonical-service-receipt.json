@@ -1,14 +1,11 @@
 {
   "catalogProjectionSha256": "sha256:62fdf64e929761e1f45274a65315965b0de6ee79d693360f353e3b8348f2d7e3",
   "catalogToolNames": [
-    "query",
+    "workspace_lifecycle",
+    "query_symbols",
     "source_read",
-    "semantic_query",
-    "impact_analyze",
-    "diagnostic_check",
-    "change_plan",
-    "change_apply",
-    "change_recover"
+    "check_diagnostics",
+    "change"
   ],
   "codexExecutableSha256": "sha256:61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
   "codexProtocolSha256": "sha256:a4e7ee85a1237179f0f8cec1e69dc7085e05e038416f7d8f2a2ccbd780ef2a79",
@@ -30,22 +27,22 @@
   "threadStart": "VALIDATED",
   "canonicalService": {
     "beforeAttachment": {
-      "phase": "prepared",
+      "phase": "pending",
       "statusSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "publicSocketAndOwnership": "VALIDATED",
-      "publicEndpointKind": "codex-control"
+      "publicEndpointKind": "private"
     },
     "afterDetach": {
       "phase": "prepared",
       "statusSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "publicSocketAndOwnership": "VALIDATED",
-      "publicEndpointKind": "codex-control"
+      "publicEndpointKind": "private"
     },
     "initialize": "VALIDATED",
     "threadStart": "VALIDATED",
     "parentClosure": "VALIDATED",
     "serviceDisable": "VALIDATED",
     "stockDesktopUi": "UNQUALIFIED",
-    "ordinaryDaemonDiscovery": "VALIDATED"
+    "ordinaryDaemonDiscovery": "UNQUALIFIED"
   }
 }

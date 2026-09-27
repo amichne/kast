@@ -52,10 +52,10 @@ internal object CodexHostIntegrationManifestMain {
                 hostModes = CodexHostMode.entries.map(HostModeManifestEntry::from),
                 installedCommands =
                     listOf(
-                        "kast codex",
-                        "kast codex desktop",
-                        "kast-codex",
-                        "kast-codex app-server",
+                        "bin/kast-complete --version",
+                        "share/kast/libexec/kast-service status",
+                        "bin/kast-codex-complete app-server",
+                        "bin/kast-tool-rpc-complete call",
                     ),
                 dependencyProofs =
                     listOf(
@@ -159,8 +159,13 @@ private data class InstalledCanonicalServiceReceipt(
     val parentClosure: ValidationOutcome,
     val serviceDisable: ValidationOutcome,
     val stockDesktopUi: DesktopQualification,
-    val ordinaryDaemonDiscovery: ValidationOutcome,
-)
+    val ordinaryDaemonDiscovery: DesktopQualification,
+) {
+    init {
+        require(beforeAttachment.phase == PreparedEvidence.PENDING)
+        require(afterDetach.phase == PreparedEvidence.PREPARED)
+    }
+}
 
 @Serializable
 private data class CanonicalServiceObservation(
@@ -172,12 +177,13 @@ private data class CanonicalServiceObservation(
 
 @Serializable
 private enum class PreparedEvidence {
-    @SerialName("prepared") PREPARED
+    @SerialName("pending") PENDING,
+    @SerialName("prepared") PREPARED,
 }
 
 @Serializable
 private enum class CanonicalEndpointKind {
-    @SerialName("codex-control") CODEX_CONTROL
+    @SerialName("private") PRIVATE
 }
 
 @Serializable
