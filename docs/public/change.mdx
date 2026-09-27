@@ -4,24 +4,28 @@ description: "Use Kast's one-call, exact-target source change."
 icon: "file-pen-line"
 ---
 
-`change` adds one declaration to an existing Kotlin file. It uses an exact
-symbol `ref` returned by Kast to identify the target. The
-generated **Change** entry in the API / RPC tab defines the admitted intent.
+Kast's change operation adds one declaration to an existing Kotlin file. It uses a `ref` returned by Kast to identify the target, then plans, applies, verifies, and reports the outcome.
+
+## Provide an exact target
+
+First use a [query](/search) to obtain the target symbol reference. The change intent is:
 
 ```json
 {
   "intent": {
     "kind": "add-declaration",
-    "exactTarget": "<returned ref>",
+    "exactTarget": "<exact-ref-returned-by-Kast>",
     "declaration": "fun retryLimit(): Int = 3"
   }
 }
 ```
 
-Replace the placeholder with a returned exact `ref`. Kast plans the edit,
-applies it, verifies the result, and returns a receipt or a finite failure
-with recovery evidence. A rejected or lost response does not prove that no
-write occurred; retain its plan identity and recovery evidence.
+The installed **Change** schema in the API / RPC tab defines the full request envelope and admitted declaration intent. Pass the returned `ref` unchanged.
 
-Use [query](/search) to obtain the target. The tool does not support new
-files, replacements, multi-file renames, or arbitrary text edits.
+## Read the receipt
+
+A successful change returns verification and a receipt. If the operation is uncertain, preserve its plan identity and recovery evidence. A rejected request or lost response does not prove that no write occurred.
+
+## Know the boundary
+
+This is not a general text editor. It does not add new files, replace arbitrary source ranges, rename symbols across files, or perform multi-file refactors. Use it only for the admitted exact-target declaration addition.

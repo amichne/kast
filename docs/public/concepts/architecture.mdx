@@ -6,64 +6,36 @@ mode: "wide"
 keywords: ["architecture", "IntelliJ IDEA", "query", "evidence"]
 ---
 
-Kast answers from the exact Kotlin Gradle project admitted in IntelliJ IDEA.
-The installed service prepares that project; the IDEA plugin performs the
-semantic read.
+Kast binds a request to the exact Gradle repository or worktree, prepares that project in IntelliJ IDEA, and asks the matching plugin for semantic evidence.
+
+## Why use the project open in IDEA?
+
+IntelliJ IDEA owns the imported Gradle model, Kotlin plugin state, and semantic indexes developers use while editing. Kast exposes bounded reads from that authority to agents instead of treating a separate text index as proof of compiler identity.
+
+## From an admitted search to an answer
 
 ```mermaid
 flowchart TB
-  A["Agent"] --> B{"Connection"}
-  B -->|MCP| C["Session process"]
-  B -->|Tool RPC| D["One call process"]
-  B -->|Codex App Server| E["Broker"]
-  C --> F["Kast service"]
-  D --> F
-  E --> F
-  F --> G["IntelliJ IDEA + Kast plugin"]
-  G --> H["Exact Gradle repository or worktree"]
+  A["Query + admitted workspace"] --> B["Current live read basis"]
+  B --> C["Bounded semantic execution"]
+  C --> D{"Result state"}
+  D -->|Complete| E["Facts + exact refs + complete coverage"]
+  D -->|Qualified| F["Known facts + explicit limits"]
+  D -->|Rejected| G["Typed failure; no semantic result"]
 ```
 
-## From request to ready project
+The request's source, scope, and ordered steps specify the search; the live read basis identifies the semantic state against which it ran. The invariant is that successful facts stay attached to both. Kast can report exact positive facts and, with complete coverage, a scoped empty answer. A qualified result cannot prove absence; a rejected request establishes no semantic result. The basis identifies the live IDE read, not a permanent snapshot of every repository byte.
 
-The client starts in a repository. Kast finds its Gradle root, reuses or starts
-the selected IDEA, opens that project, and waits for the required model and
-indexing state. A trust, save, or import blocker returns as a failure.
+## Readiness is part of the result
 
-```mermaid
-sequenceDiagram
-  participant Agent
-  participant Kast as Kast session
-  participant Service as Kast service
-  participant IDEA as IntelliJ IDEA
-  Agent->>Kast: query_symbols(request)
-  Kast->>Service: prepare exact Gradle root
-  Service->>IDEA: reuse or open project
-  IDEA-->>Service: model and indexing readiness
-  Service-->>Kast: admitted project
-  Kast->>IDEA: semantic query
-  IDEA-->>Kast: symbols, coverage, failures
-  Kast-->>Agent: result and unchanged refs
-```
+A semantic request may need the project import or indexing to finish. A trust prompt, failed save, import error, or unavailable IDE state is reported as a blocker. Kast does not turn that failure into a successful empty answer.
 
-## From declaration to claim
+Ordinary queries prepare the workspace themselves. The hosted App Server's workspace lifecycle tool exists for explicit project control.
 
-Kast first restricts discovery by the requested name, kind, and scope. It
-refines candidates through the compiler before issuing exact `ref` values.
-The result keeps evidence and limits together.
+## What “same state” means here
 
-```mermaid
-flowchart TB
-  A["Scope and kind"] --> B["Candidate discovery"]
-  B --> C["Compiler refinement"]
-  C --> D["Exact symbol + ref"]
-  D --> E["Query steps / relation facts"]
-  E --> F{"Coverage"}
-  F -->|exhaustive| G["Complete answer"]
-  F -->|limit or omission| H["Partial answer"]
-  B -->|cannot establish evidence| I["Typed rejection"]
-```
+For the production IDE plugin, a live read basis identifies the canonical workspace root, the owning IDE lifetime, its read epoch, and a saved, committed PSI content view. Kast re-admits that authority when it restores retained execution or result state. This is a live semantic identity, not a permanent cryptographic fingerprint or an archive of every repository byte.
 
-An exact `ref` can be reused while its owning workspace and evidence remain
-valid. A partial result preserves known facts but cannot prove that missing
-facts do not exist. See [query examples](/search) and the
-[transport contracts](/reference/mcp-catalog).
+When the IDE's read epoch changes, retained query state is cleared. A fresh exact-symbol read can use bounded reacquisition and revalidation; a retained query result or continuation is restored only while its owner, lifetime, and basis remain admissible.
+
+[See how query references continue work](/query-pipelines) and [what an answer proves later](/concepts/evidence-boundaries). The [transport contracts](/reference/mcp-catalog) define the public result wrappers.

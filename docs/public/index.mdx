@@ -5,22 +5,43 @@ icon: "scan-search"
 keywords: ["Kotlin", "IntelliJ IDEA", "coding agents", "semantic query"]
 ---
 
-Kast lets your agent ask the Kotlin compiler about the repository open in
-IntelliJ IDEA. Start with one query that needs no project-specific name.
+## Let your agent ask the project what a symbol means
+
+Kast gives coding agents a semantic view of the Kotlin Gradle project open in IntelliJ IDEA. Queries return exact symbols, source locations, relationships, and coverage from that project.
 
 ## Try Kast
 
-1. [Install and connect](/start).
-2. Start your agent from a Kotlin Gradle repository.
+1. [Install Kast](/start).
+2. Start your agent from the Kotlin repository or worktree you want Kast to inspect.
 3. Ask:
 
-> Use Kast to query declarations in this workspace. Show one compiler-backed
-> symbol with its signature, source location, exact `ref`, and coverage. If
-> the query is incomplete or empty, explain what that result proves.
+> Use Kast to query declarations in this workspace. Return one exact symbol with its signature, source location, `ref`, and coverage. Explain what an empty or incomplete result proves.
 
 A returned `ref` is Kast's exact symbol handle. Reuse it unchanged for a
-source read or a relation query. The result also says whether the requested
+source read or another query while Kast can validate its owning workspace and evidence. The result also says whether the requested
 scope was fully covered.
+
+## Give the model evidence it can reuse
+
+A text match cannot establish which declaration a call refers to, whether a match is a call or a comment, or whether an empty search covered the requested scope.
+
+### Identity stays exact
+
+Kast returns a symbol reference established by the IDE's semantic model. Later reads reuse it instead of guessing from a name or path.
+
+### Facts keep their limits
+
+Coverage and qualifications travel with the result. Incomplete work stays distinct from a complete empty answer.
+
+### Queries compose
+
+Start from declarations or exact refs, then filter, expand relations, walk, combine sets, or join typed results in order.
+
+## From a question to a grounded next step
+
+The agent can find a declaration, carry its exact `ref` into a source read, and ask where it is used. Kast keeps scope, identity, and coverage visible across those steps.
+
+Find a declaration without naming a project-specific class. Follow its exact reference into a source or relationship query. Interpret coverage and qualifications before making a claim. [Try the query guide](/search), then [see how Kast checks the evidence](/concepts/architecture).
 
 <CardGroup cols={3}>
   <Card title="Install" icon="download" href="/start">
@@ -30,6 +51,6 @@ scope was fully covered.
     Copy prompts and inspect their results.
   </Card>
   <Card title="How it works" icon="workflow" href="/concepts/architecture">
-    See where compiler evidence comes from.
+    See what makes a result reusable and when Kast rejects it.
   </Card>
 </CardGroup>
