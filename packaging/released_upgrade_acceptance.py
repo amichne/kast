@@ -94,6 +94,7 @@ def prepare_release_upgrade(isolation, previous, target, idea):
     configuration_digest = digest(configuration)
     registry = _registry_identity(prior_root / 'config/workspaces.json', isolation.root / 'workspace')
     product_executable(prior_root, isolation.root)
+    verify_control(prior_root, previous.control, json.loads((prior_root / 'installation.json').read_text()))
     # Archive only paths just authored and admitted by this fixture; the next install selects the same owned root.
     for name in ('released-assets', 'released-install.private.log', 'released-product-admission.json'):
         source, destination = isolation.root / name, isolation.root / ('previous-' + name)
@@ -103,14 +104,11 @@ def prepare_release_upgrade(isolation, previous, target, idea):
     installed = install_release(isolation, target, idea)
     log = isolation.root / 'released-install.private.log'
     _upgrade_observations(log)
-    if (digest(configuration) != configuration_digest
-            or digest(prior_root / 'installation.json') != prior.installationManifestSha256
-            or _registry_identity(prior_root / 'config/workspaces.json', isolation.root / 'workspace') != registry
+    if (prior_root.exists() or prior_root.is_symlink()
             or digest(previous.control) != previous.controlSha256
             or digest(previous.plugin) != previous.hostedPluginSha256
             or _registry_identity(Path(installed.product) / 'config/workspaces.json', isolation.root / 'workspace') != registry):
         raise ReleaseRejected(ReleaseFailure.UPGRADE)
-    verify_control(prior_root, previous.control, json.loads((prior_root / 'installation.json').read_text()))
     target_sessions = inspect_shell_sessions(isolation, installed)
     return ReleasedUpgradeReceipt(prior, installed, target.commit, previous_sessions, target_sessions,
         configuration_digest, registry, registration, str(log), digest(log))

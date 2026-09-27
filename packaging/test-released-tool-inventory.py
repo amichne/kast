@@ -15,43 +15,34 @@ class Tool:
 
 
 @dataclass(frozen=True)
-class Invocation:
-    toolName: str
-    operationId: str
-
-
-@dataclass(frozen=True)
 class Bootstrap:
     tools: tuple[Tool, ...]
-
-
-@dataclass(frozen=True)
-class Invocations:
-    operations: tuple[Invocation, ...]
+    schemaVersion: int = 1
 
 
 @dataclass(frozen=True)
 class Projection:
     hostedBootstrap: Bootstrap
-    cliInvocations: Invocations
+    schemaVersion: int = 15
+    namespace: str = 'kast'
 
 
 @dataclass(frozen=True)
 class Schema:
     serverProjection: Projection
+    schemaVersion: int = 1
 
 
 class InventoryTest(unittest.TestCase):
     def setUp(self):
-        self.tools = tuple(Tool(name, operation, 'intellij_write' if name == 'change' else 'intellij_read')
+        self.tools = tuple(Tool(name, operation, 'intellij_read_and_persistence_write' if name == 'workspace_lifecycle'
+                          else 'intellij_write' if name == 'change' else 'intellij_read')
                            for name, operation in OPERATIONS)
-        self.cli = Invocations(tuple(Invocation(name, operation) for name, operation in OPERATIONS
-                                     if name != 'workspace_lifecycle'))
         self.defaults = tuple(name for name, _ in OPERATIONS)
         self.configuration = 'KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n'
 
     def schema(self, tools):
-        return asdict(Schema(Projection(Bootstrap(tools), self.cli)))
+        return asdict(Schema(Projection(Bootstrap(tools))))
 
     def test_five_advertised_tools_and_defaults_are_distinct_from_three_explicit_reads(self):
         admitted = admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
@@ -65,10 +56,15 @@ class InventoryTest(unittest.TestCase):
             with self.subTest(tools=tools), self.assertRaises(ReleaseRejected):
                 admit_inventory(self.schema(tools), self.configuration, 'a' * 64)
 
-    def test_workspace_tool_has_no_cli_invocation(self):
-        self.cli = Invocations(self.cli.operations + (Invocation('workspace_lifecycle', 'workspace.lifecycle'),))
+    def test_wrong_catalog_version_is_refused(self):
+        document = self.schema(self.tools)
+        document['schemaVersion'] = 2
         with self.assertRaises(ReleaseRejected):
-            admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
+            admit_inventory(document, self.configuration, 'a' * 64)
+        document = self.schema(self.tools)
+        document['serverProjection']['hostedBootstrap']['schemaVersion'] = 2
+        with self.assertRaises(ReleaseRejected):
+            admit_inventory(document, self.configuration, 'a' * 64)
 
     def test_retired_tool_selection_is_refused(self):
         for config in ('KAST_APP_SERVER_TOOLS=query_symbols\n', 'KAST_APP_SERVER_TOOLS=\n'):

@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import stat
 import subprocess
@@ -61,6 +62,13 @@ class LifecycleRejection:
     limit: Optional[ControlLimit] = None
     retirement: Optional['RetirementRejection'] = None
     status: str = 'rejected'
+
+@dataclass(frozen=True)
+class PruneReport:
+    operation: str
+    installation: str
+    status: str
+    removed: list[str]
 
 @dataclass(frozen=True)
 class PayloadFile:
@@ -470,7 +478,7 @@ def workspaces(installation):
     registry = installation.root / 'config/workspaces.json'
     if not registry.exists() and not registry.is_symlink():
         state = installation.root / 'state'
-        if state.exists() and any(entry.name != 'epoch.json' for entry in state.iterdir()):
+        if state.exists() and not admits_unregistered_broker_state(state):
             raise Rejected(Failure.REGISTRY_REJECTED)
         return []
     document = read_json(registry, 262144, Failure.REGISTRY_REJECTED)
@@ -488,6 +496,58 @@ def workspaces(installation):
             raise Rejected(Failure.REGISTRY_REJECTED)
         admitted.append(root)
     return admitted
+
+
+def admits_unregistered_broker_state(state):
+    """A stopped broker carries no workspace enrollment; unknown state still blocks removal."""
+    allowed = {'epoch.json', 'broker', 'run'}
+    if any(entry.name not in allowed or entry.is_symlink() for entry in state.iterdir()):
+        return False
+    run = state / 'run'
+    if run.exists() and (not run.is_dir() or run.stat().st_uid != os.getuid() or any(run.iterdir())):
+        return False
+    broker = state / 'broker'
+    if not broker.exists():
+        return True
+    if not broker.is_dir() or broker.is_symlink() or broker.stat().st_uid != os.getuid():
+        return False
+    profiles = []
+    with os.scandir(broker) as entries:
+        for entry in entries:
+            profiles.append(Path(entry.path))
+            if len(profiles) > 16:
+                return False
+    allowed_files = {'stopped', 'launch-environment', 'service-start.lock', 'service.log', 'service.plist'}
+    for profile in profiles:
+        if (not re.fullmatch(r'[0-9a-f]{16}', profile.name) or not profile.is_dir()
+                or profile.is_symlink() or profile.stat().st_uid != os.getuid()):
+            return False
+        files = []
+        with os.scandir(profile) as entries:
+            for entry in entries:
+                files.append(Path(entry.path))
+                if len(files) > len(allowed_files):
+                    return False
+        stopped = profile / 'stopped'
+        if not stopped_broker_marker(stopped):
+            return False
+        if any(file.name not in allowed_files or not file.is_file() or file.is_symlink()
+               or file.stat().st_uid != os.getuid() for file in files):
+            return False
+    return True
+
+
+def stopped_broker_marker(path):
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError:
+        return False
+    try:
+        observed = os.fstat(descriptor)
+        return (stat.S_ISREG(observed.st_mode) and observed.st_uid == os.getuid()
+                and observed.st_size == 8 and os.read(descriptor, 9) == b'stopped\n')
+    finally:
+        os.close(descriptor)
 
 
 def owned_aliases(installation):
@@ -600,6 +660,54 @@ def delete_tree(path):
     if not shutil.rmtree.avoids_symlink_attacks:
         raise Rejected(Failure.FILESYSTEM_REJECTED)
     shutil.rmtree(path)
+
+
+def require_selected(installation):
+    installation.revalidate()
+    outer = installation.root.parent.parent
+    current = outer / 'current'
+    expected = 'versions/' + installation.root.name
+    if (not current.is_symlink() or os.readlink(current) != expected
+            or current.lstat().st_uid != os.getuid()):
+        raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+
+
+def prune_other_versions(selected, dry_run):
+    require_selected(selected)
+    versions = selected.root.parent
+    if (versions.is_symlink() or versions.stat().st_uid != os.getuid()
+            or selected.root.stat().st_uid != os.getuid()):
+        raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+    children = []
+    with os.scandir(versions) as entries:
+        for entry in entries:
+            children.append(entry)
+            if len(children) > 64:
+                raise Rejected(Failure.CONTROL_LIMIT_EXCEEDED,
+                               ControlLimit(ControlResource.TRAVERSED_ENTRIES, 64, len(children)))
+    children.sort(key=lambda entry: entry.name)
+    others = []
+    for entry in children:
+        path = Path(entry.path)
+        if (not entry.is_dir(follow_symlinks=False) or entry.stat(follow_symlinks=False).st_uid != os.getuid()):
+            raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+        admitted = Installation.admit(str(path))
+        if path != selected.root:
+            execute(admitted, 'remove', True)
+            others.append(admitted)
+    require_selected(selected)
+    if dry_run:
+        return PruneReport('installation.prune', str(selected.root), 'planned', [])
+    removed = []
+    for prior in others:
+        require_selected(selected)
+        execute(prior, 'remove', False)
+        removed.append(str(prior.root))
+    require_selected(selected)
+    with os.scandir(versions) as entries:
+        if {entry.name for entry in entries} != {selected.root.name}:
+            raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+    return PruneReport('installation.prune', str(selected.root), 'pruned', removed)
 
 
 def execute(installation, operation, dry_run):
@@ -763,7 +871,7 @@ def remove_anchors(installation):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--installation', required=True)
-    parser.add_argument('operation', choices=('inspect', 'recover-read-only', 'reset', 'remove'))
+    parser.add_argument('operation', choices=('inspect', 'recover-read-only', 'reset', 'remove', 'prune'))
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--json', action='store_true')
     arguments = parser.parse_args()
@@ -778,7 +886,9 @@ def main():
                 if not stat.S_ISREG(os.fstat(descriptor).st_mode):
                     raise Rejected(Failure.MANIFEST_REJECTED)
                 fcntl.lockf(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                if arguments.operation == 'recover-read-only':
+                if arguments.operation == 'prune':
+                    report = asdict(prune_other_versions(installation, arguments.dry_run))
+                elif arguments.operation == 'recover-read-only':
                     report = execute_read_only_recovery(installation, arguments.dry_run)
                 else:
                     report = execute(installation, arguments.operation, arguments.dry_run)

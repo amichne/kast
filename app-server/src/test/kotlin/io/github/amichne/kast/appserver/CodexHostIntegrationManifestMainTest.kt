@@ -68,10 +68,10 @@ class CodexHostIntegrationManifestMainTest {
     fun `unattached or unowned service evidence remains rejected`(@TempDir temporary: Path) {
         for ((path, value) in
             listOf(
-                listOf("canonicalService", "beforeAttachment", "phase") to "pending",
+                listOf("canonicalService", "beforeAttachment", "phase") to "prepared",
                 listOf("canonicalService", "afterDetach", "publicSocketAndOwnership") to "UNQUALIFIED",
-                listOf("canonicalService", "afterDetach", "publicEndpointKind") to "private",
-                listOf("canonicalService", "ordinaryDaemonDiscovery") to "UNQUALIFIED",
+                listOf("canonicalService", "afterDetach", "publicEndpointKind") to "codex-control",
+                listOf("canonicalService", "ordinaryDaemonDiscovery") to "VALIDATED",
             )) assertRejected(temporary, installedReceipt().updated(path, JsonPrimitive(value)))
     }
 

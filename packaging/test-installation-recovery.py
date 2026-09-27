@@ -4,6 +4,7 @@ import json
 import hashlib
 import importlib.util
 import plistlib
+import shutil
 from unittest.mock import patch
 import os
 import subprocess
@@ -118,6 +119,43 @@ class RecoveryTest(unittest.TestCase):
         self.assertEqual(0, code, report)
         self.assertTrue((self.outer / 'current').is_symlink())
         self.assertFalse((self.root / '.recovery-detached').exists())
+
+    def test_completed_upgrade_seals_recovery_before_prior_payload_removal(self):
+        prior = self.root.with_name('0.39.2-' + 'b' * 64)
+        prior.mkdir()
+        plugins = self.home / 'selected-plugins'
+        plugins.mkdir()
+        self.root, selected = prior, self.root
+        self.prepare()
+        self.root = selected
+        code, prepared = self.run_recovery('prepare', '--bin-directory', self.bin, '--plugin-root', plugins)
+        self.assertEqual(0, code, prepared)
+        (self.outer / 'current').unlink()
+        (self.outer / 'current').symlink_to('versions/' + selected.name)
+        bundle = Path(prepared['recoveryExecutable']).parent
+        receipt = json.loads((bundle / 'receipt.json').read_text())
+        self.assertEqual(str(prior), receipt['priorInstallation'])
+        code, rejected = self.run_recovery('seal-upgrade')
+        self.assertNotEqual(0, code)
+        self.assertEqual('RecoveryBlocked', rejected['status'])
+        self.assertEqual(str(prior), json.loads((bundle / 'receipt.json').read_text())['priorInstallation'])
+        staged = self.home / 'staged'
+        (staged / 'kast-ide-hosted').mkdir(parents=True)
+        (staged / 'kast-ide-hosted/plugin.txt').write_text('selected')
+        code, activated = self.run_recovery('activate-plugin', '--staged-plugin', staged, '--plugin-root', plugins)
+        self.assertEqual(0, code, activated)
+        code, sealed = self.run_recovery('seal-upgrade')
+        self.assertEqual(0, code, sealed)
+        self.assertEqual('UpgradeFinalized', sealed['status'])
+        receipt = json.loads((bundle / 'receipt.json').read_text())
+        self.assertIsNone(receipt['priorInstallation'])
+        self.assertIsNone(receipt['links'][0]['priorTarget'])
+        shutil.rmtree(prior)
+        spec = importlib.util.spec_from_file_location('recovery_seal_test', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        self.assertEqual(module.Status.ACTIVE, module.migrate_plugin_chain(self.root).stage)
 
     def test_standalone_bundle_survives_missing_payload(self):
         report = self.prepare()

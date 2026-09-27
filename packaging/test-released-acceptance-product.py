@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import shlex
 import shutil
@@ -52,7 +53,9 @@ class ReleasedProductTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.base = Path(self.temporary.name).resolve()
-        self.isolation = AcceptanceEnvironment({'bash': Path('/bin/bash')}, parent=self.base)
+        names = ('bash', 'mkdir', 'cp', 'ln', 'rm', 'cat')
+        tools = {name: Path(shutil.which(name) or f'/missing/{name}') for name in names}
+        self.isolation = AcceptanceEnvironment(tools, parent=self.base)
         self.root = self.isolation.root
         self.repo = self.base / 'repo'
         self.repo.mkdir()
@@ -91,14 +94,13 @@ class ReleasedProductTest(unittest.TestCase):
         (self.template / 'installation.json').write_text(json.dumps(asdict(self.manifest)))
         self.installer = self.repo / 'install.sh'
         q = lambda value: shlex.quote(str(value))
-        self.installer.write_text('#!/bin/bash\nset -eu\n'
+        self.installer.write_text(f'#!{self.isolation.tools["bash"]}\nset -eu\n'
             '[[ "$1" == --version && "$2" == 1.2.3 && "$3" == --idea-home ]]\n'
             f'[[ "$HOME" == {q(self.root / "home")} && "$KAST_INSTALL_PROFILE" == session ]]\n'
-            f'/bin/mkdir -p {q(self.product.parent)} {q(self.root / "bin")} {q(self.plugins / "kast-ide-hosted/lib")}\n'
-            f'/bin/cp -R {q(self.template)} {q(self.product)}\n'
-            f'/bin/ln -s {q(self.product)} {q(self.root / "installation/current")}\n'
-            f'/bin/ln -s {q(self.product / "bin/kast-complete")} {q(self.root / "bin/kast")}\n'
-            f'/bin/echo -n "original plugin fixture" > {q(self.plugins / "kast-ide-hosted/lib/released.jar")}\n')
+            f'mkdir -p {q(self.product.parent)} {q(self.root / "bin")} {q(self.plugins / "kast-ide-hosted/lib")}\n'
+            f'cp -R {q(self.template)} {q(self.product)}\n'
+            f'ln -s {q(self.product)} {q(self.root / "installation/current")}\n'
+            f'printf %s "original plugin fixture" > {q(self.plugins / "kast-ide-hosted/lib/released.jar")}\n')
         self.release = ReleaseInputs('1.2.3', 'a' * 40, self.installer, digest(self.installer), self.control,
             digest(self.control), self.plugin, digest(self.plugin), 'IntelliJIdea262')
 
@@ -108,10 +110,26 @@ class ReleasedProductTest(unittest.TestCase):
     def test_supported_installer_uses_original_assets_and_installed_wrapper(self):
         admitted = install_release(self.isolation, self.release, self.idea)
         self.assertEqual(product_executable(self.product, self.root), self.product / 'bin/kast-complete')
+        self.assertFalse((self.root / 'bin/kast').exists())
         self.assertEqual(admitted.pluginsDirectory, str(self.plugins))
         self.assertEqual(admitted.installationManifestSha256, digest(self.product / 'installation.json'))
         self.assertEqual(digest(self.root / 'released-assets' / self.control.name), digest(self.control))
         self.assertFalse((self.root / 'product').exists())
+
+    def test_installer_uses_owned_home_and_tools_under_hostile_parent_environment(self):
+        foreign = self.base / 'foreign'
+        foreign.mkdir()
+        marker = foreign / 'untouched'
+        marker.write_text('user state')
+        with patch.dict(os.environ, {'HOME': str(foreign), 'PATH': str(foreign),
+                                    'KAST_INSTALL_ROOT': str(foreign / 'install'),
+                                    'JAVA_TOOL_OPTIONS': f'-Duser.home={foreign}'}):
+            admitted = install_release(self.isolation, self.release, self.idea)
+        self.assertEqual(admitted.ownedRoot, str(self.root))
+        self.assertEqual(json.loads((self.product / 'installation.json').read_text())['codexHome'],
+                         str(self.root / 'home/.codex'))
+        self.assertEqual(marker.read_text(), 'user state')
+        self.assertFalse((foreign / 'install').exists())
 
     def test_archive_checksum_or_dirty_source_cannot_be_admitted(self):
         source = SimpleNamespace(commit='a' * 40, clean=True)
@@ -126,6 +144,12 @@ class ReleasedProductTest(unittest.TestCase):
             with self.assertRaises(ReleaseRejected) as rejected:
                 admit_release(self.repo, self.assets, '1.2.3', self.idea, source)
             self.assertEqual(rejected.exception.failure, ReleaseFailure.SOURCE)
+
+    def test_missing_versioned_launcher_is_rejected(self):
+        (self.template / 'bin/kast-complete').unlink()
+        with self.assertRaises(ReleaseRejected) as rejected:
+            install_release(self.isolation, self.release, self.idea)
+        self.assertEqual(rejected.exception.failure, ReleaseFailure.OWNERSHIP)
 
     def test_installer_cannot_replace_original_control_bytes_and_rehash_manifest(self):
         (self.template / 'bin/kast').write_text('#!/bin/sh\nexit 1\n')

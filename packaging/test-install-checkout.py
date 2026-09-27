@@ -78,7 +78,7 @@ class CheckoutInstallTest(IsolatedInstallerTest):
         (self.checkout / "packaging").mkdir()
         (self.checkout / "packaging/install-local.sh").touch()
         (self.checkout / "build.gradle.kts").touch()
-        self.write_script(self.checkout / "gradlew", '''#!/bin/bash
+        self.write_script(self.checkout / "gradlew", '''#!/usr/bin/env bash
 set -eu
 echo build >> "$TEST_LOG"
 for arg in "$@"; do case "$arg" in -Pversion=*) version=${arg#*=} ;; esac; done
@@ -98,7 +98,7 @@ done
         self.installer = self.checkout / "install.sh"
         self.checkout_installer = self.checkout / "packaging/install-checkout.sh"
         shutil.copy2(CHECKOUT_INSTALLER, self.checkout_installer)
-        self.write_script(self.installer, '''#!/bin/bash
+        self.write_script(self.installer, '''#!/usr/bin/env bash
 set -eu
 echo install >> "$TEST_LOG"
 for argument in "$@"; do
@@ -121,7 +121,7 @@ fi
 
     def run_install(self, *args):
         return subprocess.run(
-            ["/bin/bash", str(self.checkout_installer), *args],
+            [str(self.fixture.tools['bash']), str(self.checkout_installer), *args],
             cwd=self.checkout,
             env=self.env,
             capture_output=True,
@@ -200,14 +200,14 @@ physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
             self.assertFalse((self.root / "calls").exists())
 
     def test_build_failure_never_installs_or_emits_activation(self):
-        self.write_script(self.checkout / "gradlew", "#!/bin/bash\nexit 17\n")
+        self.write_script(self.checkout / "gradlew", "#!/usr/bin/env bash\nexit 17\n")
         result = self.run_install("session")
         self.assertEqual(result.returncode, 17)
         self.assertEqual(result.stdout, "")
         self.assertFalse((self.root / "calls").exists())
 
     def test_install_failure_never_activates_or_starts_services(self):
-        self.write_script(self.installer, "#!/bin/bash\nexit 19\n")
+        self.write_script(self.installer, "#!/usr/bin/env bash\nexit 19\n")
         for mode in ("session", "persistent"):
             result = self.run_install(mode)
             self.assertEqual(result.returncode, 19)
@@ -221,7 +221,7 @@ physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
 class BootstrapInstallTest(IsolatedInstallerTest):
     def setUp(self):
         super().setUp()
-        self.write_script(self.fixture.root / "tools/codex", '''#!/bin/bash
+        self.write_script(self.fixture.root / "tools/codex", '''#!/usr/bin/env bash
 set -eu
 printf '%s\n' "$*" >> "$MCP_LOG"
 if [[ "$1" == mcp && "$2" == list && "${3:-}" == --json ]]; then
@@ -243,7 +243,7 @@ fi
             "version": "2026.2",
         }))
         (self.idea / "jbr/Contents/Home/release").write_text('JAVA_VERSION="25"\nOS_ARCH="aarch64"\n')
-        self.write_script(self.idea / "jbr/Contents/Home/bin/java", "#!/bin/bash\nexit 0\n")
+        self.write_script(self.idea / "jbr/Contents/Home/bin/java", "#!/usr/bin/env bash\nexit 0\n")
         self.version = "1.2.3"
         self.assets = self.root / "assets"
         self.assets.mkdir()
@@ -252,7 +252,7 @@ fi
 
         self.product = self.root / "product"
         (self.product / "bin").mkdir(parents=True)
-        self.write_script(self.product / "bin/kast", '''#!/bin/bash
+        self.write_script(self.product / "bin/kast", '''#!/usr/bin/env bash
 python3 - <<'PYTHON'
 import json, os, shutil, subprocess, sys
 from pathlib import Path
@@ -262,7 +262,7 @@ if os.environ["KAST_INSTALL_MODE"] != 'plan':
     installed.mkdir(parents=True, exist_ok=True)
     (installed / 'bin').mkdir()
     launcher = installed / 'bin/kast-mcp-complete'
-    launcher.write_text('#!/bin/bash\\nexit 0\\n')
+    launcher.write_text('#!/usr/bin/env bash\\nexit 0\\n')
     launcher.chmod(0o755)
     (installed / 'share/kast').mkdir(parents=True)
     shutil.copy2(Path(os.environ['KAST_INSTALL_CONTROL_ROOT']) / 'share/kast/codex-mcp-registration.py',
@@ -282,7 +282,7 @@ PYTHON
         (self.product / "share/kast").mkdir(parents=True)
         (self.product / "share/kast/libexec").mkdir()
         shutil.copy2(self.product / "bin/kast", self.product / "share/kast/libexec/kast-service")
-        self.write_script(self.product / 'bin/kast-mcp-complete', '#!/bin/bash\nexit 0\n')
+        self.write_script(self.product / 'bin/kast-mcp-complete', '#!/usr/bin/env bash\nexit 0\n')
         shutil.copyfile(Path(__file__).with_name('codex-mcp-registration.py'),
                         self.product / 'share/kast/codex-mcp-registration.py')
         shutil.copyfile(Path(__file__).with_name('installation-recovery.py'), self.product / 'share/kast/installation-recovery.py')
@@ -316,7 +316,7 @@ PYTHON
 
     def run_installer(self, *args):
         return subprocess.run(
-            ["/bin/bash", str(PUBLIC_INSTALLER), "--idea-home", str(self.idea), *args],
+            [str(self.fixture.tools['bash']), str(PUBLIC_INSTALLER), "--idea-home", str(self.idea), *args],
             env=self.env,
             capture_output=True,
             text=True,
@@ -327,7 +327,7 @@ PYTHON
         try:
             os.write(master, answer.encode())
             return subprocess.run(
-                ["/bin/bash", str(PUBLIC_INSTALLER), "--idea-home", str(self.idea)],
+                [str(self.fixture.tools['bash']), str(PUBLIC_INSTALLER), "--idea-home", str(self.idea)],
                 env=self.env, stdin=slave, capture_output=True, text=True, timeout=10,
             )
         finally:

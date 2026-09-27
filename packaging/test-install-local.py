@@ -1,8 +1,10 @@
 """Local Gradle installation must use the versioned lifecycle without sibling deletion."""
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -45,9 +47,11 @@ class LocalInstallationTest(unittest.TestCase):
                 marker.parent.mkdir(parents=True)
                 marker.write_text('preserve')
                 markers.append(marker)
-            env = {'PATH': '/usr/bin:/bin', 'HOME': str(root), 'TMPDIR': str(root),
+            tool_path = str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath
+            env = {'PATH': tool_path, 'HOME': str(root), 'TMPDIR': str(root),
                    'KAST_LOCAL_PREFIX': str(prefix), 'KAST_LOCAL_CONTROL_PRODUCT': str(product),
-                   'KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE': str(plugin), 'KAST_LOCAL_JAVA_EXECUTABLE': '/usr/bin/true',
+                   'KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE': str(plugin),
+                   'KAST_LOCAL_JAVA_EXECUTABLE': shutil.which('true', path=os.defpath),
                    'KAST_LOCAL_JAVA_HOME': str(root)}
             result = subprocess.run(['bash', str(script)], env=env, text=True, capture_output=True)
             self.assertEqual(0, result.returncode, result.stderr)

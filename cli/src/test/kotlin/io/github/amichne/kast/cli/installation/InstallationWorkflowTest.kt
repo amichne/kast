@@ -13,6 +13,8 @@ import java.util.zip.ZipOutputStream
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -65,6 +67,19 @@ class InstallationWorkflowTest {
             ),
         )
         val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+        val retention =
+            Json.parseToJsonElement(Files.readString(selected.resolve("installation.json")))
+                .jsonObject
+                .getValue("retention")
+                .jsonObject
+        assertEquals(
+            "until-successful-upgrade-or-explicit-uninstall",
+            retention.getValue("payload").jsonPrimitive.content,
+        )
+        assertEquals(
+            "until-successful-upgrade-or-explicit-uninstall",
+            retention.getValue("config").jsonPrimitive.content,
+        )
         val values =
             Files.readAllLines(selected.resolve("config/environment"))
                 .filterNot { it.startsWith("#") }

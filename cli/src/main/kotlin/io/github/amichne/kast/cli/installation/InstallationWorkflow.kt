@@ -121,8 +121,8 @@ private data class ExternalAnchor(
 
 @Serializable
 private data class Retention(
-    val payload: String = "until-explicit-uninstall",
-    val config: String = "until-explicit-uninstall",
+    val payload: String = "until-successful-upgrade-or-explicit-uninstall",
+    val config: String = "until-successful-upgrade-or-explicit-uninstall",
     val state: String = "after-exact-process-retirement",
     val externalAnchors: String = "after-live-identity-match",
 )

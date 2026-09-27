@@ -43,6 +43,7 @@ object KastServiceMain {
         when (outcome) {
             ServiceControlOutcome.Completed -> Unit
             is ServiceControlOutcome.Registered -> println(outcome.document)
+            is ServiceControlOutcome.Inspected -> println(outcome.document)
             is ServiceControlOutcome.TrustCompleted ->
                 println(serviceControlJson.encodeToString(ServiceTrustCompletionDocument(outcome.status)))
             is ServiceControlOutcome.Rejected -> {
@@ -96,6 +97,7 @@ internal sealed interface ServiceControlSelection {
 }
 
 internal enum class ServiceControlAction(val managerAction: AppServerAction) {
+    STATUS(AppServerAction.Status),
     ENABLE(AppServerAction.Enable),
     DISABLE(AppServerAction.Disable),
     REPAIR(AppServerAction.Repair),
@@ -114,6 +116,7 @@ internal fun selectServiceControl(arguments: List<String>): ServiceControlSelect
         else ServiceControlSelection.Rejected
     }
     return when (arguments) {
+        listOf("status") -> ServiceControlSelection.Selected(ServiceControlAction.STATUS)
         listOf("enable") -> ServiceControlSelection.Selected(ServiceControlAction.ENABLE)
         listOf("disable") -> ServiceControlSelection.Selected(ServiceControlAction.DISABLE)
         listOf("repair", "--destructive") -> ServiceControlSelection.Selected(ServiceControlAction.REPAIR)
@@ -140,6 +143,8 @@ internal sealed interface ServiceControlOutcome {
 
     data class Registered(val document: JsonObject) : ServiceControlOutcome
 
+    data class Inspected(val document: JsonObject) : ServiceControlOutcome
+
     data class TrustCompleted(val status: BrokerTrustStatus) : ServiceControlOutcome
 
     data class Rejected(val failure: ServiceControlFailureDocument) : ServiceControlOutcome
@@ -157,7 +162,9 @@ internal fun executeServiceControl(
     workspace: Path,
 ): ServiceControlOutcome =
     when (val result = manager.execute(action.managerAction, workspace)) {
-        is AppServerManagementResult.Completed -> ServiceControlOutcome.Completed
+        is AppServerManagementResult.Completed ->
+            if (action == ServiceControlAction.STATUS) ServiceControlOutcome.Inspected(result.document)
+            else ServiceControlOutcome.Completed
         is AppServerManagementResult.Rejected ->
             ServiceControlOutcome.Rejected(
                 ServiceControlFailureDocument.Management(result.failure, result.serviceFailure)

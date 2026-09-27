@@ -207,6 +207,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     environment("KAST_INSTALLED_PRODUCT", installedProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
     environment("KAST_HOSTED_PLUGIN_ARCHIVE", hostedPluginArchive.get().asFile.absolutePath)
+    environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     environment("KAST_PROJECT_ROOT", layout.projectDirectory.asFile.absolutePath)
     environment(
         "KAST_INSTALLED_REPORT_DIRECTORY",
@@ -217,13 +218,16 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
 
 val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
     group = "verification"
-    description = "Exercises the staged private facade and stdio compatibility host against Codex."
-    dependsOn(stageInstalledProduct)
+    description = "Installs assembled artifacts in a private fixture and qualifies the Codex host."
+    dependsOn(stageInstalledProduct, assembleKastControlDist, ":runtime:hosted:hostedPlugin")
     inputs.dir(installedProductDirectory)
+    inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
+    inputs.file(hostedPluginArchive)
     inputs.files("packaging/test-installed-codex-host.py", "packaging/installed_codex_lifecycle.py")
     inputs.file("packaging/acceptance_environment.py")
     outputs.file(layout.buildDirectory.file("reports/installed-product/codex-host.json"))
     outputs.upToDateWhen { false }
+    environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     commandLine(
         "python3",
         layout.projectDirectory.file("packaging/test-installed-codex-host.py"),
@@ -231,6 +235,8 @@ val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
         layout.projectDirectory.asFile.absolutePath,
         layout.buildDirectory.file("reports/installed-product/codex-host.json")
             .get().asFile.absolutePath,
+        assembleKastControlDist.get().archiveFile.get().asFile.absolutePath,
+        hostedPluginArchive.get().asFile.absolutePath,
     )
 }
 

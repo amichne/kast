@@ -149,7 +149,7 @@ def install_release(isolation, release: ReleaseInputs, idea) -> ReleasedProduct:
     if (not _physical(product) or not product.is_dir() or not _physical(manifest)
             or manifest.stat().st_size > 67108864 or not _physical(plugins)
             or (root / 'installation/current').resolve() != product
-            or (root / 'bin/kast').resolve() != product / 'bin/kast-complete'):
+            or not _physical(product / 'bin/kast-complete')):
         raise ReleaseRejected(ReleaseFailure.OWNERSHIP)
     document = json.loads(manifest.read_text())
     expected = {'schemaVersion': 2, 'semanticVersion': release.version, 'installationRoot': str(product),
