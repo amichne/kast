@@ -51,9 +51,7 @@ declaration; keep it unchanged for the next call.
 }
 ```
 
-Replace the placeholder with an exact `ref` from step 1. A reference fact
-connects the compiler's subject and source location. An empty result proves
-absence only when Kast reports complete coverage for the requested scope.
+Replace the placeholder with an exact `ref` from step 1. Occurrence output preserves individual relation facts and repeated use sites. An empty result supports an absence claim only when coverage is complete for the requested scope.
 
 ## Read the answer
 
@@ -63,7 +61,4 @@ absence only when Kast reports complete coverage for the requested scope.
 | `partial` | Keep the returned facts and the stop reason; absence is unproven. |
 | `rejected` or `unavailable` | Follow the typed error before making a semantic claim. |
 
-Tool RPC uses `type: "qualified"` for a partial document. The
-[MCP](/reference/mcp-catalog) and [RPC](/reference/rpc-catalog) pages show
-their exact wrappers. See the generated **Query symbols** entry in the API / RPC tab
-for every supported source, step, and output.
+Tool RPC uses `type: "qualified"` for a partial document. The [MCP](/reference/mcp-catalog) and [RPC](/reference/rpc-catalog) pages show their exact wrappers. To filter, expand, walk, combine, or retain results, [compose a query](/query-pipelines). See the generated **Query symbols** entry in the API / RPC tab for the exact installed schema.

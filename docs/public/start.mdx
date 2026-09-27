@@ -5,51 +5,42 @@ icon: "download"
 keywords: ["install", "Codex", "IntelliJ IDEA", "MCP"]
 ---
 
+Kast pairs a persistent service with the matching IntelliJ IDEA plugin. The installer checks the IDE release line and sets up a client connection.
+
 You need macOS on Apple silicon, a Kotlin Gradle repository, and IntelliJ IDEA
 `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
 <Steps>
   <Step title="Install the matched release">
+    Run the installer from a terminal:
+
     ```shell
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    The installer checks the IDEA release line and installs its matching
-    plugin and Kast service. In an interactive terminal, it offers to register
-    a user-level Kast MCP server with Codex. On an upgrade, it removes prior
-    versions that pass ownership checks. It asks before removing each older
-    Kast entry it cannot fully verify; type `yes` for that exact entry, or
-    leave it in place. Noninteractive upgrades report and retain those entries.
+    In an interactive terminal, the installer offers to register Kast as a user-level MCP server with Codex. It installs the IDEA plugin and Kast service for the matched release line. On an upgrade, it removes prior versions that pass ownership checks. It asks before removing each older Kast entry it cannot fully verify; type `yes` for that exact entry, or leave it in place. Noninteractive upgrades report and retain those entries.
   </Step>
   <Step title="Restart IDEA and open your agent">
-    Restart IDEA to load the plugin. Start the agent from the repository or
-    worktree:
+    Restart IntelliJ IDEA so it loads the plugin. Start the agent from the Kotlin repository or worktree you want Kast to inspect:
 
     ```shell
     cd /path/to/kotlin-repository
     codex
     ```
 
-    Kast binds the request to that Gradle root and prepares its IDEA project.
-    A semantic call waits for the required import and indexing state.
+    Kast binds requests to that Gradle root, prepares the IDEA project, and waits for the required import and indexing state. No separate workspace-open or sync request is needed for an ordinary semantic query.
   </Step>
-  <Step title="Ask a project-independent question">
-    > Use Kast to query declarations in this workspace. Show one exact
-    > compiler-backed symbol with its signature, location, `ref`, and coverage.
-    > If no symbol is proven, report the reason.
+  <Step title="Ask a first question">
+    > Use Kast to query declarations in this workspace. Show one exact compiler-backed symbol with its kind, signature, source location, `ref`, and coverage. If no symbol is proven, explain the reason.
 
-    See [query examples](/search) for the tool input and follow-up prompts.
+    The query does not require a project-specific class name. Pass the returned `ref` unchanged to a later query or source read. See [query examples](/search) for the direct tool input.
   </Step>
 </Steps>
 
-## Other clients and install options
+## Connect another client
 
-The [MCP contract](/reference/mcp-catalog) and
-[tool RPC contract](/reference/rpc-catalog) show how other clients discover
-tools. The installer does not add a `kast` command to `PATH`. If another
-integration provides the Codex MCP declaration, pass `-- --skip-codex-mcp`
-to the installer.
+Kast supports direct MCP and the included one-shot Tool RPC adapters from the same installation. The Codex App Server provides a hosted integration; its compatibility status is still preview. Each client should discover the installed catalog after installation or upgrade.
 
-For a second IDEA installation, pass
-`-- --idea-home "/Applications/IntelliJ IDEA.app"`.
-If setup reports a blocker, use the [troubleshooting guide](/troubleshooting).
+The installer does not add a general `kast` command to `PATH`. If another integration supplies the Codex MCP declaration, pass `-- --skip-codex-mcp` to the installer. For a second IDEA installation, pass `-- --idea-home "/Applications/IntelliJ IDEA.app"`.
+
+The [MCP contract](/reference/mcp-catalog) and [Tool RPC contract](/reference/rpc-catalog) show how other clients discover tools. If setup reports a blocker, use the [troubleshooting guide](/troubleshooting).
