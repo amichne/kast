@@ -53,6 +53,7 @@ code_sources:
   - path: packaging/configuration-schema.json
   - path: packaging/installation-lifecycle.py
   - path: packaging/installation-recovery.py
+  - path: packaging/prune-prior-installations.py
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationRecoveryReceipt.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
   - path: install.sh
@@ -266,6 +267,17 @@ observation with its exact outcome. A corrupt prior registry fails prior lifecyc
 admission and keeps the selected installation and declared activation anchors. Failure to stop an exact prior service,
 filesystem failure, and interruption remain explicit failures, rather than being
 reported as successful retirement.
+
+After the selected upgrade receipt is sealed, historical cleanup admits each
+prior version through the lifecycle boundary. A separate review enumerates
+prior Kast processes, login items, recovery bundles, plugin backups, external
+anchors, and version entries that no longer pass admission. It preserves the selected
+version and the plugin backup named by its recovery receipt. A terminal user
+must answer `yes` for each uncertain entry; a declined or unattended entry is
+retained with a finite reason. Process command lines supply runtime evidence
+for version-root tracing, and an exact Kast launchd label is booted out before
+its reviewed login item is removed. A process or entry that changes during
+review is retained.
 
 Selected IDEA discovery retains one canonical home across upgrades. Typed metadata resolution identifies its macOS ARM bundle and executable, rejects ambiguity and escapes, and admits the 262 release line rather than an exact patch. Installation inspection includes the launch observation and persists the derived receipt. A legacy selection can still attach to its live lifecycle endpoint when cold-launch metadata is unavailable.
 

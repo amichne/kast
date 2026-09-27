@@ -123,11 +123,12 @@ assert operation in ('activate-plugin', 'seal-upgrade')
 with open(os.environ['TEST_LOG'], 'a') as log: log.write(('plugin' if operation == 'activate-plugin' else 'seal') + '\\n')
 sys.exit(int(os.environ.get('FAIL_PLUGIN' if operation == 'activate-plugin' else 'FAIL_SEAL', '0')))
 ''',
-            'share/kast/installation-lifecycle.py': b'''import os,sys
+            'share/kast/prune-prior-installations.py': b'''import os,sys
 assert sys.argv[1:3] == ['--installation', os.path.realpath(os.environ['KAST_INSTALL_ROOT'] + '/versions/1.2.4-candidate')]
-assert sys.argv[3:] == ['prune', '--json']
-with open(os.environ['TEST_LOG'], 'a') as log: log.write('prune\\n')
-sys.exit(int(os.environ.get('FAIL_PRUNE', '0')))
+assert sys.argv[3:] == []
+with open(os.environ['TEST_LOG'], 'a') as log: log.write('review\\n')
+print('{"status":"retained","removed":[],"retained":["prior"]}')
+sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
 ''',
         }
         control = assets / 'kast-control-v1.2.4-macos-aarch64.tar.gz'
@@ -149,7 +150,7 @@ sys.exit(int(os.environ.get('FAIL_PRUNE', '0')))
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertEqual(['service', 'plugin', 'seal', 'prune'], log.read_text().splitlines())
+            self.assertEqual(['service', 'plugin', 'seal', 'review'], log.read_text().splitlines())
             self.assertTrue(prior.exists())  # The scripted prune effect is proved separately by lifecycle tests.
 
     def test_failed_plugin_activation_preserves_prior_without_pruning(self):
@@ -164,16 +165,16 @@ sys.exit(int(os.environ.get('FAIL_PRUNE', '0')))
             self.assertEqual(['service', 'plugin'], log.read_text().splitlines())
             self.assertTrue(prior.exists())
 
-    def test_failed_prune_rejects_upgrade_without_claiming_success(self):
+    def test_failed_review_rejects_upgrade_without_claiming_success(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-trap-') as directory:
             idea, environment, prior, log = self.upgrade_fixture(directory)
-            environment['FAIL_PRUNE'] = '19'
+            environment['FAIL_REVIEW'] = '19'
             result = subprocess.run(
                 [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertNotEqual(0, result.returncode)
-            self.assertEqual(['service', 'plugin', 'seal', 'prune'], log.read_text().splitlines())
+            self.assertEqual(['service', 'plugin', 'seal', 'review'], log.read_text().splitlines())
             self.assertTrue(prior.exists())
             self.assertNotIn('installed Kast 1.2.4', result.stderr)
 

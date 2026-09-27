@@ -101,6 +101,9 @@ of the latest stable release.
 Development builds use packaging/install-checkout.sh session|persistent.
 
 Installation enables the app server and its macOS login LaunchAgent by default.
+Upgrades review historical Kast entries one at a time when current ownership
+checks cannot admit them. Only an exact `yes` removes a reviewed entry; without
+a terminal, uncertain entries are retained and reported.
 Interactive persistent installs ask whether to register a user-level Codex MCP
 server. Pass --register-codex-mcp or --skip-codex-mcp to make the choice without
 a prompt. Non-interactive installs default to registration for compatibility.
@@ -587,9 +590,9 @@ cleanup() {
       --installation "$selected" >&2; then
       ui_line error 31 'kast-install: upgrade recovery could not be finalized; prior versions were retained'
       status=1
-    elif ! python3 "$control_root/share/kast/installation-lifecycle.py" \
-      --installation "$selected" prune --json >&2; then
-      ui_line error 31 'kast-install: retired versions were retained; upgrade cleanup is incomplete'
+    elif ! python3 "$control_root/share/kast/prune-prior-installations.py" \
+      --installation "$selected" >&2; then
+      ui_line error 31 'kast-install: prior installation review could not be completed'
       status=1
     fi
   fi

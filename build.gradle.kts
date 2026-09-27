@@ -93,7 +93,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(generatedControlMetadata) {
         into("share/kast")
     }
-    from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/codex-mcp-registration.py")) { into("share/kast") }
+    from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py")) { into("share/kast") }
 }
 
 val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
@@ -303,6 +303,14 @@ val installationLifecycleTest = tasks.register<Exec>("installationLifecycleTest"
     commandLine("python3", layout.projectDirectory.file("packaging/test-installation-lifecycle.py"))
 }
 
+val priorInstallationCleanupTest = tasks.register<Exec>("priorInstallationCleanupTest") {
+    group = "verification"
+    description = "Proves exact user review and selected-installation protection for historical cleanup."
+    inputs.files("packaging/prune-prior-installations.py", "packaging/installation-lifecycle.py",
+        "packaging/installation-recovery.py", "packaging/test-prune-prior-installations.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-prune-prior-installations.py"))
+}
+
 val localInstallationTest = tasks.register<Exec>("localInstallationTest") {
     group = "verification"
     inputs.files("packaging/install-local.sh", "packaging/test-install-local.py")
@@ -329,6 +337,7 @@ val productBuildGate = tasks.register("productBuildGate") {
         isolatedAcceptanceEnvironmentTest,
         acceptanceIdeaInputTest,
         installationLifecycleTest,
+        priorInstallationCleanupTest,
         installationRecoveryTest,
         installationSystemPythonTest,
         localInstallationTest,
