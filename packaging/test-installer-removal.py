@@ -5,13 +5,13 @@ import json
 import subprocess
 import unittest
 from pathlib import Path
-from acceptance_environment import AcceptanceEnvironment, admitted_tools
+from installer_fixture import InstallerFixture, admitted_tools
 
 INSTALLER = Path(__file__).resolve().parent.parent / 'install.sh'
 
 class InstallerRemovalTest(unittest.TestCase):
     def setUp(self):
-        self.fixture = AcceptanceEnvironment(admitted_tools())
+        self.fixture = InstallerFixture(admitted_tools())
         self.fixture.__enter__()
         self.env = self.fixture.environment.copy()
         for key in tuple(self.env):

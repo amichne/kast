@@ -4,14 +4,12 @@ from pathlib import Path
 import os
 import platform
 import re
-import select
 import subprocess
 import sys
 import tempfile
 
 
 ROOT = Path(__file__).resolve().parent.parent
-NATIVE_ENTRYPOINTS = {'test-installed-codex-host.py'}
 SKIP_SUMMARY = re.compile(r'\bskipped=([0-9]+)\b')
 
 
@@ -19,16 +17,12 @@ def expected_skips() -> dict[str, int]:
     permitted = {}
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
         permitted['test-install-checkout.py'] = 15
-    if not hasattr(select, 'kqueue'):
-        permitted['test-hosted-peer-probe.py'] = 1
-        permitted['test-hosted-read-regression.py'] = 1
     return permitted
 
 
 def main() -> int:
     tests = tuple(sorted((ROOT / 'packaging').glob('test-*.py')))
-    offline = tuple(path for path in tests if path.name not in NATIVE_ENTRYPOINTS)
-    if not offline or {path.name for path in tests if path not in offline} != NATIVE_ENTRYPOINTS:
+    if not tests:
         print('portable-tests: test inventory rejected', file=sys.stderr)
         return 2
     permitted_skips = expected_skips()
@@ -44,7 +38,7 @@ def main() -> int:
             'XDG_STATE_HOME': str(owned / 'state'), 'XDG_CACHE_HOME': str(owned / 'cache'),
             'PYTHONDONTWRITEBYTECODE': '1', 'LC_ALL': 'C', 'TZ': 'UTC',
         }
-        for path in offline:
+        for path in tests:
             log = owned / f'{path.stem}.log'
             with log.open('xb') as output:
                 try:
@@ -68,7 +62,7 @@ def main() -> int:
                 print(summary, file=sys.stderr)
                 return 1
             print(f'portable-tests: {path.name}: passed, {observed_skips} skipped', flush=True)
-    print(f'portable-tests: {len(offline)} suites passed; {sum(permitted_skips.values())} platform cases skipped')
+    print(f'portable-tests: {len(tests)} suites passed; {sum(permitted_skips.values())} platform cases skipped')
     return 0
 
 

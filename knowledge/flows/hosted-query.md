@@ -10,9 +10,6 @@ code_sources:
     symbols: [selectCliRuntimePath]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedProjectAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedGradleChangeTracker.kt
-  - path: packaging/hosted_wire_schema.py
-  - path: packaging/hosted_peer_probe.py
-  - path: packaging/hosted_concurrent_read.py
   - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPublicationDeadlineTest.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadFailureReports.kt
@@ -22,16 +19,11 @@ code_sources:
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadAllowanceIdentityTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedContinuationOwnerRetentionTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryUnsupportedIdentityTest.kt
-  - path: packaging/hosted_resume_budget_regression.py
-  - path: packaging/test-hosted-resume-budget-regression.py
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
-  - path: packaging/hosted_read_transport.py
-  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeReadRequest.kt
-  - path: packaging/hosted_transport_observation.py
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryLifetime.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
@@ -590,38 +582,11 @@ entries simultaneously, and verifies that changing the epoch retires all four.
 This is entry-composition and detached-identity evidence. It does not measure
 heap use or replace unchanged-fixture native execution parity for larger grants.
 
-The installed resume-budget helper defines twelve bounded cases per surface:
-query symbols, source and query occurrences, each with independently larger elapsed-time,
-work, result and byte allowances. Complete query and source drains retain exact
-record order, source child ranges, snapshots and saved text. Query occurrence drains retain
-the multiset of full occurrences and compiler evidence, including duplicates, plus
-canonical order within each returned page. Native cursor order and page-local
-relation sorting can change global concatenation order when grants change page
-boundaries; this does not relax occurrence identity or per-page order. Issued upstream
-and retained-output checkpoints keep their distinct request positions.
-Each drain admits at most sixteen pages and one thousand
-records, rejects repeated tokens or changed authority/grants, and records only
-finite assertion names and counts. A complete low-grant page requires no invented
-continuation; time/work cases do not claim a deterministic wall-clock cutoff.
-A query occurrence page stopped by a result, byte, time or work limit retains an
-`unmeasured_on_page` omission, matching limitation, available checkpoint, empty
-samples and `INCREASE_READ_LIMIT` remediation. Permanent omissions remain equal
-to the baseline; the final drain restores its final omissions. An unmeasured
-page remainder does not assert observed missing occurrences in the final drain.
-
-Traversal cross-grant drains likewise compare full occurrence and proof multisets,
-final edge/depth progress and terminal partial expansions. Retained suffix replay
-separately preserves ordered records and restores its upstream coverage.
-Local Python checks qualify this orchestration and comparison logic. Native
-parity requires invoking the helper through the integrated staged artifact;
-its presence alone is not an installed-product qualification result.
-
-Native malformed, saturated, and health peer responses are validated in memory
-against the hosted endpoint schema extracted from the exact staged product jar.
-Peer receipts retain the schema digest only after validation. Missing, duplicate,
-or invalid embedded schemas fail closed; disconnected peers do not claim a reply.
-This endpoint evidence is separate from canonical tool-document and actual
-provider-envelope validation.
+The former Python cross-grant oracle and staged-peer acceptance checks were
+retired with the Python native harness. Kotlin query, source, protocol and
+hosted-runtime tests own the current production rules for paging, continuation,
+schema admission and finite failures. An installed native parity claim requires
+a separate runtime observation.
 
 Relation pages retain canonical order within each page. Cross-grant drains
 preserve the full occurrence multiset; changing page boundaries does not promise
@@ -639,7 +604,7 @@ candidate prefix, including its local selection table and retained-output cursor
 An indivisible source text that prevents any prefix fitting becomes explicitly
 withheld with text-byte qualification; source bytes are never truncated.
 
-The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads and remains available to the disposable native acceptance fixture over the owned socket. The public `workspace_lifecycle` input no longer selects a refresh effect or task-success rule. The hosted endpoint saves project-owned editor buffers and waits for native incremental recursive VFS refresh before ordinary semantic dispatch and lifecycle opening; failures are finite and observed at that boundary. Explicit file refresh keeps forced dirty marking for external writes. Native lifecycle admission preserves host, project and request identities; pending results remain qualified and failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and internal task rule.
+The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads over the owned socket. The public `workspace_lifecycle` input no longer selects a refresh effect or task-success rule. The hosted endpoint saves project-owned editor buffers and waits for native incremental recursive VFS refresh before ordinary semantic dispatch and lifecycle opening; failures are finite and observed at that boundary. Explicit file refresh keeps forced dirty marking for external writes. Native lifecycle admission preserves host, project and request identities; pending results remain qualified and failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and internal task rule.
 
 Fresh exact-symbol reads use the request-local acquisition wrapper described in
 [query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).

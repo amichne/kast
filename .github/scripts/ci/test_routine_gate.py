@@ -1,5 +1,5 @@
 import unittest
-from routine_gate import inspect, REQUIRED, QUALIFICATION
+from routine_gate import inspect, REQUIRED
 
 
 class RoutineGateTest(unittest.TestCase):
@@ -8,16 +8,6 @@ class RoutineGateTest(unittest.TestCase):
 
     def test_required_proofs_remain_in_routine_gate(self):
         self.assertEqual("complete", inspect(self.output(REQUIRED))["status"])
-
-    def test_each_qualification_task_rejects_even_with_required_proofs(self):
-        for task in QUALIFICATION:
-            with self.subTest(task=task):
-                report = inspect(self.output(REQUIRED | {task}))
-                self.assertEqual([{"condition": "RUNTIME_QUALIFICATION_REQUIRED", "task": task}], report["findings"])
-
-    def test_hosted_change_acceptance_cannot_enter_routine_ci(self):
-        report = inspect(self.output(REQUIRED | {":hostedChangeAcceptance"}))
-        self.assertEqual([{"condition": "RUNTIME_QUALIFICATION_REQUIRED", "task": ":hostedChangeAcceptance"}], report["findings"])
 
     def test_removing_required_proof_rejects(self):
         for task in REQUIRED:

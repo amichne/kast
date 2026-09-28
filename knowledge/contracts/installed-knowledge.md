@@ -20,7 +20,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/AdmittedKnowledge.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeInventoryAdmission.kt
-  - path: packaging/test-installed-product.sh
+  - path: packaging/run-installed-product.py
 ---
 
 # Installed knowledge

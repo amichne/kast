@@ -1,9 +1,10 @@
 # Existing-IDE declaration change acceptance
 
-Status: the installed matrix passed on September 11, 2026, at clean source
+Historical record: the installed matrix passed on September 11, 2026, at clean source
 `aa95c7652a7d713f6bae00ed6a82fbc1a1080d43`: 126/126 read cases and 30/30 native
-change cases. The canonical catalog now includes the three deferred change tools.
-Final release artifacts must pass the same matrix at their exact source identity.
+change cases. The Python runner and its Gradle task were later retired. Commands
+and catalog descriptions below record that run; they are not current validation
+instructions or evidence for a later release.
 
 ## Qualification record
 
@@ -59,11 +60,11 @@ evidence without creating a published workspace generation.
 
 ## Evidence boundaries
 
-`hostedChangeAcceptance` runs a dedicated imported fixture in a private IDE
-sandbox with staged release artifacts. Setup includes fixture creation, initial
-Gradle import and plugin installation. Measured requests use the production
+The retired `hostedChangeAcceptance` task ran a dedicated imported fixture in a private IDE
+sandbox with staged release artifacts. Setup included fixture creation, initial
+Gradle import and plugin installation. Measured requests used the production
 broker, provider, CLI and hosted plugin. A scripted native protocol controller
-supplies the client/upstream transport and approval decisions.
+supplied the client/upstream transport and approval decisions.
 
 The separately packaged fixture probe observes saved bytes, document state,
 direct-container PSI declarations and the actual Undo command. Its controls
@@ -92,10 +93,9 @@ generated contracts, knowledge validation and the JSON construction ratchet:
 ./gradlew productBuildGate
 ```
 
-Native qualification is opt-in and separate. See the root
-[development instructions](../../README.md) for the required staged artifacts
-and `hostedChangeAcceptance` properties. A dirty-tree diagnostic run cannot
-qualify a release.
+The retired native qualification was opt-in and separate. Its recorded command
+and properties describe the historical run above; the current product gate does
+not establish live IDEA or Codex qualification.
 
 ## Interpretation limits
 

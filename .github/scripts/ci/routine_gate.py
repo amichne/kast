@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the resolved Gradle gate keeps runtime qualification out of routine CI."""
+"""Verify the resolved Gradle gate retains its required proofs."""
 from enum import Enum
 from pathlib import Path
 import json
@@ -8,11 +8,6 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
 PRODUCT_GATE_COMMAND = ["python3", "distribution/release/run_product_gate.py"]
-QUALIFICATION = frozenset({
-    ":installedTwoWorkspaceTest", ":installedCodexHostTest",
-    ":app-server:generateCodexHostIntegrationManifest", ":runtimeQualification",
-    ":hostedChangeAcceptance",
-})
 REQUIRED = frozenset({
     ":productBuildGate", ":productGateVersionTest", ":cli:test", ":cli:nativeTest", ":app-server:test",
     ":runtime:hosted:test", ":workspace:intellij-read:test", ":query:protocol:test", ":evidence:sqlite:test",
@@ -20,21 +15,18 @@ REQUIRED = frozenset({
     ":evidence:topology-sqlite:test",
     ":verifyKastArchitecture", ":verifyConfigurationIngress", ":installedProductTest",
     ":testCheckoutInstaller", ":installationLifecycleTest", ":installerRemovalTest",
-    ":localInstallationTest", ":isolatedAcceptanceEnvironmentTest", ":acceptanceIdeaInputTest",
+    ":localInstallationTest", ":installerFixtureTest",
 })
 
 
 class Failure(str, Enum):
-    RUNTIME_QUALIFICATION_REQUIRED = "RUNTIME_QUALIFICATION_REQUIRED"
     REQUIRED_PROOF_MISSING = "REQUIRED_PROOF_MISSING"
 
 
 def inspect(output):
     tasks = frozenset(re.findall(r"^(:\S+) SKIPPED$", output, re.MULTILINE))
-    findings = [dict(condition=Failure.RUNTIME_QUALIFICATION_REQUIRED.value, task=task)
-                for task in sorted(tasks & QUALIFICATION)]
-    findings += [dict(condition=Failure.REQUIRED_PROOF_MISSING.value, task=task)
-                 for task in sorted(REQUIRED - tasks)]
+    findings = [dict(condition=Failure.REQUIRED_PROOF_MISSING.value, task=task)
+                for task in sorted(REQUIRED - tasks)]
     return dict(status="rejected" if findings else "complete", tasks=sorted(tasks), findings=findings)
 
 

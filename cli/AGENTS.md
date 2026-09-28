@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: f769f85925fc -->
+<!-- generated: 2026-09-28 | hash: e058bf43186d -->
 
 # cli
 

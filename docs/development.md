@@ -24,7 +24,7 @@ budget next to the fixture, including any reason it needs a wider boundary.
 | Interpretation of an external observation | Required injected boundary with strict scripted observations | Child exit, I/O failure or deadline mapped to the existing retirement outcome |
 | Filesystem or process-adapter semantics | One private root with the necessary files, links, locks or trivial child | Canonical-path admission, before/after identity checks, invocation arguments and environment |
 | Compiler or platform semantics | Existing compiler/IntelliJ fixture for the required model and operation | Symbol resolution or a platform-owned project transition |
-| Native product composition | Existing opt-in suite in an explicitly disposable/authorized environment | Actual IDEA/plugin lifecycle or service registration |
+| Native product composition | Explicitly disposable, authorized environment | Actual IDEA/plugin lifecycle or service registration; routine tests do not establish this |
 
 Build tools, compilation and the test runner are outside the operation's dependency
 budget. A filesystem-free Kotlin case still needs a JVM and its declared build
@@ -89,27 +89,15 @@ The runner mounts the checkout read-only, disables network access, and gives eac
 test process an owned home, executable temp directory for fixture scripts, and
 tool path. Installer policy tests supply a private `uname` observation for the
 supported macOS case and separately assert rejection of Linux. It includes every
-`packaging/test-*.py` suite except `test-installed-codex-host.py`, which requires
-an installed macOS product, IntelliJ IDEA, and an installed Codex executable.
-Platform-specific cases inside those suites remain gated to macOS; the Linux
-container does not qualify them. The runner rejects unexpected skips and reports
-the expected platform skip count (currently 17 on Linux, zero on macOS arm64).
+remaining `packaging/test-*.py` suite. Platform-specific installer cases remain
+gated to macOS; the Linux container does not qualify them. The runner rejects
+unexpected skips and reports the expected platform skip count (currently 15 on
+Linux, zero on macOS arm64).
 CI runs this container suite on a disposable Ubuntu runner for every pull request
 and main push, alongside the macOS product checks.
 Run the same offline inventory without Docker using
-`.venv/bin/python packaging/run-portable-tests.py` after provisioning the pinned
-Python test environment. A container pass proves the offline contract and
-process tests on Linux; native IDEA and Codex evidence comes from its separate
-macOS runner.
-
-On a macOS host, qualify the installed Codex integration with explicitly
-selected IDEA and Codex binaries:
-
-```shell
-KAST_ACCEPTANCE_IDEA_HOME=/absolute/path/to/IDEA.app/Contents \
-KAST_ACCEPTANCE_CODEX_EXECUTABLE=/absolute/path/to/codex \
-  ./gradlew runtimeQualification
-```
+`python3 packaging/run-portable-tests.py`. A container pass proves the offline installer contract
+and process tests on Linux. It does not establish native IDEA or Codex behavior.
 
 Report the command, observed result and evidence level: pure policy, private
 filesystem/process adapter, compiler/platform fixture or native composition. Name
@@ -203,54 +191,7 @@ After changing source-bound knowledge, run from the repository root:
 ./gradlew knowledgeImpact verifyKnowledgeBase
 ```
 
-## Run native change acceptance
-
-The opt-in task stages matched CLI, broker, and plugin artifacts, then creates
-and imports a private Kotlin fixture. Supply an IDEA installation, generated
-JSON schemas from the installed Codex version, and a new report path:
-
-```shell
-./gradlew hostedChangeAcceptance \
-  -PhostedIdeaHome=/absolute/path/to/idea \
-  -PhostedCodexSchemas=/absolute/path/to/codex-schemas \
-  -PhostedChangeReport=/absolute/path/to/new-change-receipt.json
-```
-
-Release qualification requires a clean checkout. For a development run,
-`-PhostedDiagnosticDirty=true` permits dirty source and records it as unqualified.
-The receipt distinguishes native observations, deterministic tests, and stock
-Codex Desktop compatibility. See the [native change acceptance
-record](reviews/plugin-native-change-acceptance.md) for the tested boundary.
-
 For a damaged installation, use the [recovery runbook](installation-recovery.md).
-
-## Run native lifecycle smoke
-
-This is the designated native lifecycle composition entry point for the focused
-configuration/retirement examples. It has no direct Gradle task; the commands below
-build its inputs and invoke it explicitly. Run native exploration only in a
-disposable/authorized environment, with no fallback to a developer installation.
-
-Build the matched development artifacts, then use the existing disposable graphical
-IDEA fixture. This stages a private profile and two trusted fixture roots; it does
-not control your regular IDEA process or profile.
-
-```shell
-./gradlew stageKastControlProduct :runtime:hosted:hostedPlugin
-python3 packaging/run-hosted-lifecycle-smoke.py \
-  --idea-home '/absolute/path/IntelliJ IDEA.app/Contents' \
-  --product build/control-product \
-  --plugin runtime/hosted/build/distributions/kast-ide-hosted-v<VERSION>-idea-262.zip \
-  --report /absolute/path/to/lifecycle-smoke.json
-```
-
-Use the version from the staged product metadata. The bounded smoke checks
-zero-project control, existing-settings import, first linking, separate project
-identities, reuse, reload, release, normal closure, and retained closure status.
-It does not establish fresh public installation, launchd registration, plugin
-restart, focus behavior, cold launch into the normal user profile, or interactive
-veto and unsaved-editor behavior. See the
-[lifecycle verification record](reviews/ide-lifecycle-acceptance.md).
 
 ### Installer development inputs
 
