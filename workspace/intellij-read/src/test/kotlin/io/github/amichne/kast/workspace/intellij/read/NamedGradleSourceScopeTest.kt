@@ -31,6 +31,14 @@ class NamedGradleSourceScopeTest {
     }
 
     @Test
+    fun `complete model with no physical source roots admits an empty scope`() {
+        val scope =
+            NamedGradleSourceScope.admit(root, NamedGradleModelObservation.Captured(emptyList()), emptyList()).value()
+        assertTrue(scope.model.sourceRoots.isEmpty())
+        assertFalse(scope.contains(Path.of("/workspace/code/Main.kt"), SymbolDiscoverySourceSets.All))
+    }
+
+    @Test
     fun `missing cached model and missing nested ownership cannot become empty scopes`() {
         assertEquals(
             NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE,
@@ -117,10 +125,7 @@ class NamedGradleSourceScopeTest {
                     .failure(),
             )
         assertEquals(
-            setOf(
-                WorkspaceSearchScopeModelFailure.SOURCE_ROOT_OUTSIDE_WORKSPACE,
-                WorkspaceSearchScopeModelFailure.NO_SOURCE_ROOTS,
-            ),
+            setOf(WorkspaceSearchScopeModelFailure.SOURCE_ROOT_OUTSIDE_WORKSPACE),
             rejected.cause.failures,
         )
     }

@@ -17,9 +17,21 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtUserType
 
-internal enum class CallOwnershipFailure(val limitation: RelationLimitation) {
-    UNSUPPORTED_BOUNDARY(RelationLimitation.UNSUPPORTED_ITEM),
-    UNRESOLVED_ARGUMENT_MAPPING(RelationLimitation.UNRESOLVED_TARGET),
+internal sealed interface CallOwnershipFailure {
+    sealed interface Incomplete : CallOwnershipFailure {
+        val limitation: RelationLimitation
+    }
+
+    data object UnsupportedBoundary : Incomplete {
+        override val limitation = RelationLimitation.UNSUPPORTED_ITEM
+    }
+
+    data object UnresolvedArgumentMapping : Incomplete {
+        override val limitation = RelationLimitation.UNRESOLVED_TARGET
+    }
+
+    /** A proven callback boundary has no named caller edge in the static call graph. */
+    data object ExcludedCallback : CallOwnershipFailure
 }
 
 internal sealed interface ContainingDeclaration {
@@ -36,6 +48,8 @@ internal sealed interface SupportedContainingDeclaration {
     data object Unsupported : SupportedContainingDeclaration
 
     data object Unresolved : SupportedContainingDeclaration
+
+    data object Excluded : SupportedContainingDeclaration
 }
 
 internal sealed interface OccurrenceProvenance {
@@ -153,8 +167,9 @@ internal fun PsiElement.nearestSupportedCallable(
             }
         is Refinement.Rejected ->
             when (owner.failure) {
-                CallOwnershipFailure.UNSUPPORTED_BOUNDARY -> SupportedContainingDeclaration.Unsupported
-                CallOwnershipFailure.UNRESOLVED_ARGUMENT_MAPPING -> SupportedContainingDeclaration.Unresolved
+                CallOwnershipFailure.UnsupportedBoundary -> SupportedContainingDeclaration.Unsupported
+                CallOwnershipFailure.UnresolvedArgumentMapping -> SupportedContainingDeclaration.Unresolved
+                CallOwnershipFailure.ExcludedCallback -> SupportedContainingDeclaration.Excluded
             }
     }
 

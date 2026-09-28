@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli.direct
 import io.github.amichne.kast.cli.InstalledHostedToolDocument
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.cli.mcp.healthInputSchema
-import io.github.amichne.kast.cli.mcp.validationInputSchema
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.github.amichne.kast.protocol.registry.SupportToolHost
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
@@ -39,7 +38,6 @@ internal fun directSupportTools(): List<DirectToolDocument> =
             val input =
                 when (identity) {
                     SupportToolIdentity.HEALTH_CHECK -> healthInputSchema()
-                    SupportToolIdentity.VALIDATE_WORKSPACE -> validationInputSchema()
                     SupportToolIdentity.WORKSPACE_LIFECYCLE -> error("Workspace lifecycle has no direct binding")
                 }
             val objectInput = input as? JsonObject ?: error("Support tool input schema must be an object")

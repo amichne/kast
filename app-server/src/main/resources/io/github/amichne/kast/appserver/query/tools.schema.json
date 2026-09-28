@@ -1783,12 +1783,6 @@
       "description": "Observe exact workspace binding and saved/indexed readiness. This passive check does not validate semantic answers.",
       "binding": "McpHealthRequest",
       "hosts": ["MCP", "RPC"]
-    },
-    {
-      "name": "validate_workspace",
-      "description": "Run explicit read-only declaration, exact-symbol, source, query relation, and IDE diagnostic probes. Supply sourceSetName for custom Gradle source sets. Each probe reports passed, failed, or unverified independently.",
-      "binding": "McpValidationRequest",
-      "hosts": ["MCP", "RPC"]
     }
   ],
   "contractVersion": 2

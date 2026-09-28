@@ -8,6 +8,7 @@ import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.boundaryExit
+import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -31,6 +32,11 @@ class McpInvestigationToolsTest {
     @TempDir lateinit var root: Path
 
     @Test
+    fun `public direct support catalog excludes workspace validation`() {
+        assertEquals(listOf("health_check"), directSupportTools().map { it.name })
+    }
+
+    @Test
     fun `health reports native readiness without making a semantic call`() {
         Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         var statusCalls = 0
@@ -44,10 +50,7 @@ class McpInvestigationToolsTest {
             )
         }
         val capabilities = ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native)
-        val tools =
-            McpInvestigationTools(root, capabilities, setOf("QUERY_RUN", "SOURCE_READ")) { _, _ ->
-                error("semantic read must not run")
-            }
+        val tools = McpInvestigationTools(root, capabilities, setOf("QUERY_RUN", "SOURCE_READ"))
         val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.Complete, exit.document.value)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
@@ -76,9 +79,7 @@ class McpInvestigationToolsTest {
                 launchDirectory,
                 ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
                 setOf("QUERY_RUN", "SOURCE_READ"),
-            ) { _, _ ->
-                error("semantic read must not run")
-            }
+            )
         val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.Complete, exit.document.value)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
@@ -100,9 +101,7 @@ class McpInvestigationToolsTest {
                 root,
                 ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
                 setOf("QUERY_RUN"),
-            ) { _, _ ->
-                error("semantic read must not run")
-            }
+            )
         val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.OperationRejected)
         val result = Json.parseToJsonElement(exit.document.value).jsonObject

@@ -171,13 +171,16 @@ root. No directory names or filesystem containment establish build ownership.
 
 Only admitted modules reach `LiveSelectedGradleModuleRoots`; foreign roots cannot
 contribute entries, exclusions, root-budget usage, or mapping failures. Missing
-ownership still rejects. Selected-build unavailable folders, unsupported kinds,
-missing cached owners, and classification mismatches still reject with bounded
-module/root evidence. The hosted failure DTO and diagnostic outcome preserve that
-evidence, including explicit truncation and both sides of classification mismatches.
+ownership still rejects. A declared folder without a physical directory is
+counted and excluded from IDEA roots; it does not reject a selected build. An
+absent folder that is not declared by Gradle, an unsupported kind, a missing
+cached owner, or a classification mismatch still rejects with bounded module/root
+evidence. The hosted failure DTO and diagnostic outcome preserve that evidence,
+including explicit truncation and both sides of classification mismatches.
 Separate selected/foreign module counters describe successful admission decisions.
 
-Missing or inconsistent ownership rejects before name filtering. Most-specific roots win,
+An imported model with no source roots admits a complete empty scope. Missing or
+inconsistent ownership rejects before name filtering. Most-specific roots win,
 including generated, excluded and resource roots; an unknown nested source-folder
 kind rejects rather than inheriting an allowed parent. This gate performs no import
 or sync.

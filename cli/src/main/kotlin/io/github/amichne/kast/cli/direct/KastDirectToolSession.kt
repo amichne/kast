@@ -63,9 +63,6 @@ internal class KastDirectToolSession(
                 if (request.identity == PublicToolIdentity.ADD_DECLARATION) change.invoke(request)
                 else executeAdmittedPublicTool(request, directory, capabilities)
             }
-            val invokeRead: (String, JsonObject) -> CliExit = { name, arguments ->
-                admitAndInvokePublic(name, arguments, invokePublic)
-            }
             val investigation =
                 McpInvestigationTools(
                     directory,
@@ -74,7 +71,6 @@ internal class KastDirectToolSession(
                         .filter { it.name.value != PublicToolIdentity.ADD_DECLARATION.toolName }
                         .map { it.operation.operation.id.value.uppercase().replace('.', '_') }
                         .toSet(),
-                    invokeRead,
                 )
             return KastDirectToolSession(
                 catalog = selected.map { catalog.getValue(it.name.value).directToolDocument() } + directSupportTools(),

@@ -28,10 +28,7 @@ class WorkspaceSearchScopeSourceRootPolicyTest {
                 listOf(raw.copy(sourceSetName = " ")),
             )
         assertEquals(
-            setOf(
-                WorkspaceSearchScopeModelFailure.INVALID_SOURCE_SET_NAME,
-                WorkspaceSearchScopeModelFailure.NO_SOURCE_ROOTS,
-            ),
+            setOf(WorkspaceSearchScopeModelFailure.INVALID_SOURCE_SET_NAME),
             assertInstanceOf<WorkspaceSearchScopeModelCompilation.Rejected>(rejected).failures,
         )
     }

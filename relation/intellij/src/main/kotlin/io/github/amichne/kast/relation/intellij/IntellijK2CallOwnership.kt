@@ -29,22 +29,27 @@ internal fun refineCallOwnership(
     val result =
         when (lexical) {
             is ContainingDeclaration.Found -> Refinement.Refined(lexical)
-            ContainingDeclaration.Unsupported -> Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
+            ContainingDeclaration.Unsupported -> Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
             is ContainingDeclaration.Deferred -> {
                 val literal = lexical.boundary as? KtFunctionLiteral
-                if (literal == null) Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
+                if (literal == null) Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
                 else analyze(literal) { refineInlineOwner(lexical) }
             }
         }
     when (result) {
         is Refinement.Refined -> observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_FOUND)
         is Refinement.Rejected -> {
-            observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_UNAVAILABLE)
             when (result.failure) {
-                CallOwnershipFailure.UNSUPPORTED_BOUNDARY ->
+                CallOwnershipFailure.ExcludedCallback ->
+                    observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_EXCLUDED)
+                CallOwnershipFailure.UnsupportedBoundary -> {
+                    observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_UNAVAILABLE)
                     observation.terminated(IntellijReadTermination.RELATION_CALL_OWNER_UNSUPPORTED)
-                CallOwnershipFailure.UNRESOLVED_ARGUMENT_MAPPING ->
+                }
+                CallOwnershipFailure.UnresolvedArgumentMapping -> {
+                    observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_UNAVAILABLE)
                     observation.terminated(IntellijReadTermination.K2_UNRESOLVED_SYMBOL)
+                }
             }
         }
     }
@@ -65,7 +70,7 @@ private fun KaSession.refineInlineOwner(
     return when (owner) {
         is ContainingDeclaration.Found -> Refinement.Refined(owner)
         is ContainingDeclaration.Deferred,
-        ContainingDeclaration.Unsupported -> Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
+        ContainingDeclaration.Unsupported -> Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
     }
 }
 
@@ -74,25 +79,49 @@ private fun KaSession.inlineEnclosingOwner(
 ): Refinement<ContainingDeclaration, CallOwnershipFailure> {
     val lambda =
         owner.boundary.parent as? KtLambdaExpression
-            ?: return Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
+            ?: return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
     val argument =
-        lambda.parent as? KtValueArgument ?: return Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
+        lambda.parent as? KtValueArgument ?: return Refinement.Rejected(CallOwnershipFailure.ExcludedCallback)
     val call =
         when (val container = argument.parent) {
             is KtCallElement -> container
             is KtValueArgumentList -> container.parent as? KtCallElement
             else -> null
-        } ?: return Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
-    val resolved = call.resolveCall() ?: return Refinement.Rejected(CallOwnershipFailure.UNRESOLVED_ARGUMENT_MAPPING)
+        } ?: return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
+    val resolved = call.resolveCall() ?: return Refinement.Rejected(CallOwnershipFailure.UnresolvedArgumentMapping)
     val function =
         resolved.signature.symbol as? KaNamedFunctionSymbol
-            ?: return Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
+            ?: return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
     val parameter =
         resolved.valueArgumentMapping[lambda]?.symbol
-            ?: return Refinement.Rejected(CallOwnershipFailure.UNRESOLVED_ARGUMENT_MAPPING)
-    if (!function.isInline) return Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
-    if (parameter.isNoinline || parameter.isCrossinline || parameter.returnType !is KaFunctionType) {
-        return Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY)
+            ?: return Refinement.Rejected(CallOwnershipFailure.UnresolvedArgumentMapping)
+    when (
+        classifyInlineCallback(
+            function.isInline,
+            parameter.isNoinline,
+            parameter.isCrossinline,
+            parameter.returnType is KaFunctionType,
+        )
+    ) {
+        InlineCallbackClassification.INLINE -> Unit
+        InlineCallbackClassification.EXCLUDED -> return Refinement.Rejected(CallOwnershipFailure.ExcludedCallback)
     }
     return Refinement.Refined(call.nearestDeclaration())
 }
+
+internal enum class InlineCallbackClassification {
+    INLINE,
+    EXCLUDED,
+}
+
+internal fun classifyInlineCallback(
+    inlineFunction: Boolean,
+    noinlineParameter: Boolean,
+    crossinlineParameter: Boolean,
+    functionParameter: Boolean,
+): InlineCallbackClassification =
+    when {
+        inlineFunction && !noinlineParameter && !crossinlineParameter && functionParameter ->
+            InlineCallbackClassification.INLINE
+        else -> InlineCallbackClassification.EXCLUDED
+    }
