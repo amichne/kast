@@ -17,6 +17,27 @@ The [MCP](/reference/mcp-catalog) and [RPC](/reference/rpc-catalog) contracts
 show their exact wrappers. The generated **Query symbols** entry in this tab
 defines its canonical document.
 
+## Compact output
+
+Every public tool accepts an optional root-level boolean `verbose`. Omit it or use
+`false` for compact output. Use `true` to include execution and host details:
+
+```json
+{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"Order"}},"verbose":true}
+```
+
+For `check_diagnostics`, `add_declaration`, `replace_body`, `health_check`, and hosted `workspace_lifecycle`, put
+`verbose` beside their existing arguments as well. Strings such as `"true"`, null,
+and numbers are rejected.
+
+Compact output preserves semantic results, coverage and limitations, exact references,
+retained-result identities, continuation and recovery evidence. It omits redundant
+continuation fields when the qualified progress already carries the token, empty
+failure lists, host bookkeeping, completed diagnostic progress, and the duplicate
+plan preview after a verified mutation. The application still contains the actual
+diff, receipt, and any fresh reference. Verbosity does not change execution or
+retained evidence.
+
 ## What the semantic document proves
 
 | Canonical status | Claim |
@@ -33,3 +54,17 @@ failure fields verbatim.
 Diagnostics cover the reported IDEA analysis scope; they do not assert a
 whole-project build. A source or relation read can also return useful facts
 with explicit limits.
+
+## Drain a bounded query
+
+`knownMinimum` counts the logical query's final output, including rows already
+delivered. It does not count the remaining presentation suffix or unfiltered
+provider candidates. A complete 54-row result split into five-row output pages
+retains a minimum of 54 on every qualified presentation page.
+
+Pass continuations unchanged. Output pages and retained-result reads drain
+detached rows; semantic continuations resume retained execution state. Draining
+output does not remove semantic omissions or make qualified coverage complete.
+If required state expires or cannot be retained, the result is terminal or
+rejected with a finite reason. Start a new query explicitly when necessary;
+replaying an unavailable token does not restart semantic execution.

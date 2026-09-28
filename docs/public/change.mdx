@@ -20,7 +20,7 @@ First use a [query](/search) to obtain the target symbol reference. The change i
 }
 ```
 
-The generated [Add declaration schema](/api-reference/add-declaration) defines the request. Pass the returned reference unchanged.
+The generated [Add declaration schema](/api-reference/add-declaration) defines the request. Pass the returned reference unchanged. Both compact `exact:v5:…` and inline `exact:v3:…` references are opaque: never rewrite the prefix or substitute a candidate, continuation, or result token.
 
 For a body replacement, pass the same kind of exact function reference and one
 complete Kotlin block, including braces:
@@ -40,6 +40,16 @@ unchanged.
 ## Read the receipt
 
 A successful change returns verification and a receipt. If the operation is uncertain, preserve its plan identity and recovery evidence. A rejected request or lost response does not prove that no write occurred.
+
+After a verified replacement, pass its returned `freshRef` unchanged to a
+subsequent `add_declaration`. The fresh reference describes the verified
+post-write declaration. A pre-write reference must pass the existing authority
+checks; a failed reference must not be replaced by a guessed name match.
+
+A timeout or terminated client leaves the source effect unknown unless a
+verified receipt establishes it. Do not automatically replay the write. Retain
+the plan identity and phase evidence, inspect the source with an ordinary query,
+and follow the reported recovery outcome.
 
 ## Know the boundary
 

@@ -29,7 +29,17 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, and IntelliJ IDEA
     # or: kast connect pi
     ```
 
-    The installer may also offer to connect Codex during interactive setup. Connecting a second time to the same payload is safe.
+    The installer may also offer to connect Codex during interactive setup. Connecting a second time to the same payload is safe. A conflicting registration is preserved unless you explicitly replace that harness's Kast slot:
+
+    ```shell
+    kast connect codex --force
+    # or: kast connect copilot --force
+    # or: kast connect pi --force
+    ```
+
+    Forced connection verifies the bundled payload and captures the prior registration before replacement. A failed transaction restores the prior registration and receipt. If restoration fails, the error identifies the preserved backup and recovery destination. Unrelated registrations stay in place.
+
+    Connection records configuration; it does not launch the harness or prove live tool readiness. Codex MCP registration and App Server dynamic-tool admission are separate paths.
   </Step>
   <Step title="Restart IDEA and open your agent">
     Restart IntelliJ IDEA so it loads the plugin. Start the agent from the Kotlin repository or worktree you want Kast to inspect:

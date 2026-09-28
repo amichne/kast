@@ -228,3 +228,12 @@ admission qualifies the actual staged file through the production provider.
 After installation admission and before retiring or replacing any installation, the installer enrolls or preserves the user-owned broker key pair. Partial, mismatched, unsafe or busy enrollment rejects with the finite trust failure. Plan mode creates no keys. Bounded trust observations contain only completion status or rejection cause, never key material. Keys live outside versioned payloads and remain unchanged across reinstalls and upgrades.
 
 The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. The login LaunchAgent retains the service label and daemon executable, adding only the private login argument. Offline recovery admits that entry only when removing that argument from its bounded bytes yields the retained service plist for the exact Codex-home profile; it also recognizes the older one-shot entry. The assembled-product check verifies the private launchers are present and executable; their argument and readiness rules remain with their Kotlin owners.
+
+`kast connect <codex|copilot|pi> --force` authorizes takeover of that harness's
+Kast registration slot. The existing lock and release-manifest admission still
+apply. Registration and receipt preimages are captured before replacement;
+failed transactions restore both. Codex restoration uses the full original
+configuration bytes, preserving fields outside its inspection projection.
+Failed restoration retains its backup and reports the recovery destination.
+Symlinked registration paths reject before mutation. Connecting records
+configuration and does not establish that a client loaded or invoked the tools.
