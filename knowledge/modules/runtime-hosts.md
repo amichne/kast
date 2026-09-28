@@ -294,3 +294,5 @@ retirement. A pending update leaves the selected installation and command links
 in place for a later upgrade attempt. If retirement fails after commit, another
 ordinary attempt for the same candidate can resume from the active daemon's
 qualified committed request. A different candidate or daemon identity rejects.
+
+The coordinator's passive management reply projects the loaded release version, currently ready workspace roots, and observed live connection count from their runtime owners. A pending frontend leaves connection count unavailable. The native management client correlates this reply with the installation epoch and live service generation.

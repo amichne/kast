@@ -25,6 +25,17 @@ internal object KastCleanSlateModules {
         ),
         target(ModuleId.DISTRIBUTION_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
         target(
+            ModuleId.DISTRIBUTION_CLI,
+            ModuleRole.CLI,
+            ModuleId.DISTRIBUTION_CONTRACT,
+            effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
+            scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
+                JvmClassName("io/github/amichne/kast/distribution/cli/ManagementInstallationKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/IntegrationRegistrationKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/ManagementLifecycleKt"),
+            )),
+        ),
+        target(
             ModuleId.DISTRIBUTION_MANAGED,
             ModuleRole.FILESYSTEM_WRITE_ADAPTER,
             ModuleId.DISTRIBUTION_CONTRACT,
@@ -339,6 +350,8 @@ internal object KastCleanSlateModules {
             scopedEffects = mapOf(
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
+                    JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord"),
+                    JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord\$Companion"),
                     JvmClassName(
                         "io/github/amichne/kast/cli/installation/InstallationWorkflow",
                     ),

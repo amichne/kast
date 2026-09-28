@@ -11,6 +11,7 @@ import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
 import io.github.amichne.kast.appserver.DaemonManagementTarget
 import io.github.amichne.kast.appserver.InstallationLifecycleFence
 import io.github.amichne.kast.appserver.InstallationLifecycleStartAdmission
+import io.github.amichne.kast.appserver.ManagementRuntimeProjection
 import io.github.amichne.kast.appserver.WorkerControlFailure
 import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.appserver.coordinatorConfigurationIdentity
@@ -29,7 +30,10 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+
+@Serializable private data class LoadedManifestVersion(val semanticVersion: String)
 
 /** Coordinator status only. The existing IDE exclusively owns semantic execution and project lifetime. */
 internal class CoordinatorControl
@@ -40,7 +44,7 @@ private constructor(
     private val configuration: ResolvedKastConfiguration,
     private val stoppedMarker: Path,
     private val hostObservation: () -> BrokerFrontendObservation,
-    sessions: DaemonSessions,
+    private val sessions: DaemonSessions,
     private val preparations: WorkspacePreparations,
     demand: WorkspaceDemand,
 ) {
@@ -59,6 +63,7 @@ private constructor(
             ::status,
             sessions,
             ManagedDaemonWorkspacePreparation(preparations),
+            ::managementProjection,
             { root -> WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json")).enroll(root) },
         )
 
@@ -74,6 +79,26 @@ private constructor(
             emptyList(),
             CoordinatorHostAttachment.valueOf(hostObservation().name),
         )
+
+    private fun managementProjection(): ManagementRuntimeProjection {
+        val manifest = installationRoot.resolve("installation.json")
+        val version =
+            try {
+                if (Files.isRegularFile(manifest, LinkOption.NOFOLLOW_LINKS) && Files.size(manifest) <= 67_108_864)
+                    Json { ignoreUnknownKeys = true }
+                        .decodeFromString<LoadedManifestVersion>(Files.readString(manifest))
+                        .semanticVersion
+                else null
+            } catch (_: Exception) {
+                null
+            }
+        val connections =
+            when (val observed = sessions.inspectSessions()) {
+                is DaemonSessionInspection.Prepared -> observed.connections.size
+                else -> null
+            }
+        return ManagementRuntimeProjection(version, preparations.activeRoots(), connections)
+    }
 
     suspend fun handleManagement(session: DefaultWebSocketServerSession) {
         val frame =

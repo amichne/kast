@@ -308,6 +308,22 @@ class DaemonManagementTest {
             "PENDING",
             statusDocument.getValue("coordinator").jsonObject.getValue("hostAttachment").jsonPrimitive.content,
         )
+        val projected =
+            Json.parseToJsonElement(
+                    encode(
+                        DaemonManagementResponse.Status(
+                            status,
+                            ManagementRuntimeProjection("1.2.3", listOf("/workspace"), 2),
+                        )
+                    )
+                )
+                .jsonObject
+        assertEquals(setOf("type", "coordinator", "projection"), projected.keys)
+        val runtime = projected.getValue("projection").jsonObject
+        assertEquals(setOf("loadedVersion", "activeWorkspaces", "liveConnections"), runtime.keys)
+        assertEquals("1.2.3", runtime.getValue("loadedVersion").jsonPrimitive.content)
+        assertEquals("/workspace", runtime.getValue("activeWorkspaces").jsonArray.single().jsonPrimitive.content)
+        assertEquals(2, runtime.getValue("liveConnections").jsonPrimitive.content.toInt())
         val document =
             Json.parseToJsonElement(
                     encode(DaemonManagementResponse.Registered(target, "c".repeat(64), "/workspace", 3))

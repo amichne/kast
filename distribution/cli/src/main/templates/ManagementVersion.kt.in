@@ -1,0 +1,3 @@
+package io.github.amichne.kast.distribution.cli
+
+internal const val MANAGEMENT_VERSION = "${version}"

@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.runtime.ControlFailure
 import io.github.amichne.kast.appserver.runtime.DaemonSessionInspection
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationDocument
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -125,7 +126,10 @@ internal sealed interface DaemonManagementResponse {
 
     @Serializable
     @SerialName("status")
-    data class Status(val coordinator: CoordinatorStatusDocument) : DaemonManagementResponse
+    data class Status(
+        val coordinator: CoordinatorStatusDocument,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val projection: ManagementRuntimeProjection? = null,
+    ) : DaemonManagementResponse
 
     @Serializable
     @SerialName("workspace_preparation")
@@ -159,6 +163,14 @@ internal sealed interface DaemonManagementResponse {
     @SerialName("rejected")
     data class Rejected(val reason: DaemonManagementRejection) : DaemonManagementResponse
 }
+
+/** Read-only management facts supplied by the running owner, never by installation receipts. */
+@Serializable
+internal data class ManagementRuntimeProjection(
+    val loadedVersion: String?,
+    val activeWorkspaces: List<String>,
+    val liveConnections: Int?,
+)
 
 @Serializable
 sealed interface DaemonManagementRejection {

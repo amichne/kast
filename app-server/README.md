@@ -2,7 +2,7 @@
 
 `:app-server` owns the persistent Codex broker, hosted tool catalog, and client
 sessions. The installer keeps service control in the selected release at
-`share/kast/libexec/kast-service`; it does not publish a `kast` command on `PATH`.
+`share/kast/libexec/kast-service`; the public native `kast` command manages the installation and integrations.
 Semantic contracts and IntelliJ runtime implementations retain their own modules.
 
 Provider qualification reads the bounded `share/kast/provider-catalog.json` artifact
@@ -52,6 +52,10 @@ the published installation owner, state epoch, service generation and service
 identity; the daemon rejects a mismatched target or lifecycle fence before
 registration. The registration acknowledgment retains the exact canonical root,
 workspace identity and registry revision. Registration remains idempotent.
+
+The passive status reply includes the loaded release version, ready workspace roots,
+and observed live connection count. The native management CLI reads these fields
+with a deadline and checks the service generation against the readiness receipt.
 
 The private update protocol prepares a candidate, observes its request, cancels a
 seal, or commits it. Active turns, approvals, requests, invocations, workspace

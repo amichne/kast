@@ -24,6 +24,7 @@ internal class DaemonManagement(
     private val status: () -> CoordinatorStatusDocument,
     private val sessions: DaemonSessions,
     private val preparation: DaemonWorkspacePreparation = DaemonWorkspacePreparation.Unavailable,
+    private val projection: () -> io.github.amichne.kast.appserver.ManagementRuntimeProjection? = { null },
     private val enroll:
         (CanonicalBrokerDirectory) -> Refinement<WorkspaceRegistrationAcknowledgement, EnrollmentFailure>,
 ) {
@@ -52,7 +53,7 @@ internal class DaemonManagement(
             return reject(DaemonManagementFailure.UNSUPPORTED_VERSION)
         if (!available()) return reject(DaemonManagementFailure.LIFECYCLE_TRANSITION)
         return when (request) {
-            is DaemonManagementRequest.Status -> DaemonManagementResponse.Status(status())
+            is DaemonManagementRequest.Status -> DaemonManagementResponse.Status(status(), projection())
             is DaemonManagementRequest.RegisterWorkspace -> manage { register(request) }
             is DaemonManagementRequest.Sessions ->
                 if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)

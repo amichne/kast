@@ -43,10 +43,12 @@ class WorkspacePreparationsTest {
                 newId = { requestId },
             )
         val first = (preparations.prepare(root) as Refinement.Refined).value
+        assertEquals(emptyList<String>(), preparations.activeRoots())
         val joined = (preparations.prepare(CanonicalRoot(Path.of("/workspace"))) as Refinement.Refined).value
         assertSame(first, joined)
         assertEquals(setOf(UpgradeBlocker.PREPARATION_ACTIVE), preparations.upgradeBlockers())
         runCurrent()
+        assertEquals(listOf("/workspace"), preparations.activeRoots())
         assertEquals(emptySet<UpgradeBlocker>(), preparations.upgradeBlockers())
         assertEquals(listOf(WorkspaceLifecycleRequest.Open("/workspace", requestId.value.toString())), requests)
         val completed = first.state.value as WorkspacePreparationOutcome.Complete
@@ -60,6 +62,7 @@ class WorkspacePreparationsTest {
             events.map { it.outcome },
         )
         preparations.close()
+        assertEquals(emptyList<String>(), preparations.activeRoots())
     }
 
     @Test

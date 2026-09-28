@@ -18,6 +18,7 @@ code_sources:
   - path: config/kotlin/file-length-baseline.tsv
   - path: config/detekt/detekt.yml
   - path: settings.gradle.kts
+  - path: distribution/cli/build.gradle.kts
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
     symbols: [KastCleanSlateModules]
@@ -48,6 +49,7 @@ Every module role requires its matching Gradle convention. Validated module poli
 - IntelliJ and filesystem/SQLite modules own explicit effects.
 - The existing-IDE host connects proven contracts to effectful adapters.
 - App Server and CLI expose broker, installation and transport boundaries.
+- `distribution:cli` is the isolated native management surface. Its production project dependency is limited to `distribution:contract`; it has no IntelliJ, semantic, MCP implementation, or App Server implementation dependency.
 - The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool signs an exact internal plan challenge without an interactive approval file.
 
 The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.

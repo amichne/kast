@@ -59,6 +59,17 @@ class InstallerEntrypointTest(unittest.TestCase):
         info.size = len(executable)
         with tarfile.open(control, "w:gz") as archive:
             archive.addfile(info, io.BytesIO(executable))
+            management = b'''#!/bin/sh
+set -eu
+[ "$1" = --internal-install ] || exit 92
+case "$2" in
+  preflight|commit) printf '%s\\n' "$HOME/.local/bin/kast" ;;
+  *) exit 93 ;;
+esac
+'''
+            item = tarfile.TarInfo('share/kast/libexec/kast-management')
+            item.mode, item.size = 0o755, len(management)
+            archive.addfile(item, io.BytesIO(management))
         plugin_name = f"kast-ide-hosted-v{version}-idea-{plugin_line}.zip"
         plugin = assets / plugin_name
         descriptor = (f'<idea-plugin><id>io.github.amichne.kast.ide-hosted</id><version>{version}</version>'
@@ -109,6 +120,14 @@ else:
         environment.update(TEST_LOG=str(log), TMPDIR=str(root / 'tmp'))
         (root / 'tmp').mkdir()
         scripts = {
+            'share/kast/libexec/kast-management': b'''#!/bin/sh
+set -eu
+[ "$1" = --internal-install ] || exit 92
+case "$2" in
+  preflight|commit) printf '%s\\n' "$HOME/.local/bin/kast" ;;
+  *) exit 93 ;;
+esac
+''',
             'share/kast/libexec/kast-service': b'''#!/bin/sh
 set -eu
 [ "$1" = install ] || exit 91
@@ -116,6 +135,7 @@ mkdir -p "$KAST_INSTALL_ROOT/versions/1.2.4-candidate"
 rm "$KAST_INSTALL_ROOT/current"
 ln -s versions/1.2.4-candidate "$KAST_INSTALL_ROOT/current"
 printf 'service\\n' >> "$TEST_LOG"
+printf '%s\\n' '{"operation":"installation.install","status":"installed","activation":{"type":"ready"},"semanticVersion":"1.2.4"}'
 ''',
             'share/kast/installation-recovery.py': b'''import os,sys
 operation = sys.argv[1]
@@ -152,6 +172,19 @@ sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(['service', 'plugin', 'seal', 'review'], log.read_text().splitlines())
             self.assertTrue(prior.exists())  # The scripted prune effect is proved separately by lifecycle tests.
+
+    def test_upgrade_reports_private_installation_activation_to_management_cli(self):
+        with tempfile.TemporaryDirectory(prefix='kast-upgrade-report-') as directory:
+            idea, environment, _, _ = self.upgrade_fixture(directory)
+            report = Path(directory) / 'installation-report.json'
+            environment['KAST_MANAGEMENT_REPORT_PATH'] = str(report)
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual('installed', json.loads(report.read_text())['status'])
+            self.assertIn(report.read_text().strip(), result.stdout)
 
     def test_failed_plugin_activation_preserves_prior_without_pruning(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-trap-') as directory:

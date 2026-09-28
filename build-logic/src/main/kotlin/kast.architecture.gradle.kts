@@ -153,7 +153,9 @@ subprojects {
         val dependencies = configurations
             .filter { configuration -> configuration.name.isProductionDependencyConfiguration() }
             .flatMap { configuration ->
-                configuration.dependencies.withType(ProjectDependency::class.java).map { dependency ->
+                configuration.dependencies.withType(ProjectDependency::class.java)
+                    .filter { dependency -> dependency.path != path }
+                    .map { dependency ->
                     "$path${ArchitectureObservationParser.EDGE_SEPARATOR}${dependency.path}"
                 }
             }
