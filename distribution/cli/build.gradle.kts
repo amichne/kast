@@ -29,7 +29,9 @@ val generateVersion =
                 "generated/sources/management-version/kotlin/io/github/amichne/kast/distribution/cli"
             )
         )
-        expand("version" to project.version.toString())
+        val managementVersion = project.version.toString()
+        inputs.property("managementVersion", managementVersion)
+        expand("version" to managementVersion)
         rename { "ManagementVersion.kt" }
     }
 
