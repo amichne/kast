@@ -7,16 +7,23 @@ import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanDecodeFailur
 import io.github.amichne.kast.change.contract.LiveChangeApplicationClaim
 import io.github.amichne.kast.change.contract.LiveChangeApplicationHistory
 import io.github.amichne.kast.change.contract.LiveChangeApplicationStore
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.LiveChangePlanIssuance
 import io.github.amichne.kast.change.contract.LiveChangePlanLookup
 import io.github.amichne.kast.change.contract.LiveChangePlanStore
 import io.github.amichne.kast.change.contract.LiveChangePlanStoreFailure
+import io.github.amichne.kast.change.contract.LiveReplaceBodyChangePlan
+import io.github.amichne.kast.change.contract.LiveReplaceBodyPlanCodec
+import io.github.amichne.kast.change.contract.LiveReplaceBodyPlanDecodeFailure
 import io.github.amichne.kast.evidence.contract.MutationDatabaseLocation
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.SQLException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 
 sealed interface SqliteLiveChangePlanStoreOpenResult {
     data class Opened(val store: SqliteLiveChangePlanStore) : SqliteLiveChangePlanStoreOpenResult
@@ -67,9 +74,13 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
             }
         }
 
-    override fun issuePlan(plan: LiveAddDeclarationChangePlan): LiveChangePlanIssuance {
+    override fun issuePlan(plan: LiveChangePlan): LiveChangePlanIssuance {
         val identity = identity(plan)
-        val document = LiveAddDeclarationPlanCodec.encode(plan)
+        val document =
+            when (plan) {
+                is LiveAddDeclarationChangePlan -> LiveAddDeclarationPlanCodec.encode(plan)
+                is LiveReplaceBodyChangePlan -> LiveReplaceBodyPlanCodec.encode(plan)
+            }
         val digest = digest(document)
         return storage({ LiveChangePlanIssuance.Rejected(it) }) {
             connections.use { connection ->
@@ -82,7 +93,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                     .use { statement ->
                         statement.setString(1, identity.value)
                         statement.setString(2, plan.planId.value)
-                        statement.setInt(PLAN_VERSION_PARAMETER, LiveAddDeclarationPlanCodec.VERSION)
+                        statement.setInt(PLAN_VERSION_PARAMETER, 1)
                         statement.setString(PLAN_DOCUMENT_PARAMETER, document)
                         statement.setString(PLAN_DIGEST_PARAMETER, digest)
                         statement.executeUpdate()
@@ -90,7 +101,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                 val expected =
                     LivePlanRow(
                         planId = plan.planId.value,
-                        version = LiveAddDeclarationPlanCodec.VERSION.toLong(),
+                        version = 1,
                         document = document,
                         digest = digest,
                     )
@@ -182,10 +193,25 @@ private fun LivePlanRow.decode(expected: ChangePlanIdentity): LiveChangePlanLook
     if (digest(document) != digest) {
         return LiveChangePlanLookup.Rejected(LiveChangePlanStoreFailure.CORRUPT_RECORD)
     }
-    val plan =
-        when (val restored = LiveAddDeclarationPlanCodec.decode(document)) {
-            is Refinement.Refined -> restored.value
-            is Refinement.Rejected -> return LiveChangePlanLookup.Rejected(restored.failure.storageFailure())
+    val format =
+        try {
+            Json { ignoreUnknownKeys = true }.decodeFromString<StoredLivePlanHeader>(document).format
+        } catch (_: SerializationException) {
+            return LiveChangePlanLookup.Rejected(LiveChangePlanStoreFailure.CORRUPT_RECORD)
+        }
+    val plan: LiveChangePlan =
+        when (format) {
+            "LIVE_ADD_DECLARATION" ->
+                when (val restored = LiveAddDeclarationPlanCodec.decode(document)) {
+                    is Refinement.Refined -> restored.value
+                    is Refinement.Rejected -> return LiveChangePlanLookup.Rejected(restored.failure.storageFailure())
+                }
+            "LIVE_REPLACE_BODY" ->
+                when (val restored = LiveReplaceBodyPlanCodec.decode(document)) {
+                    is Refinement.Refined -> restored.value
+                    is Refinement.Rejected -> return LiveChangePlanLookup.Rejected(restored.failure.storageFailure())
+                }
+            else -> return LiveChangePlanLookup.Rejected(LiveChangePlanStoreFailure.VERSION_UNSUPPORTED)
         }
     return if (planId != plan.planId.value || identity(plan) != expected) {
         LiveChangePlanLookup.Rejected(LiveChangePlanStoreFailure.CORRUPT_RECORD)
@@ -200,6 +226,12 @@ private fun LiveAddDeclarationPlanDecodeFailure.storageFailure(): LiveChangePlan
         LiveAddDeclarationPlanDecodeFailure.IDENTITY_MISMATCH,
         LiveAddDeclarationPlanDecodeFailure.EVIDENCE_INCOMPLETE -> LiveChangePlanStoreFailure.CORRUPT_RECORD
     }
+
+private fun LiveReplaceBodyPlanDecodeFailure.storageFailure(): LiveChangePlanStoreFailure =
+    if (this == LiveReplaceBodyPlanDecodeFailure.VERSION_UNSUPPORTED) LiveChangePlanStoreFailure.VERSION_UNSUPPORTED
+    else LiveChangePlanStoreFailure.CORRUPT_RECORD
+
+@Serializable private data class StoredLivePlanHeader(val format: String)
 
 private sealed interface LivePlanRowObservation {
     data object Missing : LivePlanRowObservation
@@ -227,7 +259,7 @@ private fun Connection.livePlanRow(identity: ChangePlanIdentity): LivePlanRowObs
             }
         }
 
-private fun identity(plan: LiveAddDeclarationChangePlan): ChangePlanIdentity =
+private fun identity(plan: LiveChangePlan): ChangePlanIdentity =
     checkNotNull(ChangePlanIdentity.parse("plan:${plan.planId.value}"))
 
 private fun digest(document: String): String =

@@ -41,7 +41,7 @@ class KastToolRpcBridgeTest {
     fun `MCP and RPC catalogs preserve the same installed input schemas`() {
         val installed = installedHostedBootstrap().tools
         val publicTools = installed.filter {
-            it.name in setOf("query_symbols", "read_source", "check_diagnostics", "add_declaration")
+            it.name in setOf("query_symbols", "check_diagnostics", "add_declaration", "replace_body")
         }
         val session =
             KastDirectToolSession(
@@ -53,6 +53,8 @@ class KastToolRpcBridgeTest {
         val rpc = (KastToolRpcBridge(session).catalog() as ToolRpcReply.Catalog).catalog.tools.associateBy { it.name }
         val mcp = mcpCatalog(session)
         assertEquals(rpc.keys, mcp.keys)
+        assertEquals(false, "validate_workspace" in rpc)
+        assertEquals(false, "read_source" in rpc)
         rpc.forEach { (name, tool) ->
             assertEquals(tool.inputSchema, mcp.getValue(name).jsonObject.getValue("inputSchema"), name)
         }
@@ -113,7 +115,7 @@ class KastToolRpcBridgeTest {
             )
         val bridge = KastToolRpcBridge(session)
         val catalog = assertInstanceOf(ToolRpcReply.Catalog::class.java, bridge.catalog()).catalog
-        assertEquals(2, catalog.schemaVersion)
+        assertEquals(3, catalog.schemaVersion)
         assertEquals(listOf("add_declaration", "health_check", "query_symbols"), catalog.tools.map { it.name })
         assertEquals(
             listOf(ToolRpcToolEffect.WRITE, ToolRpcToolEffect.READ, ToolRpcToolEffect.READ),
@@ -148,6 +150,11 @@ class KastToolRpcBridgeTest {
             (bridge.call("missing", Json.encodeToString(TestEmptyRequest())) as ToolRpcReply.Rejected).failure,
         )
         assertEquals(
+            ToolRpcFailure.UNKNOWN_TOOL,
+            (bridge.call("validate_workspace", Json.encodeToString(TestEmptyRequest())) as ToolRpcReply.Rejected)
+                .failure,
+        )
+        assertEquals(
             ToolRpcFailure.INVALID_ARGUMENTS,
             (bridge.call("query_symbols", "[") as ToolRpcReply.Rejected).failure,
         )
@@ -174,7 +181,7 @@ class KastToolRpcBridgeTest {
             assertEquals(expectedType, encoded.getValue("type").jsonPrimitive.content)
             if (reply is ToolRpcReply.Catalog) {
                 val catalog = encoded.getValue("catalog").jsonObject
-                assertEquals("2", catalog.getValue("schemaVersion").jsonPrimitive.content)
+                assertEquals("3", catalog.getValue("schemaVersion").jsonPrimitive.content)
                 assertEquals(0, catalog.getValue("tools").jsonArray.size)
             } else if (reply is ToolRpcReply.Rejected) {
                 assertEquals("OUT_OF_SCOPE", encoded.getValue("failure").jsonPrimitive.content)

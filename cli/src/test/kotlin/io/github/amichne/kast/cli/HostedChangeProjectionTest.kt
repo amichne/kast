@@ -116,6 +116,7 @@ class HostedChangeProjectionTest {
             CanonicalChangeCliDocuments.projectApplication(
                 when (result) {
                     is ChangeApplyResult.Verified -> OperationOutcome.Complete(envelope)
+                    is ChangeApplyResult.VerifiedBody -> OperationOutcome.Complete(envelope)
                     is ChangeApplyResult.AppliedUnverified ->
                         OperationOutcome.Qualified(envelope, ChangeApplyQualification.APPLIED_UNVERIFIED)
                     is ChangeApplyResult.RecoveryRequired ->

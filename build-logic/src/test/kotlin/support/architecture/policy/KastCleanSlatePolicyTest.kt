@@ -14,6 +14,7 @@ class KastCleanSlatePolicyTest {
             setOf(
                 ":kernel",
                 ":distribution:contract",
+                ":distribution:cli",
                 ":distribution:managed",
                 ":protocol:contract",
                 ":protocol:registry",
@@ -146,6 +147,7 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     ModuleId.APP_SERVER,
                     ModuleId.DISTRIBUTION_MANAGED,
+                    ModuleId.DISTRIBUTION_CLI,
                     ModuleId.EVIDENCE_SQLITE,
                     ModuleId.EVIDENCE_TOPOLOGY_SQLITE,
                     ModuleId.CLI,
@@ -166,7 +168,7 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.BLOCKING_WAIT to emptySet(),
                 ForbiddenEffect.WORKSPACE_TRANSITION to emptySet(),
                 ForbiddenEffect.GRAPH_BUILD to emptySet(),
-                ForbiddenEffect.PROCESS_CONTROL to setOf(ModuleId.APP_SERVER, ModuleId.CLI),
+                ForbiddenEffect.PROCESS_CONTROL to setOf(ModuleId.DISTRIBUTION_CLI, ModuleId.APP_SERVER, ModuleId.CLI),
                 ForbiddenEffect.ANALYSIS_BACKEND to emptySet(),
                 ForbiddenEffect.MUTATION_AUTHORITY to emptySet(),
                 ForbiddenEffect.TOPOLOGY_AUTHORITY to emptySet(),

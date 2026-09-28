@@ -26,10 +26,11 @@ class McpSingleChangeToolTest {
     @TempDir lateinit var root: Path
 
     @Test
-    fun `direct MCP advertises one mutation tool instead of its internal phases`() {
+    fun `direct MCP advertises both live mutation tools instead of internal phases`() {
         val visible = CanonicalAgentToolDefinitions.all.map { it.name.value }
         assertFalse(visible.any { it in setOf("change_plan", "change_apply", "change_recover") })
         assertTrue(visible.contains("query_symbols"))
+        assertTrue(visible.containsAll(listOf("add_declaration", "replace_body")))
     }
 
     @Test
@@ -65,6 +66,42 @@ class McpSingleChangeToolTest {
         assertEquals(
             "receipt:verified",
             output.getValue("application").jsonObject.getValue("receiptIdentity").jsonPrimitive.content,
+        )
+        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
+    }
+
+    @Test
+    fun `replace body uses the same bounded live mutation phases`() {
+        val example =
+            PublicToolContract.examples(PublicToolIdentity.REPLACE_BODY).examples.getValue("exactTarget").value
+        val admitted = PublicToolContract.admit(PublicToolIdentity.REPLACE_BODY, example)
+        assertTrue(admitted is Refinement.Refined, admitted.toString())
+        val phases = mutableListOf<McpChangePhase>()
+        val tool =
+            McpSingleChangeTool(
+                root,
+                { phase, arguments ->
+                    phases += phase
+                    if (phase == McpChangePhase.PLAN) {
+                        val intent = arguments.getValue("intent").jsonObject
+                        assertEquals("replace-body", intent.getValue("kind").jsonPrimitive.content)
+                        assertEquals("{ return Unit }", intent.getValue("body").jsonPrimitive.content)
+                    }
+                    when (phase) {
+                        McpChangePhase.PLAN -> complete(TestPlan())
+                        McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
+                        McpChangePhase.APPLY -> complete(TestApplication())
+                        McpChangePhase.PREPARE_RECOVER,
+                        McpChangePhase.RECOVER -> error("verified apply must not recover")
+                    }
+                },
+                { "signed-for-${it.operation}" },
+            )
+
+        val result = tool.invoke((admitted as Refinement.Refined).value)
+        assertInstanceOf(CliExit.Complete::class.java, result)
+        assertTrue(
+            McpStructuredResults.validates("replace_body", Json.parseToJsonElement(result.document.value).jsonObject)
         )
         assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
     }

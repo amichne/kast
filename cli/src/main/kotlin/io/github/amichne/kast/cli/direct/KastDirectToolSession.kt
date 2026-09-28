@@ -60,21 +60,24 @@ internal class KastDirectToolSession(
                 )
             val change = McpSingleChangeTool.installed(root = boundRoot, home = home, capabilities = capabilities)
             val invokePublic: (AdmittedPublicTool) -> CliExit = { request ->
-                if (request.identity == PublicToolIdentity.ADD_DECLARATION) change.invoke(request)
+                if (request.identity in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY))
+                    change.invoke(request)
                 else executeAdmittedPublicTool(request, directory, capabilities)
-            }
-            val invokeRead: (String, JsonObject) -> CliExit = { name, arguments ->
-                admitAndInvokePublic(name, arguments, invokePublic)
             }
             val investigation =
                 McpInvestigationTools(
                     directory,
                     capabilities,
                     selected
-                        .filter { it.name.value != PublicToolIdentity.ADD_DECLARATION.toolName }
+                        .filter {
+                            it.name.value !in
+                                setOf(
+                                    PublicToolIdentity.ADD_DECLARATION.toolName,
+                                    PublicToolIdentity.REPLACE_BODY.toolName,
+                                )
+                        }
                         .map { it.operation.operation.id.value.uppercase().replace('.', '_') }
                         .toSet(),
-                    invokeRead,
                 )
             return KastDirectToolSession(
                 catalog = selected.map { catalog.getValue(it.name.value).directToolDocument() } + directSupportTools(),

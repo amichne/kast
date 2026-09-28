@@ -1,10 +1,13 @@
 ---
-title: "Add a declaration"
-description: "Use Kast's one-call, exact-target source change."
+title: "Add a declaration or replace a body"
+description: "Use Kast's two exact-target, one-call source changes."
 icon: "file-pen-line"
 ---
 
-`add_declaration` adds one declaration to an existing Kotlin file. It uses an exact reference returned by Kast to identify the target, then plans, applies, verifies, and reports the outcome.
+`add_declaration` adds one declaration to an existing Kotlin file. `replace_body`
+replaces the block body of one existing, non-inline named function. Both use an
+exact reference returned by Kast to identify the target, then plan, apply,
+verify, and report the outcome.
 
 ## Provide an exact target
 
@@ -17,7 +20,22 @@ First use a [query](/search) to obtain the target symbol reference. The change i
 }
 ```
 
-The generated [Add declaration schema](/api-reference/add_declaration) defines the request. Pass the returned reference unchanged.
+The generated [Add declaration schema](/api-reference/add-declaration) defines the request. Pass the returned reference unchanged.
+
+For a body replacement, pass the same kind of exact function reference and one
+complete Kotlin block, including braces:
+
+```json
+{
+  "exactTarget": "<exact-function-ref-returned-by-Kast>",
+  "body": "{ return 3 }"
+}
+```
+
+The [Replace body schema](/api-reference/replace-body) defines the input.
+Expression bodies, functions with contracts, inline functions, and other target
+kinds are rejected. The callable signature and source outside the body stay
+unchanged.
 
 ## Read the receipt
 
@@ -25,4 +43,6 @@ A successful change returns verification and a receipt. If the operation is unce
 
 ## Know the boundary
 
-This is not a general text editor. It does not add new files, replace arbitrary source ranges, rename symbols across files, or perform multi-file refactors. Use it only for the admitted exact-target declaration addition.
+These tools do not add new files, replace arbitrary source ranges, rename
+symbols across files, or perform multi-file refactors. Use them only for the
+admitted exact-target changes above.

@@ -32,6 +32,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt
@@ -74,6 +76,8 @@ process output independently of semantic request/result limits. The previous
 force removal of finite variants or precise schema metadata.
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
+
+The native management command uses two derived installer inputs: `KAST_MANAGEMENT_CHANNEL` selects the installed release channel during executable publication, and `KAST_MANAGEMENT_REPORT_PATH` carries the private installer activation report to upgrade. They are owned by `:distribution:cli` and are not user configuration settings.
 
 The generated snapshot includes the four `EXECUTION_MAX_*` ceilings for time,
 work, results and returned bytes, each defaulting to 2,147,483,646. It also

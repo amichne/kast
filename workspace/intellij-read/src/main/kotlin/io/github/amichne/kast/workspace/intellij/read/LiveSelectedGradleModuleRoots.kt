@@ -10,6 +10,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import java.net.URI
+import java.nio.file.FileSystemNotFoundException
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.jps.model.java.JavaResourceRootType
@@ -34,6 +37,8 @@ internal class LiveSelectedGradleModuleRoots(
     private val entries = ArrayList<WorkspaceSourceRootBoundary>()
     private val ideRoots = ArrayList<IdeCodeSourceRoot>()
     private val excludedRoots = linkedSetOf<Path>()
+    private val absentRoots = ArrayList<IdeSourceRootEvidence>()
+    private val declaredRoots = linkedSetOf<Path>()
     private var moduleRoots = 0
 
     fun capture(
@@ -44,14 +49,49 @@ internal class LiveSelectedGradleModuleRoots(
             is Refinement.Rejected -> return roots
             is Refinement.Refined -> Unit
         }
-        if (ideRoots.isEmpty()) return completed()
+        if (ideRoots.isEmpty() && absentRoots.isEmpty()) return completed()
         val owner = admitted.owner.project
         when (val captured = captureSourceSets(owner, sourceSetsFor(admitted.module))) {
             is Refinement.Rejected -> return captured
             is Refinement.Refined -> Unit
         }
+        when (val checked = verifyAbsentRoots()) {
+            is Refinement.Rejected -> return checked
+            is Refinement.Refined -> Unit
+        }
         return completed()
     }
+
+    private fun verifyAbsentRoots(): Refinement<Unit, NamedGradleSourceScopeFailure> {
+        for (evidence in absentRoots) {
+            val path =
+                when (val parsed = absentRootPath(evidence)) {
+                    is Refinement.Rejected -> return parsed
+                    is Refinement.Refined -> parsed.value
+                }
+            if (path !in declaredRoots) return rejected(IdeRootMappingFailure.GradleOwnerMissing(evidence))
+            val absent =
+                try {
+                    Files.notExists(path)
+                } catch (_: SecurityException) {
+                    false
+                }
+            if (!absent) return rejected(IdeRootMappingFailure.SourceFolderUnavailable(evidence))
+            observation.count(IntellijReadCounter.SOURCE_ROOTS_ABSENT)
+        }
+        return Refinement.Refined(Unit)
+    }
+
+    private fun absentRootPath(evidence: IdeSourceRootEvidence): Refinement<Path, NamedGradleSourceScopeFailure> =
+        try {
+            Refinement.Refined(Path.of(URI(evidence.root.value)))
+        } catch (_: IllegalArgumentException) {
+            rejected(IdeRootMappingFailure.SourceFolderUnavailable(evidence))
+        } catch (_: FileSystemNotFoundException) {
+            rejected(IdeRootMappingFailure.SourceFolderUnavailable(evidence))
+        } catch (_: SecurityException) {
+            rejected(IdeRootMappingFailure.SourceFolderUnavailable(evidence))
+        }
 
     private fun completed() =
         Refinement.Refined(
@@ -74,6 +114,9 @@ internal class LiveSelectedGradleModuleRoots(
             when (captured) {
                 is CapturedIdeFolder.Code -> ideRoots += captured.root
                 is CapturedIdeFolder.Resource -> excludedRoots.add(captured.path)
+                is CapturedIdeFolder.Absent -> {
+                    absentRoots += captured.evidence
+                }
             }
         }
         return Refinement.Refined(Unit)
@@ -122,6 +165,7 @@ internal class LiveSelectedGradleModuleRoots(
     ): Refinement<Unit, NamedGradleSourceScopeFailure> {
         if (++moduleRoots > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value)
             return Refinement.Rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
+        declaredRoots.add(path)
         if (type.isResource || type.isExcluded) excludedRoots.add(path)
         if (!type.isResource)
             entries +=
@@ -164,7 +208,9 @@ internal class LiveSelectedGradleModuleRoots(
         val type = folder.rootType
         if (type !is JavaSourceRootType && type !is JavaResourceRootType)
             return rejected(IdeRootMappingFailure.UnsupportedRootType(evidence))
-        val file = folder.file ?: return rejected(IdeRootMappingFailure.SourceFolderUnavailable(evidence))
+        // Gradle permits declared source directories that do not exist on disk. IDEA has no file
+        // to classify or search in that case; retain the observation and admit the remaining roots.
+        val file = folder.file ?: return Refinement.Refined(CapturedIdeFolder.Absent(evidence))
         if (type is JavaResourceRootType) return Refinement.Refined(CapturedIdeFolder.Resource(file.toNioPath()))
         val properties =
             folder.jpsElement.properties as? JavaSourceRootProperties
@@ -190,6 +236,8 @@ internal class LiveSelectedGradleModuleRoots(
 }
 
 private sealed interface CapturedIdeFolder {
+    data class Absent(val evidence: IdeSourceRootEvidence) : CapturedIdeFolder
+
     data class Code(val root: IdeCodeSourceRoot) : CapturedIdeFolder
 
     data class Resource(val path: Path) : CapturedIdeFolder

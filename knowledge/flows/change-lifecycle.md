@@ -11,6 +11,8 @@ code_sources:
     symbols: [ChangeIntent]
   - path: change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt
     symbols: [PureAddDeclarationPlanningService]
+  - path: change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureReplaceBodyPlanningService.kt
+    symbols: [PureReplaceBodyPlanningService]
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAdmission.kt
     symbols: [DerivedMutationPostimage]
   - path: change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/VerifiedMutationService.kt
@@ -36,6 +38,7 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApprovals.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
+  - path: change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveReplaceBodyVerification.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt
     symbols: [WorkspaceExecution]
@@ -57,7 +60,9 @@ exact selector -> immutable plan + stored preview -> internal exact-plan signing
 
 The installed published path retains `SemanticReadLease`, generation admission
 and publication after verification. The hosted path supports `AddDeclaration`
-into one existing authored Kotlin source file. Its `ChangePlanningBasis.Live`
+and `ReplaceBody` in one existing authored Kotlin source file. A body plan binds
+one non-inline named function, its exact block, the surrounding source, and a
+deterministic postimage. Its `ChangePlanningBasis.Live`
 retains the original live reference and complete project model as historical
 evidence. It does not convert an epoch into a published generation or current
 write authority.
@@ -154,6 +159,13 @@ and the [App Server compatibility record](../../app-server/docs/compatibility.md
 Hosted change planning restores its exact target through the same project-owned reference transport as semantic reads. A compact handle is expanded and subjected to canonical authority validation before exact description and planning evidence acquisition. Handle lookup does not authorize applying a plan.
 
 Hosted `AddDeclaration` planning acquires its own current relation, traversal and diagnostic evidence. Complete evidence alone can issue an executable plan. Rejected or incomplete evidence retains all finite reasons in the bounded hosted planning detail. A page continuation is not a complete evidence proof: the current planning boundary reports `COMPLETE_EVIDENCE_ACCUMULATION_UNAVAILABLE` rather than treating a terminal page as the complete relation set. Prior public reads do not satisfy or alter planning prerequisites.
+
+Hosted `ReplaceBody` planning parses the entire replacement as one Kotlin block
+and rejects trailing input, syntax errors, expression bodies, contracts, inline
+functions, and targets outside the supported named-function family. Verification
+checks the entire expected source image, signature, surrounding text, exact
+compiler identity, and complete diagnostics for the changed file. Outgoing calls
+may change. Only a verified receipt returns a fresh exact reference.
 
 A daemon preparation rejection is a known pre-execution failure: the requested
 semantic operation was not sent. Its finite cause and preparation identity survive

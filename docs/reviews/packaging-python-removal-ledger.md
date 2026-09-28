@@ -50,6 +50,15 @@ it does not assert that Kotlin owner tests prove native composition. The
 orphaned Kotlin controller and fixture plugin, including tests of their own
 protocol, were removed after their sole Python caller disappeared.
 
+Main subsequently added a `replace_body` case to that same native controller.
+`app-server/query/PublicToolContractTest`, `change/contract/LiveReplaceBodyPlanTest`,
+`change/verify/LiveReplaceBodyVerificationTest`, and
+`change/verify/LiveReplaceBodyReceiptCodecTest` cover its contract, plan,
+postimage, and receipt rules. The deleted case uniquely exercised a live IDE
+replacement followed by fresh-reference reuse. This removal retires that native
+composition claim; these owner tests do not establish it. The controller's new
+private failure-document test described only its own retired diagnostic format.
+
 ## Release and Codex acceptance cases: remove with the released harness
 
 | Python suite in `packaging/` | Existing Kotlin production coverage | Residual Python assertion |
@@ -96,10 +105,13 @@ the normal Kotlin upgrade has a test.
 | `test-configuration-ingress.py` | `distribution/contract/configuration` tests prove configuration meaning. | Keep only while `configuration_ingress.py` is the static ingress guard; it tests scanner/snapshot behavior. |
 
 `run-installed-product.py` is the current assembled-product boundary. It keeps one real install from the assembled archive,
-exact artifact identity, required files and permissions, one version-owned
+exact artifact identity, required files and permissions including the native
+`kast-management` executable, one version-owned
 launcher result, and fail-closed unsupported ingress. Semantic tool-name
 assertions are now owned by the Kotlin catalog tests. No packaging check needs
-to execute `query_symbols`, `read_source`, or `check_diagnostics`.
+to execute `query_symbols` or `check_diagnostics`. The management command's
+behavior belongs to `distribution/cli/ManagementCliTest`; the assembled install
+also exercises its public installer publication path.
 
 ## Removal rule
 

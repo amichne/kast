@@ -139,7 +139,7 @@ class KotlinCallOwnershipTest {
             val admitted = refineCallOwnership(lexical, observation)
             assertSame(lexical, (admitted as io.github.amichne.kast.kernel.Refinement.Refined).value)
             assertEquals(
-                io.github.amichne.kast.kernel.Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY),
+                io.github.amichne.kast.kernel.Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary),
                 refineCallOwnership(ContainingDeclaration.Unsupported, observation),
             )
             assertEquals(
@@ -152,13 +152,30 @@ class KotlinCallOwnershipTest {
             assertEquals(setOf(IntellijReadTermination.RELATION_CALL_OWNER_UNSUPPORTED), observation.reasons)
             assertEquals(
                 io.github.amichne.kast.relation.contract.RelationLimitation.UNSUPPORTED_ITEM,
-                CallOwnershipFailure.UNSUPPORTED_BOUNDARY.limitation,
+                CallOwnershipFailure.UnsupportedBoundary.limitation,
             )
             assertEquals(
                 io.github.amichne.kast.relation.contract.RelationLimitation.UNRESOLVED_TARGET,
-                CallOwnershipFailure.UNRESOLVED_ARGUMENT_MAPPING.limitation,
+                CallOwnershipFailure.UnresolvedArgumentMapping.limitation,
             )
         }
+
+    @Test
+    fun `only proven direct inline callbacks retain the enclosing named caller`() {
+        assertEquals(InlineCallbackClassification.INLINE, classifyInlineCallback(true, false, false, true))
+        for (case in
+            listOf(
+                classifyInlineCallback(false, false, false, true),
+                classifyInlineCallback(true, true, false, true),
+                classifyInlineCallback(true, false, true, true),
+            )) {
+            assertEquals(InlineCallbackClassification.EXCLUDED, case)
+        }
+        assertEquals(
+            InlineCallbackClassification.EXCLUDED,
+            classifyInlineCallback(true, false, false, false),
+        )
+    }
 
     private fun assertNestedOwner(factory: KtPsiFactory) {
         val file = factory.createFile("fun outer() {\n fun nested() = target()\n nested()\n }")

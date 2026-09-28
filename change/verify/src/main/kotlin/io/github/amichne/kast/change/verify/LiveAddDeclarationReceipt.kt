@@ -7,6 +7,7 @@ import io.github.amichne.kast.change.apply.LiveMutationAuthority
 import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
 import io.github.amichne.kast.change.contract.ChangePlanId
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
+import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanCodec
 import io.github.amichne.kast.change.recovery.AppliedAddDeclarationRecovery
 import io.github.amichne.kast.kernel.Refinement
@@ -126,7 +127,9 @@ class VerifiedLiveAddDeclarationReceipt private constructor(val historical: Hist
             approval: HistoricalLiveApproval,
             recovery: HistoricalLiveRecovery,
         ): Refinement<VerifiedLiveAddDeclarationReceipt, LiveReceiptFailure> {
-            val plan = write.authority.plan
+            val plan =
+                write.authority.plan as? LiveAddDeclarationChangePlan
+                    ?: return Refinement.Rejected(LiveReceiptFailure.PLAN_MISMATCH)
             val result =
                 HistoricalLiveSemanticResult(
                     after = verification.resulting,
@@ -162,7 +165,8 @@ private fun validateVerifiedReceiptBinding(
     verification: CompleteLiveAddDeclarationVerification,
 ): Refinement<Unit, LiveReceiptFailure> {
     val authority = write.authority
-    val plan = authority.plan
+    val plan =
+        authority.plan as? LiveAddDeclarationChangePlan ?: return Refinement.Rejected(LiveReceiptFailure.PLAN_MISMATCH)
     if (
         verification.plan.planId != plan.planId ||
             LiveAddDeclarationPlanCodec.encode(verification.plan) != LiveAddDeclarationPlanCodec.encode(plan)
@@ -189,7 +193,7 @@ private fun validateVerifiedReceiptBinding(
     return Refinement.Refined(Unit)
 }
 
-private fun validateRecoveryBinding(
+internal fun validateRecoveryBinding(
     authority: LiveMutationAuthority,
     recovery: AppliedAddDeclarationRecovery,
 ): Refinement<Unit, LiveReceiptFailure> {
@@ -216,7 +220,7 @@ private fun validateRecoveryBinding(
     return Refinement.Refined(Unit)
 }
 
-private fun historicalApproval(
+internal fun historicalApproval(
     approved: VerifiedLivePlanApproval
 ): Refinement<HistoricalLiveApproval, LiveReceiptFailure> =
     HistoricalLiveApproval.restore(
@@ -226,7 +230,7 @@ private fun historicalApproval(
         challenge = approved.challenge,
     )
 
-private fun historicalRecovery(
+internal fun historicalRecovery(
     recovery: AppliedAddDeclarationRecovery
 ): Refinement<HistoricalLiveRecovery, LiveReceiptFailure> {
     val prepared =

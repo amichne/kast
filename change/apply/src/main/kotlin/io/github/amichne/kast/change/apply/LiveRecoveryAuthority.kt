@@ -1,6 +1,6 @@
 package io.github.amichne.kast.change.apply
 
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
 import io.github.amichne.kast.evidence.contract.RecoveryPreimage
 import io.github.amichne.kast.kernel.Refinement
@@ -21,7 +21,7 @@ enum class LiveRecoveryAdmissionFailure {
 /** Recovery-only exact images. A new owner can restore this source but cannot execute the old plan. */
 class LiveRecoveryAuthority
 private constructor(
-    val plan: LiveAddDeclarationChangePlan,
+    val plan: LiveChangePlan,
     val approval: VerifiedLivePlanApproval,
     val current: LiveSemanticReadReference,
     val record: MutationRecoveryRecord,
@@ -42,7 +42,7 @@ private constructor(
 
     companion object {
         fun admit(
-            plan: LiveAddDeclarationChangePlan,
+            plan: LiveChangePlan,
             approval: VerifiedLivePlanApproval,
             current: LiveSemanticReadAuthority,
             model: WorkspaceSearchScopeModel,
@@ -87,7 +87,7 @@ private constructor(
         }
 
         private fun observePreimage(
-            plan: LiveAddDeclarationChangePlan,
+            plan: LiveChangePlan,
             record: MutationRecoveryRecord,
         ): Refinement<ObservedMutationSource, LiveRecoveryAdmissionFailure> {
             val write =

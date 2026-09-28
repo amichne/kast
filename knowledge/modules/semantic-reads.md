@@ -222,12 +222,14 @@ a global callable ID receives a source-bound identity from its exact file and
 declaration position plus its compiler signature. Both directions refine a
 literal lambda boundary only when a successful K2 call maps that argument to an
 ordinary function parameter of the selected inline callable. Each intervening boundary must pass;
-returned/stored lambdas, non-inline callbacks, `noinline`, `crossinline`, and
-accessors remain unsupported. Unresolved/ambiguous argument mappings retain
-`UNRESOLVED_TARGET`. The admitted named owner survives until endpoint projection;
-the inner occurrence, independent target resolution, scope and lifetime remain
-unchanged. Existing finite owner counters and omission samples describe both
-admitted and unavailable ownership. Reference and type-use ownership is unchanged.
+returned/stored lambdas, non-inline callbacks, `noinline`, and `crossinline`
+are excluded as proven non-caller boundaries. Accessors remain unsupported.
+Unresolved/ambiguous argument mappings retain `UNRESOLVED_TARGET`. The admitted
+named owner survives until endpoint projection; the inner occurrence,
+independent target resolution, scope and lifetime remain unchanged. Owner
+counters distinguish admitted, excluded, and unavailable boundaries. Omission
+samples remain for unavailable ownership. Reference and type-use ownership is
+unchanged.
 PSI tests prove lexical boundaries only; the native call oracle checks compiler
 ownership, forward/inverse occurrence parity, independent omissions and pagination.
 Exact static relations make no claim about runtime execution.

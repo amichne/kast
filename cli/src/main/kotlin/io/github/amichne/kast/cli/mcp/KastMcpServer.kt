@@ -86,9 +86,6 @@ internal class KastMcpServer(
                 "tools/list" ->
                     success(id, McpToolList(toolCatalog(), resultType = "complete", ttlMs = 0, cacheScope = "private"))
                 "tools/call" -> call(id, request.params, modern = true)
-                "resources/list" ->
-                    success(id, McpResourceList(resultType = "complete", ttlMs = 0, cacheScope = "public"))
-                "resources/read" -> readResource(id, request.params, modern = true)
                 else -> McpResponse(id, error = McpError(-32601, "method-not-found"))
             }
         }
@@ -97,8 +94,6 @@ internal class KastMcpServer(
             "ping" -> success(id, McpEmptyResult())
             "tools/list" -> success(id, McpToolList(toolCatalog()))
             "tools/call" -> call(id, request.params, modern = false)
-            "resources/list" -> success(id, McpResourceList())
-            "resources/read" -> readResource(id, request.params, modern = false)
             else -> McpResponse(id, error = McpError(-32601, "method-not-found"))
         }
     }
@@ -118,7 +113,6 @@ internal class KastMcpServer(
                             idempotentHint = it.readOnly,
                             openWorldHint = false,
                         ),
-                    meta = if (it.name == "validate_workspace") McpUiToolMeta() else null,
                 )
             }
             .sortedBy(McpTool::name)
@@ -127,32 +121,6 @@ internal class KastMcpServer(
         val source = schema as? JsonObject ?: error("MCP tool input schema must be an object")
         require(source["type"] == JsonPrimitive("object")) { "MCP tool input schema must have an object root" }
         return source
-    }
-
-    @Suppress("MagicNumber")
-    private fun readResource(id: JsonElement, params: JsonElement?, modern: Boolean): McpResponse {
-        val request =
-            try {
-                mcpWire.decodeFromJsonElement<McpResourceReadRequest>(
-                    params ?: return McpResponse(id, error = McpError(-32602, "missing-resource-uri"))
-                )
-            } catch (_: SerializationException) {
-                return McpResponse(id, error = McpError(-32602, "invalid-resource-uri"))
-            }
-        if (request.uri != VALIDATION_UI_URI) return McpResponse(id, error = McpError(-32602, "unknown-resource-uri"))
-        val html =
-            KastMcpServer::class.java.getResourceAsStream("/mcp/validation.html")?.bufferedReader()?.use {
-                it.readText()
-            } ?: return McpResponse(id, error = McpError(-32603, "validation-view-unavailable"))
-        return success(
-            id,
-            McpResourceRead(
-                listOf(McpResourceContent(text = html)),
-                resultType = if (modern) "complete" else null,
-                ttlMs = if (modern) 3_600_000 else null,
-                cacheScope = if (modern) "public" else null,
-            ),
-        )
     }
 
     private fun hasModernMeta(params: JsonElement?): Boolean {
@@ -237,15 +205,13 @@ internal class KastMcpServer(
         val summary =
             when {
                 modern && call.name == "health_check" -> McpStructuredResults.healthSummary(structured)
-                modern && call.name == "validate_workspace" -> McpStructuredResults.validationSummary(structured)
                 else -> exit.document.value
             }
         return success(
             id,
             McpCallResult(
                 content =
-                    if (modern && call.name in setOf("health_check", "validate_workspace"))
-                        listOf(McpTextContent(summary))
+                    if (modern && call.name == "health_check") listOf(McpTextContent(summary))
                     else listOf(McpTextContent(exit.document.value)),
                 isError = exit is CliExit.BoundaryRejected || exit is CliExit.OperationRejected,
                 structuredContent = structured,

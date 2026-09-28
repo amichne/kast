@@ -88,6 +88,7 @@ fun admitHostedChangeEvidence(
 private fun historicalApplyState(payload: Any?): Boolean =
     when (payload) {
         is ChangeApplyResult.Verified -> true
+        is ChangeApplyResult.VerifiedBody -> true
         is ChangeApplyResult.RecoveryRequired -> payload.reason == ChangeApplyRecoveryReason.ATTEMPT_INTERRUPTED
         else -> false
     }

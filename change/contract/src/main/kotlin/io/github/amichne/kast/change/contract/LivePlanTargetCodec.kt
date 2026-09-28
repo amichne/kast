@@ -26,6 +26,14 @@ import java.nio.file.Path
 
 internal fun LiveAddDeclarationPlanDocument.restoreTarget(
     basis: LiveChangeBasis
+): Refinement<PlannedDeclarationIdentity, LiveAddDeclarationPlanDecodeFailure> =
+    restoreLivePlanTarget(basis, target, scope, constraints)
+
+internal fun restoreLivePlanTarget(
+    basis: LiveChangeBasis,
+    target: LivePlanTargetDocument,
+    scope: LivePlanScopeDocument,
+    constraints: LivePlanConstraintsDocument,
 ): Refinement<PlannedDeclarationIdentity, LiveAddDeclarationPlanDecodeFailure> {
     val path = target.sourcePath.pathOrNull() ?: return rejected()
     val file =
@@ -33,7 +41,7 @@ internal fun LiveAddDeclarationPlanDocument.restoreTarget(
             .valueOrNull() as? SymbolDiscoveryFileIdentity.Workspace
             ?: return rejected(LiveAddDeclarationPlanDecodeFailure.TARGET_MISMATCH)
     val restoredScope =
-        when (val restored = restoreScope(basis)) {
+        when (val restored = restoreScope(basis, scope)) {
             is Refinement.Refined -> restored.value
             is Refinement.Rejected -> return restored
         }
@@ -98,8 +106,9 @@ private fun LivePlanConstraintsDocument.restore():
     )
 }
 
-private fun LiveAddDeclarationPlanDocument.restoreScope(
-    basis: LiveChangeBasis
+private fun restoreScope(
+    basis: LiveChangeBasis,
+    scope: LivePlanScopeDocument,
 ): Refinement<SymbolSearchScope, LiveAddDeclarationPlanDecodeFailure> {
     val capturedScope =
         SymbolSearchScopeSnapshot(

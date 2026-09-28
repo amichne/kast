@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-const val PUBLIC_TOOL_CONTRACT_VERSION = 2
+const val PUBLIC_TOOL_CONTRACT_VERSION = 3
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
@@ -27,12 +27,6 @@ enum class PublicToolIdentity(
             "; execution continuation and result presentation cursor remain distinct.",
         HostedToolLoading.EAGER,
     ),
-    READ_SOURCE("read_source", CanonicalOperation.SOURCE_READ,
-        "Read bounded Kotlin source and structural context for an exact Kast symbol reference. Sele" +
-            "ct a region, text window, structural entities, and continuation without changing source. P" +
-            "reserve references and coverage in the result.",
-        HostedToolLoading.DEFERRED,
-    ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,
         "Check compiler diagnostics for a file or recursively beneath a directory in the session wo" +
             "rkspace. Use '.' explicitly for the workspace root. This is not symbol search and does not" +
@@ -45,6 +39,13 @@ enum class PublicToolIdentity(
             "erence. Kast plans, applies, verifies, and reports a verified receipt or finite failure wi" +
             "th recovery evidence. Preserve the returned result; a cancelled or missing response does n" +
             "ot prove no write occurred.",
+        HostedToolLoading.DEFERRED,
+    ),
+    REPLACE_BODY("replace_body", CanonicalOperation.CHANGE,
+        "Replace only the block body of one existing, non-inline named Kotlin function selected by " +
+            "an exact Kast symbol reference. Kast plans, applies, verifies, and reports a verified rece" +
+            "ipt or finite failure with recovery evidence. The signature and surrounding source are pre" +
+            "served.",
         HostedToolLoading.DEFERRED,
     ),
 }

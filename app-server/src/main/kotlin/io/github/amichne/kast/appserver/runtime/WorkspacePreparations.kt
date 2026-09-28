@@ -42,6 +42,16 @@ internal class WorkspacePreparations(
             setOf(UpgradeBlocker.PREPARATION_ACTIVE)
         else emptySet()
 
+    /** Passive projection of currently retained ready workspace incarnations. */
+    @Synchronized
+    fun activeRoots(): List<String> =
+        if (closed) emptyList()
+        else
+            entries.values
+                .filter { it.state.value is WorkspacePreparationOutcome.Complete }
+                .map { it.root.path.toString() }
+                .sorted()
+
     @Synchronized
     fun prepare(root: CanonicalRoot): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
         if (closed || !worker.isActive) return Refinement.Rejected(WorkspacePreparationFailure.CLOSED)

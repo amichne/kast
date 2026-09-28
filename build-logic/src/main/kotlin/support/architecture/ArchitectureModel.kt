@@ -62,6 +62,7 @@ enum class ForbiddenEffect {
 enum class ModuleId(val projectPath: String) {
     KERNEL(":kernel"),
     DISTRIBUTION_CONTRACT(":distribution:contract"),
+    DISTRIBUTION_CLI(":distribution:cli"),
     DISTRIBUTION_MANAGED(":distribution:managed"),
     PROTOCOL_CONTRACT(":protocol:contract"),
     PROTOCOL_REGISTRY(":protocol:registry"),

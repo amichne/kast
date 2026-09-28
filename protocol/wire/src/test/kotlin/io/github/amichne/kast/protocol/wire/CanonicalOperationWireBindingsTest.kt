@@ -164,11 +164,12 @@ class CanonicalOperationWireBindingsTest {
     }
 
     @Test
-    fun `all four closed change intents use the one production plan binding`() {
+    fun `all closed change intents use the one production plan binding`() {
         val intents =
             listOf(
                 ChangeIntentDocument.AddFile(text("src/New.kt"), text("class New")),
                 ChangeIntentDocument.AddDeclaration(text("exact:Target"), text("fun added() = Unit")),
+                ChangeIntentDocument.ReplaceBody(text("exact:Target"), text("{ return Unit }")),
                 ChangeIntentDocument.ReplaceDeclaration(text("exact:Target"), text("class Target")),
                 ChangeIntentDocument.RenameSymbol(text("exact:Target"), text("Renamed")),
             )

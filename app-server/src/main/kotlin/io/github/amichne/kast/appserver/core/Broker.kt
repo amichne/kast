@@ -93,9 +93,6 @@ internal class BrokerTool<Runtime, Input, Output, InputFailure>(
         {
             emptyList()
         },
-    internal val inputRejectionEvidence: (JsonElement) -> BrokerInputRejectionEvidence = {
-        BrokerInputRejectionEvidence.Unspecified
-    },
     inputAliases: Set<ToolName> = emptySet(),
 ) {
     internal val inputAliases: Set<ToolName> = inputAliases.toSet()
@@ -254,8 +251,6 @@ internal sealed interface BrokerFailure {
         val cause: io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure,
     ) : BrokerFailure
 
-    data class SourceInputRejected(val cause: io.github.amichne.kast.protocol.contract.SourceReadCause) : BrokerFailure
-
     data class UnknownNamespace(val namespace: ProviderNamespace) : BrokerFailure
 
     data class UnknownTool(val address: ToolAddress) : BrokerFailure
@@ -399,15 +394,11 @@ private class TypedProviderRoute<Runtime>(
                 is Validation.Validated -> admitted.value
                 is Validation.Rejected ->
                     return@TypedToolRoute BrokerDispatch.Rejected(
-                        when (val evidence = tool.inputRejectionEvidence(request.arguments)) {
-                            is BrokerInputRejectionEvidence.Source -> BrokerFailure.SourceInputRejected(evidence.cause)
-                            BrokerInputRejectionEvidence.Unspecified ->
-                                BrokerFailure.InvalidArguments(
-                                    request.address,
-                                    admitted.failures.size,
-                                    admitted.failures.take(3).flatMap(tool.inputGuidance).distinct().take(3),
-                                )
-                        }
+                        BrokerFailure.InvalidArguments(
+                            request.address,
+                            admitted.failures.size,
+                            admitted.failures.take(3).flatMap(tool.inputGuidance).distinct().take(3),
+                        )
                     )
             }
         when (val invocation = invokeTool(tool = tool, input = input, request = request, acquire = acquire)) {

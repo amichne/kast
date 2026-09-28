@@ -8,6 +8,8 @@ import io.github.amichne.kast.change.contract.LiveChangeApplicationHistory
 import io.github.amichne.kast.change.contract.LiveChangePlanIssuance
 import io.github.amichne.kast.change.contract.LiveChangePlanLookup
 import io.github.amichne.kast.change.contract.LiveChangePlanStoreFailure
+import io.github.amichne.kast.change.contract.LiveReplaceBodyChangePlan
+import io.github.amichne.kast.change.contract.LiveReplaceBodyPlanCodec
 import io.github.amichne.kast.evidence.contract.HostedWorkspaceStateLocation
 import io.github.amichne.kast.evidence.contract.KastUserStateRoot
 import io.github.amichne.kast.evidence.contract.MutationDatabaseLocation
@@ -27,6 +29,24 @@ import org.junit.jupiter.api.io.TempDir
 
 class SqliteLiveChangePlanStoreTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `body replacement plan survives store replacement with its exact postimage`() {
+        val location = location()
+        val plan =
+            LiveReplaceBodyPlanCodec.decode(
+                    checkNotNull(javaClass.getResource("/live-replace-body-plan-v1.json")).readText().trim()
+                )
+                .refined()
+        val identity = assertInstanceOf<LiveChangePlanIssuance.Issued>(open(location).issuePlan(plan)).identity
+        val restored =
+            assertInstanceOf<LiveReplaceBodyChangePlan>(
+                assertInstanceOf<LiveChangePlanLookup.Found>(open(location).loadPlan(identity)).plan
+            )
+        assertEquals(LiveReplaceBodyPlanCodec.encode(plan), LiveReplaceBodyPlanCodec.encode(restored))
+        assertEquals(plan.expectedPostimage, restored.expectedPostimage)
+        assertEquals(LiveChangePlanIssuance.Issued(identity), open(location).issuePlan(restored))
+    }
 
     @Test
     fun `concurrent attempts admit once and replacement cannot replay`() {
@@ -54,7 +74,10 @@ class SqliteLiveChangePlanStoreTest {
         val identity = assertInstanceOf<LiveChangePlanIssuance.Issued>(open(location).issuePlan(plan)).identity
 
         val replacement = open(location)
-        val restored = assertInstanceOf<LiveChangePlanLookup.Found>(replacement.loadPlan(identity)).plan
+        val restored =
+            assertInstanceOf<io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan>(
+                assertInstanceOf<LiveChangePlanLookup.Found>(replacement.loadPlan(identity)).plan
+            )
 
         assertEquals("plan:${plan.planId.value}", identity.value)
         assertEquals(LiveAddDeclarationPlanCodec.encode(plan), LiveAddDeclarationPlanCodec.encode(restored))

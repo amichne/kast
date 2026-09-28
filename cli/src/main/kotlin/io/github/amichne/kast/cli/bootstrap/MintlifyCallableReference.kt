@@ -4,7 +4,6 @@ import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.mcp.McpCallResult
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.cli.mcp.healthInputSchema
-import io.github.amichne.kast.cli.mcp.validationInputSchema
 import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -50,12 +49,8 @@ internal fun mintlifyCallableReference(): CanonicalJsonDocument {
                     .documentationComponents(MintlifyCallableComponentName.named("McpToolCallResult")) +
                 healthInputSchema()
                     .documentationComponents(MintlifyCallableComponentName.named("health_checkRequest")) +
-                validationInputSchema()
-                    .documentationComponents(MintlifyCallableComponentName.named("validate_workspaceRequest")) +
                 McpStructuredResults.schemaFor("health_check")
-                    .documentationComponents(MintlifyCallableComponentName.named("health_checkSemanticResult")) +
-                McpStructuredResults.schemaFor("validate_workspace")
-                    .documentationComponents(MintlifyCallableComponentName.named("validate_workspaceSemanticResult")))
+                    .documentationComponents(MintlifyCallableComponentName.named("health_checkSemanticResult")))
             .toMap(linkedMapOf())
     return mintlifyCallableReferenceFactory.create(
         MintlifyCallableReferenceDocument(

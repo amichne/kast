@@ -48,7 +48,6 @@ enum class WorkspaceSearchScopeModelFailure {
     AMBIGUOUS_SOURCE_ROOT_OWNER,
     INCOHERENT_SOURCE_ROOT_KIND,
     INCOHERENT_SOURCE_ROOT_PROVENANCE,
-    NO_SOURCE_ROOTS,
 }
 
 @JvmInline value class WorkspaceModuleIdentity internal constructor(val value: String)
@@ -151,9 +150,6 @@ private constructor(
                 if (owners.map(ModelOwnedSourceRoot::provenance).distinct().size > 1) {
                     failures += WorkspaceSearchScopeModelFailure.INCOHERENT_SOURCE_ROOT_PROVENANCE
                 }
-            }
-            if (roots.isEmpty()) {
-                failures += WorkspaceSearchScopeModelFailure.NO_SOURCE_ROOTS
             }
             if (failures.isNotEmpty()) {
                 return WorkspaceSearchScopeModelCompilation.Rejected(failures)

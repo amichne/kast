@@ -48,7 +48,6 @@ class PublicToolCommandTest {
                         CanonicalOperationWireBindings.diagnosticCheck.decodeRequest(request),
                     )
                 is PublicToolCanonical.Change -> error("Approval-aware mutation has no generic CLI route")
-                is PublicToolCanonical.Source -> error("No source example in this query and diagnostics test")
             }
         }
         assertTrue(

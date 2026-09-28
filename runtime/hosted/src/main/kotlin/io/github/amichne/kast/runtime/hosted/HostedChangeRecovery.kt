@@ -3,8 +3,8 @@ package io.github.amichne.kast.runtime.hosted
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.change.apply.LiveRecoveryAuthority
 import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.LiveChangeBasis
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.intellij.HostedLiveSourceRecovery
 import io.github.amichne.kast.change.protocol.liveChangeEvidence
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryOutcome
@@ -39,7 +39,7 @@ internal suspend fun recoverHostedChange(
     project: Project,
     query: HostedQueryService,
     resources: HostedChangeResources,
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
     approval: VerifiedLivePlanApproval,
 ): HostedRecoverOutcome {
     val binding =
@@ -97,7 +97,7 @@ private data class FreshHostedRecovery(
 private fun observeHostedRecovery(
     project: Project,
     context: HostedSemanticReadContext,
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
     approval: VerifiedLivePlanApproval,
     record: MutationRecoveryRecord,
 ): Refinement<FreshHostedRecovery, ChangeRecoverRejection> {

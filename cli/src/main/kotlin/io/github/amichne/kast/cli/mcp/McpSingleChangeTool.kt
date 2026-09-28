@@ -46,7 +46,7 @@ internal class McpSingleChangeTool(
     }
 
     fun invoke(admitted: AdmittedPublicTool): CliExit {
-        require(admitted.identity == PublicToolIdentity.ADD_DECLARATION)
+        require(admitted.identity in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY))
         val request = (admitted.canonical as PublicToolCanonical.Change).request
         val planArguments =
             changeJson.encodeToJsonElement(ChangePlanRequest.serializer(), ChangePlanRequest(request.intent)).jsonObject

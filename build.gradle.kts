@@ -60,6 +60,9 @@ evaluationDependsOn(":runtime:hosted")
 val hostedPluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
+tasks.named("generateKastDocumentation") {
+    dependsOn(":distribution:cli:generateManagementVersion")
+}
 val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
     "generated/operation-registry/operation-registry.json",
 )
@@ -85,12 +88,22 @@ val controlProductDirectory = layout.buildDirectory.dir("control-product")
 val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     group = "distribution"
     description = "Stages the Kast control installation for the existing IDE."
-    dependsOn(":cli:installDist", generateKastControlMetadata)
+    dependsOn(":cli:installDist", ":distribution:cli:nativeCompile", generateKastControlMetadata)
     into(controlProductDirectory)
     from(project(":cli").layout.buildDirectory.dir("install/kast")) {
         exclude("bin/cli", "bin/kast.bat")
     }
     from(generatedControlMetadata) {
+        into("share/kast")
+    }
+    from(project(":distribution:cli").layout.buildDirectory.file("native/nativeCompile/kast")) {
+        into("share/kast/libexec")
+        rename { "kast-management" }
+    }
+    from("install.sh") {
+        into("share/kast")
+    }
+    from("distribution/cli/one-shot-observation-v1") {
         into("share/kast")
     }
     from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py")) { into("share/kast") }
@@ -114,6 +127,7 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
                 "bin/kast-tool-rpc",
                 "share/kast/libexec/kast-daemon",
                 "share/kast/libexec/kast-service",
+                "share/kast/libexec/kast-management",
             )
         ) permissions { unix("755") }
     }

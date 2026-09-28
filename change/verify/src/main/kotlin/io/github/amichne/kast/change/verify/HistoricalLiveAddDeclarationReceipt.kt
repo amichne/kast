@@ -32,15 +32,15 @@ internal class HistoricalLiveReceiptObligations(
 /** Historical success evidence only; restoration grants no current read, approval, or mutation capability. */
 class HistoricalLiveAddDeclarationReceipt
 private constructor(
-    val plan: LiveAddDeclarationChangePlan,
+    override val plan: LiveAddDeclarationChangePlan,
     private val result: HistoricalLiveSemanticResult,
     val approval: HistoricalLiveApproval,
     val recovery: HistoricalLiveRecovery,
-) {
+) : HistoricalLiveChangeReceipt {
     val before: LiveChangeBasis
         get() = plan.basis.observation
 
-    val after: LiveChangeBasis
+    override val after: LiveChangeBasis
         get() = result.after
 
     val postimage: WorkspaceSourceContentHash
@@ -67,7 +67,7 @@ private constructor(
     val liveObligations: List<LiveAddDeclarationObligation>
         get() = plan.requiredVerification.liveObligations
 
-    val identity: ChangeReceiptIdentity
+    override val identity: ChangeReceiptIdentity
         get() = LiveAddDeclarationReceiptCodec.identity(this)
 
     internal companion object {

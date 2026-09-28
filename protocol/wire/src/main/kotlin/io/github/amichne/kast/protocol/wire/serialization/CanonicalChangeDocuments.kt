@@ -54,6 +54,14 @@ internal sealed interface ChangeApplyResultDocument {
         ChangeApplyResultDocument
 
     @Serializable
+    @SerialName("verified_body")
+    data class VerifiedBody(
+        val receiptIdentity: String,
+        val freshReference: String,
+        val changes: List<ChangeFilePreviewDocument>,
+    ) : ChangeApplyResultDocument
+
+    @Serializable
     @SerialName("applied_unverified")
     data class AppliedUnverified(
         val planIdentity: String,

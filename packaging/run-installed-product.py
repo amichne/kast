@@ -42,7 +42,7 @@ def verify_artifacts(product: Path, control: Path, plugin: Path) -> None:
         require(any("/lib/kast-ide-hosted-" in name and name.endswith(".jar") for name in names), "plugin jar")
     with tarfile.open(control) as archive:
         for launcher in ("bin/kast", "bin/kast-codex", "share/kast/libexec/kast-daemon",
-                         "share/kast/libexec/kast-service"):
+                         "share/kast/libexec/kast-service", "share/kast/libexec/kast-management"):
             member = archive.getmember(launcher)
             require(member.isfile() and member.mode & 0o111 == 0o111, "launcher " + launcher)
         require(archive.getmember("share/kast/knowledge/manifest.json").isfile(), "knowledge manifest")

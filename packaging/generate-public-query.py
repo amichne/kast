@@ -64,12 +64,11 @@ def validate_authority(authority: dict) -> None:
     if len(names) != len(set(names)):
         raise ValueError('Duplicate public tool identity')
     for tool in authority['tools']:
-        if tool['operation'] not in {'query.run', 'source.read', 'diagnostic.check', 'change'}:
+        if tool['operation'] not in {'query.run', 'diagnostic.check', 'change'}:
             raise ValueError(f'Unbound advertised tool: {tool["name"]}')
     support_bindings = {
         'workspace_lifecycle': ('WorkspaceLifecycleRequest', ['APP_SERVER']),
         'health_check': ('McpHealthRequest', ['MCP', 'RPC']),
-        'validate_workspace': ('McpValidationRequest', ['MCP', 'RPC']),
     }
     if {tool['name'] for tool in support} != set(support_bindings):
         raise ValueError('Support tools must have complete, known bindings')
@@ -350,42 +349,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
         lines.append(f'    is PublicTool{key} -> json.encodeToJsonElement(PublicTool{key}.serializer(), value)\n')
     lines.append('}\n\nprivate fun <T> toolDefault(value: Refinement<T, *>): T = when (value) {\n    is Refinement.Refined -> value.value\n    is Refinement.Rejected -> error("Invalid authored public tool default")\n}\n')
     document_source = ''.join(lines)
-    source_blocks = []
-    source_names = {name for name in [*enums, *unions, *objects]
-                    if name.startswith(('SourceText', 'SourceFilter', 'SourceEntities', 'SourcePage'))
-                    or name in {'ReadSource', 'Region', 'Containment', 'Kinds', 'Visibilities'}}
-    for name in sorted(source_names):
-        pattern = re.compile(r'@Serializable\n(?:@SerialName\([^\n]+\)\n)?internal '
-                             r'(?:enum class|data class|data object|sealed interface) PublicTool' + name +
-                             r'\b[\s\S]*?(?=\n@Serializable|\ninternal object PublicToolDefaults|\ninternal fun decodePublicTool)')
-        match = pattern.search(document_source)
-        if not match:
-            raise ValueError(f'Generated source document declaration missing: {name}')
-        source_blocks.append(match.group(0))
-        document_source = document_source[:match.start()] + document_source[match.end():]
-    source_header = '''// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.
-@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-@file:Suppress("ConstructorParameterNaming")
-
-package io.github.amichne.kast.appserver.query
-
-import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.ProtocolText
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
-'''
-    def format_source_block(block: str) -> str:
-        block = block.strip()
-        block = re.sub(r'@Serializable\ninternal sealed interface', '@Serializable internal sealed interface', block)
-        block = re.sub(r'@Serializable\n@SerialName\(([^\n]+)\)\ninternal data object',
-                       r'@Serializable @SerialName(\1) internal data object', block)
-        block = re.sub(r'internal data class (PublicTool\w+)\(\n    (val [^\n]+),\n\) (: \w+)',
-                       r'internal data class \1(\2) \3', block)
-        return block + '\n\n'
     outputs = {
         KOTLIN / 'PublicToolDocuments.kt': document_source,
-        KOTLIN / 'PublicToolSourceDocuments.kt': source_header + ''.join(map(format_source_block, source_blocks)).rstrip() + '\n',
     }
     identity_lines = ['// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
                       'package io.github.amichne.kast.protocol.registry\n\n',
@@ -399,7 +364,7 @@ import kotlinx.serialization.Serializable
                       '    val description: String,\n'
                       '    val loading: HostedToolLoading,\n'
                       ') {\n']
-    operations = {'query.run': 'QUERY_RUN', 'source.read': 'SOURCE_READ', 'diagnostic.check': 'DIAGNOSTIC_CHECK', 'change': 'CHANGE'}
+    operations = {'query.run': 'QUERY_RUN', 'diagnostic.check': 'DIAGNOSTIC_CHECK', 'change': 'CHANGE'}
     for tool in authority['tools']:
         description = ' +\n            '.join(json.dumps(tool['description'][offset:offset + 90])
                                              for offset in range(0, len(tool['description']), 90))

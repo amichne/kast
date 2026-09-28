@@ -86,7 +86,7 @@ private fun decodeReceiptResult(
     )
 }
 
-private fun decodeReceiptApproval(body: LiveReceiptApproval): Refinement<HistoricalLiveApproval, LiveReceiptFailure> {
+internal fun decodeReceiptApproval(body: LiveReceiptApproval): Refinement<HistoricalLiveApproval, LiveReceiptFailure> {
     val challenge =
         when (val decoded = LiveApprovalChallenge.parse(body.challenge)) {
             is Refinement.Refined -> decoded.value
@@ -100,7 +100,7 @@ private fun decodeReceiptApproval(body: LiveReceiptApproval): Refinement<Histori
     )
 }
 
-private fun decodeReceiptRecovery(body: LiveReceiptRecovery): Refinement<HistoricalLiveRecovery, LiveReceiptFailure> {
+internal fun decodeReceiptRecovery(body: LiveReceiptRecovery): Refinement<HistoricalLiveRecovery, LiveReceiptFailure> {
     val binding =
         when (val decoded = ChangePlanId.parse(body.binding)) {
             is Refinement.Refined -> decoded.value

@@ -85,7 +85,7 @@ class NativeToolIdentityTest {
                 .encodeToJsonElement(
                     DynamicToolDisplayFixture(
                         id = "call-source",
-                        tool = "read_source",
+                        tool = "query_symbols",
                         contentItems =
                             listOf(
                                 DynamicToolTextFixture("class Example"),

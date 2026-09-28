@@ -25,7 +25,7 @@ internal fun installedKastCatalogFixture(): String =
         KastCapabilityBoundary(
             1,
             KastServerProjectionBoundary(
-                16,
+                17,
                 "kast",
                 KastHostedBootstrapBoundary(
                     io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION,

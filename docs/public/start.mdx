@@ -18,7 +18,18 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, and IntelliJ IDEA
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    In an interactive terminal, the installer offers to register Kast as a user-level MCP server with Codex. It installs the IDEA plugin and Kast service for the matched release line. On an upgrade, it removes prior versions that pass ownership checks. It asks before removing each older Kast entry it cannot fully verify; type `yes` for that exact entry, or leave it in place. Noninteractive upgrades report and retain those entries.
+    The installer publishes a native `kast` management command, installs the matched IDEA plugin, and sets up Kast-owned services. With a nonempty `XDG_CONFIG_HOME`, the command goes to `$XDG_CONFIG_HOME/kast`; otherwise it goes to `$HOME/.local/bin/kast`. If the selected directory is not on `PATH`, the installer prints the command's absolute path and the directory to add. It does not edit shell profiles.
+  </Step>
+  <Step title="Inspect and connect">
+    Run `kast status` to see the installed version, recorded integrations, and available runtime observations. Run `kast connect` to see the supported harnesses, then register one:
+
+    ```shell
+    kast connect codex
+    # or: kast connect copilot
+    # or: kast connect pi
+    ```
+
+    The installer may also offer to connect Codex during interactive setup. Connecting a second time to the same payload is safe.
   </Step>
   <Step title="Restart IDEA and open your agent">
     Restart IntelliJ IDEA so it loads the plugin. Start the agent from the Kotlin repository or worktree you want Kast to inspect:
@@ -41,6 +52,6 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, and IntelliJ IDEA
 
 Kast supports direct MCP and the included one-shot Tool RPC adapters from the same installation. The Codex App Server provides a hosted integration; its compatibility status is still preview. Each client should discover the installed catalog after installation or upgrade.
 
-The installer does not add a general `kast` command to `PATH`. If another integration supplies the Codex MCP declaration, pass `-- --skip-codex-mcp` to the installer. For a second IDEA installation, pass `-- --idea-home "/Applications/IntelliJ IDEA.app"`.
+Use `kast upgrade` for the latest release on the selected channel. Upgrades stop Kast-owned services and interrupt existing calls and sessions; restart IDEA and connected harnesses to load the new payload. Use `kast disconnect <harness>` to remove an owned registration and `kast uninstall` to remove the owned installation. For a second IDEA installation, pass `-- --idea-home "/Applications/IntelliJ IDEA.app"` to the bootstrap installer.
 
 The [MCP contract](/reference/mcp-catalog) and [Tool RPC contract](/reference/rpc-catalog) show how other clients discover tools. If setup reports a blocker, use the [troubleshooting guide](/troubleshooting).

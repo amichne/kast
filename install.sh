@@ -72,18 +72,20 @@ warning() { ui_line warning 33 "$*"; }
 
 usage() {
   cat <<'USAGE'
-Install or remove Kast for the current user.
+Bootstrap Kast for the current user.
 
 Usage:
   install.sh [--idea-home <absolute-path>] [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
              [--register-codex-mcp | --skip-codex-mcp]
-  install.sh uninstall [--dry-run]
   install.sh --help
 
 The default command installs the latest release into:
   ${XDG_DATA_HOME:-$HOME/.local/share}/kast
 
-and configures the persistent daemon without adding a Kast command to PATH.
+and publishes the native management command at `$XDG_CONFIG_HOME/kast` when
+`XDG_CONFIG_HOME` is nonempty, otherwise at `$HOME/.local/bin/kast`. If that
+directory is not on PATH, installation succeeds and prints the absolute path
+and directory to add. No shell profile is edited.
 When `--idea-home` is omitted, installation checks `/Applications`,
 `~/Applications`, and the JetBrains Toolbox app directory for a compatible IDEA.
 
@@ -107,6 +109,7 @@ a terminal, uncertain entries are retained and reported.
 Interactive persistent installs ask whether to register a user-level Codex MCP
 server. Pass --register-codex-mcp or --skip-codex-mcp to make the choice without
 a prompt. Non-interactive installs default to registration for compatibility.
+After installation, use kast status, kast connect, kast upgrade, or kast uninstall.
 `--force` retires the selected installation, resets its managed state and sockets,
 and restages verified components. It does not change
 source workspaces or the selected IDEA application. `--dry-run` remains read-only.
@@ -401,6 +404,7 @@ activate_hosted_plugin() {
 }
 
 action=install
+managed_registrations=0
 version="${KAST_VERSION:-}"
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 mode=apply
@@ -422,6 +426,11 @@ while [[ $# -gt 0 ]]; do
     --force)
       [[ "$action" == install ]] || fail "--force is valid only for installation"
       force=1
+      shift
+      ;;
+    --managed-registrations)
+      [[ "$action" == uninstall ]] || fail "--managed-registrations is valid only for removal"
+      managed_registrations=1
       shift
       ;;
     --dry-run)
@@ -490,7 +499,7 @@ if [[ "$action" == uninstall ]]; then
     exec python3 "$lifecycle" --installation "$selected" remove --dry-run --json
   else
     registration="$selected/share/kast/codex-mcp-registration.py"
-    if [[ -f "$registration" && ! -L "$registration" ]]; then
+    if [[ "$managed_registrations" == 0 && -f "$registration" && ! -L "$registration" ]]; then
       unregister_copy="$(mktemp "${TMPDIR:-/tmp}/kast-mcp-unregister.XXXXXX")"
       cp "$registration" "$unregister_copy"
       trap 'rm -f -- "$unregister_copy"' EXIT
@@ -620,6 +629,13 @@ extract_hosted_plugin "$temporary_root/$plugin_name" "$plugin_stage" "$version" 
 control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
 [[ -x "$control_root/share/kast/libexec/kast-service" ]] || fail "control archive has no executable installer"
+if [[ "$profile" == persistent ]]; then
+  management_executable="$control_root/share/kast/libexec/kast-management"
+  [[ -x "$management_executable" ]] || fail "control archive has no native management executable"
+  export KAST_INSTALL_ROOT="$install_root"
+  management_destination="$("$management_executable" --internal-install preflight)" ||
+    fail "native executable destination was rejected before service retirement"
+fi
 if [[ "$mode" == apply && "$profile" == persistent && "$codex_mcp_choice" == register ]]; then
   require_command codex
   registration_source="$control_root/share/kast/codex-mcp-registration.py"
@@ -653,15 +669,28 @@ export JAVA_HOME="$java_home"
 # Pass reset authority as a command option so older payloads reject it before effects.
 installation_options=()
 [[ "$force" == 0 ]] || installation_options+=(--force)
-"$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
+if [[ -n "${KAST_MANAGEMENT_REPORT_PATH:-}" && "$mode" == apply && "$profile" == persistent ]]; then
+  "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"} > "$KAST_MANAGEMENT_REPORT_PATH"
+  cat "$KAST_MANAGEMENT_REPORT_PATH"
+else
+  "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
+fi
 if [[ "$mode" == plan ]]; then
   success "verified hosted plugin $plugin_digest for IntelliJ IDEA $idea_version (build $idea_build)"
   info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."
 else
   activate_hosted_plugin "$plugin_stage" "$idea_plugin_root"
+  if [[ "$profile" == persistent ]]; then
+    export KAST_MANAGEMENT_CHANNEL="$([[ "$developer_latest" == 1 ]] && printf developer || printf stable)"
+    installed_management="$("$management_executable" --internal-install commit)" ||
+      fail "native executable activation failed; installed payload remains available for recovery"
+    [[ "$installed_management" == "$management_destination" ]] ||
+      fail "native executable destination changed during installation"
+  fi
   if [[ "$profile" == persistent && "$codex_mcp_choice" == register ]]; then
     [[ -x "$install_root/current/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
     python3 "$install_root/current/share/kast/codex-mcp-registration.py" install "$install_root"
+    "$installed_management" connect codex
   fi
   installation_complete=1
 fi

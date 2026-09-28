@@ -34,12 +34,4 @@ enum class SupportToolIdentity(
         "McpHealthRequest",
         setOf(SupportToolHost.MCP, SupportToolHost.RPC),
     ),
-    VALIDATE_WORKSPACE(
-        "validate_workspace",
-        "Run explicit read-only declaration, exact-symbol, source, query relation, and IDE diagnost" +
-            "ic probes. Supply sourceSetName for custom Gradle source sets. Each probe reports passed, " +
-            "failed, or unverified independently.",
-        "McpValidationRequest",
-        setOf(SupportToolHost.MCP, SupportToolHost.RPC),
-    ),
 }

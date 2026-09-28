@@ -88,7 +88,7 @@ class KastPublicQueryProviderTest {
         val invalid =
             listOf(
                 capability(driftSchema = true),
-                schema.replace("\"schemaVersion\":16", "\"schemaVersion\":10"),
+                schema.replace("\"schemaVersion\":17", "\"schemaVersion\":10"),
             )
         invalid.forEach { input ->
             val executor = RecordingExecutor(input)

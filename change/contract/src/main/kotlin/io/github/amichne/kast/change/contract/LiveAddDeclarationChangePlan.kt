@@ -15,14 +15,14 @@ class LiveAddDeclarationChangePlan
 private constructor(
     private val input: AdmittedLiveAddDeclarationPlanInput,
     val plannedEdit: AddDeclarationPlannedEdit,
-    val writes: PlannedMutationWriteSet,
-) {
-    val planId = AddDeclarationPlanId.fromCanonicalIdentity(input.canonicalIdentity())
-    val basis = ChangePlanningBasis.Live(input.basis)
-    val target
+    override val writes: PlannedMutationWriteSet,
+) : LiveChangePlan {
+    override val planId = AddDeclarationPlanId.fromCanonicalIdentity(input.canonicalIdentity())
+    override val basis = ChangePlanningBasis.Live(input.basis)
+    override val target
         get() = input.target
 
-    val content
+    override val content
         get() = input.content
 
     val declaration

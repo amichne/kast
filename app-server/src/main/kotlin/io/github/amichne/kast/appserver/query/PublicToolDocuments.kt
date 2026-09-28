@@ -89,8 +89,6 @@ internal enum class PublicToolRetention {
     @SerialName("RETAIN") RETAIN,
 }
 
-
-
 @Serializable
 internal sealed interface PublicToolOutput
 
@@ -123,7 +121,6 @@ internal sealed interface PublicToolAction
 
 @Serializable
 internal sealed interface PublicToolRetainedInput
-
 
 @Serializable
 @SerialName("DIRECTORY")
@@ -329,14 +326,10 @@ internal data class PublicToolLocationSource(
     val offset: Int,
 ) : PublicToolSource
 
-
-
-
 @Serializable
 internal data class PublicToolQuerySymbols(
     val request: PublicToolAction,
 ) : PublicToolDocument
-
 
 @Serializable
 internal data class PublicToolCheckDiagnostics(
@@ -350,6 +343,12 @@ internal data class PublicToolCheckDiagnostics(
 internal data class PublicToolAddDeclaration(
     val exactTarget: ProtocolText,
     val declaration: ProtocolText,
+) : PublicToolDocument
+
+@Serializable
+internal data class PublicToolReplaceBody(
+    val exactTarget: ProtocolText,
+    val body: ProtocolText,
 ) : PublicToolDocument
 
 internal object PublicToolDefaults {
@@ -379,16 +378,16 @@ internal object PublicToolDefaults {
 
 internal fun decodePublicTool(identity: PublicToolIdentity, raw: JsonElement, json: Json): PublicToolDocument = when (identity) {
     PublicToolIdentity.QUERY_SYMBOLS -> json.decodeFromJsonElement(PublicToolQuerySymbols.serializer(), raw)
-    PublicToolIdentity.READ_SOURCE -> json.decodeFromJsonElement(PublicToolReadSource.serializer(), raw)
     PublicToolIdentity.CHECK_DIAGNOSTICS -> json.decodeFromJsonElement(PublicToolCheckDiagnostics.serializer(), raw)
     PublicToolIdentity.ADD_DECLARATION -> json.decodeFromJsonElement(PublicToolAddDeclaration.serializer(), raw)
+    PublicToolIdentity.REPLACE_BODY -> json.decodeFromJsonElement(PublicToolReplaceBody.serializer(), raw)
 }
 
 internal fun encodePublicTool(value: PublicToolDocument, json: Json): JsonElement = when (value) {
     is PublicToolQuerySymbols -> json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), value)
-    is PublicToolReadSource -> json.encodeToJsonElement(PublicToolReadSource.serializer(), value)
     is PublicToolCheckDiagnostics -> json.encodeToJsonElement(PublicToolCheckDiagnostics.serializer(), value)
     is PublicToolAddDeclaration -> json.encodeToJsonElement(PublicToolAddDeclaration.serializer(), value)
+    is PublicToolReplaceBody -> json.encodeToJsonElement(PublicToolReplaceBody.serializer(), value)
 }
 
 private fun <T> toolDefault(value: Refinement<T, *>): T = when (value) {

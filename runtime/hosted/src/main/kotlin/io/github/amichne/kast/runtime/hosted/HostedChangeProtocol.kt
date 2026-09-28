@@ -11,6 +11,7 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 
 /** Planning reads end before durable issuance; writes will use a separate admission path. */
+@Suppress("LongMethod") // One hosted read binds the intent before durable plan issuance.
 internal suspend fun planHostedChange(
     project: Project,
     query: HostedQueryService,
@@ -25,7 +26,16 @@ internal suspend fun planHostedChange(
         when (
             val result =
                 query.read(query.endpoint, request.root) { context ->
-                    prepareHostedAddDeclaration(project, context, request.request)
+                    when (request.request.intent) {
+                        is io.github.amichne.kast.protocol.contract.ChangeIntentDocument.AddDeclaration ->
+                            prepareHostedAddDeclaration(project, context, request.request)
+                        is io.github.amichne.kast.protocol.contract.ChangeIntentDocument.ReplaceBody ->
+                            prepareHostedReplaceBody(project, context, request.request)
+                        else ->
+                            Refinement.Rejected(
+                                HostedChangePlanningFailure.Canonical(ChangePlanRejection.UNSUPPORTED_HOSTED_INTENT)
+                            )
+                    }
                 }
         ) {
             is HostedSemanticReadResult.Completed ->

@@ -6,6 +6,14 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-26T00:00:00Z
 code_sources:
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationRegistration.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PassiveRuntimeObservation.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/OneShotObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
@@ -43,6 +51,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/OneShotInvocationRecord.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow]
@@ -70,9 +79,11 @@ code_sources:
 
 # Distribution and packaging
 
+The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows payload and IDEA plugin activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for loaded version, ready workspaces, and live connection count. One-shot tool RPC calls publish a bounded process identity record while executing; native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
+
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
-Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, the launcher, and one real session installation in an owned temporary root. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, required launchers including the native management command, and one real session installation in an owned temporary root. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
 The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the selected version and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 

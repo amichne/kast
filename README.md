@@ -13,17 +13,25 @@ and IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-Restart IDEA after installation. The installer offers to register Kast with
-Codex; other MCP clients and the included tool RPC adapters can use the same
-installation. See [install and connect](https://kast.michne.com/start/) for
-client setup and options.
+The installer publishes the native `kast` management command. If its directory
+is not on `PATH`, it prints the absolute command path and the directory to add.
+When `XDG_CONFIG_HOME` is nonempty, the command is `$XDG_CONFIG_HOME/kast`;
+otherwise it is `$HOME/.local/bin/kast`. Upgrades retain the original location.
+Use `kast status` to inspect the installation and `kast connect` to choose
+Codex, Copilot, or Pi. Restart IDEA after installation and restart a harness
+after connecting it. See [install and connect](https://kast.michne.com/start/).
 
-On an upgrade, Kast removes prior versions that pass installation admission.
+Use `kast upgrade` to install the latest release on the selected channel.
+The upgrade interrupts existing calls and sessions. Kast removes prior versions
+that pass installation admission.
 For older Kast processes, login items, plugin backups, install directories, or
 manifest-listed anchors whose ownership is incomplete, the installer shows
 each exact item and asks before removing it. Answer `yes` for an individual
 item; every other answer keeps it. A noninteractive upgrade keeps uncertain
 items and reports them.
+
+Use `kast uninstall` to stop Kast-owned services and remove the owned
+installation and registrations.
 
 ## Ask a question
 

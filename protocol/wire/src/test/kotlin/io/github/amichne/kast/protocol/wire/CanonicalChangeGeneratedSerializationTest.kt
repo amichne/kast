@@ -200,6 +200,7 @@ class CanonicalChangeGeneratedSerializationTest {
                     is ChangeApplyResult.AppliedUnverified -> ChangeApplyQualification.APPLIED_UNVERIFIED
                     is ChangeApplyResult.RecoveryRequired -> ChangeApplyQualification.RECOVERY_REQUIRED
                     is ChangeApplyResult.Verified -> error("unexpected verified fixture")
+                    is ChangeApplyResult.VerifiedBody -> error("unexpected verified body fixture")
                 }
             val document =
                 binding

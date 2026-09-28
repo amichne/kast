@@ -89,7 +89,7 @@ Run admission reacquires exact references from the source and `concat` steps thr
 Selector documents retain directory, package, declaration-kind, and exact Gradle
 source-set constraints for source-owned declaration candidates and exact symbols.
 Relation occurrences and diagnostic locations issue range candidates consumed by
-public `read_source`; these do not grant exact symbol authority. No public file candidate
+internal source extraction; these do not grant exact symbol authority. No public file candidate
 or discovery-batch token issuer remains. Published selectors use version 2;
 live or scoped selectors use version 3. A version-2 decoder rejects payloads
 requiring newer authority or scope evidence. Modeled source-set selection uses

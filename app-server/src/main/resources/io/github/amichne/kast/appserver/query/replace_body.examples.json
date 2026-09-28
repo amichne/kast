@@ -1,0 +1,19 @@
+{
+  "examples": {
+    "exactTarget": {
+      "summary": "Replace the block body of one exact named function returned by Kast.",
+      "value": {
+        "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+        "body": "{ return Unit }"
+      }
+    }
+  },
+  "invalidExamples": {
+    "missingBody": {
+      "summary": "A replacement body is required.",
+      "value": {
+        "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+      }
+    }
+  }
+}
