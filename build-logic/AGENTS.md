@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: b0853839b1e3 -->
+<!-- generated: 2026-09-28 | hash: bd814345dab3 -->
 
 # build-logic
 

@@ -24,7 +24,7 @@ enum class SupportToolIdentity(
             "rust and failed saves require user resolution. Release never closes a project. Borrowed or" +
             " presented projects are protected from agent cleanup; request_user_close requests exact-ta" +
             "rget controller approval.",
-        "WorkspaceLifecycleRequest",
+        "WorkspaceLifecycleToolInput",
         setOf(SupportToolHost.APP_SERVER),
     ),
     HEALTH_CHECK(

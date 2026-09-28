@@ -111,7 +111,7 @@ class ManagementCliTest {
 
     @Test
     fun `Pi registration is idempotent and disconnect preserves a foreign replacement`() {
-        val (root, home) = integrationFixture(Harness.PI)
+        val (root, home) = integrationFixture(temporary, Harness.PI)
         val target = home.resolve(".pi/agent/extensions/kast.ts")
         assertFalse(connectHarness(root, home, Harness.PI))
         assertTrue(connectHarness(root, home, Harness.PI))
@@ -127,7 +127,7 @@ class ManagementCliTest {
 
     @Test
     fun `matching unowned Pi file is not adopted or removed`() {
-        val (root, home) = integrationFixture(Harness.PI)
+        val (root, home) = integrationFixture(temporary, Harness.PI)
         val target = home.resolve(".pi/agent/extensions/kast.ts")
         Files.createDirectories(target.parent)
         Files.writeString(target, "release adapter")
@@ -138,7 +138,7 @@ class ManagementCliTest {
 
     @Test
     fun `Copilot registration installs and removes only its bundled adapter`() {
-        val (root, home) = integrationFixture(Harness.COPILOT)
+        val (root, home) = integrationFixture(temporary, Harness.COPILOT)
         val target = home.resolve(".copilot/extensions/kast/extension.mjs")
         assertFalse(connectHarness(root, home, Harness.COPILOT))
         assertEquals("release adapter", Files.readString(target))
@@ -148,7 +148,7 @@ class ManagementCliTest {
 
     @Test
     fun `upgrade reports pending service activation after verified installation`() {
-        val (root, home) = integrationFixture(Harness.PI)
+        val (root, home) = integrationFixture(temporary, Harness.PI)
         val report =
             Json.encodeToString(
                 TestInstallReport(
@@ -167,54 +167,6 @@ class ManagementCliTest {
         assertTrue(failure.reason.contains("service restart required"))
         assertTrue(failure.reason.contains("restart IntelliJ IDEA and connected harnesses"))
         assertTrue(Files.exists(Path.of((readReceipt(root) as ReceiptRead.Read).receipt.executable)))
-    }
-
-    private fun integrationFixture(harness: Harness): Pair<Path, Path> {
-        val root = temporary.resolve("kast")
-        val home = temporary.resolve("home")
-        val version = root.resolve("versions/1.2.3-deadbeef")
-        val relative =
-            when (harness) {
-                Harness.COPILOT -> "share/kast/adapters/copilot/extension.mjs"
-                Harness.PI -> "share/kast/adapters/pi/extension.ts"
-                Harness.CODEX -> error("Codex registration uses its CLI installer")
-            }
-        val source = version.resolve(relative)
-        Files.createDirectories(source.parent)
-        Files.createDirectories(home)
-        Files.writeString(source, "release adapter")
-        Files.writeString(
-            version.resolve("installation.json"),
-            Json.encodeToString(
-                TestManifest(
-                    2,
-                    version.toRealPath().toString(),
-                    listOf(
-                        TestPayload(
-                            relative,
-                            "sha256:${sha256(source)}",
-                            420,
-                        )
-                    ),
-                    "1.2.3",
-                )
-            ),
-        )
-        Files.createSymbolicLink(root.resolve("current"), root.relativize(version))
-        val executable = temporary.resolve("kast-command")
-        Files.writeString(executable, "native")
-        writeManagementReceipt(
-            root,
-            ManagementReceipt(
-                1,
-                root.toString(),
-                executable.toString(),
-                sha256(executable),
-                ReleaseChannel.STABLE,
-                emptyList(),
-            ),
-        )
-        return root to home
     }
 
     @Test
@@ -272,4 +224,52 @@ class ManagementCliTest {
         assertEquals("native-release-two", Files.readString(first.path))
         assertEquals(first.path.toString(), (readReceipt(root) as ReceiptRead.Read).receipt.executable)
     }
+}
+
+internal fun integrationFixture(temporary: Path, harness: Harness): Pair<Path, Path> {
+    val root = temporary.resolve("kast")
+    val home = temporary.resolve("home")
+    val version = root.resolve("versions/1.2.3-deadbeef")
+    val relative =
+        when (harness) {
+            Harness.COPILOT -> "share/kast/adapters/copilot/extension.mjs"
+            Harness.PI -> "share/kast/adapters/pi/extension.ts"
+            Harness.CODEX -> "bin/kast-mcp-complete"
+        }
+    val source = version.resolve(relative)
+    Files.createDirectories(source.parent)
+    Files.createDirectories(home)
+    Files.writeString(source, "release adapter")
+    Files.writeString(
+        version.resolve("installation.json"),
+        Json.encodeToString(
+            TestManifest(
+                2,
+                version.toRealPath().toString(),
+                listOf(
+                    TestPayload(
+                        relative,
+                        "sha256:${sha256(source)}",
+                        420,
+                    )
+                ),
+                "1.2.3",
+            )
+        ),
+    )
+    Files.createSymbolicLink(root.resolve("current"), root.relativize(version))
+    val executable = temporary.resolve("kast-command")
+    Files.writeString(executable, "native")
+    writeManagementReceipt(
+        root,
+        ManagementReceipt(
+            1,
+            root.toString(),
+            executable.toString(),
+            sha256(executable),
+            ReleaseChannel.STABLE,
+            emptyList(),
+        ),
+    )
+    return root to home
 }

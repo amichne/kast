@@ -53,6 +53,7 @@ internal class QueryOutcomeProjection(
                     coverage = null,
                     continuationState = null,
                     retainedExecution = result,
+                    presentationOrigin = result.coverage.resultCount.value,
                 )
             is QueryExecutionResult.Qualified ->
                 project(
@@ -62,6 +63,7 @@ internal class QueryOutcomeProjection(
                     coverage = result.coverage,
                     continuationState = result.continuation,
                     retainedExecution = result,
+                    presentationOrigin = result.coverage.knownMinimum.value,
                 )
             is QueryExecutionResult.Rejected ->
                 OperationOutcome.Rejected(
@@ -109,31 +111,16 @@ internal class QueryOutcomeProjection(
             presentedRowIds = restored.rowIds.subList(start, end),
             protectedResult = request.result,
             nextCursor = next,
+            progressOrigin = QueryProgressOrigin.RETAINED_RESULT,
+            presentationOrigin =
+                when (val original = restored.result.coverage) {
+                    is QueryCoverage.Complete -> original.resultCount.value
+                    is QueryCoverage.Qualified -> original.knownMinimum.value
+                },
         )
     }
 
-    private fun retainedRows(
-        retained: QueryRetainedResult,
-        output: QueryOutputDocument,
-        start: Int,
-        end: Int,
-    ): QueryRows? =
-        when (retained) {
-            is QueryRetainedResult.Symbols -> {
-                val selected = output as? QueryOutputDocument.Symbols ?: return null
-                if (
-                    QuerySymbolFieldDocument.SOURCE in selected.fields.values &&
-                        retained.symbols.any { it.source == QuerySymbolSource.Pending }
-                )
-                    return null
-                QueryRows.Symbols.of(retained.symbols.subList(start, end))
-            }
-            is QueryRetainedResult.Bindings ->
-                if (output == QueryOutputDocument.BindingRows)
-                    QueryRows.Bindings.of(retained.bindingRows.subList(start, end), retained.mode)
-                else null
-        }
-
+    @Suppress("LongMethod") // One projection retains qualification, row identity, retention and logical count together.
     private fun project(
         request: QueryRunRequest.Run,
         lease: SemanticReadAuthority,
@@ -147,6 +134,8 @@ internal class QueryOutcomeProjection(
         presentedRowIds: List<QueryResultRowReference>? = null,
         protectedResult: QueryResultReference? = null,
         nextCursor: QueryResultCursor? = null,
+        progressOrigin: QueryProgressOrigin = QueryProgressOrigin.EXECUTION,
+        presentationOrigin: Int? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val items =
             when (val projected = QueryItemProjector(authority).projectItems(output, result.rows)) {
@@ -163,7 +152,14 @@ internal class QueryOutcomeProjection(
             result.walkObservations.mapProjected { it.projectWalkObservation(authority) }.boundedProjectedOrNull()
                 ?: return contractRejected()
         val projectedQualification =
-            projectQualification(request, coverage, continuationState, progressItemCount ?: items.size, protectedResult)
+            projectQualification(
+                request,
+                coverage,
+                continuationState,
+                progressItemCount ?: items.size,
+                protectedResult,
+                progressOrigin,
+            )
         val qualification =
             when (projectedQualification) {
                 is Refinement.Refined -> projectedQualification.value
@@ -184,8 +180,19 @@ internal class QueryOutcomeProjection(
                 is Refinement.Refined -> projectedRows.value
                 is Refinement.Rejected -> return contractRejected()
             }
+        val minimum = presentationOrigin?.let {
+            QueryKnownMinimum.parse(it).refinedForQueryOrNull() ?: return contractRejected()
+        }
         val envelope =
-            resultEnvelope(lease, presented, boundedFailures, boundedOmissions, boundedWalkObservations, nextCursor)
+            resultEnvelope(
+                lease,
+                presented,
+                boundedFailures,
+                boundedOmissions,
+                boundedWalkObservations,
+                nextCursor,
+                minimum,
+            )
         return if (qualification == null) OperationOutcome.Complete(envelope)
         else OperationOutcome.Qualified(envelope, qualification)
     }
@@ -197,6 +204,7 @@ internal class QueryOutcomeProjection(
         omissions: BoundedProtocolList<QueryRelationOmissionDocument>,
         walkObservations: BoundedProtocolList<QueryWalkObservationDocument>,
         nextCursor: QueryResultCursor?,
+        presentationOrigin: QueryKnownMinimum?,
     ): EvidenceEnvelope<QueryRunResult> =
         EvidenceEnvelope(
             CanonicalOperation.QUERY_RUN.id,
@@ -209,6 +217,7 @@ internal class QueryOutcomeProjection(
                 retention = presented.retention,
                 nextCursor = nextCursor,
                 referenceAcquisitions = authority.readAcquisitions(),
+                presentationOrigin = presentationOrigin,
             ),
         )
 
@@ -254,30 +263,13 @@ internal class QueryOutcomeProjection(
     private fun presentationRejected(): Refinement.Rejected<QueryExecutionRejectionDocument> =
         Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
 
-    private fun identifyRows(
-        items: List<QueryResultItemDocument>,
-        rowIds: List<QueryResultRowReference>?,
-    ): QueryProjection<QueryResultItemDocument> {
-        if (rowIds == null) return QueryProjection.Projected(items)
-        if (rowIds.size != items.size) return QueryProjection.Rejected
-        return QueryProjection.Projected(
-            items.mapIndexed { index, item ->
-                when (item) {
-                    is QueryResultItemDocument.ExactSymbol -> item.copy(rowId = rowIds[index])
-                    is QueryResultItemDocument.Occurrence -> item.copy(rowId = rowIds[index])
-                    is QueryResultItemDocument.TraversalRecord -> item.copy(rowId = rowIds[index])
-                    is QueryResultItemDocument.BindingRow -> item.withRowId(rowIds[index])
-                }
-            }
-        )
-    }
-
     private fun projectQualification(
         request: QueryRunRequest.Run,
         coverage: QueryCoverage.Qualified?,
         continuationState: QueryContinuationState?,
         itemCount: Int,
         protectedResult: QueryResultReference?,
+        origin: QueryProgressOrigin,
     ): Refinement<QueryRunQualification?, QueryExecutionRejectionDocument> {
         if (coverage == null && continuationState == null) return Refinement.Refined(null)
         val provenCoverage =
@@ -287,7 +279,7 @@ internal class QueryOutcomeProjection(
         val minimum =
             QueryKnownMinimum.parse(provenCoverage.knownMinimum.value).refinedForQueryOrNull()
                 ?: return Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
-        val progress = projectQueryProgress(request, state, itemCount, this.state, protectedResult)
+        val progress = projectQueryProgress(request, state, itemCount, this.state, protectedResult, origin)
         return when (
             val result =
                 QueryRunQualification.create(
@@ -360,3 +352,43 @@ internal fun <Value, Failure> Refinement<Value, Failure>.refinedForQueryOrNull()
         is Refinement.Refined -> value
         is Refinement.Rejected -> null
     }
+
+private fun retainedRows(
+    retained: QueryRetainedResult,
+    output: QueryOutputDocument,
+    start: Int,
+    end: Int,
+): QueryRows? =
+    when (retained) {
+        is QueryRetainedResult.Symbols -> {
+            val selected = output as? QueryOutputDocument.Symbols ?: return null
+            if (
+                QuerySymbolFieldDocument.SOURCE in selected.fields.values &&
+                    retained.symbols.any { it.source == QuerySymbolSource.Pending }
+            )
+                return null
+            QueryRows.Symbols.of(retained.symbols.subList(start, end))
+        }
+        is QueryRetainedResult.Bindings ->
+            if (output == QueryOutputDocument.BindingRows)
+                QueryRows.Bindings.of(retained.bindingRows.subList(start, end), retained.mode)
+            else null
+    }
+
+private fun identifyRows(
+    items: List<QueryResultItemDocument>,
+    rowIds: List<QueryResultRowReference>?,
+): QueryProjection<QueryResultItemDocument> {
+    if (rowIds == null) return QueryProjection.Projected(items)
+    if (rowIds.size != items.size) return QueryProjection.Rejected
+    return QueryProjection.Projected(
+        items.mapIndexed { index, item ->
+            when (item) {
+                is QueryResultItemDocument.ExactSymbol -> item.copy(rowId = rowIds[index])
+                is QueryResultItemDocument.Occurrence -> item.copy(rowId = rowIds[index])
+                is QueryResultItemDocument.TraversalRecord -> item.copy(rowId = rowIds[index])
+                is QueryResultItemDocument.BindingRow -> item.withRowId(rowIds[index])
+            }
+        }
+    )
+}

@@ -28,6 +28,8 @@ sealed interface QueryCheckpointIssuance {
     data class Issued(val token: QueryExecutionContinuation.Pipeline) : QueryCheckpointIssuance
 
     data object CapacityExceeded : QueryCheckpointIssuance
+
+    data object Unavailable : QueryCheckpointIssuance
 }
 
 sealed interface QueryResultRestoration {
@@ -109,6 +111,18 @@ class QueryStateStore(
         val token = generatedPipelineContinuation()
         entries[Key.Checkpoint(token)] = Entry.Checkpoint(normalized, checkpoint, clock(), bytes)
         return QueryCheckpointIssuance.Issued(token)
+    }
+
+    /** Read-result may reuse existing progress, but cannot republish a retired producer checkpoint. */
+    @Synchronized
+    fun retainedCheckpoint(request: QueryRunRequest.Run, checkpoint: QueryCheckpoint): QueryCheckpointIssuance {
+        expire()
+        val normalized = request.copy(executionBudget = null)
+        val entry =
+            entries.entries.firstOrNull { (_, entry) ->
+                entry is Entry.Checkpoint && entry.request == normalized && entry.checkpoint == checkpoint
+            } ?: return QueryCheckpointIssuance.Unavailable
+        return QueryCheckpointIssuance.Issued((entry.key as Key.Checkpoint).token)
     }
 
     @Synchronized

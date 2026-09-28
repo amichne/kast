@@ -174,14 +174,20 @@ class HostedQueryResponseTest {
 
     @Test
     fun `actual byte pages retain every suffix and eventually finish`() {
-        val original = List(80) { item() }
+        val original =
+            List(54) { index ->
+                (item() as QueryResultItemDocument.ExactSymbol).copy(name = ProtocolText.parse("row$index").refined())
+            }
         var pending: HostedQueryOutcome = OperationOutcome.Complete(envelope(original, emptyList()))
         val observed = mutableListOf<QueryResultItemDocument>()
         var pages = 0
         while (true) {
             var remainder: HostedQueryOutcome? = null
             val response =
-                encodeHostedQueryResponse(pending) { retained ->
+                encodeHostedQueryResponse(
+                    pending,
+                    maximumResults = io.github.amichne.kast.kernel.ResultLimit.parse(5).refined(),
+                ) { retained ->
                     remainder = retained
                     HostedOutputRetention.Retained(
                         ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000")
@@ -195,6 +201,7 @@ class HostedQueryResponseTest {
                 is OperationOutcome.Complete -> observed += (semantic.evidence.payload as QueryRunResult).items.values
                 is OperationOutcome.Qualified -> {
                     val payload = semantic.evidence.payload as QueryRunResult
+                    assertEquals(54, (semantic.qualification as QueryRunQualification).knownMinimum.value)
                     assertTrue(
                         (semantic.qualification as QueryRunQualification).progress
                             is io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.Resumable
@@ -206,7 +213,7 @@ class HostedQueryResponseTest {
             pending = remainder ?: break
         }
         assertEquals(original, observed)
-        assertTrue(pages > 1)
+        assertEquals(11, pages)
     }
 
     @Test

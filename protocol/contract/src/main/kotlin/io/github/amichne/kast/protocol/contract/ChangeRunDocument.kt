@@ -15,7 +15,8 @@ sealed interface ChangeRunDocument {
     @SerialName("complete")
     data class Complete(
         val planIdentity: String,
-        val plan: JsonObject,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val plan: JsonObject? = null,
         val application: JsonObject,
     ) : ChangeRunDocument
 

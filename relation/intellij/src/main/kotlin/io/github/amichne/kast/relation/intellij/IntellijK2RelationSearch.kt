@@ -230,7 +230,14 @@ internal class IntellijK2RelationSearch(
             if (!providerExhausted || !providerEnumerationReady()) {
                 return termination(ProviderTermination.HALTED)
             }
-            val ordered = definitions.canonicalRelationProviderOrder { definition ->
+            val supportedIdentities = hashSetOf<RelationProviderItemDescriptor>()
+            val normalized = definitions.map { provider ->
+                when (val result = normalizeRelationDefinition(provider)) {
+                    is IntellijRelationDefinition.Supported -> result.declaration
+                    IntellijRelationDefinition.Unsupported -> provider
+                }
+            }
+            val ordered = normalized.canonicalRelationProviderOrder { definition ->
                 providerItemDescriptor(
                     definition,
                     definition.textRange.shiftLeft(definition.textRange.startOffset),
@@ -240,6 +247,12 @@ internal class IntellijK2RelationSearch(
             for (item in ordered) {
                 cancellationCheck()
                 val definition = item.value
+                val normalizedDefinition = normalizeRelationDefinition(definition)
+                if (
+                    normalizedDefinition is IntellijRelationDefinition.Supported &&
+                        !supportedIdentities.add(item.descriptor)
+                )
+                    continue
                 when (beginProviderItem(item.descriptor)) {
                     ProviderItemDisposition.READY -> Unit
                     ProviderItemDisposition.SKIPPED -> continue
@@ -250,7 +263,11 @@ internal class IntellijK2RelationSearch(
                     ProviderItemDisposition.SKIPPED -> continue
                     ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
                 }
-                val candidate = definition as? PsiNamedElement
+                val candidate =
+                    when (normalizedDefinition) {
+                        is IntellijRelationDefinition.Supported -> normalizedDefinition.declaration
+                        IntellijRelationDefinition.Unsupported -> null
+                    }
                 if (candidate == null) {
                     if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
                         return termination(ProviderTermination.HALTED)

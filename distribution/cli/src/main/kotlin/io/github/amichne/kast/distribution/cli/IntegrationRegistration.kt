@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 @Serializable private data class CodexServer(val name: String, val transport: CodexTransport)
 
 @Serializable
-private data class CodexTransport(val type: String, val command: String, val args: List<String> = emptyList())
+private data class CodexTransport(val type: String, val command: String = "", val args: List<String> = emptyList())
 
 @Serializable private data class BundledPayload(val path: String, val sha256: String, val mode: Int)
 
@@ -29,16 +29,21 @@ private val codexJson = Json { ignoreUnknownKeys = true }
 private const val CODEX_DEADLINE_SECONDS = 8L
 private const val CODEX_OUTPUT_LIMIT_BYTES = 262144
 
-private sealed interface ProcessObservation {
+internal sealed interface ProcessObservation {
     data class Exited(val code: Int, val output: String) : ProcessObservation
 
     data object Unavailable : ProcessObservation
 }
 
-private fun runBounded(arguments: List<String>): ProcessObservation {
+internal fun runBounded(arguments: List<String>, codexHome: Path? = null): ProcessObservation {
     val process =
         try {
-            ProcessBuilder(arguments).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+            ProcessBuilder(arguments)
+                .apply {
+                    if (codexHome != null) environment()["CODEX_HOME"] = codexHome.toString()
+                }
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start()
         } catch (_: Exception) {
             return ProcessObservation.Unavailable
         }
@@ -58,8 +63,8 @@ private fun runBounded(arguments: List<String>): ProcessObservation {
 }
 
 @Suppress("ThrowsCount")
-private fun codexRegistration(): CodexServer? {
-    val response = runBounded(listOf("codex", "mcp", "list", "--json"))
+private fun codexRegistration(execute: (List<String>) -> ProcessObservation = { runBounded(it) }): CodexServer? {
+    val response = execute(listOf("codex", "mcp", "list", "--json"))
     if (response !is ProcessObservation.Exited || response.code != 0)
         throw ManagementRejected("registration-inspection", "Codex configuration is unavailable")
     val entries =
@@ -139,89 +144,115 @@ private fun ownsCodex(server: CodexServer?, destination: Path): Boolean =
         server.transport.command == destination.toString() &&
         server.transport.args.isEmpty()
 
-@Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ComplexCondition")
-internal fun connectHarness(root: Path, home: Path, harness: Harness): Boolean =
+@Suppress(
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "LongMethod",
+    "ComplexCondition",
+    "TooGenericExceptionCaught",
+)
+internal fun connectHarness(
+    root: Path,
+    home: Path,
+    harness: Harness,
+    ownership: RegistrationOwnership = RegistrationOwnership.REQUIRE_OWNED,
+    codexHome: Path = System.getenv("CODEX_HOME")?.let(Path::of) ?: home.resolve(".codex"),
+    executeCodex: (List<String>) -> ProcessObservation = { runBounded(it, codexHome) },
+    commitReceipt: (Path, ManagementReceipt) -> Unit = ::writeManagementReceipt,
+): Boolean =
     withRegistrationLock(root) {
         val receipt = admittedReceipt(root)
-        val installation = selectedInstallation(root)
-        val source = verifiedBundledSource(installation, harness)
+        val source = verifiedBundledSource(selectedInstallation(root), harness)
         val digest = sha256(source)
         val destination = destinationFor(root, home, harness)
         val prior = receipt.registrations.singleOrNull { it.harness == harness }
-        if (prior != null && prior.destination != destination.toString())
+        val force = ownership == RegistrationOwnership.REPLACE_SELECTED_SLOT
+        if (!force && prior != null && prior.destination != destination.toString())
             throw ManagementRejected("connect", "recorded registration identity changed")
-        var created = false
-        var replacedBackup: Path? = null
-        if (harness == Harness.CODEX) {
-            val observed = codexRegistration()
-            if (observed != null && !ownsCodex(observed, destination))
-                throw ManagementRejected("connect", "Codex name belongs to another configuration")
-            if (observed == null) {
-                val add = runBounded(listOf("codex", "mcp", "add", "kast", "--", destination.toString()))
-                if (add !is ProcessObservation.Exited || add.code != 0 || !ownsCodex(codexRegistration(), destination))
-                    throw ManagementRejected("connect", "Codex registration was not verified")
-                created = true
+        val selectedFile = if (harness == Harness.CODEX) codexHome.resolve("config.toml") else destination
+        val registrationAnchor = if (harness == Harness.CODEX) codexHome else home
+        requireRegistrationPath(selectedFile, registrationAnchor)
+        val existing = Files.exists(selectedFile, LinkOption.NOFOLLOW_LINKS)
+        val current = if (existing) sha256(selectedFile) else null
+        val replace =
+            if (harness == Harness.CODEX) {
+                val observed = codexRegistration(executeCodex)
+                if (!force && observed != null && !ownsCodex(observed, destination))
+                    throw ManagementRejected("connect", "Codex name belongs to another configuration")
+                !ownsCodex(observed, destination)
+            } else {
+                if (!force && existing && (prior == null || (current != digest && current != prior.payloadSha256)))
+                    throw ManagementRejected("connect", "integration file belongs to another owner")
+                current != digest
             }
-        } else {
-            val exists = Files.exists(destination, LinkOption.NOFOLLOW_LINKS)
-            val current =
-                if (exists && Files.isRegularFile(destination, LinkOption.NOFOLLOW_LINKS)) sha256(destination) else null
-            if (exists && (prior == null || (current != digest && current != prior.payloadSha256)))
-                throw ManagementRejected("connect", "integration file belongs to another owner")
-            if (current != digest) {
-                val parent = destination.parent
-                Files.createDirectories(parent)
-                val staged = Files.createTempFile(parent, ".kast-", ".new")
-                try {
-                    Files.copy(source, staged, StandardCopyOption.REPLACE_EXISTING)
-                    if (exists) {
-                        replacedBackup = Files.createTempFile(parent, ".kast-", ".prior")
-                        Files.copy(destination, replacedBackup, StandardCopyOption.REPLACE_EXISTING)
-                    }
-                    if (exists)
+        val record = ManagedRegistration(harness, destination.toString(), digest)
+        val next = receipt.copy(registrations = receipt.registrations.filterNot { it.harness == harness } + record)
+        // Capture both preimages before any replacement. Codex's full configuration is opaque:
+        // restoring these bytes preserves fields outside the inspection DTO, including credentials.
+        val registration = captureRegistrationPreimage(selectedFile, registrationAnchor)
+        val receiptPreimage =
+            try {
+                captureRegistrationPreimage(receiptPath(root), root)
+            } catch (failure: Exception) {
+                registration.discard()
+                throw failure
+            }
+        var registrationAfter = registrationPostimage(selectedFile)
+        try {
+            if (replace) {
+                if (harness == Harness.CODEX) {
+                    val add =
+                        try {
+                            executeCodex(listOf("codex", "mcp", "add", "kast", "--", destination.toString()))
+                        } finally {
+                            registrationAfter = registrationPostimage(selectedFile)
+                        }
+                    if (add !is ProcessObservation.Exited || add.code != 0)
+                        throw ManagementRejected("connect", "Codex registration replacement failed")
+                } else {
+                    val staged = Files.createTempFile(destination.parent, ".kast-", ".new")
+                    try {
+                        Files.copy(source, staged, StandardCopyOption.REPLACE_EXISTING)
+                        if (sha256(staged) != digest)
+                            throw ManagementRejected("connect", "staged payload is unverified")
                         Files.move(
                             staged,
                             destination,
                             StandardCopyOption.ATOMIC_MOVE,
                             StandardCopyOption.REPLACE_EXISTING,
                         )
-                    else Files.move(staged, destination, StandardCopyOption.ATOMIC_MOVE)
-                    created = !exists
-                } finally {
-                    Files.deleteIfExists(staged)
+                        registrationAfter = RegistrationPostimage.Present(digest)
+                    } finally {
+                        Files.deleteIfExists(staged)
+                    }
                 }
             }
-            if (sha256(destination) != digest) throw ManagementRejected("connect", "registration verification failed")
-        }
-        val record = ManagedRegistration(harness, destination.toString(), digest)
-        val next = receipt.copy(registrations = receipt.registrations.filterNot { it.harness == harness } + record)
-        try {
-            writeManagementReceipt(root, next)
-        } catch (_: Exception) {
-            if (harness == Harness.CODEX && created && ownsCodex(codexRegistration(), destination)) {
-                val removal = runBounded(listOf("codex", "mcp", "remove", "kast"))
-                if (removal !is ProcessObservation.Exited || removal.code != 0 || codexRegistration() != null)
-                    throw ManagementRejected("connect", "receipt failed and Codex registration requires recovery")
+            if (harness == Harness.CODEX) {
+                if (!ownsCodex(codexRegistration(executeCodex), destination))
+                    throw ManagementRejected("connect", "Codex registration was not verified")
+            } else if (sha256(destination) != digest) {
+                throw ManagementRejected("connect", "registration verification failed")
             }
-            if (
-                harness != Harness.CODEX &&
-                    Files.isRegularFile(destination, LinkOption.NOFOLLOW_LINKS) &&
-                    sha256(destination) == digest
-            ) {
-                if (replacedBackup != null)
-                    Files.move(
-                        replacedBackup,
-                        destination,
-                        StandardCopyOption.ATOMIC_MOVE,
-                        StandardCopyOption.REPLACE_EXISTING,
+            commitReceipt(root, next)
+            if (readReceipt(root) != ReceiptRead.Read(next))
+                throw ManagementRejected("connect", "ownership receipt was not verified")
+        } catch (failure: Exception) {
+            // Attempt both restorations even if one fails. A failed restoration retains its
+            // original backup; never delete the only recovery copy in a finally block.
+            val recovery =
+                listOf(
+                        registration.restore(registrationAfter),
+                        receiptPreimage.restore(registrationPostimage(receiptPath(root))),
                     )
-                else if (created) Files.delete(destination)
-            }
-            throw ManagementRejected("connect", "ownership receipt could not be committed")
-        } finally {
-            replacedBackup?.let { Files.deleteIfExists(it) }
+                    .filterIsInstance<RegistrationRecovery.Required>()
+            if (recovery.isNotEmpty())
+                throw ManagementRejected("connect-recovery", recovery.joinToString("; ") { it.description })
+            if (failure is ManagementRejected) throw failure
+            throw ManagementRejected("connect", "ownership transaction failed; exact preimages restored")
         }
-        prior == record
+        registration.discard()
+        receiptPreimage.discard()
+        prior == record && !replace
     }
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod")
@@ -272,5 +303,76 @@ internal fun <T> withRegistrationLock(root: Path, action: () -> T): T {
         throw failure
     } catch (_: Exception) {
         throw ManagementRejected("registration-lock", "lock is unavailable")
+    }
+}
+
+private fun RegistrationPreimage.restore(expected: RegistrationPostimage): RegistrationRecovery =
+    try {
+        requireRegistrationPath(destination, anchor)
+        check(expected != RegistrationPostimage.Unavailable && registrationPostimage(destination) == expected)
+        when (this) {
+            is RegistrationPreimage.Absent -> Files.deleteIfExists(destination)
+            is RegistrationPreimage.Present -> {
+                val staged = Files.createTempFile(destination.parent, ".kast-", ".restore")
+                try {
+                    Files.copy(
+                        backup,
+                        staged,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES,
+                    )
+                    Files.setPosixFilePermissions(staged, permissions)
+                    Files.move(
+                        staged,
+                        destination,
+                        StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING,
+                    )
+                    check(sha256(destination) == digest)
+                } finally {
+                    Files.deleteIfExists(staged)
+                }
+            }
+        }
+        discard()
+        RegistrationRecovery.Restored
+    } catch (_: Exception) {
+        RegistrationRecovery.Required(
+            when (this) {
+                is RegistrationPreimage.Absent -> "remove newly created registration at $destination"
+                is RegistrationPreimage.Present -> "restore $destination from preserved backup $backup"
+            }
+        )
+    }
+
+private fun RegistrationPreimage.discard() {
+    if (this is RegistrationPreimage.Present) Files.deleteIfExists(backup)
+}
+
+@Suppress("TooGenericExceptionCaught") // Cleanup must retain the original failure for every capture effect.
+private fun captureRegistrationPreimage(destination: Path, anchor: Path): RegistrationPreimage {
+    requireRegistrationPath(destination, anchor)
+    Files.createDirectories(destination.parent)
+    if (!Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) return RegistrationPreimage.Absent(destination, anchor)
+    val backup = Files.createTempFile(destination.parent, ".kast-", ".prior")
+    try {
+        Files.copy(destination, backup, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES)
+        // Backups may contain Codex credentials. Keep access restricted even for a permissive original.
+        Files.setPosixFilePermissions(
+            backup,
+            java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"),
+        )
+        val digest = sha256(destination)
+        check(sha256(backup) == digest)
+        return RegistrationPreimage.Present(
+            destination,
+            anchor,
+            backup,
+            digest,
+            Files.getPosixFilePermissions(destination),
+        )
+    } catch (failure: Exception) {
+        Files.deleteIfExists(backup)
+        throw failure
     }
 }

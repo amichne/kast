@@ -33,7 +33,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 object CanonicalQueryCliDocuments {
-    /** The sealed serializer retains the item discriminator for installed output schemas. */
     val itemSerializer: KSerializer<*>
         get() = QueryResultItemCliDocument.serializer()
 
@@ -108,8 +107,10 @@ private data class QueryCompleteCliDocument(
     val operation: String,
     val status: String,
     val items: List<QueryResultItemCliDocument>,
-    val failures: List<QueryItemFailureCliDocument>,
-    val omissions: List<QueryRelationOmissionCliDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val failures: List<QueryItemFailureCliDocument>? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val omissions: List<QueryRelationOmissionCliDocument>? = null,
     @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -131,8 +132,10 @@ private data class QueryQualifiedCliDocument(
     val operation: String,
     val status: String,
     val items: List<QueryResultItemCliDocument>,
-    val failures: List<QueryItemFailureCliDocument>,
-    val omissions: List<QueryRelationOmissionCliDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val failures: List<QueryItemFailureCliDocument>? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val omissions: List<QueryRelationOmissionCliDocument>? = null,
     @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -140,8 +143,11 @@ private data class QueryQualifiedCliDocument(
     val nextCursor: QueryResultCursor? = null,
     val coverage: QueryCoverageCliDocument,
     val qualification: QueryQualificationCliDocument,
-    val continuation: String?,
-    @SerialName("terminal_reason") val terminalReason: String?,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val continuation: String? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("terminal_reason")
+    val terminalReason: String? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: ExecutionBudgetReport? = null,
@@ -369,9 +375,25 @@ private fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocumen
             QueryItemFailureCliDocument.Walk(ref.toCliDocument(), relation.cliName(), reason.toQueryCliDocument())
     }
 
-/** Presentation extracts the issued token verbatim; the retained domain type still owns its family. */
 private fun QueryReferenceDocument.toCliDocument(): String = token.value
 
-private val completeFactory = CanonicalJsonDocument.generated(QueryCompleteCliDocument.serializer())
-private val qualifiedFactory = CanonicalJsonDocument.generated(QueryQualifiedCliDocument.serializer())
+private val completeFactory =
+    CanonicalJsonDocument.generated(QueryCompleteCliDocument.serializer()) {
+        it.copy(
+            failures = it.failures?.takeIf(List<*>::isNotEmpty),
+            omissions = it.omissions?.takeIf(List<*>::isNotEmpty),
+            executionBudget = null,
+            live = it.live?.compact(),
+        )
+    }
+private val qualifiedFactory =
+    CanonicalJsonDocument.generated(QueryQualifiedCliDocument.serializer()) {
+        it.copy(
+            failures = it.failures?.takeIf(List<*>::isNotEmpty),
+            omissions = it.omissions?.takeIf(List<*>::isNotEmpty),
+            continuation = null,
+            terminalReason = null,
+            live = it.live?.compact(),
+        )
+    }
 private val rejectedFactory = CanonicalJsonDocument.generated(QueryRejectedCliDocument.serializer())

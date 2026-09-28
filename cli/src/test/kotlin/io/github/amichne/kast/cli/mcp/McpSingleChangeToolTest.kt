@@ -68,6 +68,14 @@ class McpSingleChangeToolTest {
             output.getValue("application").jsonObject.getValue("receiptIdentity").jsonPrimitive.content,
         )
         assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
+        assertFalse("plan" in output)
+        phases.clear()
+        val verbose =
+            tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent(verbose = true)).jsonObject)
+        val full = Json.parseToJsonElement(verbose.document.value).jsonObject
+        assertTrue("plan" in full)
+        assertEquals(output.getValue("application"), full.getValue("application"))
+        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
     }
 
     @Test
@@ -289,6 +297,7 @@ class McpSingleChangeToolTest {
 private data class TestIntent(
     val exactTarget: String = "exact-ref",
     val declaration: String = "fun added() = Unit",
+    val verbose: Boolean = false,
 )
 
 @Serializable

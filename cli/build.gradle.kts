@@ -34,6 +34,8 @@ dependencies {
 }
 
 tasks.named<Test>("test") {
+    inputs.files(rootProject.file("copilot/extension.mjs"), rootProject.file("pi/extension.ts"))
+    inputs.dir("src/test/js")
     useJUnitPlatform {
         excludeTags("native")
     }

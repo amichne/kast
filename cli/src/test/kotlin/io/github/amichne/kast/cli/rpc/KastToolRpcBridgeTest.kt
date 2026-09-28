@@ -60,6 +60,36 @@ class KastToolRpcBridgeTest {
         }
     }
 
+    @Test
+    fun `real adapters admit the production generated catalog before registration`() {
+        val session =
+            KastDirectToolSession(
+                catalog =
+                    installedHostedBootstrap()
+                        .tools
+                        .filter { tool -> PublicToolIdentity.entries.any { it.toolName == tool.name } }
+                        .map { it.directToolDocument() } + directSupportTools(),
+                root = { error("catalog must not inspect the workspace") },
+                start = { error("catalog must not prepare the workspace") },
+                invokePublic = { error("catalog must not invoke a tool") },
+            )
+        val catalog = temporary.resolve("catalog.json")
+        Files.writeString(catalog, Json.encodeToString<ToolRpcReply>(KastToolRpcBridge(session).catalog()))
+        val output = temporary.resolve("adapter-test.log")
+        val process =
+            ProcessBuilder("node", "--experimental-vm-modules", "--test", "src/test/js/harness-adapters.test.mjs")
+                .redirectErrorStream(true)
+                .redirectOutput(output.toFile())
+                .apply { environment()["KAST_ADAPTER_TEST_CATALOG"] = catalog.toString() }
+                .start()
+        try {
+            org.junit.jupiter.api.Assertions.assertTrue(process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS))
+            assertEquals(0, process.exitValue(), Files.readString(output))
+        } finally {
+            process.destroyForcibly()
+        }
+    }
+
     private fun mcpCatalog(session: KastDirectToolSession): Map<String, JsonElement> {
         val output = ByteArrayOutputStream()
         val requests =

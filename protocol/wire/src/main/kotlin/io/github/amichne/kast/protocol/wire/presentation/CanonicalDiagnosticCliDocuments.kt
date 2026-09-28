@@ -176,5 +176,11 @@ private fun DiagnosticLimitationDocument.toCliDocument() =
         reason.cliName(),
     )
 
-private val diagnosticCompleteFactory = CanonicalJsonDocument.generated(DiagnosticCompleteCliDocument.serializer())
-private val diagnosticQualifiedFactory = CanonicalJsonDocument.generated(DiagnosticQualifiedCliDocument.serializer())
+private val diagnosticCompleteFactory =
+    CanonicalJsonDocument.generated(DiagnosticCompleteCliDocument.serializer()) {
+        it.copy(progress = null, live = it.live?.compact())
+    }
+private val diagnosticQualifiedFactory =
+    CanonicalJsonDocument.generated(DiagnosticQualifiedCliDocument.serializer()) {
+        it.copy(live = it.live?.compact())
+    }

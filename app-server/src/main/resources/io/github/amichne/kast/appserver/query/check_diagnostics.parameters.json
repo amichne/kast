@@ -1,6 +1,11 @@
 {
   "type": "object",
   "properties": {
+    "verbose": {
+      "type": "boolean",
+      "default": false,
+      "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+    },
     "relativePath": {
       "type": "string",
       "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal.",

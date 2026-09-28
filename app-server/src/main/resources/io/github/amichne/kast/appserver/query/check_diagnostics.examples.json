@@ -7,5 +7,27 @@
       }
     }
   },
-  "invalidExamples": {}
+  "invalidExamples": {
+    "verboseNull": {
+      "summary": "Verbose must be a boolean, not null.",
+      "value": {
+        "relativePath": ".",
+        "verbose": null
+      }
+    },
+    "verboseString": {
+      "summary": "Verbose must be a boolean, not string.",
+      "value": {
+        "relativePath": ".",
+        "verbose": "true"
+      }
+    },
+    "verboseNumber": {
+      "summary": "Verbose must be a boolean, not number.",
+      "value": {
+        "relativePath": ".",
+        "verbose": 1
+      }
+    }
+  }
 }

@@ -27,11 +27,11 @@ import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.query.protocol.evidenceBasis
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 class QueryProgressSchemaTest {
@@ -129,10 +129,10 @@ class QueryProgressSchemaTest {
         when (progress) {
             is QueryQualifiedProgressDocument.Resumable -> {
                 assertEquals(JsonPrimitive(progress.checkpoint.token.value), document["continuation"])
-                assertEquals(JsonNull, document["terminal_reason"])
+                assertNull(document["terminal_reason"])
             }
             is QueryQualifiedProgressDocument.TerminalIncomplete -> {
-                assertEquals(JsonNull, document["continuation"])
+                assertNull(document["continuation"])
                 assertEquals(
                     JsonPrimitive(progress.reason.name.lowercase().replace('_', '-')),
                     document["terminal_reason"],

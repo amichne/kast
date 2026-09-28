@@ -68,7 +68,8 @@ class LiveReadOutputSchemaTest {
 
     @Test
     fun `all five actual complete projections satisfy their advertised published and live schemas`() {
-        for (basis in listOf(published, live)) for ((operation, document) in completeDocuments(basis)) {
+        for (detail in ToolOutputDetail.entries) for (basis in listOf(published, live)) for ((operation, document) in
+            completeDocuments(basis, detail)) {
             assertAdmits(operation, document)
             assertEquals(basis is EvidenceBasis.Live, document.containsKey("live"), operation.name)
         }
@@ -76,7 +77,8 @@ class LiveReadOutputSchemaTest {
 
     @Test
     fun `all five actual qualified projections retain compatible evidence`() {
-        for (basis in listOf(published, live)) for ((operation, document) in qualifiedDocuments(basis)) {
+        for (detail in ToolOutputDetail.entries) for (basis in listOf(published, live)) for ((operation, document) in
+            qualifiedDocuments(basis, detail)) {
             assertAdmits(operation, document)
             assertEquals(JsonPrimitive("qualified"), document["status"])
         }
@@ -176,23 +178,26 @@ class LiveReadOutputSchemaTest {
         }
     }
 
-    private fun completeDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =
+    private fun completeDocuments(
+        basis: EvidenceBasis,
+        detail: ToolOutputDetail = ToolOutputDetail.VERBOSE,
+    ): List<Pair<CanonicalOperation, JsonObject>> =
         listOf(
             CanonicalOperation.QUERY_RUN to
                 CanonicalQueryCliDocuments.project(
                         complete(CanonicalOperation.QUERY_RUN, basis, QueryRunResult(empty(), empty()))
                     )
-                    .document(),
+                    .document(detail),
             CanonicalOperation.SOURCE_READ to
                 CanonicalSourceReadCliDocuments.project(
                         complete(CanonicalOperation.SOURCE_READ, basis, sourceResult(basis))
                     )
-                    .document(),
+                    .document(detail),
             CanonicalOperation.DIAGNOSTIC_CHECK to
                 CanonicalReadCliDocuments.projectDiagnostics(
                         complete(CanonicalOperation.DIAGNOSTIC_CHECK, basis, DiagnosticCheckResult(empty()))
                     )
-                    .document(),
+                    .document(detail),
         )
 
     internal fun completeQueryDocument(): io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument =
@@ -201,7 +206,10 @@ class LiveReadOutputSchemaTest {
             ) as ProjectedOperationOutcome.Complete)
             .document
 
-    private fun qualifiedDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =
+    private fun qualifiedDocuments(
+        basis: EvidenceBasis,
+        detail: ToolOutputDetail = ToolOutputDetail.VERBOSE,
+    ): List<Pair<CanonicalOperation, JsonObject>> =
         listOf(
             CanonicalOperation.QUERY_RUN to
                 CanonicalQueryCliDocuments.project(
@@ -219,7 +227,7 @@ class LiveReadOutputSchemaTest {
                                 .refined(),
                         )
                     )
-                    .document(),
+                    .document(detail),
             CanonicalOperation.SOURCE_READ to
                 CanonicalSourceReadCliDocuments.project(
                         OperationOutcome.Qualified(
@@ -234,7 +242,7 @@ class LiveReadOutputSchemaTest {
                                 .refined(),
                         )
                     )
-                    .document(),
+                    .document(detail),
             CanonicalOperation.DIAGNOSTIC_CHECK to
                 CanonicalReadCliDocuments.projectDiagnostics(
                         OperationOutcome.Qualified(
@@ -257,7 +265,7 @@ class LiveReadOutputSchemaTest {
                                 .refined(),
                         )
                     )
-                    .document(),
+                    .document(detail),
         )
 
     fun sourceResult(basis: EvidenceBasis): SourceReadResult {
@@ -355,12 +363,13 @@ class LiveReadOutputSchemaTest {
                 InputFormat.JSON,
             )
 
-    internal fun ProjectedOperationOutcome.document(): JsonObject =
+    internal fun ProjectedOperationOutcome.document(detail: ToolOutputDetail = ToolOutputDetail.VERBOSE): JsonObject =
         when (this) {
                 is ProjectedOperationOutcome.Complete -> document
                 is ProjectedOperationOutcome.Qualified -> document
                 is ProjectedOperationOutcome.Rejected -> document
             }
+            .present(detail)
             .value
             .let(Json::parseToJsonElement)
             .jsonObject

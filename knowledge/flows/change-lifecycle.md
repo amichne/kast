@@ -177,3 +177,14 @@ signature. The preparation deadline includes workspace readiness; the separate
 controller deadline begins only after a challenge is admitted.
 
 Installation creates the broker signing identity before activating the product. Reinstallation preserves an admitted matching pair; partial or conflicting enrollment fails closed without replacing surviving keys. Runtime apply and recovery only read existing enrolled authority.
+
+Hosted phase observations distinguish admission, exact-reference restoration,
+planning, approval, mutation-permit wait, application, readiness, verification,
+and receipt persistence. The source adapter observes document commit and explicit
+save; the existing transport trace observes encoding and reply delivery. A
+phase returning is effect-boundary evidence, not verification success. The outer
+admitted connection budget remains unchanged. Thin adapters distinguish timeout,
+cancellation, overflow and child failure, retain only bounded phase/plan evidence,
+and report unknown mutation state when no response proves the outcome. They do
+not replay a write. Compact and inline references keep their existing authority
+checks; durable receipts retain canonical reference material.

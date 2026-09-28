@@ -160,3 +160,12 @@ before projection.
 Incomplete upstream coverage remains qualified after the final buffered page.
 An indivisible oversized output item, unavailable checkpoint capacity, or
 unproven progress produces a finite terminal reason without a continuation.
+
+Pipeline checkpoints retain a typed cumulative emitted-row count separately from
+pending work and identity/dedup state. Counts advance only for final output rows,
+including after downstream filtering and distinct stages. Hosted presentation
+suffixes carry the original logical minimum separately from their remaining
+items, so output paging cannot reduce that minimum. Retained-result reads look
+up existing producer checkpoints; they never recreate an evicted or expired
+checkpoint. An unavailable producer checkpoint becomes terminal upstream
+incompleteness while detached output remains readable.

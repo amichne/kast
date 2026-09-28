@@ -33,7 +33,10 @@ internal class HostedChangeCoordinator(private val project: Project, private val
             is Refinement.Rejected -> HostedResponse.ChangeRejected(loaded.failure)
         }
 
-    suspend fun apply(request: HostedRequest.ApplyChange): HostedResponse = mutations.withLock {
+    suspend fun apply(request: HostedRequest.ApplyChange): HostedResponse =
+        withHostedMutationPermit(mutations) { applyLocked(request) }
+
+    private suspend fun applyLocked(request: HostedRequest.ApplyChange): HostedResponse {
         val context =
             when (
                 val admitted =
@@ -45,7 +48,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                     )
             ) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return@withLock HostedResponse.ChangeRejected(admitted.failure)
+                is Refinement.Rejected -> return HostedResponse.ChangeRejected(admitted.failure)
             }
         val result =
             applyHostedChange(
@@ -55,7 +58,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                 plan = context.loaded.plan,
                 approval = context.approval,
             )
-        HostedResponse.Canonical.encode(CanonicalOperationWireBindings.changeApply, result)
+        return HostedResponse.Canonical.encode(CanonicalOperationWireBindings.changeApply, result)
     }
 
     suspend fun recover(request: HostedRequest.RecoverChange): HostedResponse = mutations.withLock {
@@ -97,7 +100,12 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return result
             }
-        return when (val approved = approvals.consume(loaded.plan, effect, assertion)) {
+        return when (
+            val approved =
+                observeHostedChange(HostedChangeStage.APPROVAL, loaded.plan.planId) {
+                    approvals.consume(loaded.plan, effect, assertion)
+                }
+        ) {
             is Refinement.Refined -> Refinement.Refined(ApprovedHostedChange(loaded, approved.value))
             is Refinement.Rejected -> {
                 Logger.getInstance(HostedChangeCoordinator::class.java)

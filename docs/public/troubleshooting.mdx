@@ -20,3 +20,19 @@ evidence that the symbol is absent.
 `health_check` reports the bound workspace and IDEA readiness. It does not
 prove that every semantic query will succeed. Run a scoped semantic query when
 you need evidence for a specific declaration or relation.
+
+For catalog admission failures, compare the reported expected and observed
+contract versions and the selected executable. Upgrade the matched payloads and
+restart IDEA and the harness. A successful `kast connect codex` records the MCP
+entry; App Server startup must separately admit the generated namespace and bind
+the thread to its workspace. Preserve the reported failing stage and binding or
+schema reason when diagnosing that route.
+
+Use `kast connect <harness> --force` only for deliberate takeover of that
+harness's Kast slot. If rollback reports a recovery backup, preserve it and
+restore the named destination before retrying. The flag does not repair live
+thread ownership or resume sessions across upgrades.
+
+A subprocess timeout, cancellation, output overflow, or nonzero exit is not
+proof of rollback. Keep its bounded phase and plan evidence, avoid automatic
+write retries, and follow the [change guidance](/change).

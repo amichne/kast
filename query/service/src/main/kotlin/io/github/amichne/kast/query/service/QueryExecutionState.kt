@@ -319,3 +319,14 @@ private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
 
 internal fun saturatedAdd(left: Long, right: Long): Long =
     if (right > Long.MAX_VALUE - left) Long.MAX_VALUE else left + right
+
+internal fun QueryExecutionState.completedWithoutMissingEvidence(
+    tasks: Collection<PipelineTask>,
+    result: io.github.amichne.kast.query.contract.QueryResult,
+): Boolean {
+    if (tasks.isNotEmpty() || upstreamLimitations.isNotEmpty()) return false
+    if (result.failures.isNotEmpty() || result.omissions.isNotEmpty()) return false
+    if (result.walkObservations.any { it.coverage !is QueryWalkCoverage.Complete }) return false
+    // A clock read after the final successful effect cannot make completed work incomplete.
+    return limitations.isEmpty() || limitations == setOf(QueryLimitation.TIME_LIMIT_REACHED)
+}

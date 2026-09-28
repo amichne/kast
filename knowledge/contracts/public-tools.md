@@ -53,7 +53,7 @@ code_sources:
 
 # Public intent tools
 
-The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for them; nullable DTO fields lower null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.
+The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Nullable DTO fields lower null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.
 
 `query_symbols` and `check_diagnostics` are eager. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits declaration discovery, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols or binding rows according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
 
@@ -124,9 +124,7 @@ leading source text while its final canonical envelope supplies structured conte
 `query_symbols` starts new execution only through `request.type: "RUN"`. A
 `RESUME` action carries the unchanged opaque execution continuation without the
 source or stages. A `READ_RESULT` action carries a separate result reference and
-optional presentation cursor. Qualified query output derives execution
-`continuation` and `terminal_reason` from its required closed qualification
-progress state. The result payload separately reports retention outcome and an
+optional presentation cursor. Qualified query output retains its required closed qualification progress state; verbose output also derives the redundant `continuation` and `terminal_reason` fields from that state. The result payload separately reports retention outcome and an
 optional next result cursor. Exact items expose the scalar `ref` capability;
 canonical equality remains internal to set and distinct stages, and `symbol_id` has
 no public accessor.
@@ -170,3 +168,20 @@ and public local-command metadata omit it. Ordinary semantic requests prepare
 the exact workspace without a separate lifecycle call.
 
 `workspace_lifecycle` is a hosted effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use.
+
+The public-contract generator also owns the supported version constant in the
+single-file Copilot and Pi adapters. Each adapter validates the entire catalog
+before registering its first tool. Version rejection names the expected and
+observed version and selected executable. This admission establishes catalog
+compatibility, not live IDEA semantic readiness.
+
+The four semantic tools, hosted `workspace_lifecycle`, and direct `health_check` accept root `verbose: true` for
+execution detail. Omitted or false selects compact typed presentation after
+execution, retaining results, qualifications, identities and recovery records.
+Completed diagnostic progress, host UUID/epoch bookkeeping, empty query failure
+lists, and the verified mutation's duplicated plan preview are omitted. The
+application retains its receipt, actual diff and fresh reference. Presentation
+never changes retained evidence, request lowering or canonical wire outcomes.
+
+Lifecycle results retain their full state and ownership evidence in both modes;
+its tool-only boolean never enters canonical lifecycle requests or close approvals.

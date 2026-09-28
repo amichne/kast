@@ -24,7 +24,7 @@ import kotlinx.serialization.Serializable
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.*
 
-internal sealed interface PublicToolDocument
+internal sealed interface PublicToolDocument { val verbose: Boolean }
 
 @Serializable
 internal enum class PublicToolNameMatch {
@@ -329,6 +329,7 @@ internal data class PublicToolLocationSource(
 @Serializable
 internal data class PublicToolQuerySymbols(
     val request: PublicToolAction,
+    override val verbose: Boolean = false,
 ) : PublicToolDocument
 
 @Serializable
@@ -337,18 +338,21 @@ internal data class PublicToolCheckDiagnostics(
     val maxDiagnostics: Int? = null,
     val continuation: ProtocolText? = null,
     val executionBudget: PublicToolExecutionBudget? = null,
+    override val verbose: Boolean = false,
 ) : PublicToolDocument
 
 @Serializable
 internal data class PublicToolAddDeclaration(
     val exactTarget: ProtocolText,
     val declaration: ProtocolText,
+    override val verbose: Boolean = false,
 ) : PublicToolDocument
 
 @Serializable
 internal data class PublicToolReplaceBody(
     val exactTarget: ProtocolText,
     val body: ProtocolText,
+    override val verbose: Boolean = false,
 ) : PublicToolDocument
 
 internal object PublicToolDefaults {

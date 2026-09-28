@@ -64,6 +64,66 @@ class CanonicalQueryRetentionProtocolTest {
 
     private val largerGrant = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(200).refined())
 
+    @Suppress("LongMethod") // The checkpoint eviction and repeated read share one retention owner.
+    @Test
+    fun `retained result draining cannot recreate an evicted producer checkpoint`() = runTest {
+        val store = QueryStateStore(capacity = 2)
+        var calls = 0
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { admitted ->
+                    calls++
+                    QueryExecutionResult.Qualified(
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+                        QueryCoverage.Qualified.create(
+                                QueryCount.parse(0).refined(),
+                                setOf(QueryLimitation.WORK_LIMIT_REACHED),
+                            )
+                            .refined(),
+                        QueryContinuationState.Resumable(
+                            object : QueryCheckpoint {
+                                override val plan = admitted.plan
+                                override val lease = admitted.lease
+                                override val retainedBytes = 1024L
+                            }
+                        ),
+                    )
+                },
+                CanonicalQueryReferences(),
+                store,
+            )
+        val first =
+            protocol.execute(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
+                as OperationOutcome.Qualified
+        val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
+        val checkpoint = first.qualification.progress.continuationToken as QueryExecutionContinuation.Pipeline
+        val unrelated =
+            io.github.amichne.kast.query.contract.QueryRetainedResult.capture(
+                    lease,
+                    QueryExecutionResult.Complete(
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+                        QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                    ),
+                )
+                .refined()
+        store.issueResult(request(), unrelated)
+        assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(checkpoint, lease))
+        repeat(2) {
+            val read =
+                protocol.execute(
+                    QueryRunRequest.ReadResult.symbols(
+                        reference,
+                        output = QueryOutputDocument.Symbols(bounded(emptyList())),
+                    ),
+                    lease,
+                    budget,
+                ) as OperationOutcome.Qualified
+            assertNull(read.qualification.progress.continuationToken)
+            assertInstanceOf(QueryQualifiedProgressDocument.TerminalIncomplete::class.java, read.qualification.progress)
+        }
+        assertEquals(1, calls)
+    }
+
     @Test
     fun `retained empty result is readable without another semantic execution`() = runTest {
         var executions = 0

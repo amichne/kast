@@ -314,3 +314,10 @@ not restart implicitly, and expiry, capacity and semantic request checks retain
 their existing authority.
 
 Internal exact symbol resolution rejects invalid PSI as stale and a matching declaration without a source range as unsupported. Unexpected native failures remain distinct from genuine index unavailability through query and wire projection; the existing native diagnostic receipt retains the correlated failure stage and class. Neither rejection becomes a complete empty result.
+
+Definition expansion normalizes Kotlin origin, navigation and light-element
+representations before declaration descriptors and K2 confirmation. Equivalent
+supported representations share a canonical provider identity; Java members
+remain eligible for the existing proof. Unsupported wrappers remain omissions,
+and platform cancellation propagates. This normalization does not deduplicate
+occurrence pipelines or replace their explicit distinct stage.

@@ -66,6 +66,7 @@ internal suspend fun completeHostedApplication(
     }
 }
 
+@Suppress("LongMethod") // Keep the ordered mutation phases at their existing owner.
 private suspend fun completeHostedAddDeclarationApplication(
     project: Project,
     query: HostedQueryService,
@@ -77,20 +78,26 @@ private suspend fun completeHostedAddDeclarationApplication(
     val verification =
         when (
             val read =
-                retryPresemanticIndexing(
-                    read = {
-                        query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
-                            HostedLiveAddDeclarationVerifier.verify(
-                                project,
-                                context,
-                                plan,
-                                write.content,
-                                verificationPorts(project, context),
-                            )
-                        }
-                    },
-                    wait = { awaitHostedSmartMode(project) },
-                )
+                observeHostedChange(HostedChangeStage.VERIFICATION, plan.planId) {
+                    retryPresemanticIndexing(
+                        read = {
+                            query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
+                                HostedLiveAddDeclarationVerifier.verify(
+                                    project,
+                                    context,
+                                    plan,
+                                    write.content,
+                                    verificationPorts(project, context),
+                                )
+                            }
+                        },
+                        wait = {
+                            observeHostedChange(HostedChangeStage.READINESS_WAIT, plan.planId) {
+                                awaitHostedSmartMode(project)
+                            }
+                        },
+                    )
+                }
         ) {
             is HostedSemanticReadResult.Completed ->
                 when (val verified = read.value) {
@@ -105,7 +112,12 @@ private suspend fun completeHostedAddDeclarationApplication(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return unverified(plan, ChangeApplyUnverifiedReason.VERIFICATION_FAILED)
         }
-    return when (val issued = resources.receipts.issueReceipt(receipt)) {
+    return when (
+        val issued =
+            observeHostedChange(HostedChangeStage.RECEIPT_PERSISTENCE, plan.planId) {
+                resources.receipts.issueReceipt(receipt)
+            }
+    ) {
         is LiveChangeReceiptIssuance.Issued ->
             OperationOutcome.Complete(
                 liveChangeEvidence(
@@ -132,20 +144,26 @@ private suspend fun completeHostedReplaceBodyApplication(
     val verification =
         when (
             val read =
-                retryPresemanticIndexing(
-                    read = {
-                        query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
-                            HostedLiveReplaceBodyVerifier.verify(
-                                project,
-                                context,
-                                plan,
-                                write.content,
-                                HostedSemanticServices(project, context).diagnostics,
-                            )
-                        }
-                    },
-                    wait = { awaitHostedSmartMode(project) },
-                )
+                observeHostedChange(HostedChangeStage.VERIFICATION, plan.planId) {
+                    retryPresemanticIndexing(
+                        read = {
+                            query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
+                                HostedLiveReplaceBodyVerifier.verify(
+                                    project,
+                                    context,
+                                    plan,
+                                    write.content,
+                                    HostedSemanticServices(project, context).diagnostics,
+                                )
+                            }
+                        },
+                        wait = {
+                            observeHostedChange(HostedChangeStage.READINESS_WAIT, plan.planId) {
+                                awaitHostedSmartMode(project)
+                            }
+                        },
+                    )
+                }
         ) {
             is HostedSemanticReadResult.Completed ->
                 when (val verified = read.value) {
@@ -183,7 +201,12 @@ private suspend fun completeHostedReplaceBodyApplication(
             }
         }
     logger.info("kast_replace_body_completion stage=RECEIPT_ADMISSION outcome=COMPLETED")
-    return when (val issued = resources.receipts.issueReceipt(receipt)) {
+    return when (
+        val issued =
+            observeHostedChange(HostedChangeStage.RECEIPT_PERSISTENCE, plan.planId) {
+                resources.receipts.issueReceipt(receipt)
+            }
+    ) {
         is LiveChangeReceiptIssuance.Issued -> {
             logger.info("kast_replace_body_completion stage=RECEIPT_ISSUANCE outcome=COMPLETED")
             OperationOutcome.Complete(
