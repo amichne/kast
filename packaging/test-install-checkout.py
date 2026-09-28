@@ -282,6 +282,20 @@ PYTHON
         (self.product / "share/kast").mkdir(parents=True)
         (self.product / "share/kast/libexec").mkdir()
         shutil.copy2(self.product / "bin/kast", self.product / "share/kast/libexec/kast-service")
+        self.write_script(self.product / 'share/kast/libexec/kast-management', '''#!/usr/bin/env bash
+set -euo pipefail
+destination="$HOME/.local/bin/kast"
+case "$*" in
+  '--internal-install preflight') printf '%s\\n' "$destination" ;;
+  '--internal-install commit')
+    mkdir -p "$(dirname "$destination")"
+    cp "$0" "$destination"
+    printf '%s\\n' "$destination"
+    ;;
+  'connect codex') ;;
+  *) exit 94 ;;
+esac
+''')
         self.write_script(self.product / 'bin/kast-mcp-complete', '#!/usr/bin/env bash\nexit 0\n')
         shutil.copyfile(Path(__file__).with_name('codex-mcp-registration.py'),
                         self.product / 'share/kast/codex-mcp-registration.py')
@@ -349,9 +363,11 @@ PYTHON
             private_installer.mode = 0o755
             private_installer.size = len(launcher)
             archive.addfile(private_installer, io.BytesIO(launcher))
+            management = self.product / 'share/kast/libexec/kast-management'
+            archive.add(management, arcname='share/kast/libexec/kast-management')
             recovery = self.product / 'share/kast/installation-recovery.py'
             archive.add(recovery, arcname='share/kast/installation-recovery.py')
-            for index in range(member_count - 4):
+            for index in range(member_count - 5):
                 entry = tarfile.TarInfo(f"share/kast/knowledge/declarations/{index}.json")
                 entry.mode = 0o644
                 entry.size = 2
