@@ -16,24 +16,23 @@ from query_name_request import (QueryInput, QueryRun, QueryResume, SymbolOutput,
 
 @dataclass(frozen=True)
 class CompleteText:
-    type: str = field(default='complete', init=False)
+    type: str = field(default='COMPLETE', init=False)
+    maxBytes: int = 65536
 
 
 @dataclass(frozen=True)
 class SourceResume:
     continuation: str
-    type: str = field(default='continue', init=False)
+    type: str = field(default='CONTINUE', init=False)
 
 
 @dataclass(frozen=True)
 class ResumeSource:
-    anchor: SymbolAnchor
-    execution_budget: Budget
-    region: FileRegion = field(default_factory=FileRegion)
-    entities: DescendantFunctions = field(default_factory=DescendantFunctions)
+    symbolRef: SymbolAnchor
+    executionBudget: Budget
+    region: str = 'FILE'
+    entities: DescendantFunctions = field(default_factory=lambda: DescendantFunctions(limit=128))
     text: CompleteText = field(default_factory=CompleteText)
-    entityLimit: int = 128
-    textByteLimit: int = 65536
     page: FirstPage | SourceResume = field(default_factory=FirstPage)
 
 
@@ -93,7 +92,7 @@ def admit_progress(tool, response):
         return DrainRejected(ResumeFailure.CHECKPOINT_REJECTED)
     if tool in ('query_symbols', 'query_occurrences', 'query_walk'):
         alias = response.get('continuation')
-    elif tool == 'source_read':
+    elif tool == 'read_source':
         legacy = qualification.get('continuation', {})
         alias = legacy.get('continuation') if legacy.get('type') == 'available' else None
     else:
@@ -105,7 +104,7 @@ def admit_progress(tool, response):
 
 def resume_request(request, token):
     if isinstance(request, QueryInput):
-        return QueryInput(QueryResume(token, request.request.execution_budget))
+        return QueryInput(QueryResume(token, request.request.executionBudget))
     if isinstance(request, ResumeSource):
         return replace(request, page=SourceResume(token))
     raise TypeError('UNSUPPORTED_RESUME_REQUEST')
@@ -138,7 +137,7 @@ def drain(replay, tool, request, first, initial_budget):
             return DrainRejected(ResumeFailure.TOKEN_REPEATED)
         seen.add(progress.token)
         request = resume_request(request, progress.token)
-        budget = request.request.execution_budget if isinstance(request, QueryInput) else request.execution_budget
+        budget = request.request.executionBudget if isinstance(request, QueryInput) else request.executionBudget
         if len(pages) < MAXIMUM_PAGES:
             response = _invoke(replay, tool, request)
     return DrainRejected(ResumeFailure.PAGE_BOUND)
@@ -159,7 +158,7 @@ def records(tool, response):
     if tool == 'query_occurrences':
         return tuple(_freeze(record['relation']) for record in response.get('items', [])
                      if record.get('type') == 'occurrence')
-    key = {'query_symbols': 'items', 'source_read': 'entities'}[tool]
+    key = {'query_symbols': 'items', 'read_source': 'entities'}[tool]
     return tuple(_freeze(record) for record in response.get(key, []))
 
 
@@ -188,7 +187,7 @@ def coverage_parity(tool, observed, baseline):
     if not isinstance(observed, Drained) or not isinstance(baseline, Drained):
         return False
     pages = observed.pages + baseline.pages
-    if tool == 'source_read':
+    if tool == 'read_source':
         original = baseline.pages[0]
         return all(page.get('snapshot') == original.get('snapshot')
                    and page.get('region') == original.get('region')
@@ -290,8 +289,8 @@ def run_resume_budget_regression(replay):
     requests = (
         ('query_symbols', QueryInput(QueryRun(SymbolReferences(tuple(replay.seeds[key]['ref']
             for key in ('logger', 'helper'))), output=SymbolOutput(('NAME', 'LOCATION', 'SIGNATURE')),
-            execution_budget=ResultsBudget()))),
-        ('source_read', ResumeSource(SymbolAnchor(replay.seeds['logger']['ref']), ResultsBudget())),
+            executionBudget=ResultsBudget()))),
+        ('read_source', ResumeSource(SymbolAnchor(replay.seeds['logger']['ref']), ResultsBudget())),
         ('query_occurrences', relation_query(replay.seeds['helper']['ref'], 'callers', ResultsBudget())),
         ('query_walk', walk_query(replay.seeds['helper']['ref'], budget=ResultsBudget())),
     )
@@ -319,7 +318,7 @@ def _case(replay, tool, request, low, large):
         'recordIdentityAndRequiredOrder': record_parity(tool, observed, baseline),
         'pageCoveragePreserved': coverage_parity(tool, observed, baseline),
     }
-    if tool == 'source_read' and isinstance(baseline, Drained):
+    if tool == 'read_source' and isinstance(baseline, Drained):
         path = replay.fixture.workspace / replay.fixture.oracle['declarations']['logger'][0]
         checks['exactSavedText'] = all(page.get('text', {}).get('type') == 'returned'
             and page['text'].get('text') == path.read_text() for page in baseline.pages)
@@ -334,5 +333,5 @@ def _case(replay, tool, request, low, large):
 
 def with_budget(request, budget):
     if isinstance(request, QueryInput):
-        return replace(request, request=replace(request.request, execution_budget=budget))
-    return replace(request, execution_budget=budget)
+        return replace(request, request=replace(request.request, executionBudget=budget))
+    return replace(request, executionBudget=budget)

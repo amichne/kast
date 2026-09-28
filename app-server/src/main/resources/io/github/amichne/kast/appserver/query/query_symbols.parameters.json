@@ -2,17 +2,7 @@
   "type": "object",
   "properties": {
     "request": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/RunAction"
-        },
-        {
-          "$ref": "#/$defs/ResumeAction"
-        },
-        {
-          "$ref": "#/$defs/ReadResultAction"
-        }
-      ],
+      "$ref": "#/$defs/Action",
       "description": "Exactly one closed query action: run, resume, or read_result."
     }
   },
@@ -31,18 +21,21 @@
           ],
           "default": "DIRECTORY"
         },
-        "relative_directory_path": {
+        "relativeDirectoryPath": {
           "type": "string",
           "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission.",
           "minLength": 1,
           "maxLength": 1048576
         },
-        "include_subdirectories": {
-          "type": "boolean",
+        "includeSubdirectories": {
+          "type": [
+            "boolean",
+            "null"
+          ],
           "description": "true includes the named directory and nested directories; false selects only the named directory.",
           "default": true
         },
-        "source_set_names": {
+        "sourceSetNames": {
           "type": [
             "array",
             "null"
@@ -61,7 +54,7 @@
       },
       "required": [
         "type",
-        "relative_directory_path"
+        "relativeDirectoryPath"
       ],
       "additionalProperties": false
     },
@@ -75,18 +68,21 @@
           ],
           "default": "PACKAGE"
         },
-        "package_name": {
+        "packageName": {
           "type": "string",
           "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar.",
           "minLength": 1,
           "maxLength": 1048576
         },
-        "include_subpackages": {
-          "type": "boolean",
+        "includeSubpackages": {
+          "type": [
+            "boolean",
+            "null"
+          ],
           "description": "true includes the named package and subpackages; false selects only the named package.",
           "default": true
         },
-        "source_set_names": {
+        "sourceSetNames": {
           "type": [
             "array",
             "null"
@@ -105,7 +101,7 @@
       },
       "required": [
         "type",
-        "package_name"
+        "packageName"
       ],
       "additionalProperties": false
     },
@@ -119,13 +115,13 @@
           ],
           "default": "SEARCH_DECLARATIONS"
         },
-        "declaration_name": {
+        "declarationName": {
           "type": "string",
           "description": "Simple declaration name. Not a signature, source-text query, or qualified name.",
           "minLength": 1,
           "maxLength": 256
         },
-        "name_match": {
+        "nameMatch": {
           "type": [
             "string",
             "null"
@@ -137,7 +133,7 @@
           ],
           "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
         },
-        "declaration_kinds": {
+        "declarationKinds": {
           "type": [
             "array",
             "null"
@@ -159,21 +155,18 @@
         "scope": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DirectoryScope"
-            },
-            {
-              "$ref": "#/$defs/PackageScope"
+              "$ref": "#/$defs/Scope",
+              "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
             },
             {
               "type": "null"
             }
-          ],
-          "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+          ]
         }
       },
       "required": [
         "type",
-        "declaration_name"
+        "declarationName"
       ],
       "additionalProperties": false,
       "description": "Find declarations and establish exact symbol identities. Source scope restricts discovery only, not later expansion destinations."
@@ -188,7 +181,7 @@
           ],
           "default": "ALL_DECLARATIONS"
         },
-        "declaration_kinds": {
+        "declarationKinds": {
           "type": [
             "array",
             "null"
@@ -210,16 +203,13 @@
         "scope": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DirectoryScope"
-            },
-            {
-              "$ref": "#/$defs/PackageScope"
+              "$ref": "#/$defs/Scope",
+              "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
             },
             {
               "type": "null"
             }
-          ],
-          "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+          ]
         }
       },
       "required": [
@@ -238,7 +228,7 @@
           ],
           "default": "SYMBOL_REFS"
         },
-        "symbol_refs": {
+        "symbolRefs": {
           "type": "array",
           "items": {
             "type": "string",
@@ -252,7 +242,7 @@
       },
       "required": [
         "type",
-        "symbol_refs"
+        "symbolRefs"
       ],
       "additionalProperties": false
     },
@@ -500,7 +490,8 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 1000,
-      "description": "Maximum semantic hop depth; each walk remains bounded by the hosted traversal ceiling."
+      "description": "Maximum semantic hop depth; each walk remains bounded by the hosted traversal ceiling.",
+      "default": 1
     },
     "WalkStrategy": {
       "anyOf": [
@@ -543,14 +534,17 @@
           "default": "BOUNDED_FAN_OUT"
         },
         "maximumEdgesPerNode": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 1,
-          "maximum": 1000
+          "maximum": 1000,
+          "default": 32
         }
       },
       "required": [
-        "type",
-        "maximumEdgesPerNode"
+        "type"
       ],
       "additionalProperties": false
     },
@@ -576,17 +570,30 @@
             "TYPE_USES"
           ]
         },
-        "maximum_depth": {
-          "$ref": "#/$defs/WalkDepth"
+        "maximumDepth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WalkDepth"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "strategy": {
-          "$ref": "#/$defs/WalkStrategy"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WalkStrategy"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
         "type",
-        "relation",
-        "maximum_depth"
+        "relation"
       ],
       "additionalProperties": false,
       "description": "Traverse each input symbol through compiler-confirmed relations up to the requested depth. Existing traversal execution retains frontier, progress, strategy and partial-expansion evidence."
@@ -636,7 +643,7 @@
       ],
       "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
       "properties": {
-        "max_elapsed_ms": {
+        "maxElapsedMs": {
           "type": [
             "integer",
             "null"
@@ -644,7 +651,7 @@
           "minimum": 1,
           "maximum": 9223372036854775807
         },
-        "max_work_units": {
+        "maxWorkUnits": {
           "type": [
             "integer",
             "null"
@@ -652,7 +659,7 @@
           "minimum": 1,
           "maximum": 9223372036854775807
         },
-        "max_results": {
+        "maxResults": {
           "type": [
             "integer",
             "null"
@@ -660,7 +667,7 @@
           "minimum": 1,
           "maximum": 2147483647
         },
-        "max_returned_bytes": {
+        "maxReturnedBytes": {
           "type": [
             "integer",
             "null"
@@ -670,7 +677,8 @@
         }
       },
       "required": [],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "default": {}
     },
     "Concat": {
       "type": "object",
@@ -683,14 +691,7 @@
           "default": "CONCAT"
         },
         "input": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ReferenceSource"
-            },
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ],
+          "$ref": "#/$defs/CompositionInput",
           "description": "Append exact-symbol references or selected rows from one retained result, preserving stream order and multiplicity."
         }
       },
@@ -712,11 +713,7 @@
           "default": "INTERSECT"
         },
         "right": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ]
+          "$ref": "#/$defs/RetainedInput"
         }
       },
       "required": [
@@ -737,11 +734,7 @@
           "default": "UNION"
         },
         "right": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ]
+          "$ref": "#/$defs/RetainedInput"
         }
       },
       "required": [
@@ -762,11 +755,7 @@
           "default": "DIFFERENCE"
         },
         "right": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ]
+          "$ref": "#/$defs/RetainedInput"
         }
       },
       "required": [
@@ -812,7 +801,7 @@
         "result": {
           "$ref": "#/$defs/ResultReference"
         },
-        "row_ids": {
+        "rowIds": {
           "type": [
             "array",
             "null"
@@ -844,23 +833,7 @@
           "default": "RUN"
         },
         "source": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SearchSource"
-            },
-            {
-              "$ref": "#/$defs/AllSource"
-            },
-            {
-              "$ref": "#/$defs/LocationSource"
-            },
-            {
-              "$ref": "#/$defs/ReferenceSource"
-            },
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ],
+          "$ref": "#/$defs/Source",
           "description": "Starting declaration search, containing named declaration at file offset, exact-symbol references, or one retained result."
         },
         "steps": {
@@ -869,45 +842,22 @@
             "null"
           ],
           "items": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/Where"
-              },
-              {
-                "$ref": "#/$defs/ExpandRelation"
-              },
-              {
-                "$ref": "#/$defs/Walk"
-              },
-              {
-                "$ref": "#/$defs/DistinctSymbols"
-              },
-              {
-                "$ref": "#/$defs/ProjectBinding"
-              },
-              {
-                "$ref": "#/$defs/Concat"
-              },
-              {
-                "$ref": "#/$defs/Intersect"
-              },
-              {
-                "$ref": "#/$defs/Union"
-              },
-              {
-                "$ref": "#/$defs/Difference"
-              },
-              {
-                "$ref": "#/$defs/Join"
-              }
-            ]
+            "$ref": "#/$defs/Step"
           },
           "minItems": 0,
           "maxItems": 1000,
-          "description": "Ordered transformations executed left to right. null and [] mean no transformations. A join reads its right side from a retained symbol result. Inner join yields binding rows with named left and right cells; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage."
+          "description": "Ordered transformations executed left to right. null and [] mean no transformations. A join reads its right side from a retained symbol result. Inner join yields binding rows with named left and right cells; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage.",
+          "default": []
         },
         "output": {
-          "$ref": "#/$defs/Output"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Output"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "retention": {
           "type": [
@@ -921,14 +871,20 @@
           ],
           "description": "Omission or null discards the completed result after returning it. retain publishes an immutable bounded same-basis result reference; publication failure is reported without erasing the query result."
         },
-        "execution_budget": {
-          "$ref": "#/$defs/ExecutionBudget"
+        "executionBudget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionBudget"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
         "type",
-        "source",
-        "steps"
+        "source"
       ],
       "additionalProperties": false,
       "description": "Run a query from the supplied source and ordered steps. Retain the completed result only when requested."
@@ -946,8 +902,15 @@
         "continuation": {
           "$ref": "#/$defs/ExecutionContinuation"
         },
-        "execution_budget": {
-          "$ref": "#/$defs/ExecutionBudget"
+        "executionBudget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionBudget"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -971,13 +934,34 @@
           "$ref": "#/$defs/ResultReference"
         },
         "cursor": {
-          "$ref": "#/$defs/ResultCursor"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResultCursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "output": {
-          "$ref": "#/$defs/ReadResultOutput"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadResultOutput"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "execution_budget": {
-          "$ref": "#/$defs/ExecutionBudget"
+        "executionBudget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionBudget"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1011,17 +995,17 @@
           ],
           "default": "INNER"
         },
-        "left_name": {
+        "leftName": {
           "$ref": "#/$defs/BindingName"
         },
-        "right_name": {
+        "rightName": {
           "$ref": "#/$defs/BindingName"
         }
       },
       "required": [
         "type",
-        "left_name",
-        "right_name"
+        "leftName",
+        "rightName"
       ],
       "additionalProperties": false,
       "description": "Emit one typed binding row per matching pair. The two output column names must differ."
@@ -1071,24 +1055,10 @@
           "default": "JOIN"
         },
         "mode": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/InnerJoinMode"
-            },
-            {
-              "$ref": "#/$defs/SemiJoinMode"
-            },
-            {
-              "$ref": "#/$defs/AntiJoinMode"
-            }
-          ]
+          "$ref": "#/$defs/JoinMode"
         },
         "right": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ],
+          "$ref": "#/$defs/RetainedInput",
           "description": "Immutable retained symbol rows. A retained binding-row result is not a symbol right input."
         }
       },
@@ -1146,6 +1116,115 @@
       ],
       "additionalProperties": false,
       "description": "Find the nearest named declaration containing this offset, then return its exact compiler-grounded symbol."
+    },
+    "Scope": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DirectoryScope"
+        },
+        {
+          "$ref": "#/$defs/PackageScope"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "CompositionInput": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReferenceSource"
+        },
+        {
+          "$ref": "#/$defs/ResultSource"
+        }
+      ]
+    },
+    "Source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SearchSource"
+        },
+        {
+          "$ref": "#/$defs/AllSource"
+        },
+        {
+          "$ref": "#/$defs/LocationSource"
+        },
+        {
+          "$ref": "#/$defs/ReferenceSource"
+        },
+        {
+          "$ref": "#/$defs/ResultSource"
+        }
+      ]
+    },
+    "Step": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Where"
+        },
+        {
+          "$ref": "#/$defs/ExpandRelation"
+        },
+        {
+          "$ref": "#/$defs/Walk"
+        },
+        {
+          "$ref": "#/$defs/DistinctSymbols"
+        },
+        {
+          "$ref": "#/$defs/ProjectBinding"
+        },
+        {
+          "$ref": "#/$defs/Concat"
+        },
+        {
+          "$ref": "#/$defs/Intersect"
+        },
+        {
+          "$ref": "#/$defs/Union"
+        },
+        {
+          "$ref": "#/$defs/Difference"
+        },
+        {
+          "$ref": "#/$defs/Join"
+        }
+      ]
+    },
+    "JoinMode": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InnerJoinMode"
+        },
+        {
+          "$ref": "#/$defs/SemiJoinMode"
+        },
+        {
+          "$ref": "#/$defs/AntiJoinMode"
+        }
+      ]
+    },
+    "Action": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunAction"
+        },
+        {
+          "$ref": "#/$defs/ResumeAction"
+        },
+        {
+          "$ref": "#/$defs/ReadResultAction"
+        }
+      ]
+    },
+    "RetainedInput": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResultSource"
+        }
+      ]
     }
   }
 }

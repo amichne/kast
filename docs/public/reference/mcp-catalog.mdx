@@ -12,11 +12,11 @@ release's tool names, `inputSchema`, and `outputSchema`.
 | Read tools | Purpose |
 | --- | --- |
 | `query_symbols` | Declarations, exact references, relations, and pipelines |
-| `source_read` | Bounded source for an admitted selector |
+| `read_source` | Bounded source for an admitted selector |
 | `check_diagnostics` | IDEA diagnostics for a path |
 | `health_check`, `validate_workspace` | Readiness and explicit probes |
 
-`change` is the write tool. The App Server's `workspace_lifecycle` is a
+`add_declaration` is the write tool. The App Server's `workspace_lifecycle` is a
 separate hosted tool.
 
 ## Call and result
@@ -37,19 +37,12 @@ For a query, set `name` to `query_symbols` and use the
 `content`, `isError`, and, when the document is admitted,
 `structuredContent`.
 
-| `structuredContent.status` | Required meaning |
-| --- | --- |
-| `complete` | `data`, `coverage`, and `basis` are present. |
-| `partial` | Those fields and `stopReason` are present. |
-| `rejected`, `unavailable` | A typed `error` is present. |
-
-The generated [tool call wrapper](/reference/models/mcp-tool-call-result) and
-[read union](/reference/models/mcp-read-result) show their field schemas.
-The [investigation](/reference/models/mcp-investigation-result) and
-[change](/reference/models/mcp-change-result) tools have separate result unions.
-`data` keeps the canonical operation document; use the generated
-**Query symbols** entry in this tab or the corresponding tool schema to
-decode it. Preserve exact `ref` values and any qualification.
+`structuredContent` is the canonical operation document itself. Its `status`
+is `complete`, `qualified`, or `rejected`, with the operation's exact references,
+coverage, finite failures, and recovery evidence intact. An invocation failure
+uses `isError` and may have no `structuredContent`. The generated
+[tool call wrapper](/reference/models/mcp-tool-call-result) describes the MCP
+transport; use the generated tool response schema to decode the semantic document.
 
 The OpenAPI `POST /callables/…` labels in this pane organize hosted tool
 schemas. They are documentation paths, not HTTP endpoints. The direct MCP

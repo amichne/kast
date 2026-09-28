@@ -126,8 +126,8 @@ private class WorkspaceValidator(
     fun source(symbol: McpExactSymbol): McpProbe {
         val response =
             read<McpSourceDocument>(
-                "source_read",
-                validationInputJson.encodeToJsonElement(McpSourceRequest(McpSourceAnchor(symbol.ref))).jsonObject,
+                "read_source",
+                validationInputJson.encodeToJsonElement(McpSourceRequest(symbol.ref)).jsonObject,
             )
         if (response !is NativeRead.Complete) return response.unverified("Source text was incomplete or unavailable")
         val returned =
@@ -332,8 +332,8 @@ private data class McpQueryDeclarationAction(
 
 @Serializable
 private data class McpQueryDeclarationSource(
-    @SerialName("declaration_name") val declarationName: String,
-    @SerialName("declaration_kinds") val declarationKinds: List<String>? = null,
+    val declarationName: String,
+    val declarationKinds: List<String>? = null,
     val scope: McpQueryDirectoryScope,
     val type: McpQueryDeclarationSourceKind = McpQueryDeclarationSourceKind.SEARCH_DECLARATIONS,
 )
@@ -345,9 +345,9 @@ private enum class McpQueryDeclarationSourceKind {
 
 @Serializable
 private data class McpQueryDirectoryScope(
-    @SerialName("relative_directory_path") val relativeDirectoryPath: String,
-    @SerialName("source_set_names") val sourceSetNames: List<String>? = null,
-    @SerialName("include_subdirectories") val includeSubdirectories: Boolean = false,
+    val relativeDirectoryPath: String,
+    val sourceSetNames: List<String>? = null,
+    val includeSubdirectories: Boolean = false,
     val type: McpQueryDirectoryScopeKind = McpQueryDirectoryScopeKind.DIRECTORY,
 )
 
@@ -358,41 +358,39 @@ private enum class McpQueryDirectoryScopeKind {
 
 @Serializable
 private data class McpSourceRequest(
-    val anchor: McpSourceAnchor,
+    val symbolRef: String,
     val region: McpSourceRegion = McpSourceRegion.DECLARATION,
     val text: McpSourceText = McpSourceText(),
     val entities: McpSourceEntities = McpSourceEntities(),
 )
 
-@Serializable private data class McpSourceAnchor(val symbolRef: String)
-
 @Serializable
 private enum class McpSourceRegion {
-    @SerialName("declaration") DECLARATION
+    DECLARATION
 }
 
 @Serializable
-private data class McpSourceText(val mode: McpSourceTextMode = McpSourceTextMode.COMPLETE, val maxBytes: Int = 6000)
+private data class McpSourceText(val type: McpSourceTextMode = McpSourceTextMode.COMPLETE, val maxBytes: Int = 6000)
 
 @Serializable
 private enum class McpSourceTextMode {
-    @SerialName("complete") COMPLETE
+    COMPLETE
 }
 
-@Serializable private data class McpSourceEntities(val mode: McpSourceEntityMode = McpSourceEntityMode.NONE)
+@Serializable private data class McpSourceEntities(val type: McpSourceEntityMode = McpSourceEntityMode.NONE)
 
 @Serializable
 private enum class McpSourceEntityMode {
-    @SerialName("none") NONE
+    NONE
 }
 
 @Serializable
 private data class McpDiagnosticRequest(
-    @SerialName("relative_path") val relativePath: String,
-    @SerialName("execution_budget") val executionBudget: McpDiagnosticBudget,
+    val relativePath: String,
+    val executionBudget: McpDiagnosticBudget,
 )
 
-@Serializable private data class McpDiagnosticBudget(@SerialName("max_work_units") val maxWorkUnits: Int = 1_000_000)
+@Serializable private data class McpDiagnosticBudget(val maxWorkUnits: Int = 1_000_000)
 
 private val validationInputJson = Json { encodeDefaults = true }
 private val validationOutputJson = Json { ignoreUnknownKeys = true }

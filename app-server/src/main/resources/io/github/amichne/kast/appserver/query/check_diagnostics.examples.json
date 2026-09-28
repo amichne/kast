@@ -1,0 +1,11 @@
+{
+  "examples": {
+    "workspace": {
+      "summary": "Check compiler diagnostics in the workspace.",
+      "value": {
+        "relativePath": "."
+      }
+    }
+  },
+  "invalidExamples": {}
+}

@@ -261,7 +261,6 @@ internal object KastProviderQualifier {
                             else emptyList()
                         is io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure.Domain ->
                             when (val reason = failure.failure) {
-                                is KastToolInputFailure.Source -> emptyList()
                                 is KastToolInputFailure.Facade -> listOf(reason.reason.explanation())
                                 KastToolInputFailure.NotObject,
                                 KastToolInputFailure.SchemaMismatch -> emptyList()
@@ -284,7 +283,8 @@ internal object KastProviderQualifier {
         if (projection.schemaVersion != KAST_SERVER_PROJECTION_VERSION || projection.namespace != "kast")
             return Refinement.Rejected(KastCatalogStage.PROJECTION)
         val bootstrap = projection.hostedBootstrap
-        if (bootstrap.schemaVersion != 1) return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        if (bootstrap.schemaVersion != io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION)
+            return Refinement.Rejected(KastCatalogStage.PROJECTION)
         val policy =
             refined(AgentToolPolicy.parse(bootstrap.policy)) ?: return Refinement.Rejected(KastCatalogStage.PROJECTION)
         if (policy != CanonicalAgentToolDefinitions.policy) return Refinement.Rejected(KastCatalogStage.PROJECTION)
@@ -505,4 +505,4 @@ internal val invocationJson = Json { encodeDefaults = true }
 /** Diagnostic payloads are admitted by the installed rejection schema before presentation. */
 @Serializable internal data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
 
-private const val KAST_SERVER_PROJECTION_VERSION = 15
+private const val KAST_SERVER_PROJECTION_VERSION = 16

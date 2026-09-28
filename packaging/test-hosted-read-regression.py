@@ -23,7 +23,11 @@ from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_enum_read_regression import (AllEnumClasses, DistinctSymbols, EnumMemberReferences,
     EnumScope, run_enum_read_regression)
 from hosted_budget_read_regression import BudgetSource, WorkBudget
-from hosted_source_read_regression import SymbolAnchor, source_budget_anchor_query
+from hosted_source_read_regression import SymbolAnchor, SourceFunctionRequest, source_budget_anchor_query
+from hosted_diagnostic_pages_regression import DiagnosticRequest
+from hosted_compact_source_regression import compact_source_request
+from hosted_resume_budget_regression import ResumeSource, ResultsBudget
+from hosted_enum_read_regression import EnumBudget
 from query_name_request import (QueryInput, QueryResume, QueryRun, SymbolOutput, name_query,
     relation_query, walk_query)
 from hosted_read_regression import (_ReadReplay, _read_observation, _reproduction,
@@ -38,12 +42,12 @@ from hosted_generated_fixture import (GENERATED_FILE, GENERATED_SOURCE, MOVEMENT
 @dataclass(frozen=True)
 class InvocationFixture:
     type: str = 'CLI'
-    command: list[str] = field(default_factory=lambda: ['source', 'read'])
+    command: list[str] = field(default_factory=lambda: ['tool', 'read_source'])
 
 
 @dataclass(frozen=True)
 class OperationFixture:
-    toolName: str = 'source_read'
+    toolName: str = 'read_source'
     operationId: str = 'source.read'
     invocation: InvocationFixture = field(default_factory=InvocationFixture)
 
@@ -56,7 +60,7 @@ class InvocationsFixture:
 
 @dataclass(frozen=True)
 class BootstrapToolFixture:
-    name: str = 'source_read'
+    name: str = 'read_source'
     operationId: str = 'source.read'
     effect: str = 'intellij_read'
     approvalPolicy: str = 'none'
@@ -64,13 +68,13 @@ class BootstrapToolFixture:
 
 @dataclass(frozen=True)
 class BootstrapFixture:
-    schemaVersion: int = 1
+    schemaVersion: int = 2
     tools: list[BootstrapToolFixture] = field(default_factory=lambda: [BootstrapToolFixture()])
 
 
 @dataclass(frozen=True)
 class ProjectionFixture:
-    schemaVersion: int = 15
+    schemaVersion: int = 16
     namespace: str = 'kast'
     cliInvocations: InvocationsFixture = field(default_factory=InvocationsFixture)
     hostedBootstrap: BootstrapFixture = field(default_factory=BootstrapFixture)
@@ -151,42 +155,53 @@ def enum_response(names):
 
 
 class HostedReadRegressionTest(unittest.TestCase):
-    def test_query_request_helpers_match_app_server_tool_schema(self):
+    def test_generated_query_examples_match_app_server_tool_schema(self):
         contract_path = (Path(__file__).resolve().parents[1] / 'app-server' / 'src' / 'main' / 'resources' /
                          'io' / 'github' / 'amichne' / 'kast' / 'appserver' / 'query' / 'tools.schema.json')
         contract = json.loads(contract_path.read_text())
         query = next(tool for tool in contract['tools'] if tool['name'] == 'query_symbols')
         validator = Draft202012Validator({**query['schema'], '$defs': contract['$defs']})
-        for request in (name_query('Mode', ('class',)), relation_query('exact:opaque'),
-                        walk_query('exact:opaque'),
-                        name_query('Mode', ('class',), EnumScope()),
-                        QueryInput(QueryRun(AllEnumClasses())),
-                        QueryInput(QueryRun(EnumMemberReferences(('exact:opaque',)),
-                                            (DistinctSymbols(),), SymbolOutput(('NAME', 'SIGNATURE')))),
-                        QueryInput(QueryResume('query:v1:00000000-0000-0000-0000-000000000000'))):
-            with self.subTest(request=request):
-                encoded = json.loads(json.dumps(asdict(request)))
-                self.assertEqual([], list(validator.iter_errors(encoded)))
+        examples_path = contract_path.with_name('query_symbols.examples.json')
+        examples = json.loads(examples_path.read_text())
+        for name, example in examples['examples'].items():
+            with self.subTest(example=name):
+                self.assertEqual([], list(validator.iter_errors(example['value'])))
+        for name, example in examples['invalidExamples'].items():
+            with self.subTest(invalid_example=name):
+                self.assertNotEqual([], list(validator.iter_errors(example['value'])))
 
     def test_native_search_and_entity_free_source_requests_use_current_fields(self):
-        for request in (name_query('Mode', ('class',)), source_budget_anchor_query()):
-            payload = asdict(request)['request']
-            self.assertEqual('RUN', payload['type'])
-            self.assertIn('source', payload)
-            self.assertNotIn('class_name', payload)
-        source = asdict(BudgetSource(SymbolAnchor('exact:source'), WorkBudget()))
-        self.assertEqual({'type': 'none'}, source['entities'])
-        self.assertNotIn('entityLimit', source)
+        contract_path = (REPO / 'app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json')
+        contract = json.loads(contract_path.read_text())
+        exact = SymbolAnchor('exact:v5:' + 'A' * 22)
+        cases = (
+            ('query_symbols', name_query('Mode', ('class',))),
+            ('query_symbols', source_budget_anchor_query()),
+            ('query_symbols', relation_query(exact)),
+            ('query_symbols', walk_query(exact)),
+            ('query_symbols', QueryInput(QueryRun(AllEnumClasses(), executionBudget=EnumBudget()))),
+            ('read_source', SourceFunctionRequest(exact)),
+            ('read_source', BudgetSource(exact, WorkBudget())),
+            ('read_source', ResumeSource(exact, ResultsBudget())),
+            ('read_source', compact_source_request(exact)),
+            ('check_diagnostics', DiagnosticRequest()),
+        )
+        for name, request in cases:
+            with self.subTest(tool=name, request=type(request).__name__):
+                tool = next(tool for tool in contract['tools'] if tool['name'] == name)
+                validator = Draft202012Validator({**tool['schema'], '$defs': contract['$defs']})
+                encoded = json.loads(json.dumps(asdict(request)))
+                self.assertEqual([], list(validator.iter_errors(encoded)))
 
     def test_receipt_capacity_covers_both_surfaces_and_rejects_overflow_explicitly(self):
         rows = []
         for surface in ('cli', 'provider'):
             replay = _ReadReplay(None, None, None, None, surface, rows)
             for index in range(MAX_READ_RECEIPTS // 2):
-                replay.record('authored-case', 'source_read', {'proven': True})
+                replay.record('authored-case', 'read_source', {'proven': True})
         self.assertEqual(MAX_READ_RECEIPTS, len(rows))
         with self.assertRaises(ReadReceiptRejected) as caught:
-            replay.record('overflow', 'source_read', {'proven': True})
+            replay.record('overflow', 'read_source', {'proven': True})
         self.assertIs(ReadReceiptFailure.CAPACITY, caught.exception.failure)
         self.assertEqual({'stage': 'semantic', 'cause': 'receipt_capacity_exceeded'},
                          regression_rejection(ReadRegressionStage.SEMANTIC, caught.exception))
@@ -197,7 +212,7 @@ class HostedReadRegressionTest(unittest.TestCase):
                                       ({'fact': True}, -1, ReadReceiptFailure.COUNT)):
             replay = _ReadReplay(None, None, None, None, 'cli', [])
             with self.assertRaises(ReadReceiptRejected) as caught:
-                replay.record('case', 'source_read', checks, count)
+                replay.record('case', 'read_source', checks, count)
             self.assertIs(failure, caught.exception.failure)
             self.assertEqual([], replay.rows)
 
@@ -288,12 +303,12 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertEqual(6, len(replay.rows))
         self.assertTrue(all(row['passed'] for row in replay.rows))
         requests = [call.args[2] for call in replay.transport.invoke.call_args_list]
-        self.assertTrue(all(request['request']['execution_budget']['max_work_units'] == 32 for request in requests))
+        self.assertTrue(all(request['request']['executionBudget']['maxWorkUnits'] == 32 for request in requests))
         self.assertEqual(['private-reference-0', 'private-reference-1'],
-                         list(requests[-2]['request']['source']['symbol_refs']))
+                         list(requests[-2]['request']['source']['symbolRefs']))
         self.assertEqual({'type': 'SYMBOLS', 'fields': ('NAME', 'SIGNATURE')}, requests[-1]['request']['output'])
         self.assertEqual([{'type': 'DISTINCT_SYMBOLS'}], list(requests[-1]['request']['steps']))
-        self.assertEqual(4, len(requests[-1]['request']['source']['symbol_refs']))
+        self.assertEqual(4, len(requests[-1]['request']['source']['symbolRefs']))
         self.assertNotIn('private-', json.dumps(replay.rows))
 
     def test_enum_oracle_rejects_entries_in_any_class_search(self):
@@ -341,7 +356,7 @@ class HostedReadRegressionTest(unittest.TestCase):
     def test_receipt_rejects_payload_fields_and_unbounded_counts(self):
         replay = _ReadReplay(None, None, None, None, 'cli', [])
         with self.assertRaises(ValueError):
-            replay.record('case', 'source_read', {'exactText': 'private source payload'})
+            replay.record('case', 'read_source', {'exactText': 'private source payload'})
         with self.assertRaises(ValueError):
             replay.record('case', 'query_symbols', {'exact': True}, 1001)
         replay.record('case', 'query_symbols', {'exact': True}, 1)
@@ -430,8 +445,8 @@ class HostedReadRegressionTest(unittest.TestCase):
         transport.cli_commands = _admit_cli_invocations(self.schema())
         result = SimpleNamespace(stdout=b'{"status":"complete"}')
         with patch('hosted_read_transport.subprocess.run', return_value=result) as run:
-            self.assertEqual('complete', transport.invoke('cli', 'source_read', {})['status'])
-            self.assertEqual([str(self.root / 'product/bin/kast'), 'source', 'read'], run.call_args.args[0])
+            self.assertEqual('complete', transport.invoke('cli', 'read_source', {})['status'])
+            self.assertEqual([str(self.root / 'product/bin/kast'), 'tool', 'read_source'], run.call_args.args[0])
         with self.assertRaises(ReadTransportRejected):
             transport.invoke('cli', 'unpublished_tool', {})
 
@@ -492,13 +507,13 @@ class HostedReadRegressionTest(unittest.TestCase):
         replay.walk('original-reference', Counter({'caller': 1}), 'helper')
         self.assertEqual(2, transport.invoke.call_count)
         initial, resumed = [call.args[2] for call in transport.invoke.call_args_list]
-        self.assertEqual({'request': {'source': {'type': 'SYMBOL_REFS', 'symbol_refs': ['original-reference']},
-                          'steps': [{'type': 'WALK', 'relation': 'CALLERS', 'maximum_depth': 4,
+        self.assertEqual({'request': {'source': {'type': 'SYMBOL_REFS', 'symbolRefs': ['original-reference']},
+                          'steps': [{'type': 'WALK', 'relation': 'CALLERS', 'maximumDepth': 4,
                                      'strategy': {'type': 'BREADTH_FIRST'}}],
-                          'output': {'type': 'TRAVERSAL_RECORDS'}, 'execution_budget': None,
+                          'output': {'type': 'TRAVERSAL_RECORDS'}, 'executionBudget': None,
                           'type': 'RUN'}}, json.loads(json.dumps(initial)))
         self.assertEqual({'request': {'type': 'RESUME', 'continuation': 'private-checkpoint',
-                                     'execution_budget': None}}, resumed)
+                                     'executionBudget': None}}, resumed)
         self.assertTrue(all(row['passed'] for row in replay.rows))
         self.assertEqual('complete', replay.rows[-1]['observation']['status'])
         self.assertNotIn('private-checkpoint', json.dumps(replay.rows))

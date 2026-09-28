@@ -82,7 +82,7 @@ relation-derived exact targets retain their separate issuance path.
 
 Source-owned declaration candidates preserve discovery scope and constraints.
 Relation and diagnostic locations issue range candidates with explicit exact-file
-scope. Neither candidate family grants compiler identity. `source_read` refines
+scope. Neither candidate family grants compiler identity. Public `read_source` refines
 these locations through its current authority and committed-document boundary.
 The file-candidate family and batch candidate-token issuance have been removed.
 

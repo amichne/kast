@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "exactTarget": {
+      "type": "string",
+      "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
+    },
+    "declaration": {
+      "type": "string",
+      "description": "Kotlin declaration text to add at the exact target."
+    }
+  },
+  "required": [
+    "exactTarget",
+    "declaration"
+  ],
+  "additionalProperties": false
+}

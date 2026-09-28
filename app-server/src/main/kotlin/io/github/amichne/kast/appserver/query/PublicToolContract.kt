@@ -18,20 +18,22 @@ sealed interface PublicToolInputFailure {
     data object SyntaxRejected : PublicToolInputFailure
 
     data class Parameter(val parameter: PublicToolParameter, val rule: PublicToolRule) : PublicToolInputFailure
+
+    data class Source(val cause: SourceReadCause) : PublicToolInputFailure
 }
 
 @Serializable
 enum class PublicToolParameter(val path: String) {
-    SOURCE_DECLARATION_NAME("source.declaration_name"),
+    SOURCE_DECLARATION_NAME("source.declarationName"),
     LOCATION_FILE("source.file"),
-    DIRECTORY("scope.relative_directory_path"),
-    PACKAGE("scope.package_name"),
-    DIAGNOSTIC_PATH("relative_path"),
+    DIRECTORY("scope.relativeDirectoryPath"),
+    PACKAGE("scope.packageName"),
+    DIAGNOSTIC_PATH("relativePath"),
 }
 
 @Serializable
 enum class PublicToolRule(val correction: String) {
-    SIMPLE_NAME("Supply an unqualified declaration name; put its package in scope.package_name."),
+    SIMPLE_NAME("Supply an unqualified declaration name; put its package in scope.packageName."),
     WORKSPACE_RELATIVE_PATH("Use a canonical workspace-relative path, or '.' for the root."),
     PACKAGE_NAME("Supply a Kotlin package name such as com.example.orders."),
 }
@@ -41,6 +43,10 @@ sealed interface PublicToolCanonical {
     data class Query(val request: QueryRunRequest) : PublicToolCanonical
 
     data class Diagnostics(val request: DiagnosticCheckRequest) : PublicToolCanonical
+
+    data class Change(val request: ChangeRequest) : PublicToolCanonical
+
+    data class Source(val request: SourceReadRequest) : PublicToolCanonical
 }
 
 /** Private construction retains presentation identity, schema identity, and typed syntax together. */
@@ -79,6 +85,16 @@ private constructor(
                                     DiagnosticCheckRequest.serializer(),
                                     canonical.request,
                                 )
+                            is PublicToolCanonical.Change ->
+                                PublicToolContract.json.encodeToJsonElement(
+                                    ChangeRequest.serializer(),
+                                    canonical.request,
+                                )
+                            is PublicToolCanonical.Source ->
+                                PublicToolContract.json.encodeToJsonElement(
+                                    SourceReadRequest.serializer(),
+                                    canonical.request,
+                                )
                         }
                     } catch (_: SerializationException) {
                         return Refinement.Rejected(PublicToolInputFailure.SyntaxRejected)
@@ -113,6 +129,16 @@ object PublicToolContract {
         }
     }
 
+    private val examplesByIdentity by lazy {
+        PublicToolIdentity.entries.associateWith { identity ->
+            requireNotNull(javaClass.getResourceAsStream(identity.toolName + ".examples.json"))
+                .bufferedReader(Charsets.UTF_8)
+                .use { json.decodeFromString(PublicToolExamples.serializer(), it.readText()) }
+        }
+    }
+
+    fun examples(identity: PublicToolIdentity): PublicToolExamples = examplesByIdentity.getValue(identity)
+
     fun generationParameters(identity: PublicToolIdentity): JsonObject = generationByIdentity.getValue(identity)
 
     private val schemas by lazy {
@@ -142,6 +168,15 @@ object PublicToolContract {
     fun encode(request: AdmittedPublicTool): JsonElement = encodePublicTool(request.syntax, json)
 }
 
+/** Example values are the exact authored argument documents, not a second input grammar. */
+@Serializable data class PublicToolExample(val summary: String, val value: JsonElement)
+
+@Serializable
+data class PublicToolExamples(
+    val examples: Map<String, PublicToolExample>,
+    val invalidExamples: Map<String, PublicToolExample>,
+)
+
 /** A bound serializer prevents cross-tool reuse even when two facades share an operation. */
 /** Serialization transports the same closed admission failure into a JSON codec caller. */
 class PublicToolSerializationException(val failure: PublicToolInputFailure) :
@@ -151,9 +186,10 @@ fun PublicToolInputFailure.explanation(): String =
     when (this) {
         PublicToolInputFailure.SchemaMismatch -> "Tool contract mismatch; use the schema for the selected tool."
         PublicToolInputFailure.SchemaRejected ->
-            "Arguments must contain exactly the selected tool's required fields. Supply null for default controls."
+            "Arguments must match the selected tool's fields and variants. Omit optional controls to use their defaults."
         PublicToolInputFailure.SyntaxRejected -> "Arguments violate the selected tool's bounded value grammar."
         is PublicToolInputFailure.Parameter -> "${parameter.path}: ${rule.correction}"
+        is PublicToolInputFailure.Source -> "Source request rejected: ${cause}"
     }
 
 class PublicToolRequestSerializer(private val identity: PublicToolIdentity) : KSerializer<AdmittedPublicTool> {

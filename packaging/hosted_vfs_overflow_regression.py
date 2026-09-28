@@ -17,7 +17,7 @@ from hosted_diagnostic_pages_regression import (
     DiagnosticRequest, DiagnosticDrainFailure, DiagnosticDrained, drain_diagnostics,
 )
 from hosted_source_read_regression import SymbolAnchor
-from hosted_compact_source_regression import FormattedSourceRequest, SourceAnchor
+from hosted_compact_source_regression import compact_source_request
 from hosted_read_transport import ReadTransportRejected, ReadTransportFailure
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 
@@ -386,9 +386,9 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
             request, observed = replay.search(surface)
             _require(observed == current, OverflowFailure.EPOCH)
             token = replay.page(AuthorityCaseName.ISSUED, surface, request, current, 'pageItem00')
-            compact_request = FormattedSourceRequest(request.anchor)
+            compact_request = compact_source_request(request.symbolRef)
             report = replace(report, referencePhase=ReferencePhase.SOURCE_ISSUE)
-            compact, _ = replay.call(surface, 'source_read', compact_request)
+            compact, _ = replay.call(surface, 'read_source', compact_request)
             structures = [section for section in compact.get('content', []) if section.get('type') == 'structure']
             structure = structures[0] if len(structures) == 1 else {}
             table = structure.get('selections', [])
@@ -396,9 +396,9 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
                      and structure.get('snapshot', {}).get('live') == current and bool(table)
                      and isinstance(table[0].get('selector'), str) and bool(table[0]['selector']),
                      OverflowFailure.REFERENCE)
-            source_request = replace(compact_request, anchor=SourceAnchor(table[0]['selector']))
+            source_request = replace(compact_request, symbolRef=SymbolAnchor(table[0]['selector']))
             report = replace(report, referencePhase=ReferencePhase.SOURCE_CURRENT)
-            restored, _ = replay.call(surface, 'source_read', source_request)
+            restored, _ = replay.call(surface, 'read_source', source_request)
             _require(restored.get('status') in ('complete', 'qualified')
                      and any(section.get('type') == 'structure'
                              and section.get('snapshot', {}).get('live') == current
@@ -434,7 +434,7 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
             _require(evidence.passed, OverflowFailure.DIAGNOSTIC)
             source_request = issued_references[surface]
             report = replace(report, referenceSurface=surface, referencePhase=ReferencePhase.OLD_SOURCE)
-            refused, digest = replay.call(surface, 'source_read', source_request)
+            refused, digest = replay.call(surface, 'read_source', source_request)
             evidence = _reference_refusal(surface, refused, digest)
             report = replace(report, referenceObservations=report.referenceObservations + (evidence,))
             _require(evidence.passed, OverflowFailure.REFERENCE)

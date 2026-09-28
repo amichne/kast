@@ -1,30 +1,19 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.mcp.McpCallResult
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
+import io.github.amichne.kast.cli.mcp.healthInputSchema
+import io.github.amichne.kast.cli.mcp.validationInputSchema
 import io.github.amichne.kast.cli.rpc.ToolRpcReply
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.ExactSymbolSelector
-import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.SimpleSourceEntities
-import io.github.amichne.kast.protocol.contract.SimpleSourceRegion
-import io.github.amichne.kast.protocol.contract.SimpleSourceText
-import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
-import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
-import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
-import io.github.amichne.kast.protocol.contract.SourceReadSimpleRequest
-import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
+import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.registry.SupportToolHost
+import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonObject
 
 /** Build entry point for the generated public callable reference. */
 internal object MintlifyCallableReference {
@@ -47,24 +36,26 @@ internal object MintlifyCallableReference {
  */
 internal fun mintlifyCallableReference(): CanonicalJsonDocument {
     val bindings = installedHostedBindings()
+    val directSupport = SupportToolIdentity.entries.filter { SupportToolHost.MCP in it.hosts }
     val components =
         (bindings.flatMap { binding ->
                 binding.tool.inputSchema.documentationComponents(binding.requestComponentName()) +
-                    binding.tool.outputSchema.documentationComponents(binding.responseComponentName())
+                    binding.tool.outputSchema.documentationComponents(binding.responseComponentName()) +
+                    installedSemanticResultSchema(binding.operation)
+                        .documentationComponents(binding.semanticResultComponentName())
             } +
                 generatedRequestSchema(ToolRpcReply.serializer())
                     .documentationComponents(MintlifyCallableComponentName.named("ToolRpcReply")) +
                 generatedRequestSchema(McpCallResult.serializer())
                     .documentationComponents(MintlifyCallableComponentName.named("McpToolCallResult")) +
-                McpStructuredResults.readSchema.documentationComponents(
-                    MintlifyCallableComponentName.named("McpReadResult")
-                ) +
-                McpStructuredResults.investigationSchema.documentationComponents(
-                    MintlifyCallableComponentName.named("McpInvestigationResult")
-                ) +
-                McpStructuredResults.changeSchema.documentationComponents(
-                    MintlifyCallableComponentName.named("McpChangeResult")
-                ))
+                healthInputSchema()
+                    .documentationComponents(MintlifyCallableComponentName.named("health_checkRequest")) +
+                validationInputSchema()
+                    .documentationComponents(MintlifyCallableComponentName.named("validate_workspaceRequest")) +
+                McpStructuredResults.schemaFor("health_check")
+                    .documentationComponents(MintlifyCallableComponentName.named("health_checkSemanticResult")) +
+                McpStructuredResults.schemaFor("validate_workspace")
+                    .documentationComponents(MintlifyCallableComponentName.named("validate_workspaceSemanticResult")))
             .toMap(linkedMapOf())
     return mintlifyCallableReferenceFactory.create(
         MintlifyCallableReferenceDocument(
@@ -72,16 +63,68 @@ internal fun mintlifyCallableReference(): CanonicalJsonDocument {
             info =
                 MintlifyCallableInfoDocument(
                     title = "Kast callable reference",
-                    version = "1",
+                    version = PUBLIC_TOOL_CONTRACT_VERSION.toString(),
                     description = "Public compiler-grounded Kast callables for connected agents.",
                 ),
             paths =
                 bindings.associateTo(linkedMapOf()) { binding ->
                     "/callables/${binding.tool.name}" to
                         MintlifyCallablePathDocument(post = binding.operationDocument())
-                },
+                } +
+                    directSupport.associate { identity ->
+                        "/callables/${identity.toolName}" to
+                            MintlifyCallablePathDocument(post = identity.supportOperationDocument())
+                    },
             components = MintlifyCallableComponentsDocument(components),
         )
+    )
+}
+
+private fun SupportToolIdentity.supportOperationDocument(): MintlifyCallableOperationDocument {
+    val input = MintlifyCallableComponentName.request(toolName)
+    val result = MintlifyCallableComponentName.named(toolName + "SemanticResult")
+    return MintlifyCallableOperationDocument(
+        operationId = toolName,
+        summary = toolName.replace('_', ' '),
+        description = description,
+        requestBody =
+            MintlifyCallableRequestBodyDocument(
+                required = true,
+                content =
+                    mapOf(
+                        "application/json" to
+                            MintlifyCallableMediaTypeDocument(MintlifyCallableSchemaReference.component(input))
+                    ),
+            ),
+        responses =
+            mapOf(
+                "200" to
+                    MintlifyCallableResponseDocument(
+                        description =
+                            "The direct tool's semantic document. MCP and RPC use their own invocation envelopes.",
+                        content =
+                            mapOf(
+                                "application/json" to
+                                    MintlifyCallableMediaTypeDocument(MintlifyCallableSchemaReference.component(result))
+                            ),
+                    )
+            ),
+        mint =
+            MintlifyCallableMintDocument(
+                metadata =
+                    MintlifyCallablePageMetadataDocument(
+                        playground = MintlifyCallablePlayground.NONE,
+                        mode = MintlifyCallablePageMode.WIDE,
+                        hideApiMarker = true,
+                        icon = "square-terminal",
+                        description = "Inputs and response fields for $toolName.",
+                        title = toolName.replace('_', ' ').replaceFirstChar { it.uppercaseChar() },
+                    ),
+                content =
+                    "This callable is not an HTTP endpoint. It is available through direct MCP and tool RPC. " +
+                        "See the [MCP contract](/reference/mcp-catalog) or " +
+                        "[tool RPC contract](/reference/rpc-catalog) for invocation envelopes.",
+            ),
     )
 }
 
@@ -112,9 +155,24 @@ private fun InstalledHostedBinding.requestBodyDocument() =
                 "application/json" to
                     MintlifyCallableMediaTypeDocument(
                         schema = MintlifyCallableSchemaReference.component(requestComponentName()),
-                        examples = if (operation == CanonicalOperation.SOURCE_READ) sourceReadExamples() else null,
+                        examples =
+                            PublicToolIdentity.entries
+                                .singleOrNull { it.toolName == tool.name }
+                                ?.let(PublicToolContract::examples)
+                                ?.examples
+                                ?.mapValues { (_, example) ->
+                                    MintlifyCallableExampleDocument(example.summary, example.value)
+                                }
+                                ?.takeIf { it.isNotEmpty() },
                         invalidExamples =
-                            if (operation == CanonicalOperation.SOURCE_READ) sourceReadInvalidExamples() else null,
+                            PublicToolIdentity.entries
+                                .singleOrNull { it.toolName == tool.name }
+                                ?.let(PublicToolContract::examples)
+                                ?.invalidExamples
+                                ?.mapValues { (_, example) ->
+                                    MintlifyCallableExampleDocument(example.summary, example.value)
+                                }
+                                ?.takeIf { it.isNotEmpty() },
                     )
             ),
     )
@@ -161,80 +219,8 @@ private fun InstalledHostedBinding.requestComponentName(): MintlifyCallableCompo
 private fun InstalledHostedBinding.responseComponentName(): MintlifyCallableComponentName =
     MintlifyCallableComponentName.response(tool.name)
 
-/**
- * Documentation projection of an admitted, dynamic JSON Schema resource. Lift local definitions into direct OpenAPI
- * components; retain every assertion and annotate variants for human navigation. Schema keyword maps are dynamic schema
- * data, never a manually assembled invocation payload.
- */
-private fun JsonElement.documentationComponents(
-    componentName: MintlifyCallableComponentName
-): List<Pair<String, JsonElement>> {
-    val schema = this as? JsonObject ?: error("A callable schema must be an object")
-    val definitions = schema["\$defs"] as? JsonObject
-    return listOf(componentName.value to schema.documentationSchema(componentName)) +
-        definitions.orEmpty().map { (name, definition) ->
-            "${componentName.value}_$name" to definition.documentationSchema(componentName, name)
-        }
-}
-
-private fun JsonElement.documentationSchema(
-    componentName: MintlifyCallableComponentName,
-    title: String? = null,
-): JsonElement =
-    when (this) {
-        is JsonArray -> Json.encodeToJsonElement(map { it.documentationSchema(componentName) })
-        is JsonObject -> {
-            val label = title ?: documentationTitle()
-            val keywords = filterKeys {
-                it != "\$defs"
-            }
-                .mapValues { (name, value) ->
-                    if (
-                        name == "\$ref" &&
-                            value is JsonPrimitive &&
-                            value.isString &&
-                            value.content.startsWith("#/\$defs/")
-                    ) {
-                        JsonPrimitive(
-                            "#/components/schemas/${componentName.value}_${value.content.removePrefix("#/\$defs/")}"
-                        )
-                    } else value.documentationSchema(componentName)
-                }
-            Json.encodeToJsonElement(
-                    if (label != null && "title" !in keywords) keywords + ("title" to JsonPrimitive(label))
-                    else keywords
-                )
-                .jsonObject
-        }
-        else -> this
-    }
-
-/** UI label derived from an existing discriminator and the schema's required live-evidence field. */
-private fun JsonObject.documentationTitle(): String? {
-    val properties = this["properties"] as? JsonObject
-    val tag =
-        listOf("status", "type", "kind").firstNotNullOfOrNull { key ->
-            ((properties?.get(key) as? JsonObject)?.get("const") as? JsonPrimitive)?.content
-        } ?: return null
-    val required = this["required"] as? JsonArray
-    // Mintlify resolves tab labels through an object lookup; the bare constructor key resolves to its prototype.
-    val label = if (tag == "constructor") "constructor symbol" else tag
-    return if (required?.contains(JsonPrimitive("live")) == true) "$label · live" else label
-}
-
-/** One OpenAPI component identity derived only from a canonical operation and schema role. */
-@JvmInline
-private value class MintlifyCallableComponentName private constructor(val value: String) {
-    companion object {
-        fun named(value: String): MintlifyCallableComponentName = MintlifyCallableComponentName(value)
-
-        fun request(toolName: String): MintlifyCallableComponentName =
-            MintlifyCallableComponentName("${toolName}Request")
-
-        fun response(toolName: String): MintlifyCallableComponentName =
-            MintlifyCallableComponentName("${toolName}Response")
-    }
-}
+private fun InstalledHostedBinding.semanticResultComponentName(): MintlifyCallableComponentName =
+    MintlifyCallableComponentName.named(tool.name + "SemanticResult")
 
 @Serializable
 private data class MintlifyCallableReferenceDocument(
@@ -261,7 +247,9 @@ private data class MintlifyCallableOperationDocument(
     val requestBody: MintlifyCallableRequestBodyDocument,
     val responses: Map<String, MintlifyCallableResponseDocument>,
     @SerialName("x-mint") val mint: MintlifyCallableMintDocument,
-    @SerialName("x-kast") val kast: MintlifyCallableKastMetadataDocument,
+    @SerialName("x-kast")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val kast: MintlifyCallableKastMetadataDocument? = null,
 )
 
 @Serializable
@@ -287,63 +275,6 @@ private data class MintlifyCallableMediaTypeDocument(
 )
 
 @Serializable private data class MintlifyCallableExampleDocument(val summary: String, val value: JsonElement)
-
-private fun sourceReadExamples(): Map<String, MintlifyCallableExampleDocument> {
-    val symbol = (ExactSymbolSelector.parse("exact:v5:${"A".repeat(21)}Q") as Refinement.Refined).value
-    val bytes = (SourceTextByteLimitDocument.parse(12_000) as Refinement.Refined).value
-    val count = (SourceEntityLimitDocument.parse(50) as Refinement.Refined).value
-    val minimal = SourceReadSimpleRequest(symbol)
-    val detailed =
-        SourceReadSimpleRequest(
-            symbol = symbol,
-            region = SimpleSourceRegion.BODY,
-            text = SimpleSourceText.Window(maximumBytes = bytes),
-            entities = SimpleSourceEntities.Declarations(count),
-            format = SourceReadFormatDocument.EXPANDED,
-        )
-    val json = Json { classDiscriminator = "type" }
-    return mapOf(
-        "exactSymbol" to
-            MintlifyCallableExampleDocument(
-                "Replace this illustrative selector with the exact selector returned by search.",
-                json.encodeToJsonElement(SourceReadSimpleRequest.serializer(), minimal),
-            ),
-        "callableBody" to
-            MintlifyCallableExampleDocument(
-                "A callable body with bounded text and direct declarations.",
-                json.encodeToJsonElement(SourceReadSimpleRequest.serializer(), detailed),
-            ),
-    )
-}
-
-@Serializable private data class InvalidSourceReadText(val mode: String = "unsupported")
-
-@Serializable private data class InvalidSourceReadMode(val symbol: String, val text: InvalidSourceReadText)
-
-@Serializable private data class MixedSourceReadIdentity(val symbol: String, val anchor: SourceReadAnchorDocument)
-
-private fun sourceReadInvalidExamples(): Map<String, MintlifyCallableExampleDocument> {
-    val symbol = "exact:v5:${"A".repeat(21)}Q"
-    val text = (ProtocolText.parse(symbol) as Refinement.Refined).value
-    return mapOf(
-        "unsupportedTextMode" to
-            MintlifyCallableExampleDocument(
-                "An unknown text discriminator is rejected.",
-                Json.encodeToJsonElement(
-                    InvalidSourceReadMode.serializer(),
-                    InvalidSourceReadMode(symbol, InvalidSourceReadText()),
-                ),
-            ),
-        "mixedIdentity" to
-            MintlifyCallableExampleDocument(
-                "A symbol shortcut cannot be combined with an anchor.",
-                Json.encodeToJsonElement(
-                    MixedSourceReadIdentity.serializer(),
-                    MixedSourceReadIdentity(symbol, SourceReadAnchorDocument.Symbol(text)),
-                ),
-            ),
-    )
-}
 
 @Serializable
 private data class MintlifyCallableSchemaReference private constructor(@SerialName("\$ref") val reference: String) {

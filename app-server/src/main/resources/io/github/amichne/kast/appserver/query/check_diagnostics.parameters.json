@@ -1,20 +1,21 @@
 {
   "type": "object",
   "properties": {
-    "relative_path": {
+    "relativePath": {
       "type": "string",
       "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal.",
       "minLength": 1,
       "maxLength": 1048576
     },
-    "max_diagnostics": {
+    "maxDiagnostics": {
       "type": [
         "integer",
         "null"
       ],
       "minimum": 1,
       "maximum": 1000,
-      "description": "Maximum diagnostic entries to return. Omission or null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit."
+      "description": "Maximum diagnostic entries to return. Omission or null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit.",
+      "default": 100
     },
     "continuation": {
       "type": [
@@ -25,12 +26,19 @@
       "maxLength": 1048576,
       "description": "Opaque same-basis diagnostic continuation. Omit or use null to start. Resume the same relative_path; increase execution_budget if a grant cannot cross the enumeration prefix."
     },
-    "execution_budget": {
-      "$ref": "#/$defs/ExecutionBudget"
+    "executionBudget": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExecutionBudget"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
-    "relative_path"
+    "relativePath"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -41,7 +49,7 @@
       ],
       "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
       "properties": {
-        "max_elapsed_ms": {
+        "maxElapsedMs": {
           "type": [
             "integer",
             "null"
@@ -49,7 +57,7 @@
           "minimum": 1,
           "maximum": 9223372036854775807
         },
-        "max_work_units": {
+        "maxWorkUnits": {
           "type": [
             "integer",
             "null"
@@ -57,7 +65,7 @@
           "minimum": 1,
           "maximum": 9223372036854775807
         },
-        "max_results": {
+        "maxResults": {
           "type": [
             "integer",
             "null"
@@ -65,7 +73,7 @@
           "minimum": 1,
           "maximum": 2147483647
         },
-        "max_returned_bytes": {
+        "maxReturnedBytes": {
           "type": [
             "integer",
             "null"
@@ -75,7 +83,8 @@
         }
       },
       "required": [],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "default": {}
     }
   }
 }

@@ -1,10 +1,16 @@
 package io.github.amichne.kast.cli.rpc
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
-import io.github.amichne.kast.protocol.registry.OperationEffect
+import io.github.amichne.kast.cli.mcp.McpChangePhase
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
+import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.nio.file.Path
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -41,25 +47,13 @@ object KastToolRpcMain {
 internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
     private val tools =
         session.catalog.map { tool ->
-            val effect =
-                OperationEffect.entries.singleOrNull { it.name.lowercase() == tool.effect }
-                    ?: error("Unknown canonical operation effect")
-            check(effect == OperationEffect.NONE || effect == OperationEffect.INTELLIJ_READ)
             ToolRpcTool(
                 tool.name,
                 tool.description,
-                ToolRpcToolEffect.READ,
-                tool.inputSchema as? JsonObject ?: error("A tool input schema must be an object"),
+                if (tool.readOnly) ToolRpcToolEffect.READ else ToolRpcToolEffect.WRITE,
+                tool.inputSchema,
             )
-        } +
-            session.supplemental.map { tool ->
-                ToolRpcTool(
-                    tool.name,
-                    tool.description,
-                    if (tool.readOnly) ToolRpcToolEffect.READ else ToolRpcToolEffect.WRITE,
-                    tool.inputSchema as? JsonObject ?: error("A tool input schema must be an object"),
-                )
-            }
+        }
 
     fun catalog(): ToolRpcReply = ToolRpcReply.Catalog(ToolRpcCatalog(tools.sortedBy(ToolRpcTool::name)))
 
@@ -71,6 +65,14 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
             } catch (_: SerializationException) {
                 return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
             }
+        val identity = PublicToolIdentity.entries.singleOrNull { it.toolName == name }
+        val admitted =
+            if (identity == null) null
+            else
+                when (val admission = PublicToolContract.admit(identity, arguments)) {
+                    is Refinement.Refined -> admission.value
+                    is Refinement.Rejected -> return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+                }
         val root =
             session.root() as? CanonicalRootDiscovery.Discovered
                 ?: return ToolRpcReply.Rejected(ToolRpcFailure.OUT_OF_SCOPE)
@@ -78,7 +80,9 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
         session.start(root.root)
         val exit =
             try {
-                session.invoke(name, arguments)
+                if (admitted == null) session.invoke(name, arguments) else session.invokeAdmitted(admitted)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (_: RuntimeException) {
                 return ToolRpcReply.Rejected(ToolRpcFailure.INVOCATION_FAILED)
             }
@@ -112,7 +116,16 @@ internal sealed interface ToolRpcReply {
     @Serializable @SerialName("rejected") data class Rejected(val failure: ToolRpcFailure) : ToolRpcReply
 }
 
-@Serializable internal data class ToolRpcCatalog(val tools: List<ToolRpcTool>, @Required val schemaVersion: Int = 1)
+@Serializable
+internal data class ToolRpcCatalog(
+    val tools: List<ToolRpcTool>,
+    @Required val schemaVersion: Int = PUBLIC_TOOL_CONTRACT_VERSION,
+    @Required
+    val callTimeoutMillis: Long =
+        OperationExecutionBudget.WORKSPACE_READINESS.value +
+            McpChangePhase.entries.size * OperationExecutionBudget.SEMANTIC_READ.operation.value,
+    @Required val maxResponseBytes: Int = BrokerOperationalLimits.maximumToolRpcResponseBytes,
+)
 
 @Serializable
 internal data class ToolRpcTool(

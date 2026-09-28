@@ -4,8 +4,14 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
 import java.nio.file.Path
@@ -42,7 +48,7 @@ class McpInvestigationToolsTest {
             McpInvestigationTools(root, capabilities, setOf("QUERY_RUN", "SOURCE_READ")) { _, _ ->
                 error("semantic read must not run")
             }
-        val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
+        val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.Complete, exit.document.value)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
         assertEquals("READY", data.getValue("readiness").jsonPrimitive.content)
@@ -73,7 +79,7 @@ class McpInvestigationToolsTest {
             ) { _, _ ->
                 error("semantic read must not run")
             }
-        val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
+        val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.Complete, exit.document.value)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
         assertEquals(canonicalRoot.toString(), data.getValue("workspaceBinding").jsonPrimitive.content)
@@ -97,7 +103,7 @@ class McpInvestigationToolsTest {
             ) { _, _ ->
                 error("semantic read must not run")
             }
-        val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
+        val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.OperationRejected)
         val result = Json.parseToJsonElement(exit.document.value).jsonObject
         assertEquals("HOST_UNAVAILABLE", result.getValue("error").jsonObject.getValue("code").jsonPrimitive.content)
@@ -202,10 +208,10 @@ class McpInvestigationToolsTest {
                         .content,
                 )
                 assertEquals("DIRECTORY", scope.getValue("type").jsonPrimitive.content)
-                assertEquals("module/custom", scope.getValue("relative_directory_path").jsonPrimitive.content)
+                assertEquals("module/custom", scope.getValue("relativeDirectoryPath").jsonPrimitive.content)
                 assertEquals(
                     listOf("integrationTest"),
-                    scope.getValue("source_set_names").jsonArray.map { it.jsonPrimitive.content },
+                    scope.getValue("sourceSetNames").jsonArray.map { it.jsonPrimitive.content },
                 )
                 assertEquals(
                     listOf("CLASS"),
@@ -214,7 +220,7 @@ class McpInvestigationToolsTest {
                         .jsonObject
                         .getValue("source")
                         .jsonObject
-                        .getValue("declaration_kinds")
+                        .getValue("declarationKinds")
                         .jsonArray
                         .map { it.jsonPrimitive.content },
                 )
@@ -240,13 +246,58 @@ class McpInvestigationToolsTest {
                     input.getValue("request").jsonObject.getValue("source").jsonObject.getValue("scope").jsonObject
                 assertEquals(
                     listOf("integrationTest"),
-                    scope.getValue("source_set_names").jsonArray.map { it.jsonPrimitive.content },
+                    scope.getValue("sourceSetNames").jsonArray.map { it.jsonPrimitive.content },
                 )
                 CliExit.Qualified(
                     CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
                         .create(TestQualifiedQuery(items = emptyList()))
                 )
             }
+        assertTrue(exit is CliExit.Complete)
+    }
+
+    @Test
+    fun `validation probes pass the public admission boundary`() {
+        val file = "src/main/kotlin/sample/Registry.kt"
+        val request =
+            McpValidationRequest(
+                McpValidationDeclaration(McpValidationKind.CLASS, "Registry", file),
+                relation =
+                    McpValidationRelation(
+                        McpValidationRelationKind.REFERENCES,
+                        McpValidationEndpoint(file, "Registry"),
+                        McpValidationEndpoint(file, "Registry"),
+                    ),
+                diagnosticPath = file,
+            )
+        val calls = mutableListOf<String>()
+        val exit =
+            validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, input ->
+                val identity = PublicToolIdentity.entries.single { it.toolName == name }
+                val admission = PublicToolContract.admit(identity, input)
+                assertTrue(admission is Refinement.Refined, "$name: $admission; $input")
+                calls += name
+                if (name == "query_symbols" && calls.size == 1)
+                    CliExit.Complete(
+                        CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
+                            .create(
+                                TestQualifiedQuery(
+                                    status = "complete",
+                                    items =
+                                        listOf(
+                                            TestExactSymbol(
+                                                "exact:v5:${"A".repeat(22)}",
+                                                "classlike",
+                                                "Registry",
+                                                TestExactLocation(root.resolve(file).toString()),
+                                            )
+                                        ),
+                                )
+                            )
+                    )
+                else boundaryExit(CliBoundaryExitStatus.USAGE, "probe-observed")
+            }
+        assertEquals(listOf("query_symbols", "read_source", "query_symbols", "check_diagnostics"), calls)
         assertTrue(exit is CliExit.Complete)
     }
 }

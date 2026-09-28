@@ -23,7 +23,7 @@ class KastCatalogAdmissionTest {
                 base.copy(schemaVersion = 2),
                 base.copy(serverProjection = projection.copy(namespace = "foreign")),
                 base.copy(serverProjection = projection.copy(schemaVersion = 14)),
-                base.copy(serverProjection = projection.copy(hostedBootstrap = bootstrap.copy(schemaVersion = 2))),
+                base.copy(serverProjection = projection.copy(hostedBootstrap = bootstrap.copy(schemaVersion = 1))),
                 base.copy(
                     serverProjection = projection.copy(hostedBootstrap = bootstrap.copy(tools = tools.dropLast(1)))
                 ),

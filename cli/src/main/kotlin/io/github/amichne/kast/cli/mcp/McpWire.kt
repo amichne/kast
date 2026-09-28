@@ -199,7 +199,6 @@ internal enum class McpCallFailure {
     UNKNOWN_TOOL,
     NOT_GRADLE_WORKSPACE,
     INVOCATION_FAILED,
-    HOSTED_OPERATION_REJECTED,
     INVALID_RESULT_SCHEMA;
 
     val nextAction: String
@@ -209,7 +208,6 @@ internal enum class McpCallFailure {
                 UNKNOWN_TOOL -> "Call tools/list and choose a listed tool name."
                 NOT_GRADLE_WORKSPACE -> "Start Kast MCP inside the intended Gradle workspace."
                 INVOCATION_FAILED -> "Call health_check to inspect workspace readiness before retrying."
-                HOSTED_OPERATION_REJECTED -> "Inspect the hosted rejection evidence for the specific cause."
                 INVALID_RESULT_SCHEMA -> "Report the Kast result schema failure with the tool name."
             }
 }
@@ -228,10 +226,8 @@ internal data class McpCallEvent(
 @Serializable
 internal enum class McpResultVariant {
     COMPLETE,
-    PARTIAL,
     QUALIFIED,
     REJECTED,
-    UNAVAILABLE,
     HOST_REJECTED,
     UNKNOWN,
 }
@@ -239,8 +235,6 @@ internal enum class McpResultVariant {
 @Serializable
 internal enum class McpResultSchemaFailure {
     UNPARSEABLE_DOCUMENT,
-    MISSING_STATUS,
-    INVALID_STATUS_TYPE,
     SCHEMA_VIOLATION,
 }
 

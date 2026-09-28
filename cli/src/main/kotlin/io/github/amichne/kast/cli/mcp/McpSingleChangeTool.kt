@@ -2,45 +2,55 @@
 
 package io.github.amichne.kast.cli.mcp
 
+import io.github.amichne.kast.appserver.query.AdmittedPublicTool
+import io.github.amichne.kast.appserver.query.PublicToolCanonical
+import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeExistingIdeCli
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRejection
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
 import io.github.amichne.kast.protocol.contract.ChangeRunError
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Path
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
 /** Public one-call mutation; native plan, write, verification, and recovery remain separate effects. */
 internal class McpSingleChangeTool(
     private val root: Path,
-    inputSchema: JsonElement,
     private val operation: (McpChangePhase, JsonObject) -> CliExit,
     private val sign: (ApprovalChallenge) -> String?,
 ) {
-    val tool =
-        McpSupplementalTool(
-            name = "change",
-            description =
-                "Add one declaration to an existing Kotlin file identified by an exact Kast reference. " +
-                    "Plans, applies, verifies, and attempts recovery within one call. Returns the preview and " +
-                    "verified receipt, or explicit uncertain/recovery evidence. Changes source files.",
-            inputSchema = inputSchema,
-            readOnly = false,
-            invoke = ::invoke,
-        )
+    fun invoke(arguments: JsonObject): CliExit {
+        val admitted =
+            when (val result = PublicToolContract.admit(PublicToolIdentity.ADD_DECLARATION, arguments)) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected ->
+                    return boundaryExit(CliBoundaryExitStatus.USAGE, "invalid-add-declaration-arguments")
+            }
+        return invoke(admitted)
+    }
 
-    private fun invoke(arguments: JsonObject): CliExit {
-        val planned = operation(McpChangePhase.PLAN, arguments)
+    fun invoke(admitted: AdmittedPublicTool): CliExit {
+        require(admitted.identity == PublicToolIdentity.ADD_DECLARATION)
+        val request = (admitted.canonical as PublicToolCanonical.Change).request
+        val planArguments =
+            changeJson.encodeToJsonElement(ChangePlanRequest.serializer(), ChangePlanRequest(request.intent)).jsonObject
+        val planned = operation(McpChangePhase.PLAN, planArguments)
         val planDocument = document(planned) ?: return rejected(ChangeRejection.PLANNING_REJECTED)
         if (planned !is CliExit.Complete && planned !is CliExit.Qualified)
             return rejected(ChangeRejection.PLANNING_REJECTED, plan = planDocument)
@@ -63,6 +73,8 @@ internal class McpSingleChangeTool(
         val applied =
             try {
                 operation(McpChangePhase.APPLY, approvedArguments(identity, assertion))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: RuntimeException) {
                 return recover(identity, planDocument, null)
             }
@@ -91,10 +103,10 @@ internal class McpSingleChangeTool(
         plan: JsonObject,
         application: JsonObject?,
     ): CliExit {
-        val assertion = runCatching { authorize(McpChangePhase.PREPARE_RECOVER, identity) }.getOrNull()
+        val assertion = recoverObservation { authorize(McpChangePhase.PREPARE_RECOVER, identity) }
         val recovered =
             if (assertion == null) null
-            else runCatching { operation(McpChangePhase.RECOVER, approvedArguments(identity, assertion)) }.getOrNull()
+            else recoverObservation { operation(McpChangePhase.RECOVER, approvedArguments(identity, assertion)) }
         val recovery = recovered?.let(::document)
         val resolved =
             if (recovered !is CliExit.Complete || recovery == null) false
@@ -120,6 +132,15 @@ internal class McpSingleChangeTool(
             )
         )
     }
+
+    private fun <T> recoverObservation(observe: () -> T): T? =
+        try {
+            observe()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: RuntimeException) {
+            null
+        }
 
     private fun authorize(phase: McpChangePhase, identity: String): String? {
         val prepared = operation(phase, planIdentityArguments(identity))
@@ -161,12 +182,10 @@ internal class McpSingleChangeTool(
         fun installed(
             root: Path,
             home: Path,
-            inputSchema: JsonElement,
             capabilities: ExistingIdeCliCapabilities,
         ): McpSingleChangeTool =
             McpSingleChangeTool(
                 root,
-                inputSchema,
                 { phase, arguments ->
                     val argv =
                         when (phase) {

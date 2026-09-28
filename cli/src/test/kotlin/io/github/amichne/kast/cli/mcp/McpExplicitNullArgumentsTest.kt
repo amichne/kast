@@ -1,15 +1,14 @@
 package io.github.amichne.kast.cli.mcp
 
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.cli.direct.directSupportTools
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -33,19 +32,9 @@ class McpExplicitNullArgumentsTest {
             """
                 .trimIndent() + "\n"
         KastMcpServer(
-                catalog = emptyList(),
-                invoke = { _, _ -> error("canonical call not expected") },
+                catalog = directSupportTools().filter { it.name == "health_check" },
+                invoke = { _, _ -> error("explicit null must not reach invocation") },
                 root = { admittedRoot() },
-                supplemental =
-                    listOf(
-                        McpSupplementalTool(
-                            "health_check",
-                            "Check health",
-                            Json.encodeToJsonElement(NullArgumentSchema("object")),
-                        ) {
-                            error("explicit null must not reach invocation")
-                        }
-                    ),
                 diagnostic = PrintStream(ByteArrayOutputStream()),
             )
             .run(BufferedInputStream(ByteArrayInputStream(input.toByteArray())), PrintStream(output))
@@ -68,5 +57,3 @@ class McpExplicitNullArgumentsTest {
         )
     }
 }
-
-@Serializable private data class NullArgumentSchema(val type: String)

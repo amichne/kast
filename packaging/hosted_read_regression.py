@@ -19,6 +19,9 @@ from native_provider_qualification import qualification_document
 from hosted_concurrent_read import run_concurrent_read_regression
 from hosted_authority_read_regression import run_authority_read_regression
 from hosted_budget_read_regression import progress_advances, run_budget_read_regression
+from hosted_budget_read_regression import NoEntities
+from hosted_source_read_regression import SourceFunctionRequest, SymbolAnchor
+from hosted_resume_budget_regression import CompleteText
 from hosted_resume_budget_regression import Checkpoint, Finished, admit_progress, run_resume_budget_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_repair_budget_regression import run_repair_time_regression
@@ -220,7 +223,7 @@ class _ReadReplay:
         run_repair_time_regression(self)
         run_resume_budget_regression(self)
         request = DiagnosticRequest('src/main/kotlin/Fixture.kt', 1000,
-            execution_budget=DiagnosticGrant(max_results=1000))
+            executionBudget=DiagnosticGrant(maxResults=1000))
         first, _ = self.transport.invoke_observed(self.surface, 'check_diagnostics', asdict(request))
         drained = drain_diagnostics(self, request, first)
         complete = isinstance(drained, DiagnosticDrained)
@@ -233,14 +236,16 @@ class _ReadReplay:
         }, len(facts), response)
 
     def source_read(self):
-        response = self.transport.invoke(self.surface, 'source_read', {
-            'anchor': {'type': 'symbol', 'selector': self.seeds['logger']['ref']},
-            'region': {'type': 'file'}, 'entities': {'type': 'none'}, 'text': {'type': 'complete'},
-            'entityLimit': 100, 'textByteLimit': 65536, 'page': {'type': 'first'}})
+        request = SourceFunctionRequest(SymbolAnchor(self.seeds['logger']['ref']),
+            entities=NoEntities(), text=CompleteText())
+        response = self.transport.invoke(self.surface, 'read_source', asdict(request))
         path = self.fixture.workspace / self.fixture.oracle['declarations']['logger'][0]
-        text = response.get('text', {})
-        snapshot = response.get('snapshot', {})
-        self.record('source-exact-saved-file', 'source_read', {
+        sections = response.get('content', [])
+        source = next((section for section in sections if section.get('type') == 'source'), {})
+        structure = next((section for section in sections if section.get('type') == 'structure'), {})
+        text = source.get('text', {})
+        snapshot = structure.get('snapshot', {})
+        self.record('source-exact-saved-file', 'read_source', {
             **self.completed(response), 'exactText': text.get('text') == path.read_text(),
             'textReturned': text.get('type') == 'returned', 'exactFile': snapshot.get('file') == str(path),
             'nestedLiveRetained': snapshot.get('live') == self.live, 'publishedFieldsAbsent':

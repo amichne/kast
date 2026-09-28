@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
+import io.github.amichne.kast.protocol.registry.SupportToolHost
+import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -30,7 +32,12 @@ class MintlifyCallableReferenceTest {
         assertEquals("3.1.0", reference.getValue("openapi").jsonPrimitive.content)
         assertFalse("servers" in reference)
         assertEquals(
-            tools.map { "/callables/${it.name}" },
+            tools.map { "/callables/${it.name}" } +
+                SupportToolIdentity.entries
+                    .filter { SupportToolHost.MCP in it.hosts }
+                    .map {
+                        "/callables/${it.toolName}"
+                    },
             paths.keys.toList(),
         )
         assertEquals(publicOperationIds.toSet(), tools.map { it.operationId }.toSet())
@@ -108,6 +115,15 @@ class MintlifyCallableReferenceTest {
             assertTrue(content.contains("tool RPC contract"))
             assertFalse(content.contains("```bash"))
         }
+        SupportToolIdentity.entries
+            .filter { SupportToolHost.MCP in it.hosts }
+            .forEach { identity ->
+                val operation = paths.getValue("/callables/${identity.toolName}").jsonObject.getValue("post").jsonObject
+                assertEquals(identity.description, operation.getValue("description").jsonPrimitive.content)
+                assertFalse("x-kast" in operation)
+                assertTrue("${identity.toolName}Request" in components)
+                assertTrue("${identity.toolName}SemanticResult" in components)
+            }
     }
 
     @Test
@@ -176,28 +192,14 @@ class MintlifyCallableReferenceTest {
     }
 
     @Test
-    fun `reference publishes the direct MCP result status variants`() {
+    fun `reference reuses operation semantic result schemas for direct MCP`() {
         val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
-        assertEquals(
-            setOf("complete", "partial", "rejected", "unavailable"),
-            components
-                .getValue("McpReadResult")
-                .jsonObject
-                .getValue("oneOf")
-                .jsonArray
-                .map {
-                    it.jsonObject
-                        .getValue("properties")
-                        .jsonObject
-                        .getValue("status")
-                        .jsonObject
-                        .getValue("const")
-                        .jsonPrimitive
-                        .content
-                }
-                .toSet(),
-        )
+        assertTrue("query_symbolsSemanticResult" in components)
+        assertTrue("read_sourceSemanticResult" in components)
+        assertTrue("check_diagnosticsSemanticResult" in components)
+        assertTrue("add_declarationSemanticResult" in components)
+        assertTrue("McpReadResult" !in components)
         assertTrue(
             "structuredContent" in components.getValue("McpToolCallResult").jsonObject.getValue("properties").jsonObject
         )

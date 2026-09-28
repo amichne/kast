@@ -162,11 +162,11 @@ class DiagnosticPagesTest(unittest.TestCase):
             return invoke(surface, tool, request)
         replay.transport.invoke = observed
         checks = heavy_file_checks(replay)
-        self.assertEqual(1000, requests[0]['max_diagnostics'])
-        self.assertEqual(1000, requests[1]['max_diagnostics'])
-        self.assertEqual(1000, requests[0]['execution_budget']['max_results'])
-        self.assertEqual(1, requests[1]['execution_budget']['max_results'])
-        self.assertEqual(1, requests[6]['max_diagnostics'])
+        self.assertEqual(1000, requests[0]['maxDiagnostics'])
+        self.assertEqual(1000, requests[1]['maxDiagnostics'])
+        self.assertEqual(1000, requests[0]['executionBudget']['maxResults'])
+        self.assertEqual(1, requests[1]['executionBudget']['maxResults'])
+        self.assertEqual(1, requests[6]['maxDiagnostics'])
         self.assertTrue(all(checks.values()), checks)
 
     def test_independent_limits_preserve_reports_and_name_actual_stops(self):

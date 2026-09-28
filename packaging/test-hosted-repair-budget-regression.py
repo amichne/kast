@@ -41,7 +41,7 @@ class RepairTimeReceiptTest(unittest.TestCase):
             for millis in (10000, 20000):
                 for effective in (2750, millis):
                     clamps = ('deadline_remaining',) if effective < millis else ()
-                    receipt = admit_time_receipt(surface, 'source_read', millis,
+                    receipt = admit_time_receipt(surface, 'read_source', millis,
                         asdict(response(millis, effective, clamps)), 321)
                     actual = json.loads(json.dumps(asdict(receipt)))
                     self.assertEqual(effective, actual['actualGrantMillis'])
@@ -63,7 +63,7 @@ class RepairTimeReceiptTest(unittest.TestCase):
         )
         for value in cases:
             with self.subTest(value=value):
-                self.assertIsInstance(admit_time_receipt('cli', 'source_read', 10000, value, 123), RepairReceiptRejected)
+                self.assertIsInstance(admit_time_receipt('cli', 'read_source', 10000, value, 123), RepairReceiptRejected)
 
 
 if __name__ == '__main__':

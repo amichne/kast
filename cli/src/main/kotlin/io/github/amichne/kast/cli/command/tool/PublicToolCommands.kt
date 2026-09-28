@@ -18,29 +18,37 @@ internal fun publicToolCommands(
     input: CliRequestDocumentInput,
 ): PublicToolCommandFamily {
     val commands =
-        PublicToolIdentity.entries.map { identity ->
-            SemanticKastCommand(
-                name = identity.toolName,
-                operation = identity.operation,
-                schemaUsage = "tool ${identity.toolName} < request.json",
-                description = identity.description,
-                serializer = PublicToolRequestSerializer(identity),
-                requestInput = input,
-                preparer =
-                    OperationRequestPreparer { request ->
-                        when (val canonical = request.canonical) {
-                            is PublicToolCanonical.Query -> preparers.queryRun.prepare(canonical.request)
-                            is PublicToolCanonical.Diagnostics -> preparers.diagnosticCheck.prepare(canonical.request)
-                        }
-                    },
-                source = { request -> SemanticSource.PublicTool(request) },
-            )
-        }
+        PublicToolIdentity.entries
+            .filter { it != PublicToolIdentity.ADD_DECLARATION }
+            .map { identity ->
+                SemanticKastCommand(
+                    name = identity.toolName,
+                    operation = identity.operation,
+                    schemaUsage = "tool ${identity.toolName} < request.json",
+                    description = identity.description,
+                    serializer = PublicToolRequestSerializer(identity),
+                    requestInput = input,
+                    preparer =
+                        OperationRequestPreparer { request ->
+                            when (val canonical = request.canonical) {
+                                is PublicToolCanonical.Query -> preparers.queryRun.prepare(canonical.request)
+                                is PublicToolCanonical.Diagnostics ->
+                                    preparers.diagnosticCheck.prepare(canonical.request)
+                                is PublicToolCanonical.Source -> preparers.sourceRead.prepare(canonical.request)
+                                is PublicToolCanonical.Change ->
+                                    error("Mutation is hosted by the approval-aware invocation")
+                            }
+                        },
+                    source = { request -> SemanticSource.PublicTool(request) },
+                )
+            }
     return PublicToolCommandFamily(
         KastCommandGroup("tool", "Invoke a public search, diagnostic, or advanced symbol tool with JSON stdin.")
             .subcommands(commands),
-        PublicToolIdentity.entries.zip(commands) { identity, command ->
-            CliToolCommandSurface(identity, command.schemaUsage)
-        },
+        PublicToolIdentity.entries
+            .filter { it != PublicToolIdentity.ADD_DECLARATION }
+            .zip(commands) { identity, command ->
+                CliToolCommandSurface(identity, command.schemaUsage)
+            },
     )
 }

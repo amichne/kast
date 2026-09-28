@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "exactTarget": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
+    },
+    "declaration": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "description": "Kotlin declaration text to add at the exact target."
+    }
+  },
+  "required": [
+    "exactTarget",
+    "declaration"
+  ],
+  "additionalProperties": false
+}

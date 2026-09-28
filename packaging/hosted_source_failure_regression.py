@@ -59,39 +59,25 @@ def admit_source_failure(value):
     return SourceFailureObservation(origin, obligation)
 
 
-@dataclass(frozen=True)
-class FormattedFailureRequest(SourceFunctionRequest):
-    format: str = 'compact'
-
-
 def run_source_failure_regression(replay):
-    request = FormattedFailureRequest(SymbolAnchor(replay.seeds['logger']['ref']))
-    for mode in ('expanded', 'compact'):
-        selected = replace(request, format=mode)
-        valid, digest = replay.transport.invoke_observed(replay.surface, 'source_read', asdict(selected))
-        checks = {'validSchema': bool(digest), 'validRead': valid.get('status') in ('complete', 'qualified')}
-        observations = []
-        for case, token, expected in (
-            (SourceFailureCase.WRONG_FAMILY, 'candidate:v4:' + 'a' * 64, SourceFailureCause.WRONG_FAMILY),
-            (SourceFailureCase.UNKNOWN_REFERENCE, 'exact:v4:' + 'a' * 64, SourceFailureCause.REVALIDATION_UNRETAINED),
-        ):
-            checks[case.value], observation = _observe_source_failure(replay, case,
-                asdict(replace(selected, anchor=SymbolAnchor(token))), expected)
-            observations.append(observation)
-        # Deliberately malformed physical ingress, retaining all otherwise valid fields.
-        malformed = asdict(selected)
-        del malformed['anchor']['type']
-        checks['physicalField'], observation = _observe_source_failure(replay, SourceFailureCase.PHYSICAL_FIELD,
-            malformed, SourceFailureCause.ANCHOR_TYPE_REQUIRED)
+    request = SourceFunctionRequest(SymbolAnchor(replay.seeds['logger']['ref']))
+    valid, digest = replay.transport.invoke_observed(replay.surface, 'read_source', asdict(request))
+    checks = {'validSchema': bool(digest), 'validRead': valid.get('status') in ('complete', 'qualified')}
+    observations = []
+    for case, token, expected in (
+        (SourceFailureCase.WRONG_FAMILY, 'candidate:v4:' + 'a' * 64, SourceFailureCause.WRONG_FAMILY),
+        (SourceFailureCase.UNKNOWN_REFERENCE, 'exact:v4:' + 'a' * 64, SourceFailureCause.REVALIDATION_UNRETAINED),
+    ):
+        checks[case.value], observation = _observe_source_failure(replay, case,
+            asdict(replace(request, symbolRef=SymbolAnchor(token))), expected)
         observations.append(observation)
-        replay.record('source-finite-failures-' + mode, 'source_read', checks, response=valid)
-        replay.rows[-1]['observation']['sourceFailures'] = [asdict(item) for item in observations]
+    replay.record('source-finite-failures', 'read_source', checks, response=valid)
+    replay.rows[-1]['observation']['sourceFailures'] = [asdict(item) for item in observations]
 
 
 class SourceFailureCase(str, Enum):
     WRONG_FAMILY = 'wrongFamily'
     UNKNOWN_REFERENCE = 'unknownReference'
-    PHYSICAL_FIELD = 'physicalField'
 
 
 class SourceFailureBoundary(str, Enum):
@@ -197,7 +183,7 @@ def admit_source_cli_boundary(exit_code, stdout, stderr, environment=None):
 def _observe_source_failure(replay, case, arguments, expected):
     from hosted_read_transport import ReadTransportRejected, ReadTransportFailure, ReadProviderFailure
     try:
-        document, digest = replay.transport.invoke_observed(replay.surface, 'source_read', arguments)
+        document, digest = replay.transport.invoke_observed(replay.surface, 'read_source', arguments)
         cause = admit_source_failure(document.get('reason'))
         try:
             recovery = SourceFailureRecovery(document.get('next_action'))

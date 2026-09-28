@@ -63,14 +63,14 @@ class SourceFailureTest(unittest.TestCase):
         process = SimpleNamespace(returncode=2, stdout=b'', stderr=json.dumps(asdict(document)).encode())
         fixture = SimpleNamespace(workspace=Path('/owned-fixture'), environment={})
         transport = HostedReadTransport(None, fixture, Path('/owned-product'), None, None)
-        transport.cli_commands = {'source_read': ['source', 'read']}
+        transport.cli_commands = {'read_source': ['source', 'read']}
         with patch('hosted_read_transport.product_executable', return_value=Path('/unused')), patch('hosted_read_transport.subprocess.run', return_value=process), patch.object(transport, 'validate', return_value='digest') as validate:
             with self.assertRaises(ReadTransportRejected) as caught:
-                transport.invoke('cli', 'source_read', asdict(document))
+                transport.invoke('cli', 'read_source', asdict(document))
         self.assertEqual(ReadTransportFailure.SOURCE_CLI_BOUNDARY, caught.exception.reason)
         self.assertTrue(caught.exception.source_schema_admitted)
         self.assertEqual(SourceFailureCause.ANCHOR_TYPE_REQUIRED, caught.exception.source_cause.cause)
-        validate.assert_called_once_with('source_read', json.loads(process.stderr))
+        validate.assert_called_once_with('read_source', json.loads(process.stderr))
 
     def test_exact_private_jvm_startup_notices_preserve_cli_source_boundary(self):
         environment = {'JAVA_TOOL_OPTIONS': '-Duser.home="/owned/home"', '_JAVA_OPTIONS': '-Duser.home="/owned/home"'}
@@ -79,10 +79,10 @@ class SourceFailureTest(unittest.TestCase):
         process = SimpleNamespace(returncode=2, stdout=b'', stderr=notices + json.dumps(asdict(document)).encode())
         fixture = SimpleNamespace(workspace=Path('/owned-fixture'), environment=environment)
         transport = HostedReadTransport(None, fixture, Path('/owned-product'), None, None)
-        transport.cli_commands = {'source_read': ['source', 'read']}
+        transport.cli_commands = {'read_source': ['source', 'read']}
         with patch('hosted_read_transport.product_executable', return_value=Path('/unused')), patch('hosted_read_transport.subprocess.run', return_value=process), patch.object(transport, 'validate', return_value='digest'):
             with self.assertRaises(ReadTransportRejected) as caught:
-                transport.invoke('cli', 'source_read', asdict(document))
+                transport.invoke('cli', 'read_source', asdict(document))
         self.assertEqual(ReadTransportFailure.SOURCE_CLI_BOUNDARY, caught.exception.reason)
         self.assertTrue(caught.exception.source_schema_admitted)
         self.assertEqual((SourceJvmNotice.TOOL_OPTIONS, SourceJvmNotice.JAVA_OPTIONS), caught.exception.source_jvm_notices)

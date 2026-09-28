@@ -13,6 +13,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
+import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.cli.*
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.command.*
@@ -111,6 +112,13 @@ internal fun executeExistingIdeCli(
             }
     }
 }
+
+/** Direct transports pass the admitted request through to the daemon without a second JSON parser. */
+internal fun executeAdmittedPublicTool(
+    tool: AdmittedPublicTool,
+    start: Path,
+    capabilities: ExistingIdeCliCapabilities,
+): CliExit = executeDaemonOperation(start, capabilities.roots, capabilities.read, DaemonOperationCall.PublicTool(tool))
 
 private fun executeSemanticAction(
     action: CliAction.Semantic,

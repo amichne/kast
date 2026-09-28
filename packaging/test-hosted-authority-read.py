@@ -160,13 +160,13 @@ class AuthorityReadTest(unittest.TestCase):
         selector = 'ref-' + str(self.epoch)
         if tool == 'query_symbols':
             document = SearchFixture(live, (ItemFixture(selector),))
-        elif arguments['page']['type'] == 'continue' and arguments['page']['continuation'] != 'cursor-' + str(self.epoch):
+        elif arguments['page']['type'] == 'CONTINUE' and arguments['page']['continuation'] != 'cursor-' + str(self.epoch):
             document = RejectionFixture('source-snapshot-mismatch')
         else:
-            name = 'pageItem01' if arguments['page']['type'] == 'continue' else 'pageItem00'
+            name = 'pageItem01' if arguments['page']['type'] == 'CONTINUE' else 'pageItem00'
             token = 'cursor-' + str(self.epoch)
             qualification = QualificationFixture(CursorFixture(token), ProgressFixture(CheckpointFixture(token)))
-            previous = arguments['anchor']['selector']
+            previous = arguments['symbolRef']
             if previous != selector:
                 document = ReacquiredPageFixture(live, (EntityFixture(name),), qualification,
                     reference_acquisitions=ReferenceAcquisitionsFixture((ReacquiredReferenceFixture(previous, selector),)))
@@ -221,8 +221,8 @@ class AuthorityReadTest(unittest.TestCase):
     def test_reacquisition_without_handle_metadata_fails_and_restores_source(self):
         original = self.invoke
         def accept_stale(surface, tool, arguments):
-            if tool == 'source_read' and arguments['anchor']['selector'] == 'ref-1' and self.epoch == 2:
-                arguments = {**arguments, 'anchor': {**arguments['anchor'], 'selector': 'ref-2'}}
+            if tool == 'read_source' and arguments['symbolRef'] == 'ref-1' and self.epoch == 2:
+                arguments = {**arguments, 'symbolRef': 'ref-2'}
             return original(surface, tool, arguments)
         self.transport.invoke_observed.side_effect = accept_stale
         report = self.run_fixture()
@@ -245,7 +245,7 @@ class AuthorityReadTest(unittest.TestCase):
     def test_foreign_cli_requires_exact_finite_refusal_and_unchanged_owned_root(self):
         self.stack[1].stop()
         fixture = SimpleNamespace(workspace=self.workspace, environment={})
-        transport = SimpleNamespace(product=self.root / 'product', cli_commands={'source_read': ('source', 'read')})
+        transport = SimpleNamespace(product=self.root / 'product', cli_commands={'read_source': ('source', 'read')})
         request = SourceFunctionRequest(SymbolAnchor('private-issued-reference'))
         accepted = json.dumps(asdict(ForeignBoundaryRefusal())).encode()
         with patch('hosted_authority_read_regression.subprocess.run',
@@ -289,7 +289,7 @@ class ActualEnvelopeTransportTest(unittest.TestCase):
         expected = ProviderResponseFixture(ProviderEnvelopeFixture(RejectionFixture('stale-generation')))
         transport._response = Mock(side_effect=(json.dumps(asdict(expected)).encode(),
             json.dumps(asdict(SchemaAdmissionFixture())).encode()))
-        document, digest = transport.invoke_observed('provider', 'source_read',
+        document, digest = transport.invoke_observed('provider', 'read_source',
             asdict(SourceFunctionRequest(SymbolAnchor('private-issued-reference'))))
         requests = [json.loads(line) for line in transport.provider.stdin.getvalue().splitlines()]
         self.assertEqual('invoke', requests[0]['action'])

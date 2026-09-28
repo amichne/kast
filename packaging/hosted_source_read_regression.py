@@ -3,74 +3,58 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 
 
-class SourceShape(str, Enum):
-    SYMBOL = 'symbol'
-    FILE = 'file'
-    MATCHING = 'matching'
-    DECLARATION = 'declaration'
-    ANY = 'any'
-    NONE = 'none'
-    FIRST = 'first'
-
-
-@dataclass(frozen=True)
-class SymbolAnchor:
-    selector: str
-    type: SourceShape = field(default=SourceShape.SYMBOL, init=False)
+class SymbolAnchor(str):
+    """Exact source selector retained as a scalar in public request documents."""
+    @property
+    def selector(self):
+        return str(self)
 
 
 @dataclass(frozen=True)
 class FileRegion:
-    type: SourceShape = field(default=SourceShape.FILE, init=False)
-
-
-@dataclass(frozen=True)
-class AnyVisibility:
-    type: SourceShape = field(default=SourceShape.ANY, init=False)
+    type: str = field(default='FILE', init=False)
 
 
 @dataclass(frozen=True)
 class FunctionFilter:
-    type: SourceShape = field(default=SourceShape.DECLARATION, init=False)
-    kinds: tuple[str, ...] = field(default=('function',), init=False)
-    visibility: AnyVisibility = field(default_factory=AnyVisibility, init=False)
+    type: str = field(default='DECLARATIONS', init=False)
+    kinds: tuple[str, ...] = field(default=('FUNCTION',), init=False)
 
 
 @dataclass(frozen=True)
 class DescendantFunctions:
-    type: SourceShape = field(default=SourceShape.MATCHING, init=False)
-    containment: str = field(default='descendants', init=False)
+    type: str = field(default='MATCHING', init=False)
+    containment: str = field(default='DESCENDANTS', init=False)
     filters: tuple[FunctionFilter, ...] = field(default_factory=lambda: (FunctionFilter(),), init=False)
+    limit: int = 1
 
 
 @dataclass(frozen=True)
 class NoText:
-    type: SourceShape = field(default=SourceShape.NONE, init=False)
+    type: str = field(default='NONE', init=False)
 
 
 @dataclass(frozen=True)
 class FirstPage:
-    type: SourceShape = field(default=SourceShape.FIRST, init=False)
+    type: str = field(default='FIRST', init=False)
 
 
 @dataclass(frozen=True)
 class SourceExecutionBudget:
-    max_elapsed_ms: int = 5000
-    max_work_units: int = 100
-    max_results: int = 1
-    max_returned_bytes: int = 65536
+    maxElapsedMs: int = 5000
+    maxWorkUnits: int = 100
+    maxResults: int = 1
+    maxReturnedBytes: int = 65536
 
 
 @dataclass(frozen=True)
 class SourceFunctionRequest:
-    anchor: SymbolAnchor
-    region: FileRegion = field(default_factory=FileRegion)
+    symbolRef: SymbolAnchor
+    region: str = 'FILE'
     entities: DescendantFunctions = field(default_factory=DescendantFunctions)
     text: NoText = field(default_factory=NoText)
-    entityLimit: int = 1
-    textByteLimit: int = 65536
     page: FirstPage = field(default_factory=FirstPage)
-    execution_budget: SourceExecutionBudget = field(default_factory=SourceExecutionBudget)
+    executionBudget: SourceExecutionBudget = field(default_factory=SourceExecutionBudget)
 
 
 def source_budget_anchor_query():
@@ -92,12 +76,12 @@ def run_source_paging_regression(replay):
 
 def _check_page(replay, name, selector, expected_name):
     request = SourceFunctionRequest(SymbolAnchor(selector))
-    response = replay.transport.invoke(replay.surface, 'source_read', asdict(request))
+    response = replay.transport.invoke(replay.surface, 'read_source', asdict(request))
     qualification = response.get('qualification', {})
     entities = response.get('entities', [])
     continuation = qualification.get('continuation', {})
     progress = qualification.get('progress', {})
-    replay.record(name, 'source_read', {
+    replay.record(name, 'read_source', {
         'qualified': response.get('status') == 'qualified',
         'exactFirstEntity': [entity.get('name') for entity in entities] == [expected_name],
         'entityLimitOnly': qualification.get('limitations') == ['entity-limit-reached'],

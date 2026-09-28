@@ -1,37 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "namespaceDescription": "Compiler-grounded Kotlin source intelligence from Kast.",
-  "defaults": {
-    "name_match": "EXACT",
-    "source_set_names": [
-      "main",
-      "test"
-    ],
-    "declaration_kinds": [
-      "CLASS",
-      "FUNCTION",
-      "PROPERTY",
-      "TYPE_ALIAS"
-    ],
-    "max_diagnostics": 100,
-    "steps": [],
-    "output": {
-      "type": "SYMBOLS",
-      "fields": [
-        "NAME",
-        "LOCATION"
-      ]
-    },
-    "scope": {
-      "type": "DIRECTORY",
-      "relative_directory_path": ".",
-      "include_subdirectories": true,
-      "source_set_names": [
-        "main",
-        "test"
-      ]
-    }
-  },
   "$defs": {
     "DirectoryScope": {
       "type": "object",
@@ -43,18 +12,18 @@
           ],
           "default": "DIRECTORY"
         },
-        "relative_directory_path": {
+        "relativeDirectoryPath": {
           "type": "string",
           "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission.",
           "minLength": 1,
           "maxLength": 1048576
         },
-        "include_subdirectories": {
+        "includeSubdirectories": {
           "type": "boolean",
           "description": "true includes the named directory and nested directories; false selects only the named directory.",
           "default": true
         },
-        "source_set_names": {
+        "sourceSetNames": {
           "type": [
             "array",
             "null"
@@ -73,7 +42,7 @@
       },
       "required": [
         "type",
-        "relative_directory_path"
+        "relativeDirectoryPath"
       ],
       "additionalProperties": false
     },
@@ -87,18 +56,18 @@
           ],
           "default": "PACKAGE"
         },
-        "package_name": {
+        "packageName": {
           "type": "string",
           "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar.",
           "minLength": 1,
           "maxLength": 1048576
         },
-        "include_subpackages": {
+        "includeSubpackages": {
           "type": "boolean",
           "description": "true includes the named package and subpackages; false selects only the named package.",
           "default": true
         },
-        "source_set_names": {
+        "sourceSetNames": {
           "type": [
             "array",
             "null"
@@ -117,7 +86,7 @@
       },
       "required": [
         "type",
-        "package_name"
+        "packageName"
       ],
       "additionalProperties": false
     },
@@ -131,13 +100,13 @@
           ],
           "default": "SEARCH_DECLARATIONS"
         },
-        "declaration_name": {
+        "declarationName": {
           "type": "string",
           "description": "Simple declaration name. Not a signature, source-text query, or qualified name.",
           "minLength": 1,
           "maxLength": 256
         },
-        "name_match": {
+        "nameMatch": {
           "type": [
             "string",
             "null"
@@ -149,7 +118,7 @@
           ],
           "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
         },
-        "declaration_kinds": {
+        "declarationKinds": {
           "type": [
             "array",
             "null"
@@ -169,23 +138,13 @@
           "uniqueItems": true
         },
         "scope": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/DirectoryScope"
-            },
-            {
-              "$ref": "#/$defs/PackageScope"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/Scope",
           "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
         }
       },
       "required": [
         "type",
-        "declaration_name"
+        "declarationName"
       ],
       "additionalProperties": false,
       "description": "Find declarations and establish exact symbol identities. Source scope restricts discovery only, not later expansion destinations."
@@ -200,7 +159,7 @@
           ],
           "default": "ALL_DECLARATIONS"
         },
-        "declaration_kinds": {
+        "declarationKinds": {
           "type": [
             "array",
             "null"
@@ -220,17 +179,7 @@
           "uniqueItems": true
         },
         "scope": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/DirectoryScope"
-            },
-            {
-              "$ref": "#/$defs/PackageScope"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/Scope",
           "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
         }
       },
@@ -250,7 +199,7 @@
           ],
           "default": "SYMBOL_REFS"
         },
-        "symbol_refs": {
+        "symbolRefs": {
           "type": "array",
           "items": {
             "type": "string",
@@ -264,7 +213,7 @@
       },
       "required": [
         "type",
-        "symbol_refs"
+        "symbolRefs"
       ],
       "additionalProperties": false
     },
@@ -513,7 +462,8 @@
       "minimum": 1,
       "maximum": 1000,
       "x-kotlin-type": "ProtocolCount",
-      "description": "Maximum semantic hop depth; each walk remains bounded by the hosted traversal ceiling."
+      "description": "Maximum semantic hop depth; each walk remains bounded by the hosted traversal ceiling.",
+      "default": 1
     },
     "WalkStrategy": {
       "anyOf": [
@@ -558,12 +508,12 @@
         "maximumEdgesPerNode": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 1000
+          "maximum": 1000,
+          "default": 32
         }
       },
       "required": [
-        "type",
-        "maximumEdgesPerNode"
+        "type"
       ],
       "additionalProperties": false
     },
@@ -589,7 +539,7 @@
             "TYPE_USES"
           ]
         },
-        "maximum_depth": {
+        "maximumDepth": {
           "$ref": "#/$defs/WalkDepth"
         },
         "strategy": {
@@ -598,8 +548,7 @@
       },
       "required": [
         "type",
-        "relation",
-        "maximum_depth"
+        "relation"
       ],
       "additionalProperties": false,
       "description": "Traverse each input symbol through compiler-confirmed relations up to the requested depth. Existing traversal execution retains frontier, progress, strategy and partial-expansion evidence."
@@ -647,10 +596,9 @@
         "object",
         "null"
       ],
-      "x-kotlin-type": "ExecutionBudgetDocument",
       "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
       "properties": {
-        "max_elapsed_ms": {
+        "maxElapsedMs": {
           "type": [
             "integer",
             "null"
@@ -658,7 +606,7 @@
           "minimum": 1,
           "maximum": 9223372036854775807
         },
-        "max_work_units": {
+        "maxWorkUnits": {
           "type": [
             "integer",
             "null"
@@ -666,7 +614,7 @@
           "minimum": 1,
           "maximum": 9223372036854775807
         },
-        "max_results": {
+        "maxResults": {
           "type": [
             "integer",
             "null"
@@ -674,7 +622,7 @@
           "minimum": 1,
           "maximum": 2147483647
         },
-        "max_returned_bytes": {
+        "maxReturnedBytes": {
           "type": [
             "integer",
             "null"
@@ -684,7 +632,9 @@
         }
       },
       "required": [],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "default": {},
+      "x-default-owner": "ExecutionBudgetDocument.requested"
     },
     "Concat": {
       "type": "object",
@@ -697,14 +647,7 @@
           "default": "CONCAT"
         },
         "input": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ReferenceSource"
-            },
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ],
+          "$ref": "#/$defs/CompositionInput",
           "description": "Append exact-symbol references or selected rows from one retained result, preserving stream order and multiplicity."
         }
       },
@@ -726,11 +669,7 @@
           "default": "INTERSECT"
         },
         "right": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ]
+          "$ref": "#/$defs/RetainedInput"
         }
       },
       "required": [
@@ -751,11 +690,7 @@
           "default": "UNION"
         },
         "right": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ]
+          "$ref": "#/$defs/RetainedInput"
         }
       },
       "required": [
@@ -776,11 +711,7 @@
           "default": "DIFFERENCE"
         },
         "right": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ]
+          "$ref": "#/$defs/RetainedInput"
         }
       },
       "required": [
@@ -829,7 +760,7 @@
         "result": {
           "$ref": "#/$defs/ResultReference"
         },
-        "row_ids": {
+        "rowIds": {
           "type": [
             "array",
             "null"
@@ -861,23 +792,7 @@
           "default": "RUN"
         },
         "source": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SearchSource"
-            },
-            {
-              "$ref": "#/$defs/AllSource"
-            },
-            {
-              "$ref": "#/$defs/LocationSource"
-            },
-            {
-              "$ref": "#/$defs/ReferenceSource"
-            },
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ],
+          "$ref": "#/$defs/Source",
           "description": "Starting declaration search, containing named declaration at file offset, exact-symbol references, or one retained result."
         },
         "steps": {
@@ -886,42 +801,12 @@
             "null"
           ],
           "items": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/Where"
-              },
-              {
-                "$ref": "#/$defs/ExpandRelation"
-              },
-              {
-                "$ref": "#/$defs/Walk"
-              },
-              {
-                "$ref": "#/$defs/DistinctSymbols"
-              },
-              {
-                "$ref": "#/$defs/ProjectBinding"
-              },
-              {
-                "$ref": "#/$defs/Concat"
-              },
-              {
-                "$ref": "#/$defs/Intersect"
-              },
-              {
-                "$ref": "#/$defs/Union"
-              },
-              {
-                "$ref": "#/$defs/Difference"
-              },
-              {
-                "$ref": "#/$defs/Join"
-              }
-            ]
+            "$ref": "#/$defs/Step"
           },
           "minItems": 0,
           "maxItems": 1000,
-          "description": "Ordered transformations executed left to right. null and [] mean no transformations. A join reads its right side from a retained symbol result. Inner join yields binding rows with named left and right cells; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage."
+          "description": "Ordered transformations executed left to right. null and [] mean no transformations. A join reads its right side from a retained symbol result. Inner join yields binding rows with named left and right cells; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage.",
+          "default": []
         },
         "output": {
           "$ref": "#/$defs/Output"
@@ -938,14 +823,13 @@
           ],
           "description": "Omission or null discards the completed result after returning it. retain publishes an immutable bounded same-basis result reference; publication failure is reported without erasing the query result."
         },
-        "execution_budget": {
+        "executionBudget": {
           "$ref": "#/$defs/ExecutionBudget"
         }
       },
       "required": [
         "type",
-        "source",
-        "steps"
+        "source"
       ],
       "additionalProperties": false,
       "description": "Run a query from the supplied source and ordered steps. Retain the completed result only when requested."
@@ -963,7 +847,7 @@
         "continuation": {
           "$ref": "#/$defs/ExecutionContinuation"
         },
-        "execution_budget": {
+        "executionBudget": {
           "$ref": "#/$defs/ExecutionBudget"
         }
       },
@@ -993,7 +877,7 @@
         "output": {
           "$ref": "#/$defs/ReadResultOutput"
         },
-        "execution_budget": {
+        "executionBudget": {
           "$ref": "#/$defs/ExecutionBudget"
         }
       },
@@ -1030,17 +914,17 @@
           ],
           "default": "INNER"
         },
-        "left_name": {
+        "leftName": {
           "$ref": "#/$defs/BindingName"
         },
-        "right_name": {
+        "rightName": {
           "$ref": "#/$defs/BindingName"
         }
       },
       "required": [
         "type",
-        "left_name",
-        "right_name"
+        "leftName",
+        "rightName"
       ],
       "additionalProperties": false,
       "description": "Emit one typed binding row per matching pair. The two output column names must differ."
@@ -1090,24 +974,10 @@
           "default": "JOIN"
         },
         "mode": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/InnerJoinMode"
-            },
-            {
-              "$ref": "#/$defs/SemiJoinMode"
-            },
-            {
-              "$ref": "#/$defs/AntiJoinMode"
-            }
-          ]
+          "$ref": "#/$defs/JoinMode"
         },
         "right": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResultSource"
-            }
-          ],
+          "$ref": "#/$defs/RetainedInput",
           "description": "Immutable retained symbol rows. A retained binding-row result is not a symbol right input."
         }
       },
@@ -1165,9 +1035,653 @@
       ],
       "additionalProperties": false,
       "description": "Find the nearest named declaration containing this offset, then return its exact compiler-grounded symbol."
+    },
+    "Scope": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DirectoryScope"
+        },
+        {
+          "$ref": "#/$defs/PackageScope"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "CompositionInput": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReferenceSource"
+        },
+        {
+          "$ref": "#/$defs/ResultSource"
+        }
+      ]
+    },
+    "Source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SearchSource"
+        },
+        {
+          "$ref": "#/$defs/AllSource"
+        },
+        {
+          "$ref": "#/$defs/LocationSource"
+        },
+        {
+          "$ref": "#/$defs/ReferenceSource"
+        },
+        {
+          "$ref": "#/$defs/ResultSource"
+        }
+      ]
+    },
+    "Step": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Where"
+        },
+        {
+          "$ref": "#/$defs/ExpandRelation"
+        },
+        {
+          "$ref": "#/$defs/Walk"
+        },
+        {
+          "$ref": "#/$defs/DistinctSymbols"
+        },
+        {
+          "$ref": "#/$defs/ProjectBinding"
+        },
+        {
+          "$ref": "#/$defs/Concat"
+        },
+        {
+          "$ref": "#/$defs/Intersect"
+        },
+        {
+          "$ref": "#/$defs/Union"
+        },
+        {
+          "$ref": "#/$defs/Difference"
+        },
+        {
+          "$ref": "#/$defs/Join"
+        }
+      ]
+    },
+    "JoinMode": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InnerJoinMode"
+        },
+        {
+          "$ref": "#/$defs/SemiJoinMode"
+        },
+        {
+          "$ref": "#/$defs/AntiJoinMode"
+        }
+      ]
+    },
+    "Action": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunAction"
+        },
+        {
+          "$ref": "#/$defs/ResumeAction"
+        },
+        {
+          "$ref": "#/$defs/ReadResultAction"
+        }
+      ]
+    },
+    "RetainedInput": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResultSource"
+        }
+      ]
+    },
+    "SourceTextComplete": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "COMPLETE"
+          ],
+          "default": "COMPLETE"
+        },
+        "maxBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 1048576,
+          "default": 65536
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "SourceTextNone": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "NONE"
+          ],
+          "default": "NONE"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "SourceTextWindow": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "WINDOW"
+          ],
+          "default": "WINDOW"
+        },
+        "beforeLines": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 0
+        },
+        "afterLines": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 0
+        },
+        "maxBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 1048576,
+          "default": 65536
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "SourceText": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourceTextComplete"
+        },
+        {
+          "$ref": "#/$defs/SourceTextNone"
+        },
+        {
+          "$ref": "#/$defs/SourceTextWindow"
+        }
+      ]
+    },
+    "SourceFilterDeclarations": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DECLARATIONS"
+          ],
+          "default": "DECLARATIONS"
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "CLASSLIKE",
+              "CONSTRUCTOR",
+              "FUNCTION",
+              "PROPERTY",
+              "TYPE_ALIAS"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "visibilities": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PROTECTED",
+              "INTERNAL",
+              "PRIVATE",
+              "LOCAL"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "type",
+        "kinds"
+      ],
+      "additionalProperties": false
+    },
+    "SourceFilterParameters": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PARAMETERS"
+          ],
+          "default": "PARAMETERS"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "SourceFilterCalls": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "CALLS"
+          ],
+          "default": "CALLS"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "SourceFilterReferences": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "REFERENCES"
+          ],
+          "default": "REFERENCES"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "SourceFilter": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourceFilterDeclarations"
+        },
+        {
+          "$ref": "#/$defs/SourceFilterParameters"
+        },
+        {
+          "$ref": "#/$defs/SourceFilterCalls"
+        },
+        {
+          "$ref": "#/$defs/SourceFilterReferences"
+        }
+      ]
+    },
+    "SourceEntitiesNone": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "NONE"
+          ],
+          "default": "NONE"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "SourceEntitiesMatching": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "MATCHING"
+          ],
+          "default": "MATCHING"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceFilter"
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "containment": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "DIRECT",
+            "DESCENDANTS",
+            null
+          ]
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 250
+        }
+      },
+      "required": [
+        "type",
+        "filters"
+      ],
+      "additionalProperties": false
+    },
+    "SourceEntities": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourceEntitiesNone"
+        },
+        {
+          "$ref": "#/$defs/SourceEntitiesMatching"
+        }
+      ]
+    },
+    "SourcePageFirst": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "FIRST"
+          ],
+          "default": "FIRST"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "SourcePageContinue": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "CONTINUE"
+          ],
+          "default": "CONTINUE"
+        },
+        "continuation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1048576
+        }
+      },
+      "required": [
+        "type",
+        "continuation"
+      ],
+      "additionalProperties": false
+    },
+    "SourcePage": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourcePageFirst"
+        },
+        {
+          "$ref": "#/$defs/SourcePageContinue"
+        }
+      ]
     }
   },
   "tools": [
+    {
+      "name": "query_symbols",
+      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
+      "deferLoading": false,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "#/$defs/Action",
+            "description": "Exactly one closed query action: run, resume, or read_result."
+          }
+        },
+        "required": [
+          "request"
+        ],
+        "additionalProperties": false
+      },
+      "operation": "query.run",
+      "examples": {
+        "runByName": {
+          "summary": "Find declarations by exact name.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "Order"
+              }
+            }
+          }
+        }
+      },
+      "invalidExamples": {
+        "mixedAction": {
+          "summary": "Query actions cannot mix run and resume fields.",
+          "value": {"request": {"type": "RESUME", "continuation": "token", "source": {"type": "ALL_DECLARATIONS"}}}
+        }
+      },
+      "defaults": {
+        "nameMatch": "EXACT",
+        "sourceSetNames": [
+          "main",
+          "test"
+        ],
+        "declarationKinds": [
+          "CLASS",
+          "FUNCTION",
+          "PROPERTY",
+          "TYPE_ALIAS"
+        ],
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION"
+          ]
+        },
+        "scope": {
+          "type": "DIRECTORY",
+          "relativeDirectoryPath": ".",
+          "includeSubdirectories": true,
+          "sourceSetNames": [
+            "main",
+            "test"
+          ]
+        }
+      }
+    },
+    {
+      "name": "read_source",
+      "description": "Read bounded Kotlin source and structural context for an exact Kast symbol reference. Select a region, text window, structural entities, and continuation without changing source. Preserve references and coverage in the result.",
+      "deferLoading": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "symbolRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1048576,
+            "description": "Exact Kast symbol reference. Copy the token unchanged."
+          },
+          "region": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "DECLARATION",
+              "FILE",
+              "CLASS_BODY",
+              "CALLABLE_BODY",
+              null
+            ],
+            "description": "Omission or null selects the declaration."
+          },
+          "text": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SourceText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entities": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SourceEntities"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SourcePage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "executionBudget": {
+            "$ref": "#/$defs/ExecutionBudget"
+          }
+        },
+        "required": [
+          "symbolRef"
+        ],
+        "additionalProperties": false
+      },
+      "operation": "source.read",
+      "examples": {
+        "exactSymbol": {
+          "summary": "Read the declaration at an exact symbol reference returned by Kast.",
+          "value": {
+            "symbolRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+          }
+        },
+        "callableBody": {
+          "summary": "Read a bounded callable body and direct declarations.",
+          "value": {
+            "symbolRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "region": "CALLABLE_BODY",
+            "text": {
+              "type": "WINDOW",
+              "beforeLines": 2,
+              "afterLines": 2,
+              "maxBytes": 12000
+            },
+            "entities": {
+              "type": "MATCHING",
+              "filters": [
+                {
+                  "type": "DECLARATIONS",
+                  "kinds": [
+                    "FUNCTION"
+                  ]
+                }
+              ],
+              "limit": 50
+            }
+          }
+        }
+      },
+      "invalidExamples": {
+        "retiredSymbol": {
+          "summary": "The retired symbol shortcut is rejected.",
+          "value": {"symbol": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"}
+        },
+        "retiredAnchor": {
+          "summary": "The retired anchor object is rejected.",
+          "value": {"anchor": {"symbolRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"}}
+        },
+        "missingTextVariant": {
+          "summary": "A supplied text object requires its type.",
+          "value": {"symbolRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ", "text": {}}
+        },
+        "missingTextType": {
+          "summary": "Every supplied text variant requires type.",
+          "value": {
+            "symbolRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "text": {
+              "beforeLines": 2,
+              "afterLines": 2
+            }
+          }
+        },
+        "mixedTextVariant": {
+          "summary": "Text variants cannot be mixed.",
+          "value": {
+            "symbolRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "text": {
+              "type": "COMPLETE",
+              "beforeLines": 2
+            }
+          }
+        }
+      }
+    },
     {
       "name": "check_diagnostics",
       "description": "Check compiler diagnostics for a file or recursively beneath a directory in the session workspace. Use '.' explicitly for the workspace root. This is not symbol search and does not build the project. Results retain incomplete-coverage evidence; an incomplete empty result does not establish that the scope is clean. Requires the saved, indexed IntelliJ state.",
@@ -1175,20 +1689,21 @@
       "schema": {
         "type": "object",
         "properties": {
-          "relative_path": {
+          "relativePath": {
             "type": "string",
             "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal.",
             "minLength": 1,
             "maxLength": 1048576
           },
-          "max_diagnostics": {
+          "maxDiagnostics": {
             "type": [
               "integer",
               "null"
             ],
             "minimum": 1,
             "maximum": 1000,
-            "description": "Maximum diagnostic entries to return. Omission or null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit."
+            "description": "Maximum diagnostic entries to return. Omission or null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit.",
+            "default": 100
           },
           "continuation": {
             "type": [
@@ -1199,45 +1714,82 @@
             "maxLength": 1048576,
             "description": "Opaque same-basis diagnostic continuation. Omit or use null to start. Resume the same relative_path; increase execution_budget if a grant cannot cross the enumeration prefix."
           },
-          "execution_budget": {
+          "executionBudget": {
             "$ref": "#/$defs/ExecutionBudget"
           }
         },
         "required": [
-          "relative_path"
+          "relativePath"
         ],
         "additionalProperties": false
       },
-      "operation": "diagnostic.check"
+      "operation": "diagnostic.check",
+      "examples": {
+        "workspace": {
+          "summary": "Check compiler diagnostics in the workspace.",
+          "value": {
+            "relativePath": "."
+          }
+        }
+      }
     },
     {
-      "name": "query_symbols",
-      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. Start from declaration discovery, a containing declaration at file offset, exact references, or immutable retained rows. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join matches canonical symbol identity and preserves both named output cells, multiplicity, and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
-      "deferLoading": false,
+      "name": "add_declaration",
+      "description": "Add one declaration to an existing Kotlin source file selected by an exact Kast symbol reference. Kast plans, applies, verifies, and reports a verified receipt or finite failure with recovery evidence. Preserve the returned result; a cancelled or missing response does not prove no write occurred.",
+      "deferLoading": true,
       "schema": {
         "type": "object",
         "properties": {
-          "request": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/RunAction"
-              },
-              {
-                "$ref": "#/$defs/ResumeAction"
-              },
-              {
-                "$ref": "#/$defs/ReadResultAction"
-              }
-            ],
-            "description": "Exactly one closed query action: run, resume, or read_result."
+          "exactTarget": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1048576,
+            "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
+          },
+          "declaration": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1048576,
+            "description": "Kotlin declaration text to add at the exact target."
           }
         },
         "required": [
-          "request"
+          "exactTarget",
+          "declaration"
         ],
         "additionalProperties": false
       },
-      "operation": "query.run"
+      "operation": "change",
+      "examples": {
+        "exactTarget": {
+          "summary": "Add a declaration to an exact target returned by Kast.",
+          "value": {
+            "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "declaration": "fun added() = Unit"
+          }
+        }
+      }
     }
-  ]
+  ],
+  "supportTools": [
+    {
+      "name": "workspace_lifecycle",
+      "description": "Inspect or explicitly control one selected IDEA workspace. Ordinary semantic calls prepare the exact project and wait for native readiness automatically; do not use this tool as a routine read preflight. For a requested control operation, open, present, release or close an exact project. The host owns document save, VFS refresh and model reload selection. Opening is background best effort. Preserve returned host and project identities and reuse request IDs only for the same operation. Pending work requires status, not repeated open. Trust and failed saves require user resolution. Release never closes a project. Borrowed or presented projects are protected from agent cleanup; request_user_close requests exact-target controller approval.",
+      "binding": "WorkspaceLifecycleRequest",
+      "hosts": ["APP_SERVER"]
+    },
+    {
+      "name": "health_check",
+      "description": "Observe exact workspace binding and saved/indexed readiness. This passive check does not validate semantic answers.",
+      "binding": "McpHealthRequest",
+      "hosts": ["MCP", "RPC"]
+    },
+    {
+      "name": "validate_workspace",
+      "description": "Run explicit read-only declaration, exact-symbol, source, query relation, and IDE diagnostic probes. Supply sourceSetName for custom Gradle source sets. Each probe reports passed, failed, or unverified independently.",
+      "binding": "McpValidationRequest",
+      "hosts": ["MCP", "RPC"]
+    }
+  ],
+  "contractVersion": 2
 }

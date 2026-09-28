@@ -1,11 +1,11 @@
 {
   "type": "object",
   "properties": {
-    "relative_path": {
+    "relativePath": {
       "type": "string",
       "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal."
     },
-    "max_diagnostics": {
+    "maxDiagnostics": {
       "type": [
         "integer",
         "null"
@@ -21,15 +21,22 @@
       ],
       "description": "Opaque same-basis diagnostic continuation. Omit or use null to start. Resume the same relative_path; increase execution_budget if a grant cannot cross the enumeration prefix."
     },
-    "execution_budget": {
-      "$ref": "#/$defs/ExecutionBudget"
+    "executionBudget": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExecutionBudget"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
-    "relative_path",
-    "max_diagnostics",
+    "relativePath",
+    "maxDiagnostics",
     "continuation",
-    "execution_budget"
+    "executionBudget"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -40,7 +47,7 @@
       ],
       "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
       "properties": {
-        "max_elapsed_ms": {
+        "maxElapsedMs": {
           "type": [
             "integer",
             "null"
@@ -48,7 +55,7 @@
           "minimum": 1,
           "maximum": 9223372036854775807
         },
-        "max_work_units": {
+        "maxWorkUnits": {
           "type": [
             "integer",
             "null"
@@ -56,7 +63,7 @@
           "minimum": 1,
           "maximum": 9223372036854775807
         },
-        "max_results": {
+        "maxResults": {
           "type": [
             "integer",
             "null"
@@ -64,7 +71,7 @@
           "minimum": 1,
           "maximum": 2147483647
         },
-        "max_returned_bytes": {
+        "maxReturnedBytes": {
           "type": [
             "integer",
             "null"
@@ -74,10 +81,10 @@
         }
       },
       "required": [
-        "max_elapsed_ms",
-        "max_work_units",
-        "max_results",
-        "max_returned_bytes"
+        "maxElapsedMs",
+        "maxWorkUnits",
+        "maxResults",
+        "maxReturnedBytes"
       ],
       "additionalProperties": false
     }

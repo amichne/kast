@@ -4553,16 +4553,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolSchemaTest/fun:diagnostics defaults are independent of telemetry limits()/val:request",
-        "kind": "JSON_LITERAL",
-        "sha256": "ad1c91ed71133724d6c3f8300eca96de55ca95cd5aadf10ab5527fbccf127998"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
         "scope": "type:BrokerSessionHubTest/fun:approval answer and resolution retain recipient correlation through a handoff(4:Path)/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
@@ -6577,26 +6567,6 @@
         "scope": "type:InstalledServerProjectionTest/fun:canonical output schemas retain internal topology and public diagnostic proof()/val:coverage",
         "kind": "JSON_LITERAL",
         "sha256": "1241895ab8d6a401fbd35e371ef219b777941d5a073f4959262384b92b21cb60"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:diagnostic input names its filesystem path and rejects the former scope field()",
-        "kind": "JSON_LITERAL",
-        "sha256": "e16c455274153d04b34d36ee0cf944c198af443dc14a71021964ecefc118db55"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:diagnostic input names its filesystem path and rejects the former scope field()",
-        "kind": "JSON_LITERAL",
-        "sha256": "74fef8711aed436c182d4cc32dba98f2db60fb573039d13afce1807040a0a15b"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

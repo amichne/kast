@@ -32,15 +32,8 @@ internal object DaemonOperationProtocol {
 @Serializable
 internal enum class DaemonOperationTool(val identity: PublicToolIdentity) {
     CHECK_DIAGNOSTICS(PublicToolIdentity.CHECK_DIAGNOSTICS),
-    QUERY_SYMBOLS(PublicToolIdentity.QUERY_SYMBOLS);
-
-    companion object {
-        fun from(identity: PublicToolIdentity): DaemonOperationTool =
-            when (identity) {
-                PublicToolIdentity.CHECK_DIAGNOSTICS -> CHECK_DIAGNOSTICS
-                PublicToolIdentity.QUERY_SYMBOLS -> QUERY_SYMBOLS
-            }
-    }
+    QUERY_SYMBOLS(PublicToolIdentity.QUERY_SYMBOLS),
+    READ_SOURCE(PublicToolIdentity.READ_SOURCE),
 }
 
 @Serializable

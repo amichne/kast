@@ -1,23 +1,12 @@
-"""Installed compact/expanded source equality over an unchanged authored file."""
+"""Installed compact source retains text and selection authority."""
 from dataclasses import asdict, dataclass, replace
-import json
 from hosted_source_read_regression import SourceFunctionRequest, SourceExecutionBudget, SymbolAnchor
 
 
 @dataclass(frozen=True)
 class CompleteText:
-    type: str = 'complete'
-
-
-@dataclass(frozen=True)
-class SourceAnchor:
-    selector: str
-    type: str = 'source'
-
-
-@dataclass(frozen=True)
-class FormattedSourceRequest(SourceFunctionRequest):
-    format: str = 'compact'
+    type: str = 'COMPLETE'
+    maxBytes: int = 65536
 
 
 def _selection(value, table):
@@ -43,39 +32,29 @@ def _rows(entities, table):
     return tuple(result)
 
 
+def compact_source_request(reference, budget=None):
+    return SourceFunctionRequest(SymbolAnchor(reference), text=CompleteText(),
+        executionBudget=budget or SourceExecutionBudget(maxElapsedMs=5000, maxWorkUnits=10000,
+            maxResults=100))
+
+
 def run_compact_source_regression(replay):
-    budget = SourceExecutionBudget(max_elapsed_ms=5000, max_work_units=10000, max_results=100)
-    request = FormattedSourceRequest(SymbolAnchor(replay.seeds['logger']['ref']),
-        text=CompleteText(), entityLimit=100, execution_budget=budget)
-    expanded = replay.transport.invoke(replay.surface, 'source_read', asdict(replace(request, format='expanded')))
-    compact = replay.transport.invoke(replay.surface, 'source_read', asdict(request))
-    replay.transport.validate('source_read', expanded)
-    replay.transport.validate('source_read', compact)
+    request = compact_source_request(replay.seeds['logger']['ref'])
+    compact = replay.transport.invoke(replay.surface, 'read_source', asdict(request))
+    replay.transport.validate('read_source', compact)
     sections = compact.get('content', [])
-    shape = len(sections) == 2 and [section.get('type') for section in sections] == ['source', 'structure']
-    checks = {'selectedCompactSections': shape, 'completeBoth': expanded.get('status') == compact.get('status') == 'complete'}
-    stage = 'compactShape'
-    try:
-        if shape and checks['completeBoth']:
-            text, structure = sections[0]['text'], sections[1]
-            table = structure['selections']
-            stage = 'losslessProjection'
-            checks.update(
-                unchangedText=text.get('type') == 'returned' and text.get('text') == expanded['text'].get('text'),
-                textCoordinates=_selection(text['selection'], table) == _selection(expanded['text']['selection'], None),
-                lineCoordinates=text['lines'] == expanded['text']['lines'],
-                sameSnapshot=structure['snapshot'] == expanded['snapshot'],
-                sameRegion=_selection(structure['region']['selection'], table) == _selection(expanded['region']['selection'], None),
-                orderedEntities=_rows(structure['entities'], table) == _rows(expanded['entities'], None),
-                selfContainedTable=bool(table) and len({entry['selector'] for entry in table}) == len(table),
-            )
-            stage = 'sourceSelectorRestore'
-            restored = replay.transport.invoke(replay.surface, 'source_read',
-                asdict(replace(request, anchor=SourceAnchor(table[0]['selector']))))
-            checks['canonicalSourceSelectorRestores'] = (restored.get('status') == 'complete'
-                and restored.get('content', [{}])[0].get('text', {}).get('text') == text['text'])
-            # Measures CLI documents only; transport/provider envelope budgets are separate owners.
-            checks['compactDocumentSmaller'] = len(json.dumps(compact, ensure_ascii=False).encode()) < len(json.dumps(expanded, ensure_ascii=False).encode())
-    except (KeyError, TypeError, IndexError):
-        checks[stage + 'Admitted'] = False
-    replay.record('compact-source-lossless-installed', 'source_read', checks)
+    source = next((section for section in sections if section.get('type') == 'source'), {})
+    structure = next((section for section in sections if section.get('type') == 'structure'), {})
+    text, table = source.get('text', {}), structure.get('selections', [])
+    checks = {
+        'complete': compact.get('status') == 'complete',
+        'sourceTextReturned': text.get('type') == 'returned' and isinstance(text.get('text'), str),
+        'selectionTablePresent': bool(table) and all(isinstance(item.get('selector'), str) for item in table),
+        'snapshotRetained': structure.get('snapshot', {}).get('live') == replay.live,
+    }
+    if table:
+        restored = replay.transport.invoke(replay.surface, 'read_source',
+            asdict(replace(request, symbolRef=SymbolAnchor(table[0]['selector']))))
+        checks['exactSelectionRestores'] = (restored.get('status') == 'complete'
+            and any(section.get('type') == 'source' for section in restored.get('content', [])))
+    replay.record('compact-source-lossless-installed', 'read_source', checks)

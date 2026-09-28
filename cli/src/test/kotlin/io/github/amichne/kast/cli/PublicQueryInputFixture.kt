@@ -43,21 +43,21 @@ internal object PublicQueryInputFixture {
         @Serializable
         @SerialName("SEARCH_DECLARATIONS")
         data class Search(
-            @SerialName("declaration_name") val name: String,
-            @SerialName("name_match") val matching: String? = null,
-            @SerialName("declaration_kinds") val kinds: List<String>? = null,
+            @SerialName("declarationName") val name: String,
+            @SerialName("nameMatch") val matching: String? = null,
+            @SerialName("declarationKinds") val kinds: List<String>? = null,
             val scope: String? = null,
         ) : Source
 
         @Serializable
         @SerialName("ALL_DECLARATIONS")
         data class All(
-            @SerialName("declaration_kinds") val kinds: List<String>? = null,
+            @SerialName("declarationKinds") val kinds: List<String>? = null,
             val scope: String? = null,
         ) : Source
 
         @Serializable
         @SerialName("SYMBOL_REFS")
-        data class References(@SerialName("symbol_refs") val values: List<String>) : Source
+        data class References(@SerialName("symbolRefs") val values: List<String>) : Source
     }
 }

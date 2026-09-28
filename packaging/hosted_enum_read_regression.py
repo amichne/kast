@@ -7,29 +7,29 @@ from query_name_request import QueryInput, QueryRun, SymbolOutput, name_query
 @dataclass(frozen=True)
 class EnumScope:
     type: str = field(default='PACKAGE', init=False)
-    package_name: str = field(default='reliability.discovery', init=False)
-    include_subpackages: bool = field(default=False, init=False)
-    source_set_names: tuple[str, ...] = field(default=('main',), init=False)
+    packageName: str = field(default='reliability.discovery', init=False)
+    includeSubpackages: bool = field(default=False, init=False)
+    sourceSetNames: tuple[str, ...] = field(default=('main',), init=False)
 
 
 @dataclass(frozen=True)
 class EnumBudget:
-    max_elapsed_ms: int = field(default=5000, init=False)
-    max_work_units: int = field(default=32, init=False)
-    max_results: int = field(default=8, init=False)
-    max_returned_bytes: int = field(default=65536, init=False)
+    maxElapsedMs: int = field(default=5000, init=False)
+    maxWorkUnits: int = field(default=32, init=False)
+    maxResults: int = field(default=8, init=False)
+    maxReturnedBytes: int = field(default=65536, init=False)
 
 
 @dataclass(frozen=True)
 class AllEnumClasses:
     type: str = field(default='ALL_DECLARATIONS', init=False)
-    declaration_kinds: tuple[str, ...] = field(default=('CLASS',), init=False)
+    declarationKinds: tuple[str, ...] = field(default=('CLASS',), init=False)
     scope: EnumScope = field(default_factory=EnumScope, init=False)
 
 
 @dataclass(frozen=True)
 class EnumMemberReferences:
-    symbol_refs: tuple[str, ...]
+    symbolRefs: tuple[str, ...]
     type: str = field(default='SYMBOL_REFS', init=False)
 
 
@@ -43,7 +43,7 @@ def run_enum_read_regression(replay):
         ('enum-entry-exact-exclusion', 'query_symbols', name_query('ACTIVE', ('class',), EnumScope(), 'exact', EnumBudget()), ()),
         ('enum-entry-fuzzy-exclusion', 'query_symbols', name_query('Mode', ('class',), EnumScope(), 'fuzzy', EnumBudget()), ('Mode',)),
         ('enum-entry-scoped-all-capacity', 'query_symbols',
-         QueryInput(QueryRun(AllEnumClasses(), execution_budget=EnumBudget())),
+         QueryInput(QueryRun(AllEnumClasses(), executionBudget=EnumBudget())),
          ('Mode', 'Nested', 'Ordinary')),
         ('enum-entry-body-members', 'query_symbols', name_query('act', ('function',), EnumScope(), budget=EnumBudget()), ('act', 'act')),
     )

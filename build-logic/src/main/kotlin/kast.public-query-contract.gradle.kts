@@ -2,6 +2,17 @@ plugins {
     base
 }
 
+val verifyPublicQueryGeneratorRules = tasks.register<Exec>("verifyPublicQueryGeneratorRules") {
+    group = "verification"
+    description = "Rejects invalid public control defaults, references, requiredness, and tool bindings."
+    val generator = rootProject.layout.projectDirectory.file("packaging/generate-public-query.py")
+    val tests = rootProject.layout.projectDirectory.file("packaging/test-public-query-generation.py")
+    inputs.files(generator, tests)
+    inputs.file(layout.projectDirectory.file("src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json"))
+    workingDir(rootProject.projectDir)
+    commandLine("python3", tests.asFile.absolutePath)
+}
+
 val verifyPublicQueryGeneration = tasks.register<Exec>("verifyPublicQueryGeneration") {
     group = "verification"
     description = "Rejects drift between the public query schema, Kotlin syntax/defaults, and provider projections."
@@ -14,6 +25,7 @@ val verifyPublicQueryGeneration = tasks.register<Exec>("verifyPublicQueryGenerat
     )
     workingDir(rootProject.projectDir)
     commandLine("python3", generator.asFile.absolutePath, "--check")
+    dependsOn(verifyPublicQueryGeneratorRules)
 }
 
 // A schema edit cannot produce a compile-successful, stale public boundary.

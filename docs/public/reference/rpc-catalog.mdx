@@ -15,7 +15,7 @@ to stdout.
 "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-tool-rpc-complete" catalog
 ```
 
-The reply has `type: "catalog"`, `catalog.schemaVersion: 1`, and
+The reply has `type: "catalog"`, `catalog.schemaVersion: 2`, and
 `catalog.tools[]`. Each tool has `name`, `description`, `inputSchema`,
 and `effect` (`READ` or `WRITE`). Re-read it after an upgrade.
 
@@ -31,7 +31,7 @@ printf '%s\n' '{}' |
 
 Replace `health_check` and stdin with the [query example](/search) to
 get compiler-backed symbols. Tool RPC exposes the same direct tool names as
-[MCP](/reference/mcp-catalog), including `change`. It does not expose
+[MCP](/reference/mcp-catalog), including `add_declaration`. It does not expose
 `workspace_lifecycle`.
 
 ## Decode

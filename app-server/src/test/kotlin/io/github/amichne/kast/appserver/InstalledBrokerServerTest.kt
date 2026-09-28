@@ -364,9 +364,9 @@ class InstalledBrokerServerTest {
                     listOf(
                         "workspace_lifecycle",
                         "query_symbols",
-                        "source_read",
+                        "read_source",
                         "check_diagnostics",
-                        "change",
+                        "add_declaration",
                     ),
                     kastNamespace.getValue("tools").jsonArray.map { tool ->
                         tool.jsonObject.getValue("name").jsonPrimitive.content

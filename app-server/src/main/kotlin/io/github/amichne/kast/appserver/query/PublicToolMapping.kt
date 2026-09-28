@@ -1,35 +1,51 @@
 package io.github.amichne.kast.appserver.query
 
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.ReturnedByteLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.*
 
 /** Pure normalization/lowering; nullable controls exist only in the generated ingress documents. */
 internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
     when (this) {
         is PublicToolCheckDiagnostics ->
-            when (WorkspaceRelativePath.parse(relative_path.value)) {
+            when (WorkspaceRelativePath.parse(relativePath.value)) {
                 is Refinement.Rejected ->
                     rejected(PublicToolParameter.DIAGNOSTIC_PATH, PublicToolRule.WORKSPACE_RELATIVE_PATH)
                 is Refinement.Refined ->
                     Refinement.Refined(
                         PublicToolCanonical.Diagnostics(
                             DiagnosticCheckRequest(
-                                relative_path,
-                                proven(ProtocolCount.parse(max_diagnostics ?: PublicToolDefaults.maxDiagnostics)),
+                                relativePath,
+                                proven(ProtocolCount.parse(maxDiagnostics ?: PublicToolDefaults.maxDiagnostics)),
                                 continuation = continuation,
-                                executionBudget = executionBudget,
+                                executionBudget = (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
                             )
                         )
                     )
             }
         is PublicToolQuerySymbols -> request.lower()
+        is PublicToolReadSource -> lowerSource()
+        is PublicToolAddDeclaration ->
+            Refinement.Refined(
+                PublicToolCanonical.Change(ChangeRequest(ChangeIntentDocument.AddDeclaration(exactTarget, declaration)))
+            )
     }
 
 private fun PublicToolAction.lower(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
     when (this) {
         is PublicToolRunAction -> lowerRun()
         is PublicToolResumeAction ->
-            Refinement.Refined(PublicToolCanonical.Query(QueryRunRequest.Resume(continuation, executionBudget)))
+            Refinement.Refined(
+                PublicToolCanonical.Query(
+                    QueryRunRequest.Resume(
+                        continuation,
+                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
+                    )
+                )
+            )
         is PublicToolReadResultAction -> lowerReadResult()
     }
 
@@ -57,7 +73,7 @@ private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, Publ
                                         PublicToolRetention.DISCARD -> QueryRetentionModeDocument.DISCARD
                                         PublicToolRetention.RETAIN -> QueryRetentionModeDocument.RETAIN
                                     },
-                                executionBudget = executionBudget,
+                                executionBudget = (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
                             )
                         )
                     )
@@ -73,7 +89,7 @@ private fun PublicToolReadResultAction.lowerReadResult(): Refinement<PublicToolC
                         result,
                         cursor ?: QueryResultCursor.Start,
                         selected,
-                        executionBudget,
+                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
                     )
                 )
             )
@@ -85,11 +101,19 @@ private fun PublicToolReadResultAction.lowerReadResult(): Refinement<PublicToolC
                     QueryRunRequest.ReadResult.bindingRows(
                         result,
                         cursor ?: QueryResultCursor.Start,
-                        executionBudget,
+                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
                     )
                 )
             )
     }
+
+internal fun PublicToolExecutionBudget.lower(): ExecutionBudgetDocument =
+    ExecutionBudgetDocument(
+        maxElapsedMillis = maxElapsedMs?.let { proven(ElapsedTimeLimitMillis.parse(it)) },
+        maxWorkUnits = maxWorkUnits?.let { proven(WorkUnitLimit.parse(it)) },
+        maxResults = maxResults?.let { proven(ResultLimit.parse(it)) },
+        maxReturnedBytes = maxReturnedBytes?.let { proven(ReturnedByteLimit.parse(it)) },
+    )
 
 private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolInputFailure> =
     when (this) {
@@ -106,10 +130,10 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
             }
         is PublicToolSearchSource ->
             searchSource(
-                declaration_name,
-                name_match ?: PublicToolDefaults.nameMatch,
+                declarationName,
+                nameMatch ?: PublicToolDefaults.nameMatch,
                 scope ?: PublicToolDefaults.scope,
-                (declaration_kinds ?: PublicToolDefaults.declarationKinds).values,
+                (declarationKinds ?: PublicToolDefaults.declarationKinds).values,
                 PublicToolParameter.SOURCE_DECLARATION_NAME,
             )
         is PublicToolAllSource ->
@@ -121,7 +145,7 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
                             QueryMatchDocument.All,
                             scope.value,
                             bounded(
-                                (declaration_kinds ?: PublicToolDefaults.declarationKinds).values.map { it.lower() }
+                                (declarationKinds ?: PublicToolDefaults.declarationKinds).values.map { it.lower() }
                             ),
                         )
                     )
@@ -139,14 +163,14 @@ private fun PublicToolCompositionInput.lowerCompositionInput(): QueryComposition
 private fun PublicToolReferenceSource.lowerReferences(): QueryFromDocument.References =
     QueryFromDocument.References(
         bounded(
-            symbol_refs.values.map {
+            symbolRefs.values.map {
                 // The exact-reference owner admits authenticity, generation and workspace at execution.
                 QueryReferenceDocument.ExactSymbol(it)
             }
         )
     )
 
-private fun PublicToolResultSource.lowerResult(): QueryFromDocument.Result = QueryFromDocument.Result(result, row_ids)
+private fun PublicToolResultSource.lowerResult(): QueryFromDocument.Result = QueryFromDocument.Result(result, rowIds)
 
 private fun PublicToolRetainedInput.lowerResult(): QueryFromDocument.Result =
     when (this) {
@@ -202,32 +226,32 @@ private fun searchSource(
 private fun PublicToolScope.lower(): Refinement<QueryScopeDocument, PublicToolInputFailure> =
     when (this) {
         is PublicToolDirectoryScope ->
-            when (val path = WorkspaceRelativePath.parse(relative_directory_path.value)) {
+            when (val path = WorkspaceRelativePath.parse(relativeDirectoryPath.value)) {
                 is Refinement.Rejected ->
                     rejected(PublicToolParameter.DIRECTORY, PublicToolRule.WORKSPACE_RELATIVE_PATH)
                 is Refinement.Refined ->
                     Refinement.Refined(
                         QueryScopeDocument(
-                            source_set_names ?: PublicToolDefaults.sourceSets,
+                            sourceSetNames ?: PublicToolDefaults.sourceSets,
                             QueryDirectoryScopeDocument(
                                 proven(ProtocolText.parse(path.value.value)),
-                                containment(include_subdirectories),
+                                containment(includeSubdirectories ?: PublicToolDefaults.includeSubdirectories),
                             ),
                             null,
                         )
                     )
             }
         is PublicToolPackageScope ->
-            when (val name = PublicQueryPackageName.parse(package_name.value)) {
+            when (val name = PublicQueryPackageName.parse(packageName.value)) {
                 is Refinement.Rejected -> rejected(PublicToolParameter.PACKAGE, PublicToolRule.PACKAGE_NAME)
                 is Refinement.Refined ->
                     Refinement.Refined(
                         QueryScopeDocument(
-                            source_set_names ?: PublicToolDefaults.sourceSets,
+                            sourceSetNames ?: PublicToolDefaults.sourceSets,
                             null,
                             QueryPackageScopeDocument(
                                 proven(ProtocolText.parse(name.value.value)),
-                                containment(include_subpackages),
+                                containment(includeSubpackages ?: PublicToolDefaults.includeSubpackages),
                             ),
                         )
                     )
@@ -259,7 +283,7 @@ private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInpu
             Refinement.Refined(
                 QueryStepDocument.Walk(
                     relation.lower(),
-                    maximumDepth,
+                    maximumDepth ?: PublicToolDefaults.walkDepth,
                     strategy?.lower() ?: TraversalStrategyDocument.BreadthFirst,
                 )
             )
@@ -337,7 +361,9 @@ private fun PublicToolWalkStrategy.lower(): TraversalStrategyDocument =
     when (this) {
         PublicToolBreadthFirstStrategy -> TraversalStrategyDocument.BreadthFirst
         is PublicToolBoundedFanOutStrategy ->
-            TraversalStrategyDocument.BoundedFanOut(proven(ProtocolCount.parse(maximumEdgesPerNode)))
+            TraversalStrategyDocument.BoundedFanOut(
+                proven(ProtocolCount.parse(maximumEdgesPerNode ?: PublicToolDefaults.maximumEdgesPerNode))
+            )
     }
 
 private fun PublicToolJoinMode.lower(): QueryJoinModeDocument =
@@ -370,10 +396,3 @@ private fun rejected(parameter: PublicToolParameter, rule: PublicToolRule) =
     Refinement.Rejected(PublicToolInputFailure.Parameter(parameter, rule))
 
 private fun <T> bounded(values: List<T>): BoundedProtocolList<T> = proven(BoundedProtocolList.create(values))
-
-/** Only schema-bounded cardinalities and unchanged refined text reach this extraction. */
-private fun <T> proven(value: Refinement<T, *>): T =
-    when (value) {
-        is Refinement.Refined -> value.value
-        is Refinement.Rejected -> error("A schema-admitted tool value violated its canonical bound")
-    }

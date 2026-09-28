@@ -47,9 +47,9 @@ class CanonicalAgentToolDefinitionsTest {
             listOf(
                 "workspace_lifecycle",
                 "query_symbols",
-                "source_read",
+                "read_source",
                 "check_diagnostics",
-                "change",
+                "add_declaration",
             ),
             CanonicalAgentToolDefinitions.all.map { it.name.value },
         )
@@ -66,7 +66,7 @@ class CanonicalAgentToolDefinitionsTest {
             listOf("query_symbols", "check_diagnostics"),
             CanonicalAgentToolDefinitions.all.filter { it.loading == HostedToolLoading.EAGER }.map { it.name.value },
         )
-        assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.change.approval)
+        assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.addDeclaration.approval)
         assertTrue("walk" in CanonicalAgentToolDefinitions.query.description.value)
         val policy = CanonicalAgentToolDefinitions.policy.text
         assertTrue("Use kast.query_symbols for declaration-name search" in policy)

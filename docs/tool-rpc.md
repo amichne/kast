@@ -14,7 +14,8 @@ absolute executable path when trying a checkout build.
 
 `catalog` writes one UTF-8 JSON object to stdout. Its `type` is `catalog`, and
 `catalog.tools` contains each tool's name, description, generated input schema,
-and `READ` or `WRITE` effect. The schema version is `1`.
+and `READ` or `WRITE` effect. The schema version is `2`; the catalog also gives
+the call deadline and response ceiling used by bundled adapters.
 
 ```shell
 "$HOME/.local/share/kast/current/bin/kast-tool-rpc-complete" catalog
@@ -28,12 +29,12 @@ Qualified results are partial evidence, and a rejected result does not prove
 absence. The tool name must appear in the current catalog.
 
 ```shell
-printf '%s\n' '{"name":"OrderService"}' |
-  "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-tool-rpc-complete" call search_classes
+printf '%s\n' '{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"OrderService"}}}' |
+  "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-tool-rpc-complete" call query_symbols
 ```
 
 Use the exact `ref` and qualification returned by one tool in follow-up calls.
-The `change` tool is marked `WRITE`; it plans, applies, verifies, and attempts
+The `add_declaration` tool is marked `WRITE`; it plans, applies, verifies, and attempts
 recovery within one call. Clients must request write approval for it.
 
 ## Copilot CLI
@@ -48,7 +49,7 @@ copilot --experimental
 ```
 
 The extension obtains the live catalog and registers each tool with the Copilot
-SDK. Read tools skip per-call permission prompts; `change` retains the Copilot
+SDK. Read tools skip per-call permission prompts; `add_declaration` retains the Copilot
 permission prompt. No Copilot MCP server is needed.
 
 ## Pi
@@ -62,6 +63,6 @@ cp "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/adapters/pi/ext
 ```
 
 It registers the same live catalog in Pi.
-For `change`, it asks for interactive approval and refuses the call without an
+For `add_declaration`, it asks for interactive approval and refuses the call without an
 approving UI. Both clients pass their current workspace to the same RPC
 command, so one Kast installation serves different repositories and worktrees.

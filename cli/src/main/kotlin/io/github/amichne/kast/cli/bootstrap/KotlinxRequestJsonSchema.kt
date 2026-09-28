@@ -72,6 +72,10 @@ private fun SerialDescriptor.toJsonSchema(
     propertyAnnotations: List<Annotation>,
     includeNullability: Boolean,
 ): JsonObject {
+    // JsonElement is used only for contract-defined opaque JSON. An empty schema admits every JSON value.
+    if (serialName.removeSuffix("?") == "kotlinx.serialization.json.JsonElement")
+        return OBJECT_SCHEMA_JSON.encodeToJsonElement(UnconstrainedJsonSchema.serializer(), UnconstrainedJsonSchema)
+            .jsonObject
     if (includeNullability && isNullable) {
         return buildJsonObject {
             putJsonArray("anyOf") {
@@ -192,6 +196,8 @@ private fun arrayVariant(
 
 /** Property names and child schemas are the JSON Schema contract's dynamic boundary. */
 @Serializable private data class OpenObjectSchema(val type: String = "object", val additionalProperties: Boolean = true)
+
+@Serializable private data object UnconstrainedJsonSchema
 
 @Serializable
 private data class GeneratedObjectSchemaDocument(

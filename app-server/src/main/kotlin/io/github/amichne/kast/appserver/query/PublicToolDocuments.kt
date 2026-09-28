@@ -89,11 +89,7 @@ internal enum class PublicToolRetention {
     @SerialName("RETAIN") RETAIN,
 }
 
-@Serializable
-internal sealed interface PublicToolScope
 
-@Serializable
-internal sealed interface PublicToolSource
 
 @Serializable
 internal sealed interface PublicToolOutput
@@ -108,57 +104,64 @@ internal sealed interface PublicToolPredicate
 internal sealed interface PublicToolWalkStrategy
 
 @Serializable
+internal sealed interface PublicToolScope
+
+@Serializable
 internal sealed interface PublicToolCompositionInput
 
 @Serializable
-internal sealed interface PublicToolRetainedInput
-
-@Serializable
-internal sealed interface PublicToolJoinMode
+internal sealed interface PublicToolSource
 
 @Serializable
 internal sealed interface PublicToolStep
 
 @Serializable
+internal sealed interface PublicToolJoinMode
+
+@Serializable
 internal sealed interface PublicToolAction
+
+@Serializable
+internal sealed interface PublicToolRetainedInput
+
 
 @Serializable
 @SerialName("DIRECTORY")
 internal data class PublicToolDirectoryScope(
-    val relative_directory_path: ProtocolText,
-    val include_subdirectories: Boolean = true,
-    val source_set_names: BoundedProtocolList<ProtocolText>? = null,
+    val relativeDirectoryPath: ProtocolText,
+    val includeSubdirectories: Boolean? = null,
+    val sourceSetNames: BoundedProtocolList<ProtocolText>? = null,
 ) : PublicToolScope
 
 @Serializable
 @SerialName("PACKAGE")
 internal data class PublicToolPackageScope(
-    val package_name: ProtocolText,
-    val include_subpackages: Boolean = true,
-    val source_set_names: BoundedProtocolList<ProtocolText>? = null,
+    val packageName: ProtocolText,
+    val includeSubpackages: Boolean? = null,
+    val sourceSetNames: BoundedProtocolList<ProtocolText>? = null,
 ) : PublicToolScope
 
 @Serializable
 @SerialName("SEARCH_DECLARATIONS")
 internal data class PublicToolSearchSource(
-    val declaration_name: ProtocolText,
-    val name_match: PublicToolNameMatch? = null,
-    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
+    val declarationName: ProtocolText,
+    val nameMatch: PublicToolNameMatch? = null,
+    val declarationKinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
     val scope: PublicToolScope? = null,
 ) : PublicToolSource
 
 @Serializable
 @SerialName("ALL_DECLARATIONS")
 internal data class PublicToolAllSource(
-    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
+    val declarationKinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
     val scope: PublicToolScope? = null,
 ) : PublicToolSource
 
 @Serializable
 @SerialName("SYMBOL_REFS")
 internal data class PublicToolReferenceSource(
-    val symbol_refs: BoundedProtocolList<ProtocolText>,
-) : PublicToolSource, PublicToolCompositionInput
+    val symbolRefs: BoundedProtocolList<ProtocolText>,
+) : PublicToolCompositionInput, PublicToolSource
 
 @Serializable
 @SerialName("SYMBOLS")
@@ -207,16 +210,14 @@ internal data object PublicToolBreadthFirstStrategy : PublicToolWalkStrategy
 @Serializable
 @SerialName("BOUNDED_FAN_OUT")
 internal data class PublicToolBoundedFanOutStrategy(
-    val maximumEdgesPerNode: Int,
+    val maximumEdgesPerNode: Int? = null,
 ) : PublicToolWalkStrategy
 
 @Serializable
 @SerialName("WALK")
 internal data class PublicToolWalk(
     val relation: PublicToolRelation,
-    @SerialName("maximum_depth")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val maximumDepth: ProtocolCount,
+    val maximumDepth: ProtocolCount? = null,
     val strategy: PublicToolWalkStrategy? = null,
 ) : PublicToolStep
 
@@ -229,6 +230,14 @@ internal data object PublicToolDistinctSymbols : PublicToolStep
 internal data class PublicToolProjectBinding(
     val name: QueryBindingNameDocument,
 ) : PublicToolStep
+
+@Serializable
+internal data class PublicToolExecutionBudget(
+    val maxElapsedMs: Long? = null,
+    val maxWorkUnits: Long? = null,
+    val maxResults: Int? = null,
+    val maxReturnedBytes: Long? = null,
+)
 
 @Serializable
 @SerialName("CONCAT")
@@ -258,28 +267,24 @@ internal data class PublicToolDifference(
 @SerialName("RESULT")
 internal data class PublicToolResultSource(
     val result: QueryResultReference,
-    val row_ids: BoundedProtocolList<QueryResultRowReference>? = null,
-) : PublicToolSource, PublicToolCompositionInput, PublicToolRetainedInput
+    val rowIds: BoundedProtocolList<QueryResultRowReference>? = null,
+) : PublicToolCompositionInput, PublicToolSource, PublicToolRetainedInput
 
 @Serializable
 @SerialName("RUN")
 internal data class PublicToolRunAction(
     val source: PublicToolSource,
-    val steps: BoundedProtocolList<PublicToolStep>?,
+    val steps: BoundedProtocolList<PublicToolStep>? = null,
     val output: PublicToolOutput? = null,
     val retention: PublicToolRetention? = null,
-    @SerialName("execution_budget")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val executionBudget: ExecutionBudgetDocument? = null,
+    val executionBudget: PublicToolExecutionBudget? = null,
 ) : PublicToolAction
 
 @Serializable
 @SerialName("RESUME")
 internal data class PublicToolResumeAction(
     val continuation: QueryExecutionContinuation,
-    @SerialName("execution_budget")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val executionBudget: ExecutionBudgetDocument? = null,
+    val executionBudget: PublicToolExecutionBudget? = null,
 ) : PublicToolAction
 
 @Serializable
@@ -288,19 +293,13 @@ internal data class PublicToolReadResultAction(
     val result: QueryResultReference,
     val cursor: QueryResultCursor? = null,
     val output: PublicToolReadResultOutput? = null,
-    @SerialName("execution_budget")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val executionBudget: ExecutionBudgetDocument? = null,
+    val executionBudget: PublicToolExecutionBudget? = null,
 ) : PublicToolAction
 
 @Serializable
 @SerialName("INNER")
 internal data class PublicToolInnerJoinMode(
-    @SerialName("left_name")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val leftName: QueryBindingNameDocument,
-    @SerialName("right_name")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val rightName: QueryBindingNameDocument,
 ) : PublicToolJoinMode
 
@@ -330,23 +329,35 @@ internal data class PublicToolLocationSource(
     val offset: Int,
 ) : PublicToolSource
 
-@Serializable
-internal data class PublicToolCheckDiagnostics(
-    val relative_path: ProtocolText,
-    val max_diagnostics: Int? = null,
-    val continuation: ProtocolText? = null,
-    @SerialName("execution_budget")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val executionBudget: ExecutionBudgetDocument? = null,
-) : PublicToolDocument
+
+
 
 @Serializable
 internal data class PublicToolQuerySymbols(
     val request: PublicToolAction,
 ) : PublicToolDocument
 
+
+@Serializable
+internal data class PublicToolCheckDiagnostics(
+    val relativePath: ProtocolText,
+    val maxDiagnostics: Int? = null,
+    val continuation: ProtocolText? = null,
+    val executionBudget: PublicToolExecutionBudget? = null,
+) : PublicToolDocument
+
+@Serializable
+internal data class PublicToolAddDeclaration(
+    val exactTarget: ProtocolText,
+    val declaration: ProtocolText,
+) : PublicToolDocument
+
 internal object PublicToolDefaults {
     val nameMatch = PublicToolNameMatch.EXACT
+    const val includeSubdirectories = true
+    const val includeSubpackages = true
+    val walkDepth = toolDefault(ProtocolCount.parse(1))
+    const val maximumEdgesPerNode = 32
     val sourceSets = toolDefault(BoundedProtocolList.create(listOf(toolDefault(ProtocolText.parse("main")), toolDefault(ProtocolText.parse("test")))))
     val declarationKinds = toolDefault(BoundedProtocolList.create(listOf(PublicToolDeclarationKinds.CLASS, PublicToolDeclarationKinds.FUNCTION, PublicToolDeclarationKinds.PROPERTY, PublicToolDeclarationKinds.TYPE_ALIAS)))
     val output: QueryOutputDocument.Symbols =
@@ -362,17 +373,22 @@ internal object PublicToolDefaults {
         )
     val steps: BoundedProtocolList<PublicToolStep> = toolDefault(BoundedProtocolList.create(emptyList()))
     const val maxDiagnostics = 100
+    val executionBudget = PublicToolExecutionBudget()
     val scope: PublicToolScope = PublicToolDirectoryScope(toolDefault(ProtocolText.parse(".")), true, sourceSets)
 }
 
 internal fun decodePublicTool(identity: PublicToolIdentity, raw: JsonElement, json: Json): PublicToolDocument = when (identity) {
-    PublicToolIdentity.CHECK_DIAGNOSTICS -> json.decodeFromJsonElement(PublicToolCheckDiagnostics.serializer(), raw)
     PublicToolIdentity.QUERY_SYMBOLS -> json.decodeFromJsonElement(PublicToolQuerySymbols.serializer(), raw)
+    PublicToolIdentity.READ_SOURCE -> json.decodeFromJsonElement(PublicToolReadSource.serializer(), raw)
+    PublicToolIdentity.CHECK_DIAGNOSTICS -> json.decodeFromJsonElement(PublicToolCheckDiagnostics.serializer(), raw)
+    PublicToolIdentity.ADD_DECLARATION -> json.decodeFromJsonElement(PublicToolAddDeclaration.serializer(), raw)
 }
 
 internal fun encodePublicTool(value: PublicToolDocument, json: Json): JsonElement = when (value) {
-    is PublicToolCheckDiagnostics -> json.encodeToJsonElement(PublicToolCheckDiagnostics.serializer(), value)
     is PublicToolQuerySymbols -> json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), value)
+    is PublicToolReadSource -> json.encodeToJsonElement(PublicToolReadSource.serializer(), value)
+    is PublicToolCheckDiagnostics -> json.encodeToJsonElement(PublicToolCheckDiagnostics.serializer(), value)
+    is PublicToolAddDeclaration -> json.encodeToJsonElement(PublicToolAddDeclaration.serializer(), value)
 }
 
 private fun <T> toolDefault(value: Refinement<T, *>): T = when (value) {
