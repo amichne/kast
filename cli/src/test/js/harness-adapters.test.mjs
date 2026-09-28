@@ -1,26 +1,32 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { stripTypeScriptTypes } from 'node:module';
 import { SourceTextModule, SyntheticModule, createContext } from 'node:vm';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // The catalog is serialized by the production Kotlin RPC bridge, never reconstructed here.
 const catalog = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_CATALOG, 'utf8'));
-const root = new URL('../../../../', import.meta.url);
+const root = process.env.KAST_PACKAGED_ADAPTER_ROOT ? pathToFileURL(process.env.KAST_PACKAGED_ADAPTER_ROOT + '/share/kast/adapters/') : new URL('../../../../', import.meta.url);
 async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure) {
   const registered = [], calls = [];
-  const context = createContext({ Buffer, setTimeout, clearTimeout, process: { env: { KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc' }, cwd: () => '/fixture' } });
+  const context = createContext({ Buffer, setTimeout: (callback, millis) => {
+    if (failure === 'timeout' && calls.length > 1) { queueMicrotask(callback); return 0; }
+    return setTimeout(callback, millis);
+  }, clearTimeout, process: { env: { KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc' }, cwd: () => '/fixture' } });
   const spawn = (command, args) => {
     calls.push({ command, args });
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
     child.stderr.resume = () => {};
-    child.kill = () => {};
+    child.kill = () => queueMicrotask(() => child.emit('close', null, 'SIGKILL'));
     child.stdin = { on: () => {}, end: () => queueMicrotask(() => {
-      if (args[0] === 'call' && failure) {
+      if (args[0] === 'call' && ['timeout', 'cancel'].includes(failure)) return;
+      if (args[0] === 'call' && failure === 'overflow') {
+        child.stdout.emit('data', Buffer.alloc(reply.catalog.maxResponseBytes + 1));
+      } else if (args[0] === 'call' && failure) {
         child.stderr.emit('data', Buffer.from('kast_change stage=APPLICATION outcome=STARTED\nexact:v3:private-source-token\n'));
         child.emit('close', 7);
       } else {
@@ -87,6 +93,22 @@ for (const harness of ['copilot', 'pi']) {
     });
     assert.equal(loaded.calls.length, 2);
   });
+  for (const [mode, reason] of [['timeout', 'TIMEOUT'], ['cancel', 'CANCELLED'], ['overflow', 'OUTPUT_OVERFLOW']]) {
+    test(`${harness} distinguishes ${mode} and never replays the call`, async () => {
+      const reply = structuredClone(catalog);
+      reply.catalog.maxResponseBytes = 64;
+      const loaded = await load(harness, reply, undefined, mode);
+      assert.ifError(loaded.error);
+      const controller = new AbortController();
+      const tool = loaded.registered.find(t => t.name === 'query_symbols');
+      const pending = harness === 'pi'
+        ? tool.execute('call', {}, controller.signal, undefined, {cwd:'/fixture'})
+        : tool.handler({}, {signal:controller.signal});
+      if (mode === 'cancel') controller.abort();
+      await assert.rejects(pending, new RegExp(`outcome=${reason}.*mutation state is unknown`));
+      assert.equal(loaded.calls.length, 2);
+    });
+  }
   test(`${harness} rejects version drift before any registration with bounded context`, async () => {
     const reply = structuredClone(catalog); reply.catalog.schemaVersion = 999;
     const loaded = await load(harness, reply);
@@ -101,3 +123,28 @@ for (const harness of ['copilot', 'pi']) {
     assert.equal(loaded.calls.length, 1);
   });
 }
+
+// Opt-in upstream loader check. This invokes the actual packaged process in an
+// unowned directory and asserts its finite admission rejection, not semantic success.
+test('installed Pi loader registers the packaged catalog and invokes the production RPC', {skip: !process.env.KAST_PI_PACKAGE || !process.env.KAST_PACKAGED_ADAPTER_ROOT}, async () => {
+  const {join} = await import('node:path');
+  const {tmpdir} = await import('node:os');
+  const pi = process.env.KAST_PI_PACKAGE;
+  const {loadExtensions} = await import(pathToFileURL(join(pi, 'dist/core/extensions/loader.js')));
+  const temporary = mkdtempSync(join(tmpdir(), 'kast-pi-admission-'));
+  const prior = process.env.KAST_TOOL_RPC_COMMAND;
+  process.env.KAST_TOOL_RPC_COMMAND = join(process.env.KAST_PACKAGED_ADAPTER_ROOT, 'bin/kast-tool-rpc');
+  try {
+    const loaded = await loadExtensions([fileURLToPath(new URL('pi/extension.ts', root))], temporary);
+    assert.deepEqual(loaded.errors, []);
+    assert.equal(loaded.extensions.length, 1);
+    const tools = loaded.extensions[0].tools;
+    assert.deepEqual([...tools.keys()].sort(), catalog.catalog.tools.map(t => t.name).sort());
+    const result = await tools.get('query_symbols').definition.execute('smoke', {request: {type:'RUN', source:{type:'ALL_DECLARATIONS'}, steps:[], output:{type:'SYMBOLS',fields:['NAME']}}}, undefined, undefined, {cwd:temporary, hasUI:false});
+    assert.deepEqual(JSON.parse(result.content[0].text), {type:'rejected',failure:'OUT_OF_SCOPE'});
+    console.log(`upstream Pi=${JSON.parse(readFileSync(join(pi, 'package.json'))).version} Node=${process.version}; loader/registerTool/RPC invocation verified; compiler execution unverified`);
+  } finally {
+    if (prior === undefined) delete process.env.KAST_TOOL_RPC_COMMAND; else process.env.KAST_TOOL_RPC_COMMAND = prior;
+    rmSync(temporary, {recursive:true, force:true});
+  }
+});

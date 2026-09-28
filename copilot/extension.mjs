@@ -31,8 +31,8 @@ function run(args, input = "", policy = null, signal = null) {
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
     };
-    const failure = (reason) => new Error(
-      `Kast subprocess stage=${args[0]} outcome=${reason} elapsedMs=${Date.now() - started} deadlineMs=${deadline} ` +
+    const failure = (reason, exitCode = null) => new Error(
+      `Kast subprocess stage=${args[0]} outcome=${reason} exitCode=${exitCode ?? "unknown"} elapsedMs=${Date.now() - started} deadlineMs=${deadline} ` +
       `executable=${command} stderrBytes=${stderrBytes} ${phaseEvidence}; mutation state is unknown; do not replay a write`,
     );
     signal?.addEventListener("abort", abort, { once: true });
@@ -57,7 +57,7 @@ function run(args, input = "", policy = null, signal = null) {
     child.on("close", (code, exitSignal) => {
       cleanup();
       if (termination) return reject(failure(termination));
-      if (code !== 0) return reject(failure(exitSignal ? "SIGNALLED" : "NONZERO_EXIT"));
+      if (code !== 0) return reject(failure(exitSignal ? "SIGNALLED" : "NONZERO_EXIT", code));
       try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))); }
       catch { reject(failure("INVALID_JSON")); }
     });
