@@ -60,7 +60,10 @@ class NativeCatalogAdmissionTest {
         val json = Json { encodeDefaults = true }
         connection.send(
             json.encodeToString(
-                InitializeRequest(1, InitializeParams(ClientInfo("kast-native-catalog", "1"), Capabilities(true)))
+                NativeCatalogInitializeRequest(
+                    1,
+                    InitializeParams(ClientInfo("kast-native-catalog", "1"), Capabilities(true)),
+                )
             )
         )
         val initialized = response(connection, "1")
@@ -106,7 +109,11 @@ class NativeCatalogAdmissionTest {
 }
 
 @Serializable
-private data class InitializeRequest(val id: Int, val params: InitializeParams, val method: String = "initialize")
+private data class NativeCatalogInitializeRequest(
+    val id: Int,
+    val params: InitializeParams,
+    val method: String = "initialize",
+)
 
 @Serializable private data class InitializeParams(val clientInfo: ClientInfo, val capabilities: Capabilities)
 
