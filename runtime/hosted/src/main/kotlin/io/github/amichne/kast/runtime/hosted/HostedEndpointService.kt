@@ -299,7 +299,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     is HostedQueryResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
                     is HostedQueryResult.Published -> HostedResponse.Completed(HostedQueryWire.encode(result))
                 }
-            is HostedRequest.PlanChange -> planHostedChange(project, query, request)
+            is HostedRequest.PlanChange -> observeHostedChange(HostedChangeStage.PLANNING) { planHostedChange(project, query, request) }
             is HostedRequest.Read -> dispatchRead(request, continuations)
         }
     }

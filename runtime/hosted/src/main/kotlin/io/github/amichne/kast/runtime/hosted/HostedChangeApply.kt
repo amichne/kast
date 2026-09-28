@@ -76,7 +76,7 @@ internal suspend fun applyHostedChange(
                 }
             }
         val durability = LiveAppliedDurability(authority, recovery)
-        return when (val written = HostedLiveSourceWriter(project).write(authority, fresh.guard, durability)) {
+        return when (val written = observeHostedChange(HostedChangeStage.APPLICATION, plan.planId) { HostedLiveSourceWriter(project).write(authority, fresh.guard, durability) }) {
             is LiveSourceWriteResult.Applied ->
                 completeHostedApplication(
                     project = project,

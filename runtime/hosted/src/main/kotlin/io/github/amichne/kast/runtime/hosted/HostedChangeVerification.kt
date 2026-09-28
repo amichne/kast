@@ -76,7 +76,7 @@ private suspend fun completeHostedAddDeclarationApplication(
 ): HostedApplyOutcome {
     val verification =
         when (
-            val read =
+            val read = observeHostedChange(HostedChangeStage.VERIFICATION, plan.planId) {
                 retryPresemanticIndexing(
                     read = {
                         query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
@@ -91,6 +91,7 @@ private suspend fun completeHostedAddDeclarationApplication(
                     },
                     wait = { awaitHostedSmartMode(project) },
                 )
+            }
         ) {
             is HostedSemanticReadResult.Completed ->
                 when (val verified = read.value) {
@@ -105,7 +106,7 @@ private suspend fun completeHostedAddDeclarationApplication(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return unverified(plan, ChangeApplyUnverifiedReason.VERIFICATION_FAILED)
         }
-    return when (val issued = resources.receipts.issueReceipt(receipt)) {
+    return when (val issued = observeHostedChange(HostedChangeStage.RECEIPT_PERSISTENCE, plan.planId) { resources.receipts.issueReceipt(receipt) }) {
         is LiveChangeReceiptIssuance.Issued ->
             OperationOutcome.Complete(
                 liveChangeEvidence(
@@ -131,7 +132,7 @@ private suspend fun completeHostedReplaceBodyApplication(
     val logger = Logger.getInstance(HostedChangeCoordinator::class.java)
     val verification =
         when (
-            val read =
+            val read = observeHostedChange(HostedChangeStage.VERIFICATION, plan.planId) {
                 retryPresemanticIndexing(
                     read = {
                         query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
@@ -146,6 +147,7 @@ private suspend fun completeHostedReplaceBodyApplication(
                     },
                     wait = { awaitHostedSmartMode(project) },
                 )
+            }
         ) {
             is HostedSemanticReadResult.Completed ->
                 when (val verified = read.value) {
@@ -183,7 +185,7 @@ private suspend fun completeHostedReplaceBodyApplication(
             }
         }
     logger.info("kast_replace_body_completion stage=RECEIPT_ADMISSION outcome=COMPLETED")
-    return when (val issued = resources.receipts.issueReceipt(receipt)) {
+    return when (val issued = observeHostedChange(HostedChangeStage.RECEIPT_PERSISTENCE, plan.planId) { resources.receipts.issueReceipt(receipt) }) {
         is LiveChangeReceiptIssuance.Issued -> {
             logger.info("kast_replace_body_completion stage=RECEIPT_ISSUANCE outcome=COMPLETED")
             OperationOutcome.Complete(

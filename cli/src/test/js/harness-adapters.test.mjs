@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // The catalog is serialized by the production Kotlin RPC bridge, never reconstructed here.
 const catalog = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_CATALOG, 'utf8'));
 const root = new URL('../../../../', import.meta.url);
-async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }) {
+async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure) {
   const registered = [], calls = [];
   const context = createContext({ Buffer, setTimeout, clearTimeout, process: { env: { KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc' }, cwd: () => '/fixture' } });
   const spawn = (command, args) => {
@@ -19,9 +19,14 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
     child.stderr = new EventEmitter();
     child.stderr.resume = () => {};
     child.kill = () => {};
-    child.stdin = { end: () => queueMicrotask(() => {
-      child.stdout.emit('data', Buffer.from(JSON.stringify(args[0] === 'catalog' ? reply : outcome)));
-      child.emit('close', 0);
+    child.stdin = { on: () => {}, end: () => queueMicrotask(() => {
+      if (args[0] === 'call' && failure) {
+        child.stderr.emit('data', Buffer.from('kast_change stage=APPLICATION outcome=STARTED\nexact:v3:private-source-token\n'));
+        child.emit('close', 7);
+      } else {
+        child.stdout.emit('data', Buffer.from(JSON.stringify(args[0] === 'catalog' ? reply : outcome)));
+        child.emit('close', 0);
+      }
     }) };
     return child;
   };
@@ -65,6 +70,22 @@ for (const harness of ['copilot', 'pi']) {
     assert.equal(loaded.calls.length, 2);
     assert.deepEqual(Array.from(loaded.calls[1].args), ['call', 'query_symbols']);
     assert.ok(JSON.stringify(result).includes('complete'));
+  });
+  test(`${harness} retains bounded phase evidence and uncertainty on child failure`, async () => {
+    const loaded = await load(harness, catalog, undefined, true);
+    assert.ifError(loaded.error);
+    const tool = loaded.registered.find(t => t.name === 'replace_body');
+    const invoke = () => harness === 'pi'
+      ? tool.execute('call', {}, undefined, undefined, {cwd:'/fixture', hasUI:true, ui:{confirm:async()=>true}})
+      : tool.handler({}, {});
+    await assert.rejects(invoke, (error) => {
+      assert.match(error.message, /NONZERO_EXIT/);
+      assert.match(error.message, /APPLICATION/);
+      assert.match(error.message, /mutation state is unknown/);
+      assert.ok(!error.message.includes('private-source-token'));
+      return true;
+    });
+    assert.equal(loaded.calls.length, 2);
   });
   test(`${harness} rejects version drift before any registration with bounded context`, async () => {
     const reply = structuredClone(catalog); reply.catalog.schemaVersion = 999;

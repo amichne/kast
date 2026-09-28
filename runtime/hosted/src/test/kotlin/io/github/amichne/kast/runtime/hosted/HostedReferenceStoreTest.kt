@@ -23,6 +23,30 @@ import org.junit.jupiter.api.Test
 
 class HostedReferenceStoreTest {
     @Test
+    fun `canonical live and compact references restore through the same authoritative codec unchanged`() {
+        val fixture = io.github.amichne.kast.query.protocol.RelationPagingFixture.live()
+        val transport = HostedReferenceTokens(ReadLimits.Default).transport()
+        val references = io.github.amichne.kast.query.protocol.CanonicalQueryReferences(transport)
+        val compact = (references.issueExact(fixture.selector) as io.github.amichne.kast.query.protocol.ExactSelectorIssuance.Issued).selector
+        assertTrue(fixture.exact.value.startsWith("exact:v3:"))
+        assertTrue(compact.value.startsWith("exact:v5:"))
+        for (token in listOf(fixture.exact, compact)) {
+            val restored = references.restoreExact(token, fixture.authority) as CanonicalSelectorDecoding.Decoded
+            val encoded = io.github.amichne.kast.query.protocol.CanonicalSelectorCodec.encodeExact(restored.value)
+                as io.github.amichne.kast.query.protocol.CanonicalSelectorEncoding.Encoded
+            assertEquals(fixture.exact, encoded.token)
+            val other = io.github.amichne.kast.workspace.contract.SemanticReadLease(
+                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/other-workspace")).refined(),
+                io.github.amichne.kast.kernel.EvidenceGeneration.parse(1).refined(),
+            )
+            assertTrue(references.restoreExact(token, other) is CanonicalSelectorDecoding.Rejected)
+        }
+        val candidate = references.issueRangeCandidate(fixture.authority, fixture.selector.file, 0, 1)
+            as io.github.amichne.kast.query.protocol.CandidateSelectorTokenIssuance.Issued
+        assertTrue(references.restoreExact(candidate.selector, fixture.authority) is CanonicalSelectorDecoding.Rejected)
+    }
+
+    @Test
     fun `short digest collision preserves existing authority and returns inline selector`() {
         val first = text("exact:v3:first-scoped-selector")
         val second = text("exact:v3:second-scoped-selector")

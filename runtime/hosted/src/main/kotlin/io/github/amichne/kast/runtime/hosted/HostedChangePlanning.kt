@@ -167,7 +167,7 @@ private suspend fun restoreHostedChangeTarget(
     exactTarget: io.github.amichne.kast.protocol.contract.ProtocolText,
 ): Refinement<SymbolSelector, ChangePlanRejection> {
     val restored =
-        when (val result = services.references.restoreExact(exactTarget, context.authority)) {
+        when (val result = observeHostedChange(HostedChangeStage.REFERENCE_RESTORATION) { services.references.restoreExact(exactTarget, context.authority) }) {
             is CanonicalSelectorDecoding.Decoded -> result.value
             is CanonicalSelectorDecoding.Rejected -> return rejected(ChangePlanRejection.EXACT_SYMBOL_REQUIRED)
         }
