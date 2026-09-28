@@ -2,9 +2,7 @@
 """Focused proof for fixture isolation, source preservation and bounded read receipts."""
 from dataclasses import asdict, dataclass, field
 import hashlib
-import importlib.util
 import json
-import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -644,24 +642,6 @@ class HostedReadRegressionTest(unittest.TestCase):
             amend_generated_provenance(fixture)
         self.assertEqual(fixture.initial_build, build.read_text())
         self.assertEqual('class UnexpectedContent\n', target.read_text())
-
-
-def load_tests(loader, tests, _pattern):
-    for name in ('test-native-provider-qualification.py', 'test-hosted-peer-probe.py', 'test-hosted-wire-schema.py',
-                 'test-hosted-authority-read.py', 'test-hosted-budget-read-regression.py',
-                 'test-hosted-repair-budget-regression.py',
-                 'test-hosted-kotlin-call-regression.py', 'test-hosted-compact-source-regression.py',
-                 'test-hosted-vfs-overflow-regression.py', 'test-hosted-source-failure-regression.py',
-                 'test-hosted-diagnostic-pages-regression.py',
-                 'test-hosted-resume-budget-regression.py',
-                 'test-released-acceptance-product.py', 'test-released-tool-inventory.py',
-                 'test-released-upgrade-acceptance.py', 'test-released-coordinator-acceptance.py'):
-        spec = importlib.util.spec_from_file_location(name[:-3].replace('-', '_'), Path(__file__).with_name(name))
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-        tests.addTests(loader.loadTestsFromModule(module))
-    return tests
 
 
 if __name__ == '__main__':
