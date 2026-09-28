@@ -17,9 +17,7 @@ Kast gives coding agents a semantic view of the Kotlin Gradle project open in In
 
 > Use Kast to query declarations in this workspace. Return one exact symbol with its signature, source location, `ref`, and coverage. Explain what an empty or incomplete result proves.
 
-A returned `ref` is Kast's exact symbol handle. Reuse it unchanged for a
-source read or another query while Kast can validate its owning workspace and evidence. The result also says whether the requested
-scope was fully covered.
+A returned `ref` is Kast's exact symbol handle. Reuse it unchanged in later queries while Kast can validate its owning workspace and evidence. Request the `SOURCE` field when the query needs committed source context. The result also says whether the requested scope was fully covered.
 
 ## Give the model evidence it can reuse
 
@@ -39,7 +37,7 @@ Start from declarations or exact refs, then filter, expand relations, walk, comb
 
 ## From a question to a grounded next step
 
-The agent can find a declaration, carry its exact `ref` into a source read, and ask where it is used. Kast keeps scope, identity, and coverage visible across those steps.
+The agent can find a declaration, carry its exact `ref` into another query, request source context, and ask where it is used. Kast keeps scope, identity, and coverage visible across those steps.
 
 Find a declaration without naming a project-specific class. Follow its exact reference into a source or relationship query. Interpret coverage and qualifications before making a claim. [Try the query guide](/search), then [see how Kast checks the evidence](/concepts/architecture).
 

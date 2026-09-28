@@ -50,7 +50,7 @@ The invariant is that each issued handle retains the facts its next operation ne
 
 | Handle | Job |
 | --- | --- |
-| Exact symbol `ref` | Identifies one semantic symbol; pass it to a fresh query or source read for revalidation. |
+| Exact symbol `ref` | Identifies one semantic symbol; pass it to a fresh query for revalidation. Request `SOURCE` when that query needs committed source context. |
 | Result ref | Names immutable retained rows from one query result, with their original coverage and qualification. |
 | Execution continuation | Resumes unfinished work from its checkpoint on the same admitted basis. |
 | Result cursor | Pages through one retained result; it does not continue semantic execution. |
