@@ -17,13 +17,13 @@ class Tool:
 @dataclass(frozen=True)
 class Bootstrap:
     tools: tuple[Tool, ...]
-    schemaVersion: int = 1
+    schemaVersion: int = 2
 
 
 @dataclass(frozen=True)
 class Projection:
     hostedBootstrap: Bootstrap
-    schemaVersion: int = 15
+    schemaVersion: int = 16
     namespace: str = 'kast'
 
 
@@ -36,7 +36,7 @@ class Schema:
 class InventoryTest(unittest.TestCase):
     def setUp(self):
         self.tools = tuple(Tool(name, operation, 'intellij_read_and_persistence_write' if name == 'workspace_lifecycle'
-                          else 'intellij_write' if name == 'change' else 'intellij_read')
+                          else 'intellij_write' if name == 'add_declaration' else 'intellij_read')
                            for name, operation in OPERATIONS)
         self.defaults = tuple(name for name, _ in OPERATIONS)
         self.configuration = 'KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n'
@@ -48,7 +48,7 @@ class InventoryTest(unittest.TestCase):
         admitted = admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
         self.assertEqual(len(admitted.advertisedTools), 5)
         self.assertEqual(len(admitted.configuredDefaultTools), 5)
-        self.assertEqual(set(admitted.explicitReadTools), {'query_symbols', 'source_read', 'check_diagnostics'})
+        self.assertEqual(set(admitted.explicitReadTools), {'query_symbols', 'read_source', 'check_diagnostics'})
 
     def test_missing_tool_duplicate_name_and_changed_operation_are_refused(self):
         for tools in (self.tools[:-1], self.tools[:-1] + self.tools[:1],
@@ -62,7 +62,11 @@ class InventoryTest(unittest.TestCase):
         with self.assertRaises(ReleaseRejected):
             admit_inventory(document, self.configuration, 'a' * 64)
         document = self.schema(self.tools)
-        document['serverProjection']['hostedBootstrap']['schemaVersion'] = 2
+        document['serverProjection']['hostedBootstrap']['schemaVersion'] = 1
+        with self.assertRaises(ReleaseRejected):
+            admit_inventory(document, self.configuration, 'a' * 64)
+        document = self.schema(self.tools)
+        document['serverProjection']['schemaVersion'] = 15
         with self.assertRaises(ReleaseRejected):
             admit_inventory(document, self.configuration, 'a' * 64)
 

@@ -24,7 +24,7 @@ The direct tool input is:
     "source": {"type": "ALL_DECLARATIONS"},
     "steps": null,
     "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]},
-    "execution_budget": {"max_results": 5}
+    "executionBudget": {"maxResults": 5}
   }
 }
 ```
@@ -44,7 +44,7 @@ declaration; keep it unchanged for the next call.
 {
   "request": {
     "type": "RUN",
-    "source": {"type": "SYMBOL_REFS", "symbol_refs": ["<returned ref>"]},
+    "source": {"type": "SYMBOL_REFS", "symbolRefs": ["<returned ref>"]},
     "steps": [{"type": "EXPAND_RELATION", "relation": "REFERENCES"}],
     "output": {"type": "OCCURRENCES"}
   }
