@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: d6efd03fbe07 -->
+<!-- generated: 2026-09-28 | hash: 2d9c2bfbeb71 -->
 
 # protocol
 

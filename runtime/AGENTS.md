@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: d23c97b6e865 -->
+<!-- generated: 2026-09-28 | hash: 4ca5c7e415d1 -->
 
 # runtime
 

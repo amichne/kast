@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: 0bd25bd194fe -->
+<!-- generated: 2026-09-28 | hash: 82a4beac10e9 -->
 
 # docs
 
@@ -17,7 +17,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 - [public/troubleshooting.mdx](public/troubleshooting.mdx) - support guidance.
 - [render_kast_observer_snapshots.py](render_kast_observer_snapshots.py) - observer snapshot renderer.
 
-- [development.md](development.md) - build, local installation, docs preview, and native acceptance.
+- [development.md](development.md) - build, local installation, docs preview, and behavior-sized testing.
 - [installation-recovery.md](installation-recovery.md) - offline recovery of damaged installations.
 - [tool-rpc.md](tool-rpc.md) - one-shot tool contract and Copilot/Pi extension setup.
 

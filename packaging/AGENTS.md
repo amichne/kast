@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-27 | hash: 4c04ad975400 -->
+<!-- generated: 2026-09-28 | hash: 741ded287c9d -->
 
 # packaging
 
@@ -7,7 +7,8 @@
 
 Owns the public shell installer boundary, shipped offline lifecycle and recovery
 helpers, generated configuration ingress, and a small assembled-product check.
-Semantic read, change, and native IDEA acceptance belong to their Kotlin owners.
+Semantic read and change rules belong to their Kotlin owners. Live IDEA
+qualification requires separate runtime evidence.
 
 ## Key Files
 
