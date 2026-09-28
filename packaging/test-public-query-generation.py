@@ -19,6 +19,12 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def setUp(self):
         self.authority = json.loads(SCHEMA.read_text())
 
+    def test_adapter_versions_follow_the_same_authority(self):
+        self.authority["contractVersion"] = 37
+        generated = generator.render_tools(self.authority)
+        for relative in ("copilot/extension.mjs", "pi/extension.ts"):
+            self.assertIn("const PUBLIC_TOOL_CONTRACT_VERSION = 37;", generated[ROOT / relative])
+
     def test_missing_and_invalid_control_defaults_reject(self):
         for replacement in (None, 0, 1001):
             with self.subTest(replacement=replacement):

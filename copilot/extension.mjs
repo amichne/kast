@@ -1,3 +1,5 @@
+// Generated contract version; owned by packaging/generate-public-query.py.
+const PUBLIC_TOOL_CONTRACT_VERSION = 3;
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -38,15 +40,18 @@ function run(args, input = "", policy = null, signal = null) {
 }
 
 const reply = await run(["catalog"]);
-if (reply.type !== "catalog" || reply.catalog?.schemaVersion !== 2 ||
+if (reply?.type !== "catalog" || reply.catalog?.schemaVersion !== PUBLIC_TOOL_CONTRACT_VERSION ||
     !Number.isSafeInteger(reply.catalog.callTimeoutMillis) || reply.catalog.callTimeoutMillis < 1 ||
     !Number.isSafeInteger(reply.catalog.maxResponseBytes) || reply.catalog.maxResponseBytes < 1 ||
-    !Array.isArray(reply.catalog.tools)) throw new Error("Invalid Kast tool catalog");
+    !Array.isArray(reply.catalog.tools)) throw new Error(`Kast catalog admission failed: expected=${PUBLIC_TOOL_CONTRACT_VERSION} observed=${Number.isSafeInteger(reply?.catalog?.schemaVersion) ? reply.catalog.schemaVersion : "invalid"} executable=${command}`);
 const policy = reply.catalog;
 const names = new Set();
 const tools = reply.catalog.tools.map((tool) => {
-  if (typeof tool.name !== "string" || names.has(tool.name) ||
-      !["READ", "WRITE"].includes(tool.effect)) throw new Error("Invalid Kast tool entry");
+  if (tool == null || typeof tool.name !== "string" || !/^[a-z][a-z0-9_]{0,63}$/.test(tool.name) || names.has(tool.name) ||
+      typeof tool.description !== "string" || !tool.description.trim() ||
+      tool.inputSchema == null || typeof tool.inputSchema !== "object" || Array.isArray(tool.inputSchema) ||
+      tool.inputSchema.type !== "object" ||
+      !["READ", "WRITE"].includes(tool.effect)) throw new Error(`Kast catalog entry admission failed: executable=${command}`);
   names.add(tool.name);
   return {
     name: tool.name,

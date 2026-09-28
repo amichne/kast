@@ -401,6 +401,16 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
     support_lines.append('}\n')
     outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/SupportToolIdentity.kt'] = ''.join(support_lines)
+    # Registration installs each adapter as one file; generate its marked version in place.
+    for relative in ('copilot/extension.mjs', 'pi/extension.ts'):
+        adapter = ROOT / relative
+        source, count = re.subn(
+            r'(?<=const PUBLIC_TOOL_CONTRACT_VERSION = )\d+(?=;)',
+            str(authority['contractVersion']), adapter.read_text(),
+        )
+        if count != 1:
+            raise ValueError(f'{relative}: missing unique generated contract version')
+        outputs[adapter] = source
     registrations = []
     responses = []
     for tool in authority['tools']:
