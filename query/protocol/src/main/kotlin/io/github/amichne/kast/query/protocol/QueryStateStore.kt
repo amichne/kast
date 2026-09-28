@@ -111,6 +111,17 @@ class QueryStateStore(
         return QueryCheckpointIssuance.Issued(token)
     }
 
+    /** Read-result may reuse existing progress, but cannot republish a retired producer checkpoint. */
+    @Synchronized
+    fun retainedCheckpoint(request: QueryRunRequest.Run, checkpoint: QueryCheckpoint): QueryCheckpointIssuance {
+        expire()
+        val normalized = request.copy(executionBudget = null)
+        val entry = entries.entries.firstOrNull { (_, entry) ->
+            entry is Entry.Checkpoint && entry.request == normalized && entry.checkpoint == checkpoint
+        } ?: return QueryCheckpointIssuance.CapacityExceeded
+        return QueryCheckpointIssuance.Issued((entry.key as Key.Checkpoint).token)
+    }
+
     @Synchronized
     fun restoreCheckpoint(
         token: QueryExecutionContinuation.Pipeline,

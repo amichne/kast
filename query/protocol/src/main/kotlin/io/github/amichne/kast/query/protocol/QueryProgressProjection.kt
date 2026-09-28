@@ -9,16 +9,22 @@ import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 
+internal enum class QueryProgressOrigin { EXECUTION, RETAINED_RESULT }
+
 internal fun projectQueryProgress(
     request: QueryRunRequest.Run,
     continuation: QueryContinuationState,
     itemCount: Int,
     state: QueryStateStore,
     protectedResult: QueryResultReference? = null,
+    origin: QueryProgressOrigin = QueryProgressOrigin.EXECUTION,
 ): QueryQualifiedProgressDocument =
     when (continuation) {
         is QueryContinuationState.Resumable ->
-            when (val issued = state.issueCheckpoint(request, continuation.checkpoint, protectedResult)) {
+            when (val issued = when (origin) {
+                QueryProgressOrigin.EXECUTION -> state.issueCheckpoint(request, continuation.checkpoint, protectedResult)
+                QueryProgressOrigin.RETAINED_RESULT -> state.retainedCheckpoint(request, continuation.checkpoint)
+            }) {
                 is QueryCheckpointIssuance.Issued ->
                     QueryQualifiedProgressDocument.Resumable(
                         QueryCheckpointDocument.Upstream(issued.token),

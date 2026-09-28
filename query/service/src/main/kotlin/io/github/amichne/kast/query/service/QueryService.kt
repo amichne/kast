@@ -54,6 +54,7 @@ class QueryService(
     /** The single evaluator keeps task order, page accounting, and continuation construction in one owner. */
     @Suppress("LargeClass")
     private inner class Execution(private val request: QueryExecutionRequest, checkpoint: PipelineCheckpoint?) {
+        private val emittedBefore = checkpoint?.emittedCount ?: 0.queryCount()
         private val state = QueryExecutionState(request, clock)
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
@@ -356,7 +357,10 @@ class QueryService(
                     completedOmissions.toList(),
                     completedWalkObservations.toList(),
                 )
-            val count = (symbols.size + joinStage.bindingRows.size).queryCount()
+            val pageCount = symbols.size + joinStage.bindingRows.size
+            if (emittedBefore.value > Int.MAX_VALUE - pageCount)
+                return QueryExecutionResult.Rejected(QueryExecutionRejection.BUDGET_REJECTED)
+            val count = (emittedBefore.value + pageCount).queryCount()
             if (completedWithoutMissingEvidence())
                 return QueryExecutionResult.Complete(result, QueryCoverage.Complete(count))
             if (state.limitations.isEmpty()) state.limit(QueryLimitation.WORK_LIMIT_REACHED)
@@ -366,7 +370,7 @@ class QueryService(
                     is Refinement.Rejected ->
                         return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
                 }
-            return QueryExecutionResult.Qualified(result, coverage, continuation())
+            return QueryExecutionResult.Qualified(result, coverage, continuation(count))
         }
 
         private fun completedWithoutMissingEvidence(): Boolean {
@@ -377,7 +381,7 @@ class QueryService(
             return state.limitations.isEmpty() || state.limitations == setOf(QueryLimitation.TIME_LIMIT_REACHED)
         }
 
-        private fun continuation(): QueryContinuationState {
+        private fun continuation(emittedCount: io.github.amichne.kast.query.contract.QueryCount): QueryContinuationState {
             val reason = terminal
             if (reason != null) return QueryContinuationState.Terminal(reason)
             if (tasks.isEmpty()) return QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
@@ -389,6 +393,7 @@ class QueryService(
                     tasks = tasks.toList(),
                     identityRows = identityRows.snapshot(),
                     joinState = joinStage.snapshot(),
+                    emittedCount = emittedCount,
                     limitations =
                         state.limitations.filterTo(linkedSetOf()) { it !in pageLimits } + state.upstreamLimitations,
                 )

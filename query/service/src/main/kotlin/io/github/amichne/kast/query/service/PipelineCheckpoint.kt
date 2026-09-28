@@ -111,6 +111,7 @@ internal data class PipelineCheckpoint(
     val identityRows: Map<ExactQueryStage, Map<CanonicalSymbolId, QuerySymbol>>,
     val joinState: QueryJoinSnapshot,
     val limitations: Set<QueryLimitation>,
+    val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
 ) : QueryCheckpoint {
     override val retainedBytes: Long =
         saturatedAdd(

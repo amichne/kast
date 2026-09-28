@@ -402,6 +402,8 @@ data class QueryRunResult(
     val nextCursor: QueryResultCursor? = null,
     val executionBudget: ExecutionBudgetReport? = null,
     val referenceAcquisitions: ReadReferenceAcquisitions? = null,
+    /** Detached presentation metadata; not a wire field or a new semantic result count. */
+    val presentationOrigin: QueryKnownMinimum? = null,
 ) : OperationResult
 
 enum class QuerySourceRejectionReason {

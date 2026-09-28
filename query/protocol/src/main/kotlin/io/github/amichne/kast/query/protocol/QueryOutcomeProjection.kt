@@ -53,6 +53,7 @@ internal class QueryOutcomeProjection(
                     coverage = null,
                     continuationState = null,
                     retainedExecution = result,
+                    presentationOrigin = result.coverage.resultCount.value,
                 )
             is QueryExecutionResult.Qualified ->
                 project(
@@ -62,6 +63,7 @@ internal class QueryOutcomeProjection(
                     coverage = result.coverage,
                     continuationState = result.continuation,
                     retainedExecution = result,
+                    presentationOrigin = result.coverage.knownMinimum.value,
                 )
             is QueryExecutionResult.Rejected ->
                 OperationOutcome.Rejected(
@@ -109,6 +111,11 @@ internal class QueryOutcomeProjection(
             presentedRowIds = restored.rowIds.subList(start, end),
             protectedResult = request.result,
             nextCursor = next,
+            progressOrigin = QueryProgressOrigin.RETAINED_RESULT,
+            presentationOrigin = when (val original = restored.result.coverage) {
+                is QueryCoverage.Complete -> original.resultCount.value
+                is QueryCoverage.Qualified -> original.knownMinimum.value
+            },
         )
     }
 
@@ -147,6 +154,8 @@ internal class QueryOutcomeProjection(
         presentedRowIds: List<QueryResultRowReference>? = null,
         protectedResult: QueryResultReference? = null,
         nextCursor: QueryResultCursor? = null,
+        progressOrigin: QueryProgressOrigin = QueryProgressOrigin.EXECUTION,
+        presentationOrigin: Int? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val items =
             when (val projected = QueryItemProjector(authority).projectItems(output, result.rows)) {
@@ -163,7 +172,7 @@ internal class QueryOutcomeProjection(
             result.walkObservations.mapProjected { it.projectWalkObservation(authority) }.boundedProjectedOrNull()
                 ?: return contractRejected()
         val projectedQualification =
-            projectQualification(request, coverage, continuationState, progressItemCount ?: items.size, protectedResult)
+            projectQualification(request, coverage, continuationState, progressItemCount ?: items.size, protectedResult, progressOrigin)
         val qualification =
             when (projectedQualification) {
                 is Refinement.Refined -> projectedQualification.value
@@ -185,7 +194,9 @@ internal class QueryOutcomeProjection(
                 is Refinement.Rejected -> return contractRejected()
             }
         val envelope =
-            resultEnvelope(lease, presented, boundedFailures, boundedOmissions, boundedWalkObservations, nextCursor)
+            resultEnvelope(lease, presented, boundedFailures, boundedOmissions, boundedWalkObservations, nextCursor).let { envelope ->
+                envelope.copy(payload = envelope.payload.copy(presentationOrigin = presentationOrigin?.let { QueryKnownMinimum.parse(it).refinedForQueryOrNull() }))
+            }
         return if (qualification == null) OperationOutcome.Complete(envelope)
         else OperationOutcome.Qualified(envelope, qualification)
     }
@@ -278,6 +289,7 @@ internal class QueryOutcomeProjection(
         continuationState: QueryContinuationState?,
         itemCount: Int,
         protectedResult: QueryResultReference?,
+        origin: QueryProgressOrigin,
     ): Refinement<QueryRunQualification?, QueryExecutionRejectionDocument> {
         if (coverage == null && continuationState == null) return Refinement.Refined(null)
         val provenCoverage =
@@ -287,7 +299,7 @@ internal class QueryOutcomeProjection(
         val minimum =
             QueryKnownMinimum.parse(provenCoverage.knownMinimum.value).refinedForQueryOrNull()
                 ?: return Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
-        val progress = projectQueryProgress(request, state, itemCount, this.state, protectedResult)
+        val progress = projectQueryProgress(request, state, itemCount, this.state, protectedResult, origin)
         return when (
             val result =
                 QueryRunQualification.create(
