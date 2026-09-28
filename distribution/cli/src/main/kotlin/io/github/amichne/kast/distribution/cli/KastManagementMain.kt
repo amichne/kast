@@ -129,6 +129,7 @@ private class StatusCommand : ManagementNode("status") {
 }
 
 private class ConnectCommand : ManagementNode("connect") {
+    private val force by option("--force", help = "Replace only this harness's Kast registration slot.").flag()
     private val harness by
         argument("harness")
             .convert { raw ->
@@ -138,7 +139,10 @@ private class ConnectCommand : ManagementNode("connect") {
 
     override fun help(context: Context) = "Register the release-bundled integration at user scope."
 
-    override fun selection() = ManagementCommand.Connect(harness)
+    override fun selection(): ManagementCommand {
+        if (force && harness == null) throw CliktError("--force requires a selected harness")
+        return ManagementCommand.Connect(harness, if (force) RegistrationOwnership.REPLACE_SELECTED_SLOT else RegistrationOwnership.REQUIRE_OWNED)
+    }
 }
 
 private class DisconnectCommand : ManagementNode("disconnect") {
@@ -204,7 +208,7 @@ private fun perform(command: ManagementCommand) {
         is ManagementCommand.Connect -> {
             if (command.harness == null) println("Supported harnesses: codex, copilot, pi")
             else {
-                val repeated = connectHarness(root, Path.of(home), command.harness)
+                val repeated = connectHarness(root, Path.of(home), command.harness, command.ownership)
                 println(
                     if (repeated) "${command.harness.publicName} is already registered"
                     else "Registered ${command.harness.publicName}; restart the harness to load it"
