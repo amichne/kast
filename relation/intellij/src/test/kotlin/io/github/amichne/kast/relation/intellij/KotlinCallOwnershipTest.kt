@@ -33,41 +33,54 @@ class KotlinCallOwnershipTest {
     @Test
     fun `definition wrappers normalize to the exact Kotlin origin while Java remains supported`(@TempDir home: Path) =
         withParser(home) { factory ->
-            val origin = factory.createFile("interface Capability; class CapabilityImpl : Capability").declarations.last()
-            val wrapper = java.lang.reflect.Proxy.newProxyInstance(
-                javaClass.classLoader,
-                arrayOf(org.jetbrains.kotlin.asJava.elements.KtLightElement::class.java),
-            ) { _, method, _ ->
-                when (method.name) {
-                    "getKotlinOrigin", "getNavigationElement" -> origin
-                    "isValid" -> true
-                    else -> error("Unexpected PSI observation: ${method.name}")
-                }
-            } as com.intellij.psi.PsiElement
-            val navigation = java.lang.reflect.Proxy.newProxyInstance(
-                javaClass.classLoader, arrayOf(com.intellij.psi.PsiElement::class.java),
-            ) { _, method, _ ->
-                when (method.name) {
-                    "getNavigationElement" -> wrapper
-                    "isValid" -> true
-                    else -> error("Unexpected PSI observation: ${method.name}")
-                }
-            } as com.intellij.psi.PsiElement
+            val origin =
+                factory
+                    .createFile(Files.readString(Path.of("../../cli/src/test/resources/stabilization/Fixture.kt")))
+                    .declarations
+                    .single { (it as? org.jetbrains.kotlin.psi.KtNamedDeclaration)?.name == "CapabilityImpl" }
+            val wrapper =
+                java.lang.reflect.Proxy.newProxyInstance(
+                    javaClass.classLoader,
+                    arrayOf(org.jetbrains.kotlin.asJava.elements.KtLightElement::class.java),
+                ) { _, method, _ ->
+                    when (method.name) {
+                        "getKotlinOrigin",
+                        "getNavigationElement" -> origin
+                        "isValid" -> true
+                        else -> error("Unexpected PSI observation: ${method.name}")
+                    }
+                } as com.intellij.psi.PsiElement
+            val navigation =
+                java.lang.reflect.Proxy.newProxyInstance(
+                    javaClass.classLoader,
+                    arrayOf(com.intellij.psi.PsiElement::class.java),
+                ) { _, method, _ ->
+                    when (method.name) {
+                        "getNavigationElement" -> wrapper
+                        "isValid" -> true
+                        else -> error("Unexpected PSI observation: ${method.name}")
+                    }
+                } as com.intellij.psi.PsiElement
             for (element in listOf(origin, wrapper, navigation)) {
                 val supported = normalizeRelationDefinition(element) as IntellijRelationDefinition.Supported
                 assertSame(origin, supported.declaration)
             }
-            val java = java.lang.reflect.Proxy.newProxyInstance(
-                javaClass.classLoader, arrayOf(com.intellij.psi.PsiClass::class.java),
-            ) { proxy, method, _ ->
-                when (method.name) {
-                    "getNavigationElement" -> proxy
-                    "isValid" -> true
-                    else -> error("Unexpected Java PSI observation: ${method.name}")
-                }
-            } as com.intellij.psi.PsiClass
+            val java =
+                java.lang.reflect.Proxy.newProxyInstance(
+                    javaClass.classLoader,
+                    arrayOf(com.intellij.psi.PsiClass::class.java),
+                ) { proxy, method, _ ->
+                    when (method.name) {
+                        "getNavigationElement" -> proxy
+                        "isValid" -> true
+                        else -> error("Unexpected Java PSI observation: ${method.name}")
+                    }
+                } as com.intellij.psi.PsiClass
             assertSame(java, (normalizeRelationDefinition(java) as IntellijRelationDefinition.Supported).declaration)
-            assertEquals(IntellijRelationDefinition.Unsupported, normalizeRelationDefinition(factory.createExpression("42")))
+            assertEquals(
+                IntellijRelationDefinition.Unsupported,
+                normalizeRelationDefinition(factory.createExpression("42")),
+            )
         }
 
     @Test

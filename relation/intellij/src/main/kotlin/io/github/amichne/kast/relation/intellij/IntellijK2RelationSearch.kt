@@ -248,8 +248,11 @@ internal class IntellijK2RelationSearch(
                 cancellationCheck()
                 val definition = item.value
                 val normalizedDefinition = normalizeRelationDefinition(definition)
-                if (normalizedDefinition is IntellijRelationDefinition.Supported &&
-                    !supportedIdentities.add(item.descriptor)) continue
+                if (
+                    normalizedDefinition is IntellijRelationDefinition.Supported &&
+                        !supportedIdentities.add(item.descriptor)
+                )
+                    continue
                 when (beginProviderItem(item.descriptor)) {
                     ProviderItemDisposition.READY -> Unit
                     ProviderItemDisposition.SKIPPED -> continue
@@ -260,10 +263,11 @@ internal class IntellijK2RelationSearch(
                     ProviderItemDisposition.SKIPPED -> continue
                     ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
                 }
-                val candidate = when (normalizedDefinition) {
-                    is IntellijRelationDefinition.Supported -> normalizedDefinition.declaration
-                    IntellijRelationDefinition.Unsupported -> null
-                }
+                val candidate =
+                    when (normalizedDefinition) {
+                        is IntellijRelationDefinition.Supported -> normalizedDefinition.declaration
+                        IntellijRelationDefinition.Unsupported -> null
+                    }
                 if (candidate == null) {
                     if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
                         return termination(ProviderTermination.HALTED)

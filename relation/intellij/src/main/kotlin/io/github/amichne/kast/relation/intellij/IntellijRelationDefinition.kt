@@ -11,28 +11,30 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
 /** Request-local provider normalization; detached K2 evidence is still required before emission. */
 internal sealed interface IntellijRelationDefinition {
     data class Supported(val declaration: PsiNamedElement) : IntellijRelationDefinition
+
     data object Unsupported : IntellijRelationDefinition
 }
+
+private const val MAXIMUM_DEFINITION_WRAPPERS = 8
 
 internal fun normalizeRelationDefinition(element: PsiElement): IntellijRelationDefinition {
     val visited = Collections.newSetFromMap(IdentityHashMap<PsiElement, Boolean>())
     var current = element
     // Origin/navigation cycles and unusually deep wrappers cannot authorize a declaration.
-    repeat(8) {
+    repeat(MAXIMUM_DEFINITION_WRAPPERS) {
         if (!current.isValid || !visited.add(current)) return IntellijRelationDefinition.Unsupported
-        if (current is KtNamedDeclaration) return IntellijRelationDefinition.Supported(current as KtNamedDeclaration)
+        if (current is KtNamedDeclaration) return IntellijRelationDefinition.Supported(current)
         val origin = (current as? KtLightElement<*, *>)?.kotlinOrigin
-        if (origin != null) {
-            current = origin
+        val next = origin ?: current.navigationElement
+        if (next !== current) {
+            current = next
         } else {
-            val navigation = current.navigationElement
-            if (navigation !== current) current = navigation
-            else return when (val declaration = current) {
-                is PsiMember -> if (declaration is PsiNamedElement) IntellijRelationDefinition.Supported(declaration)
-                    else IntellijRelationDefinition.Unsupported
-                else -> IntellijRelationDefinition.Unsupported
-            }
+            return supportedJavaDefinition(current)
         }
     }
     return IntellijRelationDefinition.Unsupported
 }
+
+private fun supportedJavaDefinition(element: PsiElement): IntellijRelationDefinition =
+    if (element is PsiMember && element is PsiNamedElement) IntellijRelationDefinition.Supported(element)
+    else IntellijRelationDefinition.Unsupported

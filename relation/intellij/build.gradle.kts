@@ -91,3 +91,7 @@ dependencies {
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
     source(rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt"))
 }
+
+tasks.named("test") {
+    inputs.file(rootProject.file("cli/src/test/resources/stabilization/Fixture.kt"))
+}
