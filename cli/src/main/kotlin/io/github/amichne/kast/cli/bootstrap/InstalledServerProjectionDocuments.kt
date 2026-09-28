@@ -36,6 +36,10 @@ internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObj
         )
         .withLocalOutputDefinitions()
 
+/** The operation owns its semantic document across hosted, MCP, and RPC projections. */
+internal fun installedSemanticResultSchema(operation: CanonicalOperation): JsonObject =
+    operationProcessDocumentSchema(operation).withLocalOutputDefinitions()
+
 /** Exact schema reuse keeps each advertised schema standalone and within the provider byte budget. */
 private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
     val names = reusableServerOutputSchemas.entries.associate { (name, schema) -> schema to name }

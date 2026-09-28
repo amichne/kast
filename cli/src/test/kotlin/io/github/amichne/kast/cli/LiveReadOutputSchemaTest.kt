@@ -195,6 +195,12 @@ class LiveReadOutputSchemaTest {
                     .document(),
         )
 
+    internal fun completeQueryDocument(): io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument =
+        (CanonicalQueryCliDocuments.project(
+                complete(CanonicalOperation.QUERY_RUN, live, QueryRunResult(empty(), empty()))
+            ) as ProjectedOperationOutcome.Complete)
+            .document
+
     private fun qualifiedDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =
         listOf(
             CanonicalOperation.QUERY_RUN to

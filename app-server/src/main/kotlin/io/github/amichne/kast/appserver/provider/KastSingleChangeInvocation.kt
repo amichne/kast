@@ -10,6 +10,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
+import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.runtime.HostedChangeApprovalOperation
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalRequest
 import io.github.amichne.kast.appserver.runtime.ResolvedMutationRecovery
@@ -54,15 +55,12 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         input: KastInvocationInput,
         context: BrokerInvocationContext,
     ): ProviderCall<KastInvocationOutput> {
-        val canonical =
-            input as? KastInvocationInput.Canonical
+        val facade =
+            input as? KastInvocationInput.Facade
                 ?: return ProviderCall.Rejected(ProviderFailureCode.IDE_INVALID_REQUEST)
         val request =
-            try {
-                changeJson.decodeFromJsonElement<ChangeRequest>(canonical.arguments.element)
-            } catch (_: SerializationException) {
-                return ProviderCall.Rejected(ProviderFailureCode.IDE_INVALID_REQUEST)
-            }
+            (facade.request.canonical as? PublicToolCanonical.Change)?.request
+                ?: return ProviderCall.Rejected(ProviderFailureCode.IDE_INVALID_REQUEST)
         return invoke(request, context)
     }
 

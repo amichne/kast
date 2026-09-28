@@ -14,9 +14,8 @@ object KastMcpMain {
         val tools = KastDirectToolSession.installed(directory, home, System.getenv()) ?: return
         KastMcpServer(
                 catalog = tools.catalog,
-                invoke = tools.invokeCanonical,
+                invoke = tools::invoke,
                 root = tools.root,
-                supplemental = tools.supplemental,
                 onInitialize = tools.start,
             )
             .run(BufferedInputStream(System.`in`), System.out)

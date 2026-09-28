@@ -25,10 +25,10 @@ internal fun installedKastCatalogFixture(): String =
         KastCapabilityBoundary(
             1,
             KastServerProjectionBoundary(
-                15,
+                16,
                 "kast",
                 KastHostedBootstrapBoundary(
-                    1,
+                    io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION,
                     CanonicalAgentToolDefinitions.policy.text,
                     CanonicalAgentToolDefinitions.all.map { definition ->
                         KastHostedToolBoundary(

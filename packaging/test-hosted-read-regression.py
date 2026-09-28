@@ -151,22 +151,20 @@ def enum_response(names):
 
 
 class HostedReadRegressionTest(unittest.TestCase):
-    def test_query_request_helpers_match_app_server_tool_schema(self):
+    def test_generated_query_examples_match_app_server_tool_schema(self):
         contract_path = (Path(__file__).resolve().parents[1] / 'app-server' / 'src' / 'main' / 'resources' /
                          'io' / 'github' / 'amichne' / 'kast' / 'appserver' / 'query' / 'tools.schema.json')
         contract = json.loads(contract_path.read_text())
         query = next(tool for tool in contract['tools'] if tool['name'] == 'query_symbols')
         validator = Draft202012Validator({**query['schema'], '$defs': contract['$defs']})
-        for request in (name_query('Mode', ('class',)), relation_query('exact:opaque'),
-                        walk_query('exact:opaque'),
-                        name_query('Mode', ('class',), EnumScope()),
-                        QueryInput(QueryRun(AllEnumClasses())),
-                        QueryInput(QueryRun(EnumMemberReferences(('exact:opaque',)),
-                                            (DistinctSymbols(),), SymbolOutput(('NAME', 'SIGNATURE')))),
-                        QueryInput(QueryResume('query:v1:00000000-0000-0000-0000-000000000000'))):
-            with self.subTest(request=request):
-                encoded = json.loads(json.dumps(asdict(request)))
-                self.assertEqual([], list(validator.iter_errors(encoded)))
+        examples_path = contract_path.with_name('query_symbols.examples.json')
+        examples = json.loads(examples_path.read_text())
+        for name, example in examples['examples'].items():
+            with self.subTest(example=name):
+                self.assertEqual([], list(validator.iter_errors(example['value'])))
+        for name, example in examples['invalidExamples'].items():
+            with self.subTest(invalid_example=name):
+                self.assertNotEqual([], list(validator.iter_errors(example['value'])))
 
     def test_native_search_and_entity_free_source_requests_use_current_fields(self):
         for request in (name_query('Mode', ('class',)), source_budget_anchor_query()):

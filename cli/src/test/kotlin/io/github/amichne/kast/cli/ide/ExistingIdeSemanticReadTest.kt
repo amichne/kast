@@ -17,6 +17,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
 import io.github.amichne.kast.appserver.ide.admitOutcome
 import io.github.amichne.kast.appserver.ide.canonicalRootFixture
+import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.*
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
@@ -27,13 +28,45 @@ import io.github.amichne.kast.protocol.wire.presentation.HostedRequestEffect
 import io.github.amichne.kast.protocol.wire.presentation.preparedOperationFixture
 import java.nio.file.Path
 import java.util.UUID
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class ExistingIdeSemanticReadTest {
+    @Test
+    fun `direct transport retains admitted tool identity and request instance`() {
+        val raw = Json.parseToJsonElement(PublicQueryInputFixture.all(fields = emptyList()))
+        val admitted =
+            (PublicToolContract.admit(
+                    io.github.amichne.kast.protocol.registry.PublicToolIdentity.QUERY_SYMBOLS,
+                    raw,
+                ) as Refinement.Refined)
+                .value
+        var calls = 0
+        val result =
+            executeAdmittedPublicTool(
+                admitted,
+                root.path,
+                ExistingIdeCliCapabilities(
+                    CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
+                    ExistingIdeClient { _, _ -> fail("Unexpected direct IDE call") },
+                    DaemonOperationClient { admittedRoot, call ->
+                        assertSame(root, admittedRoot)
+                        assertSame(admitted, (call as DaemonOperationCall.PublicTool).tool)
+                        calls++
+                        DaemonOperationResult.Rejected(
+                            DaemonOperationClientRejection.Server(
+                                DaemonOperationFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)
+                            )
+                        )
+                    },
+                ),
+            )
+        assertEquals(1, calls)
+        assertTrue(result is CliExit.BoundaryRejected)
+    }
+
     private val root = canonicalRootFixture(Path.of("/workspace"))
     private val descriptor = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
     private val live =
@@ -69,8 +102,8 @@ class ExistingIdeSemanticReadTest {
 
     @Serializable
     private data class CheckDiagnosticsFixture(
-        @SerialName("relative_path") val relativePath: String,
-        @SerialName("max_diagnostics") val maxDiagnostics: Int,
+        val relativePath: String,
+        val maxDiagnostics: Int,
     )
 
     @Test

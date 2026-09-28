@@ -6,6 +6,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
+import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
 import java.nio.file.Path
@@ -42,7 +43,7 @@ class McpInvestigationToolsTest {
             McpInvestigationTools(root, capabilities, setOf("QUERY_RUN", "SOURCE_READ")) { _, _ ->
                 error("semantic read must not run")
             }
-        val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
+        val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.Complete, exit.document.value)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
         assertEquals("READY", data.getValue("readiness").jsonPrimitive.content)
@@ -73,7 +74,7 @@ class McpInvestigationToolsTest {
             ) { _, _ ->
                 error("semantic read must not run")
             }
-        val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
+        val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.Complete, exit.document.value)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
         assertEquals(canonicalRoot.toString(), data.getValue("workspaceBinding").jsonPrimitive.content)
@@ -97,7 +98,7 @@ class McpInvestigationToolsTest {
             ) { _, _ ->
                 error("semantic read must not run")
             }
-        val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
+        val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.OperationRejected)
         val result = Json.parseToJsonElement(exit.document.value).jsonObject
         assertEquals("HOST_UNAVAILABLE", result.getValue("error").jsonObject.getValue("code").jsonPrimitive.content)

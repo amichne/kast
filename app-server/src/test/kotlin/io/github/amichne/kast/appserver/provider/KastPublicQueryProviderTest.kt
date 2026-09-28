@@ -62,7 +62,7 @@ class KastPublicQueryProviderTest {
     fun `invalid controls and lexical paths fail before semantic invocation`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
-        listOf("provider-unknown-execution", "invalid-directory-1", "provider-missing-controls").forEach { id ->
+        listOf("provider-unknown-execution", "invalid-directory-1").forEach { id ->
             assertTrue(
                 broker.dispatch(request(root, PublicToolIdentity.QUERY_SYMBOLS, publicToolCase(id)))
                     is BrokerDispatch.Rejected
@@ -77,7 +77,7 @@ class KastPublicQueryProviderTest {
                 )
             ) as BrokerDispatch.Rejected
         val guidance = (pathFailure.failure as BrokerFailure.InvalidArguments).guidance.single().value
-        assertTrue(guidance.contains("scope.relative_directory_path"))
+        assertTrue(guidance.contains("scope.relativeDirectoryPath"))
         assertTrue(guidance.contains("workspace-relative"))
         assertFalse(guidance.contains("PRIVATE_SECRET_PATH"))
     }
@@ -88,7 +88,7 @@ class KastPublicQueryProviderTest {
         val invalid =
             listOf(
                 capability(driftSchema = true),
-                schema.replace("\"schemaVersion\":15", "\"schemaVersion\":10"),
+                schema.replace("\"schemaVersion\":16", "\"schemaVersion\":10"),
             )
         invalid.forEach { input ->
             val executor = RecordingExecutor(input)

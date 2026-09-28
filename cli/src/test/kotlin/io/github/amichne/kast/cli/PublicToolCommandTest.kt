@@ -47,6 +47,8 @@ class PublicToolCommandTest {
                         WireDecoding.Decoded(expected.request),
                         CanonicalOperationWireBindings.diagnosticCheck.decodeRequest(request),
                     )
+                is PublicToolCanonical.Change -> error("Approval-aware mutation has no generic CLI route")
+                is PublicToolCanonical.Source -> error("No source example in this query and diagnostics test")
             }
         }
         assertTrue(
@@ -60,6 +62,6 @@ class PublicToolCommandTest {
 
 @Serializable
 private data class DiagnosticFixture(
-    @SerialName("relative_path") val path: String,
-    @SerialName("max_diagnostics") val maximum: Int?,
+    @SerialName("relativePath") val path: String,
+    @SerialName("maxDiagnostics") val maximum: Int?,
 )

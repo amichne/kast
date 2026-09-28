@@ -17,279 +17,108 @@ import io.github.amichne.kast.appserver.core.ToolDescription
 import io.github.amichne.kast.appserver.core.ToolLoading
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.core.ToolPresentation
-import io.github.amichne.kast.appserver.protocol.codex.BrokerFailureDocument
-import io.github.amichne.kast.appserver.query.PublicSourceAnchor
-import io.github.amichne.kast.appserver.query.PublicSourceEntities
-import io.github.amichne.kast.appserver.query.PublicSourceReadIntent
-import io.github.amichne.kast.appserver.query.PublicSourceText
+import io.github.amichne.kast.appserver.query.PublicToolCanonical
+import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.ExactSymbolSelector
-import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
-import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
 import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
-import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
-import io.github.amichne.kast.protocol.contract.SourceReadRequest
-import io.github.amichne.kast.protocol.contract.SourceReadSimpleRequest
-import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceRequestField
-import io.github.amichne.kast.protocol.contract.SourceRequestIngress
 import io.github.amichne.kast.protocol.contract.SourceRequestPath
 import io.github.amichne.kast.protocol.contract.SourceRequestRule
-import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
+import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.encodeToJsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class SourceInputRejectionTest {
-    private val json = Json { encodeDefaults = true }
-
-    private fun publishedSourceRead() =
-        json
-            .parseToJsonElement(
-                Path.of("..", "docs", "public", "reference", "callables.openapi.json").toFile().readText()
-            )
-            .jsonObject
-
-    private fun sourceReadMedia(document: JsonObject) =
-        document
-            .getValue("paths")
-            .jsonObject
-            .getValue("/callables/source_read")
-            .jsonObject
-            .getValue("post")
-            .jsonObject
-            .getValue("requestBody")
-            .jsonObject
-            .getValue("content")
-            .jsonObject
-            .getValue("application/json")
-            .jsonObject
+    private val identity = PublicToolIdentity.READ_SOURCE
+    private val exact = "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+    private val schema =
+        (NetworkntJsonSchemaCompiler.compile(PublicToolContract.parameters(identity)) as Refinement.Refined).value
 
     @Test
-    fun `public source intent lowers exact reference with no entity limit`() {
-        val selector =
-            ProtocolText.parse("exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")
-                .refined()
-        val intent =
-            PublicSourceReadIntent(
-                anchor = PublicSourceAnchor(selector),
-                text = PublicSourceText.Complete(6000),
-                entities = PublicSourceEntities.None,
-            )
-        val raw = Json { classDiscriminator = "type" }.encodeToJsonElement(PublicSourceReadIntent.serializer(), intent)
-        val schema =
-            NetworkntJsonSchemaCompiler.compile(
-                    json.encodeToJsonElement(ObjectSchema.serializer(), ObjectSchema()).jsonObject
-                )
-                .refined()
+    fun `provider admits source through the shared facade binding`() {
+        val raw = PublicToolContract.examples(identity).examples.getValue("exactSymbol").value
+        val validated = schema.admit(raw) as Validation.Validated
         val admitted =
-            admitKastInput(CanonicalOperation.SOURCE_READ, schema.admit(raw).validated()) as Validation.Validated
-        val request = (admitted.value as KastInvocationInput.Source).request
-        assertEquals(SourceReadAnchorDocument.Symbol(selector), request.anchor)
-        assertEquals(SourceRegionSelectionDocument.Anchor, request.region)
-        assertEquals(SourceEntitySelectionDocument.None, request.entities)
-        assertEquals(250, request.entityLimit.value)
-        assertEquals(6000, request.textByteLimit.value)
-        assertEquals(SourceReadFormatDocument.COMPACT, request.format)
-    }
-
-    @Test
-    fun `entity free source request rejects an explicit entity limit at public ingress`() {
-        val selector =
-            (ProtocolText.parse("exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")
-                    as Refinement.Refined)
-                .value
-        val request =
-            SourceReadRequest(
-                anchor = SourceReadAnchorDocument.Symbol(selector),
-                region = SourceRegionSelectionDocument.Anchor,
-                entities = SourceEntitySelectionDocument.None,
-                text = SourceTextRequestDocument.Complete,
-                entityLimit = (SourceEntityLimitDocument.parse(10) as Refinement.Refined).value,
-            )
-        val raw = json.encodeToJsonElement(SourceReadRequest.serializer(), request)
+            admitKastInput(CanonicalOperation.SOURCE_READ, validated.value, AgentToolInputBinding.Facade(identity))
+        assertTrue(admitted is Validation.Validated, admitted.toString())
+        val canonical = ((admitted as Validation.Validated).value as KastInvocationInput.Facade).request.canonical
         assertEquals(
-            Refinement.Rejected(
-                SourceReadFailureDetail.RequestRejected(
-                    SourceRequestField(SourceRequestPath.ENTITY_LIMIT),
-                    SourceRequestRule.ENTITY_LIMIT_NOT_APPLICABLE,
-                )
-            ),
-            SourceRequestIngress.decodePublic(raw, json),
+            exact,
+            ((canonical as PublicToolCanonical.Source).request.anchor as SourceReadAnchorDocument.Symbol)
+                .selector
+                .value,
         )
     }
 
     @Test
-    fun `exact symbol alone reaches typed server admission`() {
-        val symbol = "exact:v5:${"A".repeat(21)}Q"
-        val exact = (ExactSymbolSelector.parse(symbol) as Refinement.Refined).value
-        val input =
-            Json.encodeToJsonElement(
-                SourceReadSimpleRequest.serializer(),
-                SourceReadSimpleRequest(exact),
-            )
-        val schema =
-            NetworkntJsonSchemaCompiler.compile(
-                    json.encodeToJsonElement(ObjectSchema.serializer(), ObjectSchema()).jsonObject
-                )
-                .refined()
-        val admitted = schema.admit(input).validated()
-        val result = admitKastInput(CanonicalOperation.SOURCE_READ, admitted) as Validation.Validated
-        val source = result.value as KastInvocationInput.Source
-        assertEquals(symbol, (source.request.anchor as SourceReadAnchorDocument.Symbol).selector.value)
-        assertEquals(SourceReadFormatDocument.COMPACT, source.request.format)
-    }
-
-    @Test
-    fun `every published source example passes the broker schema and typed admission`() {
-        val document = publishedSourceRead()
-        val sourceSchema =
-            document
-                .getValue("components")
-                .jsonObject
-                .getValue("schemas")
-                .jsonObject
-                .getValue("source_readRequest")
-                .jsonObject
-        val compiled = NetworkntJsonSchemaCompiler.compile(sourceSchema).refined()
-        val examples = sourceReadMedia(document).getValue("examples").jsonObject
-        assertEquals(setOf("exactSymbol", "callableBody"), examples.keys)
-        examples.values.forEach { example ->
-            val value = example.jsonObject.getValue("value")
-            val admitted = compiled.admit(value).validated()
-            val result = admitKastInput(CanonicalOperation.SOURCE_READ, admitted)
-            assertEquals(true, result is Validation.Validated)
-        }
-    }
-
-    @Test
-    fun `every published invalid source example fails schema and server ingress`() {
-        val document = publishedSourceRead()
-        val sourceSchema =
-            document
-                .getValue("components")
-                .jsonObject
-                .getValue("schemas")
-                .jsonObject
-                .getValue("source_readRequest")
-                .jsonObject
-        val compiled = NetworkntJsonSchemaCompiler.compile(sourceSchema).refined()
-        val invalid = sourceReadMedia(document).getValue("x-kast-invalidExamples").jsonObject
-        assertEquals(setOf("unsupportedTextMode", "mixedIdentity"), invalid.keys)
-        invalid.values.forEach { example ->
-            val value = example.jsonObject.getValue("value")
-            assertEquals(true, compiled.admit(value) is Validation.Rejected)
-            assertEquals(true, SourceRequestIngress.decode(value, json) is Refinement.Rejected)
-        }
-    }
-
-    @Test
-    fun `source schema rejection emits finite physical field before runtime startup`(@TempDir directory: Path) =
-        runTest {
-            var starts = 0
-            var invokes = 0
-            val schema =
-                NetworkntJsonSchemaCompiler.compile(
-                        json.encodeToJsonElement(RequiredAnchorSchema.serializer(), RequiredAnchorSchema()).jsonObject
-                    )
-                    .refined()
-            val tool: BrokerTool<Unit, Unit, Unit, Nothing> =
-                BrokerTool(
-                    name = ToolName.admit("source_read").refined(),
-                    description = ToolDescription.admit("Source input rejection fixture").refined(),
-                    loading = ToolLoading.EAGER,
-                    input = JsonDomainDefinition(schema, RefinementDefinition { Validation.validated(Unit) }),
-                    outputSchema = schema,
-                    invoke = { _, _, _ ->
-                        invokes++
-                        ProviderCall.Completed(Unit)
-                    },
-                    encode = { json.encodeToJsonElement(EmptyInput.serializer(), EmptyInput) },
-                    present = { ToolPresentation.text("fixture", false) },
-                    inputRejectionEvidence = ::sourceInputRejectionEvidence,
-                )
-            val namespace = ProviderNamespace.admit("kast").refined()
-            val provider =
-                ProviderRegistration.define(namespace, ProviderVersion.admit("1.0.0").refined(), listOf(tool)) {
-                        starts++
-                        ProviderStartup.Started(Unit)
-                    }
-                    .validated()
-            val broker = Broker.create(listOf(provider), BrokerLimits.defaults()).validated()
-            val request =
-                BrokerDispatchRequest(
-                    ToolAddress(namespace, tool.name),
-                    json.encodeToJsonElement(EmptyInput.serializer(), EmptyInput),
-                    BrokerInvocationContext.admit("thread", "turn", "call", directory.toRealPath()).refined(),
-                )
-            val result = broker.dispatch(request) as BrokerDispatch.Rejected
-            val failure = result.failure as BrokerFailure.SourceInputRejected
-            assertEquals(
-                SourceReadFailureDetail.RequestRejected(
-                    SourceRequestField(SourceRequestPath.ANCHOR),
-                    SourceRequestRule.REQUIRED,
-                ),
-                failure.cause,
-            )
-            assertEquals(0, starts)
-            assertEquals(0, invokes)
-            assertSourceEnvelope(failure)
-        }
-
-    @Test
-    fun `schema admitted source syntax is refined before invocation`() {
-        val input = json.encodeToJsonElement(MalformedSource.serializer(), MalformedSource())
-        val schema =
-            NetworkntJsonSchemaCompiler.compile(
-                    json.encodeToJsonElement(ObjectSchema.serializer(), ObjectSchema()).jsonObject
-                )
-                .refined()
-        val admitted = schema.admit(input).validated()
-        val rejection = admitKastInput(CanonicalOperation.SOURCE_READ, admitted) as Validation.Rejected
-        val reason = (rejection.failures.first() as KastToolInputFailure.Source).reason
+    fun `retired source syntax gives finite rejection evidence`() {
+        val raw = PublicToolContract.examples(identity).invalidExamples.getValue("retiredSymbol").value
+        assertTrue(schema.admit(raw) is Validation.Rejected)
         assertEquals(
             SourceReadFailureDetail.RequestRejected(
-                SourceRequestField(SourceRequestPath.ANCHOR_TYPE),
-                SourceRequestRule.REQUIRED,
+                SourceRequestField(SourceRequestPath.DOCUMENT),
+                SourceRequestRule.INVALID_JSON,
             ),
-            reason,
+            sourceInputRejectionEvidence(raw).cause,
         )
     }
 
-    private fun assertSourceEnvelope(failure: BrokerFailure.SourceInputRejected) {
-        val envelope =
-            json.encodeToJsonElement(BrokerFailureDocument.serializer(), BrokerFailureDocument.from(failure)).jsonObject
-        assertEquals("SOURCE_INPUT_REJECTED", envelope.getValue("failure").jsonPrimitive.content)
-        assertEquals(
-            "request-rejected",
-            envelope.getValue("source").jsonObject.getValue("type").jsonPrimitive.content,
-        )
+    @Test
+    fun `source schema rejection does not start the runtime`(@TempDir directory: Path) = runTest {
+        var starts = 0
+        var invokes = 0
+        val tool: BrokerTool<Unit, Unit, Unit, Nothing> =
+            BrokerTool(
+                name = (ToolName.admit("read_source") as Refinement.Refined).value,
+                description = (ToolDescription.admit("Source input rejection fixture") as Refinement.Refined).value,
+                loading = ToolLoading.EAGER,
+                input = JsonDomainDefinition(schema, RefinementDefinition { Validation.validated(Unit) }),
+                outputSchema = schema,
+                invoke = { _, _, _ ->
+                    invokes++
+                    ProviderCall.Completed(Unit)
+                },
+                encode = { Json.encodeToJsonElement(EmptyOutput()) },
+                present = { ToolPresentation.text("fixture", false) },
+                inputRejectionEvidence = ::sourceInputRejectionEvidence,
+            )
+        val namespace = (ProviderNamespace.admit("kast") as Refinement.Refined).value
+        val provider =
+            ProviderRegistration.define(
+                namespace,
+                (ProviderVersion.admit("1.0.0") as Refinement.Refined).value,
+                listOf(tool),
+            ) {
+                starts++
+                ProviderStartup.Started(Unit)
+            } as Validation.Validated
+        val broker = (Broker.create(listOf(provider.value), BrokerLimits.defaults()) as Validation.Validated).value
+        val request =
+            BrokerDispatchRequest(
+                ToolAddress(namespace, tool.name),
+                PublicToolContract.examples(identity).invalidExamples.getValue("retiredSymbol").value,
+                (BrokerInvocationContext.admit("thread", "turn", "call", directory.toRealPath()) as Refinement.Refined)
+                    .value,
+            )
+        val result = broker.dispatch(request) as BrokerDispatch.Rejected
+        assertTrue(result.failure is BrokerFailure.SourceInputRejected)
+        assertEquals(0, starts)
+        assertEquals(0, invokes)
     }
-
-    @Serializable private data object EmptyInput
-
-    @Serializable private data class MalformedSource(val anchor: EmptyInput = EmptyInput)
-
-    @Serializable
-    private data class RequiredAnchorSchema(val type: String = "object", val required: List<String> = listOf("anchor"))
-
-    @Serializable private data class ObjectSchema(val type: String = "object")
-
-    private fun <T, F> Refinement<T, F>.refined(): T = (this as Refinement.Refined).value
-
-    private fun <T, F> Validation<T, F>.validated(): T = (this as Validation.Validated).value
 }
+
+@Serializable private class EmptyOutput

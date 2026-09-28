@@ -3,12 +3,16 @@ package io.github.amichne.kast.cli.rpc
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
+import io.github.amichne.kast.cli.direct.directSupportTools
+import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.cli.mcp.KastMcpServer
-import io.github.amichne.kast.cli.mcp.McpSupplementalTool
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
@@ -19,6 +23,7 @@ import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -35,22 +40,25 @@ class KastToolRpcBridgeTest {
     @Test
     fun `MCP and RPC catalogs preserve the same installed input schemas`() {
         val installed = installedHostedBootstrap().tools
-        val readTools = installed.filter { it.effect == "none" || it.effect == "intellij_read" }
-        val change = installed.single { it.name == "change" }
+        val publicTools = installed.filter {
+            it.name in setOf("query_symbols", "read_source", "check_diagnostics", "add_declaration")
+        }
         val session =
             KastDirectToolSession(
-                catalog = readTools,
-                supplemental =
-                    listOf(
-                        McpSupplementalTool("change", change.description, change.inputSchema, readOnly = false) {
-                            error("no call expected")
-                        }
-                    ),
+                catalog = publicTools.map { it.directToolDocument() },
                 root = { CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND) },
                 start = { error("no preparation expected") },
-                invokeCanonical = { _, _ -> error("no call expected") },
+                invokePublic = { error("no call expected") },
             )
         val rpc = (KastToolRpcBridge(session).catalog() as ToolRpcReply.Catalog).catalog.tools.associateBy { it.name }
+        val mcp = mcpCatalog(session)
+        assertEquals(rpc.keys, mcp.keys)
+        rpc.forEach { (name, tool) ->
+            assertEquals(tool.inputSchema, mcp.getValue(name).jsonObject.getValue("inputSchema"), name)
+        }
+    }
+
+    private fun mcpCatalog(session: KastDirectToolSession): Map<String, JsonElement> {
         val output = ByteArrayOutputStream()
         val requests =
             listOf(TestCatalogRequest(1, "initialize"), TestCatalogRequest(2, "tools/list")).joinToString(
@@ -61,80 +69,78 @@ class KastToolRpcBridgeTest {
             }
         KastMcpServer(
                 catalog = session.catalog,
-                supplemental = session.supplemental,
-                invoke = session.invokeCanonical,
+                invoke = session::invoke,
                 root = session.root,
                 diagnostic = PrintStream(ByteArrayOutputStream()),
             )
             .run(BufferedInputStream(ByteArrayInputStream(requests.toByteArray())), PrintStream(output))
-        val mcp =
-            Json.parseToJsonElement(output.toString(Charsets.UTF_8).lineSequence().last { it.isNotBlank() })
-                .jsonObject
-                .getValue("result")
-                .jsonObject
-                .getValue("tools")
-                .jsonArray
-                .associateBy { it.jsonObject.getValue("name").jsonPrimitive.content }
-        assertEquals(rpc.keys, mcp.keys)
-        rpc.forEach { (name, tool) ->
-            assertEquals(tool.inputSchema, mcp.getValue(name).jsonObject.getValue("inputSchema"), name)
-        }
+        return Json.parseToJsonElement(output.toString(Charsets.UTF_8).lineSequence().last { it.isNotBlank() })
+            .jsonObject
+            .getValue("result")
+            .jsonObject
+            .getValue("tools")
+            .jsonArray
+            .associateBy { it.jsonObject.getValue("name").jsonPrimitive.content }
     }
 
     @Test
     fun `catalog exposes direct tools and invokes one native read without an MCP exchange`() {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val read = installedHostedBootstrap().tools.single { it.name == "query_symbols" }
-        val schema = Json.encodeToJsonElement(TestInputSchema())
+        val change = installedHostedBootstrap().tools.single { it.name == "add_declaration" }
         val document = CanonicalJsonDocument.generated(TestResult.serializer()).create(TestResult())
         var preparationCount = 0
         var invokedName: String? = null
         val session =
             KastDirectToolSession(
-                catalog = listOf(read),
-                supplemental =
-                    listOf(
-                        McpSupplementalTool("health_check", "Observe readiness", schema) { CliExit.Complete(document) },
-                        McpSupplementalTool("change", "Change source", schema, readOnly = false) {
-                            CliExit.OperationRejected(document)
-                        },
-                    ),
+                catalog =
+                    listOf(read.directToolDocument(), change.directToolDocument()) +
+                        directSupportTools().filter { it.name == "health_check" },
                 root = { FilesystemCanonicalRootDiscovery.discover(temporary) },
                 start = {
                     preparationCount++
                     Refinement.Refined(Unit)
                 },
-                invokeCanonical = { name, _ ->
-                    invokedName = name
+                invokeSupport = { identity, _ ->
+                    assertEquals(SupportToolIdentity.HEALTH_CHECK, identity)
                     CliExit.Complete(document)
+                },
+                invokePublic = { request ->
+                    invokedName = request.identity.toolName
+                    if (request.identity == PublicToolIdentity.ADD_DECLARATION) CliExit.OperationRejected(document)
+                    else CliExit.Complete(document)
                 },
             )
         val bridge = KastToolRpcBridge(session)
         val catalog = assertInstanceOf(ToolRpcReply.Catalog::class.java, bridge.catalog()).catalog
-        assertEquals(1, catalog.schemaVersion)
-        assertEquals(listOf("change", "health_check", "query_symbols"), catalog.tools.map { it.name })
+        assertEquals(2, catalog.schemaVersion)
+        assertEquals(listOf("add_declaration", "health_check", "query_symbols"), catalog.tools.map { it.name })
         assertEquals(
             listOf(ToolRpcToolEffect.WRITE, ToolRpcToolEffect.READ, ToolRpcToolEffect.READ),
             catalog.tools.map { it.effect },
         )
-        val emptyRequest = Json.encodeToString(TestEmptyRequest())
-        val complete = assertInstanceOf(ToolRpcReply.Complete::class.java, bridge.call("query_symbols", emptyRequest))
+        val queryRequest = publicExample(PublicToolIdentity.QUERY_SYMBOLS, "runByName")
+        val complete = assertInstanceOf(ToolRpcReply.Complete::class.java, bridge.call("query_symbols", queryRequest))
         assertEquals("complete", complete.document.jsonObject.getValue("status").jsonPrimitive.content)
         assertEquals("query_symbols", invokedName)
         assertEquals(1, preparationCount)
-        assertInstanceOf(ToolRpcReply.RejectedDocument::class.java, bridge.call("change", emptyRequest))
+        val changeRequest = publicExample(PublicToolIdentity.ADD_DECLARATION, "exactTarget")
+        assertInstanceOf(ToolRpcReply.RejectedDocument::class.java, bridge.call("add_declaration", changeRequest))
         assertEquals(2, preparationCount)
     }
+
+    private fun publicExample(identity: PublicToolIdentity, name: String): String =
+        PublicToolContract.examples(identity).examples.getValue(name).value.toString()
 
     @Test
     fun `unknown and malformed calls reject before native preparation`() {
         val session =
             KastDirectToolSession(
-                catalog = listOf(installedHostedBootstrap().tools.single { it.name == "query_symbols" }),
-                supplemental = emptyList(),
+                catalog =
+                    listOf(installedHostedBootstrap().tools.single { it.name == "query_symbols" }.directToolDocument()),
                 root = { error("root must not be inspected") },
                 start = { error("preparation must not start") },
-                invokeCanonical = { _, _ -> error("operation must not run") },
+                invokePublic = { error("operation must not run") },
             )
         val bridge = KastToolRpcBridge(session)
         assertEquals(
@@ -144,6 +150,10 @@ class KastToolRpcBridgeTest {
         assertEquals(
             ToolRpcFailure.INVALID_ARGUMENTS,
             (bridge.call("query_symbols", "[") as ToolRpcReply.Rejected).failure,
+        )
+        assertEquals(
+            ToolRpcFailure.INVALID_ARGUMENTS,
+            (bridge.call("query_symbols", Json.encodeToString(TestEmptyRequest())) as ToolRpcReply.Rejected).failure,
         )
     }
 
@@ -164,7 +174,7 @@ class KastToolRpcBridgeTest {
             assertEquals(expectedType, encoded.getValue("type").jsonPrimitive.content)
             if (reply is ToolRpcReply.Catalog) {
                 val catalog = encoded.getValue("catalog").jsonObject
-                assertEquals("1", catalog.getValue("schemaVersion").jsonPrimitive.content)
+                assertEquals("2", catalog.getValue("schemaVersion").jsonPrimitive.content)
                 assertEquals(0, catalog.getValue("tools").jsonArray.size)
             } else if (reply is ToolRpcReply.Rejected) {
                 assertEquals("OUT_OF_SCOPE", encoded.getValue("failure").jsonPrimitive.content)
@@ -180,8 +190,6 @@ class KastToolRpcBridgeTest {
         }
     }
 }
-
-@Serializable private data class TestInputSchema(val type: String = "object")
 
 @Serializable private data class TestCatalogRequest(val id: Int, val method: String, val jsonrpc: String = "2.0")
 

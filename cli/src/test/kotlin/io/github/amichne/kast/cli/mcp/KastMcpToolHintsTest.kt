@@ -2,7 +2,8 @@ package io.github.amichne.kast.cli.mcp
 
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
-import io.github.amichne.kast.cli.InstalledHostedToolDocument
+import io.github.amichne.kast.cli.direct.DirectToolDocument
+import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.installedHostedBootstrap
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
@@ -23,15 +24,15 @@ class KastMcpToolHintsTest {
             setOf(
                 "check_diagnostics",
                 "query_symbols",
-                "source_read",
+                "read_source",
             )
         val installed = installedHostedBootstrap().tools
         val reads = installed.filter { it.name in readNames }
         assertEquals(readNames, reads.mapTo(linkedSetOf()) { it.name })
-        val change = installed.single { it.name == "change" }
-        val tools = listedTools(reads, change)
+        val change = installed.single { it.name == "add_declaration" }
+        val tools = listedTools((reads + change).map { it.directToolDocument() })
         assertEquals(
-            readNames + "change",
+            readNames + "add_declaration",
             tools.mapTo(linkedSetOf()) { it.jsonObject.getValue("name").jsonPrimitive.content },
         )
         for (tool in tools) {
@@ -45,22 +46,12 @@ class KastMcpToolHintsTest {
         }
     }
 
-    private fun listedTools(reads: List<InstalledHostedToolDocument>, change: InstalledHostedToolDocument): JsonArray {
+    private fun listedTools(catalog: List<DirectToolDocument>): JsonArray {
         val output = ByteArrayOutputStream()
         KastMcpServer(
-                catalog = reads,
+                catalog = catalog,
                 invoke = { _, _ -> error("no invocation expected") },
                 root = { CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND) },
-                supplemental =
-                    listOf(
-                        McpSupplementalTool(
-                            name = "change",
-                            description = change.description,
-                            inputSchema = change.inputSchema,
-                            readOnly = false,
-                            invoke = { error("no invocation expected") },
-                        )
-                    ),
                 diagnostic = PrintStream(ByteArrayOutputStream()),
             )
             .run(

@@ -20,6 +20,8 @@ object BrokerOperationalLimits {
     const val maximumCatalogBytes: Int = 1_024 * 1_024
     const val maximumToolArgumentBytes: Int = 64 * 1_024
     const val maximumToolResultBytes: Int = 1_024 * 1_024
+    const val toolRpcEnvelopeAllowanceBytes: Int = 4_096
+    const val maximumToolRpcResponseBytes: Int = maximumToolResultBytes + toolRpcEnvelopeAllowanceBytes
     const val defaultWorkspaceQueued: Int = 32
     const val maximumWorkspaceQueued: Int = 4_096
     const val maximumWorkspaceEvents: Int = 128

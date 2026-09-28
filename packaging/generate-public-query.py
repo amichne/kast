@@ -56,6 +56,29 @@ def enum_entry(value: str) -> str:
 
 def validate_authority(authority: dict) -> None:
     """Keep one discriminator and enum convention in the authored contract."""
+    if not isinstance(authority.get('contractVersion'), int) or authority['contractVersion'] < 1:
+        raise ValueError('Public tool contract requires a positive version')
+    definitions = authority['$defs']
+    support = authority.get('supportTools', [])
+    names = [tool['name'] for tool in [*authority['tools'], *support]]
+    if len(names) != len(set(names)):
+        raise ValueError('Duplicate public tool identity')
+    for tool in authority['tools']:
+        if tool['operation'] not in {'query.run', 'source.read', 'diagnostic.check', 'change'}:
+            raise ValueError(f'Unbound advertised tool: {tool["name"]}')
+    support_bindings = {
+        'workspace_lifecycle': ('WorkspaceLifecycleRequest', ['APP_SERVER']),
+        'health_check': ('McpHealthRequest', ['MCP', 'RPC']),
+        'validate_workspace': ('McpValidationRequest', ['MCP', 'RPC']),
+    }
+    if {tool['name'] for tool in support} != set(support_bindings):
+        raise ValueError('Support tools must have complete, known bindings')
+    for tool in support:
+        if (tool.get('binding'), tool.get('hosts')) != support_bindings[tool['name']]:
+            raise ValueError(f'Unbound support tool: {tool["name"]}')
+        if not tool.get('description'):
+            raise ValueError(f'Support tool lacks a description: {tool["name"]}')
+
     def visit(node: object, path: str) -> None:
         if isinstance(node, list):
             for index, child in enumerate(node):
@@ -63,6 +86,10 @@ def validate_authority(authority: dict) -> None:
             return
         if not isinstance(node, dict):
             return
+        if '$ref' in node:
+            reference = node['$ref']
+            if not reference.startswith('#/$defs/') or reference[8:] not in definitions:
+                raise ValueError(f'{path}: unresolved public schema reference {reference}')
         if 'enum' in node:
             values = node['enum']
             if not values or any(value is not None and
@@ -71,14 +98,40 @@ def validate_authority(authority: dict) -> None:
                 raise ValueError(f'{path}: enum values must be CAPS_CASE')
             if len(values) == 1 and ('default' not in node or node['default'] != values[0]):
                 raise ValueError(f'{path}: singleton enum requires its value as default')
-        if node.get('type') == 'object' and 'properties' in node:
+        if tagged_type(node, 'object') and 'properties' in node:
             properties = node['properties']
+            if any(nullable(properties[name]) for name in node.get('required', [])):
+                raise ValueError(f'{path}: required nullable field conflicts with default normalization')
             if 'action' in properties:
                 raise ValueError(f'{path}: discriminator must be named type')
             if any(len(prop.get('enum', [])) == 1 for prop in properties.values()):
                 tag = properties.get('type')
                 if tag is None or len(tag.get('enum', [])) != 1 or 'type' not in node.get('required', []):
                     raise ValueError(f'{path}: tagged object requires a required type discriminator')
+            for name, property_schema in properties.items():
+                control = name.startswith(('max', 'maximum', 'timeout')) or name in {
+                    'steps', 'limit', 'beforeLines', 'afterLines'
+                }
+                if not control:
+                    continue
+                if '$ref' in property_schema:
+                    reference = property_schema['$ref']
+                    if not reference.startswith('#/$defs/') or reference[8:] not in definitions:
+                        raise ValueError(f'{path}.{name}: unresolved public schema reference {reference}')
+                    resolved = definitions[reference[8:]]
+                else:
+                    resolved = property_schema
+                if name in node.get('required', []):
+                    raise ValueError(f'{path}.{name}: defaultable control must permit omission')
+                if 'default' not in resolved and node.get('x-default-owner') != 'ExecutionBudgetDocument.requested':
+                    raise ValueError(f'{path}.{name}: missing public control default')
+                if 'default' in resolved:
+                    value = resolved['default']
+                    if isinstance(value, bool) or isinstance(value, int):
+                        if isinstance(value, int) and (value < resolved.get('minimum', value) or value > resolved.get('maximum', value)):
+                            raise ValueError(f'{path}.{name}: invalid numeric default')
+                    elif value != []:
+                        raise ValueError(f'{path}.{name}: invalid control default')
         for key, child in node.items():
             visit(child, f'{path}.{key}')
     visit(authority['$defs'], '$defs')
@@ -92,7 +145,7 @@ def project(schema: dict, *, strict: bool) -> dict:
     length/uniqueness keywords not listed in the targeted supported keyword set.
     The full admission schema and Kotlin canonical admission still enforce them.
     """
-    drop = {'$schema', '$id', 'discriminator', 'examples', 'title', 'x-kotlin-type', 'x-kotlin-variants'}
+    drop = {'$schema', '$id', 'discriminator', 'examples', 'title', 'x-kotlin-type', 'x-default-owner'}
     if strict:
         drop |= {'default', 'uniqueItems', 'minLength', 'maxLength'}
     # Traverse schema positions only; property names are data, never keywords.
@@ -105,6 +158,19 @@ def project(schema: dict, *, strict: bool) -> dict:
     for keyword in ('anyOf',):
         if keyword in result:
             result[keyword] = [project(value, strict=strict) for value in result[keyword]]
+    if tagged_type(result, 'object') and 'properties' in result:
+        originally_required = set(schema.get('required', []))
+        for name, property_schema in list(result['properties'].items()):
+            if name in originally_required or nullable(property_schema):
+                continue
+            # Optional direct controls may be omitted. Strict providers require all
+            # object keys, so their null spelling must have the same admission meaning.
+            if 'type' in property_schema and isinstance(property_schema['type'], str):
+                property_schema['type'] = [property_schema['type'], 'null']
+                if 'enum' in property_schema:
+                    property_schema['enum'] = [*property_schema['enum'], None]
+            else:
+                result['properties'][name] = {'anyOf': [property_schema, {'type': 'null'}]}
     if strict and tagged_type(result, 'object'):
         result['required'] = list(result['properties'])
     return result
@@ -140,17 +206,17 @@ def render_tools(authority: dict) -> dict[Path, str]:
     definitions = copy.deepcopy(authority['$defs'])
     roots = {''.join(part.title() for part in tool['name'].split('_')): tool['schema'] for tool in authority['tools']}
     enums = {}
-    unions = {'Scope': ['DirectoryScope', 'PackageScope'],
-              'Source': ['SearchSource', 'AllSource', 'LocationSource', 'ReferenceSource', 'ResultSource'],
-              'Output': ['SymbolsOutput', 'OccurrencesOutput', 'TraversalRecordsOutput', 'BindingRowsOutput'],
-              'ReadResultOutput': ['SymbolsOutput', 'BindingRowsOutput'],
-              'Predicate': ['VisibilityPredicate', 'PrimitivePredicate'],
-              'WalkStrategy': ['BreadthFirstStrategy', 'BoundedFanOutStrategy'],
-              'CompositionInput': ['ReferenceSource', 'ResultSource'],
-              'RetainedInput': ['ResultSource'],
-              'JoinMode': ['InnerJoinMode', 'SemiJoinMode', 'AntiJoinMode'],
-              'Step': ['Where', 'ExpandRelation', 'Walk', 'DistinctSymbols', 'ProjectBinding', 'Concat', 'Intersect', 'Union', 'Difference', 'Join'],
-              'Action': ['RunAction', 'ResumeAction', 'ReadResultAction']}
+    unions = {}
+    for name, schema in definitions.items():
+        if 'anyOf' not in schema:
+            continue
+        variants = [branch['$ref'].split('/')[-1] for branch in schema['anyOf'] if '$ref' in branch]
+        if not variants or any(branch != {'type': 'null'} and '$ref' not in branch
+                               for branch in schema['anyOf']):
+            raise ValueError(f'Unsupported public union: {name}')
+        if len(variants) != len(set(variants)) or any(variant not in definitions for variant in variants):
+            raise ValueError(f'Invalid public union membership: {name}')
+        unions[name] = variants
     objects = {**{key: value for key, value in definitions.items()
                   if 'x-kotlin-type' not in value and key not in unions}, **roots}
     parents = {}
@@ -166,11 +232,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
             return 'PublicTool' + key + ('?' if nullable(external) else '')
         if 'anyOf' in spec:
             branches = [s['$ref'].split('/')[-1] for s in spec['anyOf'] if '$ref' in s]
+            if len(branches) == 1 and len(spec['anyOf']) == 2 and nullable(spec):
+                return typ({'$ref': '#/$defs/' + branches[0]}, prop) + '?'
             union = next(key for key, values in unions.items() if values == branches)
             return 'PublicTool' + union + ('?' if any(s.get('type') == 'null' for s in spec['anyOf']) else '')
         nullable_suffix = '?' if nullable(spec) else ''
         if 'enum' in spec:
-            key = ''.join(part.title() for part in prop.split('_'))
+            key = prop[0].upper() + prop[1:]
             values = [item for item in spec['enum'] if item is not None]
             if key in enums and enums[key] != values:
                 raise ValueError(f'Conflicting facade enum {key}')
@@ -178,6 +246,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
             return 'PublicTool' + key + nullable_suffix
         if tagged_type(spec, 'array'):
             return 'BoundedProtocolList<' + typ(spec['items'], prop) + '>' + nullable_suffix
+        if tagged_type(spec, 'integer') and spec.get('maximum', 0) > 2147483647:
+            return 'Long' + nullable_suffix
         for kind, kotlin in [('string', 'ProtocolText'), ('boolean', 'Boolean'), ('integer', 'Int')]:
             if tagged_type(spec, kind): return kotlin + nullable_suffix
         raise ValueError(f'Unsupported facade schema {spec}')
@@ -191,7 +261,9 @@ def render_tools(authority: dict) -> dict[Path, str]:
         inherited = parents.get(key, [])
         discriminator = 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
-        suffix = ' : ' + ', '.join('PublicTool' + parent for parent in inherited) if inherited else ' : PublicToolDocument'
+        suffix = (' : ' + ', '.join('PublicTool' + parent for parent in inherited)) if inherited else (
+            ' : PublicToolDocument' if key in roots else ''
+        )
         annotation = '@Serializable\n'
         if inherited:
             annotation += '@SerialName(' + json.dumps(spec['properties'][discriminator]['enum'][0]) + ')\n'
@@ -202,18 +274,26 @@ def render_tools(authority: dict) -> dict[Path, str]:
             for prop, value in props:
                 resolved = definitions[value['$ref'].split('/')[-1]] if '$ref' in value else value
                 default = ''
+                field_type = typ(value, prop)
                 if prop not in spec.get('required', []):
-                    if typ(value, prop).endswith('?'):
+                    if field_type.endswith('?'):
                         default = ' = null'
                     elif isinstance(resolved.get('default'), bool):
-                        default = ' = ' + str(resolved['default']).lower()
+                        field_type += '?'
+                        default = ' = null'
+                    elif isinstance(resolved.get('default'), int):
+                        if resolved.get('x-kotlin-type') == 'ProtocolCount' or field_type == 'Int':
+                            field_type += '?'
+                            default = ' = null'
+                        else:
+                            raise ValueError(f'Unsupported numeric default: {key}.{prop}')
                     else:
                         raise ValueError(f'Optional facade field lacks a supported default: {key}.{prop}')
                 parameter = prop
                 if 'x-kotlin-type' in resolved and '_' in prop:
                     parameter = prop.split('_')[0] + ''.join(part.title() for part in prop.split('_')[1:])
                     body.append(f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')
-                body.append(f'    val {parameter}: {typ(value, prop)}{default},\n')
+                body.append(f'    val {parameter}: {field_type}{default},\n')
             body.append(')' + suffix + '\n\n')
     for key, values in enums.items():
         lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')
@@ -224,13 +304,18 @@ def render_tools(authority: dict) -> dict[Path, str]:
         lines.append(f'@Serializable\ninternal sealed interface PublicTool{union}\n\n')
     lines += body
     # Defaults are data in the authority and are compiled here, never copied into a provider.
-    defaults = authority['defaults']
+    query_tool = next(tool for tool in authority['tools'] if tool['name'] == 'query_symbols')
+    defaults = query_tool['defaults']
     def text_value(value): return 'toolDefault(ProtocolText.parse(' + json.dumps(value) + '))'
     def bounded(values): return 'toolDefault(BoundedProtocolList.create(listOf(' + ', '.join(values) + ')))'
     lines.append('internal object PublicToolDefaults {\n')
-    lines.append('    val nameMatch = PublicToolNameMatch.' + enum_entry(defaults['name_match']) + '\n')
-    lines.append('    val sourceSets = ' + bounded([text_value(s) for s in defaults['source_set_names']]) + '\n')
-    lines.append('    val declarationKinds = ' + bounded(['PublicToolDeclarationKinds.' + enum_entry(s) for s in defaults['declaration_kinds']]) + '\n')
+    lines.append('    val nameMatch = PublicToolNameMatch.' + enum_entry(defaults['nameMatch']) + '\n')
+    lines.append('    const val includeSubdirectories = ' + str(definitions['DirectoryScope']['properties']['includeSubdirectories']['default']).lower() + '\n')
+    lines.append('    const val includeSubpackages = ' + str(definitions['PackageScope']['properties']['includeSubpackages']['default']).lower() + '\n')
+    lines.append('    val walkDepth = toolDefault(ProtocolCount.parse(' + str(definitions['WalkDepth']['default']) + '))\n')
+    lines.append('    const val maximumEdgesPerNode = ' + str(definitions['BoundedFanOutStrategy']['properties']['maximumEdgesPerNode']['default']) + '\n')
+    lines.append('    val sourceSets = ' + bounded([text_value(s) for s in defaults['sourceSetNames']]) + '\n')
+    lines.append('    val declarationKinds = ' + bounded(['PublicToolDeclarationKinds.' + enum_entry(s) for s in defaults['declarationKinds']]) + '\n')
     output = defaults['output']
     if output['type'] != 'SYMBOLS': raise ValueError('Only symbols default output is supported')
     lines.append('    val output: QueryOutputDocument.Symbols =\n')
@@ -244,13 +329,19 @@ def render_tools(authority: dict) -> dict[Path, str]:
     lines.append('                )\n')
     lines.append('            )\n')
     lines.append('        )\n')
+    if definitions['RunAction']['properties']['steps'].get('default') != []:
+        raise ValueError('Only empty default transformations are supported')
     lines.append('    val steps: BoundedProtocolList<PublicToolStep> = toolDefault(BoundedProtocolList.create(emptyList()))\n')
-    if defaults['steps'] != []: raise ValueError('Only empty default transformations are supported')
-    lines.append(f'    const val maxDiagnostics = {defaults["max_diagnostics"]}\n')
+    diagnostic = next(tool for tool in authority['tools'] if tool['name'] == 'check_diagnostics')
+    lines.append(f'    const val maxDiagnostics = {diagnostic["schema"]["properties"]["maxDiagnostics"]["default"]}\n')
+    if definitions['ExecutionBudget'].get('default') != {} or \
+            definitions['ExecutionBudget'].get('x-default-owner') != 'ExecutionBudgetDocument.requested':
+        raise ValueError('Execution budget must use the typed policy default owner')
+    lines.append('    val executionBudget = PublicToolExecutionBudget()\n')
     scope = defaults['scope']
     if scope['type'] != 'DIRECTORY': raise ValueError('Only directory default scope is supported')
-    if scope['source_set_names'] != defaults['source_set_names']: raise ValueError('Default scope source sets disagree')
-    lines.append('    val scope: PublicToolScope = PublicToolDirectoryScope(' + text_value(scope['relative_directory_path']) + ', ' + str(scope['include_subdirectories']).lower() + ', sourceSets)\n}\n\n')
+    if scope['sourceSetNames'] != defaults['sourceSetNames']: raise ValueError('Default scope source sets disagree')
+    lines.append('    val scope: PublicToolScope = PublicToolDirectoryScope(' + text_value(scope['relativeDirectoryPath']) + ', ' + str(scope['includeSubdirectories']).lower() + ', sourceSets)\n}\n\n')
     lines.append('internal fun decodePublicTool(identity: PublicToolIdentity, raw: JsonElement, json: Json): PublicToolDocument = when (identity) {\n')
     for tool, key in zip(authority['tools'], roots):
         lines.append(f'    PublicToolIdentity.{enum_entry(tool["name"])} -> json.decodeFromJsonElement(PublicTool{key}.serializer(), raw)\n')
@@ -258,10 +349,48 @@ def render_tools(authority: dict) -> dict[Path, str]:
     for key in roots:
         lines.append(f'    is PublicTool{key} -> json.encodeToJsonElement(PublicTool{key}.serializer(), value)\n')
     lines.append('}\n\nprivate fun <T> toolDefault(value: Refinement<T, *>): T = when (value) {\n    is Refinement.Refined -> value.value\n    is Refinement.Rejected -> error("Invalid authored public tool default")\n}\n')
-    outputs = {KOTLIN / 'PublicToolDocuments.kt': ''.join(lines)}
+    document_source = ''.join(lines)
+    source_blocks = []
+    source_names = {name for name in [*enums, *unions, *objects]
+                    if name.startswith(('SourceText', 'SourceFilter', 'SourceEntities', 'SourcePage'))
+                    or name in {'ReadSource', 'Region', 'Containment', 'Kinds', 'Visibilities'}}
+    for name in sorted(source_names):
+        pattern = re.compile(r'@Serializable\n(?:@SerialName\([^\n]+\)\n)?internal '
+                             r'(?:enum class|data class|data object|sealed interface) PublicTool' + name +
+                             r'\b[\s\S]*?(?=\n@Serializable|\ninternal object PublicToolDefaults|\ninternal fun decodePublicTool)')
+        match = pattern.search(document_source)
+        if not match:
+            raise ValueError(f'Generated source document declaration missing: {name}')
+        source_blocks.append(match.group(0))
+        document_source = document_source[:match.start()] + document_source[match.end():]
+    source_header = '''// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@file:Suppress("ConstructorParameterNaming")
+
+package io.github.amichne.kast.appserver.query
+
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+'''
+    def format_source_block(block: str) -> str:
+        block = block.strip()
+        block = re.sub(r'@Serializable\ninternal sealed interface', '@Serializable internal sealed interface', block)
+        block = re.sub(r'@Serializable\n@SerialName\(([^\n]+)\)\ninternal data object',
+                       r'@Serializable @SerialName(\1) internal data object', block)
+        block = re.sub(r'internal data class (PublicTool\w+)\(\n    (val [^\n]+),\n\) (: \w+)',
+                       r'internal data class \1(\2) \3', block)
+        return block + '\n\n'
+    outputs = {
+        KOTLIN / 'PublicToolDocuments.kt': document_source,
+        KOTLIN / 'PublicToolSourceDocuments.kt': source_header + ''.join(map(format_source_block, source_blocks)).rstrip() + '\n',
+    }
     identity_lines = ['// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
                       'package io.github.amichne.kast.protocol.registry\n\n',
                       'import io.github.amichne.kast.protocol.contract.CanonicalOperation\n\n',
+                      f'const val PUBLIC_TOOL_CONTRACT_VERSION = {authority["contractVersion"]}\n',
                       'const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = ' + json.dumps(authority['namespaceDescription']) + '\n\n',
                       '/** Closed presentation identities; canonical operations retain effect and budget ownership. */\n',
                       'enum class PublicToolIdentity(\n'
@@ -270,7 +399,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
                       '    val description: String,\n'
                       '    val loading: HostedToolLoading,\n'
                       ') {\n']
-    operations = {'query.run': 'QUERY_RUN', 'diagnostic.check': 'DIAGNOSTIC_CHECK'}
+    operations = {'query.run': 'QUERY_RUN', 'source.read': 'SOURCE_READ', 'diagnostic.check': 'DIAGNOSTIC_CHECK', 'change': 'CHANGE'}
     for tool in authority['tools']:
         description = ' +\n            '.join(json.dumps(tool['description'][offset:offset + 90])
                                              for offset in range(0, len(tool['description']), 90))
@@ -282,6 +411,31 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
     identity_lines.append('}\n')
     outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt'] = ''.join(identity_lines)
+    support_lines = [
+        '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
+        'package io.github.amichne.kast.protocol.registry\n\n',
+        'enum class SupportToolHost {\n    APP_SERVER,\n    MCP,\n    RPC,\n}\n\n',
+        'enum class SupportToolIdentity(\n'
+        '    val toolName: String,\n'
+        '    val description: String,\n'
+        '    val binding: String,\n'
+        '    val hosts: Set<SupportToolHost>,\n'
+        ') {\n',
+    ]
+    for tool in authority['supportTools']:
+        description = ' +\n            '.join(json.dumps(tool['description'][offset:offset + 90])
+                                           for offset in range(0, len(tool['description']), 90))
+        hosts = ', '.join('SupportToolHost.' + host for host in tool['hosts'])
+        support_lines.append(
+            f'    {enum_entry(tool["name"])}(\n'
+            f'        {json.dumps(tool["name"])},\n'
+            f'        {description},\n'
+            f'        {json.dumps(tool["binding"])},\n'
+            f'        setOf({hosts}),\n'
+            '    ),\n'
+        )
+    support_lines.append('}\n')
+    outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/SupportToolIdentity.kt'] = ''.join(support_lines)
     registrations = []
     responses = []
     for tool in authority['tools']:
@@ -290,6 +444,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
         strict = project(schema, strict=True)
         outputs[RESOURCES / (tool['name'] + '.parameters.json')] = json.dumps(full, indent=2) + '\n'
         outputs[RESOURCES / (tool['name'] + '.openai-parameters.json')] = json.dumps(strict, indent=2) + '\n'
+        outputs[RESOURCES / (tool['name'] + '.examples.json')] = json.dumps(
+            {'examples': tool.get('examples', {}), 'invalidExamples': tool.get('invalidExamples', {})},
+            indent=2,
+        ) + '\n'
         registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=full, deferLoading=tool['deferLoading']))
         responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
     outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(

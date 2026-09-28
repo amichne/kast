@@ -34,15 +34,15 @@ class InstalledServerChangeProjectionTest {
             listOf(
                 "workspace_lifecycle",
                 "query_symbols",
-                "source_read",
+                "read_source",
                 "check_diagnostics",
-                "change",
+                "add_declaration",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
         assertEquals(
             HostedApprovalPolicy.NONE.name.lowercase(),
-            tools.tool("change").getValue("approvalPolicy").jsonPrimitive.content,
+            tools.tool("add_declaration").getValue("approvalPolicy").jsonPrimitive.content,
         )
         assertTrue(
             tools
@@ -58,14 +58,14 @@ class InstalledServerChangeProjectionTest {
     @Test
     fun `change schema admits complete and rejected one call outcomes`() {
         val tools = projectionTools()
-        val schema = tools.tool("change").outputSchema()
+        val schema = tools.tool("add_declaration").outputSchema()
         schema.assertAdmits(completeChange())
         schema.assertAdmits(rejectedChange())
     }
 
     @Test
     fun `hosted change output rejects unknown result and failure variants`() {
-        val schema = projectionTools().tool("change").outputSchema()
+        val schema = projectionTools().tool("add_declaration").outputSchema()
         val unknownResult = completeChange().replace("\"status\":\"complete\"", "\"status\":\"unknown\"")
         assertTrue(schema.validate(unknownResult).isNotEmpty())
         assertTrue(schema.validate(rejectedChange().replace("PLANNING_REJECTED", "UNKNOWN")).isNotEmpty())

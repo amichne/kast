@@ -1,0 +1,12 @@
+{
+  "examples": {
+    "exactTarget": {
+      "summary": "Add a declaration to an exact target returned by Kast.",
+      "value": {
+        "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+        "declaration": "fun added() = Unit"
+      }
+    }
+  },
+  "invalidExamples": {}
+}

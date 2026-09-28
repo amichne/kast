@@ -124,7 +124,7 @@ Codex schema inventory admits the retired `thread/rollback` request and response
 schemas only as a complete pair; a client without both leaves that route as an
 unchanged upstream pass-through while `thread/revert` remains qualified. Their
 raw content remains intact, and the final Kast JSON envelope additionally
-uses the supported structured-result field. The `change` tool keeps the native plan, apply, and recovery documents in
+uses the supported structured-result field. The `add_declaration` tool keeps the native plan, apply, and recovery documents in
 one caller-visible completion or finite failure. No source-change approval item
 is sent to a controller. Native schema admission and module tests establish the
 protocol shapes, while desktop rendering remains unqualified.

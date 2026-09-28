@@ -96,41 +96,15 @@ object CanonicalAgentToolDefinitions {
     val workspaceLifecycle =
         tool(
             CanonicalOperationDefinitions.workspaceLifecycle,
-            "workspace_lifecycle",
-            "Inspect or explicitly control one selected IDEA workspace. Ordinary semantic calls prepare the exact " +
-                "project and wait for native readiness automatically; " +
-                "do not use this tool as a routine read preflight. " +
-                "For a requested control operation, open, present, release or close an exact project. " +
-                "The host owns document save, VFS refresh and model reload selection. " +
-                "Opening is background best effort. Preserve returned host and " +
-                "project identities and reuse request IDs only for the same operation. Pending work requires " +
-                "status, not repeated open. Trust and failed saves require user " +
-                "resolution. Release never closes a project. Borrowed or presented projects are protected from agent " +
-                "cleanup; request_user_close requests exact-target controller approval.",
+            SupportToolIdentity.WORKSPACE_LIFECYCLE.toolName,
+            SupportToolIdentity.WORKSPACE_LIFECYCLE.description,
             approval = HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
         )
-    val query = facade(PublicToolIdentity.QUERY_SYMBOLS)
-    val sourceRead =
-        tool(
-            CanonicalOperationDefinitions.sourceRead,
-            "source_read",
-            "Read bounded source and structural context. For an exact selector, pass only " +
-                "`{\"symbol\":\"<exact selector from search>\"}`; region defaults to declaration, text to complete, " +
-                "entities to none, and format to compact. Optional region, text, entities, and format " +
-                "override those defaults. Source selectors use the typed anchor request. " +
-                "Preserve selectors verbatim and prefer this tool over unrestricted filesystem reads " +
-                "when Kast can represent the required Kotlin context. Omit entityLimit for an " +
-                "entity-free read, and omit page and default budgets for the first read.",
-        )
-    val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
-    val change =
-        tool(
-            CanonicalOperationDefinitions.change,
-            "change",
-            "Add one declaration to an existing Kotlin source file in one call. The exact search reference is " +
-                "passed unchanged. Kast plans, applies, verifies, and reports a verified receipt or a finite " +
-                "failure with recovery evidence. No separate approval request is issued.",
-        )
+    private val publicTools = PublicToolIdentity.entries.associateWith(::facade)
+    val query = publicTools.getValue(PublicToolIdentity.QUERY_SYMBOLS)
+    val sourceRead = publicTools.getValue(PublicToolIdentity.READ_SOURCE)
+    val diagnosticCheck = publicTools.getValue(PublicToolIdentity.CHECK_DIAGNOSTICS)
+    val addDeclaration = publicTools.getValue(PublicToolIdentity.ADD_DECLARATION)
     val changePlan =
         tool(
             CanonicalOperationDefinitions.changePlan,
@@ -157,13 +131,7 @@ object CanonicalAgentToolDefinitions {
         )
 
     val all: List<AgentToolDefinition> =
-        listOf(
-            workspaceLifecycle,
-            query,
-            sourceRead,
-            diagnosticCheck,
-            change,
-        )
+        listOf(workspaceLifecycle) + PublicToolIdentity.entries.map(publicTools::getValue)
 
     /** Only published tool names are accepted. */
     fun resolveInput(raw: String): Refinement<AgentToolDefinition, AgentToolInputFailure> {
@@ -178,7 +146,7 @@ object CanonicalAgentToolDefinitions {
                 Use kast.query_symbols for declaration-name search, enumeration, returned exact
                 references, and ordered pipelines. Restrict declaration kinds and scope before
                 expensive work; exact matching is default and fuzzy requires explicit opt-in.
-                Use source_read for bounded source context and
+                Use read_source for bounded source context and
                 query_symbols with occurrence output for relation facts and its walk step for
                 multi-step reachability. Use kast.check_diagnostics
                 for compiler diagnostics.
@@ -186,7 +154,7 @@ object CanonicalAgentToolDefinitions {
                 Do not reconstruct handles. Reads may reacquire retained exact handles;
                 keep reference_acquisitions. If unavailable, use a scoped search.
                 Continuations and source snapshots remain strict. Keep qualified partial facts
-                with their limitations; follow recovery guidance and execution_budget.
+                with their limitations; follow recovery guidance and executionBudget.
 
                 Reads require the repository's saved, indexed IntelliJ state. The installed daemon
                 prepares the exact workspace automatically and waits for native readiness. Do not
@@ -196,7 +164,7 @@ object CanonicalAgentToolDefinitions {
                 cache invalidation, forced index synchronization or restarting unrelated IDE sessions.
                 A missing semantic response does not authorize replaying a mutation.
 
-                Pass a returned exact reference unchanged to change. Hosted changes support
+                Pass a returned exact reference unchanged to add_declaration. Hosted changes support
                 AddDeclaration in one existing authored Kotlin file. The single call plans, applies
                 and verifies the change. Keep the returned receipt or finite failure and recovery
                 evidence. A missing response does not prove no write occurred; never replay a plan.
@@ -209,7 +177,9 @@ object CanonicalAgentToolDefinitions {
         val operation =
             when (identity) {
                 PublicToolIdentity.QUERY_SYMBOLS -> CanonicalOperationDefinitions.queryRun
+                PublicToolIdentity.READ_SOURCE -> CanonicalOperationDefinitions.sourceRead
                 PublicToolIdentity.CHECK_DIAGNOSTICS -> CanonicalOperationDefinitions.diagnosticCheck
+                PublicToolIdentity.ADD_DECLARATION -> CanonicalOperationDefinitions.change
             }
         return AgentToolDefinition(
             operation,

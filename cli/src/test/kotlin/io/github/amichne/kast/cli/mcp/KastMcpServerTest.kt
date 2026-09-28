@@ -8,8 +8,10 @@ import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
-import io.github.amichne.kast.cli.InstalledHostedToolDocument
-import io.github.amichne.kast.cli.InstalledServerExecutionBudgetDocument
+import io.github.amichne.kast.cli.LiveReadOutputSchemaTest
+import io.github.amichne.kast.cli.direct.directSupportTools
+import io.github.amichne.kast.cli.direct.directToolDocument
+import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.io.BufferedInputStream
@@ -21,7 +23,6 @@ import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -199,19 +200,9 @@ class KastMcpServerTest {
                 )
                 .joinToString("\n", postfix = "\n") { testMcpJson.encodeToString(it) }
         KastMcpServer(
-                catalog = emptyList(),
-                invoke = { _, _ -> error("canonical call not expected") },
+                catalog = directSupportTools().filter { it.name == "validate_workspace" },
+                invoke = { _, _ -> CliExit.Complete(document) },
                 root = { admittedRoot() },
-                supplemental =
-                    listOf(
-                        McpSupplementalTool(
-                            "validate_workspace",
-                            "Check workspace probes",
-                            Json.encodeToJsonElement(TestSchema("object")),
-                        ) {
-                            CliExit.Complete(document)
-                        }
-                    ),
                 onInitialize = {
                     preparations++
                     Refinement.Refined(Unit)
@@ -272,19 +263,9 @@ class KastMcpServerTest {
                 )
             )
         KastMcpServer(
-                catalog = emptyList(),
-                invoke = { _, _ -> error("canonical call not expected") },
+                catalog = directSupportTools().filter { it.name == "validate_workspace" },
+                invoke = { _, _ -> CliExit.Complete(invalid) },
                 root = { admittedRoot() },
-                supplemental =
-                    listOf(
-                        McpSupplementalTool(
-                            "validate_workspace",
-                            "Check workspace probes",
-                            Json.encodeToJsonElement(TestSchema("object")),
-                        ) {
-                            CliExit.Complete(invalid)
-                        }
-                    ),
                 diagnostic = PrintStream(diagnostics),
             )
             .run(BufferedInputStream(ByteArrayInputStream((request + "\n").toByteArray())), PrintStream(output))
@@ -316,19 +297,7 @@ class KastMcpServerTest {
         val server =
             KastMcpServer(
                 catalog =
-                    listOf(
-                        InstalledHostedToolDocument(
-                            operationId = "query.run",
-                            name = "search_classes",
-                            description = "Search classes",
-                            deferLoading = false,
-                            effect = "intellij_read",
-                            approvalPolicy = "none",
-                            executionBudget = InstalledServerExecutionBudgetDocument(1000, 1000),
-                            inputSchema = Json.encodeToJsonElement(TestSchema("object")),
-                            outputSchema = Json.encodeToJsonElement(TestSchema("object")),
-                        )
-                    ),
+                    listOf(installedHostedBootstrap().tools.single { it.name == "query_symbols" }.directToolDocument()),
                 invoke = { _, _ ->
                     calls++
                     error("must not invoke")
@@ -341,7 +310,7 @@ class KastMcpServerTest {
             {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}
             {"jsonrpc":"2.0","method":"notifications/initialized"}
             {"jsonrpc":"2.0","id":2,"method":"tools/list"}
-            {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_classes","arguments":{}}}
+            {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"query_symbols","arguments":{}}}
             """
                 .trimIndent() + "\n"
         val output = ByteArrayOutputStream()
@@ -361,7 +330,7 @@ class KastMcpServerTest {
         assertTrue(instructions.contains("UNSUPPORTED_ITEM"))
         assertTrue(instructions.contains("MODEL_CAPTURE_REJECTED"))
         assertEquals(
-            "search_classes",
+            "query_symbols",
             replies[1]
                 .getValue("result")
                 .jsonObject
@@ -387,19 +356,7 @@ class KastMcpServerTest {
         val document = (CliTextDocument.admit("complete") as CliTextDocumentAdmission.Admitted).document
         KastMcpServer(
                 catalog =
-                    listOf(
-                        InstalledHostedToolDocument(
-                            "query.run",
-                            "search_classes",
-                            "Search classes",
-                            false,
-                            "intellij_read",
-                            "none",
-                            InstalledServerExecutionBudgetDocument(1000, 1000),
-                            Json.encodeToJsonElement(TestSchema("object")),
-                            Json.encodeToJsonElement(TestSchema("object")),
-                        )
-                    ),
+                    listOf(installedHostedBootstrap().tools.single { it.name == "query_symbols" }.directToolDocument()),
                 invoke = { _, _ ->
                     calls++
                     CliExit.Complete(document)
@@ -414,7 +371,7 @@ class KastMcpServerTest {
                                 "\n" +
                                 Json { encodeDefaults = true }
                                     .encodeToString(
-                                        TestCallRequest(params = TestCallParams("search_classes", TestEmptyArguments()))
+                                        TestCallRequest(params = TestCallParams("query_symbols", TestEmptyArguments()))
                                     ) +
                                 "\n")
                             .toByteArray()
@@ -444,24 +401,12 @@ class KastMcpServerTest {
 
     @Test
     @Suppress("LongMethod")
-    fun `semantic call returns a compact summary and structured evidence`() {
-        val document = CanonicalJsonDocument.generated(TestSearchPayload.serializer()).create(TestSearchPayload())
+    fun `semantic call retains its canonical outcome and structured evidence`() {
+        val document = LiveReadOutputSchemaTest().completeQueryDocument()
         val output = ByteArrayOutputStream()
         KastMcpServer(
                 catalog =
-                    listOf(
-                        InstalledHostedToolDocument(
-                            "query.run",
-                            "search_classes",
-                            "Search classes",
-                            false,
-                            "intellij_read",
-                            "none",
-                            InstalledServerExecutionBudgetDocument(1000, 1000),
-                            Json.encodeToJsonElement(TestSchema("object")),
-                            Json.encodeToJsonElement(TestSchema("object")),
-                        )
-                    ),
+                    listOf(installedHostedBootstrap().tools.single { it.name == "query_symbols" }.directToolDocument()),
                 invoke = { _, _ -> CliExit.Complete(document) },
                 root = { admittedRoot() },
                 diagnostic = PrintStream(ByteArrayOutputStream()),
@@ -473,7 +418,7 @@ class KastMcpServerTest {
                                 "\n" +
                                 Json { encodeDefaults = true }
                                     .encodeToString(
-                                        TestCallRequest(params = TestCallParams("search_classes", TestEmptyArguments()))
+                                        TestCallRequest(params = TestCallParams("query_symbols", TestEmptyArguments()))
                                     ) +
                                 "\n")
                             .toByteArray()
@@ -487,18 +432,12 @@ class KastMcpServerTest {
                 .getValue("result")
                 .jsonObject
         val content = result.getValue("content").jsonArray
-        assertEquals(
-            "0 results; requested scope exhausted",
-            content.first().jsonObject.getValue("text").jsonPrimitive.content,
-        )
-        assertEquals(document.value, content.last().jsonObject.getValue("text").jsonPrimitive.content)
+        assertEquals(document.value, content.single().jsonObject.getValue("text").jsonPrimitive.content)
         val structured = result.getValue("structuredContent").jsonObject
         assertEquals("complete", structured.getValue("status").jsonPrimitive.content)
-        assertEquals(Json.parseToJsonElement(document.value), structured.getValue("data"))
+        assertEquals(Json.parseToJsonElement(document.value), structured)
     }
 }
-
-@Serializable private data class TestSchema(val type: String)
 
 @Serializable private data class TestInvalidStructured(val status: String = "complete")
 
@@ -551,23 +490,3 @@ private data class TestCallRequest(
 @Serializable private data class TestCallParams(val name: String, val arguments: TestEmptyArguments)
 
 @Serializable private class TestEmptyArguments
-
-@Serializable
-private data class TestSearchPayload(
-    val operation: String = "query.run",
-    val status: String = "complete",
-    val items: List<String> = emptyList(),
-    val coverage: TestSearchCoverage = TestSearchCoverage(),
-    val live: TestSearchLive = TestSearchLive(),
-)
-
-@Serializable private data class TestSearchCoverage(val exhaustive: Boolean = true)
-
-@Serializable
-private data class TestSearchLive(
-    val root: String = "/workspace",
-    val host: String = "host-1",
-    val epoch: Int = 1,
-    val contentView: String = "SAVED_PSI_COMMITTED",
-    val version: Int = 1,
-)

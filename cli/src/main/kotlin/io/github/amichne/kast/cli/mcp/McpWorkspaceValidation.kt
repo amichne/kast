@@ -126,7 +126,7 @@ private class WorkspaceValidator(
     fun source(symbol: McpExactSymbol): McpProbe {
         val response =
             read<McpSourceDocument>(
-                "source_read",
+                "read_source",
                 validationInputJson.encodeToJsonElement(McpSourceRequest(McpSourceAnchor(symbol.ref))).jsonObject,
             )
         if (response !is NativeRead.Complete) return response.unverified("Source text was incomplete or unavailable")

@@ -1,0 +1,30 @@
+{
+  "examples": {
+    "runByName": {
+      "summary": "Find declarations by exact name.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "Order"
+          }
+        }
+      }
+    }
+  },
+  "invalidExamples": {
+    "mixedAction": {
+      "summary": "Query actions cannot mix run and resume fields.",
+      "value": {
+        "request": {
+          "type": "RESUME",
+          "continuation": "token",
+          "source": {
+            "type": "ALL_DECLARATIONS"
+          }
+        }
+      }
+    }
+  }
+}

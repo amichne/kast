@@ -180,11 +180,11 @@ class ToolSurface(str, Enum):
 def public_scope(selected):
     if selected is None:
         return None
-    fields = {"DIRECTORY": ("relative_directory_path", "include_subdirectories"),
-              "PACKAGE": ("package_name", "include_subpackages")}
+    fields = {"DIRECTORY": ("relativeDirectoryPath", "includeSubdirectories"),
+              "PACKAGE": ("packageName", "includeSubpackages")}
     path, recursive = fields[selected["type"]]
     return {"type": selected["type"], path: selected["value"], recursive: selected["containment"] == "RECURSIVE",
-            "source_set_names": selected.get("sourceSets")}
+            "sourceSetNames": selected.get("sourceSets")}
 
 
 def invocation(case, surface):
@@ -193,13 +193,13 @@ def invocation(case, surface):
     source = case.source
     kinds = source.get("kinds")
     if source["type"] == "SEARCH":
-        arguments = dict(declaration_name=source["query"], name_match=source["match"],
-                         scope=public_scope(source.get("scope")), declaration_kinds=kinds)
+        arguments = dict(declarationName=source["query"], nameMatch=source["match"],
+                         scope=public_scope(source.get("scope")), declarationKinds=kinds)
         lowered = dict(type="SEARCH_DECLARATIONS", **arguments)
     elif source["type"] == "ALL":
-        lowered = dict(type="ALL_DECLARATIONS", declaration_kinds=kinds, scope=public_scope(source.get("scope")))
+        lowered = dict(type="ALL_DECLARATIONS", declarationKinds=kinds, scope=public_scope(source.get("scope")))
     elif source["type"] == "REFS":
-        lowered = dict(type="SYMBOL_REFS", symbol_refs=source["refs"])
+        lowered = dict(type="SYMBOL_REFS", symbolRefs=source["refs"])
     else:
         raise ValueError("UNSUPPORTED_REPLAY_SOURCE")
     steps = []

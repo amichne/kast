@@ -170,8 +170,8 @@ readiness. The initialize response explains that wait, automatic linked-model
 reload, exact-reference reuse, relation coverage, continuations, and stage-specific
 recovery. The terminal MCP catalog does not expose manual refresh or
 `workspace_lifecycle`.
-Its `change` tool plans, signs the exact native challenge, applies, and verifies
-within one call, attempting recovery if application is unverified. The App Server exposes the same single `change` operation and signs its exact
+Its `add_declaration` tool plans, signs the exact native challenge, applies, and verifies
+within one call, attempting recovery if application is unverified. The App Server exposes the same public tool and signs its exact
 plan internally. If apply is cancelled, only a complete native `prior_state` or
 `rolled_back` recovery settles the invocation as known and releases the App
 Server workspace lane. Incomplete recovery leaves the lane protected.

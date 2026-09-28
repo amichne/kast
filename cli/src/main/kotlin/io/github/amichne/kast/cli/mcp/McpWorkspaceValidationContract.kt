@@ -1,12 +1,11 @@
 package io.github.amichne.kast.cli.mcp
 
+import io.github.amichne.kast.cli.generatedRequestSchema
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 
 /** Typed probes and output states for the read-only workspace validation call. */
 @Serializable
@@ -124,89 +123,5 @@ internal enum class McpValidationStatus {
     @SerialName("rejected") REJECTED,
 }
 
-/** Exact input schema for the three optional probes. Missing probes remain unverified in output. */
-internal fun validationInputSchema(): JsonElement = validationSchemaJson.encodeToJsonElement(McpValidationInputSchema())
-
-@Serializable
-private data class McpValidationInputSchema(
-    val type: String = "object",
-    val properties: McpValidationProperties = McpValidationProperties(),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class McpValidationProperties(
-    val declaration: McpValidationDeclarationSchema = McpValidationDeclarationSchema(),
-    val relation: McpValidationRelationSchema = McpValidationRelationSchema(),
-    val diagnosticPath: McpValidationStringSchema = McpValidationStringSchema(),
-)
-
-@Serializable
-private data class McpValidationDeclarationSchema(
-    val type: String = "object",
-    val properties: McpValidationDeclarationProperties = McpValidationDeclarationProperties(),
-    val required: List<String> = listOf("kind", "name", "file"),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class McpValidationDeclarationProperties(
-    val kind: McpValidationStringSchema =
-        McpValidationStringSchema(options = listOf("class", "function", "property", "type_alias")),
-    val name: McpValidationStringSchema = McpValidationStringSchema(),
-    val file: McpValidationStringSchema = McpValidationStringSchema(),
-    val sourceSetName: McpValidationStringSchema =
-        McpValidationStringSchema(
-            description = "Exact imported Gradle source-set name when the file is outside main or test."
-        ),
-)
-
-@Serializable
-private data class McpValidationRelationSchema(
-    val type: String = "object",
-    val properties: McpValidationRelationProperties = McpValidationRelationProperties(),
-    val required: List<String> = listOf("kind", "source", "target"),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class McpValidationRelationProperties(
-    val kind: McpValidationStringSchema =
-        McpValidationStringSchema(
-            options =
-                listOf("references", "callers", "callees", "implementations", "inheritors", "overrides", "type_uses")
-        ),
-    val source: McpValidationEndpointSchema = McpValidationEndpointSchema(),
-    val target: McpValidationEndpointSchema = McpValidationEndpointSchema(),
-)
-
-@Serializable
-private data class McpValidationEndpointSchema(
-    val type: String = "object",
-    val properties: McpValidationEndpointProperties = McpValidationEndpointProperties(),
-    val required: List<String> = listOf("file", "name"),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class McpValidationEndpointProperties(
-    val file: McpValidationStringSchema = McpValidationStringSchema(),
-    val name: McpValidationStringSchema = McpValidationStringSchema(),
-    val sourceSetName: McpValidationStringSchema =
-        McpValidationStringSchema(
-            description = "Exact imported Gradle source-set name when the file is outside main or test."
-        ),
-)
-
-@Serializable
-private data class McpValidationStringSchema(
-    val type: String = "string",
-    @SerialName("enum") val options: List<String>? = null,
-    val minLength: Int = 1,
-    val description: String? = null,
-)
-
-private val validationSchemaJson = Json {
-    encodeDefaults = true
-    explicitNulls = false
-}
+/** Project the typed probe request without maintaining a second field inventory. */
+internal fun validationInputSchema(): JsonElement = generatedRequestSchema(McpValidationRequest.serializer())

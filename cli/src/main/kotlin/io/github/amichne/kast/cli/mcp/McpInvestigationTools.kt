@@ -5,8 +5,11 @@ import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.boundaryExit
+import io.github.amichne.kast.cli.generatedRequestSchema
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeExistingIdeCli
+import io.github.amichne.kast.cli.unionSchema
+import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
@@ -15,16 +18,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.encodeToJsonElement
-
-/** Session tools compose existing read capabilities; they are not compiler operations. */
-internal data class McpSupplementalTool(
-    val name: String,
-    val description: String,
-    val inputSchema: JsonElement,
-    val readOnly: Boolean = true,
-    val invoke: (JsonObject) -> CliExit,
-)
 
 internal class McpInvestigationTools(
     private val directory: Path,
@@ -32,26 +25,12 @@ internal class McpInvestigationTools(
     private val expectedOperations: Set<String>,
     private val invokeRead: (String, JsonObject) -> CliExit,
 ) {
-    val tools: List<McpSupplementalTool> =
-        listOf(
-            McpSupplementalTool(
-                name = "health_check",
-                description =
-                    "Observe exact workspace binding and saved/indexed readiness. " +
-                        "This passive check does not validate semantic answers.",
-                inputSchema = investigationJson.encodeToJsonElement(McpEmptyInputSchema()),
-                invoke = ::health,
-            ),
-            McpSupplementalTool(
-                name = "validate_workspace",
-                description =
-                    "Run explicit read-only declaration, exact-symbol, source, query relation, and IDE diagnostic " +
-                        "probes. Supply sourceSetName for custom Gradle source sets. " +
-                        "Each probe reports passed, failed, or unverified independently.",
-                inputSchema = validationInputSchema(),
-                invoke = ::validate,
-            ),
-        )
+    fun invoke(identity: SupportToolIdentity, arguments: JsonObject): CliExit =
+        when (identity) {
+            SupportToolIdentity.HEALTH_CHECK -> health(arguments)
+            SupportToolIdentity.VALIDATE_WORKSPACE -> validate(arguments)
+            SupportToolIdentity.WORKSPACE_LIFECYCLE -> error("Workspace lifecycle has no direct binding")
+        }
 
     private fun health(arguments: JsonObject): CliExit {
         if (arguments.isNotEmpty())
@@ -104,14 +83,9 @@ internal class McpInvestigationTools(
         )
 }
 
-@Serializable
-private data class McpEmptyInputSchema(
-    val type: String = "object",
-    val properties: McpEmptyProperties = McpEmptyProperties(),
-    val additionalProperties: Boolean = false,
-)
+@Serializable private class McpEmptyInput
 
-@Serializable private class McpEmptyProperties
+internal fun healthInputSchema(): JsonObject = generatedRequestSchema(McpEmptyInput.serializer())
 
 @Serializable
 private data class McpNativeStatus(
@@ -201,3 +175,11 @@ private val investigationJson = Json {
 }
 private val healthReadyFactory = CanonicalJsonDocument.generated(McpHealthReady.serializer())
 private val healthRejectedFactory = CanonicalJsonDocument.generated(McpHealthRejected.serializer())
+
+internal fun healthResultSchema(): JsonObject =
+    rootedResultSchema(
+        unionSchema(
+            generatedRequestSchema(McpHealthReady.serializer()),
+            generatedRequestSchema(McpHealthRejected.serializer()),
+        )
+    )

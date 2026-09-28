@@ -4,8 +4,8 @@ import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.cli.direct.DirectToolDocument
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
 import java.io.BufferedInputStream
 import java.io.PrintStream
@@ -18,17 +18,15 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
 internal class KastMcpServer(
-    private val catalog: List<io.github.amichne.kast.cli.InstalledHostedToolDocument>,
+    private val catalog: List<DirectToolDocument>,
     private val invoke: (String, JsonObject) -> CliExit,
     private val root: () -> CanonicalRootDiscovery,
-    private val supplemental: List<McpSupplementalTool> = emptyList(),
     private val onInitialize: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure> = {
         Refinement.Refined(Unit)
     },
     private val diagnostic: PrintStream = System.err,
 ) {
     private val tools = catalog.associateBy { it.name }
-    private val supplementalByName = supplemental.associateBy { it.name }
     private val report = McpCallReporter(diagnostic)
     private var era: McpProtocolEra? = null
     private var preparationStarted = false
@@ -106,41 +104,23 @@ internal class KastMcpServer(
     }
 
     private fun toolCatalog(): List<McpTool> =
-        (catalog.map {
-                val effect =
-                    OperationEffect.entries.singleOrNull { value -> value.name.lowercase() == it.effect }
-                        ?: error("Unknown canonical operation effect")
-                val readOnly = effect == OperationEffect.NONE || effect == OperationEffect.INTELLIJ_READ
+        catalog
+            .map {
                 McpTool(
                     it.name,
                     it.description,
                     requireObjectInputSchema(it.inputSchema),
-                    McpStructuredResults.schemaFor(it.name),
+                    it.outputSchema,
                     annotations =
                         ToolAnnotations(
-                            readOnlyHint = readOnly,
-                            destructiveHint = !readOnly,
-                            idempotentHint = readOnly,
+                            readOnlyHint = it.readOnly,
+                            destructiveHint = !it.readOnly,
+                            idempotentHint = it.readOnly,
                             openWorldHint = false,
                         ),
+                    meta = if (it.name == "validate_workspace") McpUiToolMeta() else null,
                 )
-            } +
-                supplemental.map {
-                    McpTool(
-                        it.name,
-                        it.description,
-                        requireObjectInputSchema(it.inputSchema),
-                        McpStructuredResults.schemaFor(it.name),
-                        annotations =
-                            ToolAnnotations(
-                                readOnlyHint = it.readOnly,
-                                destructiveHint = !it.readOnly,
-                                idempotentHint = it.readOnly,
-                                openWorldHint = false,
-                            ),
-                        meta = if (it.name == "validate_workspace") McpUiToolMeta() else null,
-                    )
-                })
+            }
             .sortedBy(McpTool::name)
 
     private fun requireObjectInputSchema(schema: JsonElement): JsonObject {
@@ -215,8 +195,7 @@ internal class KastMcpServer(
             } catch (_: SerializationException) {
                 return rejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
             }
-        if (call.name !in tools && call.name !in supplementalByName)
-            return rejected(id, McpCallFailure.UNKNOWN_TOOL, modern)
+        if (call.name !in tools) return rejected(id, McpCallFailure.UNKNOWN_TOOL, modern)
         report(call.name, McpCallStage.ADMISSION, McpCallOutcome.STARTED)
         if (root() !is CanonicalRootDiscovery.Discovered) {
             report(call.name, McpCallStage.ADMISSION, McpCallOutcome.REJECTED)
@@ -226,24 +205,17 @@ internal class KastMcpServer(
         report(call.name, McpCallStage.EXECUTION, McpCallOutcome.STARTED)
         val exit =
             try {
-                supplementalByName[call.name]?.invoke?.invoke(call.arguments ?: emptyMcpArguments)
-                    ?: invoke(call.name, call.arguments ?: emptyMcpArguments)
+                invoke(call.name, call.arguments ?: emptyMcpArguments)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (_: RuntimeException) {
                 report(call.name, McpCallStage.EXECUTION, McpCallOutcome.REJECTED)
                 return rejected(id, McpCallFailure.INVOCATION_FAILED, modern)
             }
-        val presentation = mcpReadPresentation(call.name, exit)
-        val canonical =
-            (presentation?.envelope as? JsonObject)
-                ?: runCatching {
-                    mcpWire.parseToJsonElement(exit.document.value) as? JsonObject
-                }
-                    .getOrNull()
-        val hostedRejection =
-            if (exit is CliExit.OperationRejected && canonical != null) McpStructuredResults.hostedRejection(canonical)
-            else null
-        val structured = hostedRejection?.let { mcpWire.encodeToJsonElement(it).jsonObject } ?: canonical
-        val schemaEvidence = McpStructuredResults.failure(call.name, structured)
+        val canonical = runCatching { mcpWire.parseToJsonElement(exit.document.value) as? JsonObject }.getOrNull()
+        val structured = if (exit is CliExit.BoundaryRejected) null else canonical
+        val schemaEvidence =
+            if (exit is CliExit.BoundaryRejected) null else McpStructuredResults.failure(call.name, structured)
         if (schemaEvidence != null) {
             report(
                 call.name,
@@ -260,11 +232,10 @@ internal class KastMcpServer(
             McpCallStage.EXECUTION,
             if (exit is CliExit.BoundaryRejected || exit is CliExit.OperationRejected) McpCallOutcome.REJECTED
             else McpCallOutcome.COMPLETED,
-            if (hostedRejection != null) McpResultVariant.HOST_REJECTED else McpStructuredResults.variant(structured),
+            McpStructuredResults.variant(structured),
         )
         val summary =
             when {
-                presentation != null -> presentation.summary
                 modern && call.name == "health_check" -> McpStructuredResults.healthSummary(structured)
                 modern && call.name == "validate_workspace" -> McpStructuredResults.validationSummary(structured)
                 else -> exit.document.value
@@ -273,8 +244,7 @@ internal class KastMcpServer(
             id,
             McpCallResult(
                 content =
-                    if (presentation != null) listOf(McpTextContent(summary), McpTextContent(exit.document.value))
-                    else if (modern && call.name in setOf("health_check", "validate_workspace"))
+                    if (modern && call.name in setOf("health_check", "validate_workspace"))
                         listOf(McpTextContent(summary))
                     else listOf(McpTextContent(exit.document.value)),
                 isError = exit is CliExit.BoundaryRejected || exit is CliExit.OperationRejected,
