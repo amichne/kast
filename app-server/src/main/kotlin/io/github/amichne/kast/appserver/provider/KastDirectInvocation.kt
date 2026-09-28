@@ -18,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.OperationRequest
+import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
@@ -78,7 +79,11 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
             }
         return when (val result = options.workspaceDemand.query(root, operation)) {
             is io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult.Native ->
-                project(result.exchange, context)
+                project(
+                    result.exchange,
+                    context,
+                    (input as? KastInvocationInput.Facade)?.request?.outputDetail ?: ToolOutputDetail.COMPACT,
+                )
             is io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult.Rejected ->
                 ProviderCall.WorkspaceRejected(result.failure)
         }
@@ -87,16 +92,17 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
     private fun project(
         exchange: ExistingIdeExchange,
         context: BrokerInvocationContext,
+        detail: ToolOutputDetail,
     ): ProviderCall<KastInvocationOutput> =
         when (exchange) {
             is ExistingIdeExchange.Rejected -> ProviderCall.Rejected(exchange.failure.providerFailure())
-            is ExistingIdeExchange.Received -> completed(exchange.document, true, context)
-            is ExistingIdeExchange.HostRejected -> completed(exchange.document, false, context)
+            is ExistingIdeExchange.Received -> completed(exchange.document.present(detail), true, context)
+            is ExistingIdeExchange.HostRejected -> completed(exchange.document.present(detail), false, context)
             is ExistingIdeExchange.Semantic ->
                 when (val outcome = exchange.outcome) {
-                    is ProjectedOperationOutcome.Complete -> completed(outcome.document, true, context)
-                    is ProjectedOperationOutcome.Qualified -> completed(outcome.document, true, context)
-                    is ProjectedOperationOutcome.Rejected -> completed(outcome.document, false, context)
+                    is ProjectedOperationOutcome.Complete -> completed(outcome.document.present(detail), true, context)
+                    is ProjectedOperationOutcome.Qualified -> completed(outcome.document.present(detail), true, context)
+                    is ProjectedOperationOutcome.Rejected -> completed(outcome.document.present(detail), false, context)
                 }
         }
 
@@ -106,7 +112,11 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
     ): ProviderCall<KastInvocationOutput> {
         val request =
             try {
-                Json.decodeFromJsonElement(WorkspaceLifecycleRequest.serializer(), arguments)
+                Json.decodeFromJsonElement(
+                        io.github.amichne.kast.appserver.query.WorkspaceLifecycleToolInput.serializer(),
+                        arguments,
+                    )
+                    .canonical()
             } catch (_: SerializationException) {
                 return ProviderCall.Rejected(ProviderFailureCode.IDE_INVALID_REQUEST)
             }
@@ -141,13 +151,15 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
     private fun completed(document: CanonicalJsonDocument, success: Boolean, context: BrokerInvocationContext) =
         ProviderCall.Completed(
             KastInvocationOutput(
-                invocationJson
-                    .encodeToJsonElement(KastCompletedDocument(Json.parseToJsonElement(document.value)))
-                    .jsonObject,
+                invocationEnvelope(document),
                 success,
                 context.workingDirectory,
+                observerDocument = invocationEnvelope(document.present(ToolOutputDetail.VERBOSE)),
             )
         )
+
+    private fun invocationEnvelope(document: CanonicalJsonDocument) =
+        invocationJson.encodeToJsonElement(KastCompletedDocument(Json.parseToJsonElement(document.value))).jsonObject
 
     private fun operation(request: PreparedOperationRequest): Refinement<ExistingIdeOperation, ExistingIdeFailure> =
         when (request.operation) {

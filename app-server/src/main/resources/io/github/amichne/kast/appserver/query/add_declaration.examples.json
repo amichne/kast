@@ -8,5 +8,30 @@
       }
     }
   },
-  "invalidExamples": {}
+  "invalidExamples": {
+    "verboseNull": {
+      "summary": "Verbose must be a boolean, not null.",
+      "value": {
+        "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+        "declaration": "fun added() = Unit",
+        "verbose": null
+      }
+    },
+    "verboseString": {
+      "summary": "Verbose must be a boolean, not string.",
+      "value": {
+        "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+        "declaration": "fun added() = Unit",
+        "verbose": "true"
+      }
+    },
+    "verboseNumber": {
+      "summary": "Verbose must be a boolean, not number.",
+      "value": {
+        "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+        "declaration": "fun added() = Unit",
+        "verbose": 1
+      }
+    }
+  }
 }

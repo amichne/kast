@@ -1,6 +1,10 @@
 {
   "type": "object",
   "properties": {
+    "verbose": {
+      "type": "boolean",
+      "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+    },
     "exactTarget": {
       "type": "string",
       "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
@@ -11,6 +15,7 @@
     }
   },
   "required": [
+    "verbose",
     "exactTarget",
     "body"
   ],

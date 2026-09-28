@@ -9,6 +9,7 @@ import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
+import io.github.amichne.kast.cli.direct.present
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeExistingIdeCli
 import io.github.amichne.kast.kernel.Refinement
@@ -17,7 +18,7 @@ import io.github.amichne.kast.protocol.contract.ChangeRejection
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
 import io.github.amichne.kast.protocol.contract.ChangeRunError
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.ChangeRunCliDocuments
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
@@ -45,7 +46,9 @@ internal class McpSingleChangeTool(
         return invoke(admitted)
     }
 
-    fun invoke(admitted: AdmittedPublicTool): CliExit {
+    fun invoke(admitted: AdmittedPublicTool): CliExit = invokeFull(admitted).present(admitted.outputDetail)
+
+    private fun invokeFull(admitted: AdmittedPublicTool): CliExit {
         require(admitted.identity in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY))
         val request = (admitted.canonical as PublicToolCanonical.Change).request
         val planArguments =
@@ -93,7 +96,7 @@ internal class McpSingleChangeTool(
                 state.state == McpApplicationOutcome.VERIFIED
         )
             return CliExit.Complete(
-                changeDocument.create(ChangeRunDocument.Complete(identity, planDocument, application))
+                ChangeRunCliDocuments.project(ChangeRunDocument.Complete(identity, planDocument, application))
             )
         return recover(identity, planDocument, application)
     }
@@ -119,7 +122,7 @@ internal class McpSingleChangeTool(
                     false
                 }
         return CliExit.OperationRejected(
-            changeDocument.create(
+            ChangeRunCliDocuments.project(
                 ChangeRunDocument.Rejected(
                     ChangeRunError(
                         if (resolved) ChangeRejection.APPLY_UNVERIFIED else ChangeRejection.RECOVERY_UNAVAILABLE,
@@ -172,7 +175,9 @@ internal class McpSingleChangeTool(
         application: JsonObject? = null,
     ): CliExit.OperationRejected =
         CliExit.OperationRejected(
-            changeDocument.create(ChangeRunDocument.Rejected(ChangeRunError(failure, identity, plan, application)))
+            ChangeRunCliDocuments.project(
+                ChangeRunDocument.Rejected(ChangeRunError(failure, identity, plan, application))
+            )
         )
 
     companion object {
@@ -195,15 +200,17 @@ internal class McpSingleChangeTool(
                             McpChangePhase.PREPARE_RECOVER -> listOf("change", "recover", "--hosted-approval-prepare")
                             McpChangePhase.RECOVER -> listOf("change", "recover", "--hosted-approved-invocation")
                         }
-                    executeExistingIdeCli(
-                        argv = argv,
-                        start = root,
-                        capabilities = capabilities,
-                        requestInput =
-                            CliRequestDocumentInput.Provided(
-                                changeJson.encodeToString(JsonObject.serializer(), arguments)
-                            ),
-                    )
+                    observeMcpChange(phase) {
+                        executeExistingIdeCli(
+                            argv = argv,
+                            start = root,
+                            capabilities = capabilities,
+                            requestInput =
+                                CliRequestDocumentInput.Provided(
+                                    changeJson.encodeToString(JsonObject.serializer(), arguments)
+                                ),
+                        )
+                    }
                 },
                 { challenge -> McpApprovalHelper.sign(home, challenge) },
             )
@@ -269,4 +276,3 @@ private val changeJson = Json {
     encodeDefaults = true
     ignoreUnknownKeys = true
 }
-private val changeDocument = CanonicalJsonDocument.generated(ChangeRunDocument.serializer())

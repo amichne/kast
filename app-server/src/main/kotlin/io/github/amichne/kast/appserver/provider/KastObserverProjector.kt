@@ -27,7 +27,7 @@ internal object KastObserverProjector {
         else
             projectDocument(
                 operation,
-                output.document,
+                output.observerDocument,
                 ObserverWorkingDirectory.from(output.observerDirectory),
             )
 

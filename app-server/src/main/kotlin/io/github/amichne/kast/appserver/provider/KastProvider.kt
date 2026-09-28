@@ -486,6 +486,7 @@ internal data class KastInvocationOutput(
     val document: JsonObject,
     val success: Boolean,
     val observerDirectory: CanonicalBrokerDirectory,
+    val observerDocument: JsonObject = document,
 )
 
 internal val invocationJson = Json { encodeDefaults = true }

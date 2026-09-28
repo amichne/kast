@@ -1,6 +1,11 @@
 {
   "type": "object",
   "properties": {
+    "verbose": {
+      "type": "boolean",
+      "default": false,
+      "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+    },
     "request": {
       "$ref": "#/$defs/Action",
       "description": "Exactly one closed query action: run, resume, or read_result."

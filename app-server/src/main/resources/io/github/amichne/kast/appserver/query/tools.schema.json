@@ -1154,6 +1154,11 @@
       "schema": {
         "type": "object",
         "properties": {
+          "verbose": {
+            "type": "boolean",
+            "default": false,
+            "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+          },
           "request": {
             "$ref": "#/$defs/Action",
             "description": "Exactly one closed query action: run, resume, or read_result."
@@ -1182,7 +1187,54 @@
       "invalidExamples": {
         "mixedAction": {
           "summary": "Query actions cannot mix run and resume fields.",
-          "value": {"request": {"type": "RESUME", "continuation": "token", "source": {"type": "ALL_DECLARATIONS"}}}
+          "value": {
+            "request": {
+              "type": "RESUME",
+              "continuation": "token",
+              "source": {
+                "type": "ALL_DECLARATIONS"
+              }
+            }
+          }
+        },
+        "verboseNull": {
+          "summary": "Verbose must be a boolean, not null.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "Order"
+              }
+            },
+            "verbose": null
+          }
+        },
+        "verboseString": {
+          "summary": "Verbose must be a boolean, not string.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "Order"
+              }
+            },
+            "verbose": "true"
+          }
+        },
+        "verboseNumber": {
+          "summary": "Verbose must be a boolean, not number.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "Order"
+              }
+            },
+            "verbose": 1
+          }
         }
       },
       "defaults": {
@@ -1222,6 +1274,11 @@
       "schema": {
         "type": "object",
         "properties": {
+          "verbose": {
+            "type": "boolean",
+            "default": false,
+            "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+          },
           "relativePath": {
             "type": "string",
             "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal.",
@@ -1257,6 +1314,29 @@
         "additionalProperties": false
       },
       "operation": "diagnostic.check",
+      "invalidExamples": {
+        "verboseNull": {
+          "summary": "Verbose must be a boolean, not null.",
+          "value": {
+            "relativePath": ".",
+            "verbose": null
+          }
+        },
+        "verboseString": {
+          "summary": "Verbose must be a boolean, not string.",
+          "value": {
+            "relativePath": ".",
+            "verbose": "true"
+          }
+        },
+        "verboseNumber": {
+          "summary": "Verbose must be a boolean, not number.",
+          "value": {
+            "relativePath": ".",
+            "verbose": 1
+          }
+        }
+      },
       "examples": {
         "workspace": {
           "summary": "Check compiler diagnostics in the workspace.",
@@ -1273,6 +1353,11 @@
       "schema": {
         "type": "object",
         "properties": {
+          "verbose": {
+            "type": "boolean",
+            "default": false,
+            "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+          },
           "exactTarget": {
             "type": "string",
             "minLength": 1,
@@ -1293,6 +1378,32 @@
         "additionalProperties": false
       },
       "operation": "change",
+      "invalidExamples": {
+        "verboseNull": {
+          "summary": "Verbose must be a boolean, not null.",
+          "value": {
+            "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "declaration": "fun added() = Unit",
+            "verbose": null
+          }
+        },
+        "verboseString": {
+          "summary": "Verbose must be a boolean, not string.",
+          "value": {
+            "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "declaration": "fun added() = Unit",
+            "verbose": "true"
+          }
+        },
+        "verboseNumber": {
+          "summary": "Verbose must be a boolean, not number.",
+          "value": {
+            "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "declaration": "fun added() = Unit",
+            "verbose": 1
+          }
+        }
+      },
       "examples": {
         "exactTarget": {
           "summary": "Add a declaration to an exact target returned by Kast.",
@@ -1310,6 +1421,11 @@
       "schema": {
         "type": "object",
         "properties": {
+          "verbose": {
+            "type": "boolean",
+            "default": false,
+            "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+          },
           "exactTarget": {
             "type": "string",
             "minLength": 1,
@@ -1345,6 +1461,30 @@
           "value": {
             "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
           }
+        },
+        "verboseNull": {
+          "summary": "Verbose must be a boolean, not null.",
+          "value": {
+            "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "body": "{ return Unit }",
+            "verbose": null
+          }
+        },
+        "verboseString": {
+          "summary": "Verbose must be a boolean, not string.",
+          "value": {
+            "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "body": "{ return Unit }",
+            "verbose": "true"
+          }
+        },
+        "verboseNumber": {
+          "summary": "Verbose must be a boolean, not number.",
+          "value": {
+            "exactTarget": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "body": "{ return Unit }",
+            "verbose": 1
+          }
         }
       }
     }
@@ -1353,7 +1493,7 @@
     {
       "name": "workspace_lifecycle",
       "description": "Inspect or explicitly control one selected IDEA workspace. Ordinary semantic calls prepare the exact project and wait for native readiness automatically; do not use this tool as a routine read preflight. For a requested control operation, open, present, release or close an exact project. The host owns document save, VFS refresh and model reload selection. Opening is background best effort. Preserve returned host and project identities and reuse request IDs only for the same operation. Pending work requires status, not repeated open. Trust and failed saves require user resolution. Release never closes a project. Borrowed or presented projects are protected from agent cleanup; request_user_close requests exact-target controller approval.",
-      "binding": "WorkspaceLifecycleRequest",
+      "binding": "WorkspaceLifecycleToolInput",
       "hosts": ["APP_SERVER"]
     },
     {

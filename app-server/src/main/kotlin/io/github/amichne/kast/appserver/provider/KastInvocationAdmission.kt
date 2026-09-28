@@ -33,9 +33,10 @@ internal class KastInvocationAdmission private constructor(val arguments: JsonEl
             val request =
                 try {
                     Json.decodeFromJsonElement(
-                        io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.serializer(),
-                        arguments,
-                    )
+                            io.github.amichne.kast.appserver.query.WorkspaceLifecycleToolInput.serializer(),
+                            arguments,
+                        )
+                        .canonical()
                 } catch (_: kotlinx.serialization.SerializationException) {
                     return Refinement.Rejected(ProviderFailureCode.APPROVAL_BINDING_REJECTED)
                 }

@@ -6,12 +6,17 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "verbose": {
+          "type": "boolean",
+          "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+        },
         "request": {
           "$ref": "#/$defs/Action",
           "description": "Exactly one closed query action: run, resume, or read_result."
         }
       },
       "required": [
+        "verbose",
         "request"
       ],
       "additionalProperties": false,
@@ -1200,6 +1205,10 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "verbose": {
+          "type": "boolean",
+          "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+        },
         "relativePath": {
           "type": "string",
           "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal."
@@ -1232,6 +1241,7 @@
         }
       },
       "required": [
+        "verbose",
         "relativePath",
         "maxDiagnostics",
         "continuation",
@@ -1298,6 +1308,10 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "verbose": {
+          "type": "boolean",
+          "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+        },
         "exactTarget": {
           "type": "string",
           "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
@@ -1308,6 +1322,7 @@
         }
       },
       "required": [
+        "verbose",
         "exactTarget",
         "declaration"
       ],
@@ -1322,6 +1337,10 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "verbose": {
+          "type": "boolean",
+          "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+        },
         "exactTarget": {
           "type": "string",
           "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
@@ -1332,6 +1351,7 @@
         }
       },
       "required": [
+        "verbose",
         "exactTarget",
         "body"
       ],

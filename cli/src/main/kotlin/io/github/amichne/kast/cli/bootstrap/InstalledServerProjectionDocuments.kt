@@ -240,8 +240,8 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             ),
             executionBudgetProperty(),
             referenceAcquisitionsProperty(),
-            ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
-            ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema())),
+            ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema()), required = false),
+            ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema()), required = false),
             ServerSchemaProperty("walk_observations", arraySchema(queryWalkObservationSchema())),
             queryResultRetentionProperty(),
             queryResultCursorProperty(),
@@ -252,10 +252,12 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             ServerSchemaProperty(
                 "continuation",
                 nullableSchema(textSchema("Opaque snapshot and pipeline-bound next page handle.")),
+                required = false,
             ),
             ServerSchemaProperty(
                 "terminal_reason",
                 queryTerminalReasonSchema(),
+                required = false,
             ),
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
             ServerSchemaProperty(
@@ -266,8 +268,8 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             ),
             executionBudgetProperty(),
             referenceAcquisitionsProperty(),
-            ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
-            ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema())),
+            ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema()), required = false),
+            ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema()), required = false),
             ServerSchemaProperty("walk_observations", arraySchema(queryWalkObservationSchema())),
             queryResultRetentionProperty(),
             queryResultCursorProperty(),
@@ -781,6 +783,7 @@ private fun liveReadEvidenceSchema(): JsonObject =
                 "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
                 "Original live host incarnation.",
             ),
+            required = false,
         ),
         ServerSchemaProperty(
             "epoch",
@@ -790,12 +793,13 @@ private fun liveReadEvidenceSchema(): JsonObject =
                 put("maximum", Long.MAX_VALUE)
                 put("description", "Observed live content and model epoch, never a publication generation.")
             },
+            required = false,
         ),
         ServerSchemaProperty(
             "contentView",
             constantSchema("SAVED_PSI_COMMITTED", "Saved and PSI-committed live content."),
         ),
-        ServerSchemaProperty("version", integerSchema(1, 1, "Live evidence representation version.")),
+        ServerSchemaProperty("version", integerSchema(1, 1, "Live evidence representation version."), required = false),
     )
 
 internal fun sourceSnapshotSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject =

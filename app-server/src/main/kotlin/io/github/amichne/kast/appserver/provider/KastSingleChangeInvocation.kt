@@ -25,8 +25,10 @@ import io.github.amichne.kast.protocol.contract.ChangeRequest
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
 import io.github.amichne.kast.protocol.contract.ChangeRunError
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.ChangeRunCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
@@ -46,7 +48,10 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
 /** One broker invocation around the host's durable plan, exact challenge, write, and recovery boundaries. */
-internal class KastSingleChangeInvocation(private val options: KastProviderOptions) {
+internal class KastSingleChangeInvocation(
+    private val options: KastProviderOptions,
+    private val detail: ToolOutputDetail = ToolOutputDetail.VERBOSE,
+) {
     private val preparers = canonicalCliRequestPreparers()
     private val gateway = KastHostedPlanApprovalGateway(options, options.userHome, options.ioDispatcher)
     private val signer = EnrolledPlanApprovalSigner(options.userHome)
@@ -61,7 +66,7 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         val request =
             (facade.request.canonical as? PublicToolCanonical.Change)?.request
                 ?: return ProviderCall.Rejected(ProviderFailureCode.IDE_INVALID_REQUEST)
-        return invoke(request, context)
+        return KastSingleChangeInvocation(options, facade.request.outputDetail).invoke(request, context)
     }
 
     internal suspend fun invoke(
@@ -94,7 +99,7 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         val plan = phase(root, planOperation)
         val planDocument = plan.document
         val identity =
-            (plan as? NativePhase.Complete)?.document?.let { document ->
+            (plan as? SingleChangeNativePhase.Complete)?.document?.let { document ->
                 try {
                     changeJson
                         .decodeFromJsonElement<StoredPlan>(document)
@@ -131,10 +136,10 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
                 settleCancelledApply(root, identity, context)
                 throw cancelled
             } catch (_: RuntimeException) {
-                NativePhase.Incomplete(null)
+                SingleChangeNativePhase.Incomplete(null)
             }
         val applicationDocument = application.document
-        if (application is NativePhase.Rejected)
+        if (application is SingleChangeNativePhase.Rejected)
             return result(
                 ChangeRunDocument.Rejected(
                     ChangeRunError(ChangeRejection.APPLY_REJECTED, identity, plan, applicationDocument)
@@ -144,7 +149,7 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         val state = applicationState(applicationDocument)
         val verified = verifiedApplication(application, state)
         if (verified != null) return result(ChangeRunDocument.Complete(identity, plan, verified), context)
-        if (application is NativePhase.Incomplete && state?.status == NativeStatus.REJECTED)
+        if (application is SingleChangeNativePhase.Incomplete && state?.status == NativeStatus.REJECTED)
             return result(
                 ChangeRunDocument.Rejected(
                     ChangeRunError(ChangeRejection.APPLY_REJECTED, identity, plan, applicationDocument)
@@ -159,7 +164,7 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
                 throw cancelled
             }
         val failure =
-            if (recovery is RecoveryAttempt.Resolved) ChangeRejection.APPLY_UNVERIFIED
+            if (recovery is SingleChangeRecoveryAttempt.Resolved) ChangeRejection.APPLY_UNVERIFIED
             else ChangeRejection.RECOVERY_UNAVAILABLE
         return result(
             ChangeRunDocument.Rejected(ChangeRunError(failure, identity, plan, applicationDocument, recovery.document)),
@@ -185,8 +190,8 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         }
     }
 
-    private fun verifiedApplication(application: NativePhase, state: ApplicationState?): JsonObject? {
-        if (application !is NativePhase.Complete) return null
+    private fun verifiedApplication(application: SingleChangeNativePhase, state: ApplicationState?): JsonObject? {
+        if (application !is SingleChangeNativePhase.Complete) return null
         if (state?.status != NativeStatus.COMPLETE || state.state != NativeApplyState.VERIFIED) return null
         return application.document
     }
@@ -201,7 +206,7 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
                 withTimeoutOrNull(OperationExecutionBudget.SEMANTIC_READ.operation.value) {
                     recover(root, identity, context)
                 }
-            if (recovery is RecoveryAttempt.Resolved)
+            if (recovery is SingleChangeRecoveryAttempt.Resolved)
                 currentCoroutineContext()[WorkspaceRecoverySettlement]?.confirm(recovery.state)
         }
     }
@@ -210,36 +215,36 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         root: CanonicalRoot,
         identity: String,
         context: BrokerInvocationContext,
-    ): RecoveryAttempt {
+    ): SingleChangeRecoveryAttempt {
         val assertion =
             authorize(HostedChangeApprovalOperation.RECOVER, identity, context)
-                ?: return RecoveryAttempt.Unresolved(null)
+                ?: return SingleChangeRecoveryAttempt.Unresolved(null)
         val operation =
             mutation(HostedMutationOperation.CHANGE_RECOVER, identity, assertion)
-                ?: return RecoveryAttempt.Unresolved(null)
+                ?: return SingleChangeRecoveryAttempt.Unresolved(null)
         val phase =
             try {
                 phase(root, operation)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: RuntimeException) {
-                return RecoveryAttempt.Unresolved(null)
+                return SingleChangeRecoveryAttempt.Unresolved(null)
             }
-        val document = phase.document ?: return RecoveryAttempt.Unresolved(null)
-        if (phase !is NativePhase.Complete) return RecoveryAttempt.Unresolved(document)
+        val document = phase.document ?: return SingleChangeRecoveryAttempt.Unresolved(null)
+        if (phase !is SingleChangeNativePhase.Complete) return SingleChangeRecoveryAttempt.Unresolved(document)
         val state =
             try {
                 changeJson.decodeFromJsonElement<NativeRecoveryState>(document)
             } catch (_: SerializationException) {
-                return RecoveryAttempt.Unresolved(document)
+                return SingleChangeRecoveryAttempt.Unresolved(document)
             }
-        if (state.status != NativeStatus.COMPLETE) return RecoveryAttempt.Unresolved(document)
+        if (state.status != NativeStatus.COMPLETE) return SingleChangeRecoveryAttempt.Unresolved(document)
         return when (state.state) {
             NativeRecoveryOutcome.PRIOR_STATE ->
-                RecoveryAttempt.Resolved(document, ResolvedMutationRecovery.PRIOR_STATE)
+                SingleChangeRecoveryAttempt.Resolved(document, ResolvedMutationRecovery.PRIOR_STATE)
             NativeRecoveryOutcome.ROLLED_BACK ->
-                RecoveryAttempt.Resolved(document, ResolvedMutationRecovery.ROLLED_BACK)
-            NativeRecoveryOutcome.RECOVERY_REQUIRED -> RecoveryAttempt.Unresolved(document)
+                SingleChangeRecoveryAttempt.Resolved(document, ResolvedMutationRecovery.ROLLED_BACK)
+            NativeRecoveryOutcome.RECOVERY_REQUIRED -> SingleChangeRecoveryAttempt.Unresolved(document)
         }
     }
 
@@ -304,19 +309,22 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         }
     }
 
-    private suspend fun phase(root: CanonicalRoot, operation: ExistingIdeOperation): NativePhase =
+    private suspend fun phase(root: CanonicalRoot, operation: ExistingIdeOperation): SingleChangeNativePhase =
         when (val demanded = options.workspaceDemand.query(root, operation)) {
-            is WorkspaceDemandResult.Rejected -> NativePhase.Rejected(null)
+            is WorkspaceDemandResult.Rejected -> SingleChangeNativePhase.Rejected(null)
             is WorkspaceDemandResult.Native ->
                 when (val exchange = demanded.exchange) {
-                    is ExistingIdeExchange.Rejected -> NativePhase.Incomplete(null)
-                    is ExistingIdeExchange.HostRejected -> NativePhase.Rejected(document(exchange.document))
-                    is ExistingIdeExchange.Received -> NativePhase.Incomplete(document(exchange.document))
+                    is ExistingIdeExchange.Rejected -> SingleChangeNativePhase.Incomplete(null)
+                    is ExistingIdeExchange.HostRejected -> SingleChangeNativePhase.Rejected(document(exchange.document))
+                    is ExistingIdeExchange.Received -> SingleChangeNativePhase.Incomplete(document(exchange.document))
                     is ExistingIdeExchange.Semantic ->
                         when (val outcome = exchange.outcome) {
-                            is ProjectedOperationOutcome.Complete -> NativePhase.Complete(document(outcome.document))
-                            is ProjectedOperationOutcome.Qualified -> NativePhase.Incomplete(document(outcome.document))
-                            is ProjectedOperationOutcome.Rejected -> NativePhase.Rejected(document(outcome.document))
+                            is ProjectedOperationOutcome.Complete ->
+                                SingleChangeNativePhase.Complete(document(outcome.document))
+                            is ProjectedOperationOutcome.Qualified ->
+                                SingleChangeNativePhase.Incomplete(document(outcome.document))
+                            is ProjectedOperationOutcome.Rejected ->
+                                SingleChangeNativePhase.Rejected(document(outcome.document))
                         }
                 }
         }
@@ -334,31 +342,15 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
             KastInvocationOutput(
                 invocationJson
                     .encodeToJsonElement(
-                        KastCompletedDocument(changeJson.encodeToJsonElement(ChangeRunDocument.serializer(), document))
+                        KastCompletedDocument(
+                            Json.parseToJsonElement(ChangeRunCliDocuments.project(document).present(detail).value)
+                        )
                     )
                     .jsonObject,
                 document is ChangeRunDocument.Complete,
                 context.workingDirectory,
             )
         )
-}
-
-private sealed interface NativePhase {
-    val document: JsonObject?
-
-    data class Complete(override val document: JsonObject?) : NativePhase
-
-    data class Incomplete(override val document: JsonObject?) : NativePhase
-
-    data class Rejected(override val document: JsonObject?) : NativePhase
-}
-
-private sealed interface RecoveryAttempt {
-    val document: JsonObject?
-
-    data class Resolved(override val document: JsonObject, val state: ResolvedMutationRecovery) : RecoveryAttempt
-
-    data class Unresolved(override val document: JsonObject?) : RecoveryAttempt
 }
 
 @Serializable private data class StoredPlan(val status: NativeStatus, val planIdentity: String)

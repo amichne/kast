@@ -13,7 +13,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -53,6 +56,44 @@ class McpInvestigationToolsTest {
         assertTrue("supportedCapabilities" !in data)
         assertTrue("unavailableCapabilities" !in data)
         assertEquals(1, statusCalls)
+    }
+
+    @Test
+    fun `health verbose adds host detail and rejects non boolean switches before effects`() {
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        var calls = 0
+        val native = ExistingIdeClient { selected, _ ->
+            calls++
+            ExistingIdeExchange.Received(
+                CanonicalJsonDocument.generated(TestHostedStatus.serializer())
+                    .create(TestHostedStatus(selected.path.toString()))
+            )
+        }
+        val tools =
+            McpInvestigationTools(
+                root,
+                ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
+                setOf("QUERY_RUN"),
+            )
+        for (verbose in listOf(false, true)) {
+            val result =
+                tools.invoke(
+                    SupportToolIdentity.HEALTH_CHECK,
+                    Json.encodeToJsonElement(TestVerboseInput(verbose)).jsonObject,
+                )
+            val data = Json.parseToJsonElement(result.document.value).jsonObject.getValue("data").jsonObject
+            assertEquals(verbose, "host" in data)
+            assertEquals("READY", data.getValue("readiness").jsonPrimitive.content)
+        }
+        for (malformed in listOf(JsonNull, JsonPrimitive("true"), JsonPrimitive(1))) {
+            val result =
+                tools.invoke(
+                    SupportToolIdentity.HEALTH_CHECK,
+                    Json.encodeToJsonElement(InvalidVerboseInput(malformed)).jsonObject,
+                )
+            assertTrue(result is CliExit.OperationRejected)
+        }
+        assertEquals(2, calls)
     }
 
     @Test
@@ -119,3 +160,8 @@ private data class TestHostedStatus(
 )
 
 @Serializable private data class TestHostedReadiness(val status: String = "admission_ready")
+
+@Serializable private data class TestVerboseInput(val verbose: Boolean)
+
+/** Deliberately incompatible field types test strict boolean admission. */
+@Serializable private data class InvalidVerboseInput(val verbose: JsonElement)

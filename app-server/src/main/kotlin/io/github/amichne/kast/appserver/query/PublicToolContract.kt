@@ -52,6 +52,8 @@ private constructor(
     val canonical: PublicToolCanonical,
     internal val syntax: PublicToolDocument,
 ) : OperationRequest {
+    val outputDetail: ToolOutputDetail = ToolOutputDetail.fromVerbose(syntax.verbose)
+
     companion object {
         internal fun admit(
             identity: PublicToolIdentity,

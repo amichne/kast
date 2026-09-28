@@ -20,7 +20,7 @@ class CopilotInputSchemaCompatibilityTest {
     fun `replace body generated schema requires one exact target and block text`() {
         val schema = PublicToolContract.parameters(PublicToolIdentity.REPLACE_BODY)
         assertEquals("object", schema.getValue("type").toString().trim('"'))
-        assertEquals(setOf("exactTarget", "body"), schema.getValue("properties").jsonObject.keys)
+        assertEquals(setOf("verbose", "exactTarget", "body"), schema.getValue("properties").jsonObject.keys)
         val examples = PublicToolContract.examples(PublicToolIdentity.REPLACE_BODY)
         assertAdmits(schema, examples.examples.getValue("exactTarget").value.toString())
         assertRejects(schema, examples.invalidExamples.getValue("missingBody").value.toString())

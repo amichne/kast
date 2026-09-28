@@ -25,6 +25,45 @@
           }
         }
       }
+    },
+    "verboseNull": {
+      "summary": "Verbose must be a boolean, not null.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "Order"
+          }
+        },
+        "verbose": null
+      }
+    },
+    "verboseString": {
+      "summary": "Verbose must be a boolean, not string.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "Order"
+          }
+        },
+        "verbose": "true"
+      }
+    },
+    "verboseNumber": {
+      "summary": "Verbose must be a boolean, not number.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "Order"
+          }
+        },
+        "verbose": 1
+      }
     }
   }
 }

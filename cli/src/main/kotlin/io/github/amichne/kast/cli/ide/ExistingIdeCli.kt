@@ -18,6 +18,7 @@ import io.github.amichne.kast.cli.*
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.command.*
 import io.github.amichne.kast.cli.command.ide.ExistingIdeRootSelection
+import io.github.amichne.kast.cli.direct.present
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
@@ -118,7 +119,9 @@ internal fun executeAdmittedPublicTool(
     tool: AdmittedPublicTool,
     start: Path,
     capabilities: ExistingIdeCliCapabilities,
-): CliExit = executeDaemonOperation(start, capabilities.roots, capabilities.read, DaemonOperationCall.PublicTool(tool))
+): CliExit =
+    executeDaemonOperation(start, capabilities.roots, capabilities.read, DaemonOperationCall.PublicTool(tool))
+        .present(tool.outputDetail)
 
 private fun executeSemanticAction(
     action: CliAction.Semantic,
@@ -139,11 +142,12 @@ private fun executeSemanticAction(
     return when (source) {
         is SemanticSource.PublicTool ->
             executeDaemonOperation(
-                start,
-                capabilities.roots,
-                capabilities.read,
-                DaemonOperationCall.PublicTool(source.tool),
-            )
+                    start,
+                    capabilities.roots,
+                    capabilities.read,
+                    DaemonOperationCall.PublicTool(source.tool),
+                )
+                .present(source.tool.outputDetail)
         is SemanticSource.CanonicalRead ->
             executeDaemonOperation(
                 start,

@@ -1,5 +1,10 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.cli.mcp
 
+import com.networknt.schema.InputFormat
+import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
@@ -7,6 +12,7 @@ import io.github.amichne.kast.cli.generatedRequestSchema
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeExistingIdeCli
 import io.github.amichne.kast.cli.unionSchema
+import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Path
@@ -29,8 +35,9 @@ internal class McpInvestigationTools(
         }
 
     private fun health(arguments: JsonObject): CliExit {
-        if (arguments.isNotEmpty())
-            return healthRejected(McpHealthErrorCode.INVALID_REQUEST, "No arguments are accepted")
+        if (healthRequestSchema.validate(arguments.toString(), InputFormat.JSON).isNotEmpty())
+            return healthRejected(McpHealthErrorCode.INVALID_REQUEST, "Expected an optional boolean verbose")
+        val request = Json.decodeFromJsonElement(McpHealthInput.serializer(), arguments)
         val root =
             canonicalRoot()
                 ?: return healthRejected(McpHealthErrorCode.OUT_OF_SCOPE, "No Gradle workspace owns this directory")
@@ -62,7 +69,11 @@ internal class McpInvestigationTools(
                 hostState = if (indexed) McpHealthHostState.INDEXED else McpHealthHostState.UNAVAILABLE,
                 readinessEvidence = observed.readiness.rejection,
             )
-        return CliExit.Complete(healthReadyFactory.create(McpHealthReady(data = data)))
+        return CliExit.Complete(
+            healthReadyFactory
+                .create(McpHealthReady(data = data))
+                .present(ToolOutputDetail.fromVerbose(request.verbose))
+        )
     }
 
     private fun canonicalRoot(): Path? =
@@ -74,9 +85,9 @@ internal class McpInvestigationTools(
         )
 }
 
-@Serializable private class McpEmptyInput
+@Serializable private data class McpHealthInput(val verbose: Boolean = false)
 
-internal fun healthInputSchema(): JsonObject = generatedRequestSchema(McpEmptyInput.serializer())
+internal fun healthInputSchema(): JsonObject = generatedRequestSchema(McpHealthInput.serializer())
 
 @Serializable
 private data class McpNativeStatus(
@@ -109,7 +120,7 @@ private data class McpHealthReady(
 @Serializable
 private data class McpHealthData(
     val workspaceBinding: String,
-    val host: String,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val host: String? = null,
     val readiness: McpHealthReadiness,
     val contentView: McpHealthContentView?,
     val hostState: McpHealthHostState,
@@ -164,7 +175,13 @@ private val investigationJson = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
 }
-private val healthReadyFactory = CanonicalJsonDocument.generated(McpHealthReady.serializer())
+private val healthReadyFactory =
+    CanonicalJsonDocument.generated(McpHealthReady.serializer()) {
+        it.copy(data = it.data.copy(host = null))
+    }
+private val healthRequestSchema by lazy {
+    SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(healthInputSchema().toString())
+}
 private val healthRejectedFactory = CanonicalJsonDocument.generated(McpHealthRejected.serializer())
 
 internal fun healthResultSchema(): JsonObject =

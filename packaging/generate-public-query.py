@@ -67,7 +67,7 @@ def validate_authority(authority: dict) -> None:
         if tool['operation'] not in {'query.run', 'diagnostic.check', 'change'}:
             raise ValueError(f'Unbound advertised tool: {tool["name"]}')
     support_bindings = {
-        'workspace_lifecycle': ('WorkspaceLifecycleRequest', ['APP_SERVER']),
+        'workspace_lifecycle': ('WorkspaceLifecycleToolInput', ['APP_SERVER']),
         'health_check': ('McpHealthRequest', ['MCP', 'RPC']),
     }
     if {tool['name'] for tool in support} != set(support_bindings):
@@ -160,8 +160,9 @@ def project(schema: dict, *, strict: bool) -> dict:
     if tagged_type(result, 'object') and 'properties' in result:
         originally_required = set(schema.get('required', []))
         for name, property_schema in list(result['properties'].items()):
-            if name in originally_required or nullable(property_schema):
+            if name in originally_required or nullable(property_schema) or name == 'verbose':
                 continue
+            # Verbose is omission-only: every provider must still emit a true JSON boolean.
             # Optional direct controls may be omitted. Strict providers require all
             # object keys, so their null spelling must have the same admission meaning.
             if 'type' in property_schema and isinstance(property_schema['type'], str):
@@ -254,12 +255,14 @@ def render_tools(authority: dict) -> dict[Path, str]:
                       '@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)\n@file:Suppress("ConstructorParameterNaming")'),
              'import io.github.amichne.kast.protocol.registry.PublicToolIdentity\n',
              'import kotlinx.serialization.json.*\n\n',
-             'internal sealed interface PublicToolDocument\n\n']
+             'internal sealed interface PublicToolDocument { val verbose: Boolean }\n\n']
     body = []
     for key, spec in objects.items():
         inherited = parents.get(key, [])
         discriminator = 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
+        if key in roots:
+            props.sort(key=lambda prop: prop[0] == 'verbose')
         suffix = (' : ' + ', '.join('PublicTool' + parent for parent in inherited)) if inherited else (
             ' : PublicToolDocument' if key in roots else ''
         )
@@ -278,8 +281,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
                     if field_type.endswith('?'):
                         default = ' = null'
                     elif isinstance(resolved.get('default'), bool):
-                        field_type += '?'
-                        default = ' = null'
+                        if prop == 'verbose' and key in roots:
+                            default = ' = ' + str(resolved['default']).lower()
+                        else:
+                            field_type += '?'
+                            default = ' = null'
                     elif isinstance(resolved.get('default'), int):
                         if resolved.get('x-kotlin-type') == 'ProtocolCount' or field_type == 'Int':
                             field_type += '?'
@@ -292,7 +298,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
                 if 'x-kotlin-type' in resolved and '_' in prop:
                     parameter = prop.split('_')[0] + ''.join(part.title() for part in prop.split('_')[1:])
                     body.append(f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')
-                body.append(f'    val {parameter}: {field_type}{default},\n')
+                modifier = 'override ' if prop == 'verbose' and key in roots else ''
+                body.append(f'    {modifier}val {parameter}: {field_type}{default},\n')
             body.append(')' + suffix + '\n\n')
     for key, values in enums.items():
         lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')

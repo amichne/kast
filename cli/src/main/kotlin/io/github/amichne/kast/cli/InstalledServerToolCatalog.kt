@@ -148,7 +148,7 @@ private fun AgentToolDefinition.hostedDocument(): InstalledHostedToolDocument =
                 is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
                 AgentToolInputBinding.Canonical ->
                     generatedHostedRequestSchema(
-                        io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.serializer(),
+                        io.github.amichne.kast.appserver.query.WorkspaceLifecycleToolInput.serializer(),
                         operation.hostedVariants,
                     )
             },

@@ -202,11 +202,11 @@ class InstalledServerProjectionTest {
         assertEquals(4, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertEquals(
-            setOf("exactTarget", "declaration"),
+            setOf("verbose", "exactTarget", "declaration"),
             tools.tool("add_declaration").getValue("inputSchema").jsonObject.getValue("properties").jsonObject.keys,
         )
         assertEquals(
-            setOf("exactTarget", "body"),
+            setOf("verbose", "exactTarget", "body"),
             tools.tool("replace_body").getValue("inputSchema").jsonObject.getValue("properties").jsonObject.keys,
         )
     }
