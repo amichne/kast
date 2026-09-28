@@ -52,17 +52,17 @@ class HostedBudgetReadRegressionTest(unittest.TestCase):
         for request in (BudgetSource(SymbolAnchor('admitted-selector'), ResultsBudget(1)),
                         walk_query('admitted-selector', budget=ResultsBudget(1))):
             payload = asdict(request)
-            budget = payload.get('execution_budget', payload.get('request', {}).get('execution_budget'))
-            self.assertEqual({'max_results': 1}, budget)
-        self.assertEqual({'max_results': 1},
-                         asdict(name_query('pageItem00', budget=ResultsBudget(1)))['request']['execution_budget'])
+            budget = payload.get('executionBudget', payload.get('request', {}).get('executionBudget'))
+            self.assertEqual({'maxResults': 1}, budget)
+        self.assertEqual({'maxResults': 1},
+                         asdict(name_query('pageItem00', budget=ResultsBudget(1)))['request']['executionBudget'])
 
     def test_declaration_search_retains_unrestricted_kind_and_exact_name_contract(self):
         self.assertEqual({'request': {'type': 'RUN',
-                          'source': {'type': 'SEARCH_DECLARATIONS', 'declaration_name': 'pageItem00',
-                                     'name_match': 'EXACT', 'scope': None, 'declaration_kinds': None},
+                          'source': {'type': 'SEARCH_DECLARATIONS', 'declarationName': 'pageItem00',
+                                     'nameMatch': 'EXACT', 'scope': None, 'declarationKinds': None},
                           'steps': None, 'output': {'type': 'SYMBOLS', 'fields': ('NAME', 'LOCATION', 'SIGNATURE')},
-                          'execution_budget': {'max_work_units': 100000}}},
+                          'executionBudget': {'maxWorkUnits': 100000}}},
                          asdict(name_query('pageItem00', budget=WorkBudget())))
 
     def test_grant_checker_rejects_lost_request_unexplained_clamp_and_cross_axis_override(self):

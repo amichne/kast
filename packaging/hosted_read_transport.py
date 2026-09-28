@@ -223,15 +223,15 @@ def _admit_cli_invocations(document):
     """Keep CLI routes exact while allowing the hosted-only workspace tool."""
     projection = document['serverProjection']
     cli, bootstrap = projection['cliInvocations'], projection['hostedBootstrap']
-    if (projection['schemaVersion'] != 15 or projection['namespace'] != 'kast'
-            or cli['schemaVersion'] != 4 or bootstrap['schemaVersion'] != 1
+    if (projection['schemaVersion'] != 16 or projection['namespace'] != 'kast'
+            or cli['schemaVersion'] != 4 or bootstrap['schemaVersion'] != 2
             or not 1 <= len(cli['operations']) <= 64 or not 1 <= len(bootstrap['tools']) <= 64):
         raise ReadTransportRejected('READ_CLI_SCHEMA_REJECTED')
     tools = {tool['name']: tool for tool in bootstrap['tools']}
     operations = {operation['toolName']: operation for operation in cli['operations']}
     if (len(tools) != len(bootstrap['tools']) or len(operations) != len(cli['operations'])
             or not operations.keys() <= tools.keys()
-            or (tools.keys() - operations.keys()) - {'workspace_lifecycle'}
+            or (tools.keys() - operations.keys()) - {'workspace_lifecycle', 'add_declaration'}
             or 'workspace_lifecycle' in operations):
         raise ReadTransportRejected('READ_CLI_SCHEMA_REJECTED')
     commands = {}
@@ -336,7 +336,7 @@ class HostedReadTransport:
             result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), *self.cli_commands[tool]],
                 cwd=self.fixture.workspace, env=self.fixture.environment,
                 input=json.dumps(arguments).encode(), capture_output=True, timeout=60)
-            if tool == 'source_read' and not result.stdout:
+            if tool == 'read_source' and not result.stdout:
                 from hosted_source_failure_regression import admit_source_cli_boundary, SourceCliBoundaryRejected
                 try:
                     admission = admit_source_cli_boundary(result.returncode, result.stdout, result.stderr, self.fixture.environment)

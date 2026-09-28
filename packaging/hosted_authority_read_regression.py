@@ -74,7 +74,7 @@ class AuthorityCaseName(str, Enum):
 @dataclass(frozen=True)
 class ContinueSourcePage:
     continuation: str
-    type: str = field(default='continue', init=False)
+    type: str = field(default='CONTINUE', init=False)
 
 
 @dataclass(frozen=True)
@@ -144,7 +144,7 @@ class _AuthorityReplay:
         return SourceFunctionRequest(SymbolAnchor(items[0]['ref'])), current
 
     def page(self, name, surface, request, live, expected_name, reacquired_from=None):
-        response, digest = self.call(surface, 'source_read', request)
+        response, digest = self.call(surface, 'read_source', request)
         qualification = response.get('qualification', {})
         progress = qualification.get('progress', {})
         checkpoint = progress.get('checkpoint', {})
@@ -164,7 +164,7 @@ class _AuthorityReplay:
         return token
 
     def reject(self, name, surface, request, reason):
-        response, digest = self.call(surface, 'source_read', request)
+        response, digest = self.call(surface, 'read_source', request)
         raw = response.get('reason')
         if raw == asdict(UnavailableSymbolReference()):
             observed = AuthorityRefusal.UNAVAILABLE_REFERENCE
@@ -208,7 +208,7 @@ def _foreign_refusal(transport, fixture, request):
         and stat.S_IMODE(foreign.stat().st_mode) == 0o700, AuthorityFailure.FOREIGN)
     settings = foreign / 'settings.gradle.kts'
     before = _digest(_source_bytes(settings))
-    result = subprocess.run([str(product_executable(transport.product, fixture.workspace.parent)), *transport.cli_commands['source_read']],
+    result = subprocess.run([str(product_executable(transport.product, fixture.workspace.parent)), *transport.cli_commands['read_source']],
         cwd=foreign, env=fixture.environment, input=json.dumps(asdict(request)).encode(),
         capture_output=True, timeout=30)
     _demand(result.returncode != 0 and not result.stdout and len(result.stderr) <= 65536,
@@ -264,7 +264,7 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
             edited_live = current
             report = replace(report, editedEpoch=current['epoch'])
             old, token = issued[surface]
-            replay.page(AuthorityCaseName.OLD_REFERENCE, surface, old, current, 'pageItem00', old.anchor.selector)
+            replay.page(AuthorityCaseName.OLD_REFERENCE, surface, old, current, 'pageItem00', old.symbolRef.selector)
             replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
                 replace(fresh, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
             replay.page(AuthorityCaseName.FRESH, surface, fresh, current, 'pageItem00')

@@ -8,16 +8,16 @@ Source = TypeVar('Source')
 
 @dataclass(frozen=True)
 class NameSource:
-    declaration_name: str
-    name_match: str
-    declaration_kinds: tuple[str, ...] | None
+    declarationName: str
+    nameMatch: str
+    declarationKinds: tuple[str, ...] | None
     scope: object | None
     type: str = field(default='SEARCH_DECLARATIONS', init=False)
 
 
 @dataclass(frozen=True)
 class SymbolReferences:
-    symbol_refs: tuple[str, ...]
+    symbolRefs: tuple[str, ...]
     type: Literal['SYMBOL_REFS'] = field(default='SYMBOL_REFS', init=False)
 
 
@@ -45,7 +45,7 @@ class BreadthFirstWalk:
 @dataclass(frozen=True)
 class Walk:
     relation: str
-    maximum_depth: int
+    maximumDepth: int
     strategy: BreadthFirstWalk = field(default_factory=BreadthFirstWalk)
     type: Literal['WALK'] = field(default='WALK', init=False)
 
@@ -61,14 +61,14 @@ class QueryRun(Generic[Source]):
     source: Source
     steps: tuple[object, ...] | None = None
     output: SymbolOutput | OccurrenceOutput | TraversalRecordOutput | None = None
-    execution_budget: object | None = None
+    executionBudget: object | None = None
     type: Literal['RUN'] = field(default='RUN', init=False)
 
 
 @dataclass(frozen=True)
 class QueryResume:
     continuation: str
-    execution_budget: object | None = None
+    executionBudget: object | None = None
     type: Literal['RESUME'] = field(default='RESUME', init=False)
 
 
@@ -79,7 +79,7 @@ class QueryInput(Generic[Source]):
 
 def name_query(name, kinds=None, scope=None, match='exact', budget=None):
     return QueryInput(QueryRun(NameSource(name, match.upper(), tuple(kind.upper() for kind in kinds) if kinds is not None else None, scope),
-                               output=SymbolOutput(('NAME', 'LOCATION', 'SIGNATURE')), execution_budget=budget))
+                               output=SymbolOutput(('NAME', 'LOCATION', 'SIGNATURE')), executionBudget=budget))
 
 
 def relation_query(reference, relation='callees', budget=None):

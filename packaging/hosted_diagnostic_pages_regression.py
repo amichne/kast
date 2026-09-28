@@ -6,10 +6,10 @@ from hosted_read_transport import ReadTransportRejected
 
 @dataclass(frozen=True)
 class DiagnosticGrant:
-    max_work_units: int = 10000
-    max_elapsed_ms: int = 10000
-    max_results: int = 1
-    max_returned_bytes: int = 262144
+    maxWorkUnits: int = 10000
+    maxElapsedMs: int = 10000
+    maxResults: int = 1
+    maxReturnedBytes: int = 262144
 
 
 @dataclass(frozen=True)
@@ -20,10 +20,10 @@ class LegacyDiagnosticRequest:
 
 @dataclass(frozen=True)
 class DiagnosticRequest:
-    relative_path: str = 'src/main/kotlin'
-    max_diagnostics: int = 1
+    relativePath: str = 'src/main/kotlin'
+    maxDiagnostics: int = 1
     continuation: str | None = None
-    execution_budget: DiagnosticGrant = DiagnosticGrant()
+    executionBudget: DiagnosticGrant = DiagnosticGrant()
 
 
 class DiagnosticDrainFailure(str, Enum):
@@ -162,7 +162,7 @@ def _diagnostic_records(drained):
 def heavy_file_checks(replay):
     """The authored deprecated callable has three separate calls with the same warning text."""
     path = 'src/main/kotlin/ReadDiagnosticPages.kt'
-    high_request = DiagnosticRequest(path, 1000, execution_budget=replace(DiagnosticGrant(), max_results=1000))
+    high_request = DiagnosticRequest(path, 1000, executionBudget=replace(DiagnosticGrant(), maxResults=1000))
     low_request = DiagnosticRequest(path, 1000)
     high = drain_diagnostics(replay, high_request, _invoke(replay, high_request), verify_replay=True)
     low = drain_diagnostics(replay, low_request, _invoke(replay, low_request), verify_replay=True)
@@ -206,7 +206,7 @@ def _reported_limit(response, axis, requested):
 
 def independent_budget_checks(replay):
     """Exercise one axis at a time; time/bytes observations do not imply forced exhaustion."""
-    work = DiagnosticRequest(execution_budget=replace(DiagnosticGrant(), max_work_units=1))
+    work = DiagnosticRequest(executionBudget=replace(DiagnosticGrant(), maxWorkUnits=1))
     first = _invoke(replay, work)
     token = _continuation(first)
     checks = {
@@ -220,7 +220,7 @@ def independent_budget_checks(replay):
             and stopped.get('reason') == 'enumeration-work-grant-too-small'
             and stopped.get('next_action') == 'increase_execution_budget'
             and _reported_limit(stopped, 'max_work_units', 1))
-        larger = replace(resumed, execution_budget=DiagnosticGrant())
+        larger = replace(resumed, executionBudget=DiagnosticGrant())
         checks['workIncreaseSameCheckpointDrained'] = isinstance(
             drain_diagnostics(replay, larger, _invoke(replay, larger)), DiagnosticDrained)
     else:
@@ -228,7 +228,7 @@ def independent_budget_checks(replay):
         checks['workIncreaseSameCheckpointDrained'] = False
     for axis, value in (('max_elapsed_ms', 1), ('max_returned_bytes', 2048)):
         request = DiagnosticRequest('src/main/kotlin/ReadDiagnosticPages.kt', 1000,
-            execution_budget=replace(DiagnosticGrant(max_results=1000), **{axis: value}))
+            executionBudget=replace(DiagnosticGrant(maxResults=1000), **{''.join((part.title() if index else part) for index, part in enumerate(axis.split('_'))): value}))
         label = 'timeOne' if axis == 'max_elapsed_ms' else 'bytes2048'
         try:
             response = _invoke(replay, request)
@@ -257,8 +257,8 @@ def independent_budget_checks(replay):
 
 
 def _valid_report(response, request):
-    return all(_reported_limit(response, axis, value)
-        for axis, value in asdict(request.execution_budget).items())
+    return all(_reported_limit(response, ''.join(('_' + char.lower()) if char.isupper() else char for char in axis), value)
+        for axis, value in asdict(request.executionBudget).items())
 
 
 def _semantic_difference(first, repeated):

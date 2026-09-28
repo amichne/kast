@@ -13,9 +13,9 @@ from hosted_budget_read_regression import ResultsBudget
 @dataclass(frozen=True)
 class KotlinCallScope:
     type: str = field(default='PACKAGE', init=False)
-    package_name: str = field(default='fixture.calls', init=False)
-    include_subpackages: bool = field(default=False, init=False)
-    source_set_names: tuple[str, ...] = field(default=('main',), init=False)
+    packageName: str = field(default='fixture.calls', init=False)
+    includeSubpackages: bool = field(default=False, init=False)
+    sourceSetNames: tuple[str, ...] = field(default=('main',), init=False)
 
 
 class KotlinCallMeaning(str, Enum):
@@ -114,8 +114,8 @@ def _inherited_callers(replay, source, reference):
 
 @dataclass(frozen=True)
 class CallPageBudget:
-    max_results: int
-    max_elapsed_ms: int = field(default=5000, init=False)
+    maxResults: int
+    maxElapsedMs: int = field(default=5000, init=False)
 
 
 def cycle_query(reference, budget):
@@ -208,7 +208,7 @@ def _drain_call_cycle(replay, request):
         previous = walk_observation(pages[-1]).get('progress', {}) if pages else {}
         pages.append(response)
         if (response.get('live') != replay.live or not progress_advances(previous, observation.get('progress', {}))
-                or len(walk_records(response)) > request.request.execution_budget.max_results):
+                or len(walk_records(response)) > request.request.executionBudget.maxResults):
             return pages, False
         if response.get('status') != 'qualified':
             return pages, False
@@ -223,7 +223,7 @@ def _drain_call_cycle(replay, request):
         if not isinstance(checkpoint, Checkpoint) or checkpoint.token in seen:
             return pages, False
         seen.add(checkpoint.token)
-        request = QueryInput(QueryResume(checkpoint.token, request.request.execution_budget))
+        request = QueryInput(QueryResume(checkpoint.token, request.request.executionBudget))
     return pages, False
 
 

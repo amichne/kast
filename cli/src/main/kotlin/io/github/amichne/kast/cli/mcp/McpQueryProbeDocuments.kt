@@ -32,7 +32,7 @@ internal enum class McpQueryAction {
 
 @Serializable
 internal data class McpQuerySymbolRefs(
-    @SerialName("symbol_refs") val symbolRefs: List<String>,
+    val symbolRefs: List<String>,
     val type: McpQuerySourceKind = McpQuerySourceKind.SYMBOL_REFS,
 )
 

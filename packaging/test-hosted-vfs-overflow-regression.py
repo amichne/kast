@@ -134,7 +134,7 @@ class OverflowHelperTest(unittest.TestCase):
                     raise subject.AuthorityRejected(subject.AuthorityFailure.ISSUER)
                 return 'opaque-cursor'
             def call(self, surface, tool, request):
-                if tool == 'source_read':
+                if tool == 'read_source':
                     if state.epoch == 1:
                         return {'status': 'qualified', 'content': [{'type': 'structure',
                             'snapshot': {'live': live()}, 'selections': [{'selector': 'issued-source'}]}]}, 'schema-source'
@@ -146,7 +146,7 @@ class OverflowHelperTest(unittest.TestCase):
                             else asdict(DiagnosticRefused())), 'sha256:' + 'b' * 64
             def reject(self, name, surface, request, reason):
                 self_test.assertEqual('opaque-cursor', request.page.continuation)
-                self_test.assertEqual(f'opaque-{state.epoch}', request.anchor.selector)
+                self_test.assertEqual(f'opaque-{state.epoch}', request.symbolRef.selector)
                 state.cursor += 1
         self_test = self
         def ready(*_):

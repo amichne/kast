@@ -194,7 +194,7 @@ class WalkPage:
 
 def request(reference='exact:a'):
     return QueryInput(QueryRun(SymbolReferences((reference,)), output=SymbolOutput(('NAME',)),
-                               execution_budget=ResultsBudget(100)))
+                               executionBudget=ResultsBudget(100)))
 
 
 def grant(value):
@@ -232,7 +232,7 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
         observed = drain(runner, 'query_symbols', query, first, ResultsBudget(1))
         self.assertIsInstance(observed, Drained)
         self.assertEqual(['upstream', 'retained'], [r['request']['continuation'] for r in runner.transport.requests])
-        self.assertTrue(all(r['request']['execution_budget'] == {'max_results': 100}
+        self.assertTrue(all(r['request']['executionBudget'] == {'maxResults': 100}
                             and r['request']['type'] == 'RESUME' for r in runner.transport.requests))
         self.assertEqual(2, len(runner.transport.validations))
         reference = Drained((asdict(Complete(grant(100), (Record('a'), Record('b'), Record('c')))),))
@@ -276,14 +276,14 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
                      asdict(Qualified(grant(100), Qualification(Progress(Token('canonical'))), 'wrong'))):
             self.assertEqual(DrainRejected(ResumeFailure.CHECKPOINT_REJECTED), admit_progress('query_symbols', page))
         source = ResumeSource(SymbolAnchor('symbol'), ResultsBudget(100))
-        self.assertEqual({'continuation': 'issued', 'type': 'continue'},
+        self.assertEqual({'continuation': 'issued', 'type': 'CONTINUE'},
                          asdict(resume_request(source, 'issued'))['page'])
 
     def test_source_progress_retains_its_available_continuation(self):
         source = ProgressResponse(SourceQualification(Progress(Token('source')), Available('source')))
-        self.assertEqual(Checkpoint('source', 'upstream'), admit_progress('source_read', asdict(source)))
+        self.assertEqual(Checkpoint('source', 'upstream'), admit_progress('read_source', asdict(source)))
         changed = replace(source, qualification=replace(source.qualification, continuation=Available('wrong')))
-        self.assertEqual(DrainRejected(ResumeFailure.CHECKPOINT_REJECTED), admit_progress('source_read', asdict(changed)))
+        self.assertEqual(DrainRejected(ResumeFailure.CHECKPOINT_REJECTED), admit_progress('read_source', asdict(changed)))
 
     def test_relation_page_boundaries_preserve_full_occurrence_multiset_and_page_order(self):
         a, b = Record('a'), Record('b', 'call-2')
@@ -338,10 +338,10 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
         source = Source(records)
         expected = Drained((asdict(source),))
         pages = Drained((asdict(replace(source, entities=records[:1])), asdict(replace(source, entities=records[1:]))))
-        self.assertTrue(payload_parity('source_read', pages, expected))
+        self.assertTrue(payload_parity('read_source', pages, expected))
         for changed in (replace(source, region='changed'), replace(source, text=Text('changed')),
                         replace(source, snapshot='changed'), replace(source, entities=tuple(reversed(records)))):
-            self.assertFalse(payload_parity('source_read', Drained((asdict(changed),)), expected))
+            self.assertFalse(payload_parity('read_source', Drained((asdict(changed),)), expected))
 
 
 if __name__ == '__main__':

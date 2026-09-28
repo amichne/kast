@@ -103,14 +103,14 @@ live envelope against the requested root and admitted descriptor host. A typed h
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
 
-App Server reads `share/kast/provider-catalog.json` and qualifies projection version 15
+App Server reads `share/kast/provider-catalog.json` and qualifies projection version 16
 against the canonical registry, packaged operation schemas, and declared default budgets.
 Qualification and provider startup never launch Kast; startup rereads the catalog and
 rejects digest drift. Installed payload admission and Codex schema qualification remain separate. Canonical registry input aliases
 resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Provider invocation uses the App Server-owned
 IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings. The installed coordinator first prepares the exact root, validates the live application/project identity, and retains that project through descriptor admission. Preparation failures are known pre-execution rejections with typed causes and operation IDs.
-The one-call `change` route prepares the host challenge through the same direct client and signs it internally before any source effect.
+The public `add_declaration` route prepares the host challenge through the same direct client and signs it internally before any source effect.
 Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` selects the three existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
