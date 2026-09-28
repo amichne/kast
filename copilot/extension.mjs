@@ -14,21 +14,22 @@ function run(args, input = "", policy = null, signal = null) {
     const child = spawn(command, args, { cwd: process.cwd(), stdio: ["pipe", "pipe", "pipe"] });
     const chunks = [];
     let size = 0;
-    const timer = policy && setTimeout(() => child.kill(), policy.callTimeoutMillis);
+    const maxResponseBytes = policy?.maxResponseBytes ?? 4_194_304;
+    const timer = setTimeout(() => child.kill(), policy?.callTimeoutMillis ?? 180_000);
     const abort = () => child.kill();
     signal?.addEventListener("abort", abort, { once: true });
     child.stdout.on("data", (chunk) => {
       size += chunk.length;
-      if (policy && size > policy.maxResponseBytes) child.kill();
+      if (size > maxResponseBytes) child.kill();
       else chunks.push(chunk);
     });
     child.stderr.resume();
     child.on("error", reject);
     child.on("close", (code) => {
-      if (timer) clearTimeout(timer);
+      clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
       if (signal?.aborted) return reject(new Error("Kast invocation cancelled; mutation state is unknown"));
-      if (code !== 0 || (policy && size > policy.maxResponseBytes)) return reject(new Error("Kast command failed"));
+      if (code !== 0 || size > maxResponseBytes) return reject(new Error("Kast command failed"));
       try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))); }
       catch { reject(new Error("Kast command returned invalid JSON")); }
     });

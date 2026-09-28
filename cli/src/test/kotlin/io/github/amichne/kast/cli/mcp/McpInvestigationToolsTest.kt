@@ -271,32 +271,34 @@ class McpInvestigationToolsTest {
                 diagnosticPath = file,
             )
         val calls = mutableListOf<String>()
-        validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, input ->
-            val identity = PublicToolIdentity.entries.single { it.toolName == name }
-            val admission = PublicToolContract.admit(identity, input)
-            assertTrue(admission is Refinement.Refined, "$name: $admission; $input")
-            calls += name
-            if (name == "query_symbols" && calls.size == 1)
-                CliExit.Complete(
-                    CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
-                        .create(
-                            TestQualifiedQuery(
-                                status = "complete",
-                                items =
-                                    listOf(
-                                        TestExactSymbol(
-                                            "exact:v5:${"A".repeat(22)}",
-                                            "classlike",
-                                            "Registry",
-                                            TestExactLocation(root.resolve(file).toString()),
-                                        )
-                                    ),
+        val exit =
+            validateWorkspace(Json.encodeToJsonElement(request).jsonObject, root) { name, input ->
+                val identity = PublicToolIdentity.entries.single { it.toolName == name }
+                val admission = PublicToolContract.admit(identity, input)
+                assertTrue(admission is Refinement.Refined, "$name: $admission; $input")
+                calls += name
+                if (name == "query_symbols" && calls.size == 1)
+                    CliExit.Complete(
+                        CanonicalJsonDocument.generated(TestQualifiedQuery.serializer())
+                            .create(
+                                TestQualifiedQuery(
+                                    status = "complete",
+                                    items =
+                                        listOf(
+                                            TestExactSymbol(
+                                                "exact:v5:${"A".repeat(22)}",
+                                                "classlike",
+                                                "Registry",
+                                                TestExactLocation(root.resolve(file).toString()),
+                                            )
+                                        ),
+                                )
                             )
-                        )
-                )
-            else boundaryExit(CliBoundaryExitStatus.USAGE, "probe-observed")
-        }
+                    )
+                else boundaryExit(CliBoundaryExitStatus.USAGE, "probe-observed")
+            }
         assertEquals(listOf("query_symbols", "read_source", "query_symbols", "check_diagnostics"), calls)
+        assertTrue(exit is CliExit.Complete)
     }
 }
 
