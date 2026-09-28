@@ -28,7 +28,6 @@ internal data class McpRequest(
 )
 
 internal const val MODERN_PROTOCOL_VERSION = "2026-07-28"
-internal const val VALIDATION_UI_URI = "ui://kast/validation"
 
 internal enum class McpProtocolEra {
     LEGACY,
@@ -76,11 +75,7 @@ private const val KAST_MCP_INSTRUCTIONS =
         "MODEL_CAPTURE_REJECTED happens before semantic search; " +
         "inspect the finite capture reason and the IDE's kast_semantic_read receipt."
 
-@Serializable
-internal data class McpCapabilities(
-    val tools: McpEmptyObject = McpEmptyObject(),
-    val resources: McpEmptyObject = McpEmptyObject(),
-)
+@Serializable internal data class McpCapabilities(val tools: McpEmptyObject = McpEmptyObject())
 
 @Serializable internal data class McpServerInfo(val name: String = "kast", val version: String = "1")
 
@@ -123,46 +118,6 @@ internal data class McpTool(
     val inputSchema: JsonElement,
     val outputSchema: JsonObject,
     val annotations: ToolAnnotations,
-    @SerialName("_meta") val meta: McpUiToolMeta? = null,
-)
-
-@Serializable internal data class McpUiToolMeta(val ui: McpUiLink = McpUiLink())
-
-@Serializable internal data class McpUiLink(val resourceUri: String = VALIDATION_UI_URI)
-
-@Serializable
-internal data class McpResourceList(
-    val resources: List<McpResource> = listOf(McpResource()),
-    val resultType: String? = null,
-    val ttlMs: Int? = null,
-    val cacheScope: String? = null,
-    @SerialName("_meta") val meta: McpServerMeta = McpServerMeta(),
-)
-
-@Serializable
-internal data class McpResource(
-    val uri: String = VALIDATION_UI_URI,
-    val name: String = "Kast workspace validation",
-    val description: String = "Rendered status of the five workspace validation probes.",
-    val mimeType: String = "text/html;profile=mcp-app",
-)
-
-@Serializable internal data class McpResourceReadRequest(val uri: String)
-
-@Serializable
-internal data class McpResourceRead(
-    val contents: List<McpResourceContent>,
-    val resultType: String? = null,
-    val ttlMs: Int? = null,
-    val cacheScope: String? = null,
-    @SerialName("_meta") val meta: McpServerMeta = McpServerMeta(),
-)
-
-@Serializable
-internal data class McpResourceContent(
-    val uri: String = VALIDATION_UI_URI,
-    val mimeType: String = "text/html;profile=mcp-app",
-    val text: String,
 )
 
 @Serializable internal data class McpToolCall(val name: String, val arguments: JsonObject? = null)

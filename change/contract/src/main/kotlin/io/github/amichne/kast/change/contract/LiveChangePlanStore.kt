@@ -14,7 +14,7 @@ sealed interface LiveChangePlanIssuance {
 }
 
 sealed interface LiveChangePlanLookup {
-    data class Found(val plan: LiveAddDeclarationChangePlan) : LiveChangePlanLookup
+    data class Found(val plan: LiveChangePlan) : LiveChangePlanLookup
 
     data object Missing : LiveChangePlanLookup
 
@@ -23,7 +23,7 @@ sealed interface LiveChangePlanLookup {
 
 /** Historical plan persistence only. An identity or digest grants neither approval nor current write authority. */
 interface LiveChangePlanStore {
-    fun issuePlan(plan: LiveAddDeclarationChangePlan): LiveChangePlanIssuance
+    fun issuePlan(plan: LiveChangePlan): LiveChangePlanIssuance
 
     fun loadPlan(identity: ChangePlanIdentity): LiveChangePlanLookup
 }

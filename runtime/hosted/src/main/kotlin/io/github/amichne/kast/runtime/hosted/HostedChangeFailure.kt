@@ -1,6 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.LiveChangePlanLookup
 import io.github.amichne.kast.change.contract.LiveChangePlanStoreFailure
 import io.github.amichne.kast.change.verify.LiveChangeReceiptStoreFailure
@@ -87,7 +87,7 @@ internal fun interface HostedChangeStorageObserver {
 internal fun admitLoadedHostedPlan(
     root: CanonicalWorkspaceRoot,
     loaded: LiveChangePlanLookup,
-): Refinement<LiveAddDeclarationChangePlan, HostedChangeFailure> =
+): Refinement<LiveChangePlan, HostedChangeFailure> =
     when (loaded) {
         is LiveChangePlanLookup.Found ->
             if (loaded.plan.basis.observation.reference.workspaceRoot == root) Refinement.Refined(loaded.plan)

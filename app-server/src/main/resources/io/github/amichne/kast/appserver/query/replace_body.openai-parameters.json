@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "exactTarget": {
+      "type": "string",
+      "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
+    },
+    "body": {
+      "type": "string",
+      "description": "One complete Kotlin block body, including braces. Syntax errors and trailing input are rejected."
+    }
+  },
+  "required": [
+    "exactTarget",
+    "body"
+  ],
+  "additionalProperties": false
+}

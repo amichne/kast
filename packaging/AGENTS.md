@@ -16,10 +16,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [hosted_repair_time_observation.py](hosted_repair_time_observation.py) - same-request native host stage, grant, reserve and transport timing evidence.
 
 - [hosted_diagnostic_pages_regression.py](hosted_diagnostic_pages_regression.py) - bounded same-basis diagnostic drain and repeated warning occurrences.
-- [hosted_source_failure_regression.py](hosted_source_failure_regression.py) - finite source failure evidence across CLI ingress and provider responses.
-
-- [hosted_compact_source_regression.py](hosted_compact_source_regression.py) - lossless compact source parity and actual provider presentation admission.
-- [hosted_vfs_overflow_regression.py](hosted_vfs_overflow_regression.py) - owned overflow burst, post-burst host receipt, stale refusal and guarded restoration.
+- [hosted_vfs_overflow_regression.py](hosted_vfs_overflow_regression.py) - owned overflow burst, post-burst host receipt, query epoch, diagnostics, and guarded restoration.
 
 - [hosted_read_policy.py](hosted_read_policy.py) - closed private-process presets for native default, enlarged-deadline, overflow and diagnostic paging qualification.
 - [hosted_repair_budget_regression.py](hosted_repair_budget_regression.py) - bounded actual 10/20-second grant receipts across installed surfaces.
@@ -52,9 +49,8 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [test-installed-product.sh](test-installed-product.sh) - installed product, hosted catalog, and private entry-point acceptance.
 - [run-hosted-change-acceptance.py](run-hosted-change-acceptance.py) - staged broker, CLI, and plugin change workflow in a private native IDE.
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
-- [hosted_authority_read_regression.py](hosted_authority_read_regression.py) - ordinary private source edits, observed epochs, stale authority refusal, exact restoration, and provider envelope qualification.
 - [hosted_concurrent_read.py](hosted_concurrent_read.py) - bounded concurrent reads and structured transport fault/drain witnesses.
-- [hosted_budget_read_regression.py](hosted_budget_read_regression.py) - independent caller-grant forwarding across installed query and source reads.
+- [hosted_budget_read_regression.py](hosted_budget_read_regression.py) - independent caller-grant forwarding across installed queries.
 - [native_fixture_probe.py](native_fixture_probe.py) - typed native fixture control responses and readiness evidence admission.
 - [native_provider_qualification.py](native_provider_qualification.py) - closed, payload-free provider startup evidence retained by native read reports.
 

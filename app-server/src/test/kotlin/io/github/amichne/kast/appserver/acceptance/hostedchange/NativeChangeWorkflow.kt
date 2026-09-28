@@ -34,6 +34,10 @@ internal class NativeChangeWorkflow(
         val first = searchClass()
         initialLive = first.objectAt("live")
         returnedReference = reference(first)
+        NativeReplaceBodyWorkflow(source, evidence, controls).run(peer)
+        val afterBody = searchClass()
+        initialLive = afterBody.objectAt("live")
+        returnedReference = reference(afterBody)
         NativeNegativeWorkflow(
                 source = source,
                 evidence = evidence,

@@ -102,14 +102,14 @@ object CanonicalAgentToolDefinitions {
         )
     private val publicTools = PublicToolIdentity.entries.associateWith(::facade)
     val query = publicTools.getValue(PublicToolIdentity.QUERY_SYMBOLS)
-    val sourceRead = publicTools.getValue(PublicToolIdentity.READ_SOURCE)
     val diagnosticCheck = publicTools.getValue(PublicToolIdentity.CHECK_DIAGNOSTICS)
     val addDeclaration = publicTools.getValue(PublicToolIdentity.ADD_DECLARATION)
+    val replaceBody = publicTools.getValue(PublicToolIdentity.REPLACE_BODY)
     val changePlan =
         tool(
             CanonicalOperationDefinitions.changePlan,
             "change_plan",
-            "Plan AddDeclaration in one existing authored Kotlin source file without writing source. " +
+            "Plan AddDeclaration or ReplaceBody in one existing authored Kotlin source file without writing source. " +
                 "Pass the returned search reference unchanged and preserve the plan identity for apply or recovery.",
         )
     val changeApply =
@@ -146,8 +146,8 @@ object CanonicalAgentToolDefinitions {
                 Use kast.query_symbols for declaration-name search, enumeration, returned exact
                 references, and ordered pipelines. Restrict declaration kinds and scope before
                 expensive work; exact matching is default and fuzzy requires explicit opt-in.
-                Use read_source for bounded source context and
-                query_symbols with occurrence output for relation facts and its walk step for
+                Use query_symbols with SOURCE output for bounded source context,
+                occurrence output for relation facts and its walk step for
                 multi-step reachability. Use kast.check_diagnostics
                 for compiler diagnostics.
                 Preserve returned symbol references verbatim, including compact host handles.
@@ -164,8 +164,9 @@ object CanonicalAgentToolDefinitions {
                 cache invalidation, forced index synchronization or restarting unrelated IDE sessions.
                 A missing semantic response does not authorize replaying a mutation.
 
-                Pass a returned exact reference unchanged to add_declaration. Hosted changes support
-                AddDeclaration in one existing authored Kotlin file. The single call plans, applies
+                Pass a returned exact reference unchanged to add_declaration or replace_body.
+                Hosted changes support adding one declaration or replacing one named function block
+                body in an existing authored Kotlin file. The single call plans, applies
                 and verifies the change. Keep the returned receipt or finite failure and recovery
                 evidence. A missing response does not prove no write occurred; never replay a plan.
                 """
@@ -177,9 +178,9 @@ object CanonicalAgentToolDefinitions {
         val operation =
             when (identity) {
                 PublicToolIdentity.QUERY_SYMBOLS -> CanonicalOperationDefinitions.queryRun
-                PublicToolIdentity.READ_SOURCE -> CanonicalOperationDefinitions.sourceRead
                 PublicToolIdentity.CHECK_DIAGNOSTICS -> CanonicalOperationDefinitions.diagnosticCheck
                 PublicToolIdentity.ADD_DECLARATION -> CanonicalOperationDefinitions.change
+                PublicToolIdentity.REPLACE_BODY -> CanonicalOperationDefinitions.change
             }
         return AgentToolDefinition(
             operation,

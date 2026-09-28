@@ -17,15 +17,13 @@ class CopilotInputSchemaCompatibilityTest {
     private val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
 
     @Test
-    fun `source text variants remain disjoint in the generated provider schema`() {
-        val schema = PublicToolContract.parameters(PublicToolIdentity.READ_SOURCE)
+    fun `replace body generated schema requires one exact target and block text`() {
+        val schema = PublicToolContract.parameters(PublicToolIdentity.REPLACE_BODY)
         assertEquals("object", schema.getValue("type").toString().trim('"'))
-        val textVariants = schema.getValue("$" + "defs").jsonObject.getValue("SourceText")
-        assertTrue(textVariants.jsonObject.getValue("anyOf").jsonArray.size == 3)
-        val examples = PublicToolContract.examples(PublicToolIdentity.READ_SOURCE)
-        assertAdmits(schema, examples.examples.getValue("callableBody").value.toString())
-        assertRejects(schema, examples.invalidExamples.getValue("mixedTextVariant").value.toString())
-        assertRejects(schema, examples.invalidExamples.getValue("missingTextType").value.toString())
+        assertEquals(setOf("exactTarget", "body"), schema.getValue("properties").jsonObject.keys)
+        val examples = PublicToolContract.examples(PublicToolIdentity.REPLACE_BODY)
+        assertAdmits(schema, examples.examples.getValue("exactTarget").value.toString())
+        assertRejects(schema, examples.invalidExamples.getValue("missingBody").value.toString())
     }
 
     @Test

@@ -65,6 +65,12 @@ internal fun projectIntellijMutationInput(
                     mutation.range.endExclusive,
                     mutation.replacement.value,
                 )
+            is SourceTextMutation.ReplaceBody ->
+                IntellijTextMutation(
+                    mutation.range.startInclusive,
+                    mutation.range.endExclusive,
+                    mutation.replacement.value,
+                )
         }
     }
     return Refinement.Refined(

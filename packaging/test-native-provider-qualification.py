@@ -9,7 +9,6 @@ import unittest
 from unittest.mock import patch
 
 from hosted_read_regression import run_read_regression
-from hosted_authority_read_regression import AuthorityReport, AuthorityOutcome
 from hosted_vfs_overflow_regression import OverflowReport, OverflowOutcome, OverflowFailure
 from hosted_read_policy import NativeReadPolicy
 from hosted_read_transport import HostedReadTransport, ReadTransportRejected
@@ -29,12 +28,10 @@ class NativeProviderQualificationTest(unittest.TestCase):
         def replay(_oracle, _fixture, _live, _transport, _surface, rows):
             return SimpleNamespace(run=lambda: rows.append({'passed': True}))
         with patch('hosted_read_transport.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout=b'{}')), \
-             patch('hosted_read_transport._admit_cli_invocations', return_value={'source_read': ('source', 'read')}), \
+             patch('hosted_read_transport._admit_cli_invocations', return_value={'query_symbols': ('tool', 'query_symbols')}), \
              patch('hosted_read_regression._reproduction', return_value=None), \
              patch('hosted_read_regression._ReadReplay', side_effect=replay), \
-             patch('hosted_read_regression.run_concurrent_read_regression', return_value={'outcome': 'passed'}), \
-             patch('hosted_read_regression.run_authority_read_regression',
-                   return_value=AuthorityReport(AuthorityOutcome.PASSED, sourceRestored=True)):
+             patch('hosted_read_regression.run_concurrent_read_regression', return_value={'outcome': 'passed'}):
             return run_read_regression(isolation, fixture, Path('/product'), Path('/java'), Path('/harness'),
                                        Path('/repo'), read_fixture, {}, policy)
 

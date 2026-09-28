@@ -19,8 +19,6 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalReadRejectedDocument.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/SourceInputRejectionEvidence.kt
-  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/SourceInputRejectionTest.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SourceFailureMatrixTest.kt
 ---
 
@@ -43,13 +41,12 @@ inside a transport whose outer discriminator differs.
   visibility, admission, or projection obligation. Recovery is to report the
   failure, rather than change a request without evidence of a request defect.
 
-Physical source ingress uses the typed request serializer and finite validation
-owner. It rejects malformed input before provider startup or source execution.
-Public source admission rejects an explicit `entityLimit` with `entities: none`;
-an omitted limit uses the canonical internal default without requesting entities.
-The short exact-symbol request refines its opaque selector before supplying
-canonical source defaults. A mixed `symbol` and `anchor` request is rejected as
-an unknown field, rather than choosing one identity silently.
+Internal source ingress uses the typed request serializer and finite validation
+owner. It rejects malformed input before source execution. The short exact-symbol
+request refines its opaque selector before supplying canonical source defaults.
+A mixed `symbol` and `anchor` request is rejected as an unknown field, rather
+than choosing one identity silently. Query's optional `SOURCE` projection still
+uses internal extraction.
 Valid unordered declaration-kind and visibility selections are accepted and
 normalized by their existing domain owners; ordering is not a caller predicate.
 Native and retained-output continuation syntax remains distinct and supported.

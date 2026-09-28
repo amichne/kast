@@ -18,8 +18,6 @@ sealed interface PublicToolInputFailure {
     data object SyntaxRejected : PublicToolInputFailure
 
     data class Parameter(val parameter: PublicToolParameter, val rule: PublicToolRule) : PublicToolInputFailure
-
-    data class Source(val cause: SourceReadCause) : PublicToolInputFailure
 }
 
 @Serializable
@@ -45,8 +43,6 @@ sealed interface PublicToolCanonical {
     data class Diagnostics(val request: DiagnosticCheckRequest) : PublicToolCanonical
 
     data class Change(val request: ChangeRequest) : PublicToolCanonical
-
-    data class Source(val request: SourceReadRequest) : PublicToolCanonical
 }
 
 /** Private construction retains presentation identity, schema identity, and typed syntax together. */
@@ -88,11 +84,6 @@ private constructor(
                             is PublicToolCanonical.Change ->
                                 PublicToolContract.json.encodeToJsonElement(
                                     ChangeRequest.serializer(),
-                                    canonical.request,
-                                )
-                            is PublicToolCanonical.Source ->
-                                PublicToolContract.json.encodeToJsonElement(
-                                    SourceReadRequest.serializer(),
                                     canonical.request,
                                 )
                         }
@@ -189,7 +180,6 @@ fun PublicToolInputFailure.explanation(): String =
             "Arguments must match the selected tool's fields and variants. Omit optional controls to use their defaults."
         PublicToolInputFailure.SyntaxRejected -> "Arguments violate the selected tool's bounded value grammar."
         is PublicToolInputFailure.Parameter -> "${parameter.path}: ${rule.correction}"
-        is PublicToolInputFailure.Source -> "Source request rejected: ${cause}"
     }
 
 class PublicToolRequestSerializer(private val identity: PublicToolIdentity) : KSerializer<AdmittedPublicTool> {

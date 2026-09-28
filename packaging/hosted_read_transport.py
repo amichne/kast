@@ -15,7 +15,6 @@ from native_provider_qualification import (QualificationRejected, admit_qualific
 
 
 class ReadTransportFailure(str, Enum):
-    SOURCE_CLI_BOUNDARY = 'READ_SOURCE_CLI_BOUNDARY'
     CLI_SCHEMA = 'READ_CLI_SCHEMA_REJECTED'
     CLI_TOOL = 'READ_CLI_TOOL_REJECTED'
     CLI_OUTPUT = 'READ_CLI_OUTPUT_REJECTED'
@@ -30,8 +29,6 @@ class ReadTransportFailure(str, Enum):
 
 
 class ReadProviderFailure(str, Enum):
-    SOURCE_INPUT = 'SOURCE_INPUT_REJECTED'
-    SOURCE_INTERNAL = 'SOURCE_INTERNAL_CONTRACT_FAILURE'
     INVALID_ARGUMENTS = 'INVALID_ARGUMENTS'
     UNKNOWN_NAMESPACE = 'UNKNOWN_NAMESPACE'
     UNKNOWN_TOOL = 'UNKNOWN_TOOL'
@@ -149,15 +146,11 @@ def _admit_output_violation_evidence(raw):
 
 
 class ReadTransportRejected(ValueError):
-    def __init__(self, reason, provider_failure=None, output_violation_evidence=None, qualification=None, source_cause=None):
+    def __init__(self, reason, provider_failure=None, output_violation_evidence=None, qualification=None):
         self.reason = ReadTransportFailure(reason)
         self.provider_failure = provider_failure
         self.output_violation_evidence = output_violation_evidence
         self.qualification = qualification
-        self.source_cause = source_cause
-        self.source_schema_admitted = False
-        self.source_cli_boundary_failure = None
-        self.source_jvm_notices = ()
         self.invocation = None
         super().__init__(self.reason.value)
 
@@ -169,12 +162,6 @@ class ReadTransportRejected(ValueError):
             result['outputViolationEvidence'] = self.output_violation_evidence
         if self.qualification is not None:
             result['providerQualification'] = qualification_document(self.qualification)
-        if self.source_cli_boundary_failure is not None:
-            result['sourceCliBoundaryFailure'] = self.source_cli_boundary_failure.value
-        if self.source_jvm_notices:
-            result['sourceJvmNotices'] = [notice.value for notice in self.source_jvm_notices]
-        if self.source_cause is not None:
-            result['sourceFailure'] = asdict(self.source_cause)
         if self.invocation is not None:
             result['surface'], result['tool'] = self.invocation
         return result
@@ -183,14 +170,7 @@ class ReadTransportRejected(ValueError):
 def _provider_result(response):
     if response.get('kind') == 'completed':
         envelope = response['envelope']
-        document = envelope['diagnostic'] if envelope.get('status') == 'rejected' else envelope['document']
-        if document.get('format') == 'compact':
-            sections = document.get('content', [])
-            if sections and sections[0].get('text', {}).get('type') == 'returned':
-                evidence = response.get('presentation', {})
-                if evidence.get('items') != 2 or evidence.get('sourcePlacement') != 'VERIFIED':
-                    raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
-        return document
+        return envelope['diagnostic'] if envelope.get('status') == 'rejected' else envelope['document']
     if response.get('kind') != 'rejected':
         raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
     try:
@@ -204,15 +184,6 @@ def _provider_result(response):
         evidence = _admit_output_violation_evidence(response['outputViolationEvidence'])
     if failure is ReadProviderFailure.INVALID_ARGUMENTS:
         return {'failure': failure.value}
-    if failure in (ReadProviderFailure.SOURCE_INPUT, ReadProviderFailure.SOURCE_INTERNAL):
-        from hosted_source_failure_regression import admit_source_failure, SourceFailureOrigin
-        try:
-            cause = admit_source_failure(response.get('sourceCause'))
-        except (ValueError, TypeError):
-            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED') from None
-        if (failure is ReadProviderFailure.SOURCE_INTERNAL) != (cause.origin is SourceFailureOrigin.INTERNAL):
-            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
-        raise ReadTransportRejected('READ_PROVIDER_REJECTED', failure, source_cause=cause)
     raise ReadTransportRejected('READ_PROVIDER_REJECTED', failure, evidence)
 
 
@@ -223,15 +194,15 @@ def _admit_cli_invocations(document):
     """Keep CLI routes exact while allowing the hosted-only workspace tool."""
     projection = document['serverProjection']
     cli, bootstrap = projection['cliInvocations'], projection['hostedBootstrap']
-    if (projection['schemaVersion'] != 16 or projection['namespace'] != 'kast'
-            or cli['schemaVersion'] != 4 or bootstrap['schemaVersion'] != 2
+    if (projection['schemaVersion'] != 17 or projection['namespace'] != 'kast'
+            or cli['schemaVersion'] != 4 or bootstrap['schemaVersion'] != 3
             or not 1 <= len(cli['operations']) <= 64 or not 1 <= len(bootstrap['tools']) <= 64):
         raise ReadTransportRejected('READ_CLI_SCHEMA_REJECTED')
     tools = {tool['name']: tool for tool in bootstrap['tools']}
     operations = {operation['toolName']: operation for operation in cli['operations']}
     if (len(tools) != len(bootstrap['tools']) or len(operations) != len(cli['operations'])
             or not operations.keys() <= tools.keys()
-            or (tools.keys() - operations.keys()) - {'workspace_lifecycle', 'add_declaration'}
+            or (tools.keys() - operations.keys()) - {'workspace_lifecycle', 'add_declaration', 'replace_body'}
             or 'workspace_lifecycle' in operations):
         raise ReadTransportRejected('READ_CLI_SCHEMA_REJECTED')
     commands = {}
@@ -336,25 +307,6 @@ class HostedReadTransport:
             result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), *self.cli_commands[tool]],
                 cwd=self.fixture.workspace, env=self.fixture.environment,
                 input=json.dumps(arguments).encode(), capture_output=True, timeout=60)
-            if tool == 'read_source' and not result.stdout:
-                from hosted_source_failure_regression import admit_source_cli_boundary, SourceCliBoundaryRejected
-                try:
-                    admission = admit_source_cli_boundary(result.returncode, result.stdout, result.stderr, self.fixture.environment)
-                except SourceCliBoundaryRejected as rejection:
-                    error = ReadTransportRejected('READ_CLI_OUTPUT_REJECTED')
-                    error.source_cli_boundary_failure = rejection.failure
-                    raise error from None
-                document, cause = admission.document, admission.cause
-                try:
-                    self.validate(tool, document)
-                except ReadTransportRejected as error:
-                    error.source_cause = cause
-                    error.source_jvm_notices = admission.notices
-                    raise
-                boundary = ReadTransportRejected('READ_SOURCE_CLI_BOUNDARY', source_cause=cause)
-                boundary.source_schema_admitted = True
-                boundary.source_jvm_notices = admission.notices
-                raise boundary
             if len(result.stdout) > MAXIMUM_RESPONSE_BYTES or not result.stdout:
                 raise ReadTransportRejected('READ_CLI_OUTPUT_REJECTED')
             return json.loads(result.stdout)

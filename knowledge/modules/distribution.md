@@ -40,7 +40,6 @@ code_sources:
   - path: packaging/released_payload_identity.py
   - path: packaging/run-hosted-change-acceptance.py
   - path: packaging/hosted_read_regression.py
-  - path: packaging/hosted_authority_read_regression.py
   - path: packaging/hosted_concurrent_read.py
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
     symbols: [ControlDistributionLimits]

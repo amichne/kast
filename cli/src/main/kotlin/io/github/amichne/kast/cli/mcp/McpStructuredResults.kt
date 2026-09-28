@@ -5,7 +5,6 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.generatedRequestSchema
 import io.github.amichne.kast.cli.installedSemanticResultSchema
-import io.github.amichne.kast.cli.unionSchema
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.SerialName
@@ -24,23 +23,16 @@ internal object McpStructuredResults {
 
     val healthSchema: JsonObject = healthResultSchema()
 
-    val validationSchema: JsonObject =
-        rootedResultSchema(
-            unionSchema(
-                generatedRequestSchema(McpValidationResult.serializer()),
-                generatedRequestSchema(McpValidationRejected.serializer()),
-            )
-        )
-
     fun schemaFor(name: String): JsonObject =
         rootedResultSchema(
             when {
                 PublicToolIdentity.entries.any {
-                    it.toolName == name && it != PublicToolIdentity.ADD_DECLARATION
+                    it.toolName == name &&
+                        it !in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY)
                 } -> installedSemanticResultSchema(PublicToolIdentity.entries.single { it.toolName == name }.operation)
                 name == "health_check" -> healthSchema
-                name == "validate_workspace" -> validationSchema
-                name == "add_declaration" -> generatedRequestSchema(ChangeRunDocument.serializer())
+                name == "add_declaration" || name == "replace_body" ->
+                    generatedRequestSchema(ChangeRunDocument.serializer())
                 else -> error("Unbound MCP tool result contract: $name")
             }
         )
@@ -83,15 +75,6 @@ internal object McpStructuredResults {
         val root = data["workspaceBinding"]?.jsonPrimitive?.content ?: "unknown workspace"
         val readiness = data["readiness"]?.jsonPrimitive?.content ?: "unavailable"
         return "$root: $readiness"
-    }
-
-    fun validationSummary(content: JsonObject?): String {
-        val data = content?.get("data") as? JsonObject
-        if (data == null) return "Workspace validation rejected: ${errorCode(content)}"
-        return listOf("declarationQuery", "sourceRead", "relation", "diagnostics").joinToString("; ") { name ->
-            val probe = data[name] as? JsonObject
-            "$name ${probe?.get("status")?.jsonPrimitive?.content ?: "unverified"}"
-        }
     }
 
     private fun errorCode(content: JsonObject?): String =

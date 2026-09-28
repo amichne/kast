@@ -1,6 +1,5 @@
 """Installed independent budget grant checks; payloads stay in memory."""
-from dataclasses import asdict, dataclass, field
-from hosted_source_read_regression import SymbolAnchor, FirstPage, NoText
+from dataclasses import asdict, dataclass
 import re
 from query_name_request import QueryInput, QueryRun, SymbolOutput, SymbolReferences, relation_query, walk_query
 
@@ -29,21 +28,6 @@ Budget = ElapsedBudget | WorkBudget | ResultsBudget | BytesBudget
 AXES = ('max_elapsed_ms', 'max_work_units', 'max_results', 'max_returned_bytes')
 
 
-@dataclass(frozen=True)
-class NoEntities:
-    type: str = field(default='NONE', init=False)
-
-
-@dataclass(frozen=True)
-class BudgetSource:
-    symbolRef: SymbolAnchor
-    executionBudget: Budget
-    region: str = 'FILE'
-    entities: NoEntities = field(default_factory=NoEntities)
-    text: NoText = field(default_factory=NoText)
-    page: FirstPage = field(default_factory=FirstPage)
-
-
 def run_budget_read_regression(replay):
     """Both surfaces share the existing oracle, authority, fixture and 256-case receipt bound."""
     for budget in (ElapsedBudget(), WorkBudget(), ResultsBudget(), BytesBudget()):
@@ -51,7 +35,8 @@ def run_budget_read_regression(replay):
         cases = (
             ('query-symbols', 'query_symbols', QueryInput(QueryRun(SymbolReferences((replay.seeds['logger']['ref'],)),
                 output=SymbolOutput(('NAME',)), executionBudget=budget))),
-            ('source-read', 'read_source', BudgetSource(SymbolAnchor(replay.seeds['logger']['ref']), budget)),
+            ('query-source', 'query_symbols', QueryInput(QueryRun(SymbolReferences((replay.seeds['logger']['ref'],)),
+                output=SymbolOutput(('SOURCE',)), executionBudget=budget))),
             ('query-occurrences', 'query_symbols', relation_query(replay.seeds['helper']['ref'], 'callers', budget)),
             ('query-walk', 'query_symbols', walk_query(replay.seeds['helper']['ref'], budget=budget)),
         )

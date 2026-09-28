@@ -87,9 +87,9 @@
                 "expanded": false,
                 "pages": [
                   "POST /callables/query_symbols",
-                  "POST /callables/read_source",
                   "POST /callables/check_diagnostics",
                   "POST /callables/add_declaration",
+                  "POST /callables/replace_body",
                   "POST /callables/workspace_lifecycle"
                 ]
               },

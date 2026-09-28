@@ -150,6 +150,18 @@ private fun applicationDocument(
         is ChangeApplyResult.Verified ->
             CanonicalJsonDocument.generated(VerifiedApplicationDocument.serializer())
                 .create(VerifiedApplicationDocument(status, result.receiptIdentity.value, changes, qualification, live))
+        is ChangeApplyResult.VerifiedBody ->
+            CanonicalJsonDocument.generated(VerifiedBodyApplicationDocument.serializer())
+                .create(
+                    VerifiedBodyApplicationDocument(
+                        status,
+                        result.receiptIdentity.value,
+                        result.freshReference.value,
+                        changes,
+                        qualification,
+                        live,
+                    )
+                )
         is ChangeApplyResult.AppliedUnverified ->
             CanonicalJsonDocument.generated(UnverifiedApplicationDocument.serializer())
                 .create(
@@ -181,6 +193,20 @@ private fun applicationDocument(
 private data class VerifiedApplicationDocument(
     val status: ApplicationStatus,
     val receiptIdentity: String,
+    val changes: List<ChangeFilePreviewCliDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val qualification: String? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val live: LiveReadCliEvidence? = null,
+    val operation: String = "change.apply",
+    val state: String = "verified",
+)
+
+@Serializable
+private data class VerifiedBodyApplicationDocument(
+    val status: ApplicationStatus,
+    val receiptIdentity: String,
+    val freshReference: String,
     val changes: List<ChangeFilePreviewCliDocument>,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val qualification: String? = null,

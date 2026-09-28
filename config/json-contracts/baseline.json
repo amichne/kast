@@ -1814,36 +1814,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedChangeMain.kt",
-        "scope": "type:NativeHostedChangeRun/fun:recordUnexpected(9:Exception)",
-        "kind": "JSON_BUILDER",
-        "sha256": "79e1b651a0d9e844616d5d944143ea715d8b1f96df0c04e106967393fda020e5"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedChangeMain.kt",
-        "scope": "type:NativeHostedChangeRun/fun:recordUnexpected(9:Exception)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "011c41ef4a2f9a5bae5a8a6e145b222b6a4faa4cab4bb7e3e3c6eccd33e92fe7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedChangeMain.kt",
-        "scope": "type:NativeHostedChangeRun/fun:recordUnexpected(9:Exception)/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "2ae595d2055dcceb965f027150104385e4b6e4ba7f20615ce255005e9dd898fc"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedChangeMain.kt",
         "scope": "type:NativeHostedChangeRun/fun:run()",
         "kind": "JSON_BUILDER",
         "sha256": "a155d477fbfbafd724498db9570d391a40d4f7c3ccad7b6c9aee1c21d3eefc9e"

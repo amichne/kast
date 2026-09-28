@@ -211,7 +211,7 @@ private fun observeRead(
     )
 }
 
-private fun KtNamedDeclaration.compilerEvidence(file: SymbolDiscoveryFileIdentity): CompilerGroundedSymbolEvidence? {
+internal fun KtNamedDeclaration.compilerEvidence(file: SymbolDiscoveryFileIdentity): CompilerGroundedSymbolEvidence? {
     val projection = analyze(this) { symbol.compilerProjection() } ?: return null
     return CompilerGroundedSymbolEvidence.fromBoundary(
             file = file,

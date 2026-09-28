@@ -8,7 +8,6 @@ import unittest
 from unittest.mock import patch
 
 import hosted_vfs_overflow_regression as subject
-from hosted_source_read_regression import SourceFunctionRequest, SymbolAnchor
 
 HOST = '10000000-0000-0000-0000-000000000001'
 
@@ -118,37 +117,23 @@ class OverflowHelperTest(unittest.TestCase):
         self.log = self.root / 'ide/log/idea.log'
         self.log.parent.mkdir(parents=True)
         self.log.write_bytes(b'')
-        state = SimpleNamespace(epoch=1, ready=0, cursor=0, diagnostic=0)
+        state = SimpleNamespace(epoch=1, ready=0, diagnostic=0)
         live = lambda: {'host': HOST, 'epoch': state.epoch}
-        class Replay:
-            def __init__(self, *_):
-                self.cases = []
-            def search(self, surface):
-                if state.ready == 2 and restoration == 'search':
-                    raise subject.AuthorityRejected(subject.AuthorityFailure.ISSUER)
-                if state.ready == 2 and restoration == 'agreement' and surface is subject.AuthoritySurface.PROVIDER:
-                    state.epoch += 1
-                return SourceFunctionRequest(SymbolAnchor(f'opaque-{state.epoch}')), live()
-            def page(self, *args):
-                if state.ready == 2 and restoration == 'page':
-                    raise subject.AuthorityRejected(subject.AuthorityFailure.ISSUER)
-                return 'opaque-cursor'
-            def call(self, surface, tool, request):
-                if tool == 'read_source':
-                    if state.epoch == 1:
-                        return {'status': 'qualified', 'content': [{'type': 'structure',
-                            'snapshot': {'live': live()}, 'selections': [{'selector': 'issued-source'}]}]}, 'schema-source'
-                    return {'operation': 'source.read', 'status': 'rejected',
-                            'reason': {'type': 'reference-rejected', 'role': 'source', 'reason': 'snapshot-rejected'}}, 'schema-source'
-                if tool == 'check_diagnostics':
-                    state.diagnostic += 1
-                    return (asdict(DiagnosticPage(live=live())) if request.continuation is None
-                            else asdict(DiagnosticRefused())), 'sha256:' + 'b' * 64
-            def reject(self, name, surface, request, reason):
-                self_test.assertEqual('opaque-cursor', request.page.continuation)
-                self_test.assertEqual(f'opaque-{state.epoch}', request.symbolRef.selector)
-                state.cursor += 1
+
+        class Transport:
+            def invoke_observed(self, surface, tool, request):
+                self_test.assertEqual('check_diagnostics', tool)
+                state.diagnostic += 1
+                return ((asdict(DiagnosticPage(live=live())) if request['continuation'] is None
+                         else asdict(DiagnosticRefused())), 'sha256:' + 'b' * 64)
+
         self_test = self
+        def query(_transport, surface, _workspace):
+            if state.ready == 2 and restoration == 'query':
+                raise subject.OverflowRejected(subject.OverflowFailure.AUTHORITY)
+            if state.ready == 2 and restoration == 'agreement' and surface is subject.AuthoritySurface.PROVIDER:
+                state.epoch += 1
+            return live()
         def ready(*_):
             state.epoch += 1
             state.ready += 1
@@ -156,14 +141,13 @@ class OverflowHelperTest(unittest.TestCase):
                 state.epoch -= 1
             if receipt and state.ready == 1:
                 self.append(asdict(subject.OverflowReceipt(HOST)))
-        with patch.object(subject, '_AuthorityReplay', Replay), patch.object(subject, '_ready', ready), \
+        with patch.object(subject, '_query_live', query), patch.object(subject, '_ready', ready), \
                 patch.object(subject, 'admitted_live', lambda value, _: value), \
                 patch.object(subject, 'NativeFixtureProbe', lambda *_: object()), \
                 patch.object(subject, '_drain_fresh_diagnostics', lambda transport, surface, live, phase:
                     subject.DiagnosticEvidence(phase, surface, True, ('sha256:' + 'c' * 64,), pages=2, analyzedFiles=1)):
-
             result = subject.run_vfs_overflow_regression(SimpleNamespace(root=self.root),
-                         SimpleNamespace(workspace=workspace), object(), live())
+                         SimpleNamespace(workspace=workspace), Transport(), live())
         self.assertEqual([], list(source.parent.glob('KastOverflowAcceptance*.kt')))
         self.assertEqual(b'package fixture\nclass ReadPageBudget\n', source.read_bytes())
         self.assertEqual(2, state.ready)
@@ -173,29 +157,23 @@ class OverflowHelperTest(unittest.TestCase):
         (report, successor), state = self.run_fake()
         self.assertEqual(subject.OverflowOutcome.PASSED, report.outcome)
         self.assertEqual(3, successor['epoch'])
-        self.assertEqual((2, 4), (state.cursor, state.diagnostic))
+        self.assertEqual(4, state.diagnostic)
         self.assertEqual(8, len(report.diagnosticObservations))
-        self.assertEqual(2, len(report.referenceObservations))
-        self.assertTrue(all(item.passed for item in report.referenceObservations))
         self.assertEqual(3, report.filesCreated)
         self.assertTrue(report.filesRestored)
         self.assertEqual(subject.OverflowReceipt(HOST), report.receipt)
 
     def test_epoch_movement_without_overflow_receipt_is_failure_and_restores(self):
-        (report, successor), state = self.run_fake(receipt=False)
+        (report, successor), _ = self.run_fake(receipt=False)
         self.assertEqual(subject.OverflowFailure.RECEIPT, report.failure)
         self.assertEqual(subject.OverflowOutcome.REJECTED, report.outcome)
         self.assertEqual(3, successor['epoch'])
 
-
-
     def test_restoration_preserves_failed_predicate_and_original_failure(self):
         for mode, stage, cause in [('epoch', subject.RestorationStage.EPOCH_ADVANCE, subject.OverflowFailure.EPOCH),
                                    ('agreement', subject.RestorationStage.BASIS_AGREEMENT, subject.OverflowFailure.EPOCH),
-                                   ('search', subject.RestorationStage.SEARCH, subject.OverflowFailure.AUTHORITY),
-                                   ('page', subject.RestorationStage.SOURCE_PAGE, subject.OverflowFailure.AUTHORITY)]:
+                                   ('query', subject.RestorationStage.QUERY, subject.OverflowFailure.AUTHORITY)]:
             with self.subTest(mode=mode):
-                # Each fake run owns a distinct disposable root.
                 with tempfile.TemporaryDirectory() as directory:
                     self.root = Path(directory).resolve()
                     (report, successor), _ = self.run_fake(restoration=mode)
@@ -203,8 +181,6 @@ class OverflowHelperTest(unittest.TestCase):
                 self.assertEqual(subject.OverflowFailure.RESTORATION, report.failure)
                 self.assertEqual(stage, report.restorationStage)
                 self.assertEqual(cause, report.restorationFailure)
-                if cause is subject.OverflowFailure.AUTHORITY:
-                    self.assertEqual(subject.AuthorityFailure.ISSUER, report.restorationAuthorityFailure)
 
     def test_diagnostic_cursor_rejection_preserves_only_proven_restart_causes(self):
         phase, surface = subject.DiagnosticPhase.STALE, subject.AuthoritySurface.CLI
@@ -289,13 +265,6 @@ class OverflowHelperTest(unittest.TestCase):
         self.assertNotIn('fresh-page', json.dumps(asdict(result)))
 
 
-    def test_source_anchor_refusal_requires_snapshot_rejection(self):
-        surface = subject.AuthoritySurface.PROVIDER
-        response = {'operation': 'source.read', 'status': 'rejected',
-                    'reason': {'type': 'reference-rejected', 'role': 'source', 'reason': 'snapshot-rejected'}}
-        self.assertTrue(subject._reference_refusal(surface, response, 'schema').passed)
-        response['reason']['role'] = 'symbol'
-        self.assertFalse(subject._reference_refusal(surface, response, 'schema').passed)
 
 
 if __name__ == '__main__':

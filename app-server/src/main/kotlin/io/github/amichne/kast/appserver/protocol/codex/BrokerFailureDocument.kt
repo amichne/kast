@@ -14,25 +14,12 @@ internal data class BrokerFailureDocument
 private constructor(
     val failure: String,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val workspace: WorkspaceDemandFailureDocument? = null,
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val source: io.github.amichne.kast.protocol.contract.SourceReadCause? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val corrections: List<String> = emptyList(),
     @EncodeDefault(EncodeDefault.Mode.NEVER) val outputViolationEvidence: JsonSchemaViolationEvidenceDocument? = null,
 ) {
     companion object {
         fun from(failure: BrokerFailure): BrokerFailureDocument =
             when (failure) {
-                is BrokerFailure.SourceInputRejected ->
-                    BrokerFailureDocument(
-                        if (
-                            failure.cause
-                                is
-                                io.github.amichne.kast.protocol.contract.SourceReadFailureDetail.InternalContractFailure
-                        )
-                            "SOURCE_INTERNAL_CONTRACT_FAILURE"
-                        else "SOURCE_INPUT_REJECTED",
-                        source = failure.cause,
-                    )
                 is BrokerFailure.WorkspacePreparationRejected ->
                     BrokerFailureDocument(
                         "WORKSPACE_PREPARATION_REJECTED",

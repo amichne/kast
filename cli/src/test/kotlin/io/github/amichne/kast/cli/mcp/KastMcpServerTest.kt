@@ -215,6 +215,22 @@ class KastMcpServerTest {
     }
 
     @Test
+    fun `retired validation view is not served as an MCP resource`() {
+        val output = ByteArrayOutputStream()
+        val request = testMcpJson.encodeToString(TestModernRequest(1, "resources/list")) + "\n"
+        KastMcpServer(
+                catalog = directSupportTools(),
+                invoke = { _, _ -> error("no tool call expected") },
+                root = { admittedRoot() },
+                diagnostic = PrintStream(ByteArrayOutputStream()),
+            )
+            .run(BufferedInputStream(ByteArrayInputStream(request.toByteArray())), PrintStream(output))
+        val error =
+            Json.parseToJsonElement(output.toString(Charsets.UTF_8).trim()).jsonObject.getValue("error").jsonObject
+        assertEquals(-32601, error.getValue("code").jsonPrimitive.content.toInt())
+    }
+
+    @Test
     fun `invalid structured result fails closed with a typed tool outcome`() {
         val invalid =
             CanonicalJsonDocument.generated(TestInvalidStructured.serializer()).create(TestInvalidStructured())

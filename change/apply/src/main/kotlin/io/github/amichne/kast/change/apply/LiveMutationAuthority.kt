@@ -1,10 +1,10 @@
 package io.github.amichne.kast.change.apply
 
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.LiveChangeApplicationClaim
 import io.github.amichne.kast.change.contract.LiveChangeApplicationStore
 import io.github.amichne.kast.change.contract.LiveChangeBasisComparison
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.SourceTextMutation
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryPreparation
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryService
@@ -37,7 +37,7 @@ sealed interface LiveMutationPreparation {
 }
 
 data class LiveMutationCandidate(
-    val plan: LiveAddDeclarationChangePlan,
+    val plan: LiveChangePlan,
     val current: LiveSemanticReadAuthority,
     val model: WorkspaceSearchScopeModel,
     val observed: ObservedMutationSource,
@@ -47,7 +47,7 @@ data class LiveMutationCandidate(
 /** A fresh admitted candidate plus exact approval, permanent attempt claim, and durable preimage. */
 class LiveMutationAuthority
 private constructor(
-    val plan: LiveAddDeclarationChangePlan,
+    val plan: LiveChangePlan,
     val approval: VerifiedLivePlanApproval,
     val recovery: PreparedAddDeclarationRecovery,
     private val preimage: ObservedMutationSource,

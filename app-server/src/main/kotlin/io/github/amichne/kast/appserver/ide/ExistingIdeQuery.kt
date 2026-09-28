@@ -58,7 +58,8 @@ sealed interface ExistingIdeOperation {
                     is HostedRequestEffect.ChangePlan ->
                         if (
                             request.operation == CanonicalOperation.CHANGE_PLAN &&
-                                demand.intent is ChangeIntentDocument.AddDeclaration
+                                (demand.intent is ChangeIntentDocument.AddDeclaration ||
+                                    demand.intent is ChangeIntentDocument.ReplaceBody)
                         ) {
                             Refinement.Refined(Plan(request))
                         } else Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)

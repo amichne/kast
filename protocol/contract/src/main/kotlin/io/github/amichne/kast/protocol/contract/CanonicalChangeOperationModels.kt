@@ -28,6 +28,13 @@ sealed interface ChangeIntentDocument {
     ) : ChangeIntentDocument
 
     @Serializable
+    @SerialName("replace-body")
+    data class ReplaceBody(
+        val exactTarget: ProtocolText,
+        val body: ProtocolText,
+    ) : ChangeIntentDocument
+
+    @Serializable
     @SerialName("replace-declaration")
     data class ReplaceDeclaration(
         val exactTarget: ProtocolText,
@@ -192,6 +199,12 @@ sealed interface ChangeApplyResult : OperationResult {
 
     data class Verified(val receiptIdentity: ProtocolText, override val changes: ChangeFilePreviewSet) :
         ChangeApplyResult
+
+    data class VerifiedBody(
+        val receiptIdentity: ProtocolText,
+        val freshReference: ProtocolText,
+        override val changes: ChangeFilePreviewSet,
+    ) : ChangeApplyResult
 
     data class AppliedUnverified(
         val planIdentity: ProtocolText,

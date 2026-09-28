@@ -34,15 +34,16 @@ class SqliteLiveChangeReceiptStoreTest {
         val issued = assertInstanceOf<LiveChangeReceiptIssuance.Issued>(open(location).persistHistorical(receipt))
         val replacement = open(location)
         val restored = assertInstanceOf<LiveChangeReceiptLookup.Found>(replacement.loadReceipt(planIdentity(receipt)))
+        val restoredAddition = assertInstanceOf<HistoricalLiveAddDeclarationReceipt>(restored.receipt)
         assertEquals(issued.identity, restored.identity)
         assertEquals(
             LiveAddDeclarationReceiptCodec.encode(receipt),
-            LiveAddDeclarationReceiptCodec.encode(restored.receipt),
+            LiveAddDeclarationReceiptCodec.encode(restoredAddition),
         )
-        assertEquals(receipt.before.reference, restored.receipt.before.reference)
-        assertEquals(receipt.after.reference, restored.receipt.after.reference)
-        assertEquals(receipt.approval.call, restored.receipt.approval.call)
-        assertEquals(receipt.recovery, restored.receipt.recovery)
+        assertEquals(receipt.before.reference, restoredAddition.before.reference)
+        assertEquals(receipt.after.reference, restoredAddition.after.reference)
+        assertEquals(receipt.approval.call, restoredAddition.approval.call)
+        assertEquals(receipt.recovery, restoredAddition.recovery)
         assertEquals(
             issued.identity,
             assertInstanceOf<LiveChangeReceiptIssuance.Issued>(replacement.persistHistorical(receipt)).identity,

@@ -1,6 +1,6 @@
 package io.github.amichne.kast.change.protocol
 
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.LiveChangePlanIssuance
 import io.github.amichne.kast.change.contract.LiveChangePlanStore
 import io.github.amichne.kast.kernel.EvidenceBasis
@@ -18,7 +18,7 @@ import io.github.amichne.kast.protocol.contract.ChangePlanResult
 
 /** The owner restores the original reference and finishes pure planning inside one current live read. */
 fun interface LiveChangePlanRequestAdmission {
-    suspend fun plan(request: ChangePlanRequest): Refinement<LiveAddDeclarationChangePlan, ChangePlanRejection>
+    suspend fun plan(request: ChangePlanRequest): Refinement<LiveChangePlan, ChangePlanRejection>
 }
 
 /** Shared canonical operation and preview; the live basis is never projected as a generation. */
@@ -30,7 +30,8 @@ class CanonicalLiveChangePlanProtocol(
         request: ChangePlanRequest
     ): OperationOutcome<ChangePlanResult, ChangePlanQualification, ChangePlanRejection> {
         when (request.intent) {
-            is ChangeIntentDocument.AddDeclaration -> Unit
+            is ChangeIntentDocument.AddDeclaration,
+            is ChangeIntentDocument.ReplaceBody -> Unit
             is ChangeIntentDocument.AddFile,
             is ChangeIntentDocument.RenameSymbol,
             is ChangeIntentDocument.ReplaceDeclaration ->
