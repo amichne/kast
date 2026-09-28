@@ -20,6 +20,8 @@
     "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt",
     "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/ProductInspectionDocuments.kt",
     "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
+    "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
+    "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
     "install.sh",
     "packaging/acceptance_environment.py",
     "packaging/install-checkout.sh",
