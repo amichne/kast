@@ -39,12 +39,10 @@ recovery within one call. Clients must request write approval for it.
 
 ## Copilot CLI
 
-Copy the installed adapter into the user extension directory:
+Register the verified bundled adapter at user scope:
 
 ```shell
-mkdir -p "$HOME/.copilot/extensions/kast"
-cp "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/adapters/copilot/extension.mjs" \
-  "$HOME/.copilot/extensions/kast/extension.mjs"
+kast connect copilot
 copilot --experimental
 ```
 
@@ -54,12 +52,10 @@ permission prompt. No Copilot MCP server is needed.
 
 ## Pi
 
-Copy the installed adapter into Pi's user extension directory:
+Register the bundled Pi adapter:
 
 ```shell
-mkdir -p "$HOME/.pi/agent/extensions"
-cp "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/adapters/pi/extension.ts" \
-  "$HOME/.pi/agent/extensions/kast.ts"
+kast connect pi
 ```
 
 It registers the same live catalog in Pi.

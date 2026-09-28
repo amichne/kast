@@ -36,7 +36,9 @@ object KastToolRpcMain {
                     val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
                     if (bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH)
                         ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
-                    else bridge.call(args[1], bytes.decodeToString())
+                    else
+                        OneShotInvocationRecord.begin()?.use { bridge.call(args[1], bytes.decodeToString()) }
+                            ?: ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE)
                 }
                 else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
             }
@@ -144,6 +146,7 @@ internal enum class ToolRpcToolEffect {
 
 @Serializable
 internal enum class ToolRpcFailure {
+    OBSERVATION_UNAVAILABLE,
     CATALOG_UNAVAILABLE,
     INVALID_COMMAND,
     REQUEST_TOO_LARGE,

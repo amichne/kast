@@ -58,7 +58,7 @@ object ArchitecturePolicyValidator {
                 add(ArchitecturePolicyFailure.MissingHostedRuntime)
             } else {
                 val excluded = setOf(ModuleId.APP_SERVER, ModuleId.CLI, ModuleId.RUNTIME_HOSTED,
-                    ModuleId.DISTRIBUTION_CONTRACT, ModuleId.DISTRIBUTION_MANAGED, ModuleId.PROTOCOL_REGISTRY,
+                    ModuleId.DISTRIBUTION_CONTRACT, ModuleId.DISTRIBUTION_CLI, ModuleId.DISTRIBUTION_MANAGED, ModuleId.PROTOCOL_REGISTRY,
                     ModuleId.TOPOLOGY_CONTRACT, ModuleId.TOPOLOGY_BUILD, ModuleId.TOPOLOGY_SERVICE,
                     ModuleId.TOPOLOGY_INTELLIJ, ModuleId.EVIDENCE_TOPOLOGY_SQLITE)
                 val expectedDependencies = definition.modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }
