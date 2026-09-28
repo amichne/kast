@@ -174,14 +174,20 @@ class HostedQueryResponseTest {
 
     @Test
     fun `actual byte pages retain every suffix and eventually finish`() {
-        val original = List(54) { index -> (item() as QueryResultItemDocument.ExactSymbol).copy(name = ProtocolText.parse("row$index").refined()) }
+        val original =
+            List(54) { index ->
+                (item() as QueryResultItemDocument.ExactSymbol).copy(name = ProtocolText.parse("row$index").refined())
+            }
         var pending: HostedQueryOutcome = OperationOutcome.Complete(envelope(original, emptyList()))
         val observed = mutableListOf<QueryResultItemDocument>()
         var pages = 0
         while (true) {
             var remainder: HostedQueryOutcome? = null
             val response =
-                encodeHostedQueryResponse(pending, maximumResults = io.github.amichne.kast.kernel.ResultLimit.parse(5).refined()) { retained ->
+                encodeHostedQueryResponse(
+                    pending,
+                    maximumResults = io.github.amichne.kast.kernel.ResultLimit.parse(5).refined(),
+                ) { retained ->
                     remainder = retained
                     HostedOutputRetention.Retained(
                         ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000")

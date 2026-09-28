@@ -18,7 +18,6 @@ import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolSource
 import io.github.amichne.kast.query.contract.QueryTerminalReason
-import io.github.amichne.kast.query.contract.QueryWalkCoverage
 import io.github.amichne.kast.query.contract.QueryWalkObservation
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.source.contract.SourceReadOperations
@@ -361,7 +360,7 @@ class QueryService(
             if (emittedBefore.value > Int.MAX_VALUE - pageCount)
                 return QueryExecutionResult.Rejected(QueryExecutionRejection.BUDGET_REJECTED)
             val count = (emittedBefore.value + pageCount).queryCount()
-            if (completedWithoutMissingEvidence())
+            if (state.completedWithoutMissingEvidence(tasks, result))
                 return QueryExecutionResult.Complete(result, QueryCoverage.Complete(count))
             if (state.limitations.isEmpty()) state.limit(QueryLimitation.WORK_LIMIT_REACHED)
             val coverage =
@@ -373,15 +372,9 @@ class QueryService(
             return QueryExecutionResult.Qualified(result, coverage, continuation(count))
         }
 
-        private fun completedWithoutMissingEvidence(): Boolean {
-            if (tasks.isNotEmpty() || state.upstreamLimitations.isNotEmpty()) return false
-            if (completedFailures.isNotEmpty() || completedOmissions.isNotEmpty()) return false
-            if (completedWalkObservations.any { it.coverage !is QueryWalkCoverage.Complete }) return false
-            // A clock read after the final successful effect cannot make completed work incomplete.
-            return state.limitations.isEmpty() || state.limitations == setOf(QueryLimitation.TIME_LIMIT_REACHED)
-        }
-
-        private fun continuation(emittedCount: io.github.amichne.kast.query.contract.QueryCount): QueryContinuationState {
+        private fun continuation(
+            emittedCount: io.github.amichne.kast.query.contract.QueryCount
+        ): QueryContinuationState {
             val reason = terminal
             if (reason != null) return QueryContinuationState.Terminal(reason)
             if (tasks.isEmpty()) return QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)

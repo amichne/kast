@@ -28,6 +28,8 @@ sealed interface QueryCheckpointIssuance {
     data class Issued(val token: QueryExecutionContinuation.Pipeline) : QueryCheckpointIssuance
 
     data object CapacityExceeded : QueryCheckpointIssuance
+
+    data object Unavailable : QueryCheckpointIssuance
 }
 
 sealed interface QueryResultRestoration {
@@ -116,9 +118,10 @@ class QueryStateStore(
     fun retainedCheckpoint(request: QueryRunRequest.Run, checkpoint: QueryCheckpoint): QueryCheckpointIssuance {
         expire()
         val normalized = request.copy(executionBudget = null)
-        val entry = entries.entries.firstOrNull { (_, entry) ->
-            entry is Entry.Checkpoint && entry.request == normalized && entry.checkpoint == checkpoint
-        } ?: return QueryCheckpointIssuance.CapacityExceeded
+        val entry =
+            entries.entries.firstOrNull { (_, entry) ->
+                entry is Entry.Checkpoint && entry.request == normalized && entry.checkpoint == checkpoint
+            } ?: return QueryCheckpointIssuance.Unavailable
         return QueryCheckpointIssuance.Issued((entry.key as Key.Checkpoint).token)
     }
 

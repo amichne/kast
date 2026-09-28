@@ -9,8 +9,6 @@ import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 
-internal enum class QueryProgressOrigin { EXECUTION, RETAINED_RESULT }
-
 internal fun projectQueryProgress(
     request: QueryRunRequest.Run,
     continuation: QueryContinuationState,
@@ -21,16 +19,23 @@ internal fun projectQueryProgress(
 ): QueryQualifiedProgressDocument =
     when (continuation) {
         is QueryContinuationState.Resumable ->
-            when (val issued = when (origin) {
-                QueryProgressOrigin.EXECUTION -> state.issueCheckpoint(request, continuation.checkpoint, protectedResult)
-                QueryProgressOrigin.RETAINED_RESULT -> state.retainedCheckpoint(request, continuation.checkpoint)
-            }) {
+            when (
+                val issued =
+                    when (origin) {
+                        QueryProgressOrigin.EXECUTION ->
+                            state.issueCheckpoint(request, continuation.checkpoint, protectedResult)
+                        QueryProgressOrigin.RETAINED_RESULT ->
+                            state.retainedCheckpoint(request, continuation.checkpoint)
+                    }
+            ) {
                 is QueryCheckpointIssuance.Issued ->
                     QueryQualifiedProgressDocument.Resumable(
                         QueryCheckpointDocument.Upstream(issued.token),
                         if (itemCount == 0) ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET
                         else ReadResumeActionDocument.RESUME,
                     )
+                QueryCheckpointIssuance.Unavailable ->
+                    QueryQualifiedProgressDocument.TerminalIncomplete(QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE)
                 QueryCheckpointIssuance.CapacityExceeded ->
                     QueryQualifiedProgressDocument.TerminalIncomplete(
                         QueryTerminalReasonDocument.CHECKPOINT_CAPACITY_EXCEEDED

@@ -61,7 +61,9 @@ private fun encodeHostedQueryResponseDocument(
         is OperationOutcome.Complete -> {
             evidence = semantic.evidence
             limitations = emptyList()
-            minimum = evidence.payload.presentationOrigin ?: QueryKnownMinimum.parse(evidence.payload.items.values.size).proven()
+            minimum =
+                evidence.payload.presentationOrigin
+                    ?: QueryKnownMinimum.parse(evidence.payload.items.values.size).proven()
         }
         is OperationOutcome.Qualified -> {
             evidence = semantic.evidence
@@ -144,10 +146,16 @@ private fun HostedQueryOutcome.querySuffix(count: Int): HostedQueryOutcome {
     return when (this) {
         is OperationOutcome.Complete -> {
             val suffix = evidence.suffix()
-            OperationOutcome.Complete(suffix.copy(payload = suffix.payload.copy(
-                presentationOrigin = evidence.payload.presentationOrigin
-                    ?: QueryKnownMinimum.parse(evidence.payload.items.values.size).proven(),
-            )))
+            OperationOutcome.Complete(
+                suffix.copy(
+                    payload =
+                        suffix.payload.copy(
+                            presentationOrigin =
+                                evidence.payload.presentationOrigin
+                                    ?: QueryKnownMinimum.parse(evidence.payload.items.values.size).proven()
+                        )
+                )
+            )
         }
         is OperationOutcome.Qualified -> OperationOutcome.Qualified(evidence.suffix(), qualification)
         is OperationOutcome.Rejected -> this

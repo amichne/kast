@@ -172,11 +172,12 @@ class QueryPaginationTest {
             while (true) {
                 val page = service.run(pageRequest)
                 count += page.symbolCount()
-                val minimum = when (page) {
-                    is QueryExecutionResult.Complete -> page.coverage.resultCount.value
-                    is QueryExecutionResult.Qualified -> page.coverage.knownMinimum.value
-                    is QueryExecutionResult.Rejected -> error("Unexpected rejection")
-                }
+                val minimum =
+                    when (page) {
+                        is QueryExecutionResult.Complete -> page.coverage.resultCount.value
+                        is QueryExecutionResult.Qualified -> page.coverage.knownMinimum.value
+                        is QueryExecutionResult.Rejected -> error("Unexpected rejection")
+                    }
                 assertEquals(count, minimum)
                 pages++
                 check(pages <= 3)
