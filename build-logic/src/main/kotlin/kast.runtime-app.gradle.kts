@@ -65,7 +65,7 @@ val writeWrapperScript = tasks.register<WriteWrapperScriptTask>("writeWrapperScr
     dependsOn(syncRuntimeLibs)
 
     jarFileName.set(shadowJar.flatMap(ShadowJar::getArchiveFileName))
-    outputFile.set(layout.buildDirectory.file("scripts/$applicationName"))
+    outputFile.set(layout.buildDirectory.file("generated/wrapper/$applicationName"))
 }
 
 val syncPortableDist = tasks.register<Sync>("syncPortableDist") {
@@ -112,10 +112,6 @@ val portableDistZip = tasks.register<Zip>("portableDistZip") {
     }
 }
 
-writeWrapperScript.configure {
-    // Both tasks write build/scripts; the Kast launcher must replace Gradle's default Unix script.
-    mustRunAfter(tasks.named("startScripts"))
-}
 
 tasks.matching {
     it.name in setOf("distZip", "distTar", "installDist")
