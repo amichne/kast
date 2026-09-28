@@ -141,7 +141,10 @@ private class ConnectCommand : ManagementNode("connect") {
 
     override fun selection(): ManagementCommand {
         if (force && harness == null) throw CliktError("--force requires a selected harness")
-        return ManagementCommand.Connect(harness, if (force) RegistrationOwnership.REPLACE_SELECTED_SLOT else RegistrationOwnership.REQUIRE_OWNED)
+        return ManagementCommand.Connect(
+            harness,
+            if (force) RegistrationOwnership.REPLACE_SELECTED_SLOT else RegistrationOwnership.REQUIRE_OWNED,
+        )
     }
 }
 

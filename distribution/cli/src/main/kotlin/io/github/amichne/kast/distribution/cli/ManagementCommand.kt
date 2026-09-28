@@ -15,14 +15,20 @@ internal enum class Harness(val publicName: String) {
     }
 }
 
-internal enum class RegistrationOwnership { REQUIRE_OWNED, REPLACE_SELECTED_SLOT }
+internal enum class RegistrationOwnership {
+    REQUIRE_OWNED,
+    REPLACE_SELECTED_SLOT,
+}
 
 internal sealed interface ManagementCommand {
     data class Status(val json: Boolean) : ManagementCommand
 
     data object Version : ManagementCommand
 
-    data class Connect(val harness: Harness?, val ownership: RegistrationOwnership = RegistrationOwnership.REQUIRE_OWNED) : ManagementCommand
+    data class Connect(
+        val harness: Harness?,
+        val ownership: RegistrationOwnership = RegistrationOwnership.REQUIRE_OWNED,
+    ) : ManagementCommand
 
     data class Disconnect(val harness: Harness) : ManagementCommand
 
