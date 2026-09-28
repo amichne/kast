@@ -2,9 +2,7 @@ package io.github.amichne.kast.cli.mcp
 
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
-import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
-import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.generatedRequestSchema
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeExistingIdeCli
@@ -23,12 +21,10 @@ internal class McpInvestigationTools(
     private val directory: Path,
     private val capabilities: ExistingIdeCliCapabilities,
     private val expectedOperations: Set<String>,
-    private val invokeRead: (String, JsonObject) -> CliExit,
 ) {
     fun invoke(identity: SupportToolIdentity, arguments: JsonObject): CliExit =
         when (identity) {
             SupportToolIdentity.HEALTH_CHECK -> health(arguments)
-            SupportToolIdentity.VALIDATE_WORKSPACE -> validate(arguments)
             SupportToolIdentity.WORKSPACE_LIFECYCLE -> error("Workspace lifecycle has no direct binding")
         }
 
@@ -67,11 +63,6 @@ internal class McpInvestigationTools(
                 readinessEvidence = observed.readiness.rejection,
             )
         return CliExit.Complete(healthReadyFactory.create(McpHealthReady(data = data)))
-    }
-
-    private fun validate(arguments: JsonObject): CliExit {
-        val root = canonicalRoot() ?: return boundaryExit(CliBoundaryExitStatus.ROOT, "not-gradle-workspace")
-        return validateWorkspace(arguments, root, invokeRead)
     }
 
     private fun canonicalRoot(): Path? =

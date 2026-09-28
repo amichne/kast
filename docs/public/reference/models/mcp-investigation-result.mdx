@@ -1,11 +1,10 @@
 ---
 title: "MCP investigation result"
-description: "The direct MCP result for health_check and validate_workspace."
+description: "The direct MCP result for health_check."
 openapi-schema: "reference/callables.openapi.json McpInvestigationResult"
 mode: "wide"
 ---
 
 `complete` carries investigation `data`. `rejected` carries an
-`error`. These checks observe readiness or the requested probes; they do
-not establish future query success.
-
+`error`. The check observes readiness and does not establish future query
+success.

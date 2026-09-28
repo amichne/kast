@@ -171,42 +171,22 @@ class KastMcpServerTest {
     }
 
     @Test
-    @Suppress("LongMethod")
-    fun `modern client receives a model summary and a separate rendered view resource`() {
-        val document =
-            CanonicalJsonDocument.generated(McpValidationResult.serializer())
-                .create(
-                    McpValidationResult(
-                        data =
-                            McpValidationData(
-                                McpProbe.passed("Found declaration"),
-                                McpProbe.unverified("Source not requested"),
-                                McpProbe.unverified("Relation not requested"),
-                                McpProbe.passed("No diagnostics"),
-                            )
-                    )
-                )
+    fun `modern catalog excludes workspace validation and rejects its invocation`() {
         val output = ByteArrayOutputStream()
-        var preparations = 0
         val requests =
             listOf(
+                    TestModernRequest(1, "tools/list"),
                     TestModernRequest(
-                        1,
+                        2,
                         "tools/call",
                         TestModernParams(name = "validate_workspace", arguments = TestEmptyArguments()),
                     ),
-                    TestModernRequest(2, "tools/list"),
-                    TestModernRequest(3, "resources/read", TestModernParams(uri = "ui://kast/validation")),
                 )
                 .joinToString("\n", postfix = "\n") { testMcpJson.encodeToString(it) }
         KastMcpServer(
-                catalog = directSupportTools().filter { it.name == "validate_workspace" },
-                invoke = { _, _ -> CliExit.Complete(document) },
+                catalog = directSupportTools(),
+                invoke = { _, _ -> error("removed tool must not run") },
                 root = { admittedRoot() },
-                onInitialize = {
-                    preparations++
-                    Refinement.Refined(Unit)
-                },
                 diagnostic = PrintStream(ByteArrayOutputStream()),
             )
             .run(BufferedInputStream(ByteArrayInputStream(requests.toByteArray())), PrintStream(output))
@@ -217,35 +197,21 @@ class KastMcpServerTest {
                 .filter(String::isNotBlank)
                 .map { Json.parseToJsonElement(it).jsonObject.getValue("result").jsonObject }
                 .toList()
-        assertEquals(1, preparations)
-        val tool = results[1].getValue("tools").jsonArray.single().jsonObject
         assertEquals(
-            "ui://kast/validation",
-            tool.getValue("_meta").jsonObject.getValue("ui").jsonObject.getValue("resourceUri").jsonPrimitive.content,
-        )
-        assertEquals("object", tool.getValue("outputSchema").jsonObject.getValue("type").jsonPrimitive.content)
-        val call = results[0]
-        assertEquals("complete", call.getValue("resultType").jsonPrimitive.content)
-        assertEquals(
-            "declarationQuery passed; sourceRead unverified; relation unverified; diagnostics passed",
-            call.getValue("content").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content,
+            listOf("health_check"),
+            results[0].getValue("tools").jsonArray.map { it.jsonObject.getValue("name").jsonPrimitive.content },
         )
         assertEquals(
-            "unverified",
-            call
+            "UNKNOWN_TOOL",
+            results[1]
                 .getValue("structuredContent")
                 .jsonObject
-                .getValue("data")
+                .getValue("error")
                 .jsonObject
-                .getValue("relation")
-                .jsonObject
-                .getValue("status")
+                .getValue("code")
                 .jsonPrimitive
                 .content,
         )
-        val resource = results[2].getValue("contents").jsonArray.single().jsonObject
-        assertEquals("text/html;profile=mcp-app", resource.getValue("mimeType").jsonPrimitive.content)
-        assertTrue(resource.getValue("text").jsonPrimitive.content.contains("ui/notifications/tool-result"))
     }
 
     @Test
@@ -259,11 +225,11 @@ class KastMcpServerTest {
                 TestModernRequest(
                     1,
                     "tools/call",
-                    TestModernParams(name = "validate_workspace", arguments = TestEmptyArguments()),
+                    TestModernParams(name = "health_check", arguments = TestEmptyArguments()),
                 )
             )
         KastMcpServer(
-                catalog = directSupportTools().filter { it.name == "validate_workspace" },
+                catalog = directSupportTools().filter { it.name == "health_check" },
                 invoke = { _, _ -> CliExit.Complete(invalid) },
                 root = { admittedRoot() },
                 diagnostic = PrintStream(diagnostics),

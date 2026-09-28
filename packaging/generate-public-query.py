@@ -69,7 +69,6 @@ def validate_authority(authority: dict) -> None:
     support_bindings = {
         'workspace_lifecycle': ('WorkspaceLifecycleRequest', ['APP_SERVER']),
         'health_check': ('McpHealthRequest', ['MCP', 'RPC']),
-        'validate_workspace': ('McpValidationRequest', ['MCP', 'RPC']),
     }
     if {tool['name'] for tool in support} != set(support_bindings):
         raise ValueError('Support tools must have complete, known bindings')

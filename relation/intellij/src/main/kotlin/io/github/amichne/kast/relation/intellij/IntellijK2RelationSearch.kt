@@ -135,6 +135,7 @@ internal class IntellijK2RelationSearch(
                                             reference.element,
                                             reference.rangeInElement,
                                         )
+                                    SupportedContainingDeclaration.Excluded -> collector.dismissProviderItem()
                                     SupportedContainingDeclaration.Unsupported ->
                                         incompleteItem(
                                             RelationLimitation.UNSUPPORTED_ITEM,
@@ -188,6 +189,10 @@ internal class IntellijK2RelationSearch(
                                 )
                             )
                                 return termination(ProviderTermination.HALTED)
+                            continue
+                        }
+                        SupportedContainingDeclaration.Excluded -> {
+                            if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
                             continue
                         }
                         SupportedContainingDeclaration.Unsupported -> {
@@ -320,16 +325,24 @@ internal class IntellijK2RelationSearch(
                     when (val admitted = projection.callOwner(candidate.owner)) {
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected -> {
-                            val (element, range) =
-                                when (candidate) {
-                                    is CalleeProviderItem.Reference ->
-                                        candidate.reference.element to candidate.reference.rangeInElement
-                                    is CalleeProviderItem.Unresolved ->
-                                        candidate.call to
-                                            candidate.call.textRange.shiftLeft(candidate.call.textRange.startOffset)
+                            when (val failure = admitted.failure) {
+                                CallOwnershipFailure.ExcludedCallback ->
+                                    if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
+                                is CallOwnershipFailure.Incomplete -> {
+                                    val (element, range) =
+                                        when (candidate) {
+                                            is CalleeProviderItem.Reference ->
+                                                candidate.reference.element to candidate.reference.rangeInElement
+                                            is CalleeProviderItem.Unresolved ->
+                                                candidate.call to
+                                                    candidate.call.textRange.shiftLeft(
+                                                        candidate.call.textRange.startOffset
+                                                    )
+                                        }
+                                    if (!incompleteItem(failure.limitation, element, range))
+                                        return termination(ProviderTermination.HALTED)
                                 }
-                            if (!incompleteItem(admitted.failure.limitation, element, range))
-                                return termination(ProviderTermination.HALTED)
+                            }
                             continue
                         }
                     }

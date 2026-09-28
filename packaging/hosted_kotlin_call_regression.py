@@ -54,8 +54,8 @@ def run_kotlin_call_regression(replay):
             _site(source, 'client.fetch() + client.fetch()', 'fetch', base),
             _site(source, '+ client.fetch()', 'fetch', base))),
         ('unused', 'complete', ()),
-        ('callback', 'qualified', ()),
-        ('qualified', 'qualified', (
+        ('callback', 'complete', ()),
+        ('qualified', 'complete', (
             _site(source, 'return client.fetch()', 'fetch', base),)),
     )
     for name, status, expected in cases:
@@ -502,8 +502,9 @@ def _inline_key(fact):
 def run_inline_ownership_regression(replay, source, path, *, unresolved_path=None):
     """K2 acceptance oracle; Python-only tests do not establish ownership admission."""
     positive = ('stdlibInline', 'explicitInline', 'nestedInline', 'repeatedInline', 'mixedInline')
-    negative = ('returnedInline', 'storedInline', 'callbackInline', 'homonymousInline',
-                'noinlineBoundary', 'crossinlineBoundary', 'unsupportedOuter', 'localInline')
+    excluded = ('returnedInline', 'storedInline', 'callbackInline', 'homonymousInline',
+                'noinlineBoundary', 'crossinlineBoundary', 'unsupportedOuter')
+    negative = excluded + ('localInline',)
     target_start = source.index('fun inlineTarget(')
     target_selector, forward, expected_callers = None, [], []
     unresolved_source = unresolved_path.read_text() if unresolved_path is not None else ''
@@ -526,7 +527,7 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
                    fact.get('occurrence', {}).get('range', {}).get('startInclusive'),
                    fact.get('occurrence', {}).get('range', {}).get('endExclusive')) for fact in inner]
         omissions = [omission for page in high for omission in occurrence_omissions(page)]
-        deferred = name in negative + unresolved or name == 'mixedInline'
+        deferred = name == 'localInline' or name in unresolved
         owner_reason = 'UNRESOLVED_TARGET' if name in unresolved else 'UNSUPPORTED_ITEM'
         # Local named functions retain their owner, even if no detached local endpoint is supported.
         obligation_sites = sites[:1] if deferred and name != 'localInline' else []
@@ -547,6 +548,8 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
                 _inline_key(fact) for page in low for fact in occurrence_facts(page)),
             'sameAuthority': all(page.get('live') == replay.live for page in high + low),
             'qualifiedOmissions': not deferred or high[-1].get('status') == 'qualified',
+            'excludedCallbacksDoNotQualify': name not in excluded + ('mixedInline',) or
+                high[-1].get('status') == 'complete',
             'authoredExactEvidence': all(fact.get('coverage') == 'exact-compiler-confirmed'
                 and fact.get('provenance') == 'k2-authored-source'
                 and fact.get('source', {}).get('qualifiedIdentity') == 'fixture.calls.' + name

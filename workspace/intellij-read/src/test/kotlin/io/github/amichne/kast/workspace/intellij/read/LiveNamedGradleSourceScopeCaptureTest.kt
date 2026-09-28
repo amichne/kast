@@ -4,6 +4,7 @@ import com.intellij.openapi.externalSystem.model.project.ExternalSystemSourceTyp
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import java.nio.file.Files
 import java.nio.file.Path
 import org.jetbrains.plugins.gradle.model.DefaultExternalProject
 import org.jetbrains.plugins.gradle.model.DefaultExternalSourceDirectorySet
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class LiveNamedGradleSourceScopeCaptureTest {
     private val root = (CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")) as Refinement.Refined).value
@@ -71,7 +73,32 @@ class LiveNamedGradleSourceScopeCaptureTest {
     }
 
     @Test
-    fun `selected build unavailable root still rejects`() {
+    fun `declared source folder without a physical directory does not reject the selected build`() {
+        val java = Path.of("/workspace/app/src/main/java")
+        val mixed =
+            DefaultExternalSourceSet().apply {
+                name = "main"
+                addSource(
+                    ExternalSystemSourceType.SOURCE,
+                    DefaultExternalSourceDirectorySet().apply { srcDirs = setOf(code.toFile(), java.toFile()) },
+                )
+            }
+        val observed = RecordingScopeObservation()
+        val result =
+            capture(observation = observed)
+                .capture(
+                    listOf(main),
+                    { mapOf("main" to mixed) },
+                    { listOf(sourceFolder(java, available = false), sourceFolder(code)) },
+                )
+        val scope = assertInstanceOf(Refinement.Refined::class.java, result).value as NamedGradleSourceScope
+        assertTrue(scope.contains(code.resolve("KnownDeclaration.kt"), SymbolDiscoverySourceSets.All))
+        assertFalse(scope.contains(java.resolve("Missing.java"), SymbolDiscoverySourceSets.All))
+        assertEquals(1, observed.values[IntellijReadCounter.SOURCE_ROOTS_ABSENT])
+    }
+
+    @Test
+    fun `selected build with only absent declared folders admits an empty scope`() {
         val result =
             capture()
                 .capture(
@@ -79,7 +106,54 @@ class LiveNamedGradleSourceScopeCaptureTest {
                     { mapOf("main" to sources) },
                     { listOf(sourceFolder(code, available = false)) },
                 )
-        assertInstanceOf(Refinement.Rejected::class.java, result)
+        val scope = assertInstanceOf(Refinement.Refined::class.java, result).value as NamedGradleSourceScope
+        assertEquals(listOf(code.toString()), scope.model.sourceRoots.map { it.sourceRoot.value })
+        assertFalse(scope.contains(code.resolve("Missing.kt"), SymbolDiscoverySourceSets.All))
+    }
+
+    @Test
+    fun `existing declared directory with unavailable IDEA file still rejects`(@TempDir temp: Path) {
+        val build = temp.toRealPath()
+        val projectDir = Files.createDirectories(build.resolve("app"))
+        val java = Files.createDirectories(projectDir.resolve("src/main/java"))
+        val selected = gradleModule("app.main", build.toString(), projectDir.toString())
+        val imported =
+            DefaultExternalProject().apply {
+                this.projectDir = projectDir.toFile()
+                path = ":app"
+            }
+        val declaration =
+            DefaultExternalSourceSet().apply {
+                name = "main"
+                addSource(
+                    ExternalSystemSourceType.SOURCE,
+                    DefaultExternalSourceDirectorySet().apply { srcDirs = setOf(java.toFile()) },
+                )
+            }
+        val canonical = (CanonicalWorkspaceRoot.fromCanonicalPath(build) as Refinement.Refined).value
+        val capture = NamedGradleModuleScopeCapture(gradleProjectIndex(canonical, listOf(imported)))
+        val evidence =
+            IdeSourceRootEvidence(
+                BoundedModuleName.observe("app.main"),
+                BoundedSourceRootIdentity.observe("file://$java"),
+            )
+        assertEquals(
+            Refinement.Rejected(
+                NamedGradleSourceScopeFailure.RootMapping(IdeRootMappingFailure.SourceFolderUnavailable(evidence))
+            ),
+            capture.capture(
+                listOf(selected),
+                { mapOf("main" to declaration) },
+                { listOf(sourceFolder(java, available = false)) },
+            ),
+        )
+    }
+
+    @Test
+    fun `selected build without any declared or physical source folders admits an empty scope`() {
+        val result = capture().capture(listOf(main), { emptyMap() }, { emptyList() })
+        val scope = assertInstanceOf(Refinement.Refined::class.java, result).value as NamedGradleSourceScope
+        assertTrue(scope.model.sourceRoots.isEmpty())
     }
 
     @Test
@@ -124,9 +198,9 @@ class LiveNamedGradleSourceScopeCaptureTest {
         val cases =
             listOf(
                 sourceFolder(path) to IdeRootMappingFailure.GradleOwnerMissing(evidence),
-                sourceFolder(path, available = false) to IdeRootMappingFailure.SourceFolderUnavailable(evidence),
+                sourceFolder(path, available = false) to IdeRootMappingFailure.GradleOwnerMissing(evidence),
                 sourceFolder(path, available = false, resource = true) to
-                    IdeRootMappingFailure.SourceFolderUnavailable(evidence),
+                    IdeRootMappingFailure.GradleOwnerMissing(evidence),
                 sourceFolder(path, mapping = { error("source payload must never appear in evidence") }) to
                     IdeRootMappingFailure.SourceFolderObservationFailed(evidence),
             )
