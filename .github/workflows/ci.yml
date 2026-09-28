@@ -81,7 +81,9 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
           validate-wrappers: true
-          # Keep the setup-gradle default: main writes; other branches restore only.
+          # Save task outputs for later runs of this PR; fork PRs only restore trusted caches.
+          cache-read-only: ${{ !((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || github.ref == 'refs/heads/main') }}
+          # caches includes caches/build-cache-1, Gradle's local task-output cache.
           gradle-home-cache-includes: |
             caches
             notifications
