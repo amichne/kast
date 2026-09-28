@@ -257,6 +257,20 @@ enum class ConfigurationParameter(
         ":cli",
         mutability = ConfigurationMutability.DERIVED,
     ),
+    MANAGEMENT_CHANNEL(
+        "KAST_MANAGEMENT_CHANNEL",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.INSTALLATION,
+        ":distribution:cli",
+        mutability = ConfigurationMutability.DERIVED,
+    ),
+    MANAGEMENT_REPORT_PATH(
+        "KAST_MANAGEMENT_REPORT_PATH",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.INSTALLATION,
+        ":distribution:cli",
+        mutability = ConfigurationMutability.DERIVED,
+    ),
     ASCII("KAST_ASCII", ConfigurationSyntax.SWITCH, ConfigurationScope.INSTALLATION, defaultValue = "0"),
     DEBUG(
         "KAST_DEBUG",
