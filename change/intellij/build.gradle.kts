@@ -59,6 +59,7 @@ dependencies {
 
     compileOnly(catalog.findLibrary("serialization-json").get())
     testImplementation(catalog.findLibrary("serialization-json").get())
+    testImplementation(ideaLibs)
     compileOnly(ideaLibs)
     compileOnly(kotlinPluginLibs)
     compileOnly(javaPluginLibs)

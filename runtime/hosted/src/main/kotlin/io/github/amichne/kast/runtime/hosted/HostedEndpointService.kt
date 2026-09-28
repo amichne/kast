@@ -12,6 +12,7 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryWire
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -249,6 +250,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
             }
         }
 
+    @Suppress("LongMethod") // Keep explicit request dispatch and phase evidence together.
     private suspend fun dispatch(
         root: CanonicalWorkspaceRoot,
         request: HostedRequest,
@@ -271,7 +273,16 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         return when (request) {
             is HostedRequest.Refresh -> HostedResponse.Completed(Json.encodeToString(refresh.execute(request.command)))
             is HostedRequest.PrepareApproval -> changes.prepare(request)
-            is HostedRequest.ApplyChange -> changes.apply(request)
+            is HostedRequest.ApplyChange ->
+                observeHostedChange(
+                    HostedChangeStage.ADMISSION,
+                    deadline =
+                        limits[io.github.amichne.kast.kernel.ReadLimitParameter.HOST_CONNECTION_MILLIS]
+                            .value
+                            .milliseconds,
+                ) {
+                    changes.apply(request)
+                }
             is HostedRequest.RecoverChange -> changes.recover(request)
             is HostedRequest.Describe ->
                 HostedResponse.Completed(
@@ -299,7 +310,8 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     is HostedQueryResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
                     is HostedQueryResult.Published -> HostedResponse.Completed(HostedQueryWire.encode(result))
                 }
-            is HostedRequest.PlanChange -> observeHostedChange(HostedChangeStage.PLANNING) { planHostedChange(project, query, request) }
+            is HostedRequest.PlanChange ->
+                observeHostedChange(HostedChangeStage.PLANNING) { planHostedChange(project, query, request) }
             is HostedRequest.Read -> dispatchRead(request, continuations)
         }
     }

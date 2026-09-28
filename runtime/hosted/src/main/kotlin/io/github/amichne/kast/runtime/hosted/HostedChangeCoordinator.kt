@@ -33,10 +33,8 @@ internal class HostedChangeCoordinator(private val project: Project, private val
             is Refinement.Rejected -> HostedResponse.ChangeRejected(loaded.failure)
         }
 
-    suspend fun apply(request: HostedRequest.ApplyChange): HostedResponse {
-        observeHostedChange(HostedChangeStage.MUTATION_PERMIT_WAIT) { mutations.lock() }
-        return try { applyLocked(request) } finally { mutations.unlock() }
-    }
+    suspend fun apply(request: HostedRequest.ApplyChange): HostedResponse =
+        withHostedMutationPermit(mutations) { applyLocked(request) }
 
     private suspend fun applyLocked(request: HostedRequest.ApplyChange): HostedResponse {
         val context =
@@ -102,7 +100,12 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return result
             }
-        return when (val approved = observeHostedChange(HostedChangeStage.APPROVAL, loaded.plan.planId) { approvals.consume(loaded.plan, effect, assertion) }) {
+        return when (
+            val approved =
+                observeHostedChange(HostedChangeStage.APPROVAL, loaded.plan.planId) {
+                    approvals.consume(loaded.plan, effect, assertion)
+                }
+        ) {
             is Refinement.Refined -> Refinement.Refined(ApprovedHostedChange(loaded, approved.value))
             is Refinement.Rejected -> {
                 Logger.getInstance(HostedChangeCoordinator::class.java)

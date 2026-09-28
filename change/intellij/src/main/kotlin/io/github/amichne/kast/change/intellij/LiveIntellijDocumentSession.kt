@@ -83,7 +83,9 @@ internal class LiveIntellijDocumentSession(
                             mutation.replacement,
                         )
                     }
-                PsiDocumentManager.getInstance(project).commitDocument(prepared.document)
+                observeIntellijWritePhase(IntellijWritePhase.DOCUMENT_COMMIT) {
+                    PsiDocumentManager.getInstance(project).commitDocument(prepared.document)
+                }
                 mutationCheckpoint = IntellijMutationCheckpoint.Completed(prepared.document.modificationStamp)
                 IntellijDocumentMutationResult.Completed
             }
@@ -99,7 +101,9 @@ internal class LiveIntellijDocumentSession(
                 return@writeCommand IntellijSessionStepResult.Rejected(precondition.failure)
         }
         prepared.document.setText(preimageText)
-        PsiDocumentManager.getInstance(project).commitDocument(prepared.document)
+        observeIntellijWritePhase(IntellijWritePhase.DOCUMENT_COMMIT) {
+            PsiDocumentManager.getInstance(project).commitDocument(prepared.document)
+        }
         val outcome =
             intellijSaveOutcome(
                 unsaved = FileDocumentManager.getInstance().isDocumentUnsaved(prepared.document),
@@ -128,7 +132,9 @@ internal class LiveIntellijDocumentSession(
                     // A direct VFS write while this document is unsaved creates a memory/disk conflict;
                     // FileDocumentManager then vetoes the document save without throwing.
                     val documents = FileDocumentManager.getInstance()
-                    documents.saveDocumentAsIs(prepared.document)
+                    observeIntellijWritePhase(IntellijWritePhase.EXPLICIT_SAVE) {
+                        documents.saveDocumentAsIs(prepared.document)
+                    }
                     val committed = PsiDocumentManager.getInstance(project).isCommitted(prepared.document)
                     val outcome =
                         intellijSaveOutcome(

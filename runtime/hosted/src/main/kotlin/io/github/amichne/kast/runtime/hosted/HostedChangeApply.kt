@@ -38,6 +38,7 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadR
 internal typealias HostedApplyOutcome =
     OperationOutcome<ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection>
 
+@Suppress("LongMethod") // Keep the ordered mutation phases at their existing owner.
 internal suspend fun applyHostedChange(
     project: Project,
     query: HostedQueryService,
@@ -76,7 +77,12 @@ internal suspend fun applyHostedChange(
                 }
             }
         val durability = LiveAppliedDurability(authority, recovery)
-        return when (val written = observeHostedChange(HostedChangeStage.APPLICATION, plan.planId) { HostedLiveSourceWriter(project).write(authority, fresh.guard, durability) }) {
+        return when (
+            val written =
+                observeHostedChange(HostedChangeStage.APPLICATION, plan.planId) {
+                    HostedLiveSourceWriter(project).write(authority, fresh.guard, durability)
+                }
+        ) {
             is LiveSourceWriteResult.Applied ->
                 completeHostedApplication(
                     project = project,
@@ -108,7 +114,9 @@ private suspend fun readFreshHostedMutation(
                         observeHostedMutation(project, context, plan)
                     }
                 },
-                wait = { awaitHostedSmartMode(project) },
+                wait = {
+                    observeHostedChange(HostedChangeStage.READINESS_WAIT, plan.planId) { awaitHostedSmartMode(project) }
+                },
             )
     ) {
         is HostedSemanticReadResult.Completed -> read.value

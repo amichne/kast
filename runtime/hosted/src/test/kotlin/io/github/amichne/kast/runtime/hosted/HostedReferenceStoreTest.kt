@@ -27,22 +27,28 @@ class HostedReferenceStoreTest {
         val fixture = io.github.amichne.kast.query.protocol.RelationPagingFixture.live()
         val transport = HostedReferenceTokens(ReadLimits.Default).transport()
         val references = io.github.amichne.kast.query.protocol.CanonicalQueryReferences(transport)
-        val compact = (references.issueExact(fixture.selector) as io.github.amichne.kast.query.protocol.ExactSelectorIssuance.Issued).selector
+        val compact =
+            (references.issueExact(fixture.selector)
+                    as io.github.amichne.kast.query.protocol.ExactSelectorIssuance.Issued)
+                .selector
         assertTrue(fixture.exact.value.startsWith("exact:v3:"))
         assertTrue(compact.value.startsWith("exact:v5:"))
         for (token in listOf(fixture.exact, compact)) {
             val restored = references.restoreExact(token, fixture.authority) as CanonicalSelectorDecoding.Decoded
-            val encoded = io.github.amichne.kast.query.protocol.CanonicalSelectorCodec.encodeExact(restored.value)
-                as io.github.amichne.kast.query.protocol.CanonicalSelectorEncoding.Encoded
+            val encoded =
+                io.github.amichne.kast.query.protocol.CanonicalSelectorCodec.encodeExact(restored.value)
+                    as io.github.amichne.kast.query.protocol.CanonicalSelectorEncoding.Encoded
             assertEquals(fixture.exact, encoded.token)
-            val other = io.github.amichne.kast.workspace.contract.SemanticReadLease(
-                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/other-workspace")).refined(),
-                io.github.amichne.kast.kernel.EvidenceGeneration.parse(1).refined(),
-            )
+            val other =
+                io.github.amichne.kast.workspace.contract.SemanticReadLease(
+                    CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/other-workspace")).refined(),
+                    io.github.amichne.kast.kernel.EvidenceGeneration.parse(1).refined(),
+                )
             assertTrue(references.restoreExact(token, other) is CanonicalSelectorDecoding.Rejected)
         }
-        val candidate = references.issueRangeCandidate(fixture.authority, fixture.selector.file, 0, 1)
-            as io.github.amichne.kast.query.protocol.CandidateSelectorTokenIssuance.Issued
+        val candidate =
+            references.issueRangeCandidate(fixture.authority, fixture.selector.file, 0, 1)
+                as io.github.amichne.kast.query.protocol.CandidateSelectorTokenIssuance.Issued
         assertTrue(references.restoreExact(candidate.selector, fixture.authority) is CanonicalSelectorDecoding.Rejected)
     }
 
