@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -34,8 +35,10 @@ dependencies {
 }
 
 tasks.named<Test>("test") {
-    inputs.files(rootProject.file("copilot/extension.mjs"), rootProject.file("pi/extension.ts"))
-    inputs.dir("src/test/js")
+    inputs
+        .files(rootProject.file("copilot/extension.mjs"), rootProject.file("pi/extension.ts"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform {
         excludeTags("native")
     }

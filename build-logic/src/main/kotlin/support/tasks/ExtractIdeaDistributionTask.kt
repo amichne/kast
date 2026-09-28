@@ -31,13 +31,6 @@ abstract class ExtractIdeaDistributionTask : DefaultTask() {
     fun extract() {
         val archiveFile = archives.singleFile
         val outputRoot = outputDirectory.get().asFile.toPath()
-        val versionMarker = outputRoot.resolve(".kast-idea-version")
-        if (Files.isDirectory(outputRoot) && Files.isRegularFile(versionMarker)) {
-            if (Files.readString(versionMarker).trim() == ideaVersion.get()) {
-                return
-            }
-        }
-
         val parent = outputRoot.parent
                      ?: throw GradleException("IDEA extraction output must have a parent directory: $outputRoot")
         Files.createDirectories(parent)
