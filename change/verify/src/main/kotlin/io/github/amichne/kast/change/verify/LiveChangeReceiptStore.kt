@@ -10,14 +10,14 @@ enum class LiveChangeReceiptStoreFailure {
 }
 
 sealed interface LiveChangeReceiptIssuance {
-    data class Issued(val identity: ChangeReceiptIdentity, val receipt: HistoricalLiveAddDeclarationReceipt) :
+    data class Issued(val identity: ChangeReceiptIdentity, val receipt: HistoricalLiveChangeReceipt) :
         LiveChangeReceiptIssuance
 
     data class Rejected(val failure: LiveChangeReceiptStoreFailure) : LiveChangeReceiptIssuance
 }
 
 sealed interface LiveChangeReceiptLookup {
-    data class Found(val identity: ChangeReceiptIdentity, val receipt: HistoricalLiveAddDeclarationReceipt) :
+    data class Found(val identity: ChangeReceiptIdentity, val receipt: HistoricalLiveChangeReceipt) :
         LiveChangeReceiptLookup
 
     data object Missing : LiveChangeReceiptLookup
@@ -28,6 +28,8 @@ sealed interface LiveChangeReceiptLookup {
 /** Only complete applied and verified proof can create a receipt; reads return historical data only. */
 interface LiveChangeReceiptStore {
     fun issueReceipt(receipt: VerifiedLiveAddDeclarationReceipt): LiveChangeReceiptIssuance
+
+    fun issueReceipt(receipt: VerifiedLiveReplaceBodyReceipt): LiveChangeReceiptIssuance
 
     fun loadReceipt(planIdentity: ChangePlanIdentity): LiveChangeReceiptLookup
 }

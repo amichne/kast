@@ -5,9 +5,8 @@ from types import SimpleNamespace
 import unittest
 
 from hosted_budget_read_regression import ResultsBudget
-from hosted_resume_budget_regression import (Checkpoint, DrainRejected, Drained, ResumeFailure,
-    ResumeSource, admit_progress, drain, payload_parity, resume_request)
-from hosted_source_read_regression import SymbolAnchor
+from hosted_resume_budget_regression import (DrainRejected, Drained, ResumeFailure,
+    admit_progress, drain, payload_parity)
 from query_name_request import QueryInput, QueryRun, SymbolReferences, SymbolOutput
 
 
@@ -47,24 +46,6 @@ class Qualification:
 
 
 @dataclass(frozen=True)
-class Available:
-    continuation: str
-    type: str = 'available'
-
-
-@dataclass(frozen=True)
-class SourceQualification:
-    progress: Progress
-    continuation: Available
-
-
-@dataclass(frozen=True)
-class ProgressResponse:
-    qualification: SourceQualification
-    status: str = 'qualified'
-
-
-@dataclass(frozen=True)
 class Record:
     name: str
     occurrence: str = 'call-1'
@@ -89,20 +70,6 @@ class Qualified:
     status: str = field(default='qualified', init=False)
     live: str = 'unchanged-authority'
     failures: tuple = ()
-
-
-@dataclass(frozen=True)
-class Text:
-    text: str = 'saved source'
-    type: str = 'returned'
-
-
-@dataclass(frozen=True)
-class Source:
-    entities: tuple[Record, ...]
-    snapshot: str = 'snapshot-proof'
-    region: str = 'range-proof'
-    text: Text = field(default_factory=Text)
 
 
 @dataclass(frozen=True)
@@ -275,15 +242,6 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
         for page in (qualified('x', 'retained_output', action='increase_execution_budget'),
                      asdict(Qualified(grant(100), Qualification(Progress(Token('canonical'))), 'wrong'))):
             self.assertEqual(DrainRejected(ResumeFailure.CHECKPOINT_REJECTED), admit_progress('query_symbols', page))
-        source = ResumeSource(SymbolAnchor('symbol'), ResultsBudget(100))
-        self.assertEqual({'continuation': 'issued', 'type': 'CONTINUE'},
-                         asdict(resume_request(source, 'issued'))['page'])
-
-    def test_source_progress_retains_its_available_continuation(self):
-        source = ProgressResponse(SourceQualification(Progress(Token('source')), Available('source')))
-        self.assertEqual(Checkpoint('source', 'upstream'), admit_progress('read_source', asdict(source)))
-        changed = replace(source, qualification=replace(source.qualification, continuation=Available('wrong')))
-        self.assertEqual(DrainRejected(ResumeFailure.CHECKPOINT_REJECTED), admit_progress('read_source', asdict(changed)))
 
     def test_relation_page_boundaries_preserve_full_occurrence_multiset_and_page_order(self):
         a, b = Record('a'), Record('b', 'call-2')
@@ -328,20 +286,14 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
         ):
             self.assertFalse(payload_parity('query_walk', Drained((asdict(first), asdict(changed))), baseline))
 
-    def test_parity_rejects_lost_order_occurrence_proof_source_text_and_range(self):
+    def test_parity_rejects_lost_order_occurrence_and_proof(self):
         records = (Record('a'), Record('b', 'call-2'))
         reference = Drained((asdict(OccurrenceRows(tuple(OccurrenceItem(item) for item in records))),))
         for changed in (tuple(reversed(records)), (replace(records[0], occurrence='wrong'), records[1]),
                         (replace(records[0], proof='wrong'), records[1])):
             self.assertFalse(payload_parity('query_occurrences',
                 Drained((asdict(OccurrenceRows(tuple(OccurrenceItem(item) for item in changed))),)), reference))
-        source = Source(records)
-        expected = Drained((asdict(source),))
-        pages = Drained((asdict(replace(source, entities=records[:1])), asdict(replace(source, entities=records[1:]))))
-        self.assertTrue(payload_parity('read_source', pages, expected))
-        for changed in (replace(source, region='changed'), replace(source, text=Text('changed')),
-                        replace(source, snapshot='changed'), replace(source, entities=tuple(reversed(records)))):
-            self.assertFalse(payload_parity('read_source', Drained((asdict(changed),)), expected))
+
 
 
 if __name__ == '__main__':

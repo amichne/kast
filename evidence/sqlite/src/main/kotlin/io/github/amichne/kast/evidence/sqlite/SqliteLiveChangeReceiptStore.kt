@@ -2,19 +2,26 @@ package io.github.amichne.kast.evidence.sqlite
 
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
 import io.github.amichne.kast.change.verify.HistoricalLiveAddDeclarationReceipt
+import io.github.amichne.kast.change.verify.HistoricalLiveChangeReceipt
+import io.github.amichne.kast.change.verify.HistoricalLiveReplaceBodyReceipt
 import io.github.amichne.kast.change.verify.LiveAddDeclarationReceiptCodec
 import io.github.amichne.kast.change.verify.LiveChangeReceiptIssuance
 import io.github.amichne.kast.change.verify.LiveChangeReceiptLookup
 import io.github.amichne.kast.change.verify.LiveChangeReceiptStore
 import io.github.amichne.kast.change.verify.LiveChangeReceiptStoreFailure
 import io.github.amichne.kast.change.verify.LiveReceiptFailure
+import io.github.amichne.kast.change.verify.LiveReplaceBodyReceiptCodec
 import io.github.amichne.kast.change.verify.VerifiedLiveAddDeclarationReceipt
+import io.github.amichne.kast.change.verify.VerifiedLiveReplaceBodyReceipt
 import io.github.amichne.kast.evidence.contract.MutationDatabaseLocation
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.SQLException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 
 sealed interface SqliteLiveChangeReceiptStoreOpenResult {
     data class Opened(val store: SqliteLiveChangeReceiptStore) : SqliteLiveChangeReceiptStoreOpenResult
@@ -28,12 +35,19 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
     override fun issueReceipt(receipt: VerifiedLiveAddDeclarationReceipt): LiveChangeReceiptIssuance =
         persistHistorical(receipt.historical)
 
+    override fun issueReceipt(receipt: VerifiedLiveReplaceBodyReceipt): LiveChangeReceiptIssuance =
+        persistHistorical(receipt.historical)
+
     /**
      * Adapter-local persistence of an already admitted historical projection; public issuance requires complete proof.
      */
-    internal fun persistHistorical(receipt: HistoricalLiveAddDeclarationReceipt): LiveChangeReceiptIssuance {
+    internal fun persistHistorical(receipt: HistoricalLiveChangeReceipt): LiveChangeReceiptIssuance {
         val planIdentity = planIdentity(receipt)
-        val document = LiveAddDeclarationReceiptCodec.encode(receipt)
+        val document =
+            when (receipt) {
+                is HistoricalLiveAddDeclarationReceipt -> LiveAddDeclarationReceiptCodec.encode(receipt)
+                is HistoricalLiveReplaceBodyReceipt -> LiveReplaceBodyReceiptCodec.encode(receipt)
+            }
         val digest = digest(document)
         return storage({ LiveChangeReceiptIssuance.Rejected(it) }) {
             connections.use { connection ->
@@ -97,8 +111,20 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
             return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.VERSION_UNSUPPORTED)
         if (digest(row.document) != row.digest)
             return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
-        val receipt =
-            when (val decoded = LiveAddDeclarationReceiptCodec.decode(row.document)) {
+        val kind =
+            try {
+                Json { ignoreUnknownKeys = true }.decodeFromString<StoredReceiptKind>(row.document).content.kind
+            } catch (_: SerializationException) {
+                return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
+            }
+        val decoded =
+            when (kind) {
+                "LIVE_ADD_DECLARATION_RECEIPT" -> LiveAddDeclarationReceiptCodec.decode(row.document)
+                "LIVE_REPLACE_BODY_RECEIPT" -> LiveReplaceBodyReceiptCodec.decode(row.document)
+                else -> return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.VERSION_UNSUPPORTED)
+            }
+        val receipt: HistoricalLiveChangeReceipt =
+            when (decoded) {
                 is Refinement.Refined -> decoded.value
                 is Refinement.Rejected ->
                     return LiveChangeReceiptLookup.Rejected(
@@ -199,8 +225,12 @@ private fun Connection.receiptRow(identity: ChangePlanIdentity): LiveReceiptRowO
             }
         }
 
-private fun planIdentity(receipt: HistoricalLiveAddDeclarationReceipt): ChangePlanIdentity =
+private fun planIdentity(receipt: HistoricalLiveChangeReceipt): ChangePlanIdentity =
     checkNotNull(ChangePlanIdentity.parse("plan:${receipt.plan.planId.value}"))
+
+@Serializable private data class StoredReceiptKind(val content: StoredReceiptContentKind)
+
+@Serializable private data class StoredReceiptContentKind(val kind: String)
 
 private fun digest(value: String): String =
     java.util.HexFormat.of()

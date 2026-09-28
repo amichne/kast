@@ -4,7 +4,6 @@ from dataclasses import asdict
 from enum import Enum
 import json
 import os
-from released_acceptance_product import product_executable
 from pathlib import Path
 import selectors
 import re
@@ -77,20 +76,47 @@ class NativeProcesses:
                 if descriptor.get('hostPid') != self.ide.pid:
                     time.sleep(0.1)
                     continue
-                result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), 'tool', 'query_symbols'],
+                if setup_phase is NativeSetupPhase.AWAITING_NATIVE_OBSERVATION:
+                    self.observe_setup()
+                    setup_phase = NativeSetupPhase.NATIVE_OBSERVATION_COMPLETE
+                    continue
+                result = subprocess.run([str(self.product / 'bin/kast-tool-rpc'), 'call', 'query_symbols'],
                     cwd=self.fixture.workspace, env=self.fixture.environment,
                     input=json.dumps(asdict(name_query('NativeChangeTarget', ('class',)))),
                     capture_output=True, text=True, timeout=30)
                 if len(result.stdout) > 4 * 1024 * 1024:
                     raise AcceptanceRejected(AcceptanceFailure.READINESS)
-                value = json.loads(result.stdout)
+                try:
+                    reply = json.loads(result.stdout)
+                except ValueError:
+                    self.readiness_observations.append({
+                        'generation': self.generation, 'stage': 'QUERY_READINESS',
+                        'outcome': 'REJECTED', 'failure': 'INVALID_RESPONSE',
+                        'returnCode': result.returncode, 'stdoutBytes': len(result.stdout.encode()),
+                        'stderrBytes': len(result.stderr.encode()),
+                    })
+                    raise AcceptanceRejected(AcceptanceFailure.READINESS) from None
+                value = reply.get('document', {}) if reply.get('type') in ('complete', 'qualified', 'rejected_document') else {}
+                if reply.get('type') == 'rejected':
+                    self.readiness_observations.append({
+                        'generation': self.generation, 'stage': 'QUERY_READINESS',
+                        'outcome': 'REJECTED', 'failure': reply.get('failure', 'UNSPECIFIED'),
+                    })
+                if reply.get('type') == 'rejected_document':
+                    document = reply.get('document', {})
+                    failure = document.get('failure')
+                    reason = document.get('reason')
+                    self.readiness_observations.append({
+                        'generation': self.generation, 'stage': 'QUERY_READINESS',
+                        'outcome': 'REJECTED', 'failure': 'OPERATION_REJECTED',
+                        'failureCode': failure if isinstance(failure, str) and re.fullmatch('[A-Z_]{1,80}', failure) else 'OTHER',
+                        'status': document.get('status') if document.get('status') in ('rejected', 'qualified', 'complete') else 'OTHER',
+                        'reason': reason if isinstance(reason, str) and re.fullmatch('[a-zA-Z0-9_-]{1,80}', reason) else 'OTHER',
+                        'fields': sorted(key for key in document if key in ('status', 'failure', 'reason', 'error', 'message', 'code')),
+                    })
                 if result.returncode == 0 and value.get('status') == 'complete' and len(value.get('items', [])) == 1:
                     live = admitted_live(value.get('live'), self.fixture.workspace)
                     self.observe_discovery(StartupDiscoveryState.OBSERVED)
-                    if setup_phase is NativeSetupPhase.AWAITING_NATIVE_OBSERVATION:
-                        self.observe_setup()
-                        setup_phase = NativeSetupPhase.NATIVE_OBSERVATION_COMPLETE
-                        continue
                     with private_file(self.isolation.root / f'ready-{self.generation}.private.json') as output:
                         output.write(json.dumps({'live': live, 'resultCount': 1,
                             'responseSha256': hashlib.sha256(result.stdout.encode()).hexdigest()}).encode())
@@ -117,7 +143,7 @@ class NativeProcesses:
         command = 'AWAIT_SETUP_READY' if self.generation == 1 else 'AWAIT_REOPEN_READY'
         current_digest = hashlib.sha256(self.fixture.source.read_bytes()).hexdigest()
         try:
-            response = NativeFixtureProbe(self.isolation.root, self.fixture.workspace).request(command, current_digest, timeout=65)
+            response = NativeFixtureProbe(self.isolation.root, self.fixture.workspace).request(command, current_digest, timeout=120)
         except NativeFixtureProbeError as error:
             self.readiness_observations.append({'generation': self.generation, 'stage': 'SETUP_READINESS',
                 'outcome': 'REJECTED', 'failure': SetupProbeFailure.classify(error).value})
@@ -203,10 +229,12 @@ class NativeProcesses:
             raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
         return response
 
-    def run(self, java, harness, schemas, private, report, seconds, record):
+    def run(self, java, harness, schemas, private, report, seconds, record, scenario=None):
         command = [str(java), '-cp', str(self.product / 'lib/*') + os.pathsep + str(harness),
             'io.github.amichne.kast.appserver.acceptance.hostedchange.NativeHostedChangeMain',
             str(self.product), str(self.fixture.workspace), str(schemas), str(private), str(report)]
+        if scenario is not None:
+            command.append(scenario)
         deadline, pending, completed = time.monotonic() + seconds, b'', False
         with private_file(private / 'stdout.log') as output, private_file(private / 'stderr.log') as error:
             self.native = self.isolation.spawn(command, cwd=self.fixture.workspace, env=self.fixture.environment,

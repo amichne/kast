@@ -19,7 +19,7 @@ internal fun publicToolCommands(
 ): PublicToolCommandFamily {
     val commands =
         PublicToolIdentity.entries
-            .filter { it != PublicToolIdentity.ADD_DECLARATION }
+            .filter { it !in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY) }
             .map { identity ->
                 SemanticKastCommand(
                     name = identity.toolName,
@@ -34,7 +34,6 @@ internal fun publicToolCommands(
                                 is PublicToolCanonical.Query -> preparers.queryRun.prepare(canonical.request)
                                 is PublicToolCanonical.Diagnostics ->
                                     preparers.diagnosticCheck.prepare(canonical.request)
-                                is PublicToolCanonical.Source -> preparers.sourceRead.prepare(canonical.request)
                                 is PublicToolCanonical.Change ->
                                     error("Mutation is hosted by the approval-aware invocation")
                             }
@@ -46,7 +45,7 @@ internal fun publicToolCommands(
         KastCommandGroup("tool", "Invoke a public search, diagnostic, or advanced symbol tool with JSON stdin.")
             .subcommands(commands),
         PublicToolIdentity.entries
-            .filter { it != PublicToolIdentity.ADD_DECLARATION }
+            .filter { it !in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY) }
             .zip(commands) { identity, command ->
                 CliToolCommandSurface(identity, command.schemaUsage)
             },

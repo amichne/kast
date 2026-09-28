@@ -196,9 +196,11 @@ class MintlifyCallableReferenceTest {
         val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
         assertTrue("query_symbolsSemanticResult" in components)
-        assertTrue("read_sourceSemanticResult" in components)
         assertTrue("check_diagnosticsSemanticResult" in components)
         assertTrue("add_declarationSemanticResult" in components)
+        assertTrue("replace_bodySemanticResult" in components)
+        assertTrue("read_sourceSemanticResult" !in components)
+        assertTrue("validate_workspaceSemanticResult" !in components)
         assertTrue("McpReadResult" !in components)
         assertTrue(
             "structuredContent" in components.getValue("McpToolCallResult").jsonObject.getValue("properties").jsonObject

@@ -1,10 +1,12 @@
 package io.github.amichne.kast.runtime.hosted
 
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.LiveChangeApplicationHistory
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.protocol.liveChangeEvidence
 import io.github.amichne.kast.change.protocol.protocolPreview
+import io.github.amichne.kast.change.verify.HistoricalLiveAddDeclarationReceipt
+import io.github.amichne.kast.change.verify.HistoricalLiveReplaceBodyReceipt
 import io.github.amichne.kast.change.verify.LiveChangeReceiptLookup
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -20,7 +22,7 @@ internal sealed interface HostedApplicationHistory {
 
 internal fun observeHostedApplication(
     resources: HostedChangeResources,
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
 ): HostedApplicationHistory {
     val identity = checkNotNull(ChangePlanIdentity.parse("plan:${plan.planId.value}"))
     return observeHostedApplication(plan, resources.receipts.loadReceipt(identity)) {
@@ -30,7 +32,7 @@ internal fun observeHostedApplication(
 
 /** Receipt wins over attempt state; unreadable history never authorizes another write. */
 internal fun observeHostedApplication(
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
     receipt: LiveChangeReceiptLookup,
     history: () -> LiveChangeApplicationHistory,
 ): HostedApplicationHistory =
@@ -41,10 +43,19 @@ internal fun observeHostedApplication(
                     liveChangeEvidence(
                         CanonicalOperation.CHANGE_APPLY,
                         receipt.receipt.after.reference,
-                        ChangeApplyResult.Verified(
-                            hostedProtocolText(receipt.identity.value),
-                            receipt.receipt.plan.protocolPreview(),
-                        ),
+                        when (val stored = receipt.receipt) {
+                            is HistoricalLiveAddDeclarationReceipt ->
+                                ChangeApplyResult.Verified(
+                                    hostedProtocolText(receipt.identity.value),
+                                    stored.plan.protocolPreview(),
+                                )
+                            is HistoricalLiveReplaceBodyReceipt ->
+                                ChangeApplyResult.VerifiedBody(
+                                    hostedProtocolText(receipt.identity.value),
+                                    hostedProtocolText(stored.freshReference.value),
+                                    stored.plan.protocolPreview(),
+                                )
+                        },
                     )
                 )
             )
@@ -59,13 +70,13 @@ internal fun observeHostedApplication(
             }
     }
 
-private fun interruptedApplication(plan: LiveAddDeclarationChangePlan) =
+private fun interruptedApplication(plan: LiveChangePlan) =
     HostedApplicationHistory.Terminal(recoveryRequired(plan, ChangeApplyRecoveryReason.ATTEMPT_INTERRUPTED))
 
 /** Admission can race a durable attempt; preserve newly recorded effects before projecting failure. */
 internal fun rejectionAfterHistory(
     resources: HostedChangeResources,
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
     failure: ChangeApplyRejection,
 ): HostedApplyOutcome =
     when (val history = observeHostedApplication(resources, plan)) {

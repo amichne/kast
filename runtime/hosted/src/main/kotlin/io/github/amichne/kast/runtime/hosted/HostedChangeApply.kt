@@ -12,8 +12,8 @@ import io.github.amichne.kast.change.apply.ObservedAbsentMutationSource
 import io.github.amichne.kast.change.apply.ObservedMutationSource
 import io.github.amichne.kast.change.apply.SourceObservationResult
 import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.LiveChangeBasisComparison
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.intellij.HostedLiveSourceWriter
 import io.github.amichne.kast.change.intellij.IntellijChangeSourceAdapter
 import io.github.amichne.kast.change.protocol.liveChangeEvidence
@@ -42,7 +42,7 @@ internal suspend fun applyHostedChange(
     project: Project,
     query: HostedQueryService,
     resources: HostedChangeResources,
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
     approval: VerifiedLivePlanApproval,
 ): HostedApplyOutcome {
     when (val history = observeHostedApplication(resources, plan)) {
@@ -98,7 +98,7 @@ internal suspend fun applyHostedChange(
 private suspend fun readFreshHostedMutation(
     project: Project,
     query: HostedQueryService,
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
 ): Refinement<FreshHostedMutation, ChangeApplyRejection> =
     when (
         val read =
@@ -123,14 +123,14 @@ private data class FreshHostedMutation(
 )
 
 private fun FreshHostedMutation.candidate(
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
     approval: VerifiedLivePlanApproval,
 ) = LiveMutationCandidate(plan = plan, current = authority, model = model, observed = source, approval = approval)
 
 private fun observeHostedMutation(
     project: Project,
     context: HostedSemanticReadContext,
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
 ): Refinement<FreshHostedMutation, ChangeApplyRejection> {
     if (
         plan.basis.observation.compare(context.authority.reference, context.model) !=
@@ -161,7 +161,7 @@ private fun observeHostedMutation(
 }
 
 internal fun recoveryRequired(
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
     reason: ChangeApplyRecoveryReason,
 ): HostedApplyOutcome =
     OperationOutcome.Qualified(
@@ -177,7 +177,7 @@ internal fun recoveryRequired(
         ChangeApplyQualification.RECOVERY_REQUIRED,
     )
 
-internal fun unverified(plan: LiveAddDeclarationChangePlan, reason: ChangeApplyUnverifiedReason): HostedApplyOutcome =
+internal fun unverified(plan: LiveChangePlan, reason: ChangeApplyUnverifiedReason): HostedApplyOutcome =
     OperationOutcome.Qualified(
         liveChangeEvidence(
             CanonicalOperation.CHANGE_APPLY,

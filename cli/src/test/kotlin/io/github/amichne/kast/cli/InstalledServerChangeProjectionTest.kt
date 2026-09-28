@@ -34,15 +34,19 @@ class InstalledServerChangeProjectionTest {
             listOf(
                 "workspace_lifecycle",
                 "query_symbols",
-                "read_source",
                 "check_diagnostics",
                 "add_declaration",
+                "replace_body",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
         assertEquals(
             HostedApprovalPolicy.NONE.name.lowercase(),
             tools.tool("add_declaration").getValue("approvalPolicy").jsonPrimitive.content,
+        )
+        assertEquals(
+            HostedApprovalPolicy.NONE.name.lowercase(),
+            tools.tool("replace_body").getValue("approvalPolicy").jsonPrimitive.content,
         )
         assertTrue(
             tools

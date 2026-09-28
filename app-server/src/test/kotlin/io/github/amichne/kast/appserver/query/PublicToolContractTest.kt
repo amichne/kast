@@ -56,43 +56,16 @@ class PublicToolContractTest {
     }
 
     @Test
-    fun `read source admits one exact reference and resolves optional controls`() {
-        val token = "exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
-        val symbol = (ProtocolText.parse(token) as Refinement.Refined).value
-        val omitted =
-            PublicToolContract.admit(
-                PublicToolIdentity.READ_SOURCE,
-                Json.encodeToJsonElement(PublicToolReadSource.serializer(), PublicToolReadSource(symbol)),
-            )
-        assertTrue(omitted is Refinement.Refined, omitted.toString())
-        val request = ((omitted as Refinement.Refined).value.canonical as PublicToolCanonical.Source).request
+    fun `replace body retains exact target and complete block text in a change intent`() {
+        val target = (ProtocolText.parse("exact:v5:AAAAAAAAAAAAAAAAAAAAAQ") as Refinement.Refined).value
+        val body = (ProtocolText.parse("{ return Unit }") as Refinement.Refined).value
+        val raw = Json.encodeToJsonElement(PublicToolReplaceBody.serializer(), PublicToolReplaceBody(target, body))
+        val admitted = PublicToolContract.admit(PublicToolIdentity.REPLACE_BODY, raw)
+        assertTrue(admitted is Refinement.Refined, admitted.toString())
         assertEquals(
-            SourceReadAnchorDocument.Symbol(ProtocolText.parse(token).let { (it as Refinement.Refined).value }),
-            request.anchor,
+            ChangeRequest(ChangeIntentDocument.ReplaceBody(target, body)),
+            ((admitted as Refinement.Refined).value.canonical as PublicToolCanonical.Change).request,
         )
-        assertEquals(SourceRegionSelectionDocument.Anchor, request.region)
-        assertEquals(SourceEntitySelectionDocument.None, request.entities)
-        assertEquals(65536, request.textByteLimit.value)
-        assertEquals(SourceReadFormatDocument.COMPACT, request.format)
-        val explicit =
-            PublicToolContract.admit(
-                PublicToolIdentity.READ_SOURCE,
-                Json {
-                        encodeDefaults = true
-                        explicitNulls = true
-                    }
-                    .encodeToJsonElement(
-                        PublicToolReadSource.serializer(),
-                        PublicToolReadSource(
-                            symbol,
-                            text = PublicToolSourceTextComplete(),
-                            entities = PublicToolSourceEntitiesNone,
-                            page = PublicToolSourcePageFirst,
-                        ),
-                    ),
-            )
-        assertTrue(explicit is Refinement.Refined, explicit.toString())
-        assertEquals(request, ((explicit as Refinement.Refined).value.canonical as PublicToolCanonical.Source).request)
     }
 
     @Test

@@ -17,23 +17,17 @@ import subprocess
 from hosted_read_transport import HostedReadTransport, ReadProviderFailure, ReadTransportRejected
 from native_provider_qualification import qualification_document
 from hosted_concurrent_read import run_concurrent_read_regression
-from hosted_authority_read_regression import run_authority_read_regression
 from hosted_budget_read_regression import progress_advances, run_budget_read_regression
-from hosted_budget_read_regression import NoEntities
-from hosted_source_read_regression import SourceFunctionRequest, SymbolAnchor
-from hosted_resume_budget_regression import CompleteText
 from hosted_resume_budget_regression import Checkpoint, Finished, admit_progress, run_resume_budget_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_repair_budget_regression import run_repair_time_regression
 from hosted_kotlin_call_regression import run_kotlin_call_regression
-from hosted_compact_source_regression import run_compact_source_regression
 from hosted_vfs_overflow_regression import run_vfs_overflow_regression
 from hosted_read_policy import NativeReadPolicy
-from hosted_source_failure_regression import run_source_failure_regression
 from hosted_diagnostic_pages_regression import (run_diagnostic_pages_regression, DiagnosticRequest,
     DiagnosticGrant, DiagnosticDrained, drain_diagnostics)
-from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
-from query_name_request import QueryInput, QueryResume, relation_query, occurrence_facts, walk_query, walk_records, walk_observation
+from query_name_request import (QueryInput, QueryRun, QueryResume, SymbolOutput, SymbolReferences,
+    relation_query, occurrence_facts, walk_query, walk_records, walk_observation)
 
 
 MAX_READ_RECEIPTS = 512  # Two surfaces, each bounded to 256 authored cases.
@@ -57,7 +51,6 @@ class ReadRegressionStage(str, Enum):
     OVERFLOW = 'overflow'
     SEMANTIC = 'semantic'
     CONCURRENT = 'concurrent'
-    AUTHORITY = 'authority'
 
 
 class ReadRegressionFailure(str, Enum):
@@ -108,7 +101,6 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
     rows, failure, failure_details, unchanged, before = [], None, None, False, False
     qualification = None
     concurrent = None
-    authority = None
     overflow = None
     stage = ReadRegressionStage.FIXTURE
     try:
@@ -131,8 +123,6 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
                 replay.run()
             stage = ReadRegressionStage.CONCURRENT
             concurrent = run_concurrent_read_regression(isolation, read_fixture, oracle, transport, initial_live)
-            stage = ReadRegressionStage.AUTHORITY
-            authority = asdict(run_authority_read_regression(isolation, fixture, transport, initial_live))
     except ReadTransportRejected as error:
         failure = 'READ_TRANSPORT_REJECTED'
         failure_details = error.evidence()
@@ -148,16 +138,15 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             failure = 'READ_FIXTURE_REJECTED'
     passed = (failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
               and (read_policy is not NativeReadPolicy.OVERFLOW or overflow is not None and overflow['outcome'] == 'passed')
-              and concurrent is not None and concurrent['outcome'] == 'passed'
-              and authority is not None and authority['outcome'] == 'passed')
+              and concurrent is not None and concurrent['outcome'] == 'passed')
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
             'failureDetails': failure_details, 'providerQualification': qualification,
-            'scope': 'complete-authored-base-semantic-matrix-and-three-semantic-read-tools',
+            'scope': 'authored-semantic-matrix-query-source-and-diagnostics',
             'fixture': read_fixture.evidence(), 'sourceUnchanged': unchanged,
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
             'stockCodexUi': 'unqualified', 'caseCount': len(rows),
             'passedCount': sum(row['passed'] for row in rows), 'cases': rows, 'concurrentReplay': concurrent,
-            'authorityReplay': authority, 'overflowReplay': overflow}
+            'overflowReplay': overflow}
 
 
 class _ReadReplay:
@@ -176,8 +165,6 @@ class _ReadReplay:
         self.roundtrips()
         self.specialists()
         run_kotlin_call_regression(self)
-        run_compact_source_regression(self)
-        run_source_failure_regression(self)
 
     def query(self, case):
         tool, _, request = self.oracle.invocation(case, self.oracle.ToolSurface.PUBLIC)
@@ -215,8 +202,7 @@ class _ReadReplay:
         if not {'logger', 'helper'} <= self.seeds.keys():
             self.record('specialist-read-tools', 'all', {'issuerAvailable': False})
             return
-        self.source_read()
-        run_source_paging_regression(self)
+        self.source_window()
         run_enum_read_regression(self)
         self.relations()
         run_budget_read_regression(self)
@@ -235,22 +221,24 @@ class _ReadReplay:
             'noCompilerErrors': complete and all(d.get('severity') != 'error' for d in facts),
         }, len(facts), response)
 
-    def source_read(self):
-        request = SourceFunctionRequest(SymbolAnchor(self.seeds['logger']['ref']),
-            entities=NoEntities(), text=CompleteText())
-        response = self.transport.invoke(self.surface, 'read_source', asdict(request))
+    def source_window(self):
+        reference = self.seeds['logger']['ref']
+        request = QueryInput(QueryRun(SymbolReferences((reference,)),
+            output=SymbolOutput(('NAME', 'LOCATION', 'SOURCE'))))
+        response = self.transport.invoke(self.surface, 'query_symbols', asdict(request))
         path = self.fixture.workspace / self.fixture.oracle['declarations']['logger'][0]
-        sections = response.get('content', [])
-        source = next((section for section in sections if section.get('type') == 'source'), {})
-        structure = next((section for section in sections if section.get('type') == 'structure'), {})
-        text = source.get('text', {})
-        snapshot = structure.get('snapshot', {})
-        self.record('source-exact-saved-file', 'read_source', {
-            **self.completed(response), 'exactText': text.get('text') == path.read_text(),
-            'textReturned': text.get('type') == 'returned', 'exactFile': snapshot.get('file') == str(path),
-            'nestedLiveRetained': snapshot.get('live') == self.live, 'publishedFieldsAbsent':
-                'generation' not in snapshot and 'sourceState' not in snapshot,
-        }, response=response)
+        items = response.get('items', [])
+        selected = items[0] if len(items) == 1 else {}
+        source = selected.get('source') or {}
+        text = source.get('text')
+        self.record('query-bounded-source-window', 'query_symbols', {
+            **self.completed(response),
+            'exactReference': selected.get('ref') == reference,
+            'boundedTextFromSavedFile': isinstance(text, str) and bool(text) and text in path.read_text(),
+            'lineRange': type(source.get('startLine')) is int and type(source.get('endLine')) is int
+                and 1 <= source['startLine'] <= source['endLine'],
+            'exactFile': (selected.get('location') or {}).get('file') == str(path),
+        }, len(items), response)
 
     def relations(self):
         token = self.seeds['helper']['ref']
@@ -340,8 +328,6 @@ def _read_observation(response):
     observations = response.get('walk_observations', [])
     if isinstance(observations, list) and len(observations) == 1:
         result['walkCoverage'] = _walk_coverage_observation(observations[0].get('coverage'))
-    if isinstance(qualification, dict) and 'knownMinimumEntityCount' in qualification:
-        result['sourceQualification'] = source_qualification_observation(qualification)
     live = response.get('live')
     if (isinstance(live, dict) and set(live) == {'root', 'host', 'epoch', 'contentView', 'version'}
             and type(live['epoch']) is int and 1 <= live['epoch'] <= 2**63 - 1

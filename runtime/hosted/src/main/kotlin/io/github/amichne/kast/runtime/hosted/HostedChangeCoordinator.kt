@@ -5,7 +5,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.change.apply.LiveChangeEffect
 import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -132,7 +132,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
         approvals.close()
     }
 
-    private data class LoadedHostedChange(val plan: LiveAddDeclarationChangePlan, val resources: HostedChangeResources)
+    private data class LoadedHostedChange(val plan: LiveChangePlan, val resources: HostedChangeResources)
 
     private data class ApprovedHostedChange(val loaded: LoadedHostedChange, val approval: VerifiedLivePlanApproval)
 }

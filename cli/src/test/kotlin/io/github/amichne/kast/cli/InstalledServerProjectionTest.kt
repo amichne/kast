@@ -4,16 +4,12 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
-import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
@@ -33,31 +29,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
-    @Test
-    fun `source read public intent admits entity free declaration without unused controls`() {
-        val selector =
-            (ProtocolText.parse("exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")
-                    as io.github.amichne.kast.kernel.Refinement.Refined)
-                .value
-        val encoded = Json.encodeToString(SourceInputFixture(selector.value))
-        val schema = projectionTools().tool("read_source").getValue("inputSchema").jsonObject
-        schema.assertAdmits(encoded)
-        val admitted =
-            PublicToolContract.admit(
-                PublicToolIdentity.READ_SOURCE,
-                Json.parseToJsonElement(encoded),
-            ) as io.github.amichne.kast.kernel.Refinement.Refined
-        val lowered = (admitted.value.canonical as PublicToolCanonical.Source).request
-        assertEquals(SourceEntitySelectionDocument.None, lowered.entities)
-        val contradictory =
-            PublicToolContract.examples(PublicToolIdentity.READ_SOURCE)
-                .invalidExamples
-                .getValue("retiredAnchor")
-                .value
-                .toString()
-        schema.assertRejects(contradictory)
-    }
-
     @Test
     fun `full generated capability document fits the production provider schema byte budget`() {
         val document =
@@ -88,7 +59,7 @@ class InstalledServerProjectionTest {
                 .jsonArray
                 .map(JsonElement::jsonObject)
 
-        assertEquals(16, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(17, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals(
             4,
             projection.getValue("cliInvocations").jsonObject.getValue("schemaVersion").jsonPrimitive.content.toInt(),
@@ -111,7 +82,7 @@ class InstalledServerProjectionTest {
     @Test
     fun `server projection publishes readiness and canonical semantic budgets`() {
         val tools = projectionTools()
-        val readBudget = tools.tool("read_source").getValue("executionBudget").jsonObject
+        val readBudget = tools.tool("query_symbols").getValue("executionBudget").jsonObject
         assertEquals("1020000", readBudget.getValue("readinessMillis").jsonPrimitive.content)
         assertEquals("60000", readBudget.getValue("operationMillis").jsonPrimitive.content)
         assertEquals(240_000L, OperationExecutionBudget.forOperation(CanonicalOperation.TOPOLOGY_BUILD).operation.value)
@@ -126,8 +97,8 @@ class InstalledServerProjectionTest {
             listOf(
                 "workspace.lifecycle",
                 "query.run",
-                "source.read",
                 "diagnostic.check",
+                "change.run",
                 "change.run",
             ),
             tools.map { it.getValue("operationId").jsonPrimitive.content },
@@ -192,7 +163,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
         assertEquals(5, tools.size)
-        assertEquals(16, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(17, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations.toSet(),
@@ -202,9 +173,9 @@ class InstalledServerProjectionTest {
             listOf(
                 "workspace_lifecycle",
                 "query_symbols",
-                "read_source",
                 "check_diagnostics",
                 "add_declaration",
+                "replace_body",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
@@ -221,7 +192,6 @@ class InstalledServerProjectionTest {
         assertEquals(
             linkedMapOf(
                 "query_symbols" to listOf("tool", "query_symbols"),
-                "read_source" to listOf("tool", "read_source"),
                 "check_diagnostics" to listOf("tool", "check_diagnostics"),
             ),
             invocations.associate { invocation ->
@@ -229,11 +199,15 @@ class InstalledServerProjectionTest {
             },
         )
         assertTrue(invocations.all { "bindings" !in it.getValue("invocation").jsonObject })
-        assertEquals(5, tools.map { it.getValue("outputSchema") }.distinct().size)
+        assertEquals(4, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertEquals(
             setOf("exactTarget", "declaration"),
             tools.tool("add_declaration").getValue("inputSchema").jsonObject.getValue("properties").jsonObject.keys,
+        )
+        assertEquals(
+            setOf("exactTarget", "body"),
+            tools.tool("replace_body").getValue("inputSchema").jsonObject.getValue("properties").jsonObject.keys,
         )
     }
 
@@ -304,11 +278,7 @@ class InstalledServerProjectionTest {
 
     @Test
     fun `source read projection accepts one canonical request document and proof rich outcomes`() {
-        val tool = projectionTools().tool("read_source")
-        assertEquals(
-            listOf("tool", "read_source"),
-            projectionInvocations().invocation("read_source").cliCommand(),
-        )
+        val schema = installedServerOutputSchema(CanonicalOperation.SOURCE_READ)
 
         val complete =
             """{"status":"completed","document":{"operation":"source.read","status":"complete",""" +
@@ -327,9 +297,9 @@ class InstalledServerProjectionTest {
             )
 
         assertAll(
-            { tool.outputSchema().assertAdmits(complete) },
-            { tool.outputSchema().assertAdmits(qualified) },
-            { tool.outputSchema().assertRejects(missingRegionSelector) },
+            { schema.assertAdmits(complete) },
+            { schema.assertAdmits(qualified) },
+            { schema.assertRejects(missingRegionSelector) },
         )
     }
 
@@ -430,17 +400,6 @@ class InstalledServerProjectionTest {
         private val schemaRegistry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
     }
 }
-
-@Serializable
-private data class SourceInputFixture(
-    val symbolRef: String,
-    val text: SourceTextFixture = SourceTextFixture(),
-    val entities: SourceEntitiesFixture = SourceEntitiesFixture(),
-)
-
-@Serializable private data class SourceTextFixture(val type: String = "COMPLETE", val maxBytes: Int = 6000)
-
-@Serializable private data class SourceEntitiesFixture(val type: String = "NONE")
 
 @Serializable private data class DiagnosticInputFixture(val relativePath: String = ".", val maxDiagnostics: Int? = null)
 

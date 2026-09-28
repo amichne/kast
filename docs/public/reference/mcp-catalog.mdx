@@ -12,12 +12,12 @@ release's tool names, `inputSchema`, and `outputSchema`.
 | Read tools | Purpose |
 | --- | --- |
 | `query_symbols` | Declarations, exact references, relations, and pipelines |
-| `read_source` | Bounded source for an admitted selector |
 | `check_diagnostics` | IDEA diagnostics for a path |
 | `health_check` | Workspace binding and IDEA readiness |
 
-`add_declaration` is the write tool. The App Server's `workspace_lifecycle` is a
-separate hosted tool.
+`add_declaration` and `replace_body` are the write tools. Request the `SOURCE`
+field in a `query_symbols` symbol output to read committed source context. The
+App Server's `workspace_lifecycle` is a separate hosted tool.
 
 ## Call and result
 

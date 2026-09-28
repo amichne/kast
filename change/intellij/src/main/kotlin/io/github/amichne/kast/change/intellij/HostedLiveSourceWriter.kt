@@ -9,16 +9,20 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.change.apply.LiveAppliedSourceWrite
 import io.github.amichne.kast.change.apply.LiveMutationAuthority
 import io.github.amichne.kast.change.apply.LiveSourceWriteResult
 import io.github.amichne.kast.change.apply.MutationDurabilityBarrier
 import io.github.amichne.kast.change.apply.SourceWriteFailure
+import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveReplaceBodyChangePlan
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedPreWriteObservation
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedFunction
 
 /** Live authority adapter around the shared document mutation, durability, and explicit-save protocol. */
 class HostedLiveSourceWriter(private val project: Project) {
@@ -121,6 +125,7 @@ class HostedLiveSourceWriter(private val project: Project) {
         }
     }
 
+    @Suppress("CyclomaticComplexMethod") // Both live variants validate their exact PSI target before the write.
     private fun prepare(authority: LiveMutationAuthority, input: IntellijMutationInput): IntellijSourcePreparation {
         if (project.isDisposed) return rejected(SourceWriteFailure.TARGET_INVALIDATED)
         val file =
@@ -135,13 +140,30 @@ class HostedLiveSourceWriter(private val project: Project) {
             FileDocumentManager.getInstance().getDocument(file)
                 ?: return rejected(SourceWriteFailure.DOCUMENT_UNAVAILABLE)
         if (document.text != input.preimageText) return rejected(SourceWriteFailure.PREIMAGE_CHANGED)
-        val range = authority.plan.target.range
-        if (
-            target.declarations.count {
-                it.textRange.startOffset == range.startInclusive && it.textRange.endOffset == range.endExclusive
-            } != 1
-        ) {
-            return rejected(SourceWriteFailure.TARGET_INVALIDATED)
+        when (val plan = authority.plan) {
+            is LiveAddDeclarationChangePlan -> {
+                val range = plan.target.range
+                if (
+                    target.declarations.count {
+                        it.textRange.startOffset == range.startInclusive && it.textRange.endOffset == range.endExclusive
+                    } != 1
+                )
+                    return rejected(SourceWriteFailure.TARGET_INVALIDATED)
+            }
+            is LiveReplaceBodyChangePlan -> {
+                val range = plan.target.range
+                val bodyRange = plan.preservation.bodyRange
+                val matches =
+                    PsiTreeUtil.collectElementsOfType(target, KtNamedFunction::class.java).filter { function ->
+                        function.textRange.startOffset == range.startInclusive &&
+                            function.textRange.endOffset == range.endExclusive &&
+                            function.name == plan.target.evidence.name.value &&
+                            function.bodyBlockExpression?.textRange?.startOffset == bodyRange.startInclusive &&
+                            function.bodyBlockExpression?.textRange?.endOffset == bodyRange.endExclusive &&
+                            function.bodyBlockExpression?.text == plan.preservation.originalBody.value
+                    }
+                if (matches.size != 1) return rejected(SourceWriteFailure.TARGET_INVALIDATED)
+            }
         }
         return IntellijSourcePreparation.Ready(file, target, document)
     }

@@ -1,7 +1,13 @@
 package io.github.amichne.kast.appserver.acceptance.hostedchange
 
-import io.github.amichne.kast.appserver.publicNameQuery
 import io.github.amichne.kast.appserver.query.PublicToolDeclarationKinds
+import io.github.amichne.kast.appserver.query.PublicToolQuerySymbols
+import io.github.amichne.kast.appserver.query.PublicToolRunAction
+import io.github.amichne.kast.appserver.query.PublicToolSearchSource
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -20,7 +26,22 @@ internal class NativeChangeRead(private val peer: NativeChangePeer) {
         val result =
             peer.call(
                 "query_symbols",
-                publicNameQuery(name, listOf(kind)).jsonObject,
+                Json.encodeToJsonElement(
+                        PublicToolQuerySymbols.serializer(),
+                        PublicToolQuerySymbols(
+                            PublicToolRunAction(
+                                PublicToolSearchSource(
+                                    (ProtocolText.parse(name) as Refinement.Refined).value,
+                                    null,
+                                    (BoundedProtocolList.create(listOf(kind)) as Refinement.Refined).value,
+                                    null,
+                                ),
+                                null,
+                                null,
+                            )
+                        ),
+                    )
+                    .jsonObject,
             )
         val payload = result.document()
         demand(!result.rejected() && payload["status"] == JsonPrimitive("complete"), NativeFailure.PROVIDER_REJECTED)

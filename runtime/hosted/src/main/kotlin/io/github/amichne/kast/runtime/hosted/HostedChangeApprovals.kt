@@ -5,7 +5,7 @@ import io.github.amichne.kast.change.apply.LiveApprovalChallenge
 import io.github.amichne.kast.change.apply.LiveChangeEffect
 import io.github.amichne.kast.change.apply.LivePlanApprovalExpectation
 import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
 import java.nio.file.Files
@@ -44,7 +44,7 @@ internal class HostedChangeApprovals(
 
     @Synchronized
     fun prepare(
-        plan: LiveAddDeclarationChangePlan,
+        plan: LiveChangePlan,
         effect: LiveChangeEffect,
     ): Refinement<LiveApprovalChallenge, HostedApprovalFailure> {
         val open =
@@ -79,7 +79,7 @@ internal class HostedChangeApprovals(
 
     @Synchronized
     fun consume(
-        plan: LiveAddDeclarationChangePlan,
+        plan: LiveChangePlan,
         effect: LiveChangeEffect,
         assertion: String,
     ): Refinement<VerifiedLivePlanApproval, HostedApprovalFailure> {

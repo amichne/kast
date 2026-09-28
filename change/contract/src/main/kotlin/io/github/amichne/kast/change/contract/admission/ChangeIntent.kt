@@ -225,6 +225,14 @@ sealed interface SourceTextMutation {
         val expected: ExistingDeclarationSourceText,
         val replacement: ReplacementDeclarationSourceText,
     ) : SourceTextMutation
+
+    @ConsistentCopyVisibility
+    data class ReplaceBody
+    internal constructor(
+        val range: ExactDeclarationTextRange,
+        val expected: ExistingBodySourceText,
+        val replacement: ReplaceBodySourceText,
+    ) : SourceTextMutation
 }
 
 /** Closed physical precondition established before a planned source mutation. */

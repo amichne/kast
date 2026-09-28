@@ -29,7 +29,6 @@ code_sources:
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
-  - path: packaging/hosted_authority_read_regression.py
   - path: packaging/hosted_read_transport.py
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeReadRequest.kt
   - path: packaging/hosted_transport_observation.py

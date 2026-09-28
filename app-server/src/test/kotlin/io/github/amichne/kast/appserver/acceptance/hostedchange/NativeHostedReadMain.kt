@@ -15,8 +15,6 @@ import io.github.amichne.kast.appserver.provider.KastProviderOptions
 import io.github.amichne.kast.appserver.provider.KastProviderQualifier
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonSchemaViolationEvidenceDocument
-import io.github.amichne.kast.protocol.contract.SourceReadCause
-import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import java.io.BufferedInputStream
@@ -78,7 +76,6 @@ internal sealed interface NativeReadResponse {
     data class Rejected(
         val failure: String,
         val outputViolationEvidence: JsonSchemaViolationEvidenceDocument? = null,
-        val sourceCause: SourceReadCause? = null,
     ) : NativeReadResponse
 }
 
@@ -140,7 +137,6 @@ private class NativeHostedReadTransport(
                         is BrokerFailure.OutputContractRejected -> failure.violationEvidence.toDocument()
                         else -> null
                     },
-                    (result.failure as? BrokerFailure.SourceInputRejected)?.cause,
                 )
         }
     }
@@ -191,9 +187,6 @@ internal val nativeReadToolNames =
 
 private fun readBrokerFailure(failure: BrokerFailure): String =
     when (failure) {
-        is BrokerFailure.SourceInputRejected ->
-            if (failure.cause is SourceReadFailureDetail.InternalContractFailure) "SOURCE_INTERNAL_CONTRACT_FAILURE"
-            else "SOURCE_INPUT_REJECTED"
         is BrokerFailure.WorkspacePreparationRejected -> "WORKSPACE_PREPARATION_REJECTED"
         is BrokerFailure.InvalidArguments -> "INVALID_ARGUMENTS"
         is BrokerFailure.UnknownNamespace -> "UNKNOWN_NAMESPACE"

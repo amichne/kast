@@ -26,6 +26,12 @@ internal fun ChangeApplyResult.toSerializableDocument(): ChangeApplyResultDocume
                 receiptIdentity.value,
                 changes.entries.map(ChangeFilePreview::toSerializableDocument),
             )
+        is ChangeApplyResult.VerifiedBody ->
+            ChangeApplyResultDocument.VerifiedBody(
+                receiptIdentity.value,
+                freshReference.value,
+                changes.entries.map(ChangeFilePreview::toSerializableDocument),
+            )
         is ChangeApplyResult.AppliedUnverified ->
             ChangeApplyResultDocument.AppliedUnverified(
                 planIdentity.value,
@@ -48,6 +54,13 @@ internal fun ChangeApplyResultDocument.toContract(): WireDocumentConversion<Chan
                 receiptIdentity.refineChangeProtocolText(),
                 changes.toContract(),
                 ChangeApplyResult::Verified,
+            )
+        is ChangeApplyResultDocument.VerifiedBody ->
+            combineConverted(
+                receiptIdentity.refineChangeProtocolText(),
+                freshReference.refineChangeProtocolText(),
+                changes.toContract(),
+                ChangeApplyResult::VerifiedBody,
             )
         is ChangeApplyResultDocument.AppliedUnverified ->
             combineConverted(planIdentity.refineChangeProtocolText(), changes.toContract()) { plan, changes ->

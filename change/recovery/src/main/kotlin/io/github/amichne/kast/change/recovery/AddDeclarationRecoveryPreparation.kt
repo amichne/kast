@@ -2,7 +2,7 @@ package io.github.amichne.kast.change.recovery
 
 import io.github.amichne.kast.change.contract.AddDeclarationPlanId
 import io.github.amichne.kast.change.contract.ChangePlan
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.evidence.contract.RecoveryPreimage
@@ -28,7 +28,7 @@ private constructor(
 ) {
     companion object {
         fun fromPlan(
-            plan: LiveAddDeclarationChangePlan,
+            plan: LiveChangePlan,
             preimage: RecoveryPreimage,
         ): Refinement<AddDeclarationRecoveryPreparation, AddDeclarationRecoveryPreparationFailure> {
             val write =

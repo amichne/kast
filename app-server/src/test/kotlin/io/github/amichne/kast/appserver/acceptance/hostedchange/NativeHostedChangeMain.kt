@@ -6,7 +6,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -35,10 +37,14 @@ internal data class NativeHostedChangeInputs(
     val schemas: Path,
     val privateDirectory: Path,
     val report: Path,
+    val replaceBodyOnly: Boolean,
 ) {
     companion object {
         fun admit(arguments: Array<String>): NativeHostedChangeInputs {
-            demand(arguments.size == 5, NativeFailure.INPUT_REJECTED)
+            demand(
+                arguments.size == 5 || (arguments.size == 6 && arguments[5] == "replace-body-only"),
+                NativeFailure.INPUT_REJECTED,
+            )
             val workspace = Path.of(arguments[1]).toRealPath()
             val privateDirectory = Path.of(arguments[3]).toRealPath()
             val report = Path.of(arguments[4])
@@ -52,6 +58,7 @@ internal data class NativeHostedChangeInputs(
                 schemas = Path.of(arguments[2]).toRealPath(),
                 privateDirectory = privateDirectory,
                 report = report,
+                replaceBodyOnly = arguments.size == 6,
             )
         }
     }
@@ -80,15 +87,7 @@ private class NativeHostedChangeRun(
                     inputs = inputs,
                     observeQualification = evidence::providerQualification,
                 )
-            withTimeout(900_000) {
-                NativeChangeWorkflow(
-                        session = session,
-                        source = inputs.workspace.resolve("src/main/kotlin/Fixture.kt"),
-                        evidence = evidence,
-                        controls = NativeFixtureControls(ioDispatcher),
-                    )
-                    .run()
-            }
+            execute(session)
             demand(session.trace.isolatedStartupCount() == 0, NativeFailure.PROVIDER_REJECTED)
             evidence.record("provider-routing", NativeCaseOutcome.PASSED, session.trace.document())
         } catch (rejected: NativeContractRejected) {
@@ -100,7 +99,8 @@ private class NativeHostedChangeRun(
             failure = rejected.failure
         } catch (_: TimeoutCancellationException) {
             failure = NativeFailure.TIMEOUT
-        } catch (_: LinkageError) {
+        } catch (linkage: LinkageError) {
+            recordUnexpected(linkage)
             failure = NativeFailure.ARTIFACT_INCOMPATIBLE
         } catch (unexpected: Exception) {
             recordUnexpected(unexpected)
@@ -112,27 +112,46 @@ private class NativeHostedChangeRun(
         return failure
     }
 
-    private fun recordUnexpected(unexpected: Exception) {
+    private suspend fun execute(session: NativeChangeSession) =
+        withTimeout(900_000) {
+            val source = inputs.workspace.resolve("src/main/kotlin/Fixture.kt")
+            val controls = NativeFixtureControls(ioDispatcher)
+            if (inputs.replaceBodyOnly) {
+                NativeReplaceBodyWorkflow(source, evidence, controls, reopenAfterRestore = false).run(session.connect())
+            } else {
+                NativeChangeWorkflow(session, source, evidence, controls).run()
+            }
+        }
+
+    private fun recordUnexpected(unexpected: Throwable) {
         privateWrite(
             inputs.privateDirectory.resolve("failure.private.json"),
-            buildJsonObject {
-                put("class", unexpected.javaClass.name)
-                put(
-                    "frames",
-                    buildJsonArray {
-                        unexpected.stackTrace.take(12).forEach { frame ->
-                            add(
-                                buildJsonObject {
-                                    put("class", frame.className)
-                                    put("method", frame.methodName)
-                                    put("line", frame.lineNumber)
-                                }
-                            )
-                        }
-                    },
-                )
-            }
-                .toString(),
+            Json.encodeToString(NativePrivateFailureDocument.from(unexpected)),
         )
     }
 }
+
+@Serializable
+internal data class NativePrivateFailureDocument(
+    @SerialName("class") val className: String,
+    val symbol: String?,
+    val frames: List<NativePrivateFailureFrame>,
+) {
+    companion object {
+        fun from(unexpected: Throwable): NativePrivateFailureDocument =
+            NativePrivateFailureDocument(
+                unexpected.javaClass.name,
+                unexpected.message?.takeIf { it.length <= 200 && it.matches(Regex("[A-Za-z0-9_.$()/;<>: -]+")) },
+                unexpected.stackTrace.take(12).map { frame ->
+                    NativePrivateFailureFrame(frame.className, frame.methodName, frame.lineNumber)
+                },
+            )
+    }
+}
+
+@Serializable
+internal data class NativePrivateFailureFrame(
+    @SerialName("class") val className: String,
+    val method: String,
+    val line: Int,
+)

@@ -5,6 +5,8 @@ import com.google.gson.stream.JsonToken
 import io.github.amichne.kast.change.apply.LiveChangeEffect
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
 import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
+import io.github.amichne.kast.change.contract.LiveReplaceBodyChangePlan
 import io.github.amichne.kast.change.protocol.protocolPreview
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -44,7 +46,7 @@ internal fun decodeHostedApprovalPreparation(
 }
 
 internal fun prepareHostedApprovalResponse(
-    plan: LiveAddDeclarationChangePlan,
+    plan: LiveChangePlan,
     effect: LiveChangeEffect,
     owner: IdeReadHostLifetime,
     approvals: HostedChangeApprovals,
@@ -71,8 +73,18 @@ internal fun prepareHostedApprovalResponse(
                             when (effect) {
                                 LiveChangeEffect.CHANGE_APPLY -> preview.diff.value
                                 LiveChangeEffect.CHANGE_RECOVER ->
-                                    "@@ rollback planned declaration @@\n" +
-                                        plan.declaration.value.lineSequence().joinToString("\n") { "-$it" }
+                                    when (plan) {
+                                        is LiveAddDeclarationChangePlan ->
+                                            "@@ rollback planned declaration @@\n" +
+                                                plan.declaration.value.lineSequence().joinToString("\n") { "-$it" }
+                                        is LiveReplaceBodyChangePlan ->
+                                            "@@ restore original body @@\n" +
+                                                plan.body.value.lineSequence().joinToString("\n") { "-$it" } +
+                                                "\n" +
+                                                plan.preservation.originalBody.value.lineSequence().joinToString("\n") {
+                                                    "+$it"
+                                                }
+                                    }
                             },
                     ),
             )

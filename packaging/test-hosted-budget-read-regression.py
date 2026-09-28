@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Independent admission checks for installed query and source budgets."""
+"""Independent admission checks for installed query budgets."""
 from dataclasses import asdict, dataclass, field, replace
 import unittest
 
-from hosted_budget_read_regression import BudgetSource, ResultsBudget, WorkBudget, independent_grant, progress_advances
-from hosted_source_read_regression import SymbolAnchor
-from query_name_request import name_query, walk_query
+from hosted_budget_read_regression import ResultsBudget, WorkBudget, independent_grant, progress_advances
+from query_name_request import QueryInput, QueryRun, SymbolOutput, SymbolReferences, name_query, walk_query
 
 
 @dataclass(frozen=True)
@@ -49,10 +48,11 @@ class HostedBudgetReadRegressionTest(unittest.TestCase):
             self.assertFalse(progress_advances(asdict(before), asdict(after)))
 
     def test_one_axis_request_omits_other_dimensions_without_null_or_default_substitution(self):
-        for request in (BudgetSource(SymbolAnchor('admitted-selector'), ResultsBudget(1)),
+        for request in (QueryInput(QueryRun(SymbolReferences(('admitted-selector',)),
+                                               output=SymbolOutput(('SOURCE',)), executionBudget=ResultsBudget(1))),
                         walk_query('admitted-selector', budget=ResultsBudget(1))):
             payload = asdict(request)
-            budget = payload.get('executionBudget', payload.get('request', {}).get('executionBudget'))
+            budget = payload['request']['executionBudget']
             self.assertEqual({'maxResults': 1}, budget)
         self.assertEqual({'maxResults': 1},
                          asdict(name_query('pageItem00', budget=ResultsBudget(1)))['request']['executionBudget'])

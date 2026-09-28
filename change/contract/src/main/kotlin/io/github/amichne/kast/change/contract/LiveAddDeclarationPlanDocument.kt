@@ -112,7 +112,7 @@ internal fun LiveAddDeclarationChangePlan.document(): LiveAddDeclarationPlanDocu
     )
 }
 
-private fun SymbolDiscoveryConstraints.document() =
+internal fun SymbolDiscoveryConstraints.document() =
     LivePlanConstraintsDocument(
         directory = directory?.let { LivePlanContainmentDocument(it.directory.value, it.containment.name) },
         packageName = packageName?.let { LivePlanContainmentDocument(it.packageName.value, it.containment.name) },
@@ -124,7 +124,7 @@ private fun SymbolDiscoveryConstraints.document() =
             },
     )
 
-private fun io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot.document() =
+internal fun io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot.document() =
     LivePlanSourceRootDocument(
         module = module.value,
         buildRoot = project.buildRoot.value,
@@ -135,7 +135,7 @@ private fun io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot.docum
         provenance = provenance.name,
     )
 
-private fun PlannedDeclarationIdentity.document(qualified: String?) =
+internal fun PlannedDeclarationIdentity.document(qualified: String?) =
     LivePlanTargetDocument(
         sourcePath = file.path.value,
         start = range.startInclusive,
@@ -148,7 +148,7 @@ private fun PlannedDeclarationIdentity.document(qualified: String?) =
         fingerprint = fingerprint.value,
     )
 
-private fun SymbolSearchScopeSnapshot.document() =
+internal fun SymbolSearchScopeSnapshot.document() =
     LivePlanScopeDocument(
         kind = kind.name,
         primary = primary,

@@ -26,6 +26,8 @@ code_sources:
   - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalChangePlanProtocol.kt
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/ChangePlanIssuance.kt
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveAddDeclarationChangePlan.kt
+  - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveReplaceBodyChangePlan.kt
+  - path: change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveReplaceBodyVerification.kt
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
   - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalLiveChangePlanProtocol.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
@@ -39,9 +41,10 @@ code_sources:
 The change family excludes arbitrary text-edit intent. Each supported mutation retains an exact target, source precondition, workspace identity, explicit published or live planning basis, planned write set, and verification obligations.
 
 The installed published path retains `EditableMutationTarget` and its
-`SemanticReadLease`. The hosted `AddDeclaration` path has a separate
-`LiveAddDeclarationChangePlan` with historical original-owner epoch and project
-model evidence. `LiveMutationAuthority` requires fresh matching evidence, exact
+`SemanticReadLease`. The hosted `AddDeclaration` and `ReplaceBody` variants have
+separate live plans with historical original-owner epoch and project model
+evidence. Body replacement retains the exact block and all surrounding source.
+`LiveMutationAuthority` requires fresh matching evidence, exact
 source preconditions and verified plan approval before admitting a write.
 Neither detached plan basis grants current authority.
 

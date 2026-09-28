@@ -27,11 +27,8 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                     )
             }
         is PublicToolQuerySymbols -> request.lower()
-        is PublicToolReadSource -> lowerSource()
-        is PublicToolAddDeclaration ->
-            Refinement.Refined(
-                PublicToolCanonical.Change(ChangeRequest(ChangeIntentDocument.AddDeclaration(exactTarget, declaration)))
-            )
+        is PublicToolAddDeclaration -> Refinement.Refined(lowerChange())
+        is PublicToolReplaceBody -> Refinement.Refined(lowerChange())
     }
 
 private fun PublicToolAction.lower(): Refinement<PublicToolCanonical, PublicToolInputFailure> =

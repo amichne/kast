@@ -10,8 +10,8 @@ from released_acceptance_product import product_executable, ReleaseFailure, Rele
 OPERATIONS = (
     ('workspace_lifecycle', 'workspace.lifecycle'),
     ('query_symbols', 'query.run'),
-    ('read_source', 'source.read'),
-    ('check_diagnostics', 'diagnostic.check'), ('add_declaration', 'change.run'),
+    ('check_diagnostics', 'diagnostic.check'),
+    ('add_declaration', 'change.run'), ('replace_body', 'change.run'),
 )
 
 
@@ -29,8 +29,8 @@ def admit_inventory(document, configuration, catalog_digest):
         projection = document['serverProjection']
         tools = projection['hostedBootstrap']['tools']
         names = tuple(tool['name'] for tool in tools)
-        valid = (document['schemaVersion'] == 1 and projection['schemaVersion'] == 16
-                 and projection['hostedBootstrap']['schemaVersion'] == 2
+        valid = (document['schemaVersion'] == 1 and projection['schemaVersion'] == 17
+                 and projection['hostedBootstrap']['schemaVersion'] == 3
                  and projection['namespace'] == 'kast' and len(tools) == len(expected)
                  and set(names) == expected.keys()
                  and all(tool['operationId'] == expected[tool['name']] for tool in tools))
@@ -45,10 +45,11 @@ def admit_inventory(document, configuration, catalog_digest):
     except (KeyError, TypeError):
         raise ReleaseRejected(ReleaseFailure.INVENTORY) from None
     if (effects.get('workspace_lifecycle') != 'intellij_read_and_persistence_write'
-            or effects.get('add_declaration') != 'intellij_write'):
+            or effects.get('add_declaration') != 'intellij_write'
+            or effects.get('replace_body') != 'intellij_write'):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     reads = tuple(name for name in names if effects[name] == 'intellij_read')
-    if len(reads) != 3 or set(reads) != {'query_symbols', 'read_source', 'check_diagnostics'}:
+    if len(reads) != 2 or set(reads) != {'query_symbols', 'check_diagnostics'}:
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     return ReleasedToolInventory(names, names, reads, catalog_digest)
 

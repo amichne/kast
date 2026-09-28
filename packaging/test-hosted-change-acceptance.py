@@ -14,7 +14,7 @@ import zipfile
 from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, admit_event, admit_harness, admitted_live,
-    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, qualified_authority_replay, startup_discovery_state, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
+    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, startup_discovery_state, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
 @dataclass(frozen=True)
@@ -83,39 +83,9 @@ class ExpectedConcurrentReplay:
 
 
 @dataclass(frozen=True)
-class ExpectedAuthorityCase:
-    name: str
-    surface: str
-    actualProviderEnvelope: bool = True
-    passed: bool = True
-
-
-@dataclass(frozen=True)
-class ExpectedAuthorityReplay:
-    outcome: str = 'passed'
-    failure: None = None
-    beforeEpoch: int = 1
-    editedEpoch: int = 2
-    restoredEpoch: int = 3
-    preimageSha256: str = '1' * 64
-    editedSha256: str = '2' * 64
-    restoredSha256: str = '1' * 64
-    readinessTransitions: int = 2
-    sourceRestored: bool = True
-    cases: tuple[ExpectedAuthorityCase, ...] = tuple(
-        ExpectedAuthorityCase(name, surface) for surface in ('cli', 'provider') for name in (
-            'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-reacquired',
-            'fresh-anchor-old-continuation-rejected', 'fresh-authority-reacquired',
-            'restored-source-fresh-authority-reacquired')) + tuple(
-        ExpectedAuthorityCase(name, 'cli') for name in (
-            'foreign-workspace-reference-refused', 'foreign-workspace-continuation-refused'))
-
-
-@dataclass(frozen=True)
 class ExpectedReadQualification:
     providerQualification: ExpectedQualificationAdmitted | ExpectedQualificationRejected | None
     concurrentReplay: ExpectedConcurrentReplay = ExpectedConcurrentReplay()
-    authorityReplay: ExpectedAuthorityReplay = ExpectedAuthorityReplay()
     outcome: str = 'passed'
     sourceUnchanged: bool = True
 
@@ -488,22 +458,6 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
         with self.assertRaises(AcceptanceRejected):
             receipt_scope_observation(invalid, 'a' * 64, workspace)
 
-    def test_authority_summary_requires_every_revalidation_case_and_provider_envelope(self):
-        evidence = asdict(ExpectedAuthorityReplay())
-        self.assertEqual(14, len(evidence['cases']))
-        self.assertTrue(qualified_authority_replay(evidence))
-        for index in range(len(evidence['cases'])):
-            missing = copy.deepcopy(evidence)
-            missing['cases'] = missing['cases'][:index] + missing['cases'][index + 1:]
-            self.assertFalse(qualified_authority_replay(missing))
-            failed = copy.deepcopy(evidence)
-            failed['cases'][index]['passed'] = False
-            self.assertFalse(qualified_authority_replay(failed))
-            if evidence['cases'][index]['surface'] == 'provider':
-                unproven = copy.deepcopy(evidence)
-                unproven['cases'][index]['actualProviderEnvelope'] = False
-                self.assertFalse(qualified_authority_replay(unproven))
-
     def test_matrix_clears_only_scenarios_with_complete_named_native_evidence(self):
         native = {'cases': {'psi-structure': {'outcome': 'passed'}}}
         names = {item['scenario'] for item in remaining_matrix_gates(native)}
@@ -525,9 +479,6 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                         'post-save-interrupted', 'plugin-owner-retired', 'fixture-broker-process-replaced', 'workspace-refresh', 'configuration-continuity')]}
         self.assertTrue(native_workflow_qualified(evidence))
         for path, value in ((('readRegression', 'outcome'), 'rejected'),
-                            (('readRegression', 'authorityReplay'), None),
-                            (('readRegression', 'authorityReplay'), asdict(ExpectedAuthorityReplay(editedEpoch=1))),
-                            (('readRegression', 'authorityReplay'), asdict(ExpectedAuthorityReplay(sourceRestored=False))),
                             (('readRegression', 'concurrentReplay'), None),
                             (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(firstAttempts=155))),
                             (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(disconnectedPeer=False))),

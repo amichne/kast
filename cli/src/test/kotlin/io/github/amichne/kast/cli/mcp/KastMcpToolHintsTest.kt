@@ -24,15 +24,14 @@ class KastMcpToolHintsTest {
             setOf(
                 "check_diagnostics",
                 "query_symbols",
-                "read_source",
             )
         val installed = installedHostedBootstrap().tools
         val reads = installed.filter { it.name in readNames }
         assertEquals(readNames, reads.mapTo(linkedSetOf()) { it.name })
-        val change = installed.single { it.name == "add_declaration" }
-        val tools = listedTools((reads + change).map { it.directToolDocument() })
+        val changes = installed.filter { it.name in setOf("add_declaration", "replace_body") }
+        val tools = listedTools((reads + changes).map { it.directToolDocument() })
         assertEquals(
-            readNames + "add_declaration",
+            readNames + setOf("add_declaration", "replace_body"),
             tools.mapTo(linkedSetOf()) { it.jsonObject.getValue("name").jsonPrimitive.content },
         )
         for (tool in tools) {

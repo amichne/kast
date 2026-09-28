@@ -1,7 +1,7 @@
 package io.github.amichne.kast.change.protocol
 
 import io.github.amichne.kast.change.contract.ChangePlan
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.PlannedMutationWriteSet
 import io.github.amichne.kast.change.contract.PlannedSourcePrecondition
 import io.github.amichne.kast.change.contract.SourceTextMutation
@@ -18,7 +18,7 @@ import java.nio.file.Path
 /** Pure projection of a compiler-grounded change plan into bounded human diff fragments. */
 fun ChangePlan.protocolPreview(): ChangeFilePreviewSet = writes.protocolPreview(priorLease.workspaceRoot)
 
-fun LiveAddDeclarationChangePlan.protocolPreview(): ChangeFilePreviewSet =
+fun LiveChangePlan.protocolPreview(): ChangeFilePreviewSet =
     writes.protocolPreview(basis.observation.reference.workspaceRoot)
 
 private fun PlannedMutationWriteSet.protocolPreview(workspaceRoot: CanonicalWorkspaceRoot): ChangeFilePreviewSet {
@@ -77,6 +77,12 @@ private fun SourceTextMutation.diffFragment(): String =
         is SourceTextMutation.ReplaceDeclaration ->
             buildString {
                 appendLine("@@ replace declaration @${range.startInclusive}..${range.endExclusive} @@")
+                appendLine(expected.value.removedLines())
+                append(replacement.value.addedLines())
+            }
+        is SourceTextMutation.ReplaceBody ->
+            buildString {
+                appendLine("@@ replace body @${range.startInclusive}..${range.endExclusive} @@")
                 appendLine(expected.value.removedLines())
                 append(replacement.value.addedLines())
             }

@@ -481,6 +481,7 @@ tasks.register<Exec>("hostedChangeAcceptance") {
     group = "verification"
     description = "Runs the opt-in change matrix against staged artifacts in a private imported IntelliJ fixture."
     dependsOn(
+        preparePythonTestEnvironment,
         stageKastControlProduct,
         ":runtime:hosted:hostedPlugin",
         ":app-server:hostedChangeHarnessJar",
@@ -490,9 +491,11 @@ tasks.register<Exec>("hostedChangeAcceptance") {
     val schemas = providers.gradleProperty("hostedCodexSchemas")
     val report = providers.gradleProperty("hostedChangeReport")
     val diagnostic = providers.gradleProperty("hostedDiagnosticDirty").map(String::toBooleanStrict).orElse(false)
+    val replaceBodyOnly = providers.gradleProperty("hostedReplaceBodyOnly").map(String::toBooleanStrict).orElse(false)
     val plugin = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
     val harness = project(":app-server").tasks.named<Jar>("hostedChangeHarnessJar").flatMap(Jar::getArchiveFile)
     val probe = project(":change:intellij").tasks.named<Zip>("nativeFixturePlugin").flatMap(Zip::getArchiveFile)
+    val python = pythonTestExecutable.get()
     val runner = layout.projectDirectory.file("packaging/run-hosted-change-acceptance.py").asFile.absolutePath
     val productDirectory = layout.buildDirectory.dir("control-product")
     doFirst {
@@ -501,13 +504,14 @@ tasks.register<Exec>("hostedChangeAcceptance") {
         }
         commandLine(
             listOf(
-                "python3", runner,
+                python, runner,
                 "--idea-home", ideaHome.get(), "--schemas", schemas.get(), "--report", report.get(),
                 "--plugin", plugin.get().asFile.absolutePath,
                 "--product", productDirectory.get().asFile.absolutePath,
                 "--harness", harness.get().asFile.absolutePath,
                 "--probe", probe.get().asFile.absolutePath,
-            ) + if (diagnostic.get()) listOf("--diagnostic-dirty") else emptyList()
+            ) + (if (diagnostic.get()) listOf("--diagnostic-dirty") else emptyList()) +
+                (if (replaceBodyOnly.get()) listOf("--replace-body-only") else emptyList())
         )
     }
 }
@@ -525,18 +529,15 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
     description = "Checks the native read fixture oracle and bounded result receipt."
     inputs.files(
         "packaging/hosted_read_fixture.py", "packaging/hosted_read_regression.py",
-        "packaging/hosted_read_transport.py", "packaging/hosted_source_read_regression.py", "packaging/hosted_enum_read_regression.py",
+        "packaging/hosted_read_transport.py", "packaging/hosted_enum_read_regression.py",
         "experiments/host-observation/semantic-fixture/read-reliability/ReadEnumMode.kt",
         "packaging/test-hosted-read-regression.py",
         "packaging/hosted_concurrent_read.py", "packaging/hosted_peer_probe.py",
         "packaging/hosted_transport_observation.py", "packaging/test-hosted-peer-probe.py",
         "packaging/hosted_wire_schema.py", "packaging/test-hosted-wire-schema.py",
-        "packaging/hosted_authority_read_regression.py", "packaging/test-hosted-authority-read.py",
         "packaging/hosted_budget_read_regression.py", "packaging/test-hosted-budget-read-regression.py",
         "packaging/query_name_request.py",
-        "packaging/hosted_compact_source_regression.py", "packaging/test-hosted-compact-source-regression.py",
         "packaging/hosted_diagnostic_pages_regression.py", "packaging/test-hosted-diagnostic-pages-regression.py",
-        "packaging/hosted_source_failure_regression.py", "packaging/test-hosted-source-failure-regression.py",
         "packaging/hosted_vfs_overflow_regression.py", "packaging/test-hosted-vfs-overflow-regression.py",
         "packaging/hosted_repair_budget_regression.py", "packaging/test-hosted-repair-budget-regression.py",
         "packaging/hosted_kotlin_call_regression.py", "packaging/test-hosted-kotlin-call-regression.py",

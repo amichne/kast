@@ -22,13 +22,9 @@ from hosted_transport_observation import TransportSummary, TransportWitnessFailu
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_enum_read_regression import (AllEnumClasses, DistinctSymbols, EnumMemberReferences,
     EnumScope, run_enum_read_regression)
-from hosted_budget_read_regression import BudgetSource, WorkBudget
-from hosted_source_read_regression import SymbolAnchor, SourceFunctionRequest, source_budget_anchor_query
 from hosted_diagnostic_pages_regression import DiagnosticRequest
-from hosted_compact_source_regression import compact_source_request
-from hosted_resume_budget_regression import ResumeSource, ResultsBudget
 from hosted_enum_read_regression import EnumBudget
-from query_name_request import (QueryInput, QueryResume, QueryRun, SymbolOutput, name_query,
+from query_name_request import (QueryInput, QueryResume, QueryRun, SymbolOutput, SymbolReferences, name_query,
     relation_query, walk_query)
 from hosted_read_regression import (_ReadReplay, _read_observation, _reproduction,
     ReadRegressionStage, regression_rejection, MAX_READ_RECEIPTS, ReadReceiptRejected, ReadReceiptFailure)
@@ -42,13 +38,13 @@ from hosted_generated_fixture import (GENERATED_FILE, GENERATED_SOURCE, MOVEMENT
 @dataclass(frozen=True)
 class InvocationFixture:
     type: str = 'CLI'
-    command: list[str] = field(default_factory=lambda: ['tool', 'read_source'])
+    command: list[str] = field(default_factory=lambda: ['tool', 'query_symbols'])
 
 
 @dataclass(frozen=True)
 class OperationFixture:
-    toolName: str = 'read_source'
-    operationId: str = 'source.read'
+    toolName: str = 'query_symbols'
+    operationId: str = 'query.run'
     invocation: InvocationFixture = field(default_factory=InvocationFixture)
 
 
@@ -60,21 +56,21 @@ class InvocationsFixture:
 
 @dataclass(frozen=True)
 class BootstrapToolFixture:
-    name: str = 'read_source'
-    operationId: str = 'source.read'
+    name: str = 'query_symbols'
+    operationId: str = 'query.run'
     effect: str = 'intellij_read'
     approvalPolicy: str = 'none'
 
 
 @dataclass(frozen=True)
 class BootstrapFixture:
-    schemaVersion: int = 2
+    schemaVersion: int = 3
     tools: list[BootstrapToolFixture] = field(default_factory=lambda: [BootstrapToolFixture()])
 
 
 @dataclass(frozen=True)
 class ProjectionFixture:
-    schemaVersion: int = 16
+    schemaVersion: int = 17
     namespace: str = 'kast'
     cliInvocations: InvocationsFixture = field(default_factory=InvocationsFixture)
     hostedBootstrap: BootstrapFixture = field(default_factory=BootstrapFixture)
@@ -86,39 +82,6 @@ class InstalledProjectionFixture:
 
 
 REPO = Path(__file__).resolve().parent.parent
-
-
-@dataclass(frozen=True)
-class SourceCheckpointFixture:
-    type: str = 'upstream'
-    token: str = 'source-read-continuation-v1|' + 'a' * 64
-
-
-@dataclass(frozen=True)
-class SourceProgressFixture:
-    type: str = 'resumable'
-    checkpoint: SourceCheckpointFixture = field(default_factory=SourceCheckpointFixture)
-    next_action: str = 'resume'
-
-
-@dataclass(frozen=True)
-class SourceCursorFixture:
-    type: str = 'available'
-    continuation: str = 'source-read-continuation-v1|' + 'a' * 64
-
-
-@dataclass(frozen=True)
-class SourceQualificationFixture:
-    knownMinimumEntityCount: int = 2
-    limitations: list[str] = field(default_factory=lambda: ['entity-limit-reached', 'work-limit-reached'])
-    continuation: SourceCursorFixture = field(default_factory=SourceCursorFixture)
-    progress: SourceProgressFixture = field(default_factory=SourceProgressFixture)
-
-
-@dataclass(frozen=True)
-class SourceObservationFixture:
-    status: str = 'qualified'
-    qualification: SourceQualificationFixture = field(default_factory=SourceQualificationFixture)
 
 
 @dataclass(frozen=True)
@@ -170,20 +133,18 @@ class HostedReadRegressionTest(unittest.TestCase):
             with self.subTest(invalid_example=name):
                 self.assertNotEqual([], list(validator.iter_errors(example['value'])))
 
-    def test_native_search_and_entity_free_source_requests_use_current_fields(self):
+    def test_native_query_and_diagnostic_requests_use_current_fields(self):
         contract_path = (REPO / 'app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json')
         contract = json.loads(contract_path.read_text())
-        exact = SymbolAnchor('exact:v5:' + 'A' * 22)
+        exact = 'exact:v5:' + 'A' * 22
         cases = (
             ('query_symbols', name_query('Mode', ('class',))),
-            ('query_symbols', source_budget_anchor_query()),
             ('query_symbols', relation_query(exact)),
             ('query_symbols', walk_query(exact)),
             ('query_symbols', QueryInput(QueryRun(AllEnumClasses(), executionBudget=EnumBudget()))),
-            ('read_source', SourceFunctionRequest(exact)),
-            ('read_source', BudgetSource(exact, WorkBudget())),
-            ('read_source', ResumeSource(exact, ResultsBudget())),
-            ('read_source', compact_source_request(exact)),
+            ('query_symbols', QueryInput(QueryRun(
+                source=SymbolReferences((exact,)),
+                output=SymbolOutput(('SOURCE',))))),
             ('check_diagnostics', DiagnosticRequest()),
         )
         for name, request in cases:
@@ -198,10 +159,10 @@ class HostedReadRegressionTest(unittest.TestCase):
         for surface in ('cli', 'provider'):
             replay = _ReadReplay(None, None, None, None, surface, rows)
             for index in range(MAX_READ_RECEIPTS // 2):
-                replay.record('authored-case', 'read_source', {'proven': True})
+                replay.record('authored-case', 'query_symbols', {'proven': True})
         self.assertEqual(MAX_READ_RECEIPTS, len(rows))
         with self.assertRaises(ReadReceiptRejected) as caught:
-            replay.record('overflow', 'read_source', {'proven': True})
+            replay.record('overflow', 'query_symbols', {'proven': True})
         self.assertIs(ReadReceiptFailure.CAPACITY, caught.exception.failure)
         self.assertEqual({'stage': 'semantic', 'cause': 'receipt_capacity_exceeded'},
                          regression_rejection(ReadRegressionStage.SEMANTIC, caught.exception))
@@ -212,7 +173,7 @@ class HostedReadRegressionTest(unittest.TestCase):
                                       ({'fact': True}, -1, ReadReceiptFailure.COUNT)):
             replay = _ReadReplay(None, None, None, None, 'cli', [])
             with self.assertRaises(ReadReceiptRejected) as caught:
-                replay.record('case', 'read_source', checks, count)
+                replay.record('case', 'query_symbols', checks, count)
             self.assertIs(failure, caught.exception.failure)
             self.assertEqual([], replay.rows)
 
@@ -356,7 +317,7 @@ class HostedReadRegressionTest(unittest.TestCase):
     def test_receipt_rejects_payload_fields_and_unbounded_counts(self):
         replay = _ReadReplay(None, None, None, None, 'cli', [])
         with self.assertRaises(ValueError):
-            replay.record('case', 'read_source', {'exactText': 'private source payload'})
+            replay.record('case', 'query_symbols', {'exactText': 'private source payload'})
         with self.assertRaises(ValueError):
             replay.record('case', 'query_symbols', {'exact': True}, 1001)
         replay.record('case', 'query_symbols', {'exact': True}, 1)
@@ -419,22 +380,6 @@ class HostedReadRegressionTest(unittest.TestCase):
             self.assertEqual(156, len({(row['client'], row['round']) for row in report['attempts']}))
             self.assertNotIn('identity', json.dumps(report))
 
-    def test_source_qualification_observation_retains_finite_causes_without_cursor_payload(self):
-        response = asdict(SourceObservationFixture())
-        observed = _read_observation(response)['sourceQualification']
-        self.assertEqual('observed', observed['outcome'])
-        self.assertEqual(('entity-limit-reached', 'work-limit-reached'), observed['limitations'])
-        self.assertNotIn(SourceCursorFixture().continuation, json.dumps(observed))
-        self.assertEqual('resumable', observed['progress'])
-        response['qualification']['limitations'] = ['unknown']
-        self.assertEqual({'outcome': 'unrecognized'}, _read_observation(response)['sourceQualification'])
-
-    def test_source_observation_rejects_unknown_or_conflicting_progress(self):
-        for progress in ('unknown', 'terminal_incomplete'):
-            response = asdict(SourceObservationFixture())
-            response['qualification']['progress']['type'] = progress
-            self.assertEqual({'outcome': 'unrecognized'}, _read_observation(response)['sourceQualification'])
-
     @staticmethod
     def schema():
         return asdict(InstalledProjectionFixture())
@@ -445,8 +390,8 @@ class HostedReadRegressionTest(unittest.TestCase):
         transport.cli_commands = _admit_cli_invocations(self.schema())
         result = SimpleNamespace(stdout=b'{"status":"complete"}')
         with patch('hosted_read_transport.subprocess.run', return_value=result) as run:
-            self.assertEqual('complete', transport.invoke('cli', 'read_source', {})['status'])
-            self.assertEqual([str(self.root / 'product/bin/kast'), 'tool', 'read_source'], run.call_args.args[0])
+            self.assertEqual('complete', transport.invoke('cli', 'query_symbols', {})['status'])
+            self.assertEqual([str(self.root / 'product/bin/kast'), 'tool', 'query_symbols'], run.call_args.args[0])
         with self.assertRaises(ReadTransportRejected):
             transport.invoke('cli', 'unpublished_tool', {})
 
@@ -648,10 +593,9 @@ class HostedReadRegressionTest(unittest.TestCase):
 
 def load_tests(loader, tests, _pattern):
     for name in ('test-native-provider-qualification.py', 'test-hosted-peer-probe.py', 'test-hosted-wire-schema.py',
-                 'test-hosted-authority-read.py', 'test-hosted-budget-read-regression.py',
+                 'test-hosted-budget-read-regression.py',
                  'test-hosted-repair-budget-regression.py',
-                 'test-hosted-kotlin-call-regression.py', 'test-hosted-compact-source-regression.py',
-                 'test-hosted-vfs-overflow-regression.py', 'test-hosted-source-failure-regression.py',
+                 'test-hosted-kotlin-call-regression.py', 'test-hosted-vfs-overflow-regression.py',
                  'test-hosted-diagnostic-pages-regression.py',
                  'test-hosted-resume-budget-regression.py',
                  'test-released-acceptance-product.py', 'test-released-tool-inventory.py',

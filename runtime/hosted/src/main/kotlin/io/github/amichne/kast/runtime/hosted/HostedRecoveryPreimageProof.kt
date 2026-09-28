@@ -1,7 +1,7 @@
 package io.github.amichne.kast.runtime.hosted
 
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.LiveChangeBasis
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.recovery.RecoveryDocumentObservation
 import io.github.amichne.kast.change.recovery.RecoverySourceObservation
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
@@ -9,7 +9,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadReference
 
 internal data class HostedRecoveryExpectation(
-    val plan: LiveAddDeclarationChangePlan,
+    val plan: LiveChangePlan,
     val before: LiveSemanticReadReference,
     val record: MutationRecoveryRecord,
 )

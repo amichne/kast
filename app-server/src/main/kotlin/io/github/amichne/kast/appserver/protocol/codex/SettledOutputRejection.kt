@@ -27,7 +27,6 @@ internal fun BrokerFailure.certainty(): InvocationCertainty =
         is BrokerFailure.WorkspacePreparationRejected,
         is BrokerFailure.UnknownNamespace,
         is BrokerFailure.UnknownTool,
-        is BrokerFailure.SourceInputRejected,
         is BrokerFailure.InvalidArguments,
         is BrokerFailure.ProviderStartupRejected -> InvocationCertainty.KNOWN
         is BrokerFailure.Overloaded ->

@@ -44,6 +44,7 @@ def main():
     parser.add_argument('--previous-release-version')
     parser.add_argument('--diagnostic-dirty', action='store_true')
     parser.add_argument('--workspace-refresh-only', action='store_true')
+    parser.add_argument('--replace-body-only', action='store_true')
     parser.add_argument('--read-policy', type=NativeReadPolicy, choices=list(NativeReadPolicy), default=NativeReadPolicy.DEFAULT)
     parser.add_argument('--readiness-seconds', type=int, default=600)
     parser.add_argument('--run-seconds', type=int, default=900)
@@ -125,7 +126,7 @@ def main():
             fixture = prepare_hosted_fixture(isolation, repo, idea, archive, installed_plugins=plugins, read_policy=args.read_policy)
             print(json.dumps(asdict(policy_receipt(args.read_policy))), flush=True)
             evidence['artifacts']['testOnlyProbeSha256'] = stage_native_probe(args.probe, isolation.root, fixture.workspace, installed_plugins=plugins)
-            read_fixture = prepare_read_fixture(fixture.workspace, repo)
+            read_fixture = None if args.replace_body_only else prepare_read_fixture(fixture.workspace, repo)
             if ((release is None and (tree_identity(product) != product_identity or tree_identity(args.product) != product_identity))
                     or tree_identity(schemas) != schema_identity
                     or digest(harness) != harness_digest or digest(archive) != plugin_digest):
@@ -137,23 +138,24 @@ def main():
             runtime_observer = OwnedRuntimeObserver(isolation.root, product, fixture.workspace, isolation.tools['ps'])
             native_report = private / 'report.private.json'
             try:
-                evidence['configurationContinuity'] = inspect_configuration_continuity(isolation, fixture, product)
-                record({'event': 'stage', 'stage': 'configuration-continuity',
-                        'outcome': 'completed' if evidence['configurationContinuity']['outcome'] == 'passed' else 'rejected'})
-                record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'started'})
-                generated_setup = prepare_generated_fixture(read_fixture)
-                with private_file(private / 'generated-setup.private.log') as output:
-                    generated_task = subprocess.run(
-                        [str(isolation.tools['bash']), str(fixture.workspace / 'gradlew'), '--no-daemon',
-                         *generated_setup.gradle_tasks], cwd=fixture.workspace, env=fixture.environment,
-                        stdout=output, stderr=subprocess.STDOUT, timeout=180)
-                if generated_task.returncode != 0:
-                    raise AcceptanceRejected(AcceptanceFailure.INPUT)
-                generated_fixture = finalize_generated_fixture(generated_setup)
-                read_fixture = generated_fixture.read_fixture
-                processes.generated_fixture = generated_fixture
-                evidence['generatedSetup'] = generated_fixture.evidence()
-                record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'completed'})
+                if not args.replace_body_only:
+                    evidence['configurationContinuity'] = inspect_configuration_continuity(isolation, fixture, product)
+                    record({'event': 'stage', 'stage': 'configuration-continuity',
+                            'outcome': 'completed' if evidence['configurationContinuity']['outcome'] == 'passed' else 'rejected'})
+                    record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'started'})
+                    generated_setup = prepare_generated_fixture(read_fixture)
+                    with private_file(private / 'generated-setup.private.log') as output:
+                        generated_task = subprocess.run(
+                            [str(isolation.tools['bash']), str(fixture.workspace / 'gradlew'), '--no-daemon',
+                             *generated_setup.gradle_tasks], cwd=fixture.workspace, env=fixture.environment,
+                            stdout=output, stderr=subprocess.STDOUT, timeout=180)
+                    if generated_task.returncode != 0:
+                        raise AcceptanceRejected(AcceptanceFailure.INPUT)
+                    generated_fixture = finalize_generated_fixture(generated_setup)
+                    read_fixture = generated_fixture.read_fixture
+                    processes.generated_fixture = generated_fixture
+                    evidence['generatedSetup'] = generated_fixture.evidence()
+                    record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'completed'})
                 enrollment = subprocess.run([str(product / 'share/kast/libexec/kast-service'), 'enroll-trust'],
                     cwd=fixture.workspace, env=fixture.environment, capture_output=True, timeout=30)
                 with private_file(private / 'enrollment.private.log') as output:
@@ -163,21 +165,24 @@ def main():
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'started'})
                 evidence['initialLive'] = processes.start_ide()
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'completed'})
-                if not args.workspace_refresh_only:
+                if not args.workspace_refresh_only and not args.replace_body_only:
                     evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'], args.read_policy)
                 write()
-                record({'event': 'stage', 'stage': 'workspace-refresh', 'outcome': 'started'})
-                evidence['workspaceRefresh'] = run_workspace_refresh_regression(
-                    isolation, fixture, product, idea.java, harness, evidence['initialLive'], idea.home)
-                record({'event': 'stage', 'stage': 'workspace-refresh',
-                        'outcome': 'completed' if evidence['workspaceRefresh']['outcome'] == 'passed' else 'rejected'})
+                if not args.replace_body_only:
+                    record({'event': 'stage', 'stage': 'workspace-refresh', 'outcome': 'started'})
+                    evidence['workspaceRefresh'] = run_workspace_refresh_regression(
+                        isolation, fixture, product, idea.java, harness, evidence['initialLive'], idea.home)
+                    record({'event': 'stage', 'stage': 'workspace-refresh',
+                            'outcome': 'completed' if evidence['workspaceRefresh']['outcome'] == 'passed' else 'rejected'})
                 if installed:
                     evidence['releasedCoordinator'] = asdict(qualify_released_coordinator(isolation, installed, inventory, fixture))
                     write()
                 if not args.workspace_refresh_only:
-                    processes.run(idea.java, harness, schemas, private, native_report, args.run_seconds, record)
+                    processes.run(idea.java, harness, schemas, private, native_report, args.run_seconds, record,
+                                  'replace-body-only' if args.replace_body_only else None)
                     evidence['native'] = bounded_native_report(native_report, fixture.workspace)
-                    evidence['durableReceipts'] = durable_receipt_scopes(isolation.root / 'home', fixture.workspace)
+                    if not args.replace_body_only:
+                        evidence['durableReceipts'] = durable_receipt_scopes(isolation.root / 'home', fixture.workspace)
                 evidence['status'] = 'observed-with-unqualified-matrix'
             finally:
                 processes.retire()
@@ -186,7 +191,11 @@ def main():
                         evidence['native'] = bounded_native_report(native_report, fixture.workspace)
                     except AcceptanceRejected as error:
                         evidence['nativeReportFailure'] = error.failure.value
-            if native_workflow_qualified(evidence):
+            if args.replace_body_only and digest(fixture.source) != evidence['inputs']['sourcePreimageSha256']:
+                raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+            if native_workflow_qualified(evidence) or (args.replace_body_only and
+                    evidence.get('native', {}).get('metadata', {}).get('status') == 'observed' and
+                    evidence.get('native', {}).get('cases', {}).get('replace-body-reference-reuse', {}).get('outcome') == 'passed'):
                 isolation.mark_passed()
     except SessionRejected as error:
         evidence['status'], evidence['failure'] = 'rejected', error.failure.value
@@ -201,14 +210,19 @@ def main():
         evidence['status'], evidence['failure'] = 'rejected', AcceptanceFailure.INPUT.value
     finally:
         evidence['remainingMatrix'] = remaining_matrix_gates(evidence.get('native'), evidence.get('readRegression'), evidence['events'])
-        qualified = native_workflow_qualified(evidence)
-        evidence['passed'] = qualified
-        evidence['releaseQualified'] = qualified
-        if qualified:
+        release_qualified = native_workflow_qualified(evidence)
+        focused_qualified = args.replace_body_only and evidence.get('failure') is None and (
+            evidence.get('native', {}).get('metadata', {}).get('status') == 'observed' and
+            evidence.get('native', {}).get('cases', {}).get('replace-body-reference-reuse', {}).get('outcome') == 'passed')
+        evidence['passed'] = release_qualified or focused_qualified
+        evidence['releaseQualified'] = release_qualified
+        if release_qualified:
             evidence['status'] = 'qualified'
+        elif focused_qualified:
+            evidence['status'] = 'focused-qualified'
         write()
     print(json.dumps({'event': 'terminal', 'status': evidence['status'], 'releaseQualified': evidence['releaseQualified']}), flush=True)
-    return 0 if evidence['releaseQualified'] else (1 if evidence['status'] == 'rejected' else 2)
+    return 0 if evidence['passed'] else (1 if evidence['status'] == 'rejected' else 2)
 
 
 if __name__ == '__main__':

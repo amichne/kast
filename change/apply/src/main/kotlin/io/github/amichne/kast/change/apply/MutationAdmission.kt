@@ -114,6 +114,8 @@ private constructor(
                                 mutation.range.startInclusive,
                                 mutation.range.endExclusive,
                             )
+                        is SourceTextMutation.ReplaceBody ->
+                            MutationRange(mutation.range.startInclusive, mutation.range.endExclusive)
                     }
                 mutation to range
             }
@@ -155,6 +157,9 @@ private constructor(
                                 mutation.range.startInclusive,
                                 mutation.range.endExclusive,
                             ) != mutation.expected.value
+                        is SourceTextMutation.ReplaceBody ->
+                            preimage.text.substring(mutation.range.startInclusive, mutation.range.endExclusive) !=
+                                mutation.expected.value
                         else -> false
                     }
                 }
@@ -165,34 +170,10 @@ private constructor(
             rangedMutations
                 .sortedByDescending { it.second.startInclusive }
                 .forEach { pair ->
-                    val mutation = pair.first
-                    result =
-                        when (mutation) {
-                            is SourceTextMutation.CreateFile ->
-                                return Refinement.Rejected(MutationAdmissionFailure.MUTATION_KIND_MISMATCH)
-                            is SourceTextMutation.InsertAfterDeclaration -> {
-                                val offset = mutation.anchor.endExclusive
-                                result.substring(0, offset) +
-                                    "\n\n${mutation.declaration.value}" +
-                                    result.substring(offset)
-                            }
-                            is SourceTextMutation.InsertIntoClassBody -> {
-                                val offset = mutation.anchor.endExclusive - 1
-                                result.substring(0, offset) +
-                                    "\n    ${mutation.declaration.value}\n" +
-                                    result.substring(offset)
-                            }
-                            is SourceTextMutation.Replace ->
-                                result.substring(
-                                    0,
-                                    mutation.range.startInclusive,
-                                ) + mutation.replacement.value + result.substring(mutation.range.endExclusive)
-                            is SourceTextMutation.ReplaceDeclaration ->
-                                result.substring(
-                                    0,
-                                    mutation.range.startInclusive,
-                                ) + mutation.replacement.value + result.substring(mutation.range.endExclusive)
-                        }
+                    when (val applied = pair.first.applyToExistingSource(result)) {
+                        is Refinement.Refined -> result = applied.value
+                        is Refinement.Rejected -> return Refinement.Rejected(applied.failure)
+                    }
                 }
             val content =
                 when (

@@ -7,8 +7,14 @@ import io.github.amichne.kast.change.contract.LiveAddDeclarationCompilation
 import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanRequest
 import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanResult
 import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanningFailure
+import io.github.amichne.kast.change.contract.LiveChangePlan
+import io.github.amichne.kast.change.contract.LiveReplaceBodyCompilation
+import io.github.amichne.kast.change.contract.LiveReplaceBodyPlanRequest
+import io.github.amichne.kast.change.contract.LiveReplaceBodyPlanResult
 import io.github.amichne.kast.change.intellij.HostedLiveAddDeclarationCompiler
+import io.github.amichne.kast.change.intellij.HostedLiveReplaceBodyCompiler
 import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
+import io.github.amichne.kast.change.plan.PureReplaceBodyPlanningService
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.kernel.Refinement
@@ -83,6 +89,43 @@ internal suspend fun prepareHostedAddDeclaration(
     )
 }
 
+internal suspend fun prepareHostedReplaceBody(
+    project: Project,
+    context: HostedSemanticReadContext,
+    request: ChangePlanRequest,
+): Refinement<LiveChangePlan, HostedChangePlanningFailure> {
+    val intent =
+        request.intent as? ChangeIntentDocument.ReplaceBody
+            ?: return canonicalRejected(ChangePlanRejection.UNSUPPORTED_HOSTED_INTENT)
+    val services = HostedSemanticServices(project, context)
+    val selector =
+        when (val restored = restoreHostedChangeTarget(services, context, intent.exactTarget)) {
+            is Refinement.Refined -> restored.value
+            is Refinement.Rejected -> return canonicalRejected(restored.failure)
+        }
+    val compiled =
+        when (val result = HostedLiveReplaceBodyCompiler.compile(project, context, selector, intent.body.value)) {
+            is LiveReplaceBodyCompilation.Compiled -> result
+            is LiveReplaceBodyCompilation.Rejected -> return canonicalRejected(ChangePlanRejection.INTENT_REJECTED)
+        }
+    return when (
+        val planned =
+            PureReplaceBodyPlanningService()
+                .plan(
+                    LiveReplaceBodyPlanRequest(
+                        context.authority,
+                        context.model,
+                        selector,
+                        compiled.content,
+                        compiled.intent,
+                    )
+                )
+    ) {
+        is LiveReplaceBodyPlanResult.Planned -> Refinement.Refined(planned.plan)
+        is LiveReplaceBodyPlanResult.Rejected -> canonicalRejected(ChangePlanRejection.INTENT_REJECTED)
+    }
+}
+
 internal sealed interface HostedChangePlanningFailure {
     data class Canonical(val reason: ChangePlanRejection) : HostedChangePlanningFailure
 
@@ -99,6 +142,7 @@ private fun admitAddDeclarationIntent(
         is ChangeIntentDocument.AddDeclaration -> Refinement.Refined(intent)
         is ChangeIntentDocument.AddFile,
         is ChangeIntentDocument.RenameSymbol,
+        is ChangeIntentDocument.ReplaceBody,
         is ChangeIntentDocument.ReplaceDeclaration -> rejected(ChangePlanRejection.UNSUPPORTED_HOSTED_INTENT)
     }
 

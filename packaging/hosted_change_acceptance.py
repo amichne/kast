@@ -171,7 +171,7 @@ CASE_NAMES = frozenset(('indexing-policy-refusal', 'foreign-root-refusal', 'gene
     'edited-preimage', 'old-epoch-reference', 'approval-wait-releases-workspace', 'plan-has-no-source-effect',
     'broker-process-restart-no-replay', 'plugin-unload-retires-pending-approval', 'historical-receipt-after-owner-restart', 'concurrent-same-plan-single-effect', 'post-save-interruption-no-replay',
     'dirty-document-refusal', 'recovery-preserves-divergent-document', 'psi-structure', 'production-undo',
-    'complete-workflow', 'repeat-apply-reuses-receipt', 'owner-retirement-invalidates-reference-and-plan',
+    'complete-workflow', 'replace-body-reference-reuse', 'replace-body-rejections', 'repeat-apply-reuses-receipt', 'owner-retirement-invalidates-reference-and-plan',
     'recovery-preserves-divergent-content', 'fresh-owner-exact-image-recovery', 'lost-response-no-replay', 'provider-routing'))
 DIGEST_FIELDS = frozenset(('referenceSha256', 'planIdentitySha256', 'receiptIdentitySha256',
                          'sourcePreimageSha256', 'sourcePostimageSha256', 'sourceSha256', 'savedSha256', 'documentSha256',
@@ -430,36 +430,6 @@ def receipt_scope_observation(body: dict, document_digest: str, workspace: Path)
         'afterOwner': after['owner'], 'afterEpoch': after['epoch']}
 
 
-def qualified_authority_replay(raw):
-    if not isinstance(raw, dict):
-        return False
-    cases = raw.get('cases', [])
-    required = {(name, surface) for surface in ('cli', 'provider') for name in (
-        'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-reacquired',
-        'fresh-anchor-old-continuation-rejected', 'fresh-authority-reacquired',
-        'restored-source-fresh-authority-reacquired')}
-    required.update((name, 'cli') for name in (
-        'foreign-workspace-reference-refused', 'foreign-workspace-continuation-refused'))
-    if (not isinstance(cases, (list, tuple)) or len(cases) != len(required)
-            or any(not isinstance(row, dict) or not isinstance(row.get('name'), str)
-                or not isinstance(row.get('surface'), str) for row in cases)
-            or {(row.get('name'), row.get('surface')) for row in cases} != required
-            or not all(row.get('passed') is True for row in cases)):
-        return False
-    if any(row.get('actualProviderEnvelope') is not True for row in cases if row['surface'] == 'provider'):
-        return False
-    epochs = [raw.get(key) for key in ('beforeEpoch', 'editedEpoch', 'restoredEpoch')]
-    return (raw.get('outcome') == 'passed' and raw.get('failure') is None
-        and raw.get('sourceRestored') is True and raw.get('readinessTransitions') == 2
-        and all(type(epoch) is int and epoch >= 0 for epoch in epochs) and epochs[0] < epochs[1] < epochs[2]
-        and raw.get('preimageSha256') == raw.get('restoredSha256')
-        and isinstance(raw.get('preimageSha256'), str)
-        and re.fullmatch(r'[0-9a-f]{64}', raw['preimageSha256']) is not None
-        and isinstance(raw.get('editedSha256'), str)
-        and re.fullmatch(r'[0-9a-f]{64}', raw['editedSha256']) is not None
-        and raw['editedSha256'] != raw['preimageSha256'])
-
-
 def remaining_matrix_gates(native: dict | None = None, read_regression: dict | None = None,
                            events: list[dict] | None = None) -> list[dict]:
     cases = (native or {}).get('cases', {})
@@ -492,10 +462,7 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
          'Requires platform unload, service retirement completion, endpoint absence and retired authority refusal.'),
         ('complete-hosted-read-regression',
          (read_regression or {}).get('outcome') == 'passed' and (read_regression or {}).get('sourceUnchanged') is True,
-         'Requires the full authored semantic matrix and all eight default read tools through staged CLI/provider.'),
-        ('ordinary-edit-live-read-authority',
-         qualified_authority_replay((read_regression or {}).get('authorityReplay')),
-         'Requires observed edited and restored epochs, automatic stale-reference reacquisition, stale-continuation refusal, foreign-root refusal, fresh acquisition and actual provider-envelope validation.'),
+         'Requires the authored semantic matrix, query SOURCE projection, and diagnostics through staged CLI/provider.'),
         ('barrier-controlled-installed-reads',
          concurrent.get('outcome') == 'passed' and concurrent.get('clients') == 12
          and concurrent.get('rounds') == 13 and concurrent.get('firstAttempts') == 156

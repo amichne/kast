@@ -4,12 +4,8 @@ from enum import Enum
 import json
 import time
 
-from hosted_budget_read_regression import (
-    BudgetSource,
-    ElapsedBudget, independent_grant,
-)
-from hosted_source_read_regression import SymbolAnchor
-from query_name_request import name_query, walk_query
+from hosted_budget_read_regression import ElapsedBudget, independent_grant
+from query_name_request import QueryInput, QueryRun, SymbolOutput, SymbolReferences, name_query, walk_query
 from hosted_repair_time_observation import NativeRepairTimeWindow, NativeTimeEvidence
 from hosted_transport_observation import TransportSummary, TransportWitnessFailure, TransportWitnessRejected
 
@@ -76,8 +72,7 @@ class RepairNativeTimeRejected:
 
 def admit_time_receipt(surface, tool, requested, response, elapsed):
     """Transport validates the full matched schema before this narrow receipt projection."""
-    if surface not in ('cli', 'provider') or tool not in (
-            'query_symbols', 'read_source'):
+    if surface not in ('cli', 'provider') or tool != 'query_symbols':
         return RepairReceiptRejected(ReceiptFailure.SURFACE)
     if requested not in (10000, 20000) or type(elapsed) is not int or elapsed < 0:
         return RepairReceiptRejected(ReceiptFailure.REQUEST)
@@ -105,7 +100,8 @@ def run_repair_time_regression(replay):
         budget = ElapsedBudget(millis)
         cases = (
             ('query_symbols', name_query('pageItem00', ('function',), budget=budget)),
-            ('read_source', BudgetSource(SymbolAnchor(replay.seeds['logger']['ref']), budget)),
+            ('query_symbols', QueryInput(QueryRun(SymbolReferences((replay.seeds['logger']['ref'],)),
+                output=SymbolOutput(('SOURCE',)), executionBudget=budget))),
             ('query_symbols', walk_query(replay.seeds['helper']['ref'], budget=budget)),
         )
         for tool, request in cases:
@@ -126,7 +122,7 @@ def run_repair_time_regression(replay):
             print(json.dumps(asdict(receipt), separators=(',', ':')), flush=True)
             print(json.dumps(asdict(native), separators=(',', ':')), flush=True)
     replay.record('repair-ten-twenty-second-requests', 'all', {
-        'eightSchemaValidatedGrants': len(receipts) == 8 and all(isinstance(item, RepairTimeReceipt) for item in receipts),
+        'twelveSchemaValidatedGrants': len(receipts) == 12 and all(isinstance(item, RepairTimeReceipt) for item in receipts),
         'semanticOutcomes': all(isinstance(item, RepairTimeReceipt) and item.outcome != SemanticOutcome.REJECTED for item in receipts),
         'nativeAdmissionSemanticAndReserveObserved': all(isinstance(item, RepairNativeTimeReceipt) for item in native_receipts),
         'nativeGrantMatchesResponse': all(isinstance(native, RepairNativeTimeReceipt)

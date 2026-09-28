@@ -1,7 +1,7 @@
 package io.github.amichne.kast.change.apply
 
 import io.github.amichne.kast.change.contract.ChangePlanId
-import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
+import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
@@ -87,7 +87,7 @@ class LiveApprovedInvocation private constructor(val thread: String, val turn: S
 }
 
 data class LivePlanApprovalExpectation(
-    val plan: LiveAddDeclarationChangePlan,
+    val plan: LiveChangePlan,
     val owner: IdeReadHostLifetime,
     val operation: LiveChangeEffect,
     val challenge: LiveApprovalChallenge,

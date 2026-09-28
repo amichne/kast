@@ -147,7 +147,18 @@ def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
     (workspace / 'gradle.properties').write_text('org.gradle.jvmargs=-Xmx1g\n')
     source = workspace / 'src/main/kotlin/Fixture.kt'
     source.parent.mkdir(parents=True)
-    source.write_text('package fixture\n\nclass NativeChangeTarget(val value: String) {\n}\n')
+    source.write_text(
+        'package fixture\n\n'
+        'class NativeChangeTarget(val value: String) {\n}\n\n'
+        'fun bodyTarget(): String { return "before" }\n'
+        'fun bodyExpression(): String = "before"\n'
+        'inline fun bodyInline(): String { return "before" }\n'
+        '@OptIn(kotlin.contracts.ExperimentalContracts::class)\n'
+        'fun bodyContract(value: String?): Boolean {\n'
+        '    kotlin.contracts.contract { returns(true) implies (value != null) }\n'
+        '    return value != null\n'
+        '}\n'
+    )
     (workspace / 'gradle/wrapper').mkdir(parents=True)
     for name in ('gradle-wrapper.jar', 'gradle-wrapper.properties'):
         shutil.copyfile(repo / 'gradle/wrapper' / name, workspace / 'gradle/wrapper' / name)
@@ -181,7 +192,8 @@ def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
     options.write_text('\n'.join(lines) + '\n')
     environment = dict(isolation.environment)
     environment.update((item.environmentKey, str(item.value)) for item in policy_receipt(read_policy).overrides)
-    environment.update(IDEA_VM_OPTIONS=str(options), JAVA_HOME=str(idea.java.parent.parent))
+    environment.update(IDEA_VM_OPTIONS=str(options), JAVA_HOME=str(idea.java.parent.parent),
+                       KAST_INSTALL_IDEA_HOME=str(idea.home))
     receipt = root / 'hosted-inputs.json'
     receipt.write_text(json.dumps({
         'schemaVersion': 1, 'status': 'prepared', 'nativeAcceptance': 'not-run',

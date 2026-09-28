@@ -33,7 +33,6 @@ internal object DaemonOperationProtocol {
 internal enum class DaemonOperationTool(val identity: PublicToolIdentity) {
     CHECK_DIAGNOSTICS(PublicToolIdentity.CHECK_DIAGNOSTICS),
     QUERY_SYMBOLS(PublicToolIdentity.QUERY_SYMBOLS),
-    READ_SOURCE(PublicToolIdentity.READ_SOURCE),
 }
 
 @Serializable

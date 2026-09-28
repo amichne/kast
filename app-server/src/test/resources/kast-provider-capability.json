@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "serverProjection": {
-    "schemaVersion": 16,
+    "schemaVersion": 17,
     "namespace": "kast",
     "hostedBootstrap": {
-      "schemaVersion": 2,
+      "schemaVersion": 3,
       "policy": @POLICY@,
       "tools": [
       {

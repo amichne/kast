@@ -26,7 +26,6 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.AgentToolDefinition
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
 import io.github.amichne.kast.protocol.registry.AgentToolPolicy
@@ -241,14 +240,6 @@ internal object KastProviderQualifier {
             invocationBudget = executionBudget.invocation,
             inputAliases = inputAliases,
             effect = BrokerOperationEffect.Canonical(hostedDefinition.effect),
-            inputRejectionEvidence = { raw ->
-                if (
-                    hostedDefinition.operation ==
-                        io.github.amichne.kast.protocol.contract.CanonicalOperation.SOURCE_READ
-                )
-                    sourceInputRejectionEvidence(raw)
-                else io.github.amichne.kast.appserver.core.BrokerInputRejectionEvidence.Unspecified
-            },
             inputGuidance = { failure ->
                 val guidance =
                     when (failure) {
@@ -505,4 +496,4 @@ internal val invocationJson = Json { encodeDefaults = true }
 /** Diagnostic payloads are admitted by the installed rejection schema before presentation. */
 @Serializable internal data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
 
-private const val KAST_SERVER_PROJECTION_VERSION = 16
+private const val KAST_SERVER_PROJECTION_VERSION = 17
