@@ -35,6 +35,8 @@ def run_gate(*, dry_run: bool = False) -> int:
                f"-Pversion={version}", "productBuildGate", "--console=plain"]
     if dry_run:
         command.append("--dry-run")
+    else:
+        command.append("--profile")
     return subprocess.run(command, cwd=ROOT, check=False).returncode
 
 

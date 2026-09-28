@@ -33,7 +33,7 @@ class ProductGateVersionTest(unittest.TestCase):
         self.assertEqual([(("amichne/kast",), {}), (("amichne/kast",), {})], observe.call_args_list)
         self.assertEqual([
             ((["./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g", "-Pversion=0.46.0",
-               "productBuildGate", "--console=plain"],), dict(cwd=gate.ROOT, check=False)),
+               "productBuildGate", "--console=plain", "--profile"],), dict(cwd=gate.ROOT, check=False)),
             ((["./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g", "-Pversion=0.47.0",
                "productBuildGate", "--console=plain", "--dry-run"],), dict(cwd=gate.ROOT, check=False)),
         ], run.call_args_list)

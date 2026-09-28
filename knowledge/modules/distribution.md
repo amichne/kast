@@ -4,7 +4,7 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-26T00:00:00Z
+timestamp: 2026-09-28T00:00:00Z
 code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
@@ -81,6 +81,7 @@ code_sources:
   - path: distribution/release/run_product_gate.py
     symbols: [latest_version, run_gate]
   - path: .github/scripts/ci/routine_gate.py
+  - path: .github/scripts/ci/validation_scope.py
   - path: .githooks/pre-push
   - path: distribution/release/plugin-release.gradle.kts
   - path: packaging/test-installed-product.sh
@@ -90,6 +91,7 @@ code_sources:
   - path: .github/scripts/release/publish-release.sh
   - path: .github/scripts/release/publish-developer.sh
   - path: .github/workflows/ci.yml
+  - path: .github/workflows/docs.yml
   - path: .github/workflows/release.yml
   - path: .github/workflows/developer-release.yml
 ---
@@ -104,7 +106,7 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 
 The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the selected version and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 
-Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull-request CI and pre-push fetch the published release catalog anew for each gate invocation, select its highest stable semantic version, and pass that version to the checkout build. Missing release authority rejects without a local-tag or placeholder fallback. Exact release-candidate builds retain their explicitly resolved candidate version. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
+Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull requests changing only public MDX pages or Mintlify navigation run the documentation check without the Kotlin product build; installer-linked pages, generated API files, all other paths, and uncertain diffs retain the full gate. Full pull-request CI and pre-push fetch the published release catalog anew for each gate invocation, select its highest stable semantic version, and pass that version to the checkout build. Missing release authority rejects without a local-tag or placeholder fallback. Exact release-candidate builds retain their explicitly resolved candidate version. CI retains Gradle profile reports from full pull-request gates and main candidate builds for task timing review. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
 
 An explicitly dispatched developer workflow runs only from `main` and builds
 that dispatch's exact commit through the
