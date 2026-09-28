@@ -251,13 +251,12 @@ reconciliation, and invocation outcome without source or argument payloads.
 
 ```sh
 ./gradlew :app-server:test :cli:test :cli:nativeTest verifyKastArchitecture
-./gradlew installedProductTest installedCodexHostTest
-./gradlew :app-server:generateCodexHostIntegrationManifest
+./gradlew installedProductTest
 ```
 
-The installed tests use disposable homes and remove their launchd enablement.
-They test real Codex discovery and stdio attachment. They do not establish desktop
-UI compatibility. The test resource `kast-schema.json` is the installed Kast
+The installed-product check uses a disposable home to verify the assembled
+archive and public installer. It does not establish real Codex attachment or
+desktop UI compatibility. The test resource `kast-schema.json` is the installed Kast
 `--schema` boundary snapshot used to keep protocol tests independent of CLI
 implementation imports.
 

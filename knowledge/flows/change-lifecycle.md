@@ -145,8 +145,9 @@ missing records or incomplete observation cannot establish success. Legacy empty
 preimages remain ambiguous because they cannot distinguish absence from an
 existing empty file.
 
-Change tools are deferred defaults after the installed workflow passed the
-[native acceptance matrix](../../docs/reviews/plugin-native-change-acceptance.md). See
+The retired Python runner's completed native observations remain in the
+[historical acceptance record](../../docs/reviews/plugin-native-change-acceptance.md).
+Current change behavior is owned by the Kotlin contracts and focused tests. See
 [semantic change](../modules/change.md), [evidence authority](../glossary/evidence-authority.md)
 and the [App Server compatibility record](../../app-server/docs/compatibility.md).
 

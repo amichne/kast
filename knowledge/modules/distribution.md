@@ -20,28 +20,14 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRegistryObservation.kt
-  - path: packaging/hosted_repair_time_observation.py
-  - path: packaging/hosted_repair_budget_regression.py
-  - path: packaging/hosted_transport_observation.py
   - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeOwnedSourceRescan.kt
   - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadiness.kt
   - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadinessDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationState.kt
     symbols: [BrokerInstallationState]
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
-  - path: packaging/installed_codex_lifecycle.py
-  - path: packaging/released_coordinator_acceptance.py
-  - path: packaging/released_session_acceptance.py
-  - path: packaging/released_upgrade_acceptance.py
-  - path: packaging/released_acceptance_product.py
-  - path: packaging/released_tool_inventory.py
   - path: packaging/run-portable-tests.py
   - path: packaging/run-portable-tests-container.sh
-  - path: packaging/released_payload_identity.py
-  - path: packaging/run-hosted-change-acceptance.py
-  - path: packaging/hosted_read_regression.py
-  - path: packaging/hosted_authority_read_regression.py
-  - path: packaging/hosted_concurrent_read.py
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
     symbols: [ControlDistributionLimits]
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt
@@ -186,7 +172,7 @@ Read [configuration](../contracts/configuration.md) for ingress and ownership ru
 
 `assembleRelease` ships exactly the control tarball and matching hosted-plugin ZIP with checksums. `GenerateControlMetadataTask` derives `ide-host.json` from the actual plugin bytes and build identities; installation verifies the exact name, version, length and digest. No semantic-runtime manifest, isolated indexer payload or topology store is shipped. Installation manifests use schema 2 and `hostedPluginSha256`; lifecycle inspection still admits historical schema-1 records so old owned installations can be retired safely.
 
-Release asset construction, checksums, SBOM inventory, and publication agree on the control and plugin pair. Native acceptance retains private homes and owned processes without creating isolated runtime caches or worker payload stores.
+Release asset construction, checksums, SBOM inventory, and publication agree on the control and plugin pair.
 
 The [installed knowledge contract](../contracts/installed-knowledge.md) describes
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
@@ -198,69 +184,13 @@ and connection capacity, and native source continuation byte/TTL limits.
 `verifyConfigurationIngress` checks its exact agreement with the Kotlin owners.
 The [configuration contract](../contracts/configuration.md) records the defaults.
 
-Installed read acceptance uses the same staged CLI, provider and hosted-plugin
-identity as the mutation fixture. It records the base matrix, bounded transport
-faults, independent caller grants and ordinary-edit authority transitions before
-mutation starts. Exact source restoration and observed readiness are required.
-The repair matrix emits bounded 10/20-second request receipts with the actual
-configured default, operator ceiling, admitted grant, clamp causes and round-trip
-duration. A bounded single-request native log window separately retains ordered
-admission, model, semantic, freshness and detachment durations, the actual grant
-and completion reserve, plus connection admission and release observations. It
-requires one completed connection and one same-authority semantic receipt; extra,
-missing or contradictory evidence fails qualification. Executor tests force
-deadline behavior independently. Native readiness rejects a
-saved/document image mismatch even when the IDE reports saved and committed.
-Deterministic fixture tests and schema checks do not themselves qualify a native
-IDE run; [hosted query qualification](../flows/hosted-query.md) keeps those evidence
-boundaries separate.
-
-The native acceptance runner also accepts `--release-assets` and `--release-version` in place of source-built `--product` and `--plugin`. This mode requires a clean checkout at the exact version tag and a harness carrying that source commit. It invokes the tagged public `install.sh` with original checksum-bound control and plugin archives in an exclusively owned fixture. It verifies the checksum-derived installed version directory, manifest inventory, original archive file bytes, version-owned launcher, and installed catalog. The hosted plugin stays in the installer's private JetBrains plugin directory; only the separately identified test probe is added. Login-service and App Server activation are disabled during installation. This admission mode alone proves neither native behavior nor upgrade or persistent-session behavior; those require the corresponding completed runtime receipts. Temporary fake-installer tests qualify the admission boundary only.
-
-Release acceptance reads the checksum-bound installed `provider-catalog.json`, binds
-all five advertised tools to their canonical operations and effects, and confirms
-that the installed configuration contains no retired tool-selection assignment.
-The native read harness remains a separate runtime gate for the three read tools;
-lifecycle and change tools retain their own effect and approval contracts.
-
-Released mode checks two fresh noninteractive Bash sessions without reading startup files: absolute version-owned wrapper resolution, exact version, saved runtime file, and installation identity. Optional `--previous-release-assets` and `--previous-release-version` first install a compatible immediately preceding patch through the same tagged target installer, then register the owned empty workspace through that prior wrapper. The upgrade requires completed prior admission, retirement, configuration validation and command qualification observations, removal of the prior version directory after full installation, and exact populated workspace-registry retention in the selected version. Original archives and invocation output digests remain bound to the receipt. These child-shell observations do not qualify login-service activation, a persistent coordinator, or stock Codex UI; those remain explicit runtime gates.
-
-Released native qualification also requires an explicitly admitted Codex executable and
-the original installed `kast-complete` and `kast-codex-complete` wrappers. The shared
-installed coordinator check observes matched private ownership before attachment,
-real initialize and thread-start responses, clean parent stdio closure, a prepared
-host after detach, and successful service disable in a finally block. Tool selection
-comes from the admitted saved inventory. Its bounded receipt retains hashes and
-closed observations; stock desktop UI remains unqualified. This is harness capability,
-not evidence that a particular released version passed the live check.
-Native acceptance selects the owned private service-control executable when the
-release contains it and uses the legacy public command only for older releases;
-unsafe private presence rejects before service effects.
-
-Passive runtime identity inspection emits accepted inventory counters only to an
-explicit typed diagnostic sink. Coordinator startup retains its existing success
-report, and rejected inventory admission retains bounded finite stderr evidence.
-The original-release session helper requires the current target's successful
-saved-configuration read and installation inspection to keep stderr empty. It passes
-the owned JVM home/temp options through launcher `JAVA_OPTS`, without filtering stderr
-or relaxing diagnostics. Previous-release sessions retain their historical stderr
-as evidence so an adjacent upgrade can qualify the repaired target.
-
-The installed Codex host acceptance installs the assembled control and plugin
-artifacts in a private fixture and selects the private service endpoint. It requires
-matched ownership, mode 0600, real Codex initialize and thread-start responses,
-prepared host after detach, and owned cleanup. Its schema-2 receipt retains bounded
-status hashes and distinct unqualified Desktop and ordinary daemon discovery
-evidence. These receipts do not prove a model-driven tool invocation through the
-existing IDEA runtime.
-
-Disposable native fixture readiness explicitly marks its fixed, canonical
-`src/main/kotlin` directory and `Fixture.kt` file for a nonrecursive rescan before
-the existing cached-root refresh. The platform can propagate dirty flags to ancestors. The receipt retains
-the selected dirty-mark scope and completion separately from refresh and native-task
-drain evidence. This fixture lifecycle effect makes direct-child test file creation,
-deletion and fixture content restoration observable without depending on watcher intake; semantic queries do not
-invoke it. A quiet readiness receipt still does not prove a future epoch is stable.
+The routine assembled-product check installs the control archive and matching
+hosted plugin in a private session fixture. It verifies archive layout, version
+and plugin identity, required launchers, the installed provider catalog, and
+fail-closed private ingress. Semantic query results, IDEA behavior, and Codex
+attachment are outside this packaging boundary; their production rules have
+owner-local Kotlin tests. The retired Python native acceptance matrix supplies
+no current runtime qualification.
 
 Workspace registry retention emits a bounded `kast_installation_registry`
 observation with its exact outcome. A corrupt prior registry fails prior lifecycle

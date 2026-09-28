@@ -1,5 +1,4 @@
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.process.CommandLineArgumentProvider
@@ -8,18 +7,6 @@ abstract class KastObserverSnapshotArguments : CommandLineArgumentProvider {
     @get:OutputFile abstract val manifestFile: RegularFileProperty
 
     override fun asArguments(): Iterable<String> = listOf(manifestFile.get().asFile.absolutePath)
-}
-
-abstract class CodexHostManifestArguments : CommandLineArgumentProvider {
-    @get:OutputFile abstract val manifestFile: RegularFileProperty
-
-    @get:InputFile abstract val installedAcceptanceFile: RegularFileProperty
-
-    override fun asArguments(): Iterable<String> =
-        listOf(
-            manifestFile.get().asFile.absolutePath,
-            installedAcceptanceFile.get().asFile.absolutePath,
-        )
 }
 
 plugins {
@@ -67,30 +54,6 @@ val generateKastObserverSnapshotManifest =
         )
     }
 
-val codexHostIntegrationManifest = layout.buildDirectory.file("reports/codex-host/codex-host-integration.json")
-val installedCodexHostReceipt = rootProject.layout.buildDirectory.file("reports/installed-product/codex-host.json")
-
-tasks.register<JavaExec>("generateCodexHostIntegrationManifest") {
-    description = "Binds Codex host modes, catalog projection, installed proof, and source state."
-    group = "verification"
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.amichne.kast.appserver.CodexHostIntegrationManifestMain"
-    workingDir = rootProject.projectDir
-    outputs.upToDateWhen { false }
-    dependsOn(
-        tasks.named("test"),
-        rootProject.tasks.named("installedProductTest"),
-        rootProject.tasks.named("installedCodexHostTest"),
-        rootProject.tasks.named("verifyKastArchitecture"),
-    )
-    argumentProviders.add(
-        objects.newInstance<CodexHostManifestArguments>().apply {
-            manifestFile.set(codexHostIntegrationManifest)
-            installedAcceptanceFile.set(installedCodexHostReceipt)
-        }
-    )
-}
-
 val kastObserverSnapshotScript = rootProject.layout.projectDirectory.file("docs/render_kast_observer_snapshots.py")
 val kastObserverSnapshotStyles = rootProject.layout.projectDirectory.file("docs/kast-observer-snapshots.css")
 val kastObserverSnapshotOutput = rootProject.layout.projectDirectory.dir("docs/public/images")
@@ -135,30 +98,6 @@ tasks.register("writeInstalledWorkspaceHarnessClasspath") {
             writeText(harnessClasspath.filter { it.exists() }.asPath)
         }
     }
-}
-
-val hostedChangeSourceCommit =
-    providers
-        .exec {
-            workingDir(rootProject.projectDir)
-            commandLine("git", "rev-parse", "HEAD")
-        }
-        .standardOutput
-        .asText
-        .map(String::trim)
-
-tasks.register<Jar>("hostedChangeHarnessJar") {
-    group = "verification"
-    description =
-        "Packages only opt-in native change test-controller classes; production classes load from staged artifacts."
-    dependsOn(tasks.named("testClasses"))
-    from(sourceSets.test.get().output.classesDirs) {
-        include("io/github/amichne/kast/appserver/acceptance/hostedchange/**")
-    }
-    archiveFileName.set("hosted-change-acceptance.jar")
-    destinationDirectory.set(layout.buildDirectory.dir("acceptance"))
-    inputs.property("sourceCommit", hostedChangeSourceCommit)
-    manifest.attributes("Kast-Acceptance-Source-Commit" to hostedChangeSourceCommit.get())
 }
 
 val verifyReleaseRuntimeAdmission =

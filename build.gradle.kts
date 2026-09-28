@@ -216,37 +216,6 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
 }
 
-val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
-    group = "verification"
-    description = "Installs assembled artifacts in a private fixture and qualifies the Codex host."
-    dependsOn(stageInstalledProduct, assembleKastControlDist, ":runtime:hosted:hostedPlugin")
-    inputs.dir(installedProductDirectory)
-    inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
-    inputs.file(hostedPluginArchive)
-    inputs.files("packaging/test-installed-codex-host.py", "packaging/installed_codex_lifecycle.py")
-    inputs.file("packaging/acceptance_environment.py")
-    outputs.file(layout.buildDirectory.file("reports/installed-product/codex-host.json"))
-    outputs.upToDateWhen { false }
-    environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
-    commandLine(
-        "python3",
-        layout.projectDirectory.file("packaging/test-installed-codex-host.py"),
-        installedProductDirectory.get().asFile.absolutePath,
-        layout.projectDirectory.asFile.absolutePath,
-        layout.buildDirectory.file("reports/installed-product/codex-host.json")
-            .get().asFile.absolutePath,
-        assembleKastControlDist.get().archiveFile.get().asFile.absolutePath,
-        hostedPluginArchive.get().asFile.absolutePath,
-    )
-}
-
-val installedCodexLifecycleTest = tasks.register<Exec>("installedCodexLifecycleTest") {
-    group = "verification"
-    description = "Checks native acceptance selects owned private or legacy service control."
-    inputs.files("packaging/installed_codex_lifecycle.py", "packaging/test-installed-codex-lifecycle.py")
-    commandLine("python3", layout.projectDirectory.file("packaging/test-installed-codex-lifecycle.py"))
-}
-
 val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies checkout and release bootstrap boundaries without touching machine state."
@@ -274,13 +243,6 @@ val installerRemovalTest = tasks.register<Exec>("installerRemovalTest") {
     group = "verification"
     inputs.files("install.sh", "packaging/test-installer-removal.py")
     commandLine("python3", layout.projectDirectory.file("packaging/test-installer-removal.py"))
-}
-
-val acceptanceIdeaInputTest = tasks.register<Exec>("acceptanceIdeaInputTest") {
-    group = "verification"
-    description = "Checks exact IDEA input admission without downloading or starting an IDE."
-    inputs.files("packaging/acceptance_idea.py", "packaging/test-acceptance-idea.py")
-    commandLine("python3", layout.projectDirectory.file("packaging/test-acceptance-idea.py"))
 }
 
 val installationSystemPythonTest = tasks.register<Exec>("installationSystemPythonTest") {
@@ -335,7 +297,6 @@ val productBuildGate = tasks.register("productBuildGate") {
         "check",
         productGateVersionTest,
         isolatedAcceptanceEnvironmentTest,
-        acceptanceIdeaInputTest,
         installationLifecycleTest,
         priorInstallationCleanupTest,
         installationRecoveryTest,
@@ -343,19 +304,12 @@ val productBuildGate = tasks.register("productBuildGate") {
         localInstallationTest,
         installerRemovalTest,
         installedProductTest,
-        installedCodexLifecycleTest,
         testCheckoutInstaller,
         installerEntrypointTest,
         "verifyKastArchitecture",
         ":app-server:verifyReleaseRuntimeAdmission",
     )
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
-}
-
-tasks.register("runtimeQualification") {
-    group = "verification"
-    description = "Explicit installed Codex runtime qualification; excluded from routine CI and release gates."
-    dependsOn(installedCodexHostTest, ":app-server:generateCodexHostIntegrationManifest")
 }
 
 subprojects.forEach { owner ->
@@ -459,116 +413,3 @@ val hostObservationTest = tasks.register<Exec>("hostObservationTest") {
 }
 
 tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest) }
-
-// Native change acceptance is explicit and never part of the build-classpath verification gate.
-val hostedWorkspaceRefreshTest = tasks.register<Exec>("hostedWorkspaceRefreshTest") {
-    group = "verification"
-    description = "Checks bounded native workspace refresh evidence without launching an IDE."
-    inputs.files("packaging/hosted_workspace_refresh_regression.py", "packaging/test-hosted-workspace-refresh.py")
-    commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-workspace-refresh.py"))
-}
-
-val hostedChangeAcceptanceTest = tasks.register<Exec>("hostedChangeAcceptanceTest") {
-    dependsOn(hostedWorkspaceRefreshTest)
-    group = "verification"
-    description = "Checks native change fixture admission and bounded receipt projection without launching an IDE."
-    inputs.files(fileTree("packaging") { include("hosted_change_*.py", "test-hosted-change-acceptance.py", "native_provider_qualification.py") })
-    inputs.files("packaging/hosted_configuration_continuity.py", "packaging/hosted_generated_fixture.py", "packaging/hosted_workspace_refresh_regression.py", "packaging/test-hosted-workspace-refresh.py")
-    commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-change-acceptance.py"))
-}
-
-tasks.register<Exec>("hostedChangeAcceptance") {
-    group = "verification"
-    description = "Runs the opt-in change matrix against staged artifacts in a private imported IntelliJ fixture."
-    dependsOn(
-        stageKastControlProduct,
-        ":runtime:hosted:hostedPlugin",
-        ":app-server:hostedChangeHarnessJar",
-        ":change:intellij:nativeFixturePlugin",
-    )
-    val ideaHome = providers.gradleProperty("hostedIdeaHome")
-    val schemas = providers.gradleProperty("hostedCodexSchemas")
-    val report = providers.gradleProperty("hostedChangeReport")
-    val diagnostic = providers.gradleProperty("hostedDiagnosticDirty").map(String::toBooleanStrict).orElse(false)
-    val plugin = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
-    val harness = project(":app-server").tasks.named<Jar>("hostedChangeHarnessJar").flatMap(Jar::getArchiveFile)
-    val probe = project(":change:intellij").tasks.named<Zip>("nativeFixturePlugin").flatMap(Zip::getArchiveFile)
-    val runner = layout.projectDirectory.file("packaging/run-hosted-change-acceptance.py").asFile.absolutePath
-    val productDirectory = layout.buildDirectory.dir("control-product")
-    doFirst {
-        require(ideaHome.isPresent && schemas.isPresent && report.isPresent) {
-            "Native acceptance requires -PhostedIdeaHome, -PhostedCodexSchemas, and a new -PhostedChangeReport path."
-        }
-        commandLine(
-            listOf(
-                "python3", runner,
-                "--idea-home", ideaHome.get(), "--schemas", schemas.get(), "--report", report.get(),
-                "--plugin", plugin.get().asFile.absolutePath,
-                "--product", productDirectory.get().asFile.absolutePath,
-                "--harness", harness.get().asFile.absolutePath,
-                "--probe", probe.get().asFile.absolutePath,
-            ) + if (diagnostic.get()) listOf("--diagnostic-dirty") else emptyList()
-        )
-    }
-}
-
-val hostedRuntimeObservationTest = tasks.register<Exec>("hostedRuntimeObservationTest") {
-    group = "verification"
-    description = "Checks bounded observations of the private native fixture runtime."
-    inputs.files("packaging/hosted_runtime_observation.py", "packaging/test-hosted-runtime-observation.py")
-    commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-runtime-observation.py"))
-}
-
-val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") {
-    dependsOn(preparePythonTestEnvironment)
-    group = "verification"
-    description = "Checks the native read fixture oracle and bounded result receipt."
-    inputs.files(
-        "packaging/hosted_read_fixture.py", "packaging/hosted_read_regression.py",
-        "packaging/hosted_read_transport.py", "packaging/hosted_source_read_regression.py", "packaging/hosted_enum_read_regression.py",
-        "experiments/host-observation/semantic-fixture/read-reliability/ReadEnumMode.kt",
-        "packaging/test-hosted-read-regression.py",
-        "packaging/hosted_concurrent_read.py", "packaging/hosted_peer_probe.py",
-        "packaging/hosted_transport_observation.py", "packaging/test-hosted-peer-probe.py",
-        "packaging/hosted_wire_schema.py", "packaging/test-hosted-wire-schema.py",
-        "packaging/hosted_authority_read_regression.py", "packaging/test-hosted-authority-read.py",
-        "packaging/hosted_budget_read_regression.py", "packaging/test-hosted-budget-read-regression.py",
-        "packaging/query_name_request.py",
-        "packaging/hosted_compact_source_regression.py", "packaging/test-hosted-compact-source-regression.py",
-        "packaging/hosted_diagnostic_pages_regression.py", "packaging/test-hosted-diagnostic-pages-regression.py",
-        "packaging/hosted_source_failure_regression.py", "packaging/test-hosted-source-failure-regression.py",
-        "packaging/hosted_vfs_overflow_regression.py", "packaging/test-hosted-vfs-overflow-regression.py",
-        "packaging/hosted_repair_budget_regression.py", "packaging/test-hosted-repair-budget-regression.py",
-        "packaging/hosted_kotlin_call_regression.py", "packaging/test-hosted-kotlin-call-regression.py",
-        "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt",
-        "experiments/host-observation/semantic-fixture/read-reliability/ReadDiagnosticPages.kt",
-        "packaging/hosted_resume_budget_regression.py", "packaging/test-hosted-resume-budget-regression.py",
-        "packaging/hosted_generated_fixture.py",
-        "packaging/released_acceptance_product.py", "packaging/released_payload_identity.py",
-        "packaging/released_tool_inventory.py", "packaging/test-released-tool-inventory.py",
-        "packaging/test-released-acceptance-product.py",
-        "packaging/released_session_acceptance.py", "packaging/released_upgrade_acceptance.py",
-        "packaging/test-released-upgrade-acceptance.py",
-        "packaging/installed_codex_lifecycle.py", "packaging/released_coordinator_acceptance.py",
-        "packaging/test-released-coordinator-acceptance.py",
-        "packaging/native_provider_qualification.py", "packaging/test-native-provider-qualification.py",
-    )
-    commandLine(pythonTestExecutable.get(), layout.projectDirectory.file("packaging/test-hosted-read-regression.py"))
-}
-
-val nativeFixtureProbeTest = tasks.register<Exec>("nativeFixtureProbeTest") {
-    group = "verification"
-    description = "Checks the private native probe client without launching an IDE."
-    inputs.files("packaging/native_fixture_probe.py", "packaging/test-native-fixture-probe.py")
-    commandLine("python3", layout.projectDirectory.file("packaging/test-native-fixture-probe.py"))
-}
-
-tasks.named("check") {
-    dependsOn(
-        hostedChangeAcceptanceTest,
-        hostedRuntimeObservationTest,
-        hostedReadRegressionTest,
-        nativeFixtureProbeTest,
-        ":change:intellij:nativeFixtureTest",
-    )
-}

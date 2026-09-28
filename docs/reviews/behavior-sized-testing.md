@@ -97,16 +97,12 @@ Sentinel invocation fails the fixture independently of the installer's exit stat
 
 ## Native boundary
 
-The [development guide's native lifecycle section](../development.md#run-native-lifecycle-smoke)
-designates [`run-hosted-lifecycle-smoke.py`](../../packaging/run-hosted-lifecycle-smoke.py)
-and documents its staged inputs, actual assertions and limits. No native environment
-was provisioned or run for this migration. Unrelated semantic/native coverage remains
-unchanged.
+No native environment was provisioned or run for this migration. The former
+Python lifecycle smoke and broader native acceptance harness were later retired;
+their historical observations are not current routine gate evidence.
 
 ## Follow-up observations outside this change
 
-- The native lifecycle smoke has no direct Gradle wiring and does not qualify a
-  fresh install or login service. Adding either is a separate scope decision.
 - Kotlin compilation reports pre-existing warnings in `KastCodexMainLifecycleTest`,
   `NativePresentationEvidence`, `CompletedWithoutAgentMessagesSchema` and, after
   updating to main, `BrokerPublicEndpointTest`. The initial build also reported

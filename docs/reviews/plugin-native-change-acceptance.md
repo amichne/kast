@@ -1,9 +1,10 @@
 # Existing-IDE declaration change acceptance
 
-Status: the installed matrix passed on September 11, 2026, at clean source
+Historical record: the installed matrix passed on September 11, 2026, at clean source
 `aa95c7652a7d713f6bae00ed6a82fbc1a1080d43`: 126/126 read cases and 30/30 native
-change cases. The canonical catalog now includes the three deferred change tools.
-Final release artifacts must pass the same matrix at their exact source identity.
+change cases. The Python runner and its Gradle task were later retired. Commands
+and catalog descriptions below record that run; they are not current validation
+instructions or evidence for a later release.
 
 ## Qualification record
 

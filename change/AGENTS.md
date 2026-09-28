@@ -40,5 +40,5 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 
 - Trace a mutation in phase order: contract -> plan -> apply -> verify -> recovery.
 - For IDE write behavior, inspect `intellij` only after the admitted plan and proof types are clear.
-- For native fixture readiness or document probes, start in `intellij/src/nativeFixture`, then follow the [native acceptance runner](../packaging/run-hosted-change-acceptance.py) and [probe client](../packaging/native_fixture_probe.py).
+- For native fixture readiness or document probes, start in `intellij/src/nativeFixture` and its focused contract tests.
 - For fixture plugin unload, [ProbePluginUnload](intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbePluginUnload.kt) retains check/effect outcomes; the native adapter runs platform preflight on BGT through modal progress and the unload effect on EDT.

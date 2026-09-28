@@ -4,6 +4,9 @@ The public CLI retirement proceeds on the caller's assumption that Desktop
 compatibility has been verified separately. This repository change does not add
 a Desktop UI acceptance receipt; the dated observations below retain their
 original evidence level.
+The `installedCodexHostTest` task mentioned in dated entries below has since
+been retired with the Python acceptance harness. Those entries are historical
+observations, not current verification commands.
 
 ## Managed upstream socket alias — 2026-09-23 candidate
 

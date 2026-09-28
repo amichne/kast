@@ -62,40 +62,6 @@ class StartupEnvironmentTest(unittest.TestCase):
                 if captured:
                     shutil.rmtree(Path(captured["HOME"]).parent)
 
-    def test_host_version_probe_is_already_isolated(self):
-        script = load_script("test-installed-codex-host")
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            (root / "bin").mkdir()
-            for name in ("kast-complete", "kast-codex-complete", "codex"):
-                path = root / "bin" / name
-                path.write_text("#!/bin/sh\nexit 0\n")
-                path.chmod(0o700)
-            captured = {}
-
-            def probe(command, **kwargs):
-                captured.update(kwargs.get("env", os.environ))
-                raise ProbeComplete()
-
-            try:
-                with patch.object(sys, "argv", ["host", str(root), str(root), str(root / "report"),
-                                                str(root / 'control'), str(root / 'plugin')]), \
-                        patch.dict(os.environ, {"KAST_ACCEPTANCE_CODEX_EXECUTABLE": str(root / "bin/codex"),
-                                                "KAST_ACCEPTANCE_IDEA_HOME": str(root),
-                                                "OPENAI_API_KEY": "fixture-secret"}), \
-                        patch.object(script, 'prepare_installed_product', return_value=root), \
-                        patch.object(script, 'product_executable', return_value=root / 'bin/kast-complete'), \
-                        patch.object(script.subprocess, "run", side_effect=probe):
-                    with self.assertRaises(ProbeComplete):
-                        script.main()
-                self.assertNotIn("OPENAI_API_KEY", captured)
-                self.assertNotEqual(captured["HOME"], os.environ["HOME"])
-                self.assertNotIn("KAST_ENABLE_LAUNCHD", captured)
-            finally:
-                if "KAST_RUNTIME_DIRECTORY" in captured:
-                    shutil.rmtree(Path(captured["HOME"]).parent)
-
-
 class PrivateEnvironmentTest(unittest.TestCase):
     def test_optional_runtimes_require_explicit_admission(self):
         with patch.dict(os.environ, {'JAVA_HOME': '/foreign/java', 'PATH': os.defpath}, clear=True):

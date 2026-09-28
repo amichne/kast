@@ -14,7 +14,9 @@ test methods. The portable runner executes 35 entry points, excluding only
 `test-hosted-read-regression.py` additionally reran 16 of those files (122
 methods). The first cleanup commit removed that aggregation; each file remains
 individually discoverable by the portable runner until its owning boundary is
-retired.
+retired. The next cleanup removed the Python native and released acceptance
+entry points and their helper graph. The suite names below remain as a record
+of the deletion decision; they are no longer runnable paths.
 
 ## Semantic and hosted read cases: remove with the Python native harness
 
