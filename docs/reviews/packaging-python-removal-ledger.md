@@ -35,18 +35,20 @@ of the deletion decision; they are no longer runnable paths.
 | `test-hosted-vfs-overflow-regression.py` | `workspace/intellij-read/ProjectReadEpochVfsOverflowTest`; `runtime/hosted/HostedVfsRefreshTest` | Native log-window and restored-source receipt. |
 | `test-hosted-workspace-refresh.py` | `runtime/hosted/workspace/WorkspaceRefreshServiceTest`, `WorkspaceRefreshVfsOrderTest`; `app-server/ide/ExistingIdeModelRefreshTest` | Native Gradle reload and fixture restoration. |
 | `test-hosted-wire-schema.py` | `protocol/wire/CanonicalOperationWireBindingsTest`; `runtime/hosted/HostedWorkspaceRefreshSchemaTest`; `workspace/intellij-read/hosted/HostedFailureEncodingFixtureTest` | Exact staged-jar schema digest and Python validator. |
-| `test-hosted-peer-probe.py` | `app-server/acceptance/hostedchange/NativeReadTransportTest`; `runtime/hosted/HostedEndpointTest` | Python socket/log observer, including one macOS kqueue case. |
-| `test-hosted-runtime-observation.py` | `workspace/intellij-read/hosted/HostedReadDiagnosticsTest`; `app-server/acceptance/hostedchange/NativeObservationTest` | Python process/log observer. |
-| `test-native-provider-qualification.py` | `app-server/acceptance/hostedchange/NativeQualificationReportTest`, `NativeReadTransportTest` | Python report admission before the native read matrix. |
-| `test-native-fixture-probe.py` | `change/intellij/src/nativeFixtureTest/.../ProbeProtocolTest`, `ProbeControlContractTest` | Python probe client framing. |
+| `test-hosted-peer-probe.py` | `runtime/hosted/HostedEndpointTest` | Python socket/log observer, including one macOS kqueue case. The Kotlin native transport test belonged to the retired harness and was removed too. |
+| `test-hosted-runtime-observation.py` | `workspace/intellij-read/hosted/HostedReadDiagnosticsTest` | Python process/log observer. The Kotlin native observation fixture was removed too. |
+| `test-native-provider-qualification.py` | No production Kotlin rule; the Kotlin qualification tests exercised the retired controller protocol and were removed with it. | Python report admission before the native read matrix. |
+| `test-native-fixture-probe.py` | No production Kotlin rule; probe protocol tests exercised only the retired fixture plugin and were removed with it. | Python probe client framing. |
 | `test-hosted-acceptance-fixture.py` | `distribution/managed/SelectedIdeInstallationTest`; `workspace/intellij-read/ExistingProjectAdmissionTest` | Python disposable IDEA fixture preparation. |
-| `test-hosted-change-acceptance.py` | `change/plan`, `change/apply`, `change/verify` tests; `app-server/acceptance/hostedchange/NativeQualificationReportTest` | Python matrix/report qualification, artifact hashes, and cleanup assertions. |
+| `test-hosted-change-acceptance.py` | `change/plan`, `change/apply`, `change/verify` tests | Python matrix/report qualification, artifact hashes, and cleanup assertions. |
 
 These Kotlin tests prove their own named rules. The one distinct claim made by
 the Python native runner is that a particular staged product worked with a
 particular live IDEA. That is an explicit runtime qualification, not packaging
 unit coverage. Deleting the runner also deletes its report and fixture tests;
-it does not delete the Kotlin tests or assert that they prove native composition.
+it does not assert that Kotlin owner tests prove native composition. The
+orphaned Kotlin controller and fixture plugin, including tests of their own
+protocol, were removed after their sole Python caller disappeared.
 
 ## Release and Codex acceptance cases: remove with the released harness
 
@@ -68,7 +70,7 @@ smoke below retains archive and installer identity without a semantic query.
 
 | Python suite in `packaging/` | Existing Kotlin production coverage | Still distinct while current entry point exists |
 | --- | --- | --- |
-| `test-acceptance-environment.py` | No production Kotlin counterpart needed. | Private environment isolation for the assembled-product smoke; shrink with that smoke. |
+| `test-acceptance-environment.py` | No production Kotlin counterpart needed. | Removed the native fixture machinery; `test-installer-fixture.py` checks only owned-root and child-environment boundaries. |
 | `test-acceptance-idea.py` | `distribution/managed/SelectedIdeInstallationTest` covers IDE selection. | Fixture-specific exact distribution admission; remove if no native Python fixture remains. |
 | `test-install-checkout.py` | `cli/installation/InstallationRequestTest`, `ControlDistributionLayoutTest`. | Real checkout shell invocation, argument delivery, and host platform rejection. |
 | `test-install-local.py` | `cli/installation/InstallationWorkflowTest` covers install behavior. | Thin shell adapter forwarding the staged product. |
@@ -93,11 +95,10 @@ the normal Kotlin upgrade has a test.
 | `test-public-query-generation.py` | `app-server/query/PublicToolContractTest`, `PublicToolSchemaTest` verify generated contract behavior. | Keep only while `generate-public-query.py` is the build generator; it tests invalid generator inputs. |
 | `test-configuration-ingress.py` | `distribution/contract/configuration` tests prove configuration meaning. | Keep only while `configuration_ingress.py` is the static ingress guard; it tests scanner/snapshot behavior. |
 
-`test-installed-product.sh` and `run-installed-product.py` are the current
-assembled-product boundary. Keep one real install from the assembled archive,
+`run-installed-product.py` is the current assembled-product boundary. It keeps one real install from the assembled archive,
 exact artifact identity, required files and permissions, one version-owned
-launcher result, and fail-closed unsupported ingress. Remove semantic tool-name
-assertions already proved by the Kotlin catalog tests. No packaging check needs
+launcher result, and fail-closed unsupported ingress. Semantic tool-name
+assertions are now owned by the Kotlin catalog tests. No packaging check needs
 to execute `query_symbols`, `read_source`, or `check_diagnostics`.
 
 ## Removal rule

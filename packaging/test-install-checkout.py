@@ -13,7 +13,7 @@ import tarfile
 import unittest
 import zipfile
 
-from acceptance_environment import AcceptanceEnvironment, admitted_tools
+from installer_fixture import InstallerFixture, admitted_tools
 
 
 CHECKOUT_INSTALLER = Path(__file__).with_name("install-checkout.sh").resolve()
@@ -52,7 +52,7 @@ class ControlDistributionLimitTest(unittest.TestCase):
 
 class IsolatedInstallerTest(unittest.TestCase):
     def setUp(self):
-        self.fixture = AcceptanceEnvironment(admitted_tools())
+        self.fixture = InstallerFixture(admitted_tools())
         self.addCleanup(self.cleanup_fixture)
         self.root = Path(self.fixture.environment["HOME"])
         self.env = dict(self.fixture.environment)

@@ -15,7 +15,7 @@ REQUIRED = frozenset({
     ":evidence:topology-sqlite:test",
     ":verifyKastArchitecture", ":verifyConfigurationIngress", ":installedProductTest",
     ":testCheckoutInstaller", ":installationLifecycleTest", ":installerRemovalTest",
-    ":localInstallationTest", ":isolatedAcceptanceEnvironmentTest",
+    ":localInstallationTest", ":installerFixtureTest",
 })
 
 

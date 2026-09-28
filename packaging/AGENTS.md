@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-27 | hash: 2ebb1cdabb83 -->
+<!-- generated: 2026-09-27 | hash: 4c04ad975400 -->
 
 # packaging
 
@@ -18,7 +18,7 @@ Semantic read, change, and native IDEA acceptance belong to their Kotlin owners.
 - [codex-mcp-registration.py](codex-mcp-registration.py) - collision-safe optional Codex MCP registration.
 - [configuration_ingress.py](configuration_ingress.py) and [configuration-schema.json](configuration-schema.json) - checked configuration ingress and snapshot.
 - [generate-public-query.py](generate-public-query.py) - generated public query source from the authored schema.
-- [run-installed-product.py](run-installed-product.py) and [test-installed-product.sh](test-installed-product.sh) - assembled archive and public installer smoke in a private fixture.
+- [run-installed-product.py](run-installed-product.py) and [installer_fixture.py](installer_fixture.py) - assembled archive and public installer smoke in an owned temporary root.
 - [run-portable-tests.py](run-portable-tests.py) and [run-portable-tests-container.sh](run-portable-tests-container.sh) - offline installer and build-tool test inventory.
 
 ## Entry Points

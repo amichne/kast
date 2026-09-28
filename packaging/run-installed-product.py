@@ -1,4 +1,4 @@
-"""Enter the shared private environment before the passive shell acceptance."""
+"""Check one assembled artifact and install it in an owned session."""
 from dataclasses import asdict, dataclass
 import hashlib
 import json
@@ -8,8 +8,10 @@ import re
 import shlex
 import shutil
 import subprocess
+import tarfile
+import zipfile
 
-from acceptance_environment import AcceptanceEnvironment, EnvironmentFailure, EnvironmentRejected, admitted_tools
+from installer_fixture import InstallerFixture, FixtureFailure, FixtureRejected, admitted_tools
 
 
 @dataclass(frozen=True)
@@ -19,10 +21,56 @@ class IdeaProductInfo:
     version: str = "2026.2.3"
 
 
-def verify_assembled_installer(fixture, control: Path, plugin: Path, product: Path):
+def require(condition: bool, detail: str) -> None:
+    if not condition:
+        raise AssertionError("installed-product: " + detail)
+
+
+def verify_artifacts(product: Path, control: Path, plugin: Path) -> None:
+    metadata = json.loads((product / "share/kast/ide-host.json").read_text())
+    require(set(metadata) == {"schemaVersion", "productVersion", "execution", "ideaBuild",
+                             "kotlinPluginBuild", "fileName", "sha256", "bytes"}, "metadata fields")
+    require(metadata["schemaVersion"] == 1 and metadata["execution"] == "existing_ide", "execution metadata")
+    require(metadata["kotlinPluginBuild"] == metadata["ideaBuild"] + "-IJ", "plugin build")
+    require(metadata["fileName"] == plugin.name and metadata["bytes"] == plugin.stat().st_size, "plugin identity")
+    require(metadata["sha256"] == "sha256:" + hashlib.sha256(plugin.read_bytes()).hexdigest(), "plugin digest")
+    for name in ("operation-registry.json", "wire-schema.json", "ide-host.json", "knowledge/manifest.json"):
+        require((product / "share/kast" / name).is_file(), "missing resource " + name)
+    with zipfile.ZipFile(plugin) as archive:
+        names = archive.namelist()
+        require(bool(names) and all(name.startswith("kast-ide-hosted/") for name in names), "plugin layout")
+        require(any("/lib/kast-ide-hosted-" in name and name.endswith(".jar") for name in names), "plugin jar")
+    with tarfile.open(control) as archive:
+        for launcher in ("bin/kast", "bin/kast-codex", "share/kast/libexec/kast-daemon",
+                         "share/kast/libexec/kast-service"):
+            member = archive.getmember(launcher)
+            require(member.isfile() and member.mode & 0o111 == 0o111, "launcher " + launcher)
+        require(archive.getmember("share/kast/knowledge/manifest.json").isfile(), "knowledge manifest")
+
+
+def verify_launcher(fixture: InstallerFixture, product: Path) -> None:
+    launcher = product / "bin/kast"
+    require(launcher.is_file() and os.access(launcher, os.X_OK), "launcher absent")
+    environment = dict(fixture.environment)
+    environment.pop("JAVA_TOOL_OPTIONS", None)
+    environment.pop("_JAVA_OPTIONS", None)
+    environment["JAVA_OPTS"] = f'-Duser.home="{fixture.root / "home"}"'
+    version = subprocess.run([str(launcher), "--version"], cwd=fixture.root / "workspace",
+                             env=environment, capture_output=True, text=True, timeout=60)
+    require(version.returncode == 0 and version.stdout.startswith("kast ")
+            and version.stdout.strip().endswith("(IntelliJ plugin)"), "launcher version")
+    rejected = subprocess.run([str(launcher), "tool"], cwd=fixture.root / "workspace",
+                              env=environment, capture_output=True, text=True, timeout=60)
+    require(rejected.returncode != 0, "unsupported command accepted")
+    require(json.loads(rejected.stderr.splitlines()[-1]) == {
+        "status": "rejected", "boundary": "usage", "reason": "unsupported-private-installer-command"
+    }, "unsupported command result")
+
+
+def verify_assembled_installer(fixture: InstallerFixture, control: Path, plugin: Path, product: Path) -> None:
     match = re.fullmatch(r"kast-control-v(\d+\.\d+\.\d+)-macos-aarch64\.tar\.gz", control.name)
     if match is None or "java" not in fixture.tools:
-        raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
+        raise FixtureRejected(FixtureFailure.INVALID_INPUT)
     version = match.group(1)
     assets = fixture.root / "release-assets"
     assets.mkdir()
@@ -59,46 +107,31 @@ def verify_assembled_installer(fixture, control: Path, plugin: Path, product: Pa
         env=environment, cwd=fixture.root / "workspace", capture_output=True, text=True, timeout=120,
     )
     reports = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
-    if (result.returncode != 0 or not (installation / "current").is_symlink()
-            or not any(report.get("operation") == "installation.install"
-                       and report.get("semanticVersion") == version
-                       and report.get("status") == "installed" for report in reports)):
-        raise AssertionError("assembled installer rejected its release:\n" + result.stderr[-4096:]
-                             + "\n" + result.stdout[-4096:])
-    print("installed-product: assembled release installed in a private session fixture")
+    require(result.returncode == 0 and (installation / "current").is_symlink()
+            and any(report.get("operation") == "installation.install"
+                    and report.get("semanticVersion") == version
+                    and report.get("status") == "installed" for report in reports),
+            "assembled installer rejected release:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
 
 
-def main():
-    # These four paths are explicit build inputs/outputs, not inherited settings.
+def main() -> None:
     paths = {}
-    for key in ("KAST_INSTALLED_PRODUCT", "KAST_CONTROL_ARCHIVE",
-                "KAST_HOSTED_PLUGIN_ARCHIVE", "KAST_INSTALLED_REPORT_DIRECTORY"):
+    for key in ("KAST_INSTALLED_PRODUCT", "KAST_CONTROL_ARCHIVE", "KAST_HOSTED_PLUGIN_ARCHIVE"):
         value = os.environ.get(key)
         if value is None or not Path(value).is_absolute():
-            raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
-        paths[key] = str(Path(value).resolve())
-    if (not Path(paths["KAST_INSTALLED_PRODUCT"]).is_dir()
-            or not Path(paths["KAST_CONTROL_ARCHIVE"]).is_file()
-            or not Path(paths["KAST_HOSTED_PLUGIN_ARCHIVE"]).is_file()):
-        raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
-    with AcceptanceEnvironment(admitted_tools()) as fixture:
-        paths["KAST_INSTALLED_PRODUCT"] = str(fixture.stage_product(Path(paths["KAST_INSTALLED_PRODUCT"])))
-        environment = dict(fixture.environment)
-        subprocess.run([
-            str(fixture.tools["bash"]), str(Path(__file__).with_name("test-installed-product.sh")),
-            "--isolated-fixture", str(fixture.root),
-            "--product", paths["KAST_INSTALLED_PRODUCT"],
-            "--control-archive", paths["KAST_CONTROL_ARCHIVE"],
-            "--plugin-archive", paths["KAST_HOSTED_PLUGIN_ARCHIVE"],
-            "--report-directory", paths["KAST_INSTALLED_REPORT_DIRECTORY"],
-        ], env=environment, cwd=fixture.root / "workspace", check=True, timeout=120)
-        verify_assembled_installer(
-            fixture,
-            Path(paths["KAST_CONTROL_ARCHIVE"]),
-            Path(paths["KAST_HOSTED_PLUGIN_ARCHIVE"]),
-            Path(paths["KAST_INSTALLED_PRODUCT"]),
-        )
+            raise FixtureRejected(FixtureFailure.INVALID_INPUT)
+        paths[key] = Path(value).resolve()
+    if not paths["KAST_INSTALLED_PRODUCT"].is_dir() or not all(
+            paths[key].is_file() for key in ("KAST_CONTROL_ARCHIVE", "KAST_HOSTED_PLUGIN_ARCHIVE")):
+        raise FixtureRejected(FixtureFailure.INVALID_INPUT)
+    with InstallerFixture(admitted_tools()) as fixture:
+        product = fixture.stage_product(paths["KAST_INSTALLED_PRODUCT"])
+        verify_artifacts(product, paths["KAST_CONTROL_ARCHIVE"], paths["KAST_HOSTED_PLUGIN_ARCHIVE"])
+        verify_launcher(fixture, product)
+        verify_assembled_installer(fixture, paths["KAST_CONTROL_ARCHIVE"],
+                                   paths["KAST_HOSTED_PLUGIN_ARCHIVE"], product)
         fixture.mark_passed()
+    print("installed-product: artifact identity, launcher, and session installer passed")
 
 
 if __name__ == "__main__":

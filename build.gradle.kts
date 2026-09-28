@@ -195,25 +195,18 @@ tasks.register<Exec>("installLocal") {
 
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
-    description = "Verifies plugin-only metadata and fail-closed IDE admission through the staged product."
+    description = "Verifies assembled artifact identity, launcher admission, and one session installation."
     dependsOn(stageInstalledProduct, assembleKastControlDist)
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(hostedPluginArchive)
-    inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
-    inputs.files("install.sh", "packaging/acceptance_environment.py", "packaging/run-installed-product.py")
-    outputs.file(layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"))
+    inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py")
     outputs.upToDateWhen { false }
     environment("KAST_INSTALLED_PRODUCT", installedProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
     environment("KAST_HOSTED_PLUGIN_ARCHIVE", hostedPluginArchive.get().asFile.absolutePath)
     environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
-    environment("KAST_PROJECT_ROOT", layout.projectDirectory.asFile.absolutePath)
-    environment(
-        "KAST_INSTALLED_REPORT_DIRECTORY",
-        layout.buildDirectory.dir("reports/installed-product").get().asFile.absolutePath,
-    )
-    commandLine("bash", layout.projectDirectory.file("packaging/test-installed-product.sh"))
+    commandLine("python3", layout.projectDirectory.file("packaging/run-installed-product.py"))
 }
 
 val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
@@ -231,12 +224,11 @@ val installerEntrypointTest = tasks.register<Exec>("installerEntrypointTest") {
     commandLine("python3", layout.projectDirectory.file("packaging/test-installer-entrypoint.py"))
 }
 
-val isolatedAcceptanceEnvironmentTest = tasks.register<Exec>("isolatedAcceptanceEnvironmentTest") {
+val installerFixtureTest = tasks.register<Exec>("installerFixtureTest") {
     group = "verification"
-    description = "Proves installed fixtures isolate homes, environment, products and owned processes."
-    inputs.files("packaging/acceptance_environment.py", "packaging/test-acceptance-environment.py",
-        "packaging/installed_acceptance_product.py", "packaging/run-installed-product.py")
-    commandLine("python3", layout.projectDirectory.file("packaging/test-acceptance-environment.py"))
+    description = "Proves installer fixtures isolate their home and remove only owned roots."
+    inputs.files("packaging/installer_fixture.py", "packaging/test-installer-fixture.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-installer-fixture.py"))
 }
 
 val installerRemovalTest = tasks.register<Exec>("installerRemovalTest") {
@@ -296,7 +288,7 @@ val productBuildGate = tasks.register("productBuildGate") {
     dependsOn(
         "check",
         productGateVersionTest,
-        isolatedAcceptanceEnvironmentTest,
+        installerFixtureTest,
         installationLifecycleTest,
         priorInstallationCleanupTest,
         installationRecoveryTest,

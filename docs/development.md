@@ -96,8 +96,7 @@ Linux, zero on macOS arm64).
 CI runs this container suite on a disposable Ubuntu runner for every pull request
 and main push, alongside the macOS product checks.
 Run the same offline inventory without Docker using
-`.venv/bin/python packaging/run-portable-tests.py` after provisioning the pinned
-Python test environment. A container pass proves the offline installer contract
+`python3 packaging/run-portable-tests.py`. A container pass proves the offline installer contract
 and process tests on Linux. It does not establish native IDEA or Codex behavior.
 
 Report the command, observed result and evidence level: pure policy, private

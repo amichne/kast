@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: 14e1701fe281 -->
+<!-- generated: 2026-09-27 | hash: dac1d7aa0012 -->
 
 # change
 
@@ -8,8 +8,6 @@
 Implements proof-carrying source mutation as explicit planning, application, verification, and recovery phases.
 
 ## Key Files
-
-- [ProbeOwnedSourceRescan.kt](intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeOwnedSourceRescan.kt) - exact owned source directory and fixture file marking before setup refresh.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt](contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt) - closed mutation intent boundary.
 - [contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationChangePlan.kt](contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationChangePlan.kt) - admitted add-declaration plan.
@@ -27,8 +25,6 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 - `verify` - verification contracts and published-path obligation discharge and successor publication; live verification is composed in `runtime/hosted`.
 - `recovery` - durable recovery preparation and execution.
 - `intellij` - document/write adapters and rollback effects.
-- [intellij/src/nativeFixture](intellij/src/nativeFixture) - isolated native IDE acceptance probe; packaged separately from the product plugin.
-- [intellij/src/nativeFixtureTest](intellij/src/nativeFixtureTest) - probe request, response, and readiness contract tests.
 
 ## Entry Points
 
@@ -40,5 +36,3 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 
 - Trace a mutation in phase order: contract -> plan -> apply -> verify -> recovery.
 - For IDE write behavior, inspect `intellij` only after the admitted plan and proof types are clear.
-- For native fixture readiness or document probes, start in `intellij/src/nativeFixture` and its focused contract tests.
-- For fixture plugin unload, [ProbePluginUnload](intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbePluginUnload.kt) retains check/effect outcomes; the native adapter runs platform preflight on BGT through modal progress and the unload effect on EDT.

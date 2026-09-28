@@ -104,6 +104,6 @@ their historical observations are not current routine gate evidence.
 ## Follow-up observations outside this change
 
 - Kotlin compilation reports pre-existing warnings in `KastCodexMainLifecycleTest`,
-  `NativePresentationEvidence`, `CompletedWithoutAgentMessagesSchema` and, after
+  `CompletedWithoutAgentMessagesSchema` and, after
   updating to main, `BrokerPublicEndpointTest`. The initial build also reported
   Gradle deprecations. No cleanup of those unrelated owners is included.

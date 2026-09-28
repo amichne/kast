@@ -4,9 +4,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates coreutils curl debianutils findutils git grep gzip libdigest-sha-perl mawk procps sed tar unzip zsh \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements-test.txt /tmp/requirements-test.txt
-RUN python3 -m pip install --no-cache-dir -r /tmp/requirements-test.txt
-
 WORKDIR /src
 ENV PYTHONDONTWRITEBYTECODE=1
 CMD ["python3", "packaging/run-portable-tests.py"]

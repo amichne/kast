@@ -20,12 +20,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRegistryObservation.kt
-  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeOwnedSourceRescan.kt
-  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadiness.kt
-  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadinessDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationState.kt
     symbols: [BrokerInstallationState]
-  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
   - path: packaging/run-portable-tests.py
   - path: packaging/run-portable-tests-container.sh
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
@@ -61,7 +57,7 @@ code_sources:
   - path: .github/scripts/ci/routine_gate.py
   - path: .githooks/pre-push
   - path: distribution/release/plugin-release.gradle.kts
-  - path: packaging/test-installed-product.sh
+  - path: packaging/installer_fixture.py
   - path: packaging/run-installed-product.py
   - path: .github/scripts/release/build-assets.sh
   - path: .github/scripts/release/ci-candidate.py
@@ -76,7 +72,7 @@ code_sources:
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
-Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and acceptance. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. Installed-product acceptance also installs the assembled archive and plugin in a private session fixture, exercising the real installer and private service entry point. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, the launcher, and one real session installation in an owned temporary root. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
 The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the selected version and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 
@@ -185,9 +181,9 @@ and connection capacity, and native source continuation byte/TTL limits.
 The [configuration contract](../contracts/configuration.md) records the defaults.
 
 The routine assembled-product check installs the control archive and matching
-hosted plugin in a private session fixture. It verifies archive layout, version
-and plugin identity, required launchers, the installed provider catalog, and
-fail-closed private ingress. Semantic query results, IDEA behavior, and Codex
+hosted plugin in an owned temporary root. It verifies archive layout, version
+and plugin identity, required launchers, and one fail-closed public command.
+Provider catalog policy stays in its Kotlin owner tests. Semantic query results, IDEA behavior, and Codex
 attachment are outside this packaging boundary; their production rules have
 owner-local Kotlin tests. The retired Python native acceptance matrix supplies
 no current runtime qualification.
@@ -218,4 +214,4 @@ admission qualifies the actual staged file through the production provider.
 
 After installation admission and before retiring or replacing any installation, the installer enrolls or preserves the user-owned broker key pair. Partial, mismatched, unsafe or busy enrollment rejects with the finite trust failure. Plan mode creates no keys. Bounded trust observations contain only completion status or rejection cause, never key material. Keys live outside versioned payloads and remain unchanged across reinstalls and upgrades.
 
-The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. The login LaunchAgent retains the service label and daemon executable, adding only the private login argument. Offline recovery admits that entry only when removing that argument from its bounded bytes yields the retained service plist for the exact Codex-home profile; it also recognizes the older one-shot entry. Installed-product checks verify rejection of unsupported service arguments and of daemon public arguments or missing managed readiness input before any coordinator effect. These process checks do not establish live launchd behavior.
+The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. The login LaunchAgent retains the service label and daemon executable, adding only the private login argument. Offline recovery admits that entry only when removing that argument from its bounded bytes yields the retained service plist for the exact Codex-home profile; it also recognizes the older one-shot entry. The assembled-product check verifies the private launchers are present and executable; their argument and readiness rules remain with their Kotlin owners.

@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: 27e0f11eccb0 -->
+<!-- generated: 2026-09-27 | hash: 5417a156696d -->
 
 # app-server
 
@@ -37,9 +37,6 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [InstalledConfigurationAlias.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledConfigurationAlias.kt) - owned current-alias resolution under the installation activation lock.
 
 - [KastSourcePresentation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSourcePresentation.kt) - compact returned source precedes the unchanged canonical provider envelope.
-- [NativePresentationEvidence.kt](src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativePresentationEvidence.kt) - bounded evidence from actual source-first provider content items.
-
-- [NativeReadRequest.kt](src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeReadRequest.kt) - actual provider-envelope and canonical payload validation against the qualified schema.
 - [CodexToolTerminalReply.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolTerminalReply.kt) - single-document finite broker failure and cancellation replies.
 - [README.md](README.md) - architecture, lifecycle, status, and public integration behavior.
 - [docs/compatibility.md](docs/compatibility.md) - tested compatibility evidence and open release gates.
@@ -59,7 +56,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - `src/main/kotlin/io/github/amichne/kast/appserver/provider` - process, Gradle, invocation, and observer boundaries.
 - `src/main/kotlin/io/github/amichne/kast/appserver/runtime` - workspace registration, broker sessions, and invocation control.
 - `src/main/kotlin/io/github/amichne/kast/appserver/storage` - shared private-file admission, locking and atomic durable-record writes.
-- `src/test` - focused behavior tests; [native acceptance](src/test/kotlin/io/github/amichne/kast/appserver/acceptance) contains integration harnesses.
+- `src/test` - focused broker, provider, and protocol behavior tests.
 
 ## Entry Points
 
