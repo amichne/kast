@@ -1,70 +1,70 @@
 ---
-title: "Read a Kast result"
-description: "Separate transport completion from semantic coverage."
+title: "Results"
+description: "Understand returned facts, coverage, paired rows, and the handles used to continue."
 icon: "list-checks"
 ---
 
-Kast returns a transport wrapper and an operation document. Read both before
-using the answer.
+Read two things in every Kast answer: **the facts returned** and **what the query covered**. A successful tool invocation does not, by itself, establish a complete semantic result.
 
-| Connection | Wrapper | Canonical document |
-| --- | --- | --- |
-| Direct MCP | `result.structuredContent` | `data` for semantic reads |
-| Tool RPC | Top-level `type` | `document` for completed, qualified, or rejected documents |
-| Codex App Server | Invocation `status` | `document` when the invocation completed |
+## What can come back
 
-The [MCP](/reference/mcp-catalog) and [RPC](/reference/rpc-catalog) contracts
-show their exact wrappers. The generated **Query symbols** entry in this tab
-defines its canonical document.
+| Result | Use it for |
+| --- | --- |
+| Symbols | Exact declarations, their issued references, and selected name, location, signature, or source fields. |
+| Occurrences | Individual use sites and relationship facts, including repeated uses. |
+| Traversal records | Relationship evidence with hop depth from a bounded walk. |
+| Binding rows | Named symbol cells produced by an inner join. Project a cell before another symbol step. |
 
-## Compact output
+See [Query forms](/reference/api) to select an output, or [the composition walkthrough](/query-pipelines) to follow a result into the next query.
 
-Every public tool accepts an optional root-level boolean `verbose`. Omit it or use
-`false` for compact output. Use `true` to include execution and host details:
+## Interpret coverage before making a claim
 
-```json
-{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"Order"}},"verbose":true}
-```
-
-For `check_diagnostics`, `add_declaration`, `replace_body`, `health_check`, and hosted `workspace_lifecycle`, put
-`verbose` beside their existing arguments as well. Strings such as `"true"`, null,
-and numbers are rejected.
-
-Compact output preserves semantic results, coverage and limitations, exact references,
-retained-result identities, continuation and recovery evidence. It omits redundant
-continuation fields when the qualified progress already carries the token, empty
-failure lists, host bookkeeping, completed diagnostic progress, and the duplicate
-plan preview after a verified mutation. The application still contains the actual
-diff, receipt, and any fresh reference. Verbosity does not change execution or
-retained evidence.
-
-## What the semantic document proves
-
-| Canonical status | Claim |
+| Canonical status | What the agent may say |
 | --- | --- |
 | `complete` | The operation covered its declared scope. |
-| `qualified` | Known facts remain usable, but coverage or another obligation is incomplete. |
-| `rejected` | No successful semantic result was established. |
+| `qualified` | These returned facts are usable with the stated limitations; some obligation remains incomplete. |
+| `rejected` | This request did not establish a successful semantic result. |
 
-For a negative claim, require complete coverage of the scope actually asked,
-and inspect item failures and omissions. A zero-item qualified result is not
-proof of absence. Preserve returned `ref`, continuation, qualification, and
-failure fields verbatim.
+For example, “Kast found these callers, but the walk stopped with unfinished work” preserves a qualified result. “These are all callers” does not.
 
-Diagnostics cover the reported IDEA analysis scope; they do not assert a
-whole-project build. A source or relation read can also return useful facts
-with explicit limits.
+A zero-row qualified answer is not proof that a declaration or relationship is absent. Before making an absence claim, check complete coverage of the requested scope, item failures, and omissions. Diagnostics cover the reported IDEA analysis scope; they do not certify a whole-project build.
 
-## Drain a bounded query
+## Carry the correct handle forward
 
-`knownMinimum` counts the logical query's final output, including rows already
-delivered. It does not count the remaining presentation suffix or unfiltered
-provider candidates. A complete 54-row result split into five-row output pages
-retains a minimum of 54 on every qualified presentation page.
+| Handle | Next use |
+| --- | --- |
+| Exact symbol `ref` | Start a fresh query from `SYMBOL_REFS`; Kast revalidates its identity and basis. |
+| Retained-result reference | Start from `RESULT`, combine with another retained input, or use `READ_RESULT`. |
+| Issued row ID | Select a row from its owning retained result. A subset does not prove coverage of omitted rows. |
+| Execution continuation | Use `RESUME` to continue stored unfinished work. |
+| Result cursor | Page through stored result rows, not semantic execution. |
 
-Pass continuations unchanged. Output pages and retained-result reads drain
-detached rows; semantic continuations resume retained execution state. Draining
-output does not remove semantic omissions or make qualified coverage complete.
-If required state expires or cannot be retained, the result is terminal or
-rejected with a finite reason. Start a new query explicitly when necessary;
-replaying an unavailable token does not restart semantic execution.
+Pass tokens unchanged. A stale or unavailable handle requires an explicit recovery decision, not a guessed replacement token. Retention is bounded and can fail without erasing the query's returned facts.
+
+## Compact and detailed output
+
+Omit `verbose` for compact output. Use a strict boolean beside the tool's arguments when execution detail is needed:
+
+```json
+{
+  "request": {
+    "type": "RUN",
+    "source": {"type": "SEARCH_DECLARATIONS", "declarationName": "QueryStepSyntax"}
+  },
+  "verbose": true
+}
+```
+
+Compact output preserves semantic results, coverage, limitations, exact references, retained-result identities, continuation, and recovery evidence. It omits redundant fields and bookkeeping, not the limitations needed to interpret the answer. `"true"`, null, and numeric values are not accepted substitutes for a boolean.
+
+<Accordion title="Counts and bounded presentation">
+  `knownMinimum` refers to the logical query's final output, including rows already delivered. It is not a count of remaining presentation rows or unfiltered provider candidates.
+
+  Draining output pages does not remove semantic omissions or turn qualified coverage into complete coverage. Presentation and semantic execution have different continuation owners.
+</Accordion>
+
+<Accordion title="Where the operation document sits in each transport">
+  Direct MCP carries its structured result in `result.structuredContent`, with semantic read data in `data`. Tool RPC returns a top-level `type` and a `document` for completed, qualified, or rejected documents. Hosted App Server invocations have a `status` and, when completed, a `document`.
+
+  Integrators should use the [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog) contract rather than infer wrappers from a tutorial excerpt. The full contracts are collected on [Schemas and samples](/reference/schemas).
+</Accordion>

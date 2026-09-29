@@ -2,82 +2,52 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Install Kast, query Kotlin in IntelliJ IDEA, and inspect its tool contracts.",
-  "colors": {
-    "primary": "#3154C7",
-    "light": "#8FA7FF",
-    "dark": "#27439F"
-  },
-  "fonts": {
-    "family": "SUSE"
-  },
+  "description": "Install Kast, connect your coding agent, and learn with Kotlin query examples.",
+  "colors": {"primary": "#3154C7", "light": "#8FA7FF", "dark": "#27439F"},
+  "fonts": {"family": "SUSE"},
   "logo": "/images/kast-mark.svg",
   "favicon": "/images/kast-mark.svg",
-  "icons": {
-    "library": "lucide"
-  },
-  "background": {
-    "color": {
-      "light": "#FBFBF9",
-      "dark": "#171816"
-    }
-  },
-  "appearance": {
-    "default": "light",
-    "strict": false
-  },
+  "icons": {"library": "lucide"},
+  "background": {"color": {"light": "#FBFBF9", "dark": "#171816"}},
+  "appearance": {"default": "light", "strict": false},
   "navigation": {
     "tabs": [
       {
-        "tab": "Use Kast",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Get started",
+            "group": "Start here",
             "pages": [
-              "index",
-              "start",
-              "agent-harnesses"
+              {
+                "group": "Get started",
+                "expanded": false,
+                "pages": ["start", "agent-harnesses", "troubleshooting"]
+              }
             ]
           },
           {
-            "group": "Work with code",
-            "pages": [
-              "search",
-              "query-pipelines",
-              "change"
-            ]
+            "group": "Using Kast",
+            "pages": ["index", "concepts/background-startup", "search", "query-pipelines", "change", "workspaces"]
           },
           {
-            "group": "Workspace and support",
-            "pages": [
-              "workspaces",
-              "troubleshooting"
-            ]
+            "group": "Reference",
+            "pages": ["reference/api", "reference/responses", "reference/schemas"]
           }
         ]
       },
       {
         "tab": "How Kast works",
-        "pages": [
-          "concepts/architecture",
-          "concepts/evidence-boundaries",
-          "concepts/background-startup"
-        ]
+        "hidden": true,
+        "pages": ["concepts/architecture", "concepts/evidence-boundaries"]
       },
       {
         "tab": "API / RPC",
+        "hidden": true,
         "openapi": "reference/callables.openapi.json",
         "groups": [
           {
             "group": "Read the contracts",
-            "pages": [
-              "reference/api",
-              "reference/mcp-catalog",
-              "reference/rpc-catalog",
-              "reference/responses",
-              "reference/symbols",
-              "reference/compatibility"
-            ]
+            "pages": ["reference/mcp-catalog", "reference/rpc-catalog", "reference/symbols", "reference/compatibility"]
           },
           {
             "group": "Detailed schemas",
@@ -85,34 +55,17 @@
               {
                 "group": "Callable schemas",
                 "expanded": false,
-                "pages": [
-                  "POST /callables/query_symbols",
-                  "POST /callables/check_diagnostics",
-                  "POST /callables/add_declaration",
-                  "POST /callables/replace_body",
-                  "POST /callables/workspace_lifecycle"
-                ]
+                "pages": ["POST /callables/query_symbols", "POST /callables/check_diagnostics", "POST /callables/add_declaration", "POST /callables/replace_body", "POST /callables/workspace_lifecycle"]
               },
               {
                 "group": "Transport results",
                 "expanded": false,
-                "pages": [
-                  "reference/models/mcp-tool-call-result",
-                  "reference/models/mcp-read-result",
-                  "reference/models/mcp-investigation-result",
-                  "reference/models/mcp-change-result",
-                  "reference/models/tool-rpc-reply"
-                ]
+                "pages": ["reference/models/mcp-tool-call-result", "reference/models/mcp-read-result", "reference/models/mcp-investigation-result", "reference/models/mcp-change-result", "reference/models/tool-rpc-reply"]
               },
               {
                 "group": "Semantic results",
                 "expanded": false,
-                "pages": [
-                  "reference/models/query-item",
-                  "reference/models/relation-fact",
-                  "reference/models/diagnostic",
-                  "reference/models/live-evidence"
-                ]
+                "pages": ["reference/models/query-item", "reference/models/relation-fact", "reference/models/diagnostic", "reference/models/live-evidence"]
               }
             ]
           }
@@ -121,107 +74,23 @@
     ]
   },
   "navbar": {
-    "links": [
-      {
-        "label": "GitHub",
-        "href": "https://github.com/amichne/kast"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Install Kast",
-      "href": "/start"
-    }
+    "links": [{"label": "GitHub", "href": "https://github.com/amichne/kast"}],
+    "primary": {"type": "button", "label": "Install Kast", "href": "/start"}
   },
   "footer": {
-    "socials": {
-      "github": "https://github.com/amichne/kast"
-    },
+    "socials": {"github": "https://github.com/amichne/kast"},
     "links": [
-      {
-        "header": "Learn",
-        "items": [
-          {
-            "label": "Install",
-            "href": "/start"
-          },
-          {
-            "label": "Query",
-            "href": "/search"
-          },
-          {
-            "label": "How it works",
-            "href": "/concepts/architecture"
-          }
-        ]
-      },
-      {
-        "header": "Reference",
-        "items": [
-          {
-            "label": "MCP",
-            "href": "/reference/mcp-catalog"
-          },
-          {
-            "label": "Tool RPC",
-            "href": "/reference/rpc-catalog"
-          }
-        ]
-      },
-      {
-        "header": "Source",
-        "items": [
-          {
-            "label": "GitHub",
-            "href": "https://github.com/amichne/kast"
-          },
-          {
-            "label": "Security",
-            "href": "https://github.com/amichne/kast/security"
-          }
-        ]
-      }
+      {"header": "Get started", "items": [{"label": "Install", "href": "/start"}, {"label": "Connect your agent", "href": "/agent-harnesses"}, {"label": "Troubleshooting", "href": "/troubleshooting"}]},
+      {"header": "Learn", "items": [{"label": "Query examples", "href": "/search"}, {"label": "Combine results", "href": "/query-pipelines"}, {"label": "Schemas and samples", "href": "/reference/schemas"}]},
+      {"header": "Source", "items": [{"label": "GitHub", "href": "https://github.com/amichne/kast"}, {"label": "Security", "href": "https://github.com/amichne/kast/security"}]}
     ]
   },
-  "metadata": {
-    "timestamp": true
-  },
-  "styling": {
-    "eyebrows": "breadcrumbs"
-  },
-  "interaction": {
-    "drilldown": true
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view"
-    ],
-    "display": "header"
-  },
-  "api": {
-    "playground": {
-      "display": "none"
-    },
-    "examples": {
-      "autogenerate": false
-    }
-  },
-  "search": {
-    "prompt": "Search docs"
-  },
-  "errors": {
-    "404": {
-      "redirect": false,
-      "title": "Page not found",
-      "description": "The requested Kast documentation page does not exist. Return to the [documentation home](/)."
-    }
-  },
-  "redirects": [
-    {
-      "source": "/concepts/runtime-integration-validation",
-      "destination": "/concepts/architecture",
-      "permanent": true
-    }
-  ]
+  "metadata": {"timestamp": true},
+  "styling": {"eyebrows": "breadcrumbs"},
+  "interaction": {"drilldown": false},
+  "contextual": {"options": ["copy", "view"], "display": "header"},
+  "api": {"playground": {"display": "none"}, "examples": {"autogenerate": false}},
+  "search": {"prompt": "Search docs"},
+  "errors": {"404": {"redirect": false, "title": "Page not found", "description": "The requested Kast documentation page does not exist. Return to the [documentation home](/)."}},
+  "redirects": [{"source": "/concepts/runtime-integration-validation", "destination": "/concepts/architecture", "permanent": true}]
 }

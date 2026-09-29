@@ -1,17 +1,52 @@
 ---
-title: "Workspace control"
-description: "Understand when the hosted workspace_lifecycle tool is needed."
+title: "Manage Kast"
+description: "Inspect, upgrade, connect, disconnect, or uninstall the owned installation."
 icon: "folder-open"
 ---
 
-Ordinary Kast queries prepare the exact Gradle repository or worktree from
-the agent's session. They wait for IDEA readiness; no separate open or sync
-call is required.
+Use the native `kast` command to inspect the installation and manage its bundled integrations. Ask code questions through your agent; the management command is not a second semantic query interface.
 
-`workspace_lifecycle` is an App Server tool for explicit project control,
-such as inspecting, presenting, releasing, or closing a selected project.
-It is absent from direct MCP and tool RPC catalogs. Its generated
-**Workspace lifecycle** entry in the API / RPC tab lists the admitted
-actions and approval boundary.
+## Inspect the installation
 
-See [how Kast works](/concepts/architecture) for the normal request flow.
+```shell
+kast status
+```
+
+Status separates recorded installation and connection information from available live observations. A registered integration is not proof that its process is running or its workspace is ready.
+
+## Upgrade
+
+Save your work and finish active Kast calls before upgrading:
+
+```shell
+kast upgrade
+```
+
+Upgrade stops Kast-owned services and interrupts existing calls and sessions. Restart IDEA and your connected harnesses to load the matched release. Existing sessions are not resumed across this stop-the-world upgrade.
+
+## Change agents
+
+```shell
+kast connect pi
+kast disconnect copilot
+```
+
+You can connect more than one supported harness. Disconnect removes an owned registration; restart the affected harness so it stops using its loaded integration. It does not stop every client or close IDEA.
+
+Use [Connect your agent](/agent-harnesses) for conflicts and explicit `--force` replacement of a harness's Kast slot.
+
+## Uninstall
+
+```shell
+kast uninstall
+```
+
+Uninstall removes the owned installation. Read any ownership or recovery failure before retrying; do not delete unrelated client configuration to bypass it.
+
+<Accordion title="Explicit workspace control in the hosted App Server">
+  Ordinary semantic queries prepare their workspace automatically. The hosted `workspace_lifecycle` tool is for explicit project actions such as inspecting, presenting, releasing, or closing a selected project. It is absent from direct MCP and Tool RPC catalogs.
+
+  Ask the hosted client to inspect the installed schema and approval requirements before a lifecycle action. Disconnecting a harness, releasing a workspace, and closing a project are different operations.
+</Accordion>
+
+See [Prepare IntelliJ in the background](/concepts/background-startup) for normal query startup, or [Troubleshooting](/troubleshooting) when Kast reports a blocker.

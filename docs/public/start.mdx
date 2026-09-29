@@ -1,67 +1,50 @@
 ---
 title: "Install Kast"
-description: "Install the matched IDEA plugin, connect a client, and run a first query."
+description: "Install the matched IDEA plugin and native Kast command, then connect your agent."
 icon: "download"
-keywords: ["install", "Codex", "IntelliJ IDEA", "MCP"]
+keywords: ["install", "IntelliJ IDEA", "Kotlin"]
 ---
 
-Kast pairs a persistent service with the matching IntelliJ IDEA plugin. The installer checks the IDE release line and sets up a client connection.
+Install Kast once, then [connect the agent you use](/agent-harnesses). You do not need to choose a transport or configure a workspace to get started.
 
-You need macOS on Apple silicon, a Kotlin Gradle repository, and IntelliJ IDEA
-`262.*` with its bundled Kotlin plugin and Java 25 JBR.
+## Before you install
 
-<Steps>
-  <Step title="Install the matched release">
-    Run the installer from a terminal:
+You need **macOS on Apple silicon**, a **Kotlin Gradle repository**, and **IntelliJ IDEA `262.*`** with its bundled Kotlin plugin and Java 25 JBR.
 
-    ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
-    ```
+## Install
 
-    The installer publishes a native `kast` management command, installs the matched IDEA plugin, and sets up Kast-owned services. With a nonempty `XDG_CONFIG_HOME`, the command goes to `$XDG_CONFIG_HOME/kast`; otherwise it goes to `$HOME/.local/bin/kast`. If the selected directory is not on `PATH`, the installer prints the command's absolute path and the directory to add. It does not edit shell profiles.
-  </Step>
-  <Step title="Inspect and connect">
-    Run `kast status` to see the installed version, recorded integrations, and available runtime observations. Run `kast connect` to see the supported harnesses, then register one:
+Run this in a terminal:
 
-    ```shell
-    kast connect codex
-    # or: kast connect copilot
-    # or: kast connect pi
-    ```
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
+```
 
-    The installer may also offer to connect Codex during interactive setup. Connecting a second time to the same payload is safe. A conflicting registration is preserved unless you explicitly replace that harness's Kast slot:
+The installer installs the matched IDEA plugin, Kast-owned services, and the native `kast` management command. It may offer to connect Codex during interactive setup; you can choose or change your agent afterward.
 
-    ```shell
-    kast connect codex --force
-    # or: kast connect copilot --force
-    # or: kast connect pi --force
-    ```
+Restart IntelliJ IDEA to load the plugin, then check the installation:
 
-    Forced connection verifies the bundled payload and captures the prior registration before replacement. A failed transaction restores the prior registration and receipt. If restoration fails, the error identifies the preserved backup and recovery destination. Unrelated registrations stay in place.
+```shell
+kast status
+```
 
-    Connection records configuration; it does not launch the harness or prove live tool readiness. Codex MCP registration and App Server dynamic-tool admission are separate paths.
-  </Step>
-  <Step title="Restart IDEA and open your agent">
-    Restart IntelliJ IDEA so it loads the plugin. Start the agent from the Kotlin repository or worktree you want Kast to inspect:
+Look for the installed version and installation path. A recorded connection is not proof that an agent has loaded its tools; you will check that in the next step.
 
-    ```shell
-    cd /path/to/kotlin-repository
-    codex
-    ```
+<Accordion title="If your shell cannot find kast">
+  With a nonempty `XDG_CONFIG_HOME`, the executable is `$XDG_CONFIG_HOME/kast`. Otherwise it is `$HOME/.local/bin/kast`.
 
-    Kast binds requests to that Gradle root, prepares the IDEA project, and waits for the required import and indexing state. No separate workspace-open or sync request is needed for an ordinary semantic query.
-  </Step>
-  <Step title="Ask a first question">
-    > Use Kast to query declarations in this workspace. Show one exact compiler-backed symbol with its kind, signature, source location, `ref`, and coverage. If no symbol is proven, explain the reason.
+  Use the absolute command path printed by the installer, or add its containing directory to `PATH`. The installer warns when the directory is missing from `PATH`; it does not edit shell profiles.
+</Accordion>
 
-    The query does not require a project-specific class name. Pass the returned `ref` unchanged to a later query, and request `SOURCE` when you need committed source context. See [query examples](/search) for the direct tool input.
-  </Step>
-</Steps>
+<Accordion title="Select another IDEA installation">
+  Pass the IDEA application path to the bootstrap installer:
 
-## Connect another client
+  ```shell
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
+  ```
+</Accordion>
 
-Kast supports direct MCP and the included one-shot Tool RPC adapters from the same installation. The Codex App Server provides a hosted integration; its compatibility status is still preview. Each client should discover the installed catalog after installation or upgrade.
+## Next: connect your agent
 
-Use `kast upgrade` for the latest release on the selected channel. Upgrades stop Kast-owned services and interrupt existing calls and sessions; restart IDEA and connected harnesses to load the new payload. Use `kast disconnect <harness>` to remove an owned registration and `kast uninstall` to remove the owned installation. For a second IDEA installation, pass `-- --idea-home "/Applications/IntelliJ IDEA.app"` to the bootstrap installer.
+[Connect Codex, Copilot, or Pi](/agent-harnesses), start it from your repository, and ask one question to verify the connection.
 
-The [MCP contract](/reference/mcp-catalog) and [Tool RPC contract](/reference/rpc-catalog) show how other clients discover tools. If setup reports a blocker, use the [troubleshooting guide](/troubleshooting).
+If installation stops at a blocker, start with [Troubleshooting](/troubleshooting). For upgrades and removal, see [Manage Kast](/workspaces).

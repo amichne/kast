@@ -1,0 +1,64 @@
+---
+title: "Schemas and samples"
+description: "Open the generated JSON Schema and request examples without a second hand-maintained contract."
+icon: "braces"
+---
+
+Use [Query forms](/reference/api) and [Results](/reference/responses) for the reading guide. This page collects the full machine contracts for client authors and readers checking an example.
+
+## Raw JSON Schema
+
+Kast generates the four semantic tools' input schemas and request examples from one authored contract. The links below point to that generated source, not a separate documentation schema.
+
+| Tool | Input schema | Request examples |
+| --- | --- | --- |
+| `query_symbols` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.examples.json) |
+| `check_diagnostics` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/check_diagnostics.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/check_diagnostics.examples.json) |
+| `add_declaration` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.examples.json) |
+| `replace_body` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.examples.json) |
+
+The support callables have separate availability: direct MCP exposes `health_check`; the hosted App Server exposes `workspace_lifecycle`. Their authoritative input and response definitions are in the [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json), under `/callables/health_check` and `/callables/workspace_lifecycle`. These labels are documentation identifiers, not HTTP endpoints.
+
+These source links follow `main`, which can be ahead of an installed release. Use the catalog exposed by your installed integration as the authority for that release. Rediscover it after an upgrade rather than caching input assumptions indefinitely.
+
+The [authored schema](https://github.com/amichne/kast/blob/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) contains shared definitions and tool metadata. The per-tool `parameters.json` files above are the generated request schemas to use when validating a tool's arguments. `$defs` and `$ref` keep shared forms connected; do not flatten variants into an all-optional property bag.
+
+## Read a schema without reading every definition
+
+Start at the tool's required root properties. For `query_symbols`, select `request` and follow its action variant: `RUN`, `RESUME`, or `READ_RESULT`. For `RUN`, choose one source, add only the steps needed by the question, and choose the output form.
+
+Defaulted fields do not need to appear in every example. Server admission supplies documented defaults and enforces semantic restrictions beyond JSON shape validation. Passing a JSON Schema check does not prove that a reference is current, a result is complete, or a mutation is permitted.
+
+## Samples and observed responses
+
+The generated sample files contain valid-input examples and deliberately invalid examples for contract testing. Their opaque reference values are not reusable tokens from your session. They are **not live semantic response recordings**.
+
+## Recorded walkthrough
+
+[Download the request/response recording](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) for [Find and trace code](/search) and [Combine query results](/query-pipelines). It contains sixteen real Tool RPC calls, including their complete request and response payloads. Each `calls` entry records its ID, timestamp, tool, request, and response.
+
+Captured on September 29, 2026 (UTC), using matched Kast CLI and IDEA plugin version `0.20260928.121700`, IDEA/Kotlin build `262.10315.125`. The checkout was `81fb023c06f8dba63e3531f49632f465b5cc6b21`; its changes from the tutorials' source revision `56df0912e46b182bb4ad8beabd1512823100fd72` were confined to `docs/public`. All successful and qualified calls retain the same host and epoch 7, with `SAVED_PSI_COMMITTED` content.
+
+| Calls | Observed result |
+| --- | --- |
+| `01`–`03`: discover and retain A/B | One interface, ten implementations, two `Concat` declarations; exhaustive coverage. |
+| `04`–`05`: union/filter and intersection | Two distinct declarations after union/filter; one shared declaration after intersection. |
+| `06`–`07`: join C, project, follow references | One paired row and one compiler-confirmed reference occurrence. |
+| `08`–`09`: read retained A/C | Ten symbols and one paired row; original result identities preserved. |
+| `10`–`11`, `16`: incomplete right input | One qualified discovery row; both difference and anti join reject `right-input-incomplete`. |
+| `12`–`13`: bounded execution and resume | One row with a continuation, then the remaining row with complete coverage. |
+| `14`–`15`: find `exactStage`, walk callers | One function, then one caller record at depth 1 within the two-hop bound. |
+
+Only the machine's absolute checkout prefix was normalized to `/workspace/kast`. Opaque references, relationships between calls, host identity, epochs, offsets, and qualifications remain unchanged. The installed version predates `verbose` and returns detailed payloads; this recording does not demonstrate compact output.
+
+To reproduce, start in the linked source checkout and pass a call's `request` object to `kast-tool-rpc-complete call query_symbols`. Execute calls in order, substituting newly issued references for the recorded session's tokens. Keep builds and source edits paused while composing retained results. Each run must establish its own counts and coverage; recorded handles are not reusable credentials or portable symbol identifiers.
+
+The captures' requests are checked against the generated input schema, their envelopes against `ToolRpcReply`, and their operation documents against the generated semantic-result schema. These shape checks complement the recorded native evidence; they do not replay IDEA.
+
+<Accordion title="Rendered contracts and transport details">
+  The existing [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json) remains available for complete request and response definitions. Its `POST /callables/...` labels organize documentation; they are **not HTTP endpoints**.
+
+  The native [query reference](/api-reference/query-symbols) renders the detailed query contract. Existing diagnostic, change, lifecycle, and model URLs remain available for compatibility, but are not part of the setup path.
+
+  Client authors can read the [MCP contract](/reference/mcp-catalog), [Tool RPC contract](/reference/rpc-catalog), and [compatibility notes](/reference/compatibility). These explain transport wrappers and support-tool availability; ordinary users do not need them to connect an agent.
+</Accordion>

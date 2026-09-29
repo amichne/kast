@@ -1,29 +1,79 @@
 ---
-title: "Connect an agent client"
-description: "Choose direct MCP, one-shot tool RPC, or the hosted Codex App Server."
+title: "Connect your agent"
+description: "Connect Codex, Copilot, or Pi, then verify the connection with a real query."
 icon: "plug"
 ---
 
-Each connection binds requests to the exact Gradle repository or worktree. The installed catalog defines the tools and schemas for that release.
+Choose your agent below. `kast connect` registers the bundled integration; the following command launches the harness from your repository. Registration alone does not prove live tool readiness.
 
-| Connection | How it works | Discover tools |
-| --- | --- | --- |
-| Direct MCP | The installed process runs over stdio from the client's repository directory. | `tools/list` |
-| Tool RPC | A one-shot JSON process interface. Read the catalog, then call one tool with JSON on stdin. The included adapters support Copilot CLI and Pi. | `kast-tool-rpc-complete catalog` |
-| Codex App Server | A persistent hosted integration with schemas supplied to the conversation. It also exposes explicit workspace lifecycle control. | Provider catalog for the conversation |
+<Tabs>
+  <Tab title="Codex">
+    ```shell
+    kast connect codex
+    cd /path/to/kotlin-repository
+    codex
+    ```
 
-The Codex App Server's compatibility status remains preview. Ordinary semantic calls prepare the workspace themselves; `workspace_lifecycle` is for explicit project control.
+    Start a new Codex session after connecting. This registers the direct MCP integration. Kast's hosted Codex App Server is a separate, preview integration; it is not a prerequisite for this setup.
+  </Tab>
+  <Tab title="Copilot">
+    ```shell
+    kast connect copilot
+    cd /path/to/kotlin-repository
+    copilot
+    ```
 
-## Rediscover after upgrades
+    Restart Copilot after connecting so it loads the bundled extension and its installed tool catalog.
+  </Tab>
+  <Tab title="Pi">
+    ```shell
+    kast connect pi
+    cd /path/to/kotlin-repository
+    pi
+    ```
 
-Do not cache tool names or hand-build input assumptions across releases. Read the live catalog after installation or upgrade. It identifies supported inputs, effects, and result schemas.
+    Restart Pi after connecting so it loads the bundled extension and its installed tool catalog.
+  </Tab>
+</Tabs>
 
-## Read the full result
+Use the exact repository or worktree you want to inspect. Kast prepares its IntelliJ project when a semantic request needs it; there is no separate workspace-open step.
 
-Each transport adds an outer wrapper around the operation document. Check both. Preserve exact refs, coverage, qualifications, item failures, and continuation tokens from the canonical document. The [MCP](/reference/mcp-catalog) and [Tool RPC](/reference/rpc-catalog) contracts show their exact wrappers.
+## Check that the tools work
 
-## Hosted schema labels are documentation paths
+Ask your agent:
 
-OpenAPI `POST /callables/…` entries group hosted callable schemas in the reference. They are not HTTP endpoints. MCP and Tool RPC use their own client protocols.
+> Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. If Kast is not ready or cannot prove a result, report the blocker rather than substituting a text search.
 
-For installation, use [Install Kast](/start). The [repository integration guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) contains the Copilot CLI and Pi adapter setup. The [App Server compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) gives its tested boundary.
+Success means an actual Kast query returns a declaration and its evidence. Seeing a registration in `kast status`, or seeing tool names in a catalog, is not the same check.
+
+Then try [Find and trace code](/search). You ask the question; your agent chooses the query and passes the returned references to follow-up calls.
+
+## A connection already exists
+
+Reconnecting the same payload is safe. Kast preserves a conflicting registration by default. Inspect the reported conflict before explicitly replacing only that harness's Kast slot:
+
+```shell
+kast connect codex --force
+# or: kast connect copilot --force
+# or: kast connect pi --force
+```
+
+Forced connection verifies the bundled payload and captures the previous registration before replacement. A failed transaction attempts to restore the previous registration and receipt. If restoration fails, the error identifies the backup and recovery destination. Unrelated registrations stay in place.
+
+## Disconnect or upgrade
+
+```shell
+kast disconnect copilot
+```
+
+Replace `copilot` with the harness you connected. This removes an owned registration; it is not a command to stop every existing agent session or IDEA process. Restart the affected harness so it stops using its loaded integration.
+
+After `kast upgrade`, restart IDEA and your connected harnesses so they load the matched payload and rediscover its catalog.
+
+<Accordion title="Connect a different client">
+  Custom clients can use [direct MCP](/reference/mcp-catalog) or [one-shot Tool RPC](/reference/rpc-catalog). These are integration details, not additional setup steps for Codex, Copilot, or Pi.
+
+  The [repository integration guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) documents the adapter boundary. The [App Server compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) describes the preview hosted path.
+</Accordion>
+
+If tools are missing, a version disagrees, or the first query cannot prepare IDEA, use [Troubleshooting](/troubleshooting).
