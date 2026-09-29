@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.wire.presentation.cliName
 import kotlinx.serialization.json.JsonArray
@@ -404,7 +405,7 @@ private fun queryExactSymbolItemSchema(): JsonObject =
         ServerSchemaProperty(
             "row_id",
             patternTextSchema(
-                "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                QueryResultRowReference.SERIALIZED_PATTERN,
                 "Opaque row identity scoped to one retained result.",
             ),
             required = false,
@@ -419,7 +420,7 @@ private fun queryOccurrenceItemSchema(): JsonObject =
         ServerSchemaProperty(
             "row_id",
             patternTextSchema(
-                "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                QueryResultRowReference.SERIALIZED_PATTERN,
                 "Opaque row identity scoped to one retained result.",
             ),
             required = false,
@@ -440,7 +441,7 @@ private fun queryTraversalRecordItemSchema(): JsonObject =
         ServerSchemaProperty(
             "row_id",
             patternTextSchema(
-                "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                QueryResultRowReference.SERIALIZED_PATTERN,
                 "Opaque row identity scoped to one retained result.",
             ),
             required = false,

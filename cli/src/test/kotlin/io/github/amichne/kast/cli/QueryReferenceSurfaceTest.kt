@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli
 
+import com.networknt.schema.InputFormat
+import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.kernel.EvidenceBasis
@@ -32,6 +35,7 @@ import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -77,6 +81,24 @@ class QueryReferenceSurfaceTest {
         val output = document.getValue("items").jsonArray.single().jsonObject
         assertEquals(JsonPrimitive(rowId.value), output["row_id"])
         assertEquals(JsonPrimitive(exactToken), output["ref"])
+    }
+
+    @Test
+    fun `every result kind admits issued row IDs and rejects truncated UUIDs`() {
+        val issued = QueryResultRowReference.parse("result-row:v1:e85ea4e5-2988-4b9d-ac44-ba1616424741").refined()
+        val encoded = json.encodeToString(QueryResultRowReference.serializer(), issued)
+        val malformed = json.encodeToString("result-row:v1:e85ea4e5-2988-4b9d-ba1616424741")
+        val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+        val definitions = installedServerOutputSchema(CanonicalOperation.QUERY_RUN).getValue("\$defs").jsonObject
+        val variants = definitions.getValue("queryResultItem").jsonObject.getValue("anyOf").jsonArray
+        assertEquals(4, variants.size)
+        for (variant in variants) {
+            val properties = variant.jsonObject.getValue("properties").jsonObject
+            val kind = properties.getValue("type").jsonObject.getValue("const").jsonPrimitive.content
+            val rowSchema = registry.getSchema(properties.getValue("row_id").toString())
+            assertTrue(rowSchema.validate(encoded, InputFormat.JSON).isEmpty(), kind)
+            assertTrue(rowSchema.validate(malformed, InputFormat.JSON).isNotEmpty(), kind)
+        }
     }
 
     @Test
