@@ -18,6 +18,7 @@ def run(command: list[str], environment: dict[str, str]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--gate-graph", choices=("run", "skip"), default="run")
     args = parser.parse_args()
     environment = os.environ.copy()
     environment["JAVA_HOME"] = environment["KAST_RELEASE_JDK_25"]
@@ -32,7 +33,10 @@ def main() -> None:
     run(["python3", "distribution/release/test_ci_candidate.py"], environment)
     run(["python3", "distribution/release/test_verify_environment.py"], environment)
     run(["python3", ".github/scripts/ci/test_routine_gate.py"], environment)
-    run(["python3", ".github/scripts/ci/routine_gate.py"], environment)
+    if args.gate_graph == "run":
+        run(["python3", ".github/scripts/ci/routine_gate.py"], environment)
+    else:
+        print("ci-checks: gate graph unchanged; membership inspection skipped", flush=True)
     # Main CI runs the exact-version product gate through verify.sh after these preflight checks.
     if not args.preflight_only:
         # The installer admits release-shaped versions; Git-describe PR versions are not installable.
