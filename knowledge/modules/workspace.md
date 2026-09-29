@@ -6,6 +6,8 @@ resource: file://workspace
 tags: [kotlin, workspace, lifecycle, intellij]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleReadiness.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedProjectDocuments.kt
@@ -38,7 +40,11 @@ The active workspace modules are `workspace:contract` and `workspace:intellij-re
 
 `SemanticReadAuthority` distinguishes historical published leases from `LiveSemanticReadAuthority`. Live authority retains an opaque IDE epoch and the original host identity. Its detached reference can be restored only by that owner against newly admitted freshness. Retirement is terminal; a moved epoch never revives an earlier reference. IDE counters do not become published generations.
 
-`HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains work before releasing its permit. Before model capture it waits within the host deadline when IDEA preempts an epoch sample or the sampled epoch moves during freshness admission. Canonical semantic reads may discard and repeat an evaluation if final freshness detects a moved VFS epoch; change workflows retain one evaluation. Both loops share the original host deadline and report bounded diagnostic counters. Other epoch failures remain exact rejections. Semantic objects stay inside the admitted read lifetime. Saved documents, committed PSI and source ownership remain explicit obligations.
+`HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains each request before releasing its independently owned permit. Multiple reads may overlap within `HOST_CONNECTIONS`. Before epoch admission, the host may wait when IDEA preempts a sample or the sample moves. After model capture, the host acquires native read access, revalidates the expected epoch, and admits its authority in one synchronized transition. Canonical dispatch uses a single evaluation: epoch movement rejects the query rather than silently replacing its scope. A fresh request may admit the next epoch. Older requests cannot clear newer continuation or reference storage, and retirement cannot resurrect storage.
+
+A live read epoch is an optimistic consistency boundary, not a frozen copy of files or an MVCC snapshot. Its signals include PSI modification, root-filtered VFS batches, project/workspace-model and root-model changes, indexing cycles, project/Gradle root identity and import timestamps. Saved documents and committed PSI remain admission requirements; disposal or unavailable/indexing state rejects observation. A change may invalidate the workspace's queries even when their selected files were untouched. Epoch revisions are owner-local admission identities, not a count of edits.
+
+Successful publication proves that the observed epoch remained equal through final freshness validation. It does not freeze the workspace after that point: a later edit can invalidate delivered references and continuations. Query stages compose within one request's authority, model and scope; callers should rerun the original query after epoch movement. Existing explicit reference reacquisition can locate a current declaration, but it does not revive an old continuation or promise an old snapshot. Epoch movement returns the existing `restart_read` recovery guidance and retains any admitted execution budget. No epoch migration or background replay is introduced.
 
 Published lease and lifecycle types remain available for historical protocol contracts and tests. Their former `workspace:service` transition coordinator and `workspace:intellij` importer are retired and absent from the build. The retained topology publisher accepts complete generations but is not wired into the production plugin. See [historical publication](../flows/workspace-publication.md) and [existing-IDE reads](../flows/hosted-query.md).
 

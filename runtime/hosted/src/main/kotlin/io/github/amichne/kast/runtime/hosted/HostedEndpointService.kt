@@ -6,6 +6,8 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryResult
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
@@ -333,9 +335,12 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             completion = request.completionPolicy(),
                             replay =
                                 io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadReplayPolicy
-                                    .RETRY_MOVED_READ,
+                                    .SINGLE_EVALUATION,
                         ) { context ->
                             evaluateHostedCanonicalQuery(project, context, request, continuations)
+                                .withReadBudget(
+                                    ExecutionBudgetPresence.Present(ExecutionBudgetReport.from(context.executionBudget))
+                                )
                         }
                     },
                     wait = { awaitHostedSmartMode(project) },

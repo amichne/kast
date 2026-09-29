@@ -1,5 +1,6 @@
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause
@@ -90,7 +91,8 @@ sealed interface HostedReadRecovery {
         }
 
         @kotlinx.serialization.EncodeDefault
-        val instruction: String = "Allow the active read to finish before issuing another request to this host."
+        val instruction: String =
+            "All read slots are occupied. Allow an active read to finish before retrying this host."
     }
 
     @Serializable
@@ -144,6 +146,7 @@ internal fun HostedQueryFailure.recovery(): HostedReadRecovery =
         is HostedQueryFailure.Freshness ->
             when (val failure = cause) {
                 VfsPassiveReadAdmissionFailure.DumbMode -> HostedReadRecovery.Indexing.Required
+                VfsPassiveReadAdmissionFailure.Moved -> HostedReadRecovery.RestartRead.Required
                 is VfsPassiveReadAdmissionFailure.Unavailable ->
                     when (failure.cause) {
                         VfsPassiveReadUnavailableCause.GradleModelUnavailable,
@@ -151,6 +154,16 @@ internal fun HostedQueryFailure.recovery(): HostedReadRecovery =
                         else -> HostedReadRecovery.ReviewFailure
                     }
                 else -> HostedReadRecovery.ReviewFailure
+            }
+        is HostedQueryFailure.LiveAuthority ->
+            when (cause) {
+                LiveSemanticReadFailure.EPOCH_MOVED -> HostedReadRecovery.RestartRead.Required
+                LiveSemanticReadFailure.WRONG_ROOT,
+                LiveSemanticReadFailure.WRONG_HOST,
+                LiveSemanticReadFailure.INCOMPARABLE_EPOCH,
+                LiveSemanticReadFailure.EPOCH_EXHAUSTED,
+                LiveSemanticReadFailure.REFERENCE_VERSION_UNSUPPORTED,
+                LiveSemanticReadFailure.RETIRED -> HostedReadRecovery.ReviewFailure
             }
         HostedQueryFailure.BUDGET_EXCEEDED -> HostedReadRecovery.ReduceReadWork.Required
         HostedQueryFailure.CANCELLED -> HostedReadRecovery.Cancelled.Required

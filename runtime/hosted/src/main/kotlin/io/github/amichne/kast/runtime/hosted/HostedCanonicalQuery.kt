@@ -31,7 +31,11 @@ internal suspend fun evaluateHostedCanonicalQuery(
     request: HostedRequest.Read,
     continuations: IntellijSourceReadContinuations,
 ): HostedResponse {
-    val services = HostedSemanticServices(project, context)
+    val services =
+        when (val admitted = admitHostedSemanticServices(project, context)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
+        }
     return when (request) {
         is HostedRequest.Query -> evaluateHostedQuery(project, services, context, request, continuations)
         is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)
@@ -46,7 +50,11 @@ private suspend fun evaluateHostedQuery(
     request: HostedRequest.Query,
     continuations: IntellijSourceReadContinuations,
 ): HostedResponse {
-    val queryContinuations = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)
+    val queryContinuations =
+        when (val admitted = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
+        }
     val token = (request.request as? QueryRunRequest.Resume)?.continuation
     val outcome =
         if (token is QueryExecutionContinuation.Output) {
@@ -86,7 +94,11 @@ private suspend fun evaluateHostedDiagnostic(
     context: HostedSemanticReadContext,
     request: HostedRequest.Diagnostic,
 ): HostedResponse {
-    val retained = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)
+    val retained =
+        when (val admitted = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
+        }
     val token = request.request.continuation
     val outcome =
         if (token != null && token.value.startsWith(DIAGNOSTIC_OUTPUT_PREFIX)) {
@@ -150,3 +162,11 @@ private fun <Value> fixed(value: Refinement<Value, *>): Value =
         is Refinement.Refined -> value.value
         is Refinement.Rejected -> error("Admitted hosted limit lost its positive bound")
     }
+
+internal fun rejectedHostedEpoch(
+    failure: io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure
+): HostedResponse =
+    HostedResponse.ReadRejected(
+        io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure.LiveAuthority(failure),
+        io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryStage.CONTENT_REVALIDATION,
+    )

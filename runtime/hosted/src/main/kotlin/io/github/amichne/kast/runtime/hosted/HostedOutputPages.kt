@@ -38,6 +38,12 @@ internal class HostedOutputPages<
         val createdAt: Long,
     )
 
+    private enum class Lifetime {
+        ACTIVE,
+        RETIRED,
+    }
+
+    private var lifetime = Lifetime.ACTIVE
     private val entries = linkedMapOf<ProtocolText, Entry<Request, Result, Qualification, Rejection>>()
     private val maximumBytes = limits[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value.toLong()
     private val capacity = limits[ReadLimitParameter.QUERY_CONTINUATION_ENTRIES].value
@@ -48,6 +54,7 @@ internal class HostedOutputPages<
         lease: SemanticReadAuthority,
         outcome: OperationOutcome<Result, Qualification, Rejection>,
     ): HostedOutputRetention {
+        if (lifetime == Lifetime.RETIRED) return HostedOutputRetention.Unavailable
         expire()
         val normalized = normalize(request)
         // Bounded equality retains the first issued identity without hashing source-bearing evidence.
@@ -106,6 +113,12 @@ internal class HostedOutputPages<
     }
 
     @Synchronized fun clear() = entries.clear()
+
+    @Synchronized
+    fun retire() {
+        lifetime = Lifetime.RETIRED
+        entries.clear()
+    }
 
     private fun expire() {
         val now = clock()

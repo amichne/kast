@@ -196,6 +196,7 @@ private fun HostedOutputRetention.encodeOr(
                 is Refinement.Refined -> encode(parsed.value)
                 is Refinement.Rejected -> original
             }
+        HostedOutputRetention.Unavailable -> unavailableHostedRetention()
         HostedOutputRetention.CapacityExceeded,
         HostedOutputRetention.EncodingRejected -> original
     }

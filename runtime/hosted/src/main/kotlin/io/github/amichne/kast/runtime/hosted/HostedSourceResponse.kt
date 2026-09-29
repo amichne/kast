@@ -158,6 +158,7 @@ private fun HostedOutputRetention.encodeSource(encode: (ProtocolText) -> HostedR
     when (this) {
         is HostedOutputRetention.Retained -> encode(token)
         HostedOutputRetention.CapacityExceeded -> HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
+        HostedOutputRetention.Unavailable -> unavailableHostedRetention()
         HostedOutputRetention.EncodingRejected -> HostedResponse.Rejected(HostedEndpointFailure.RESPONSE_REJECTED)
     }
 

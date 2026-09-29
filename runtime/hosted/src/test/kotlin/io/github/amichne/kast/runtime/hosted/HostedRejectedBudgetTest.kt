@@ -32,6 +32,28 @@ import org.junit.jupiter.api.Test
 
 class HostedRejectedBudgetTest {
     @Test
+    fun `epoch ownership rejection retains its finite cause and admitted budget`() {
+        val response =
+            rejectedHostedEpoch(io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure.EPOCH_MOVED)
+                .withReadBudget(io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Present(report()))
+        val document = Json.parseToJsonElement(response.document).jsonObject
+        assertEquals("rejected", document.getValue("outcome").jsonPrimitive.content)
+        assertEquals("LIVE_AUTHORITY_REJECTED", document.getValue("failure").jsonPrimitive.content)
+        assertEquals("EPOCH_MOVED", document.getValue("detail").jsonPrimitive.content)
+        assertEquals(
+            "7",
+            document
+                .getValue("execution_budget")
+                .jsonObject
+                .getValue("max_work_units")
+                .jsonObject
+                .getValue("effective")
+                .jsonPrimitive
+                .content,
+        )
+    }
+
+    @Test
     fun `source rejection after budget admission retains finite reason and effective grant in wire envelope`() {
         val outcome = OperationOutcome.Rejected(SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
         val reported = outcome.withSourceBudget(report())

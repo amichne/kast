@@ -18,6 +18,7 @@ class ReadReliabilityConfigurationTest {
                 ReadLimitParameter.EXECUTION_MAX_RETURNED_BYTES,
                 ReadLimitParameter.HOST_ACCEPT_BACKLOG,
                 ReadLimitParameter.HOST_CONNECTIONS,
+                ReadLimitParameter.HOST_READERS,
                 ReadLimitParameter.SOURCE_CONTINUATION_BYTES,
                 ReadLimitParameter.SOURCE_CONTINUATION_TTL_MILLIS,
             )

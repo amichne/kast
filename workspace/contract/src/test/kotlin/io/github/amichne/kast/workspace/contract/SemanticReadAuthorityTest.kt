@@ -28,7 +28,7 @@ class SemanticReadAuthorityTest {
         val original = admit()
         val current = admit()
         assertSame(original, current)
-        assertSame(current, owner.restore(original.reference, freshness()).value())
+        assertSame(current, owner.restore(original.reference) { VfsPassiveReadAdmission.Admitted(freshness()) }.value())
         assertEquals(IdeReadContentView.SAVED_PSI_COMMITTED, current.reference.contentView)
         assertEquals(root, current.workspaceRoot)
     }
@@ -37,9 +37,33 @@ class SemanticReadAuthorityTest {
     fun `source movement invalidates references even when earlier signal values return`() {
         val old = admit()
         source.result = Refinement.Refined(FixtureEpochState.stable().copy(psi = 2))
-        assertEquals(LiveSemanticReadFailure.EPOCH_MOVED, owner.restore(old.reference, freshness()).failure())
+        assertEquals(
+            LiveSemanticReadFailure.EPOCH_MOVED,
+            owner.restore(old.reference) { VfsPassiveReadAdmission.Admitted(freshness()) }.failure(),
+        )
         source.result = Refinement.Refined(FixtureEpochState.stable())
-        assertEquals(LiveSemanticReadFailure.EPOCH_MOVED, owner.restore(old.reference, freshness()).failure())
+        assertEquals(
+            LiveSemanticReadFailure.EPOCH_MOVED,
+            owner.restore(old.reference) { VfsPassiveReadAdmission.Admitted(freshness()) }.failure(),
+        )
+    }
+
+    @Test
+    fun `escaped authority cannot mutate current state after movement or retirement`() {
+        val old = admit()
+        source.result = Refinement.Refined(FixtureEpochState.stable().copy(psi = 2))
+        val current = admit()
+        assertEquals(LiveSemanticReadFailure.EPOCH_MOVED, old.withCurrentOwner { error("Stale effect") }.failure())
+        assertEquals(42, current.withCurrentOwner { 42 }.value())
+        source.result = Refinement.Refined(FixtureEpochState.stable())
+        val returnedSignals = admit()
+        assertEquals(LiveSemanticReadFailure.EPOCH_MOVED, old.withCurrentOwner { error("ABA effect") }.failure())
+        assertEquals(7, returnedSignals.withCurrentOwner { 7 }.value())
+        owner.retire()
+        assertEquals(
+            LiveSemanticReadFailure.RETIRED,
+            returnedSignals.withCurrentOwner { error("Retired effect") }.failure(),
+        )
     }
 
     @Test
@@ -47,13 +71,21 @@ class SemanticReadAuthorityTest {
         val other = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace/other")).value()
         assertEquals(
             LiveSemanticReadFailure.WRONG_ROOT,
-            owner.admit(VfsPassiveReadCapability.issue(other, source.observeEpoch())).failure(),
+            owner
+                .admit {
+                    VfsPassiveReadAdmission.Admitted(VfsPassiveReadCapability.issue(other, source.observeEpoch()))
+                }
+                .failure(),
         )
         admit()
         val foreign = FixtureEpochSource(FixtureEpochState.stable())
         assertEquals(
             LiveSemanticReadFailure.INCOMPARABLE_EPOCH,
-            owner.admit(VfsPassiveReadCapability.issue(root, foreign.observeEpoch())).failure(),
+            owner
+                .admit {
+                    VfsPassiveReadAdmission.Admitted(VfsPassiveReadCapability.issue(root, foreign.observeEpoch()))
+                }
+                .failure(),
         )
     }
 
@@ -65,19 +97,28 @@ class SemanticReadAuthorityTest {
                 root,
                 IdeReadHostLifetime.fromBoundary(UUID.fromString("20000000-0000-0000-0000-000000000002")),
             )
-        assertEquals(LiveSemanticReadFailure.WRONG_HOST, restarted.restore(old, freshness()).failure())
+        assertEquals(
+            LiveSemanticReadFailure.WRONG_HOST,
+            restarted.restore(old) { VfsPassiveReadAdmission.Admitted(freshness()) }.failure(),
+        )
         val foreignRoot = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace/foreign")).value()
         assertEquals(
             LiveSemanticReadFailure.WRONG_ROOT,
-            owner.restore(old.copy(workspaceRoot = foreignRoot), freshness()).failure(),
+            owner
+                .restore(old.copy(workspaceRoot = foreignRoot)) { VfsPassiveReadAdmission.Admitted(freshness()) }
+                .failure(),
         )
         assertEquals(
             LiveSemanticReadFailure.EPOCH_MOVED,
-            owner.restore(old.copy(epoch = IdeReadEpochRevision.parse(99).value()), freshness()).failure(),
+            owner
+                .restore(old.copy(epoch = IdeReadEpochRevision.parse(99).value())) {
+                    VfsPassiveReadAdmission.Admitted(freshness())
+                }
+                .failure(),
         )
         assertEquals(
             LiveSemanticReadFailure.REFERENCE_VERSION_UNSUPPORTED,
-            owner.restore(old.copy(version = 0), freshness()).failure(),
+            owner.restore(old.copy(version = 0)) { VfsPassiveReadAdmission.Admitted(freshness()) }.failure(),
         )
     }
 
@@ -86,8 +127,14 @@ class SemanticReadAuthorityTest {
         val old = admit().reference
         owner.retire()
         owner.retire()
-        assertEquals(LiveSemanticReadFailure.RETIRED, owner.admit(freshness()).failure())
-        assertEquals(LiveSemanticReadFailure.RETIRED, owner.restore(old, freshness()).failure())
+        assertEquals(
+            LiveSemanticReadFailure.RETIRED,
+            owner.admit { VfsPassiveReadAdmission.Admitted(freshness()) }.failure(),
+        )
+        assertEquals(
+            LiveSemanticReadFailure.RETIRED,
+            owner.restore(old) { VfsPassiveReadAdmission.Admitted(freshness()) }.failure(),
+        )
     }
 
     @Test
@@ -105,7 +152,7 @@ class SemanticReadAuthorityTest {
 
     private fun freshness() = VfsPassiveReadCapability.issue(root, source.observeEpoch())
 
-    private fun admit() = owner.admit(freshness()).value()
+    private fun admit() = owner.admit { VfsPassiveReadAdmission.Admitted(freshness()) }.value()
 
     private fun <V, F> Refinement<V, F>.value(): V =
         when (this) {
@@ -113,9 +160,13 @@ class SemanticReadAuthorityTest {
             is Refinement.Rejected -> error("Expected refinement: $failure")
         }
 
-    private fun <V, F> Refinement<V, F>.failure(): F =
+    private fun <V, F> Refinement<V, F>.failure(): Any? =
         when (this) {
             is Refinement.Refined -> error("Expected rejection")
-            is Refinement.Rejected -> failure
+            is Refinement.Rejected ->
+                when (val cause = failure) {
+                    is LiveSemanticReadAdmissionFailure.Authority -> cause.cause
+                    else -> cause
+                }
         }
 }

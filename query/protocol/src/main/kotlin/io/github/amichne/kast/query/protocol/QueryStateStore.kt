@@ -45,6 +45,8 @@ sealed interface QueryResultRestoration {
 }
 
 sealed interface QueryResultIssuance {
+    data object Unavailable : QueryResultIssuance
+
     data class Issued(val reference: QueryResultReference, val rowIds: List<QueryResultRowReference>) :
         QueryResultIssuance
 
@@ -89,6 +91,12 @@ class QueryStateStore(
         }
     }
 
+    private enum class Lifetime {
+        ACTIVE,
+        RETIRED,
+    }
+
+    private var lifetime = Lifetime.ACTIVE
     private val entries = linkedMapOf<Key, Entry>()
 
     @Synchronized
@@ -97,6 +105,7 @@ class QueryStateStore(
         checkpoint: QueryCheckpoint,
         protectedResult: QueryResultReference? = null,
     ): QueryCheckpointIssuance {
+        if (lifetime == Lifetime.RETIRED) return QueryCheckpointIssuance.Unavailable
         expire()
         val normalized = request.copy(executionBudget = null)
         entries.entries
@@ -116,6 +125,7 @@ class QueryStateStore(
     /** Read-result may reuse existing progress, but cannot republish a retired producer checkpoint. */
     @Synchronized
     fun retainedCheckpoint(request: QueryRunRequest.Run, checkpoint: QueryCheckpoint): QueryCheckpointIssuance {
+        if (lifetime == Lifetime.RETIRED) return QueryCheckpointIssuance.Unavailable
         expire()
         val normalized = request.copy(executionBudget = null)
         val entry =
@@ -142,6 +152,7 @@ class QueryStateStore(
         result: QueryRetainedResult,
         protectedCheckpoint: QueryExecutionContinuation.Pipeline? = null,
     ): QueryResultIssuance {
+        if (lifetime == Lifetime.RETIRED) return QueryResultIssuance.Unavailable
         expire()
         val normalized = request.copy(executionBudget = null)
         val rowCount = result.rowCount
@@ -170,6 +181,12 @@ class QueryStateStore(
 
     @Synchronized
     fun clear() {
+        entries.clear()
+    }
+
+    @Synchronized
+    fun retire() {
+        lifetime = Lifetime.RETIRED
         entries.clear()
     }
 

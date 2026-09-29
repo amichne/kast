@@ -40,7 +40,43 @@ class HostedConnectionAdmissionTest {
     private val json = Json { encodeDefaults = true }
 
     @Test
-    fun `156 correlated reads finish with a blocked frame and serialized dispatch`() = runBlocking {
+    fun `second socket request completes while the first dispatch is still active`() = runBlocking {
+        withTimeout(10_000) {
+            fixture { listener, address ->
+                val entered = CompletableDeferred<Unit>()
+                val release = CompletableDeferred<Unit>()
+                val server =
+                    launch(Dispatchers.IO) {
+                        serveHostedListener(
+                            listener,
+                            observer(Collections.synchronizedList(mutableListOf())) {},
+                            ReadLimits.Default,
+                        ) { request ->
+                            if (request.root.value == "/workspace/first") {
+                                entered.complete(Unit)
+                                release.await()
+                            }
+                            HostedResponse.Completed(json.encodeToString(Reply(request.root.value)))
+                        }
+                    }
+                val first = async(Dispatchers.IO) { exchange(address, "/workspace/first") }
+                try {
+                    entered.await()
+                    val second = withContext(Dispatchers.IO) { exchange(address, "/workspace/second") }
+                    assertEquals(json.encodeToString(Reply("/workspace/second")), second)
+                    assertFalse(first.isCompleted)
+                    release.complete(Unit)
+                    assertEquals(json.encodeToString(Reply("/workspace/first")), first.await())
+                } finally {
+                    release.complete(Unit)
+                    server.cancelAndJoin()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `156 correlated reads finish with a blocked frame and bounded parallel dispatch`() = runBlocking {
         withTimeout(30_000) {
             fixture { listener, address ->
                 val observations = Collections.synchronizedList(mutableListOf<HostedTransportObservation>())
@@ -59,7 +95,7 @@ class HostedConnectionAdmissionTest {
                 val server =
                     launch(Dispatchers.IO) {
                         serveHostedListener(listener, observer, ReadLimits.Default) { request ->
-                            assertEquals(1, active.incrementAndGet())
+                            assertTrue(active.incrementAndGet() <= 16)
                             try {
                                 yield()
                                 calls.incrementAndGet()
@@ -134,7 +170,7 @@ class HostedConnectionAdmissionTest {
     }
 
     @Test
-    fun `disconnected dispatch drains before another request enters and listener remains healthy`() = runBlocking {
+    fun `disconnected dispatch drains while another request completes and listener remains healthy`() = runBlocking {
         withTimeout(10_000) {
             fixture { listener, address ->
                 val cancellation = CancellationFixture()
@@ -158,9 +194,10 @@ class HostedConnectionAdmissionTest {
                     cancellation.cleaning.await()
                     val next = async(Dispatchers.IO) { exchange(address, "/workspace/next") }
                     cancellation.nextQueued.await()
-                    assertFalse(cancellation.nextEntered.isCompleted)
-                    cancellation.release.complete(Unit)
                     assertEquals(json.encodeToString(Reply("/workspace/next")), next.await())
+                    assertTrue(cancellation.nextEntered.isCompleted)
+                    assertFalse(cancellation.release.isCompleted)
+                    cancellation.release.complete(Unit)
                     assertTrue(server.isActive)
                 } finally {
                     cancellation.release.complete(Unit)

@@ -33,11 +33,35 @@ class HostedQueryProbe private constructor(project: Project, binding: ProbeServi
         ),
     )
 
+    /** Native qualification observes the real K2 lifetime and cancels individual invocations. */
+    constructor(
+        project: Project,
+        nativeRead: Consumer<String>,
+        detachedRead: Consumer<String>,
+        receipt: Consumer<String>,
+    ) : this(
+        project,
+        ProbeServiceBinding.Manual(
+            object : HostedReadCheckpoint {
+                override fun duringSemanticRead() {
+                    check(ApplicationManager.getApplication().isReadAccessAllowed)
+                    nativeRead.accept("SEMANTIC_READ_ENTERED")
+                }
+
+                override suspend fun afterSemanticRead() {
+                    check(!ApplicationManager.getApplication().isReadAccessAllowed)
+                    detachedRead.accept("SEMANTIC_READ_DETACHED")
+                }
+            },
+            { limits -> HostedReadDiagnostics(System::nanoTime, limits) { receipt.accept(it.encode()) } },
+        ),
+    )
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val service =
         when (binding) {
             is ProbeServiceBinding.Manual ->
-                HostedQueryService.observed(project, scope, binding.checkpoint).also {
+                HostedQueryService.observed(project, scope, binding.checkpoint, binding.diagnostics).also {
                     Disposer.register(project, it)
                 }
             ProbeServiceBinding.Platform -> project.getService(HostedQueryService::class.java)
@@ -79,8 +103,8 @@ class HostedQueryProbe private constructor(project: Project, binding: ProbeServi
     }
 
     /** Result callback runs after read access has been released; caller owns transport and storage. */
-    fun query(canonicalRoot: String, relativeFile: String, nameOffset: Int, result: Consumer<String>) {
-        scope.launch {
+    fun query(canonicalRoot: String, relativeFile: String, nameOffset: Int, result: Consumer<String>): AutoCloseable {
+        val invocation = scope.launch {
             val path =
                 try {
                     Path.of(canonicalRoot)
@@ -112,6 +136,7 @@ class HostedQueryProbe private constructor(project: Project, binding: ProbeServi
             check(!ApplicationManager.getApplication().isReadAccessAllowed)
             result.accept(HostedQueryWire.encode(answer))
         }
+        return AutoCloseable { invocation.cancel() }
     }
 
     /** Manual acceptance controls; disposal and caller cancellation use the real original owner. */
@@ -168,7 +193,10 @@ internal fun packagedHostedCompatibility(): Refinement<HostedCompatibility, Host
 }
 
 private sealed interface ProbeServiceBinding {
-    data class Manual(val checkpoint: HostedReadCheckpoint) : ProbeServiceBinding
+    data class Manual(
+        val checkpoint: HostedReadCheckpoint,
+        val diagnostics: (io.github.amichne.kast.kernel.ReadLimits) -> HostedReadDiagnostics = ::hostedReadDiagnostics,
+    ) : ProbeServiceBinding
 
     data object Platform : ProbeServiceBinding
 }

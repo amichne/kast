@@ -7,13 +7,18 @@ import java.security.MessageDigest
 import java.util.Base64
 
 /** Detached token transport. Lookup never confers semantic authority; the canonical codec still validates it. */
+enum class QueryReferenceTransportFailure {
+    UNAVAILABLE
+}
+
 interface QueryReferenceTransport {
-    fun issue(canonical: ProtocolText): ProtocolText
+    fun issue(canonical: ProtocolText): Refinement<ProtocolText, QueryReferenceTransportFailure>
 
     fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText>
 
     data object Inline : QueryReferenceTransport {
-        override fun issue(canonical: ProtocolText): ProtocolText = canonical
+        override fun issue(canonical: ProtocolText): Refinement<ProtocolText, QueryReferenceTransportFailure> =
+            Refinement.Refined(canonical)
 
         override fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> =
             CanonicalSelectorDecoding.Decoded(token)

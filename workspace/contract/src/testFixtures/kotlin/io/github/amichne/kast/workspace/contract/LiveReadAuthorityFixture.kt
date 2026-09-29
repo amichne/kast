@@ -16,6 +16,8 @@ object LiveReadAuthorityFixture {
                 root,
                 IdeReadHostLifetime.fromBoundary(host),
             )
-        return (owner.admit(VfsPassiveReadCapability.issue(root, epoch)) as Refinement.Refined).value
+        return (owner.admit { VfsPassiveReadAdmission.Admitted(VfsPassiveReadCapability.issue(root, epoch)) }
+                as Refinement.Refined)
+            .value
     }
 }

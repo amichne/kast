@@ -43,6 +43,7 @@ internal suspend fun planHostedChange(
                     is Refinement.Refined -> planned.value
                     is Refinement.Rejected ->
                         return when (val failure = planned.failure) {
+                            is HostedChangePlanningFailure.Read -> rejectedHostedEpoch(failure.reason)
                             is HostedChangePlanningFailure.Canonical ->
                                 HostedResponse.Canonical.encode(
                                     CanonicalOperationWireBindings.changePlan,

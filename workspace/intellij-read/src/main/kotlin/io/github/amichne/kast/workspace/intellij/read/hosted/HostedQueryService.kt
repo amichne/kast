@@ -25,6 +25,7 @@ private constructor(
     private val project: Project,
     serviceScope: CoroutineScope,
     private val checkpoint: HostedReadCheckpoint,
+    diagnostics: (ReadLimits) -> HostedReadDiagnostics = ::hostedReadDiagnostics,
 ) : Disposable {
     constructor(
         project: Project,
@@ -32,11 +33,15 @@ private constructor(
     ) : this(project, serviceScope, HostedReadCheckpoint.Unobserved)
 
     internal companion object {
-        fun observed(project: Project, scope: CoroutineScope, checkpoint: HostedReadCheckpoint) =
-            HostedQueryService(project, scope, checkpoint)
+        fun observed(
+            project: Project,
+            scope: CoroutineScope,
+            checkpoint: HostedReadCheckpoint,
+            diagnostics: (ReadLimits) -> HostedReadDiagnostics = ::hostedReadDiagnostics,
+        ) = HostedQueryService(project, scope, checkpoint, diagnostics)
     }
 
-    private val executor = HostedQueryExecutor(serviceScope, diagnostics = ::hostedReadDiagnostics)
+    private val executor = HostedQueryExecutor(serviceScope, diagnostics = diagnostics)
     private val owner = Disposer.newDisposable("Kast hosted query epoch")
     val readConfiguration: Refinement<ReadLimits, ReadLimitFailure> = readHostedConfiguration()
     private val configuredSession =
@@ -168,12 +173,10 @@ private constructor(
                                 )
                         }
                     val authority =
-                        when (val current = liveAuthorities.admit(admittedEpoch.freshness)) {
+                        when (val current = freshnessOwner.admit(admitted, admittedEpoch.epoch)) {
                             is Refinement.Refined -> current.value
                             is Refinement.Rejected ->
-                                return@retryMovedHostedRead HostedSemanticRead.Rejected(
-                                    HostedQueryFailure.LiveAuthority(current.failure)
-                                )
+                                return@retryMovedHostedRead HostedSemanticRead.Rejected(current.failure)
                         }
                     progress.diagnostics?.bind(authority.reference)
                     val freshnessCheck = freshnessOwner.capture(admitted, admittedEpoch.epoch, authority)

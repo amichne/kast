@@ -91,17 +91,26 @@ internal class HostedLiveReadAuthoritySession(private val host: IdeReadHostLifet
     private var state: State = State.Unbound
 
     @Synchronized
-    fun admit(freshness: VfsPassiveReadCapability): Refinement<LiveSemanticReadAuthority, LiveSemanticReadFailure> {
+    fun admit(
+        root: CanonicalWorkspaceRoot,
+        observe: () -> VfsPassiveReadAdmission,
+    ): Refinement<LiveSemanticReadAuthority, HostedQueryFailure> {
         val bound =
             when (val current = state) {
-                State.Unbound ->
-                    State.Bound(freshness.canonicalRoot, LiveSemanticReadOwner(freshness.canonicalRoot, host)).also {
-                        state = it
-                    }
+                State.Unbound -> State.Bound(root, LiveSemanticReadOwner(root, host)).also { state = it }
                 is State.Bound -> current
-                State.Retired -> return Refinement.Rejected(LiveSemanticReadFailure.RETIRED)
+                State.Retired -> return Refinement.Rejected(HostedQueryFailure.RETIRED)
             }
-        return bound.owner.admit(freshness)
+        return when (val result = bound.owner.admit(observe)) {
+            is Refinement.Refined -> result
+            is Refinement.Rejected ->
+                Refinement.Rejected(
+                    when (val failure = result.failure) {
+                        is LiveSemanticReadAdmissionFailure.Freshness -> HostedQueryFailure.Freshness(failure.cause)
+                        is LiveSemanticReadAdmissionFailure.Authority -> HostedQueryFailure.LiveAuthority(failure.cause)
+                    }
+                )
+        }
     }
 
     @Synchronized

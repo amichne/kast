@@ -6,6 +6,8 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-25T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
     symbols: [selectCliRuntimePath]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedProjectAdmission.kt
@@ -212,16 +214,27 @@ Declaration name and containing-location queries use the admitted project's
 authored source scope. Exact references carry the owner and freshness checks
 through query and source read admission.
 
-`HostedConnectionAdmission` admits up to `HOST_CONNECTIONS` frame exchanges
-(default 16); the native accept backlog is `HOST_ACCEPT_BACKLOG` (default 64).
-One further connection may receive a bounded capacity rejection without semantic
-admission. A shared mutex retains serialization of all semantic and mutation
-operations. Queue admission reserves the configured host-query allowance and
-100 ms of connection time for publication; insufficient time returns
-`ADMISSION_DEADLINE_EXCEEDED` before dispatch. A blocked request frame therefore
-occupies one connection slot without blocking other frame reads.
+`HostedConnectionAdmission` admits up to `HOST_CONNECTIONS` concurrent frame exchanges
+and dispatches (default 16); the native accept backlog is `HOST_ACCEPT_BACKLOG`
+(default 64). One further connection may receive a bounded capacity rejection
+without semantic admission. There is no whole-request semantic mutex or semantic
+queue. A blocked frame occupies one connection slot without blocking other reads.
+`HostedQueryLifetime` independently bounds live read permits by `HOST_READERS` (default 2),
+including direct in-process callers. Each request owns its progress,
+deadline and cancellation cleanup; its permit remains occupied until its work drains.
+Cancellation of one request neither releases nor cancels another request's permit.
+Mutation application and recovery retain their coordinator's exclusive admission,
+and IDEA retains native write exclusion.
 
-This means parallel callers can overlap framing and admission but one project endpoint still executes semantic requests one at a time. `HostedQueryLifetime` also admits only one invocation; removing the transport mutex alone would turn overlap into `BUSY` rejection. The connected provider and App Server are persistent JVM processes; ordinary hosted calls use a direct Unix socket exchange and do not start a JVM per request. See the [throughput evaluation](../../docs/reviews/semantic-read-throughput.md) for the measured transport-only baseline and the semantic concurrency limit.
+Parallel readers can overlap evaluation. Epoch authority admission, store rotation,
+and endpoint retirement are short synchronized ownership transitions. Native read
+access is acquired before the authority monitor; current epoch revalidation and
+authority admission occur together after model capture. A delayed older request
+cannot replace newer reference or continuation storage. Store retirement is terminal.
+The connected provider and App Server remain persistent JVM processes; ordinary
+hosted calls use a direct Unix socket exchange and do not start a JVM per request.
+The [throughput evaluation](../../docs/reviews/semantic-read-throughput.md) records
+the historical serialized baseline. The [native concurrency qualification](../../docs/reviews/concurrent-semantic-reads.md) records the measured reader-capacity choice.
 
 `kast_transport` records a per-connection correlation ID, finite stage/outcome,
 monotonic stage duration, and observed byte counts. Stages cover accept, request
@@ -388,9 +401,10 @@ time, and both provider invocation deadlines to strictly exceed client exchange
 time. These outer boundaries retain positive IPC slack even when operators lower
 their settings; semantic/host configuration equality still uses the completion reserve.
 An indexing transition rejected before semantic evaluation may wait for smart mode
-and retry once at hosted dispatch. A canonical read whose final freshness check
-observes a moved VFS epoch discards that result and repeats within the same host
-deadline. Other post-evaluation rejections and change workflows are not replayed.
+and retry once at hosted dispatch. Once admitted, a canonical read evaluates against
+one epoch. A moved epoch rejects the result; dispatch does not replay evaluation
+against another epoch. The caller reruns the original request. Continuations and
+compact references do not migrate between epochs.
 
 Typed request decoding rejects a supplied returned-byte allowance below the wire
 owner's serialized schema/operation identity size before semantic dispatch. This is

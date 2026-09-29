@@ -56,18 +56,19 @@ internal class HostedQueryExecutor(
         completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
         computation: suspend (HostedQueryProgress) -> Value,
     ): HostedExecution<Value> {
+        val diagnostic = diagnostics(limits)?.also { it.stage(HostedQueryStage.REQUEST_ADMISSION) }
         val permit =
-            when (val admission = lifetime.begin(endpoint)) {
+            when (val admission = lifetime.begin(endpoint, limits)) {
                 is HostedQueryAdmission.Admitted -> admission.permit
                 is HostedQueryAdmission.Rejected -> {
-                    diagnostics(limits)?.finish(HostedDiagnosticOutcome.Rejected(admission.failure))
+                    diagnostic?.finish(HostedDiagnosticOutcome.Rejected(admission.failure))
                     return HostedExecution.Rejected(admission.failure)
                 }
             }
         val progress = HostedQueryProgress(limits, clock, executionBudget, publication, completion)
+        progress.observe(diagnostic)
         val operation = scope.async {
             withTimeout(limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()) {
-                progress.observe(diagnostics(limits))
                 ensureActive()
                 computation(progress)
             }
@@ -112,7 +113,7 @@ internal class HostedQueryExecutor(
                     HostedExecution.Rejected(completion.failure, progress.stage, progress.executionBudget)
             }
         // Even a service cancelled before the coroutine starts emits a terminal receipt.
-        (progress.diagnostics ?: diagnostics(limits))?.finish(
+        diagnostic?.finish(
             when (final) {
                 is HostedExecution.Rejected -> HostedDiagnosticOutcome.Rejected(final.failure)
                 is HostedExecution.Completed -> outcome(final.value)

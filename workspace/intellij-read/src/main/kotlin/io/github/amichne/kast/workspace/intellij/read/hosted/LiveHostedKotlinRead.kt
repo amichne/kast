@@ -34,6 +34,7 @@ internal fun readHostedKotlin(
     selection: HostedKotlinSelection,
     model: DetachedIdeWorkspaceModel,
     limits: ReadLimits = ReadLimits.Default,
+    checkpoint: HostedReadCheckpoint = HostedReadCheckpoint.Unobserved,
 ): HostedSemanticRead<HostedInheritorEvidence> {
     when (val saved = checkSavedDocuments(project)) {
         SavedDocuments.Clean -> Unit
@@ -92,6 +93,7 @@ internal fun readHostedKotlin(
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return@analyze rejected(result.failure)
             }
+        checkpoint.duringSemanticRead()
         ProgressManager.checkCanceled()
         when (val saved = checkSavedDocuments(project)) {
             SavedDocuments.Clean -> Unit
