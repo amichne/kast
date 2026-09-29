@@ -137,7 +137,11 @@ class IntellijExactDeclarationPhysicalPsiTest {
 
     private fun kotlinDeclarationCases(): List<Case> =
         listOf(
-            Case("authenticate", "authenticate/Functions.kt", "@Deprecated(\"fixture\")\nprivate fun authenticate() = 1"),
+            Case(
+                "authenticate",
+                "authenticate/Functions.kt",
+                "@Deprecated(\"fixture\")\nprivate fun authenticate() = 1",
+            ),
             Case("format", "format/Declarations.kt", "val format: Int = 1"),
             Case("Model", "Model/Declarations.kt", "class Model"),
             Case("Registry", "Registry/Declarations.kt", "object Registry"),

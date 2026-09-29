@@ -42,3 +42,9 @@ Defines symbol discovery and exact declaration identity, provides domain service
 
 - Use discovery to narrow candidates, then retain an exact selector through subsequent operations.
 - For ambiguity, start in contract/service admission before reading PSI or compiler adapters.
+
+## Exact declaration boundary
+
+- [IntellijPsiExactDeclarationLookup.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt) owns file-bounded declaration ancestry. `PsiNamedElement` also includes files and directories: stop before `PsiFileSystemItem`, never treat these containers as declarations, and never request their parents. Continue checking all in-file ancestors; a first match must not erase ambiguity, stale PSI, or unsupported matching declarations. File validity and scope remain admission checks in `findLive`.
+- [IntellijExactDeclarationFileBoundaryTest.kt](intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactDeclarationFileBoundaryTest.kt) proves traversal limits, retained evidence, and closed rejection behavior with strict PSI observations. [IntellijExactDeclarationPhysicalPsiTest.kt](intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactDeclarationPhysicalPsiTest.kt) exercises the production lookup with real file-backed Kotlin and Java PSI and actual containing directories. Standalone doubles or in-memory files alone cannot prove filesystem-boundary behavior.
+- Start validation with `./gradlew :symbol:intellij:test --tests '*IntellijExactDeclaration*'`, then the owning module and affected consumers. These tests establish PSI lookup behavior, not K2 identity availability or installed-host qualification; retain those separate proofs.
