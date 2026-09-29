@@ -81,16 +81,19 @@ class QueryReferenceSurfaceTest {
 
     @Test
     fun `joined binding row retains both named exact cells in the installed output schema`() {
+        val rowId = QueryResultRowReference.parse("result-row:v1:e85ea4e5-2988-4b9d-ac44-ba1616424741").refined()
         val row =
             QueryResultItemDocument.BindingRow.create(
                     QueryBindingCellDocument.Symbol(QueryBindingNameDocument.parse("left").refined(), exact()),
                     QueryBindingCellDocument.Symbol(QueryBindingNameDocument.parse("right").refined(), exact()),
                 )
                 .refined()
+                .withRowId(rowId)
         val document = project(listOf(row))
         schema.assertAdmits(CanonicalOperation.QUERY_RUN, document)
         val item = document.getValue("items").jsonArray.single().jsonObject
         assertEquals(JsonPrimitive("binding_row"), item["type"])
+        assertEquals(JsonPrimitive(rowId.value), item["row_id"])
         assertEquals(JsonPrimitive("left"), item.getValue("left").jsonObject["name"])
         assertEquals(JsonPrimitive("right"), item.getValue("right").jsonObject["name"])
         assertEquals(JsonPrimitive(exactToken), item.getValue("left").jsonObject.getValue("symbol").jsonObject["ref"])

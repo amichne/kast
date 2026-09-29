@@ -193,7 +193,7 @@ private sealed interface QueryResultItemCliDocument {
         val source: QuerySourceWindowCliDocument? = null,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
-        @ProtocolStringConstraint(pattern = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+        @ProtocolStringConstraint(pattern = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
         val rowId: String? = null,
     ) : QueryResultItemCliDocument
 
@@ -224,7 +224,7 @@ private sealed interface QueryResultItemCliDocument {
         val right: QueryBindingCellCliDocument,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
-        @ProtocolStringConstraint(pattern = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+        @ProtocolStringConstraint(pattern = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
         val rowId: String? = null,
     ) : QueryResultItemCliDocument
 }
