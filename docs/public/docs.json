@@ -29,29 +29,38 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Use Kast",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Get started",
+            "group": "Start here",
+            "pages": [
+              {
+                "group": "Get started",
+                "pages": [
+                  "start",
+                  "agent-harnesses",
+                  "troubleshooting"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Using Kast",
             "pages": [
               "index",
-              "start",
-              "agent-harnesses"
-            ]
-          },
-          {
-            "group": "Work with code",
-            "pages": [
+              "concepts/background-startup",
               "search",
               "query-pipelines",
-              "change"
+              "change",
+              "workspaces"
             ]
           },
           {
-            "group": "Workspace and support",
+            "group": "Reference",
             "pages": [
-              "workspaces",
-              "troubleshooting"
+              "reference/api",
+              "reference/responses",
+              "reference/schemas"
             ]
           }
         ]
@@ -60,9 +69,9 @@
         "tab": "How Kast works",
         "pages": [
           "concepts/architecture",
-          "concepts/evidence-boundaries",
-          "concepts/background-startup"
-        ]
+          "concepts/evidence-boundaries"
+        ],
+        "hidden": true
       },
       {
         "tab": "API / RPC",
@@ -71,10 +80,8 @@
           {
             "group": "Read the contracts",
             "pages": [
-              "reference/api",
               "reference/mcp-catalog",
               "reference/rpc-catalog",
-              "reference/responses",
               "reference/symbols",
               "reference/compatibility"
             ]
@@ -116,7 +123,8 @@
               }
             ]
           }
-        ]
+        ],
+        "hidden": true
       }
     ]
   },

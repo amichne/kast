@@ -1,44 +1,98 @@
----
-title: "API and RPC reference"
-description: "Choose the right Kast contract before reading detailed callable and result schemas."
-icon: "book-open"
----
+`query_symbols` accepts one action: run a query, resume unfinished work, or read retained rows. Start with [the walkthrough](/search) for examples; use this page to look up a shape.
 
-Kast has three agent-facing connections. They share the canonical operation
-documents, but each connection has its own outer result. Start with the
-contract for the connection you use.
+## Choose an action
 
-| Connection | Start here | Discover the installed inputs |
-| --- | --- | --- |
-| Direct MCP | [MCP contract](/reference/mcp-catalog) | `tools/list` |
-| One-shot tool RPC | [Tool RPC contract](/reference/rpc-catalog) | `kast-tool-rpc-complete catalog` |
-| Hosted Codex App Server | [Callable schemas](/api-reference/query-symbols) | Provider catalog for the conversation |
+<Tabs>
+  <Tab title="Run">
+    ```json
+    {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "QueryStepSyntax"
+        }
+      }
+    }
+    ```
 
-## Read a result
+    `source` starts the query. Optional `steps` run left to right. Omit `output` for symbols with name and location; add `retention: "RETAIN"` to keep the result for later composition.
+  </Tab>
+  <Tab title="Resume">
+    ```json
+    {"request":{"type":"RESUME","continuation":"<issued continuation>"}}
+    ```
 
-[Read a Kast result](/reference/responses) explains the outer reply and the
-canonical document together. A successful transport call can still contain a
-qualified or rejected semantic result. Preserve exact `ref` values, scope,
-coverage, and failure details when continuing a read.
+    Continue the saved execution. Do not send a new source or replacement steps.
+  </Tab>
+  <Tab title="Read retained rows">
+    ```json
+    {"request":{"type":"READ_RESULT","result":"<issued result reference>"}}
+    ```
 
-For the common workflow, start with [Find Kotlin declarations](/search), then
-[Compose a query](/query-pipelines). [Read a symbol](/reference/symbols)
-explains the fields carried by one exact compiler result.
+    Present stored symbol rows without evaluating the query again. For stored pairs, supply `output: {"type":"BINDING_ROWS"}`. A presentation cursor is not an execution continuation.
+  </Tab>
+</Tabs>
 
-## Find a callable
+Replace token placeholders with issued values. They are teaching labels, not valid references.
 
-| Callable | Use it to |
+## Start from the right input
+
+| Input | Use it when |
 | --- | --- |
-| [Query symbols](/api-reference/query-symbols) | Find declarations and compose semantic query steps. |
-| [Check diagnostics](/api-reference/check-diagnostics) | Inspect IDEA diagnostics for a path. |
-| [Add declaration](/api-reference/add-declaration) | Apply one exact-target declaration change. |
-| [Replace body](/api-reference/replace-body) | Replace one exact named function's block body. |
-| [Workspace lifecycle](/api-reference/workspace-lifecycle) | Explicitly control a hosted IDEA project. |
+| `SEARCH_DECLARATIONS` | You know a simple declaration name. Exact, case-sensitive matching is the default; fuzzy matching is explicit. |
+| `ALL_DECLARATIONS` | You need bounded enumeration in a chosen scope. It does not mean unlimited work. |
+| Containing declaration at a file offset | You have a source position and need its nearest containing named declaration, not go-to-definition. Use the exact input fields in the [schema](/reference/schemas). |
+| `SYMBOL_REFS` | A previous result already identified the symbols. Copy its references unchanged. |
+| `RESULT` | You want to reuse retained rows, optionally selecting their issued row IDs. |
 
-## Detailed schemas
+Discovery accepts a directory or package scope. Without a scope override, it searches the workspace recursively in source sets `main` and `test`. Source scope restricts discovery, not the destinations of later relationship steps.
 
-Expand **Callable schemas** in the sidebar for the hosted tool inputs and
-responses. Expand **Transport results** or **Semantic results** for their
-component schemas. The `POST /callables/...` labels organize documentation;
-Kast does not expose them as HTTP endpoints. These generated pages preserve
-the complete installed contract, including less common outcome variants.
+## Apply only the steps you need
+
+<AccordionGroup>
+  <Accordion title="Filter and remove duplicates">
+    `WHERE` filters a compiler-grounded visibility or a literal `NAME`, `KIND`, or `FILE` property. Primitive comparisons are `EQUALS`, `NOT_EQUALS`, `STARTS_WITH`, and `ENDS_WITH`.
+
+    `DISTINCT_SYMBOLS` keeps the first row for each canonical symbol identity at that position in the pipeline. It is not a deduplication by name.
+  </Accordion>
+
+  <Accordion title="Follow relationships">
+    `EXPAND_RELATION` makes one hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`.
+
+    `WALK` follows a relation to a bounded depth. Its default depth is one and its default strategy is breadth-first. Choosing bounded fan-out can leave explicit coverage limitations.
+  </Accordion>
+
+  <Accordion title="Combine result sets">
+    `CONCAT` accepts `input` containing exact references or retained symbol rows. It preserves order and multiplicity.
+
+    `UNION`, `INTERSECT`, and `DIFFERENCE` accept a retained symbol result in `right`. They compare exact semantic identity. Difference requires complete right-hand coverage to establish absence.
+
+    Steps after composition apply to the combined or selected stream. See [two inputs into one query](/query-pipelines#combine-both-inputs-then-filter-the-combined-stream).
+  </Accordion>
+
+  <Accordion title="Join and select a named symbol">
+    `JOIN` compares canonical symbol identity against a retained symbol result. `INNER` produces paired rows with distinct `leftName` and `rightName` labels; `SEMI` retains matching left symbols; `ANTI` needs complete right coverage to retain proven nonmatches.
+
+    `PROJECT_BINDING` selects one named symbol cell from each paired row before further symbol steps. There is no arbitrary-field join or general-purpose `MAP` operation.
+  </Accordion>
+</AccordionGroup>
+
+## Choose the result you need
+
+| Output | What it preserves |
+| --- | --- |
+| `SYMBOLS` | Exact identity and kind, plus selected `NAME`, `LOCATION`, `SIGNATURE`, or bounded committed `SOURCE`. |
+| `OCCURRENCES` | Individual relationship facts and repeated use sites. |
+| `TRAVERSAL_RECORDS` | Established relation facts with their hop depth. |
+| `BINDING_ROWS` | Named symbol cells from an inner join. |
+
+An omitted output selects symbols with name and location. An explicit symbol output uses a `fields` array; `[]` requests only mandatory identity and kind.
+
+## Defaults and limits
+
+You can omit execution budgets. Kast applies configured defaults and ceilings; omission is not unlimited work. Budgets do not change the requested scope or output shape.
+
+Every public tool accepts optional root-level `verbose: true` for additional execution detail. Omission or `false` keeps the compact result. Verbosity does not change the query's meaning or erase limitations.
+
+[Results](/reference/responses) explains coverage and continuation. [Schemas and samples](/reference/schemas) is the single entry point for the complete machine contracts; this guide is not a second schema authority.

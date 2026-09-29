@@ -1,54 +1,35 @@
----
-title: "Kast"
-description: "Install Kast and ask your first compiler-backed question."
-icon: "scan-search"
-keywords: ["Kotlin", "IntelliJ IDEA", "coding agents", "semantic query"]
----
+Kast lets your coding agent ask IntelliJ IDEA what Kotlin code means: which declaration a name refers to, where it is called, what implements it, and which results belong together.
 
-## Let your agent ask the project what a symbol means
+New here? [Install Kast](/start), then [connect your agent](/agent-harnesses). You ask the question; the agent selects the tool and carries exact references between calls.
 
-Kast gives coding agents a semantic view of the Kotlin Gradle project open in IntelliJ IDEA. Queries return exact symbols, source locations, relationships, and coverage from that project.
+## Find the declaration you actually mean
 
-## Try Kast
+> Use Kast to find the `parse` function in this module. Show each overload's signature and location before choosing one.
 
-1. [Install Kast](/start).
-2. Start your agent from the Kotlin repository or worktree you want Kast to inspect.
-3. Ask:
+Names are useful starting points, not unique identities. Kast returns exact references that the agent can reuse instead of resolving the same name repeatedly.
 
-> Use Kast to query declarations in this workspace. Return one exact symbol with its signature, source location, `ref`, and coverage. Explain what an empty or incomplete result proves.
+## Trace a change through the code
 
-A returned `ref` is Kast's exact symbol handle. Reuse it unchanged in later queries while Kast can validate its owning workspace and evidence. Request the `SOURCE` field when the query needs committed source context. The result also says whether the requested scope was fully covered.
+> Find this interface's implementations, then trace their callers up to two hops. Separate confirmed relationships from anything the query could not cover.
 
-## Give the model evidence it can reuse
+A relation query follows compiler-confirmed relationships. A bounded walk goes deeper. Ask for occurrences when individual call sites matter, rather than only a deduplicated list of declarations.
 
-A text match cannot establish which declaration a call refers to, whether a match is a call or a comment, or whether an empty search covered the requested scope.
+## Compare investigations without starting over
 
-### Identity stays exact
+> Keep both query results. Find the declarations present in both, then show their references. Do not match them just because their names are the same.
 
-Kast returns a symbol reference established by the IDE's semantic model. Later reads reuse it instead of guessing from a name or path.
+Retained results can feed another query. The agent can combine sets, select matching symbols, or preserve paired rows from an identity join before applying another step. [Combine query results](/query-pipelines) walks through those shapes using Kast's own source.
 
-### Facts keep their limits
+## Make a bounded source change
 
-Coverage and qualifications travel with the result. Incomplete work stays distinct from a complete empty answer.
+> Find the exact function and inspect its source. Replace only its block body with this implementation, preserving the signature. Show the verified diff or explain why the change could not be verified.
 
-### Queries compose
+Kast exposes bounded body replacement and declaration insertion. Neither is a promise that arbitrary refactoring or a whole-project build will succeed. Read [Change code](/change) before authorizing a write.
 
-Start from declarations or exact refs, then filter, expand relations, walk, combine sets, or join typed results in order.
+## Know what an answer covers
 
-## From a question to a grounded next step
+A result includes facts and their limits. A complete empty result and an unfinished empty result mean different things. Ask your agent to keep coverage and limitations in its answer, especially before claiming that nothing calls or implements something.
 
-The agent can find a declaration, carry its exact `ref` into another query, request source context, and ask where it is used. Kast keeps scope, identity, and coverage visible across those steps.
+Kast [prepares IntelliJ in the background](/concepts/background-startup) when a query needs it. Trust, import, indexing, or other readiness blockers are reported rather than disguised as successful empty searches.
 
-Find a declaration without naming a project-specific class. Follow its exact reference into a source or relationship query. Interpret coverage and qualifications before making a claim. [Try the query guide](/search), then [see how Kast checks the evidence](/concepts/architecture).
-
-<CardGroup cols={3}>
-  <Card title="Install" icon="download" href="/start">
-    Set up IDEA and connect an agent.
-  </Card>
-  <Card title="Query" icon="search" href="/search">
-    Copy prompts and inspect their results.
-  </Card>
-  <Card title="How it works" icon="workflow" href="/concepts/architecture">
-    See what makes a result reusable and when Kast rejects it.
-  </Card>
-</CardGroup>
+Start with [Find and trace code](/search). Use [Query forms](/reference/api) and [Results](/reference/responses) when you need the exact shape behind an example.
