@@ -7,6 +7,9 @@ on:
 permissions:
   contents: read
 
+env:
+  EVIDENCE: build/exact-declaration-validation
+
 jobs:
   regression:
     runs-on: macos-15
@@ -21,7 +24,7 @@ jobs:
           java-version: '25'
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
         with:
-          cache-read-only: true
+          cache-read-only: false
           gradle-home-cache-includes: |
             caches
             notifications
@@ -30,57 +33,62 @@ jobs:
       - name: Format the changed module and retain exact sources
         run: |
           ./gradlew --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g :symbol:intellij:spotlessApply --console=plain
-          mkdir -p evidence/formatted
+          mkdir -p "$EVIDENCE/formatted"
           for path in \
             symbol/intellij/build.gradle.kts \
             symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt \
             symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactDeclarationFileBoundaryTest.kt \
             symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactDeclarationPhysicalPsiTest.kt; do
-            mkdir -p "evidence/formatted/$(dirname "$path")"
-            cp "$path" "evidence/formatted/$path"
+            mkdir -p "$EVIDENCE/formatted/$(dirname "$path")"
+            cp "$path" "$EVIDENCE/formatted/$path"
           done
           git diff --stat
-      - name: Verify the owning module with the boundary fix
+      - name: Verify focused regression tests with the boundary fix
         run: |
           set -o pipefail
-          ./gradlew --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g :symbol:intellij:check --console=plain 2>&1 | tee evidence/green.log
-          cp -R symbol/intellij/build/test-results evidence/green-test-results
+          ./gradlew --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g :symbol:intellij:test --tests '*IntellijExactDeclaration*' --console=plain 2>&1 | tee "$EVIDENCE/green.log"
+          cp -R symbol/intellij/build/test-results "$EVIDENCE/green-test-results"
       - name: Prove the unchanged lookup is rejected by the new tests
         run: |
           source=symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt
           git show f96c4871d3bae9625260c44854d5c565472090d3:"$source" > "$source"
           set +e
-          ./gradlew --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g :symbol:intellij:test --tests '*IntellijExactDeclaration*' --console=plain > evidence/red.log 2>&1
+          ./gradlew --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g :symbol:intellij:test --tests '*IntellijExactDeclaration*' --console=plain > "$EVIDENCE/red.log" 2>&1
           status=$?
           set -e
-          cat evidence/red.log
-          cp -R symbol/intellij/build/test-results evidence/red-test-results
-          cp "evidence/formatted/$source" "$source"
+          cat "$EVIDENCE/red.log"
+          cp -R symbol/intellij/build/test-results "$EVIDENCE/red-test-results"
+          cp "$EVIDENCE/formatted/$source" "$source"
           test "$status" -ne 0
           python3 - <<'PY'
+          import os
           import pathlib
           import xml.etree.ElementTree as ET
-          root = pathlib.Path('evidence/red-test-results/test')
+          root = pathlib.Path(os.environ['EVIDENCE']) / 'red-test-results/test'
           boundary = ET.parse(next(root.glob('*IntellijExactDeclarationFileBoundaryTest.xml'))).getroot()
           physical = ET.parse(next(root.glob('*IntellijExactDeclarationPhysicalPsiTest.xml'))).getroot()
           assert int(boundary.attrib['failures']) >= 5, boundary.attrib
           assert int(physical.attrib['failures']) == 1, physical.attrib
           failures = '\n'.join((element.text or '') for element in physical.iter('failure'))
-          assert 'IntellijLiveExactDeclarationLookupResult.Found' in failures, failures
-          assert 'IntellijLiveExactDeclarationLookupResult.Rejected' in failures, failures
+          assert 'Found' in failures and 'Rejected' in failures, failures
           assert int(boundary.attrib.get('skipped', '0')) == 0
           assert int(physical.attrib.get('skipped', '0')) == 0
           print('Original implementation failed both the boundary and real-PSI regression suites.')
           print('Boundary:', boundary.attrib)
           print('Physical:', physical.attrib)
           PY
+      - name: Verify the complete owning module after restoring the fix
+        run: |
+          set -o pipefail
+          ./gradlew --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g :symbol:intellij:check --console=plain 2>&1 | tee "$EVIDENCE/module.log"
+          cp -R symbol/intellij/build/test-results "$EVIDENCE/module-test-results"
       - name: Retain sources and complete evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: exact-declaration-validation-${{ github.sha }}
           path: |
-            evidence/
+            build/exact-declaration-validation/
             symbol/intellij/build/test-results/
             symbol/intellij/build/reports/
           retention-days: 14

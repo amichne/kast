@@ -134,8 +134,8 @@ internal fun findExactDeclarationAncestor(
     key: IntellijExactDeclarationLookupKey,
 ): IntellijLiveExactDeclarationLookupResult {
     val matches = mutableListOf<Pair<PsiNamedElement, ExactDeclarationEvidence>>()
-    var element: PsiElement? = leaf
-    while (element != null && element !is PsiFileSystemItem) {
+    val ancestors = generateSequence(leaf) { it.parent }.takeWhile { it !is PsiFileSystemItem }
+    for (element in ancestors) {
         if (!element.isValid) {
             return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
         }
@@ -144,7 +144,6 @@ internal fun findExactDeclarationAncestor(
             val range =
                 named.textRange ?: return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
             if (range.startOffset != key.offset.value) {
-                element = element.parent
                 continue
             }
             val evidence =
@@ -162,7 +161,6 @@ internal fun findExactDeclarationAncestor(
                     return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
             }
         }
-        element = element.parent
     }
     return resolveExactDeclarationMatches(matches)
 }
