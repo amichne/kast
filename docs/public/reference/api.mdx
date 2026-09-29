@@ -1,6 +1,7 @@
 ---
 title: "Query forms"
 description: "Choose a source, apply supported steps, and select an output without reading transport internals."
+icon: "book-open"
 ---
 
 `query_symbols` accepts one action: run a query, resume unfinished work, or read retained rows. Start with [the walkthrough](/search) for examples; use this page to look up a shape.
@@ -61,13 +62,11 @@ Discovery accepts a directory or package scope. Without a scope override, it sea
 
     `DISTINCT_SYMBOLS` keeps the first row for each canonical symbol identity at that position in the pipeline. It is not a deduplication by name.
   </Accordion>
-
   <Accordion title="Follow relationships">
     `EXPAND_RELATION` makes one hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`.
 
     `WALK` follows a relation to a bounded depth. Its default depth is one and its default strategy is breadth-first. Choosing bounded fan-out can leave explicit coverage limitations.
   </Accordion>
-
   <Accordion title="Combine result sets">
     `CONCAT` accepts `input` containing exact references or retained symbol rows. It preserves order and multiplicity.
 
@@ -75,7 +74,6 @@ Discovery accepts a directory or package scope. Without a scope override, it sea
 
     Steps after composition apply to the combined or selected stream. See [two inputs into one query](/query-pipelines#combine-both-inputs-then-filter-the-combined-stream).
   </Accordion>
-
   <Accordion title="Join and select a named symbol">
     `JOIN` compares canonical symbol identity against a retained symbol result. `INNER` produces paired rows with distinct `leftName` and `rightName` labels; `SEMI` retains matching left symbols; `ANTI` needs complete right coverage to retain proven nonmatches.
 
