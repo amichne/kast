@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from enum import Enum
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,45 @@ REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 
 class CandidateError(Exception):
     pass
+
+
+class CandidateState(str, Enum):
+    REUSED = "REUSED"
+    PENDING = "PENDING"
+    MISSING = "MISSING"
+
+
+class RunStatus(str, Enum):
+    QUEUED = "queued"
+    IN_PROGRESS = "in_progress"
+    REQUESTED = "requested"
+    WAITING = "waiting"
+    PENDING = "pending"
+    COMPLETED = "completed"
+
+
+def has_pending_candidate(listing: dict, repository: str, revision: str) -> bool:
+    runs = listing.get("workflow_runs")
+    count = listing.get("total_count")
+    if (not isinstance(runs, list) or type(count) is not int or count != len(runs)
+            or any(not isinstance(run, dict) for run in runs)):
+        raise CandidateError("GitHub workflow listing was incomplete")
+    statuses = []
+    for run in runs:
+        if (any(not isinstance(run.get(field), str) for field in ("path", "event", "head_sha", "head_branch"))
+                or not isinstance(run.get("repository"), dict)
+                or not isinstance(run["repository"].get("full_name"), str)):
+            raise CandidateError("GitHub workflow identity was malformed")
+        if (run.get("path") == ".github/workflows/ci.yml"
+                and run.get("event") == "push" and run.get("head_sha") == revision
+                and run.get("head_branch") == "main"
+                and isinstance(run.get("repository"), dict)
+                and run["repository"].get("full_name") == repository):
+            try:
+                statuses.append(RunStatus(run.get("status")))
+            except ValueError as error:
+                raise CandidateError("GitHub workflow status was unsupported") from error
+    return any(status is not RunStatus.COMPLETED for status in statuses)
 
 
 def github_json(endpoint: str) -> dict:
@@ -123,7 +163,13 @@ def validate(directory: Path, version: str, revision: str) -> None:
             raise CandidateError(f"candidate SBOM archive identity does not match: {name}")
 
 
-def reuse(repository: str, version: str, revision: str, directory: Path) -> str:
+def reuse(repository: str, version: str, revision: str, directory: Path) -> CandidateState:
+    # Observe producers before artifacts: if a run finishes between observations,
+    # its artifact can be reused, or this attempt safely remains pending.
+    run_query = urlencode({"branch": "main", "event": "push", "head_sha": revision, "per_page": 100})
+    pending = has_pending_candidate(
+        github_json(f"repos/{repository}/actions/workflows/ci.yml/runs?{run_query}"), repository, revision,
+    )
     name = f"ci-release-candidate-v{version}-{revision}"
     query = urlencode({"name": name, "per_page": 100})
     listing = github_json(f"repos/{repository}/actions/artifacts?{query}")
@@ -134,7 +180,7 @@ def reuse(repository: str, version: str, revision: str, directory: Path) -> str:
         lambda run_id: github_json(f"repos/{repository}/actions/runs/{run_id}"),
     )
     if artifact is None:
-        return "MISSING"
+        return CandidateState.PENDING if pending else CandidateState.MISSING
     if artifact.get("name") != name:
         raise CandidateError("candidate artifact name does not match")
     if directory.exists() and any(directory.iterdir()):
@@ -149,7 +195,7 @@ def reuse(repository: str, version: str, revision: str, directory: Path) -> str:
     if result.returncode:
         raise CandidateError("candidate artifact download failed")
     validate(directory, version, revision)
-    return "REUSED"
+    return CandidateState.REUSED
 
 
 def main() -> None:
@@ -168,8 +214,10 @@ def main() -> None:
             output = os.environ.get("GITHUB_OUTPUT")
             if output:
                 with Path(output).open("a", encoding="utf-8") as destination:
-                    destination.write(f"candidate={state}\n")
-            print(f"release-candidate: {state}")
+                    destination.write(f"candidate={state.value}\n")
+            print(f"release-candidate: {state.value}", flush=True)
+            if state is CandidateState.PENDING:
+                raise SystemExit("release-candidate: exact-source main CI is still running; retry after it completes")
         else:
             validate(args.directory, args.version, args.source_revision)
             print("release-candidate: admitted")
