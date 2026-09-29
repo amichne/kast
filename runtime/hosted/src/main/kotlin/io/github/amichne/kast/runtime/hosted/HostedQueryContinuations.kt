@@ -28,25 +28,21 @@ internal sealed interface HostedOutputRetention {
     data object CapacityExceeded : HostedOutputRetention
 
     data object EncodingRejected : HostedOutputRetention
+
+    data object Unavailable : HostedOutputRetention
 }
 
 @Service(Service.Level.PROJECT)
 internal class HostedQueryContinuations : Disposable {
-    private var active: Active? = null
+    private val epochs = HostedEpochStore<Active>(Active::retire)
 
-    @Synchronized
-    fun forEpoch(lease: SemanticReadAuthority, limits: ReadLimits): Active {
-        val current = active
-        if (current != null && current.lease == lease) return current
-        current?.clear()
-        return Active(lease, limits).also { active = it }
-    }
+    fun forEpoch(
+        lease: io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority,
+        limits: ReadLimits,
+    ): Refinement<Active, io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure> =
+        epochs.admit(lease) { Active(lease, limits) }
 
-    @Synchronized
-    override fun dispose() {
-        active?.clear()
-        active = null
-    }
+    override fun dispose() = epochs.retire()
 
     companion object {
         const val prefix = "query-output:v1:"
@@ -112,12 +108,18 @@ internal class HostedQueryContinuations : Disposable {
                     )
             }
 
-        fun clear() {
-            outputs.clear()
-            sourceOutputs.clear()
-            queryState.clear()
+        fun retire() {
+            outputs.retire()
+            sourceOutputs.retire()
+            queryState.retire()
             diagnosticCheckpoints.retire()
-            diagnosticOutputs.clear()
+            diagnosticOutputs.retire()
         }
     }
 }
+
+internal fun unavailableHostedRetention(): HostedResponse =
+    HostedResponse.ReadRejected(
+        io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure.STALE_REQUEST,
+        io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryStage.RESULT_DETACHED,
+    )

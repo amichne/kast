@@ -111,7 +111,6 @@ private fun encodeHostedDiagnosticDocument(
         when (semantic) {
             is OperationOutcome.Complete -> OperationOutcome.Complete(remainder)
             is OperationOutcome.Qualified -> OperationOutcome.Qualified(remainder, semantic.qualification)
-            else -> return original
         }
     return when (val retained = retain(suffix.withDiagnosticBudget(null))) {
         is HostedOutputRetention.Retained -> fitting.encode(count, retained.token)
@@ -122,6 +121,7 @@ private fun encodeHostedDiagnosticDocument(
                 limits,
                 maximumBytes,
             )
+        HostedOutputRetention.Unavailable -> unavailableHostedRetention()
         HostedOutputRetention.EncodingRejected -> HostedResponse.Rejected(HostedEndpointFailure.RESPONSE_REJECTED)
     }
 }

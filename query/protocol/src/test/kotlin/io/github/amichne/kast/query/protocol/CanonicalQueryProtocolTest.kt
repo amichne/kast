@@ -60,9 +60,9 @@ class CanonicalQueryProtocolTest {
         val tokens = mutableMapOf<ProtocolText, ProtocolText>()
         val transport =
             object : QueryReferenceTransport {
-                override fun issue(canonical: ProtocolText): ProtocolText {
+                override fun issue(canonical: ProtocolText): Refinement<ProtocolText, QueryReferenceTransportFailure> {
                     tokens[handle] = canonical
-                    return handle
+                    return Refinement.Refined(handle)
                 }
 
                 override fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> =

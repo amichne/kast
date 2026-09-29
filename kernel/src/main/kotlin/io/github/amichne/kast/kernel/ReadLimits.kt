@@ -52,6 +52,7 @@ enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, va
     HOST_DESCRIPTOR_BYTES(16_384, ReadLimitUnit.BYTES, 256),
     HOST_ACCEPT_BACKLOG(DEFAULT_HOST_ACCEPT_BACKLOG, ReadLimitUnit.COUNT),
     HOST_CONNECTIONS(DEFAULT_HOST_CONNECTIONS, ReadLimitUnit.COUNT),
+    HOST_READERS(DEFAULT_HOST_READERS, ReadLimitUnit.COUNT),
     HOST_CONNECTION_MILLIS(DEFAULT_HOST_CONNECTION_MILLIS, ReadLimitUnit.MILLISECONDS),
     CLIENT_EXCHANGE_MILLIS(DEFAULT_CLIENT_EXCHANGE_MILLIS, ReadLimitUnit.MILLISECONDS),
     HOST_FILE_CHARACTERS(262_144, ReadLimitUnit.CHARACTERS),
@@ -225,6 +226,8 @@ private const val DEFAULT_DISCOVERY_FILES = 100_000
 
 private const val DEFAULT_HOST_ACCEPT_BACKLOG = 64
 private const val DEFAULT_HOST_CONNECTIONS = 16
+// Selected by the native 1/2/4/8-reader qualification; see docs/reviews/concurrent-semantic-reads.md.
+private const val DEFAULT_HOST_READERS = 2
 
 private const val DEFAULT_EXECUTION_CEILING = Int.MAX_VALUE - 1
 

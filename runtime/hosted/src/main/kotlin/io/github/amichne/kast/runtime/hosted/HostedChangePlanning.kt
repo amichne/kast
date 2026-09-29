@@ -39,7 +39,11 @@ internal suspend fun prepareHostedAddDeclaration(
     context: HostedSemanticReadContext,
     request: ChangePlanRequest,
 ): Refinement<LiveAddDeclarationChangePlan, HostedChangePlanningFailure> {
-    val services = HostedSemanticServices(project, context)
+    val services =
+        when (val admitted = admitHostedSemanticServices(project, context)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return Refinement.Rejected(HostedChangePlanningFailure.Read(admitted.failure))
+        }
     val intent =
         when (val admitted = admitAddDeclarationIntent(request)) {
             is Refinement.Refined -> admitted.value
@@ -58,13 +62,7 @@ internal suspend fun prepareHostedAddDeclaration(
         }
     val compiled =
         when (
-            val result =
-                HostedLiveAddDeclarationCompiler.compile(
-                    project = project,
-                    context = context,
-                    selector = selector,
-                    rawDeclaration = intent.declaration.value,
-                )
+            val result = HostedLiveAddDeclarationCompiler.compile(project, context, selector, intent.declaration.value)
         ) {
             is LiveAddDeclarationCompilation.Compiled -> result
             is LiveAddDeclarationCompilation.Rejected -> return canonicalRejected(ChangePlanRejection.INTENT_REJECTED)
@@ -97,7 +95,11 @@ internal suspend fun prepareHostedReplaceBody(
     val intent =
         request.intent as? ChangeIntentDocument.ReplaceBody
             ?: return canonicalRejected(ChangePlanRejection.UNSUPPORTED_HOSTED_INTENT)
-    val services = HostedSemanticServices(project, context)
+    val services =
+        when (val admitted = admitHostedSemanticServices(project, context)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return Refinement.Rejected(HostedChangePlanningFailure.Read(admitted.failure))
+        }
     val selector =
         when (val restored = restoreHostedChangeTarget(services, context, intent.exactTarget)) {
             is Refinement.Refined -> restored.value
@@ -127,6 +129,9 @@ internal suspend fun prepareHostedReplaceBody(
 }
 
 internal sealed interface HostedChangePlanningFailure {
+    data class Read(val reason: io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure) :
+        HostedChangePlanningFailure
+
     data class Canonical(val reason: ChangePlanRejection) : HostedChangePlanningFailure
 
     data class Evidence(val reason: HostedPlanningEvidenceFailure) : HostedChangePlanningFailure

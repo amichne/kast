@@ -35,9 +35,9 @@ internal suspend fun AdmittedIdeProject.prepareHostedQuery(
         checkpoint,
         { project, model ->
             when (selection) {
-                is HostedKotlinSelection -> readHostedKotlin(project, selection, model, progress.limits)
+                is HostedKotlinSelection -> readHostedKotlin(project, selection, model, progress.limits, checkpoint)
                 is HostedQualifiedClassSelection ->
-                    readHostedIndexedSupertype(project, selection, model, progress.limits)
+                    readHostedIndexedSupertype(project, selection, model, progress.limits, checkpoint)
             }
         },
         ::verifyHostedContent,

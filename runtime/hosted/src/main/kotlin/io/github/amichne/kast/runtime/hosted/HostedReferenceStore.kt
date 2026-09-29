@@ -11,46 +11,26 @@ import io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding
 import io.github.amichne.kast.query.protocol.CanonicalSelectorDecodingFailure
 import io.github.amichne.kast.query.protocol.QueryReferenceTransport
 import io.github.amichne.kast.query.protocol.compactSymbolReference
-import io.github.amichne.kast.workspace.contract.LiveSemanticReadReference
+import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
 /** Only detached token text is retained. Epoch changes discard references which can no longer restore authority. */
 @Service(Service.Level.PROJECT)
 class HostedReferenceStore : Disposable {
-    private sealed interface State {
-        data object Empty : State
+    private val epochs = HostedEpochStore<HostedReferenceTokens>(HostedReferenceTokens::retire)
 
-        class Current(val reference: LiveSemanticReadReference, val tokens: HostedReferenceTokens) : State
-
-        data object Disposed : State
-    }
-
-    private var state: State = State.Empty
-
-    @Synchronized
     fun transport(
-        reference: LiveSemanticReadReference,
+        authority: LiveSemanticReadAuthority,
         limits: ReadLimits,
         observation: IntellijReadObservation,
-    ): QueryReferenceTransport {
-        val current = state
-        if (current is State.Disposed) return QueryReferenceTransport.Inline
-        val tokens =
-            if (current is State.Current && current.reference == reference) current.tokens
-            else {
-                if (current is State.Current) current.tokens.clear()
-                HostedReferenceTokens(limits).also { state = State.Current(reference, it) }
-            }
-        return tokens.transport(observation)
-    }
+    ): Refinement<QueryReferenceTransport, io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure> =
+        when (val admitted = epochs.admit(authority) { HostedReferenceTokens(limits) }) {
+            is Refinement.Refined -> Refinement.Refined(admitted.value.transport(observation))
+            is Refinement.Rejected -> admitted
+        }
 
-    @Synchronized
-    override fun dispose() {
-        val current = state
-        if (current is State.Current) current.tokens.clear()
-        state = State.Disposed
-    }
+    override fun dispose() = epochs.retire()
 }
 
 /** Capacity selects a valid representation; it never evicts a handle from the current epoch. */
@@ -58,16 +38,24 @@ internal class HostedReferenceTokens(
     private val limits: ReadLimits,
     private val handleOf: (ProtocolText) -> HostedSymbolHandle = ::compactSymbolReference,
 ) {
+    private enum class Lifetime {
+        ACTIVE,
+        RETIRED,
+    }
+
+    private var lifetime = Lifetime.ACTIVE
     private val entries = mutableMapOf<HostedSymbolHandle, ProtocolText>()
     private var retainedBytes = 0L
 
     fun transport(observation: IntellijReadObservation = IntellijReadObservation.None): QueryReferenceTransport =
         object : QueryReferenceTransport {
-            override fun issue(canonical: ProtocolText): ProtocolText =
+            override fun issue(
+                canonical: ProtocolText
+            ): Refinement<ProtocolText, io.github.amichne.kast.query.protocol.QueryReferenceTransportFailure> =
                 when (val issued = retain(canonical)) {
                     is HostedReferenceRepresentation.Handle -> {
                         observation.count(IntellijReadCounter.REFERENCE_HANDLES_ISSUED)
-                        issued.value.token
+                        Refinement.Refined(issued.value.token)
                     }
                     is HostedReferenceRepresentation.Inline -> {
                         observation.count(
@@ -76,8 +64,12 @@ internal class HostedReferenceTokens(
                                 HostedReferenceInlineReason.COLLISION -> IntellijReadCounter.REFERENCE_INLINE_COLLISION
                             }
                         )
-                        issued.value
+                        Refinement.Refined(issued.value)
                     }
+                    HostedReferenceRepresentation.Unavailable ->
+                        Refinement.Rejected(
+                            io.github.amichne.kast.query.protocol.QueryReferenceTransportFailure.UNAVAILABLE
+                        )
                 }
 
             override fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> {
@@ -96,6 +88,7 @@ internal class HostedReferenceTokens(
 
     @Synchronized
     private fun retain(canonical: ProtocolText): HostedReferenceRepresentation {
+        if (lifetime == Lifetime.RETIRED) return HostedReferenceRepresentation.Unavailable
         val handle = handleOf(canonical)
         val text = handle.token
         if (entries[handle] == canonical) return HostedReferenceRepresentation.Handle(handle)
@@ -116,6 +109,8 @@ internal class HostedReferenceTokens(
 
     @Synchronized
     private fun lookup(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> {
+        if (lifetime == Lifetime.RETIRED)
+            return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNAVAILABLE)
         if (!token.isHostedReference()) return CanonicalSelectorDecoding.Decoded(token)
         val handle =
             when (val parsed = HostedSymbolHandle.parse(token)) {
@@ -128,13 +123,16 @@ internal class HostedReferenceTokens(
     }
 
     @Synchronized
-    fun clear() {
+    fun retire() {
+        lifetime = Lifetime.RETIRED
         entries.clear()
         retainedBytes = 0
     }
 }
 
 private sealed interface HostedReferenceRepresentation {
+    data object Unavailable : HostedReferenceRepresentation
+
     data class Handle(val value: HostedSymbolHandle) : HostedReferenceRepresentation
 
     data class Inline(val value: ProtocolText, val reason: HostedReferenceInlineReason) : HostedReferenceRepresentation

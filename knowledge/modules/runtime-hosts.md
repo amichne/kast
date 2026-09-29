@@ -152,7 +152,7 @@ stale authority. See the
 [hosted retention bounds](../flows/hosted-query.md#hosted-continuation-retention-bounds)
 for aggregate accounting and the separate native source owner.
 
-Connection admission remains bounded independently of serialized semantic work.
+Connection admission bounds parallel semantic dispatch; each hosted read independently owns a bounded lifetime permit. Epoch ownership transitions and mutation application retain their narrower synchronization.
 `CONNECTION_RELEASE` is emitted after the admitted connection's semaphore permit
 is released, so native fault fixtures can wait for a correlated drain witness
 before the next health request. The structured observer retains finite outcomes,

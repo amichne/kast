@@ -12,11 +12,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.withTimeoutOrNull
 
-/** Frame I/O is concurrent and bounded; all semantic and mutation dispatch remains serialized. */
+/** Connections bound concurrent dispatch; mutation owners retain their own write admission. */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal suspend fun serveHostedListener(
     listener: ServerSocketChannel,
@@ -25,7 +23,6 @@ internal suspend fun serveHostedListener(
     dispatch: suspend (HostedRequest) -> HostedResponse,
 ) = coroutineScope {
     val connections = Semaphore(limits[ReadLimitParameter.HOST_CONNECTIONS].value)
-    val semantic = Mutex()
     while (isActive) {
         val trace = HostedTransportTrace(observer)
         trace.enter(HostedTransportStage.ACCEPT)
@@ -43,7 +40,7 @@ internal suspend fun serveHostedListener(
             launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) {
                 try {
                     client.use {
-                        serveAdmittedHostedConnection(it, observer, trace, limits, semantic, dispatch)
+                        serveAdmittedHostedConnection(it, observer, trace, limits, dispatch)
                     }
                 } finally {
                     connections.release()
@@ -78,16 +75,14 @@ private suspend fun serveAdmittedHostedConnection(
     observer: HostedEndpointObserver,
     trace: HostedTransportTrace,
     limits: ReadLimits,
-    semantic: Mutex,
     dispatch: suspend (HostedRequest) -> HostedResponse,
 ) {
-    val acceptedAt = System.nanoTime()
     serveHostedConnection(Channels.newInputStream(client), Channels.newOutputStream(client), observer, limits, trace) {
         request ->
         when (
             val result =
                 dispatchUntilPeerTermination(client::awaitHostedPeerTermination) {
-                    semantic.dispatchHosted(request, trace, limits, acceptedAt, dispatch)
+                    dispatchHosted(request, trace, dispatch)
                 }
         ) {
             is HostedPeerDispatch.Completed -> result.response
@@ -113,48 +108,13 @@ private fun io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluati
             HostedEndpointOutcome.REJECTED
     }
 
-private enum class HostedSemanticAdmission {
-    ADMITTED,
-    DEADLINE_EXCEEDED,
-}
-
-private suspend fun Mutex.dispatchHosted(
+private suspend fun dispatchHosted(
     request: HostedRequest,
     trace: HostedTransportTrace,
-    limits: ReadLimits,
-    acceptedAt: Long,
     dispatch: suspend (HostedRequest) -> HostedResponse,
 ): HostedResponse {
     trace.enter(HostedTransportStage.SEMANTIC_ADMISSION)
-    val elapsedMillis = (System.nanoTime() - acceptedAt) / 1_000_000
-    val queueMillis =
-        limits[ReadLimitParameter.HOST_CONNECTION_MILLIS].value.toLong() -
-            limits[ReadLimitParameter.HOST_QUERY_MILLIS].value -
-            elapsedMillis -
-            100
-    val ownership = Any()
-    return try {
-        val admission =
-            withTimeoutOrNull(queueMillis) {
-                lock(ownership)
-                HostedSemanticAdmission.ADMITTED
-            } ?: HostedSemanticAdmission.DEADLINE_EXCEEDED
-        when (admission) {
-            HostedSemanticAdmission.DEADLINE_EXCEEDED -> {
-                trace.emit(
-                    HostedEndpointOutcome.REJECTED,
-                    failure = HostedEndpointFailure.ADMISSION_DEADLINE_EXCEEDED,
-                )
-                HostedResponse.Rejected(HostedEndpointFailure.ADMISSION_DEADLINE_EXCEEDED)
-            }
-            HostedSemanticAdmission.ADMITTED -> {
-                trace.emit(HostedEndpointOutcome.COMPLETED)
-                trace.enter(HostedTransportStage.EXECUTION)
-                dispatch(request).also { trace.emit(it.outcome.transportOutcome()) }
-            }
-        }
-    } finally {
-        // Includes cancellation racing with successful lock acquisition and timeout delivery.
-        if (holdsLock(ownership)) unlock(ownership)
-    }
+    trace.emit(HostedEndpointOutcome.COMPLETED)
+    trace.enter(HostedTransportStage.EXECUTION)
+    return dispatch(request).also { trace.emit(it.outcome.transportOutcome()) }
 }

@@ -102,8 +102,10 @@ combined retained-state ceiling is twice the configured per-store byte bound.
 These keys are declared in the installation catalogue and generated snapshot.
 
 `HOST_ACCEPT_BACKLOG` (64) bounds native pending connections;
-`HOST_CONNECTIONS` (16) bounds concurrently served frames. Semantic work remains
-serialized. Saturation returns a finite admission rejection when a connection
+`HOST_CONNECTIONS` (16) bounds concurrently served frames; `HOST_READERS` (2)
+separately bounds overlapping semantic invocations until computation drains.
+The [native qualification](../../docs/reviews/concurrent-semantic-reads.md) motivates the reader default.
+Saturation returns a finite admission rejection when a connection
 has reached the application; the OS backlog is a separate finite capacity.
 
 The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. Explicit opening revalidates product metadata and the executable, allowing any supported `262.*` patch update. Inspection and installation never launch IDEA.

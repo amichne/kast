@@ -247,6 +247,8 @@ internal class QueryOutcomeProjection(
                 ?: when (issuance) {
                     null -> QueryResultRetention.NotRequested
                     is QueryResultIssuance.Issued -> QueryResultRetention.Retained(issuance.reference)
+                    QueryResultIssuance.Unavailable ->
+                        return Refinement.Rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
                     QueryResultIssuance.CapacityExceeded -> QueryResultRetention.CapacityExceeded
                 }
         val rowIds = presentedRowIds ?: (issuance as? QueryResultIssuance.Issued)?.rowIds

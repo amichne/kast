@@ -67,14 +67,29 @@ class LiveSemanticReadAuthority
 private constructor(
     val reference: LiveSemanticReadReference,
     val admittedEpoch: ProjectReadEpoch<*>,
+    private val owner: LiveSemanticReadOwner,
 ) : SemanticReadAuthority {
     override val workspaceRoot: CanonicalWorkspaceRoot
         get() = reference.workspaceRoot
 
+    /** Short detached-state transitions only; never run semantic work or acquire native access in this callback. */
+    fun <Value> withCurrentOwner(action: () -> Value): Refinement<Value, LiveSemanticReadFailure> =
+        owner.withCurrent(this, action)
+
+    fun requireSameOwner(other: LiveSemanticReadAuthority): Refinement<Unit, LiveSemanticReadFailure> =
+        when {
+            workspaceRoot != other.workspaceRoot -> Refinement.Rejected(LiveSemanticReadFailure.WRONG_ROOT)
+            owner !== other.owner -> Refinement.Rejected(LiveSemanticReadFailure.WRONG_HOST)
+            else -> Refinement.Refined(Unit)
+        }
+
     internal companion object {
         @JvmSynthetic
-        internal fun issue(reference: LiveSemanticReadReference, epoch: ProjectReadEpoch<*>) =
-            LiveSemanticReadAuthority(reference, epoch)
+        internal fun issue(
+            reference: LiveSemanticReadReference,
+            epoch: ProjectReadEpoch<*>,
+            owner: LiveSemanticReadOwner,
+        ) = LiveSemanticReadAuthority(reference, epoch, owner)
     }
 }
 
@@ -86,6 +101,12 @@ enum class LiveSemanticReadFailure {
     EPOCH_EXHAUSTED,
     REFERENCE_VERSION_UNSUPPORTED,
     RETIRED,
+}
+
+internal sealed interface LiveSemanticReadAdmissionFailure {
+    data class Freshness(val cause: VfsPassiveReadAdmissionFailure) : LiveSemanticReadAdmissionFailure
+
+    data class Authority(val cause: LiveSemanticReadFailure) : LiveSemanticReadAdmissionFailure
 }
 
 /**
@@ -107,10 +128,27 @@ internal class LiveSemanticReadOwner(
 
     private var state: State = State.Unobserved
 
-    /** Freshness must have just been established by this admitted project's epoch source. */
+    /** Native access must precede this monitor; freshly observe inside the same ownership transition. */
     @Synchronized
     @JvmSynthetic
     internal fun admit(
+        observe: () -> VfsPassiveReadAdmission
+    ): Refinement<LiveSemanticReadAuthority, LiveSemanticReadAdmissionFailure> {
+        if (state == State.Retired)
+            return Refinement.Rejected(LiveSemanticReadAdmissionFailure.Authority(LiveSemanticReadFailure.RETIRED))
+        val freshness =
+            when (val observed = observe()) {
+                is VfsPassiveReadAdmission.Admitted -> observed.capability
+                is VfsPassiveReadAdmission.Rejected ->
+                    return Refinement.Rejected(LiveSemanticReadAdmissionFailure.Freshness(observed.failure))
+            }
+        return when (val admitted = admitFresh(freshness)) {
+            is Refinement.Refined -> admitted
+            is Refinement.Rejected -> Refinement.Rejected(LiveSemanticReadAdmissionFailure.Authority(admitted.failure))
+        }
+    }
+
+    private fun admitFresh(
         freshness: VfsPassiveReadCapability
     ): Refinement<LiveSemanticReadAuthority, LiveSemanticReadFailure> {
         if (state == State.Retired) return rejected(LiveSemanticReadFailure.RETIRED)
@@ -149,6 +187,7 @@ internal class LiveSemanticReadOwner(
                     LiveSemanticReadReference.VERSION,
                 ),
                 freshness.admittedEpoch,
+                this,
             )
         state = State.Current(authority)
         return Refinement.Refined(authority)
@@ -159,22 +198,37 @@ internal class LiveSemanticReadOwner(
     @JvmSynthetic
     internal fun restore(
         reference: LiveSemanticReadReference,
-        freshness: VfsPassiveReadCapability,
-    ): Refinement<LiveSemanticReadAuthority, LiveSemanticReadFailure> {
+        observe: () -> VfsPassiveReadAdmission,
+    ): Refinement<LiveSemanticReadAuthority, LiveSemanticReadAdmissionFailure> {
         val current =
-            when (val admitted = admit(freshness)) {
+            when (val admitted = admit(observe)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
-        return when {
-            reference.version != LiveSemanticReadReference.VERSION ->
-                rejected(LiveSemanticReadFailure.REFERENCE_VERSION_UNSUPPORTED)
-            reference.workspaceRoot != root -> rejected(LiveSemanticReadFailure.WRONG_ROOT)
-            reference.host != host -> rejected(LiveSemanticReadFailure.WRONG_HOST)
-            reference.epoch != current.reference.epoch -> rejected(LiveSemanticReadFailure.EPOCH_MOVED)
-            else -> Refinement.Refined(current)
-        }
+        val failure =
+            when {
+                reference.version != LiveSemanticReadReference.VERSION ->
+                    LiveSemanticReadFailure.REFERENCE_VERSION_UNSUPPORTED
+                reference.workspaceRoot != root -> LiveSemanticReadFailure.WRONG_ROOT
+                reference.host != host -> LiveSemanticReadFailure.WRONG_HOST
+                reference != current.reference -> LiveSemanticReadFailure.EPOCH_MOVED
+                else -> return Refinement.Refined(current)
+            }
+        return Refinement.Rejected(LiveSemanticReadAdmissionFailure.Authority(failure))
     }
+
+    @Synchronized
+    internal fun <Value> withCurrent(
+        authority: LiveSemanticReadAuthority,
+        action: () -> Value,
+    ): Refinement<Value, LiveSemanticReadFailure> =
+        when (val current = state) {
+            State.Retired -> Refinement.Rejected(LiveSemanticReadFailure.RETIRED)
+            State.Unobserved -> Refinement.Rejected(LiveSemanticReadFailure.EPOCH_MOVED)
+            is State.Current ->
+                if (current.authority !== authority) Refinement.Rejected(LiveSemanticReadFailure.EPOCH_MOVED)
+                else Refinement.Refined(action())
+        }
 
     @Synchronized
     @JvmSynthetic

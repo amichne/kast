@@ -13,7 +13,9 @@ class MovingLiveReadAuthorityFixture(private val root: CanonicalWorkspaceRoot) {
 
     fun admit(): LiveSemanticReadAuthority {
         val epoch = (source.observe() as ProjectReadEpochObservation.Observed).epoch
-        return (owner.admit(VfsPassiveReadCapability.issue(root, epoch)) as Refinement.Refined).value
+        return (owner.admit { VfsPassiveReadAdmission.Admitted(VfsPassiveReadCapability.issue(root, epoch)) }
+                as Refinement.Refined)
+            .value
     }
 
     fun advance(): LiveSemanticReadAuthority {

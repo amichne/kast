@@ -21,7 +21,11 @@ import io.github.amichne.kast.workspace.contract.SemanticReadValidation
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
 
 /** Ports share one request's admitted authority, model, scope, policy and observation. Never retained across reads. */
-internal class HostedSemanticServices(private val project: Project, private val context: HostedSemanticReadContext) {
+internal class HostedSemanticServices(
+    private val project: Project,
+    private val context: HostedSemanticReadContext,
+    transport: io.github.amichne.kast.query.protocol.QueryReferenceTransport,
+) {
     val budgets = HostedSemanticBudgets(context.limits, context.executionBudget)
     private val capture =
         io.github.amichne.kast.symbol.intellij.IntellijExactRevalidationCapture(
@@ -72,9 +76,7 @@ internal class HostedSemanticServices(private val project: Project, private val 
     val references =
         CanonicalQueryReferences(
             context.model,
-            project
-                .getService(HostedReferenceStore::class.java)
-                .transport(context.authority.reference, context.limits, context.observation),
+            transport,
             exactIssued = { selector, token, canonical ->
                 val retained =
                     when (val locator = capture.locator(selector)) {
@@ -201,3 +203,17 @@ internal class HostedSemanticServices(private val project: Project, private val 
         )
     }
 }
+
+internal fun admitHostedSemanticServices(
+    project: Project,
+    context: HostedSemanticReadContext,
+): Refinement<HostedSemanticServices, io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure> =
+    when (
+        val admitted =
+            project
+                .getService(HostedReferenceStore::class.java)
+                .transport(context.authority, context.limits, context.observation)
+    ) {
+        is Refinement.Refined -> Refinement.Refined(HostedSemanticServices(project, context, admitted.value))
+        is Refinement.Rejected -> admitted
+    }

@@ -42,6 +42,8 @@ private val containmentFailures =
         HostedQueryFailure.STALE_REQUEST,
         HostedQueryFailure.Platform(HostedPlatformFailureCause.RUNTIME),
         HostedQueryFailure.Platform(HostedPlatformFailureCause.LINKAGE),
+        HostedQueryFailure.Freshness(VfsPassiveReadAdmissionFailure.Moved),
+        HostedQueryFailure.LiveAuthority(io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure.EPOCH_MOVED),
         HostedQueryFailure.Freshness(
             VfsPassiveReadAdmissionFailure.Unavailable(VfsPassiveReadUnavailableCause.GradleModelUnavailable)
         ),

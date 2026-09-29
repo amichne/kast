@@ -17,7 +17,11 @@ internal suspend fun evaluateHostedSource(
     request: HostedRequest.Source,
     continuations: IntellijSourceReadContinuations,
 ): HostedResponse {
-    val outputs = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits).sourceOutputs
+    val outputs =
+        when (val admitted = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value.sourceOutputs
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
+        }
     val page = request.request.page
     val outcome =
         if (page is SourceReadPageDocument.Continue && page.continuation.value.startsWith(SOURCE_OUTPUT_PREFIX)) {

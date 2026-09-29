@@ -17,6 +17,17 @@ internal class HostedReadFreshnessOwner(
     private val owner: Disposable,
     private val liveAuthorities: HostedLiveReadAuthoritySession,
 ) {
+    suspend fun admit(
+        admitted: AdmittedIdeProject,
+        epoch: ProjectReadEpoch<*>,
+    ): Refinement<LiveSemanticReadAuthority, HostedQueryFailure> = readAction {
+        when (val saved = checkSavedDocuments(project)) {
+            is SavedDocuments.Rejected -> return@readAction Refinement.Rejected(saved.failure)
+            SavedDocuments.Clean -> Unit
+        }
+        liveAuthorities.admit(admitted.canonicalRoot) { admitted.admitVfsPassiveRead(epoch) }
+    }
+
     fun capture(
         admitted: AdmittedIdeProject,
         epoch: ProjectReadEpoch<*>,
@@ -57,17 +68,13 @@ internal class HostedReadFreshnessOwner(
             is SavedDocuments.Rejected -> return Refinement.Rejected(saved.failure)
             SavedDocuments.Clean -> Unit
         }
-        val current =
-            when (val checked = admitted.admitPreWriteState(epoch)) {
-                is VfsPassiveReadAdmission.Admitted -> checked.capability
-                is VfsPassiveReadAdmission.Rejected ->
-                    return Refinement.Rejected(HostedQueryFailure.Freshness(checked.failure))
-            }
-        return when (val observed = liveAuthorities.admit(current)) {
+        return when (
+            val observed = liveAuthorities.admit(admitted.canonicalRoot) { admitted.admitPreWriteState(epoch) }
+        ) {
             is Refinement.Refined ->
                 if (observed.value.reference == authority.reference) Refinement.Refined(Unit)
                 else Refinement.Rejected(HostedQueryFailure.STALE_REQUEST)
-            is Refinement.Rejected -> Refinement.Rejected(HostedQueryFailure.LiveAuthority(observed.failure))
+            is Refinement.Rejected -> observed
         }
     }
 }

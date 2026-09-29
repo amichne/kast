@@ -15,6 +15,7 @@ internal fun readHostedIndexedSupertype(
     selection: HostedQualifiedClassSelection,
     model: DetachedIdeWorkspaceModel,
     limits: ReadLimits = ReadLimits.Default,
+    checkpoint: HostedReadCheckpoint = HostedReadCheckpoint.Unobserved,
 ): HostedSemanticRead<HostedInheritorEvidence> {
     when (val saved = checkSavedDocuments(project)) {
         SavedDocuments.Clean -> Unit
@@ -59,7 +60,7 @@ internal fun readHostedIndexedSupertype(
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return HostedSemanticRead.Rejected(result.failure)
         }
-    return when (val result = readHostedKotlin(project, located, model, limits = limits)) {
+    return when (val result = readHostedKotlin(project, located, model, limits = limits, checkpoint = checkpoint)) {
         is HostedSemanticRead.Rejected -> result
         is HostedSemanticRead.Resolved ->
             when (val verified = selection.verify(result.evidence.inheritor.symbol.signature)) {

@@ -153,7 +153,12 @@ private suspend fun completeHostedReplaceBodyApplication(
                                     context,
                                     plan,
                                     write.content,
-                                    HostedSemanticServices(project, context).diagnostics,
+                                    HostedSemanticServices(
+                                            project,
+                                            context,
+                                            io.github.amichne.kast.query.protocol.QueryReferenceTransport.Inline,
+                                        )
+                                        .diagnostics,
                                 )
                             }
                         },
@@ -232,7 +237,8 @@ private fun verificationPorts(
     project: Project,
     context: HostedSemanticReadContext,
 ): LiveAddDeclarationVerificationPorts {
-    val services = HostedSemanticServices(project, context)
+    val services =
+        HostedSemanticServices(project, context, io.github.amichne.kast.query.protocol.QueryReferenceTransport.Inline)
     return LiveAddDeclarationVerificationPorts(
         services.relations,
         traversalOperations(services.relations),

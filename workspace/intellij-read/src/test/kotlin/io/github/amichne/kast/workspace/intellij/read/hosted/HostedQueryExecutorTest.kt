@@ -18,6 +18,58 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryExecutorTest {
     @Test
+    fun `two readers overlap at configured capacity and cancellation owns only one slot`() = runTest {
+        val limits =
+            (io.github.amichne.kast.kernel.ReadLimits.resolve(mapOf("KAST_READ_HOST_READERS" to "2"))
+                    as io.github.amichne.kast.kernel.Refinement.Refined)
+                .value
+        val executor = HostedQueryExecutor(backgroundScope)
+        val firstEntered = CompletableDeferred<HostedQueryProgress>()
+        val secondEntered = CompletableDeferred<HostedQueryProgress>()
+        val firstCleanup = CompletableDeferred<Unit>()
+        val secondRelease = CompletableDeferred<Unit>()
+        val first = async {
+            executor.execute(executor.endpoint, limits) { progress ->
+                firstEntered.complete(progress)
+                try {
+                    awaitCancellation()
+                } finally {
+                    withContext(NonCancellable) { firstCleanup.await() }
+                }
+            }
+        }
+        val second = async {
+            executor.execute(executor.endpoint, limits) { progress ->
+                secondEntered.complete(progress)
+                secondRelease.await()
+                42
+            }
+        }
+        try {
+            runCurrent()
+            assertTrue(firstEntered.isCompleted)
+            assertTrue(secondEntered.isCompleted)
+            assertNotSame(firstEntered.await(), secondEntered.await())
+            assertCapacityOccupied(executor, limits)
+            first.cancel()
+            runCurrent()
+            assertFalse(first.isCompleted)
+            assertCapacityOccupied(executor, limits)
+            firstCleanup.complete(Unit)
+            first.join()
+            assertFalse(second.isCompleted)
+            assertEquals(HostedExecution.Completed(7), executor.execute(executor.endpoint, limits) { 7 })
+            secondRelease.complete(Unit)
+            assertEquals(HostedExecution.Completed(42), second.await())
+        } finally {
+            firstCleanup.complete(Unit)
+            secondRelease.complete(Unit)
+            executor.retire()
+            executor.drain()
+        }
+    }
+
+    @Test
     fun `equal configured deadlines shrink semantic time after capture and retain qualified publication`() = runTest {
         lateinit var admittedReport: ExecutionBudgetReport
         val limits =
@@ -131,7 +183,7 @@ class HostedQueryExecutorTest {
     }
 
     @Test
-    fun `deadline cancels work and drains its finally before admitting the next request`() = runTest {
+    fun `deadline drains only its own work while another reader completes`() = runTest {
         val executor = HostedQueryExecutor(backgroundScope)
         val cleanup = CompletableDeferred<Unit>()
         val first = async {
@@ -147,8 +199,11 @@ class HostedQueryExecutorTest {
         advanceTimeBy(HOSTED_QUERY_BUDGET_MILLIS)
         runCurrent()
         assertFalse(first.isCompleted)
-        assertEquals(HostedExecution.Rejected(HostedQueryFailure.BUSY), executor.execute(executor.endpoint) { 1 })
-        cleanup.complete(Unit)
+        try {
+            assertEquals(HostedExecution.Completed(1), executor.execute(executor.endpoint) { 1 })
+        } finally {
+            cleanup.complete(Unit)
+        }
         runCurrent()
         assertEquals(HostedExecution.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), first.await())
         assertEquals(HostedExecution.Completed(2), executor.execute(executor.endpoint) { 2 })
@@ -157,29 +212,44 @@ class HostedQueryExecutorTest {
     }
 
     @Test
-    fun `retirement invalidates an in-flight detached result and waits for owned cleanup`() = runTest {
+    fun `retirement drains every admitted read and rejects their late publication`() = runTest {
         val executor = HostedQueryExecutor(backgroundScope)
-        val cleanup = CompletableDeferred<Unit>()
-        val work = async {
-            executor.execute(executor.endpoint) { progress ->
-                progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
-                withContext(NonCancellable) { cleanup.await() }
-                42
+        val cleanup = List(2) { CompletableDeferred<Unit>() }
+        val work = cleanup.map { gate ->
+            async {
+                executor.execute(executor.endpoint) { progress ->
+                    progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
+                    withContext(NonCancellable) { gate.await() }
+                    42
+                }
             }
         }
-        runCurrent()
-        executor.retire()
-        val retired = async { executor.drain() }
-        runCurrent()
-        assertFalse(retired.isCompleted)
-        cleanup.complete(Unit)
-        runCurrent()
-        assertEquals(
-            HostedExecution.Rejected(HostedQueryFailure.RETIRED, HostedQueryStage.CONTENT_REVALIDATION),
-            work.await(),
-        )
-        retired.await()
-        assertEquals(HostedExecution.Rejected(HostedQueryFailure.RETIRED), executor.execute(executor.endpoint) { 1 })
+        try {
+            runCurrent()
+            executor.retire()
+            val retired = async { executor.drain() }
+            runCurrent()
+            assertFalse(retired.isCompleted)
+            cleanup.first().complete(Unit)
+            runCurrent()
+            assertFalse(retired.isCompleted, "The second invocation still owns its computation")
+            cleanup.last().complete(Unit)
+            work.forEach {
+                assertEquals(
+                    HostedExecution.Rejected(HostedQueryFailure.RETIRED, HostedQueryStage.CONTENT_REVALIDATION),
+                    it.await(),
+                )
+            }
+            retired.await()
+            assertEquals(
+                HostedExecution.Rejected(HostedQueryFailure.RETIRED),
+                executor.execute(executor.endpoint) { 1 },
+            )
+        } finally {
+            cleanup.forEach { it.complete(Unit) }
+            executor.retire()
+            executor.drain()
+        }
     }
 
     @Test
@@ -199,12 +269,27 @@ class HostedQueryExecutorTest {
         runCurrent()
         first.cancel()
         runCurrent()
-        assertEquals(HostedExecution.Rejected(HostedQueryFailure.BUSY), executor.execute(executor.endpoint) { 2 })
-        cleanup.complete(Unit)
+        try {
+            assertFalse(first.isCompleted)
+            assertEquals(HostedExecution.Completed(2), executor.execute(executor.endpoint) { 2 })
+            assertFalse(first.isCompleted)
+        } finally {
+            cleanup.complete(Unit)
+        }
         runCurrent()
         first.join()
         assertEquals(HostedExecution.Completed(3), executor.execute(executor.endpoint) { 3 })
         executor.retire()
         executor.drain()
+    }
+
+    private suspend fun assertCapacityOccupied(
+        executor: HostedQueryExecutor,
+        limits: io.github.amichne.kast.kernel.ReadLimits,
+    ) {
+        assertEquals(
+            HostedExecution.Rejected(HostedQueryFailure.BUSY),
+            executor.execute(executor.endpoint, limits) { error("Capacity must remain occupied") },
+        )
     }
 }

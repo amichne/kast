@@ -16,6 +16,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 enum class CandidateSelectorTokenIssuanceFailure {
     CANDIDATE_REJECTED,
     TOKEN_REJECTED,
+    UNAVAILABLE,
 }
 
 sealed interface CandidateSelectorTokenIssuance {
@@ -25,7 +26,8 @@ sealed interface CandidateSelectorTokenIssuance {
 }
 
 enum class ExactSelectorIssuanceFailure {
-    TOKEN_REJECTED
+    TOKEN_REJECTED,
+    UNAVAILABLE,
 }
 
 sealed interface ExactSelectorIssuance {
@@ -35,7 +37,8 @@ sealed interface ExactSelectorIssuance {
 }
 
 enum class RelationEndpointIssuanceFailure {
-    TOKEN_REJECTED
+    TOKEN_REJECTED,
+    UNAVAILABLE,
 }
 
 sealed interface RelationEndpointIssuance {
@@ -158,7 +161,11 @@ private constructor(
     private fun issueCandidate(selector: CandidateSelector): CandidateSelectorTokenIssuance =
         when (val encoded = CanonicalSelectorCodec.encodeCandidate(selector)) {
             is CanonicalSelectorEncoding.Encoded ->
-                CandidateSelectorTokenIssuance.Issued(transport.issue(encoded.token))
+                when (val issued = transport.issue(encoded.token)) {
+                    is Refinement.Refined -> CandidateSelectorTokenIssuance.Issued(issued.value)
+                    is Refinement.Rejected ->
+                        CandidateSelectorTokenIssuance.Rejected(CandidateSelectorTokenIssuanceFailure.UNAVAILABLE)
+                }
             is CanonicalSelectorEncoding.Rejected ->
                 CandidateSelectorTokenIssuance.Rejected(CandidateSelectorTokenIssuanceFailure.TOKEN_REJECTED)
         }
@@ -167,9 +174,13 @@ private constructor(
     override fun issueExact(selector: SymbolSelector): ExactSelectorIssuance =
         when (val encoded = CanonicalSelectorCodec.encodeExact(selector)) {
             is CanonicalSelectorEncoding.Encoded -> {
-                val token = transport.issue(encoded.token)
-                exactIssued(selector, token, encoded.token)
-                ExactSelectorIssuance.Issued(token)
+                when (val issued = transport.issue(encoded.token)) {
+                    is Refinement.Refined -> {
+                        exactIssued(selector, issued.value, encoded.token)
+                        ExactSelectorIssuance.Issued(issued.value)
+                    }
+                    is Refinement.Rejected -> ExactSelectorIssuance.Rejected(ExactSelectorIssuanceFailure.UNAVAILABLE)
+                }
             }
             is CanonicalSelectorEncoding.Rejected ->
                 ExactSelectorIssuance.Rejected(ExactSelectorIssuanceFailure.TOKEN_REJECTED)
@@ -189,7 +200,12 @@ private constructor(
         return when (val issued = issueExact(selector)) {
             is ExactSelectorIssuance.Issued -> RelationEndpointIssuance.Issued(issued.selector)
             is ExactSelectorIssuance.Rejected ->
-                RelationEndpointIssuance.Rejected(RelationEndpointIssuanceFailure.TOKEN_REJECTED)
+                RelationEndpointIssuance.Rejected(
+                    when (issued.failure) {
+                        ExactSelectorIssuanceFailure.TOKEN_REJECTED -> RelationEndpointIssuanceFailure.TOKEN_REJECTED
+                        ExactSelectorIssuanceFailure.UNAVAILABLE -> RelationEndpointIssuanceFailure.UNAVAILABLE
+                    }
+                )
         }
     }
 }

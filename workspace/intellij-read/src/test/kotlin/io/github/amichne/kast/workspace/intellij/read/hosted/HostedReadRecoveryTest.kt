@@ -9,6 +9,32 @@ import org.junit.jupiter.api.Test
 
 class HostedReadRecoveryTest {
     @Test
+    fun `epoch movement reports restart read for both freshness and retained ownership rejection`() {
+        val failures =
+            listOf(
+                HostedQueryFailure.Freshness(
+                    io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.Moved
+                ),
+                HostedQueryFailure.LiveAuthority(
+                    io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure.EPOCH_MOVED
+                ),
+            )
+        failures.forEach { failure ->
+            val document =
+                Json.parseToJsonElement(
+                        HostedQueryWire.encode(
+                            HostedQueryResult.Rejected(failure, HostedQueryStage.CONTENT_REVALIDATION)
+                        )
+                    )
+                    .jsonObject
+            assertEquals(
+                "restart_read",
+                document.getValue("recovery").jsonObject.getValue("kind").jsonPrimitive.content,
+            )
+        }
+    }
+
+    @Test
     fun `capture timeout identifies the host preparation deadline`() {
         val document =
             Json.parseToJsonElement(

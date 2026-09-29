@@ -1,0 +1,153 @@
+// Opt-in carrier: use candidate bytecode in the exact existing IDE/project, never replace a plugin.
+run {
+    data class Input(val project: String, val hostPid: Long, val file: String, val offset: Int, val jars: List<String>, val capacities: List<Int>)
+    data class Sample(val latencyNanos: Long, val response: String)
+    data class Phase(val readers: Int, val durationNanos: Long, val samples: List<Sample>, val receipts: List<String>, val writeNanos: List<Long>)
+    data class Proof(val name: String, val maximumNativeReads: Int, val samples: List<Sample>)
+    data class Report(val hostPid: Long, val project: String, val phases: List<Phase>, val proofs: List<Proof>)
+    data class Failure(val outcome: String, val stage: String, val exceptionType: String)
+    val inputPath = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val output = inputPath.parent
+    val gson = com.google.gson.Gson()
+    val input = gson.fromJson(java.nio.file.Files.readString(inputPath), Input::class.java)
+    val app = com.intellij.openapi.application.ApplicationManager.getApplication()
+    var stage = "BOOTSTRAP"
+    try {
+        check(java.lang.ProcessHandle.current().pid() == input.hostPid)
+        val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == input.project }
+        val kotlin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("org.jetbrains.kotlin"))!!
+        val loader = java.net.URLClassLoader(input.jars.map { java.nio.file.Path.of(it).toUri().toURL() }.toTypedArray(), kotlin.pluginClassLoader)
+        val klass = loader.loadClass("io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryProbe")
+        val consumer = java.util.function.Consumer::class.java
+        val query = klass.getMethod("query", String::class.java, String::class.java, Int::class.javaPrimitiveType, consumer)
+        val receipts = java.util.concurrent.CopyOnWriteArrayList<String>()
+        fun probe(native: () -> Unit = {}, detached: () -> Unit = {}): Any = klass.getConstructor(com.intellij.openapi.project.Project::class.java, consumer, consumer, consumer)
+            .newInstance(project, java.util.function.Consumer<String> { native() }, java.util.function.Consumer<String> { detached() }, java.util.function.Consumer<String> { receipts.add(it) })
+        fun start(owner: Any): Pair<AutoCloseable, java.util.concurrent.CompletableFuture<Sample>> {
+            val future = java.util.concurrent.CompletableFuture<Sample>()
+            val began = System.nanoTime()
+            val handle = query.invoke(owner, input.project, input.file, input.offset, java.util.function.Consumer<String> {
+                check(!app.isReadAccessAllowed)
+                future.complete(Sample(System.nanoTime() - began, it))
+            }) as AutoCloseable
+            return handle to future
+        }
+        fun answer(f: java.util.concurrent.CompletableFuture<Sample>) = f.get(45, java.util.concurrent.TimeUnit.SECONDS)
+        fun retire(owner: Any) {
+            val done = java.util.concurrent.CompletableFuture<String>()
+            klass.getMethod("detach", consumer).invoke(owner, java.util.function.Consumer<String> { done.complete(it) })
+            check(done.get(45, java.util.concurrent.TimeUnit.SECONDS) == "RETIRED")
+        }
+        fun failure(sample: Sample) = com.google.gson.JsonParser.parseString(sample.response).asJsonObject.get("failure")?.asString
+        fun published(sample: Sample) = com.google.gson.JsonParser.parseString(sample.response).asJsonObject.get("outcome")?.asString == "published"
+        val phases = mutableListOf<Phase>()
+        val proofs = mutableListOf<Proof>()
+        stage = "WARMUP"
+        val warmed = probe()
+        try {
+            repeat(8) { check(published(answer(start(warmed).second))) }
+            // Fixed workload, three rotating rounds, bounded workers; no artificial semantic delay.
+            for (order in listOf(input.capacities, input.capacities.reversed(), input.capacities.drop(1) + input.capacities.take(1))) {
+                for (readers in order) {
+                    stage = "BENCHMARK_$readers"
+                    receipts.clear()
+                    val samples = java.util.concurrent.CopyOnWriteArrayList<Sample>()
+                    val pool = java.util.concurrent.Executors.newFixedThreadPool(readers)
+                    val began = System.nanoTime()
+                    try {
+                        val jobs = (0 until 32).map { pool.submit { samples.add(answer(start(warmed).second)) } }
+                        jobs.forEach { it.get(90, java.util.concurrent.TimeUnit.SECONDS) }
+                    } finally { pool.shutdownNow() }
+                    phases.add(Phase(readers, System.nanoTime() - began, samples.toList(), receipts.toList(), emptyList()))
+                }
+            }
+            for (readers in input.capacities) {
+                stage = "WRITE_RESPONSIVENESS_$readers"
+                receipts.clear()
+                val latencies = mutableListOf<Long>()
+                val samples = mutableListOf<Sample>()
+                val began = System.nanoTime()
+                repeat(8) {
+                    val pending = (0 until readers).map { start(warmed).second }
+                    val writeBegan = System.nanoTime()
+                    app.invokeAndWait { app.runWriteAction {} }
+                    latencies.add(System.nanoTime() - writeBegan)
+                    samples.addAll(pending.map { answer(it) })
+                }
+                phases.add(Phase(readers, System.nanoTime() - began, samples, receipts.toList(), latencies))
+            }
+        } finally { retire(warmed) }
+        for (name in listOf("overlap", "cancel", "retire")) {
+            stage = name
+            val entered = java.util.concurrent.CountDownLatch(2)
+            val firstEntered = java.util.concurrent.CountDownLatch(1)
+            val release = java.util.concurrent.CountDownLatch(1)
+            val active = java.util.concurrent.atomic.AtomicInteger()
+            val maximum = java.util.concurrent.atomic.AtomicInteger()
+            val owner = probe(native = {
+                val current = active.incrementAndGet()
+                maximum.accumulateAndGet(current, java.util.function.IntBinaryOperator { a, b -> maxOf(a, b) })
+                entered.countDown()
+                firstEntered.countDown()
+                try {
+                    val end = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10)
+                    while (!release.await(20, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                        com.intellij.openapi.progress.ProgressManager.checkCanceled()
+                        check(System.nanoTime() < end)
+                    }
+                } finally { active.decrementAndGet() }
+            })
+            try {
+                val a = start(owner)
+                check(firstEntered.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                val b = start(owner)
+                check(entered.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                check(maximum.get() == 2)
+                if (name == "cancel") a.first.close()
+                if (name == "retire") klass.getMethod("disposeOwner").invoke(owner)
+                release.countDown()
+                val answers = listOf(answer(a.second), answer(b.second))
+                if (name == "overlap") check(answers.all { published(it) })
+                if (name == "cancel") check(failure(answers[0]) == "CANCELLED" && published(answers[1]))
+                if (name == "retire") check(answers.all { failure(it) == "RETIRED" })
+                proofs.add(Proof(name, maximum.get(), answers))
+            } finally { release.countDown(); retire(owner) }
+        }
+        stage = "EDIT"
+        val documents = com.intellij.openapi.fileEditor.FileDocumentManager.getInstance()
+        val edited = java.util.concurrent.atomic.AtomicBoolean()
+        val owner = probe(detached = {
+            check(edited.compareAndSet(false, true))
+            check(documents.unsavedDocuments.isEmpty())
+            val file = com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByNioFile(java.nio.file.Path.of(input.project).resolve(input.file))!!
+            val document = documents.getCachedDocument(file)!!
+            app.invokeAndWait {
+                val original = document.text
+                val changed = original + "\n// owned concurrent-read acceptance edit\n"
+                com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project, Runnable {
+                    try {
+                        document.setText(changed)
+                        com.intellij.psi.PsiDocumentManager.getInstance(project).commitDocument(document)
+                    } finally {
+                        check(document.text == changed)
+                        documents.reloadFromDisk(document)
+                        com.intellij.psi.PsiDocumentManager.getInstance(project).commitDocument(document)
+                        check(document.text == original && !documents.isFileModified(file))
+                    }
+                })
+            }
+        })
+        try {
+            val sample = answer(start(owner).second)
+            check(edited.get() && failure(sample) == "FRESHNESS_REJECTED")
+            check(com.google.gson.JsonParser.parseString(sample.response).asJsonObject.get("detail").asString == "MOVED")
+            proofs.add(Proof("edit", 1, listOf(sample)))
+        } finally { retire(owner) }
+        check(com.intellij.openapi.project.ProjectManager.getInstance().openProjects.any { it === project })
+        java.nio.file.Files.writeString(output.resolve("report.json"), gson.toJson(Report(input.hostPid, input.project, phases, proofs)))
+        loader.close()
+    } catch (failure: Throwable) {
+        java.nio.file.Files.writeString(output.resolve("failure.json"), gson.toJson(Failure("QUALIFICATION_FAILED", stage, failure.javaClass.name)))
+        throw failure
+    }
+}

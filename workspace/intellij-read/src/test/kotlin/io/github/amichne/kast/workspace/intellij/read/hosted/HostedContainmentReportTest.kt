@@ -34,10 +34,15 @@ class HostedContainmentReportTest {
                     .size
             }
         val witness =
-            bytes(
-                HostedQueryFailure.Freshness(
-                    VfsPassiveReadAdmissionFailure.Unavailable(VfsPassiveReadUnavailableCause.GradleModelUnavailable)
-                )
+            maxOf(
+                bytes(HostedQueryFailure.Freshness(VfsPassiveReadAdmissionFailure.Moved)),
+                bytes(
+                    HostedQueryFailure.Freshness(
+                        VfsPassiveReadAdmissionFailure.Unavailable(
+                            VfsPassiveReadUnavailableCause.GradleModelUnavailable
+                        )
+                    )
+                ),
             )
         val unavailable =
             VfsPassiveReadUnavailableCause::class.sealedSubclasses.flatMap { type ->

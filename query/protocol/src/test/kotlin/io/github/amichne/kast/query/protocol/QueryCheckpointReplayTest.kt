@@ -57,6 +57,17 @@ class QueryCheckpointReplayTest {
     private val largerGrant = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(200).refined())
 
     @Test
+    fun `retired result store cannot be repopulated through an escaped reference`() {
+        val store = QueryStateStore()
+        val snapshot = QueryRetainedResult.capture(lease, complete()).refined()
+        val issued = store.issueResult(request(), snapshot) as QueryResultIssuance.Issued
+        store.retire()
+        store.clear()
+        assertEquals(QueryResultIssuance.Unavailable, store.issueResult(request(), snapshot))
+        assertEquals(QueryResultRestoration.Unavailable, store.restoreResult(issued.reference, lease))
+    }
+
+    @Test
     fun `result references share bounded expiry and reject a different semantic basis`() {
         var now = 0L
         val store = QueryStateStore(capacity = 1, maximumBytes = 16_384L, clock = { now })

@@ -41,12 +41,16 @@ import org.junit.jupiter.api.Test
 class HostedContinuationOwnerRetentionTest {
     @Test
     fun `entry bound is per store and epoch retirement clears all three stores`() = runTest {
-        val fixture = RelationPagingFixture.live()
-        val authority = fixture.authority
+        val epochs =
+            io.github.amichne.kast.workspace.contract.MovingLiveReadAuthorityFixture(
+                RelationPagingFixture.live().authority.workspaceRoot
+            )
+        val authority = epochs.admit()
+        val fixture = RelationPagingFixture(authority)
         val source = HostedSourcePagingFixture.create(fixture)
         val limits = ReadLimits.resolve(environment = mapOf("KAST_READ_QUERY_CONTINUATION_ENTRIES" to "1")).value()
         val continuations = HostedQueryContinuations()
-        val owner = continuations.forEpoch(authority, limits)
+        val owner = continuations.forEpoch(authority, limits).value()
         val queryRequest = queryRequest(fixture)
         val queryOutcome = queryOutcome(authority.evidenceBasis())
         val checkpoint = checkpoint(fixture)
@@ -61,11 +65,38 @@ class HostedContinuationOwnerRetentionTest {
         assertEquals(queryOutcome, owner.restore(queryOutput.queryOutputToken(), authority))
         assertEquals(source.outcome, owner.sourceOutputs.restore(sourceOutput.token, source.request, authority))
 
-        continuations.forEpoch(RelationPagingFixture.live().authority, limits)
+        val nextAuthority = epochs.advance()
+        val next = continuations.forEpoch(nextAuthority, limits).value()
+        assertEquals(
+            Refinement.Rejected(io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure.EPOCH_MOVED),
+            continuations.forEpoch(authority, limits),
+        )
+        org.junit.jupiter.api.Assertions.assertSame(next, continuations.forEpoch(nextAuthority, limits).value())
         assertQueryRetired(owner, queryState.token, queryOutput.queryOutputToken())
+        assertEquals(QueryCheckpointIssuance.Unavailable, owner.queryState.issueCheckpoint(queryRequest, checkpoint))
+        assertEquals(HostedOutputRetention.Unavailable, owner.issue(queryRequest, authority, queryOutcome))
+        assertEquals(
+            HostedOutputRetention.Unavailable,
+            owner.sourceOutputs.issue(source.request, authority, source.outcome),
+        )
         assertEquals(
             OperationOutcome.Rejected(SourceReadRejection.CONTINUATION_UNAVAILABLE),
             owner.sourceOutputs.restore(sourceOutput.token, source.request, authority),
+        )
+    }
+
+    @Test
+    fun `disposed continuation owner cannot be resurrected`() {
+        val epochs =
+            io.github.amichne.kast.workspace.contract.MovingLiveReadAuthorityFixture(
+                RelationPagingFixture.live().authority.workspaceRoot
+            )
+        val owner = HostedQueryContinuations()
+        owner.forEpoch(epochs.admit(), ReadLimits.Default).value()
+        owner.dispose()
+        assertEquals(
+            Refinement.Rejected(io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure.RETIRED),
+            owner.forEpoch(epochs.advance(), ReadLimits.Default),
         )
     }
 

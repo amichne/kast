@@ -238,10 +238,12 @@ private class SourceIssuanceFixture {
         val retained = mutableMapOf<ProtocolText, ProtocolText>()
         return CanonicalQueryReferences(
             object : QueryReferenceTransport {
-                override fun issue(canonical: ProtocolText): ProtocolText =
-                    (if (compact) compactSymbolReference(canonical).token else canonical).also {
-                        retained[it] = canonical
-                    }
+                override fun issue(canonical: ProtocolText): Refinement<ProtocolText, QueryReferenceTransportFailure> =
+                    Refinement.Refined(
+                        (if (compact) compactSymbolReference(canonical).token else canonical).also {
+                            retained[it] = canonical
+                        }
+                    )
 
                 override fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> =
                     CanonicalSelectorDecoding.Decoded(retained[token] ?: token)
