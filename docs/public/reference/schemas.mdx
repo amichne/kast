@@ -17,7 +17,7 @@ Kast generates the four semantic tools' input schemas and request examples from 
 | `add_declaration` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.examples.json) |
 | `replace_body` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.examples.json) |
 
-The support callables have separate availability: direct MCP exposes `health_check`; the hosted App Server exposes `workspace_lifecycle`. Their authoritative input and response definitions are in the [generated OpenAPI document](/reference/callables.openapi.json), under `/callables/health_check` and `/callables/workspace_lifecycle`. These labels are documentation identifiers, not HTTP endpoints.
+The support callables have separate availability: direct MCP exposes `health_check`; the hosted App Server exposes `workspace_lifecycle`. Their authoritative input and response definitions are in the [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json), under `/callables/health_check` and `/callables/workspace_lifecycle`. These labels are documentation identifiers, not HTTP endpoints.
 
 These source links follow `main`, which can be ahead of an installed release. Use the catalog exposed by your installed integration as the authority for that release. Rediscover it after an upgrade rather than caching input assumptions indefinitely.
 
@@ -35,7 +35,7 @@ The generated sample files contain valid-input examples and deliberately invalid
 
 ## Recorded walkthrough
 
-[Download the request/response recording](/examples/query-walkthrough.json) for [Find and trace code](/search) and [Combine query results](/query-pipelines). It contains sixteen real Tool RPC calls, including their complete request and response payloads. Each `calls` entry records its ID, timestamp, tool, request, and response.
+[Download the request/response recording](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) for [Find and trace code](/search) and [Combine query results](/query-pipelines). It contains sixteen real Tool RPC calls, including their complete request and response payloads. Each `calls` entry records its ID, timestamp, tool, request, and response.
 
 Captured on September 29, 2026 (UTC), using matched Kast CLI and IDEA plugin version `0.20260928.121700`, IDEA/Kotlin build `262.10315.125`. The checkout was `81fb023c06f8dba63e3531f49632f465b5cc6b21`; its changes from the tutorials' source revision `56df0912e46b182bb4ad8beabd1512823100fd72` were confined to `docs/public`. All successful and qualified calls retain the same host and epoch 7, with `SAVED_PSI_COMMITTED` content.
 
@@ -56,7 +56,7 @@ To reproduce, start in the linked source checkout and pass a call's `request` ob
 The captures' requests are checked against the generated input schema, their envelopes against `ToolRpcReply`, and their operation documents against the generated semantic-result schema. These shape checks complement the recorded native evidence; they do not replay IDEA.
 
 <Accordion title="Rendered contracts and transport details">
-  The existing [generated OpenAPI document](/reference/callables.openapi.json) remains available for complete request and response definitions. Its `POST /callables/...` labels organize documentation; they are **not HTTP endpoints**.
+  The existing [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json) remains available for complete request and response definitions. Its `POST /callables/...` labels organize documentation; they are **not HTTP endpoints**.
 
   The native [query reference](/api-reference/query-symbols) renders the detailed query contract. Existing diagnostic, change, lifecycle, and model URLs remain available for compatibility, but are not part of the setup path.
 
