@@ -4,6 +4,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileSystemItem
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiQualifiedNamedElement
@@ -123,13 +124,18 @@ internal class IntellijPsiExactDeclarationLookup(private val project: Project) :
     }
 }
 
+/**
+ * Searches only declaration ancestors inside the source file admitted by [IntellijPsiExactDeclarationLookup.findLive].
+ * Files and directories are named PSI too, but are containers, not declarations. Stop before inspecting them or
+ * requesting their parents. All in-file ancestors still participate so ambiguity and invalid PSI remain fail-closed.
+ */
 internal fun findExactDeclarationAncestor(
     leaf: PsiElement,
     key: IntellijExactDeclarationLookupKey,
 ): IntellijLiveExactDeclarationLookupResult {
     val matches = mutableListOf<Pair<PsiNamedElement, ExactDeclarationEvidence>>()
     var element: PsiElement? = leaf
-    while (element != null) {
+    while (element != null && element !is PsiFileSystemItem) {
         if (!element.isValid) {
             return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
         }
