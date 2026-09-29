@@ -10,7 +10,7 @@ Provides the smallest shared domain vocabulary for typed outcomes, evidence, val
 ## Key Files
 
 - [ExecutionBudget.kt](src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt) - independent caller/default/ceiling grants and retained clamp evidence.
-- [ReadLimits.kt](src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt) - typed lexical enumeration and continuation-store limits.
+- [ReadLimits.kt](src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt) - typed read capacities, hosted reader permits, lexical enumeration and continuation-store limits.
 - [src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt](src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt) - complete/qualified/rejected outcome semantics.
 - [src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt](src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt) - evidence-bearing result envelope.
 - [src/main/kotlin/io/github/amichne/kast/kernel/Refinement.kt](src/main/kotlin/io/github/amichne/kast/kernel/Refinement.kt) - proof-preserving refinement primitives.

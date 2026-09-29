@@ -9,6 +9,9 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 
 ## Key Files
 
+- [HostedQueryLifetime.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryLifetime.kt) - bounded concurrent permits with exact invocation ownership.
+- [HostedReadFreshnessOwner.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt) - native freshness reobservation within short semantic authority transitions.
+
 - [HostedReadCompletion.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadCompletion.kt) - typed operation-selected caller deadline through final freshness and publication.
 
 - [HostedReadPublicationAdmission.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt) - pre-provider containment capacity and candidate-versus-admitted budget evidence.
