@@ -1,3 +1,8 @@
+---
+title: "Query forms"
+description: "Choose a source, apply supported steps, and select an output without reading transport internals."
+---
+
 `query_symbols` accepts one action: run a query, resume unfinished work, or read retained rows. Start with [the walkthrough](/search) for examples; use this page to look up a shape.
 
 ## Choose an action
@@ -42,7 +47,7 @@ Replace token placeholders with issued values. They are teaching labels, not val
 | --- | --- |
 | `SEARCH_DECLARATIONS` | You know a simple declaration name. Exact, case-sensitive matching is the default; fuzzy matching is explicit. |
 | `ALL_DECLARATIONS` | You need bounded enumeration in a chosen scope. It does not mean unlimited work. |
-| Containing declaration at a file offset | You have a source position and need its nearest containing named declaration, not go-to-definition. Use the exact input fields in the [schema](/reference/schemas). |
+| `AT_LOCATION` | Supply a workspace-relative `file` and UTF-16 `offset` to find the nearest containing named declaration, not go-to-definition. |
 | `SYMBOL_REFS` | A previous result already identified the symbols. Copy its references unchanged. |
 | `RESULT` | You want to reuse retained rows, optionally selecting their issued row IDs. |
 

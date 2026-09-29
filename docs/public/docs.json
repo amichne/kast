@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Install Kast, query Kotlin in IntelliJ IDEA, and inspect its tool contracts.",
+  "description": "Install Kast, connect your coding agent, and learn with Kotlin query examples.",
   "colors": {
     "primary": "#3154C7",
     "light": "#8FA7FF",
@@ -40,7 +40,8 @@
                   "start",
                   "agent-harnesses",
                   "troubleshooting"
-                ]
+                ],
+                "expanded": false
               }
             ]
           },
@@ -198,7 +199,7 @@
     "eyebrows": "breadcrumbs"
   },
   "interaction": {
-    "drilldown": true
+    "drilldown": false
   },
   "contextual": {
     "options": [

@@ -1,3 +1,9 @@
+---
+title: "Prepare IntelliJ in the background"
+sidebarTitle: "Background preparation"
+description: "Know what Kast starts, what it waits for, and which blockers need your attention."
+---
+
 Start your agent in the Kotlin Gradle repository you want to inspect and ask a Kast question. Kast prepares that repository in IntelliJ IDEA when the request needs semantic analysis. You do not need to open or synchronize a workspace through another tool first.
 
 ## What happens on the first question
@@ -27,6 +33,6 @@ Ask for a Kast-backed answer when symbol identity, callers, implementations, or 
 
 To remove an installed harness registration, use `kast disconnect <harness>` and restart that harness. This is not an automatic-preparation toggle: it does not terminate existing sessions, close IDEA, or stop other connected clients.
 
-There is no documented `kast` management command that disables project preparation while keeping semantic queries enabled. Do not add an invented environment variable or startup flag. The hosted App Server has separate explicit workspace lifecycle controls; [Manage Kast](/workspaces) explains that boundary.
+There is no documented `kast` management command that disables project preparation while keeping semantic queries enabled. The hosted App Server has separate explicit workspace lifecycle controls; [Manage Kast](/workspaces) explains that boundary.
 
 For the internal request flow and evidence checks, read [How Kast works](/concepts/architecture). For installation or readiness failures, use [Troubleshooting](/troubleshooting).
