@@ -65,8 +65,11 @@ class IntellijExactDeclarationFileBoundaryTest {
         val zeroKey = key.copy(offset = SymbolDiscoverySourceOffset.parse(0).refined())
         val file = psi<PsiFile>("service", TextRange(0, 35))
         val declaration = psi<PsiNamedElement>("service", TextRange(0, 35), file)
-        val found = assertInstanceOf(IntellijLiveExactDeclarationLookupResult.Found::class.java,
-            findExactDeclarationAncestor(declaration, zeroKey))
+        val found =
+            assertInstanceOf(
+                IntellijLiveExactDeclarationLookupResult.Found::class.java,
+                findExactDeclarationAncestor(declaration, zeroKey),
+            )
         assertSame(declaration, found.declaration)
         assertEquals(0, found.evidence.range.startInclusive)
         assertEquals(35, found.evidence.range.endExclusive)
@@ -124,10 +127,11 @@ class IntellijExactDeclarationFileBoundaryTest {
 
     @Test
     fun `wrong names and offsets do not fall back to a nearby declaration`() {
-        for (declaration in listOf(
-            psi<PsiNamedElement>("other", TextRange(7, 35), inaccessible<PsiFile>()),
-            psi<PsiNamedElement>("service", TextRange(8, 35), inaccessible<PsiFile>()),
-        )) {
+        for (declaration in
+            listOf(
+                psi<PsiNamedElement>("other", TextRange(7, 35), inaccessible<PsiFile>()),
+                psi<PsiNamedElement>("service", TextRange(8, 35), inaccessible<PsiFile>()),
+            )) {
             assertEquals(
                 rejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION),
                 findExactDeclarationAncestor(declaration, key),
@@ -136,8 +140,11 @@ class IntellijExactDeclarationFileBoundaryTest {
     }
 
     private fun assertFound(declaration: PsiNamedElement, leaf: PsiElement = declaration) {
-        val found = assertInstanceOf(IntellijLiveExactDeclarationLookupResult.Found::class.java,
-            findExactDeclarationAncestor(leaf, key))
+        val found =
+            assertInstanceOf(
+                IntellijLiveExactDeclarationLookupResult.Found::class.java,
+                findExactDeclarationAncestor(leaf, key),
+            )
         assertSame(declaration, found.declaration)
         assertEquals(key.file, found.evidence.file)
         assertEquals(key.name, found.evidence.name)
