@@ -15,6 +15,7 @@ import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
@@ -193,9 +194,7 @@ private sealed interface QueryResultItemCliDocument {
         val source: QuerySourceWindowCliDocument? = null,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
-        @ProtocolStringConstraint(
-            pattern = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-        )
+        @ProtocolStringConstraint(pattern = QueryResultRowReference.SERIALIZED_PATTERN)
         val rowId: String? = null,
     ) : QueryResultItemCliDocument
 
@@ -226,9 +225,7 @@ private sealed interface QueryResultItemCliDocument {
         val right: QueryBindingCellCliDocument,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
-        @ProtocolStringConstraint(
-            pattern = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-        )
+        @ProtocolStringConstraint(pattern = QueryResultRowReference.SERIALIZED_PATTERN)
         val rowId: String? = null,
     ) : QueryResultItemCliDocument
 }

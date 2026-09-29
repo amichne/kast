@@ -50,7 +50,9 @@ enum class QueryResultRowReferenceFailure {
 @JvmInline
 value class QueryResultRowReference private constructor(val value: String) {
     companion object {
-        private val syntax = Regex("result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+        const val SERIALIZED_PATTERN = "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+        private val syntax = Regex(SERIALIZED_PATTERN)
 
         fun parse(raw: String): Refinement<QueryResultRowReference, QueryResultRowReferenceFailure> =
             if (syntax.matches(raw)) Refinement.Refined(QueryResultRowReference(raw))
