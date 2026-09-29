@@ -1,9 +1,13 @@
 package io.github.amichne.kast.symbol.intellij
 
+import com.intellij.lang.java.JavaLanguage
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.platform.syntax.psi.CommonElementTypeConverterFactory
+import com.intellij.platform.syntax.psi.ElementTypeConverters
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiJavaFile
@@ -211,6 +215,7 @@ class IntellijExactDeclarationPhysicalPsiTest {
                     CompilerConfiguration().apply { extensionsStorage = CompilerPluginRegistrar.ExtensionStorage() },
                     EnvironmentConfigFiles.JVM_CONFIG_FILES,
                 )
+            registerJavaSyntaxTokens(disposable)
             assertion(environment.project)
         } finally {
             val application = ApplicationManager.getApplication()
@@ -219,6 +224,18 @@ class IntellijExactDeclarationPhysicalPsiTest {
             properties.forEach { (key, value) ->
                 if (value == null) System.clearProperty(key) else System.setProperty(key, value)
             }
+        }
+    }
+
+    private fun registerJavaSyntaxTokens(disposable: Disposable) {
+        // Core compiler setup omits the common-token extension normally loaded by the IDE and ParsingTestCase.
+        val converters = ElementTypeConverters.instance
+        val common = CommonElementTypeConverterFactory()
+        converters.addExplicitExtension(JavaLanguage.INSTANCE, common)
+        converters.clearCache()
+        Disposer.register(disposable) {
+            converters.removeExplicitExtension(JavaLanguage.INSTANCE, common)
+            converters.clearCache()
         }
     }
 
