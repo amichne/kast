@@ -46,7 +46,8 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 
 - At the start of every new thread, inspect the current branch, working tree, and configured upstream, then fetch that upstream's remote before changing repository files.
 - If the working tree is clean and the local branch can fast-forward to the fetched upstream head, fast-forward it and verify the resulting `HEAD` matches the upstream.
-- If the upstream is missing, the histories diverge, or local changes block the fast-forward, preserve the branch, working tree, and stashes. Report the exact state and get a base decision before moving commits or applying stashes.
+- If the checkout is clean and detached or has no configured upstream, fetch `origin` and create the implementation branch from `origin/main` without asking for a base decision. Preserve existing branch references and verify the new branch starts at the fetched `origin/main`.
+- If histories diverge or local changes block the fast-forward, preserve the branch, working tree, and stashes. Report the exact state and get a base decision before moving commits or applying stashes.
 
 ## Navigation Hints
 
