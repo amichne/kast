@@ -55,8 +55,9 @@ legacy command graph retained for migration, and hosted output projections.
 ## Entry Points
 
 - Gradle project: `:cli`.
-- `install.sh` publishes no command on `PATH`. Private service control lives at
-  `share/kast/libexec/kast-service` in the selected installation.
+- The operational JVM CLI stays private; `install.sh` publishes the native
+  management executable owned by `distribution/cli`. Private service control
+  lives at `share/kast/libexec/kast-service` in the ordinary installation.
 
 ## Navigation Hints
 
