@@ -8,6 +8,20 @@ Choose your agent below. `kast connect` registers the bundled integration; the f
 
 <Tabs>
   <Tab title="Codex">
+    Install the Codex plugin to receive the MCP tools, query skill, and examples together:
+
+    ```shell
+    kast plugin codex
+    cd /path/to/kotlin-repository
+    codex
+    ```
+
+    Restart Codex after installation and select the intended repository or worktree.
+    Codex owns this plugin; remove it with `codex plugin remove kast@kast`.
+    After upgrading Kast, rerun `kast plugin codex` to install the matching skill.
+    Use one Kast MCP connection per client; an existing direct registration can be
+    removed with `kast disconnect codex` before choosing the plugin.
+
     Choose a transport explicitly. For the App Server integration:
 
     ```shell
@@ -59,6 +73,31 @@ Ask your agent:
 Success means an actual Kast query returns a declaration and its evidence. Seeing a registration in `kast status`, or seeing tool names in a catalog, is not the same check.
 
 Then try [Find and trace code](/search). You ask the question; your agent chooses the query and passes the returned references to follow-up calls.
+
+## Install the skill independently
+
+Each [release](https://github.com/amichne/kast/releases) provides
+`kast-skill-v<VERSION>.zip`, `kast-plugin-v<VERSION>.zip`, and
+`kast-marketplace-v<VERSION>.zip` with SHA-256 checksums. The skill ZIP contains
+one `kast/` directory; extract it into `~/.agents/skills/` or your repository's
+`.agents/skills/`. It works with an already connected Kast transport.
+
+The skill includes scoped lookup, public inventories, fuzzy search, containing
+declarations, references, callers and callees, implementations and overrides,
+bounded traversal, and retained query composition. Its JSON examples are
+generated from Kast's public contract and validated by the typed input parser.
+Replace illustrative references with values returned by your current workspace.
+
+To install a downloaded marketplace ZIP, verify its checksum, extract it, and run:
+
+```shell
+codex plugin marketplace add /absolute/path/to/extracted-marketplace
+codex plugin add kast@kast
+```
+
+The source marketplace is also available with `codex plugin marketplace add amichne/kast`.
+The plugin uses the installed Kast MCP launcher; install Kast and its matching
+IDEA plugin first.
 
 ## A connection already exists
 

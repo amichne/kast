@@ -426,10 +426,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
         strict = project(schema, strict=True)
         outputs[RESOURCES / (tool['name'] + '.parameters.json')] = json.dumps(full, indent=2) + '\n'
         outputs[RESOURCES / (tool['name'] + '.openai-parameters.json')] = json.dumps(strict, indent=2) + '\n'
-        outputs[RESOURCES / (tool['name'] + '.examples.json')] = json.dumps(
+        examples = json.dumps(
             {'examples': tool.get('examples', {}), 'invalidExamples': tool.get('invalidExamples', {})},
             indent=2,
         ) + '\n'
+        outputs[RESOURCES / (tool['name'] + '.examples.json')] = examples
+        if tool['name'] == 'query_symbols':
+            outputs[ROOT / 'agent-tools/skills/kast/references/query-examples.json'] = examples
         registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=full, deferLoading=tool['deferLoading']))
         responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
     outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(

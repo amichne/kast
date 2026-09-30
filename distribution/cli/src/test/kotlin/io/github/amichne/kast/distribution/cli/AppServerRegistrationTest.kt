@@ -84,7 +84,7 @@ class AppServerRegistrationTest {
             )
         )
         assertEquals(
-            "#!/bin/sh\nexec '${root.resolve("current/bin/kast-codex-complete")}' \"\$@\"\n",
+            "#!/bin/sh\nexec '${root.resolve("installation/bin/kast-codex-complete")}' \"\$@\"\n",
             Files.readString(launcher),
         )
         assertTrue(Files.isExecutable(launcher))
@@ -166,7 +166,7 @@ class AppServerRegistrationTest {
     fun `legacy receipt refines Codex ownership to MCP without rewriting files`() {
         val (root, home) = integrationFixture(temporary, HarnessConnection.CODEX_APP_SERVER)
         val existing = (readReceipt(root) as ReceiptRead.Read).receipt
-        val destination = root.resolve("current/bin/kast-mcp-complete").toString()
+        val destination = root.resolve("installation/bin/kast-mcp-complete").toString()
         val payloadDigest = "a".repeat(64)
         val prior =
             PriorReceipt(
@@ -197,7 +197,7 @@ class AppServerRegistrationTest {
     fun `changed release facade rejects before publishing launcher or receipt`() {
         val (root, home) = integrationFixture(temporary, HarnessConnection.CODEX_APP_SERVER)
         val before = Files.readAllBytes(receiptPath(root)).toList()
-        Files.writeString(root.resolve("current/bin/kast-codex-complete"), "changed facade")
+        Files.writeString(root.resolve("installation/bin/kast-codex-complete"), "changed facade")
         assertThrows<ManagementRejected> {
             connectHarness(
                 root,

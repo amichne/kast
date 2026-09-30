@@ -1188,6 +1188,397 @@
               }
             }
           }
+        },
+        "scopedExactDeclaration": {
+          "summary": "Find a class by exact simple name in one package and source set, including its committed source context.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "OrderService",
+                "declarationKinds": [
+                  "CLASS"
+                ],
+                "scope": {
+                  "type": "PACKAGE",
+                  "packageName": "com.example.orders",
+                  "includeSubpackages": false,
+                  "sourceSetNames": [
+                    "main"
+                  ]
+                }
+              },
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE",
+                  "SOURCE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 20
+              }
+            }
+          }
+        },
+        "publicFunctionInventory": {
+          "summary": "List public functions with a known name prefix in one module directory; bounded output can remain qualified.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "ALL_DECLARATIONS",
+                "declarationKinds": [
+                  "FUNCTION"
+                ],
+                "scope": {
+                  "type": "DIRECTORY",
+                  "relativeDirectoryPath": "services/orders",
+                  "includeSubdirectories": true,
+                  "sourceSetNames": [
+                    "main"
+                  ]
+                }
+              },
+              "steps": [
+                {
+                  "type": "WHERE",
+                  "predicate": {
+                    "type": "VISIBILITY",
+                    "values": [
+                      "PUBLIC"
+                    ]
+                  }
+                },
+                {
+                  "type": "WHERE",
+                  "predicate": {
+                    "type": "PRIMITIVE",
+                    "field": "NAME",
+                    "operator": "STARTS_WITH",
+                    "value": "create"
+                  }
+                }
+              ],
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 50
+              }
+            }
+          }
+        },
+        "fuzzyDeclarationDiscovery": {
+          "summary": "Opt into fuzzy simple-name discovery under a known directory, then select the returned exact declaration.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "OrderServ",
+                "nameMatch": "FUZZY",
+                "declarationKinds": [
+                  "CLASS",
+                  "FUNCTION"
+                ],
+                "scope": {
+                  "type": "DIRECTORY",
+                  "relativeDirectoryPath": "services/orders",
+                  "sourceSetNames": [
+                    "main"
+                  ]
+                }
+              },
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 20
+              }
+            }
+          }
+        },
+        "containingDeclaration": {
+          "summary": "Find the named declaration containing a known UTF-16 offset; adapt the illustrative relative file and offset.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "AT_LOCATION",
+                "file": "services/orders/src/main/kotlin/com/example/orders/OrderService.kt",
+                "offset": 100
+              },
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE",
+                  "SOURCE"
+                ]
+              }
+            }
+          }
+        },
+        "referenceOccurrences": {
+          "summary": "Return individual compiler-confirmed references. Replace the illustrative exact-ref placeholder with an issued ref.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SYMBOL_REFS",
+                "symbolRefs": [
+                  "<exact-ref-returned-by-Kast>"
+                ]
+              },
+              "steps": [
+                {
+                  "type": "EXPAND_RELATION",
+                  "relation": "REFERENCES"
+                }
+              ],
+              "output": {
+                "type": "OCCURRENCES"
+              },
+              "executionBudget": {
+                "maxResults": 50
+              }
+            }
+          }
+        },
+        "directCallers": {
+          "summary": "Find distinct declarations calling an exact function. Replace the illustrative exact-ref placeholder with an issued ref.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SYMBOL_REFS",
+                "symbolRefs": [
+                  "<exact-ref-returned-by-Kast>"
+                ]
+              },
+              "steps": [
+                {
+                  "type": "EXPAND_RELATION",
+                  "relation": "CALLERS"
+                },
+                {
+                  "type": "DISTINCT_SYMBOLS"
+                }
+              ],
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 50
+              }
+            }
+          }
+        },
+        "directCallees": {
+          "summary": "Find distinct declarations called by an exact function. Replace the illustrative exact-ref placeholder with an issued ref.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SYMBOL_REFS",
+                "symbolRefs": [
+                  "<exact-ref-returned-by-Kast>"
+                ]
+              },
+              "steps": [
+                {
+                  "type": "EXPAND_RELATION",
+                  "relation": "CALLEES"
+                },
+                {
+                  "type": "DISTINCT_SYMBOLS"
+                }
+              ],
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 50
+              }
+            }
+          }
+        },
+        "implementations": {
+          "summary": "Find distinct implementations of an exact declaration. Replace the illustrative exact-ref placeholder with an issued ref.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SYMBOL_REFS",
+                "symbolRefs": [
+                  "<exact-ref-returned-by-Kast>"
+                ]
+              },
+              "steps": [
+                {
+                  "type": "EXPAND_RELATION",
+                  "relation": "IMPLEMENTATIONS"
+                },
+                {
+                  "type": "DISTINCT_SYMBOLS"
+                }
+              ],
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 50
+              }
+            }
+          }
+        },
+        "boundedCallerWalk": {
+          "summary": "Trace callers for two hops with depth-bearing records. Replace the illustrative exact-ref placeholder with an issued ref.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SYMBOL_REFS",
+                "symbolRefs": [
+                  "<exact-ref-returned-by-Kast>"
+                ]
+              },
+              "steps": [
+                {
+                  "type": "WALK",
+                  "relation": "CALLERS",
+                  "maximumDepth": 2,
+                  "strategy": {
+                    "type": "BREADTH_FIRST"
+                  }
+                }
+              ],
+              "output": {
+                "type": "TRAVERSAL_RECORDS"
+              },
+              "executionBudget": {
+                "maxResults": 50
+              }
+            }
+          }
+        },
+        "retainByName": {
+          "summary": "Retain a bounded exact-name result for same-basis presentation or composition; inspect the retention outcome.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "OrderService",
+                "declarationKinds": [
+                  "CLASS"
+                ]
+              },
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "retention": "RETAIN",
+              "executionBudget": {
+                "maxResults": 20
+              }
+            }
+          }
+        },
+        "readRetained": {
+          "summary": "Present retained symbol rows without new semantic evaluation. Replace the non-issued all-zero result handle.",
+          "value": {
+            "request": {
+              "type": "READ_RESULT",
+              "result": "result:v1:00000000-0000-0000-0000-000000000000",
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 20
+              }
+            }
+          }
+        },
+        "intersectRetained": {
+          "summary": "Intersect two retained symbol results by canonical identity. Replace both non-issued illustrative result handles.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "RESULT",
+                "result": "result:v1:00000000-0000-0000-0000-000000000000"
+              },
+              "steps": [
+                {
+                  "type": "INTERSECT",
+                  "right": {
+                    "type": "RESULT",
+                    "result": "result:v1:00000000-0000-0000-0000-000000000001"
+                  }
+                }
+              ],
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              }
+            }
+          }
+        },
+        "resumeQuery": {
+          "summary": "Resume stored execution without resending its source or steps. Replace the non-issued all-zero continuation.",
+          "value": {
+            "request": {
+              "type": "RESUME",
+              "continuation": "query:v1:00000000-0000-0000-0000-000000000000",
+              "executionBudget": {
+                "maxResults": 50
+              }
+            }
+          }
         }
       },
       "invalidExamples": {

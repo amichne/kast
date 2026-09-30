@@ -49,6 +49,71 @@ class VersionedServiceLifecycleTest {
     }
 
     @Test
+    fun `replacement preserves an admitted epoch for identical final payload identity`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val prior = product(root.resolve("installation"))
+        val owner = (BrokerInstallationState.admit(prior) as Refinement.Refined).value
+        val staged = product(root.resolve(".install-candidate"))
+        val copied = copyEpoch(prior, staged)
+        val source = Files.readString(prior.resolve("state/epoch.json"))
+        assertEquals(InstalledEpochRetention.Preserved, InstalledEpochRetention.retain(prior, staged, prior))
+        assertEquals(source, Files.readString(copied))
+        assertEquals(
+            Refinement.Refined(owner),
+            BrokerInstallationState.observeCopiedEpoch(staged.resolve("state"), owner.installationId.value),
+        )
+    }
+
+    @Test
+    fun `changed replacement discards only the admitted copied epoch and startup creates the new owner`(
+        @TempDir temporary: Path
+    ) {
+        val root = temporary.toRealPath()
+        val prior = product(root.resolve("installation"))
+        val owner = (BrokerInstallationState.admit(prior) as Refinement.Refined).value
+        val source = Files.readString(prior.resolve("state/epoch.json"))
+        val staged = product(root.resolve(".install-candidate"))
+        Files.writeString(staged.resolve("lib/control.jar"), "next payload")
+        val copied = copyEpoch(prior, staged)
+        val journal = Files.writeString(staged.resolve("state/protected-journal"), "protected recovery evidence")
+        assertEquals(InstalledEpochRetention.Regenerate, InstalledEpochRetention.retain(prior, staged, prior))
+        assertFalse(Files.exists(copied))
+        assertEquals(source, Files.readString(prior.resolve("state/epoch.json")))
+        assertEquals("protected recovery evidence", Files.readString(journal))
+        Files.move(prior, root.resolve("retired"))
+        Files.move(staged, prior)
+        val next = (BrokerInstallationState.admit(prior) as Refinement.Refined).value
+        assertNotEquals(owner.installationId, next.installationId)
+        assertNotEquals(owner.stateEpoch, next.stateEpoch)
+        assertEquals("protected recovery evidence", Files.readString(prior.resolve("state/protected-journal")))
+    }
+
+    @Test
+    fun `unadmitted copied epoch is never deleted`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val prior = product(root.resolve("installation"))
+        assertTrue(BrokerInstallationState.admit(prior) is Refinement.Refined)
+        val staged = product(root.resolve(".install-candidate"))
+        Files.writeString(staged.resolve("lib/control.jar"), "next payload")
+        val copied = copyEpoch(prior, staged)
+        Files.writeString(copied, "corrupt copied epoch")
+        assertEquals(
+            InstalledEpochRetention.Rejected(InstalledEpochRetentionFailure.COPIED_EPOCH_REJECTED),
+            InstalledEpochRetention.retain(prior, staged, prior),
+        )
+        assertEquals("corrupt copied epoch", Files.readString(copied))
+    }
+
+    private fun copyEpoch(prior: Path, staged: Path): Path {
+        Files.createDirectory(staged.resolve("state"))
+        return Files.copy(
+            prior.resolve("state/epoch.json"),
+            staged.resolve("state/epoch.json"),
+            java.nio.file.StandardCopyOption.COPY_ATTRIBUTES,
+        )
+    }
+
+    @Test
     fun `current distribution above historical inventory ceiling is admitted`(@TempDir root: Path) {
         val installation = product(root.resolve("product"))
         repeat(4_097) { Files.writeString(installation.resolve("share/resource-$it"), "") }

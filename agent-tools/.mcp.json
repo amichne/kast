@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "kast": {
+      "command": "/bin/bash",
+      "args": [
+        "-c",
+        "exec \"${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation/bin/kast-mcp-complete\""
+      ]
+    }
+  }
+}

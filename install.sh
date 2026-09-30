@@ -502,7 +502,7 @@ activate_hosted_plugin() {
   local selected
   local -a options=()
   [[ "$force" == 0 ]] || options+=(--force)
-  selected="$(cd "$install_root/current" && pwd -P)"
+  selected="$(cd "$install_root/installation" && pwd -P)"
   run_installer_step "IDEA plugin activation" "" python3 "$control_root/share/kast/installation-recovery.py" activate-plugin \
     --installation "$selected" --staged-plugin "$staged" --plugin-root "$plugin_root" ${options[@]+"${options[@]}"}
 }
@@ -599,8 +599,8 @@ require_absolute_path "binary directory" "$bin_directory"
 
 if [[ "$action" == uninstall ]]; then
   require_command python3
-  selected="$install_root/current"
-  [[ -d "$selected" ]] || fail "no selected Kast installation exists at $install_root"
+  selected="$install_root/installation"
+  [[ -d "$selected" && ! -L "$selected" ]] || fail "no Kast installation exists at $install_root"
   selected="$(CDPATH='' cd -- "$selected" && pwd -P)"
   lifecycle="$selected/share/kast/installation-lifecycle.py"
   [[ -f "$lifecycle" && ! -L "$lifecycle" ]] || fail "selected installation has no lifecycle control"
@@ -619,7 +619,7 @@ if [[ "$action" == uninstall ]]; then
     if [[ -n "${unregister_copy:-}" ]] && command -v codex >/dev/null 2>&1; then
       python3 "$unregister_copy" uninstall "$install_root"
     fi
-    success "removed the selected Kast installation"
+    success "removed the Kast installation"
     exit 0
   fi
 fi
@@ -636,8 +636,8 @@ if [[ -n "$idea_home" ]]; then
   idea_home="$(canonical_idea_home "$idea_home" || true)"
   [[ -n "$idea_home" ]] || fail "IDEA home is incompatible"
 else
-  # Reuse the prior literal selector; never execute saved configuration as shell.
-  selected_configuration="$install_root/current/config/environment"
+  # Reuse the saved IDEA path; never execute saved configuration as shell.
+  selected_configuration="$install_root/installation/config/environment"
   if [[ -f "$selected_configuration" ]]; then
     idea_home="$(python3 - "$selected_configuration" <<'PYTHON'
 from pathlib import Path
@@ -696,20 +696,18 @@ control_name="kast-control-v$version-macos-aarch64.tar.gz"
 plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"
-upgrade_in_progress=0
-[[ ! -L "$install_root/current" ]] || upgrade_in_progress=1
 installation_complete=0
 cleanup() {
   local status=$?
   local selected
   trap - EXIT
-  if [[ "$status" == 0 && "$installation_complete" == 1 && "$upgrade_in_progress" == 1 ]]; then
-    if ! selected="$(CDPATH='' cd -- "$install_root/current" && pwd -P)"; then
-      ui_line error 31 'kast-install: upgraded installation selection is unavailable; prior versions were retained'
+  if [[ "$status" == 0 && "$installation_complete" == 1 ]]; then
+    if ! selected="$(CDPATH='' cd -- "$install_root/installation" && pwd -P)"; then
+      ui_line error 31 'kast-install: upgraded installation is unavailable; replacement recovery was retained'
       status=1
     elif ! run_installer_step "Upgrade recovery finalization" "" python3 "$control_root/share/kast/installation-recovery.py" seal-upgrade \
       --installation "$selected"; then
-      ui_line error 31 'kast-install: upgrade recovery could not be finalized; prior versions were retained'
+      ui_line error 31 'kast-install: upgrade recovery could not be finalized; replacement recovery was retained'
       status=1
     elif ! run_installer_step "Prior installation review" "" python3 "$control_root/share/kast/prune-prior-installations.py" \
       --installation "$selected"; then
@@ -801,16 +799,8 @@ else
       fail "native executable destination changed during installation"
   fi
   if [[ "$profile" == persistent && "$codex_mcp_choice" == register ]]; then
-    [[ -x "$install_root/current/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
-    python3 "$install_root/current/share/kast/codex-mcp-registration.py" install "$install_root"
-    # The explicit installer flag selects MCP. Older released native parsers predate
-    # the transport argument; the verified command's help identifies that boundary.
-    connect_usage="$("$installed_management" connect --help)" || fail "native Codex connection syntax is unavailable"
-    case "$connect_usage" in
-      *"<transport>"*) "$installed_management" connect codex mcp ;;
-      *"<harness>"*) "$installed_management" connect codex ;;
-      *) fail "native Codex connection syntax is unsupported" ;;
-    esac
+    [[ -x "$install_root/installation/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
+    "$installed_management" connect codex mcp
   fi
   installation_complete=1
 fi

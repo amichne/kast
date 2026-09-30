@@ -1,0 +1,22 @@
+{
+  "name": "kast",
+  "version": "0.0.0",
+  "description": "Compiler-grounded Kotlin queries, usage patterns, and examples with Kast.",
+  "author": {
+    "name": "Amichne"
+  },
+  "homepage": "https://kast.michne.com/",
+  "repository": "https://github.com/amichne/kast",
+  "license": "MIT",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Kast",
+    "shortDescription": "Compiler-grounded Kotlin tools",
+    "longDescription": "Find declarations, inspect callers and relationships, and check compiler diagnostics through the Kast MCP server and reusable query skill.",
+    "developerName": "Amichne",
+    "category": "Coding",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": "Use Kast to find a declaration and inspect its callers."
+  }
+}

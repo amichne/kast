@@ -177,7 +177,7 @@ class ManagementCliTest {
                     "1.2.3",
                 )
             )
-        val installer = root.resolve("current/share/kast/install.sh")
+        val installer = root.resolve("installation/share/kast/install.sh")
         Files.createDirectories(installer.parent)
         Files.writeString(installer, "#!/bin/bash\nprintf '%s' '$report' > \"\$KAST_MANAGEMENT_REPORT_PATH\"\n")
         val failure = org.junit.jupiter.api.assertThrows<ManagementRejected> { upgradeInstallation(root, home) }
@@ -209,7 +209,7 @@ class ManagementCliTest {
         val root = temporary.resolve("install")
         val home = temporary.resolve("home")
         val configured = temporary.resolve("config")
-        val bundled = root.resolve("current/share/kast/libexec/kast-management")
+        val bundled = root.resolve("installation/share/kast/libexec/kast-management")
         Files.createDirectories(bundled.parent)
         Files.createDirectories(home)
         Files.createDirectories(configured)
@@ -252,7 +252,7 @@ internal fun integrationFixture(
 ): Pair<Path, Path> {
     val root = temporary.resolve("kast")
     val home = temporary.resolve("home")
-    val version = root.resolve("versions/1.2.3-deadbeef")
+    val installation = root.resolve("installation")
     val relative =
         when (connection) {
             HarnessConnection.COPILOT -> "share/kast/adapters/copilot/extension.mjs"
@@ -260,17 +260,17 @@ internal fun integrationFixture(
             HarnessConnection.CODEX_MCP -> "bin/kast-mcp-complete"
             HarnessConnection.CODEX_APP_SERVER -> "bin/kast-codex-complete"
         }
-    val source = version.resolve(relative)
+    val source = installation.resolve(relative)
     Files.createDirectories(source.parent)
     Files.createDirectories(home)
     Files.writeString(source, sourceContent)
     if (connection == HarnessConnection.CODEX_APP_SERVER) source.toFile().setExecutable(true, false)
     Files.writeString(
-        version.resolve("installation.json"),
+        installation.resolve("installation.json"),
         Json.encodeToString(
             TestManifest(
-                2,
-                version.toRealPath().toString(),
+                3,
+                installation.toRealPath().toString(),
                 listOf(
                     TestPayload(
                         relative,
@@ -282,7 +282,6 @@ internal fun integrationFixture(
             )
         ),
     )
-    Files.createSymbolicLink(root.resolve("current"), root.relativize(version))
     val executable = temporary.resolve("kast-command")
     Files.writeString(executable, "native")
     writeManagementReceipt(

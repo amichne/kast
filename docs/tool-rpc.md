@@ -6,7 +6,7 @@ current working directory to discover the exact Gradle workspace, then uses
 Kast's existing IDEA preparation and semantic operation path.
 
 The installed command is
-`${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-tool-rpc-complete`.
+`${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation/bin/kast-tool-rpc-complete`.
 Both adapters below call this command directly. Set `KAST_TOOL_RPC_COMMAND` to an
 absolute executable path when trying a checkout build.
 
@@ -18,7 +18,7 @@ and `READ` or `WRITE` effect. The schema version is `2`; the catalog also gives
 the call deadline and response ceiling used by bundled adapters.
 
 ```shell
-"$HOME/.local/share/kast/current/bin/kast-tool-rpc-complete" catalog
+"$HOME/.local/share/kast/installation/bin/kast-tool-rpc-complete" catalog
 ```
 
 `call NAME` reads one JSON object from stdin (at most 1 MiB) and writes one
@@ -30,7 +30,7 @@ absence. The tool name must appear in the current catalog.
 
 ```shell
 printf '%s\n' '{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"OrderService"}}}' |
-  "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-tool-rpc-complete" call query_symbols
+  "${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation/bin/kast-tool-rpc-complete" call query_symbols
 ```
 
 Use the exact `ref` and qualification returned by one tool in follow-up calls.

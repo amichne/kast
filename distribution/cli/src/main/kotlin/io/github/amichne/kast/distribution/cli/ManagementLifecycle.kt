@@ -47,14 +47,7 @@ private fun requireOwnedExecutable(root: Path): ManagementReceipt {
 
 @Suppress("ThrowsCount")
 private fun installedPrivateInstaller(root: Path): Path {
-    val selected =
-        try {
-            root.resolve("current").toRealPath()
-        } catch (_: Exception) {
-            throw ManagementRejected("installation-admission", "selected installation is unavailable")
-        }
-    if (selected.parent != root.toRealPath().resolve("versions"))
-        throw ManagementRejected("installation-admission", "selected installation is invalid")
+    val selected = selectedInstallation(root)
     val script = selected.resolve("share/kast/install.sh")
     if (!Files.isRegularFile(script, LinkOption.NOFOLLOW_LINKS))
         throw ManagementRejected("installation-admission", "private installer is unavailable")

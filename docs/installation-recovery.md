@@ -4,15 +4,17 @@ Use this runbook when normal installation or uninstall cannot finish. For ordina
 setup, start with [Install and connect](https://kast.michne.com/start/).
 
 Each installation saves an offline recovery executable and an ownership receipt
-under `<install-root>/recovery/<version-and-digest>/`. The receipt is written before
-activation changes. Plugin replacement retains the previous plugin directory as
-a baseline; recovery never deletes retained payloads or uncertain state.
+under `<install-root>/recovery/installation/`. The schema 3 receipt names the ordinary `<install-root>/installation` directory.
+Replacement keeps an owned payload and plugin baseline only until activation is
+verified. A successful install removes that temporary recovery copy; a failed
+install preserves it and reports the unresolved condition. No selector links or
+selectable historical installations are created.
 
 To inspect and detach a damaged installation, use its saved executable directly:
 
 ```console
-python3 /absolute/install-root/recovery/version-and-digest/installation-recovery.py detach --installation /absolute/install-root/versions/version-and-digest --dry-run
-python3 /absolute/install-root/recovery/version-and-digest/installation-recovery.py detach --installation /absolute/install-root/versions/version-and-digest
+python3 /absolute/install-root/recovery/installation/installation-recovery.py detach --installation /absolute/install-root/installation --dry-run
+python3 /absolute/install-root/recovery/installation/installation-recovery.py detach --installation /absolute/install-root/installation
 ```
 
 For an older installation without a receipt, use `installation-recovery.py` from

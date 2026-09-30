@@ -4,6 +4,7 @@ import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
+import support.tasks.GenerateAgentToolsTask
 import support.tasks.VerifyControlDistributionTask
 
 plugins {
@@ -85,16 +86,32 @@ val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("g
 }
 
 val controlProductDirectory = layout.buildDirectory.dir("control-product")
+val agentToolsDirectory = layout.buildDirectory.dir("generated/agent-tools")
+val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKastAgentTools") {
+    group = "distribution"
+    description = "Validates and versions the canonical skill, MCP plugin, and marketplace."
+    dependsOn(":app-server:verifyPublicQueryGeneration")
+    sourceDirectory.set(layout.projectDirectory.dir("agent-tools"))
+    marketplaceFile.set(layout.projectDirectory.file(".agents/plugins/marketplace.json"))
+    canonicalQueryExamplesFile.set(layout.projectDirectory.file(
+        "app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.examples.json",
+    ))
+    productVersion.set(project.version.toString())
+    outputDirectory.set(agentToolsDirectory)
+}
 val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     group = "distribution"
     description = "Stages the Kast control installation for the existing IDE."
-    dependsOn(":cli:installDist", ":distribution:cli:nativeCompile", generateKastControlMetadata)
+    dependsOn(":cli:installDist", ":distribution:cli:nativeCompile", generateKastControlMetadata, generateKastAgentTools)
     into(controlProductDirectory)
     from(project(":cli").layout.buildDirectory.dir("install/kast")) {
         exclude("bin/cli", "bin/kast.bat")
     }
     from(generatedControlMetadata) {
         into("share/kast")
+    }
+    from(agentToolsDirectory) {
+        into("share/kast/agent-tools")
     }
     from(project(":distribution:cli").layout.buildDirectory.file("native/nativeCompile/kast")) {
         into("share/kast/libexec")
@@ -171,7 +188,6 @@ val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
         providers.systemProperty("user.home")
             .map { userHome -> file(userHome).resolve(".local") },
     )
-val localProductDirectory = localInstallPrefix.map { it.resolve("share/kast/current") }
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
 val localJavaHome = providers.systemProperty("java.home").map { configuredHome ->
     file(configuredHome).toPath().toRealPath().toFile()
@@ -189,8 +205,8 @@ val localHostedPluginArchive = localHostedIdeaBuild.map { build ->
 
 tasks.register<Exec>("installLocal") {
     group = "distribution"
-    description = "Installs a version-owned Kast product (-Pversion=x.y.z) under ~/.local or -PkastLocalPrefix."
-    doNotTrackState("The installed prefix contains live service sockets and is mutated by the versioned installer.")
+    description = "Installs the Kast product (-Pversion=x.y.z) under ~/.local or -PkastLocalPrefix."
+    doNotTrackState("The installed prefix contains live service sockets and is mutated by the installer.")
     dependsOn(stageKastControlProduct, ":runtime:hosted:hostedPlugin")
     inputs.dir(controlProductDirectory)
     inputs.file(localHostedPluginArchive)

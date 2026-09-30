@@ -107,7 +107,11 @@ def verify_assembled_installer(fixture: InstallerFixture, control: Path, plugin:
         env=environment, cwd=fixture.root / "workspace", capture_output=True, text=True, timeout=120,
     )
     reports = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
-    require(result.returncode == 0 and (installation / "current").is_symlink()
+    require(result.returncode == 0 and (installation / "installation").is_dir()
+            and not (installation / "installation").is_symlink()
+            and not (installation / "current").exists()
+            and not (installation / "versions").exists()
+            and not (installation / "recovery/replacement").exists()
             and any(report.get("operation") == "installation.install"
                     and report.get("semanticVersion") == version
                     and report.get("status") == "installed" for report in reports),

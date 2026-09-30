@@ -113,9 +113,8 @@ else:
         idea, assets, environment = self.installer_fixture(directory, version='1.2.4')
         root = Path(directory)
         install = root / 'install'
-        prior = install / 'versions/1.2.3-prior'
+        prior = install / 'installation'
         prior.mkdir(parents=True)
-        (install / 'current').symlink_to('versions/' + prior.name)
         log = root / 'upgrade.log'
         environment.update(TEST_LOG=str(log), TMPDIR=str(root / 'tmp'))
         (root / 'tmp').mkdir()
@@ -129,12 +128,6 @@ if [ "$1" = --internal-install ]; then
     *) exit 93 ;;
   esac
   printf '%s\\n' "$HOME/.local/bin/kast"
-elif [ "$1" = connect ] && [ "$2" = --help ]; then
-  if [ "${LEGACY_MANAGEMENT:-0}" = 1 ]; then
-    printf '%s\\n' 'Usage: kast connect [<harness>]'
-  else
-    printf '%s\\n' 'Usage: kast connect [<harness>] [<transport>]'
-  fi
 elif [ "$1" = connect ]; then
   printf 'connect' >> "$TEST_LOG"
   shift
@@ -152,13 +145,10 @@ if [ "${FAIL_SERVICE:-0}" != 0 ]; then
   printf '%s\\n' '{"operation":"installation.install","status":"rejected","reason":"replacement-exit-rejected"}' >&2
   exit "$FAIL_SERVICE"
 fi
-mkdir -p "$KAST_INSTALL_ROOT/versions/1.2.4-candidate"
-rm "$KAST_INSTALL_ROOT/current"
-ln -s versions/1.2.4-candidate "$KAST_INSTALL_ROOT/current"
-mkdir -p "$KAST_INSTALL_ROOT/current/bin" "$KAST_INSTALL_ROOT/current/share/kast"
-printf '#!/bin/sh\\nexit 0\\n' > "$KAST_INSTALL_ROOT/current/bin/kast-mcp-complete"
-chmod +x "$KAST_INSTALL_ROOT/current/bin/kast-mcp-complete"
-cp "$KAST_INSTALL_CONTROL_ROOT/share/kast/codex-mcp-registration.py" "$KAST_INSTALL_ROOT/current/share/kast/codex-mcp-registration.py"
+mkdir -p "$KAST_INSTALL_ROOT/installation/bin" "$KAST_INSTALL_ROOT/installation/share/kast"
+printf '#!/bin/sh\\nexit 0\\n' > "$KAST_INSTALL_ROOT/installation/bin/kast-mcp-complete"
+chmod +x "$KAST_INSTALL_ROOT/installation/bin/kast-mcp-complete"
+cp "$KAST_INSTALL_CONTROL_ROOT/share/kast/codex-mcp-registration.py" "$KAST_INSTALL_ROOT/installation/share/kast/codex-mcp-registration.py"
 printf 'service\\n' >> "$TEST_LOG"
 printf '%s\\n' '{"event":"kast_installation","stage":"APP_SERVER_ENABLE","outcome":"COMPLETED"}' >&2
 if [ "${PENDING_ACTIVATION:-0}" = 1 ]; then
@@ -178,7 +168,7 @@ print('{"status":"RecoveryBlocked","unresolved":["PLUGIN_OWNERSHIP_UNPROVEN"],"r
 sys.exit(code)
 ''',
             'share/kast/prune-prior-installations.py': b'''import os,sys
-assert sys.argv[1:3] == ['--installation', os.path.realpath(os.environ['KAST_INSTALL_ROOT'] + '/versions/1.2.4-candidate')]
+assert sys.argv[1:3] == ['--installation', os.path.realpath(os.environ['KAST_INSTALL_ROOT'] + '/installation')]
 assert sys.argv[3:] == []
 with open(os.environ['TEST_LOG'], 'a') as log: log.write('review\\n')
 print('{"status":"retained","removed":[],"retained":["prior"]}')
@@ -200,7 +190,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
         )
         return idea, environment, prior, log
 
-    def test_explicit_mcp_registration_uses_transport_when_native_parser_supports_it(self):
+    def test_explicit_mcp_registration_dispatches_to_native_transport_command(self):
         with tempfile.TemporaryDirectory(prefix='kast-installer-codex-mode-') as directory:
             idea, environment, _, log = self.upgrade_fixture(directory)
             codex = Path(directory) / 'bin/codex'
@@ -213,20 +203,6 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertIn('connect:codex:mcp', log.read_text().splitlines())
 
-    def test_explicit_mcp_registration_supports_legacy_released_native_parser(self):
-        with tempfile.TemporaryDirectory(prefix='kast-installer-codex-legacy-') as directory:
-            idea, environment, _, log = self.upgrade_fixture(directory)
-            environment['LEGACY_MANAGEMENT'] = '1'
-            codex = Path(directory) / 'bin/codex'
-            codex.write_text('#!/bin/sh\nexit 0\n')
-            codex.chmod(0o755)
-            result = subprocess.run(
-                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--register-codex-mcp'],
-                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
-            )
-            self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn('connect:codex', log.read_text().splitlines())
-
     def test_upgrade_finalizes_only_after_plugin_activation(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-trap-') as directory:
             idea, environment, prior, log = self.upgrade_fixture(directory)
@@ -236,7 +212,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(['service', 'plugin', 'seal', 'review'], log.read_text().splitlines())
-            self.assertTrue(prior.exists())  # The scripted prune effect is proved separately by lifecycle tests.
+            self.assertTrue(prior.exists())  # Stable payload retirement is proved separately by lifecycle tests.
             self.assertEqual('', result.stdout)
             self.assertNotIn('{', result.stderr)
             self.assertIn('1 prior Kast entries retained', result.stderr)
@@ -530,11 +506,10 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
         with tempfile.TemporaryDirectory(prefix="kast-installer-uninstall-") as directory:
             root = Path(directory)
             install = root / "data/kast"
-            selected = install / "versions/release"
+            selected = install / "installation"
             control = selected / "share/kast/installation-lifecycle.py"
             control.parent.mkdir(parents=True)
             control.write_text("import json,sys\nprint(json.dumps(sys.argv[1:]))\n")
-            (install / "current").symlink_to(selected)
             environment = {
                 "HOME": str(root), "PATH": TOOL_PATH, "NO_COLOR": "1",
                 "XDG_DATA_HOME": str(root / "data"),

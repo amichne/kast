@@ -89,6 +89,14 @@ internal object BrokerInstallationState {
             is Refinement.Refined -> readEpoch(root.resolve("state"), payload.value)
         }
 
+    internal fun observeCopiedEpoch(
+        state: Path,
+        identity: String,
+    ): Refinement<ThreadBindingOwner.Installation, InstallationStateFailure> = readEpoch(state, identity)
+
+    internal fun stagedIdentity(root: Path, installation: Path): Refinement<String, InstallationStateFailure> =
+        identity(root, {}, installation)
+
     private fun readEpoch(
         state: Path,
         identity: String,
@@ -145,11 +153,12 @@ internal object BrokerInstallationState {
     private fun identity(
         root: Path,
         observeInventory: (ControlInventoryAccepted) -> Unit,
+        installationRoot: Path = root,
     ): Refinement<String, InstallationStateFailure> {
         return try {
             if (root.toRealPath() != root) return Refinement.Rejected(InstallationStateFailure.PATH_REJECTED)
             val digest = MessageDigest.getInstance("SHA-256")
-            digest.update(root.toString().toByteArray(Charsets.UTF_8))
+            digest.update(installationRoot.toString().toByteArray(Charsets.UTF_8))
             var totalBytes = 0L
             val inventory =
                 when (val admitted = ControlPayloadInventory.admit(root)) {

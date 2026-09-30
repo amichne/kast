@@ -1,11 +1,15 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.appserver.InstalledEpochRetention
 import io.github.amichne.kast.appserver.InstalledUpgradePreparation
 import io.github.amichne.kast.appserver.InstalledUpgradeRejection
 import io.github.amichne.kast.appserver.InstalledUpgradeSettlement
 import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
-import io.github.amichne.kast.appserver.runtime.UpgradeBlocker
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
+import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationReplacementReceipt
+import io.github.amichne.kast.distribution.contract.InstallationReplacementStage
+import io.github.amichne.kast.distribution.contract.PreviousInstallationPayload
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
@@ -14,10 +18,17 @@ import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
 import io.github.amichne.kast.distribution.managed.ControlInventoryFailure
 import io.github.amichne.kast.distribution.managed.ControlLimitExceeded
 import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
+import io.github.amichne.kast.distribution.managed.InstallationRecoveryAdmission
+import io.github.amichne.kast.distribution.managed.InstallationRecoveryBaseline
 import io.github.amichne.kast.distribution.managed.InstallationRecoveryPreparation
+import io.github.amichne.kast.distribution.managed.InstallationReplacementWrite
+import io.github.amichne.kast.distribution.managed.InstallationSnapshot
+import io.github.amichne.kast.distribution.managed.InstallationSnapshotKind
+import io.github.amichne.kast.distribution.managed.admitInstallationRecovery
+import io.github.amichne.kast.distribution.managed.copyInstallationSnapshot
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
 import io.github.amichne.kast.distribution.managed.prepareInstallationRecovery
-import io.github.amichne.kast.kernel.NonEmptyFailures
+import io.github.amichne.kast.distribution.managed.writeInstallationReplacementReceipt
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.channels.FileChannel
@@ -35,107 +46,17 @@ import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.time.Duration
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 private const val MAXIMUM_UNIX_SOCKET_PATH_BYTES = 104
 private const val SOCKET_NAME_DIGEST_CHARACTERS = 43
 
-internal enum class InstallationFailure {
-    REQUEST_REJECTED,
-    CONTROL_REJECTED,
-    CONTROL_LAYOUT_REJECTED,
-    CONTROL_LIMIT_EXCEEDED,
-    PLUGIN_REJECTED,
-    IDEA_REJECTED,
-    INSTALLATION_ROOT_REJECTED,
-    ACTIVATION_LOCK_REJECTED,
-    CONFIGURATION_REJECTED,
-    CANDIDATE_QUALIFICATION_REJECTED,
-    CANDIDATE_EXISTING_UNTRUSTED,
-    PRIOR_SELECTION_REJECTED,
-    PRIOR_ADMISSION_FILE_REJECTED,
-    PRIOR_ADMISSION_EXIT_REJECTED,
-    PRIOR_ADMISSION_DEADLINE_EXCEEDED,
-    PRIOR_ADMISSION_IO_REJECTED,
-    PRIOR_ADMISSION_INTERRUPTED,
-    PRIOR_RETIREMENT_EXECUTABLE_REJECTED,
-    PRIOR_RETIREMENT_CONFIGURATION_REJECTED,
-    PRIOR_RETIREMENT_EXIT_REJECTED,
-    PRIOR_RETIREMENT_DEADLINE_EXCEEDED,
-    PRIOR_RETIREMENT_IO_REJECTED,
-    PRIOR_RETIREMENT_INTERRUPTED,
-    REPLACEMENT_EXIT_REJECTED,
-    REPLACEMENT_DEADLINE_EXCEEDED,
-    REPLACEMENT_IO_REJECTED,
-    ACTIVATION_REJECTED,
-    RECOVERY_REQUIRED,
-    FILESYSTEM_REJECTED,
-    INTERRUPTED,
-}
-
-internal sealed interface InstallationOutcome {
-    data class Complete(val report: InstallationReport) : InstallationOutcome
-
-    data class TrustRejected(val failure: io.github.amichne.kast.cli.ide.BrokerTrustFailure) : InstallationOutcome
-
-    data class Rejected(val failure: InstallationFailure, val limit: ControlLimitExceeded? = null) : InstallationOutcome
-
-    data class UpgradePending(val blockers: NonEmptyFailures<UpgradeBlocker>) : InstallationOutcome
-
-    data class UpgradeRejected(val reason: InstalledUpgradeRejection) : InstallationOutcome
-}
-
-@Serializable
-private data class InstallationManifest(
-    val schemaVersion: Int = 2,
-    val semanticVersion: String,
-    val installationRoot: String,
-    val payloadIdentity: String,
-    val controlSha256: String,
-    val hostedPluginSha256: String,
-    val codexHome: String,
-    val configuration: String,
-    val workspaceRegistry: String,
-    val stateRoot: String,
-    val externalAnchors: List<ExternalAnchor>,
-    val payloadFiles: List<PayloadFile>,
-    val retention: Retention = Retention(),
-)
-
-@Serializable
-private data class ExternalAnchor(
-    val kind: String,
-    val path: String,
-    val expectedLinkTarget: String? = null,
-    val requiresCurrentTarget: String? = null,
-    val expectedExecutable: String? = null,
-    val expectedLabel: String? = null,
-    val identityReceipt: String? = null,
-    val expectedPhysicalDirectory: String? = null,
-    val ownership: String = "declared-not-observed",
-)
-
-@Serializable private data class PayloadFile(val path: String, val sha256: String, val mode: Int)
-
-@Serializable
-private data class Retention(
-    val payload: String = "until-successful-upgrade-or-explicit-uninstall",
-    val config: String = "until-successful-upgrade-or-explicit-uninstall",
-    val state: String = "after-exact-process-retirement",
-    val externalAnchors: String = "after-live-identity-match",
-)
-
 private data class VerifiedInstallationPlan(
     val request: InstallationRequest,
     val pluginName: String,
     val payloadDigest: Sha256,
-    val versionsRoot: Path,
     val targetRoot: Path,
-    val currentLink: Path,
-    val commandLink: Path,
-    val codexCommandLink: Path,
 ) {
     val configuration: Path
         get() = targetRoot.resolve("config/environment")
@@ -153,13 +74,12 @@ private data class VerifiedInstallationPlan(
             changes =
                 listOf(
                     "enroll-or-preserve-broker-trust",
-                    "install-immutable-payload",
+                    "install-single-payload",
                     "write-release-local-configuration",
                     "retire-previous-app-server",
                     if (request.force == InstallationSwitch.ENABLED) "reset-installation-state-and-ownership"
                     else "retain-workspace-registry",
-                    "replace-current-link",
-                    "retire-owned-command-links",
+                    "replace-physical-installation",
                 ) +
                     when (activation) {
                         InstallationActivation.Ready -> listOf("enable-app-server")
@@ -242,167 +162,199 @@ internal object InstallationWorkflow {
             return PlanVerification.Rejected(InstallationFailure.IDEA_REJECTED)
 
         val payload = sha256("${request.controlDigest.value}\n${request.pluginDigest.value}\n".toByteArray())
-        val versions = request.installRoot.value.resolve("versions")
-        val target = versions.resolve("${request.version}-${payload.value}")
+        val target = request.installRoot.value.resolve("installation")
         return PlanVerification.Verified(
             VerifiedInstallationPlan(
-                request,
-                manifest.fileName,
-                payload,
-                versions,
-                target,
-                request.installRoot.value.resolve("current"),
-                request.binDirectory.value.resolve("kast"),
-                request.binDirectory.value.resolve("kast-codex"),
+                request = request,
+                pluginName = manifest.fileName,
+                payloadDigest = payload,
+                targetRoot = target,
             )
         )
     }
 
     private fun apply(plan: VerifiedInstallationPlan, upgrades: PriorDaemonUpgradeGateway): InstallationOutcome {
-        if (!prepareOwnedDirectory(plan.request.installRoot.value)) {
+        if (!prepareOwnedDirectory(plan.request.installRoot.value))
             return InstallationOutcome.Rejected(InstallationFailure.INSTALLATION_ROOT_REJECTED)
-        }
-        if (!prepareOwnedDirectory(plan.versionsRoot)) {
-            return InstallationOutcome.Rejected(InstallationFailure.INSTALLATION_ROOT_REJECTED)
-        }
         val lockPath = plan.request.installRoot.value.resolve("activation.lock")
         if (
             Files.isSymbolicLink(lockPath) ||
                 (Files.exists(lockPath, LinkOption.NOFOLLOW_LINKS) && !regularFile(lockPath))
-        ) {
+        )
             return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
-        }
         FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE).use {
             channel ->
             val lock =
                 acquire(channel) ?: return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
-            lock.use {
-                if (Files.isSymbolicLink(lockPath) || !secureActivationLock(lockPath)) {
+            lock.use activation@{
+                if (Files.isSymbolicLink(lockPath) || !secureActivationLock(lockPath))
                     return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
-                }
                 when (val trust = enrollInstallationTrust(plan.request.home.value)) {
                     is io.github.amichne.kast.cli.ide.BrokerTrustResult.Complete -> Unit
                     is io.github.amichne.kast.cli.ide.BrokerTrustResult.Rejected ->
                         return InstallationOutcome.TrustRejected(trust.failure)
                 }
-                if (plan.request.force == InstallationSwitch.ENABLED) {
-                    val roots = buildSet {
-                        when (val selected = selectedInstallation(plan)) {
-                            is PriorSelection.Selected -> add(selected.root)
-                            PriorSelection.Absent,
-                            PriorSelection.Rejected -> Unit
+                when (observePendingInstallationReplacement(plan.request.installRoot.value)) {
+                    PendingInstallationReplacement.Absent -> Unit
+                    PendingInstallationReplacement.RecoveryRequired ->
+                        return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
+                    is PendingInstallationReplacement.Committed -> {
+                        if (plan.request.force == InstallationSwitch.ENABLED || !admitExisting(plan))
+                            return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
+                        when (admitInstallationRecovery(plan.targetRoot)) {
+                            is InstallationRecoveryAdmission.Admitted,
+                            is InstallationRecoveryAdmission.Pending -> Unit
+                            InstallationRecoveryAdmission.Rejected ->
+                                return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
                         }
-                        add(plan.targetRoot)
+                        if (
+                            validateStagedConfiguration(plan.configuration) !=
+                                InstallationConfigurationValidationOutcome.ADMITTED
+                        )
+                            return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                        return@activation
                     }
-                    when (
-                        val reset =
-                            admitReplacement(
-                                forceReplaceInstallations(
-                                    roots,
-                                    plan.request.home.value,
-                                    plan.request.installRoot.value,
-                                )
-                            )
-                    ) {
-                        is Refinement.Refined -> Unit
-                        is Refinement.Rejected -> return InstallationOutcome.Rejected(reset.failure)
-                    }
-                }
-                val existing = Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)
-                if (existing && !admitExisting(plan)) {
-                    return InstallationOutcome.Rejected(InstallationFailure.CANDIDATE_EXISTING_UNTRUSTED)
-                }
-                if (!Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)) {
-                    when (val staged = stage(plan)) {
-                        StageResult.Complete -> Unit
-                        is StageResult.Rejected -> return InstallationOutcome.Rejected(staged.failure)
-                    }
-                }
-                if (
-                    validateStagedConfiguration(plan.configuration) !=
-                        InstallationConfigurationValidationOutcome.ADMITTED
-                ) {
-                    return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
-                }
-                if (qualifyCandidate(plan) != InstallationChildOutcome.COMPLETED) {
-                    return InstallationOutcome.Rejected(InstallationFailure.CANDIDATE_QUALIFICATION_REJECTED)
                 }
                 val prior =
                     when (val selected = selectedInstallation(plan)) {
-                        is PriorSelection.Absent -> null
+                        PriorSelection.Absent -> null
                         is PriorSelection.Selected -> selected.root
-                        is PriorSelection.Rejected ->
+                        PriorSelection.Rejected ->
                             return InstallationOutcome.Rejected(InstallationFailure.PRIOR_SELECTION_REJECTED)
                     }
-                when (
-                    prepareInstallationRecovery(
-                        plan.targetRoot,
-                        if (plan.request.force == InstallationSwitch.ENABLED)
-                            io.github.amichne.kast.distribution.managed.InstallationRecoveryHistory.REPLACE
-                        else io.github.amichne.kast.distribution.managed.InstallationRecoveryHistory.RETAIN,
-                    )
-                ) {
-                    InstallationRecoveryPreparation.Prepared -> Unit
-                    InstallationRecoveryPreparation.Rejected ->
-                        return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
-                }
-                if (prior != null && prior != plan.targetRoot) {
-                    if (!physicalDirectory(prior))
-                        return InstallationOutcome.Rejected(InstallationFailure.PRIOR_ADMISSION_FILE_REJECTED)
-                    when (val admission = admitPrior(prior, plan.targetRoot, plan.request)) {
-                        is Refinement.Refined -> Unit
-                        is Refinement.Rejected -> return InstallationOutcome.Rejected(admission.failure)
-                    }
-                    val retirement =
-                        when (val admitted = PriorRetirement.admit(prior, plan.request)) {
-                            is Refinement.Refined -> admitted.value
-                            is Refinement.Rejected -> return InstallationOutcome.Rejected(admitted.failure)
+                if (
+                    prior == null &&
+                        !Files.notExists(
+                            plan.request.installRoot.value.resolve("recovery/installation"),
+                            LinkOption.NOFOLLOW_LINKS,
+                        )
+                )
+                    return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
+                val baseline =
+                    if (prior == null) null
+                    else
+                        when (val admission = admitInstallationRecovery(prior)) {
+                            is InstallationRecoveryAdmission.Admitted -> admission.baseline
+                            is InstallationRecoveryAdmission.Pending,
+                            InstallationRecoveryAdmission.Rejected ->
+                                return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
                         }
-                    when (val update = upgrades.prepare(retirement, plan.request, plan.payloadDigest)) {
-                        InstalledUpgradePreparation.NoDaemon -> Unit
-                        is InstalledUpgradePreparation.Pending ->
-                            return InstallationOutcome.UpgradePending(update.blockers)
-                        is InstalledUpgradePreparation.Rejected ->
-                            return InstallationOutcome.UpgradeRejected(update.reason)
-                        is InstalledUpgradePreparation.Committed -> Unit
-                        is InstalledUpgradePreparation.Sealed ->
-                            when (val committed = update.permit.commit()) {
-                                InstalledUpgradeSettlement.Completed -> Unit
-                                is InstalledUpgradeSettlement.Rejected ->
-                                    return InstallationOutcome.UpgradeRejected(
-                                        InstalledUpgradeRejection.Daemon(committed.reason)
+                if (
+                    prior == plan.targetRoot && plan.request.force == InstallationSwitch.DISABLED && admitExisting(plan)
+                ) {
+                    if (
+                        validateStagedConfiguration(plan.configuration) !=
+                            InstallationConfigurationValidationOutcome.ADMITTED
+                    )
+                        return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                    return@activation
+                }
+                if (prior == plan.targetRoot && plan.request.force == InstallationSwitch.DISABLED && samePayload(plan))
+                    return InstallationOutcome.Rejected(InstallationFailure.CANDIDATE_EXISTING_UNTRUSTED)
+                val staged =
+                    when (val stage = stage(plan)) {
+                        is StageResult.Complete -> stage.root
+                        is StageResult.Rejected -> return InstallationOutcome.Rejected(stage.failure)
+                    }
+                try {
+                    if (
+                        validateStagedConfiguration(staged.resolve("config/environment")) !=
+                            InstallationConfigurationValidationOutcome.ADMITTED
+                    )
+                        return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                    if (qualifyCandidate(plan, staged) != InstallationChildOutcome.COMPLETED)
+                        return InstallationOutcome.Rejected(InstallationFailure.CANDIDATE_QUALIFICATION_REJECTED)
+                    if (prior != null) {
+                        if (plan.request.force == InstallationSwitch.DISABLED) {
+                            when (val admission = admitPrior(prior, staged, plan.request)) {
+                                is Refinement.Refined -> Unit
+                                is Refinement.Rejected -> return InstallationOutcome.Rejected(admission.failure)
+                            }
+                            val retirement =
+                                when (val admitted = PriorRetirement.admit(prior, plan.request)) {
+                                    is Refinement.Refined -> admitted.value
+                                    is Refinement.Rejected -> return InstallationOutcome.Rejected(admitted.failure)
+                                }
+                            when (val update = upgrades.prepare(retirement, plan.request, plan.payloadDigest)) {
+                                InstalledUpgradePreparation.NoDaemon -> Unit
+                                is InstalledUpgradePreparation.Pending ->
+                                    return InstallationOutcome.UpgradePending(update.blockers)
+                                is InstalledUpgradePreparation.Rejected ->
+                                    return InstallationOutcome.UpgradeRejected(update.reason)
+                                is InstalledUpgradePreparation.Committed -> Unit
+                                is InstalledUpgradePreparation.Sealed ->
+                                    when (val committed = update.permit.commit()) {
+                                        InstalledUpgradeSettlement.Completed -> Unit
+                                        is InstalledUpgradeSettlement.Rejected ->
+                                            return InstallationOutcome.UpgradeRejected(
+                                                InstalledUpgradeRejection.Daemon(committed.reason)
+                                            )
+                                    }
+                            }
+                            when (val retired = retire(retirement)) {
+                                is Refinement.Refined -> Unit
+                                is Refinement.Rejected -> return InstallationOutcome.Rejected(retired.failure)
+                            }
+                            val priorRegistry = prior.resolve("config/workspaces.json")
+                            if (!Files.notExists(priorRegistry, LinkOption.NOFOLLOW_LINKS)) {
+                                val retention =
+                                    InstalledWorkspaceRegistryRetention.retain(
+                                        priorRegistry,
+                                        staged.resolve("config/workspaces.json"),
                                     )
+                                reportRegistryRetention(retention)
+                                if (retention is io.github.amichne.kast.appserver.WorkspaceRegistryRetention.Rejected)
+                                    return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                            }
+                            val state = prior.resolve("state")
+                            if (Files.exists(state, LinkOption.NOFOLLOW_LINKS)) {
+                                when (
+                                    val copied =
+                                        copyInstallationSnapshot(
+                                            state,
+                                            staged.resolve("state"),
+                                            InstallationSnapshotKind.STATE,
+                                        )
+                                ) {
+                                    InstallationSnapshot.Copied -> Unit
+                                    is InstallationSnapshot.Rejected ->
+                                        return InstallationOutcome.Rejected(copied.failure.installationFailure())
+                                }
+                            }
+                            when (val epoch = InstalledEpochRetention.retain(prior, staged, plan.targetRoot)) {
+                                InstalledEpochRetention.Absent,
+                                InstalledEpochRetention.Preserved,
+                                InstalledEpochRetention.Regenerate -> Unit
+                                is InstalledEpochRetention.Rejected ->
+                                    return InstallationOutcome.Rejected(epoch.failure.installationFailure())
+                            }
+                        } else
+                            when (val reset = admitReplacement(resetInstallation(prior, plan.request.home.value))) {
+                                is Refinement.Refined -> Unit
+                                is Refinement.Rejected -> return InstallationOutcome.Rejected(reset.failure)
                             }
                     }
-                    when (val retirement = retire(retirement)) {
-                        is Refinement.Refined -> Unit
-                        is Refinement.Rejected -> return InstallationOutcome.Rejected(retirement.failure)
+                    when (val activated = activate(plan, staged, prior, baseline)) {
+                        ActivationResult.Complete -> Unit
+                        ActivationResult.RecoveryRequired ->
+                            return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
+                        is ActivationResult.Rejected -> return InstallationOutcome.Rejected(activated.failure)
                     }
-                    val retention =
-                        InstalledWorkspaceRegistryRetention.retain(
-                            source = prior.resolve("config/workspaces.json"),
-                            destination = plan.targetRoot.resolve("config/workspaces.json"),
-                        )
-                    reportRegistryRetention(retention)
-                }
-                val activation = activate(plan)
-                if (activation is ActivationResult.RecoveryRequired) {
-                    return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
-                }
-                if (activation is ActivationResult.Rejected) {
-                    return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_REJECTED)
+                } finally {
+                    if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) deleteTree(staged)
                 }
             }
         }
         val activation =
-            if (plan.request.profile == InstallationProfile.PERSISTENT) {
+            if (plan.request.profile == InstallationProfile.PERSISTENT)
                 InstallationActivation.fromChild(enableAppServer(plan))
-            } else InstallationActivation.NotRequested
+            else InstallationActivation.NotRequested
         return InstallationOutcome.Complete(plan.report(activation))
     }
 
     private fun stage(plan: VerifiedInstallationPlan): StageResult {
-        val staged = Files.createTempDirectory(plan.versionsRoot, ".install-${plan.request.version}-")
+        val staged = Files.createTempDirectory(plan.request.installRoot.value, ".install-")
+        var completed = false
         try {
             copyControl(plan.request.controlRoot.value, staged)
             val pluginRoot = Files.createDirectories(staged.resolve("share/kast/plugins"))
@@ -437,12 +389,12 @@ internal object InstallationWorkflow {
             if (!writeManifest(plan, staged)) {
                 return StageResult.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED)
             }
-            move(staged, plan.targetRoot)
-            return StageResult.Complete
+            completed = true
+            return StageResult.Complete(staged)
         } catch (_: IOException) {
             return StageResult.Rejected(InstallationFailure.FILESYSTEM_REJECTED)
         } finally {
-            if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) deleteTree(staged)
+            if (!completed) deleteTree(staged)
         }
     }
 
@@ -511,17 +463,11 @@ internal object InstallationWorkflow {
             |#!/bin/sh
             |set -eu
             |script_path="${'$'}0"
-            |links=0
-            |while [ -L "${'$'}script_path" ]; do
-            |  links=${'$'}((links + 1))
-            |  [ "${'$'}links" -le 16 ] || { printf '%s\n' 'kast: launcher symlink cycle' >&2; exit 1; }
-            |  target=${'$'}(readlink "${'$'}script_path")
-            |  case "${'$'}target" in /*) script_path="${'$'}target" ;; *) script_path="${'$'}(dirname -- "${'$'}script_path")/${'$'}target" ;; esac
-            |done
+            |[ ! -L "${'$'}script_path" ] || { printf '%s\n' 'kast: launcher must be a regular file' >&2; exit 1; }
             |script_dir=${'$'}(CDPATH= cd -- "${'$'}(dirname -- "${'$'}script_path")" && pwd -P)
             |installation_root=${'$'}(CDPATH= cd -- "${'$'}script_dir/.." && pwd -P)
             |$dispatch
-            |config_file=${shellQuote(plan.configuration.toString())}
+            |config_file="${'$'}installation_root/config/environment"
             |if [ -z "${'$'}{KAST_CONFIGURATION_FILE+x}" ]; then
             |  export KAST_CONFIGURATION_FILE="${'$'}config_file"
             |fi
@@ -571,17 +517,15 @@ internal object InstallationWorkflow {
         fixedExternalAnchors(plan) + transportExternalAnchors(plan)
 
     private fun fixedExternalAnchors(plan: VerifiedInstallationPlan): List<ExternalAnchor> {
-        val currentTarget = "versions/${plan.targetRoot.fileName}"
         val serviceHash = sha256(plan.targetRoot.toString().toByteArray()).value.take(32)
         val serviceLabel = "io.github.amichne.kast.broker.$serviceHash"
         return listOf(
-            ExternalAnchor("current", plan.currentLink.toString(), expectedLinkTarget = currentTarget),
             ExternalAnchor(
                 "login",
                 plan.request.home.value.resolve("Library/LaunchAgents/$serviceLabel.login.plist").toString(),
                 expectedExecutable = plan.targetRoot.resolve("share/kast/libexec/kast-daemon").toString(),
                 expectedLabel = serviceLabel,
-            ),
+            )
         )
     }
 
@@ -629,7 +573,7 @@ internal object InstallationWorkflow {
             } catch (_: IllegalArgumentException) {
                 return false
             }
-        return manifest.schemaVersion == 2 &&
+        return manifest.schemaVersion == INSTALLATION_MANIFEST_SCHEMA_VERSION &&
             manifest.semanticVersion == plan.request.version.toString() &&
             manifest.installationRoot == plan.targetRoot.toString() &&
             manifest.payloadIdentity == "sha256:${plan.payloadDigest.value}" &&
@@ -638,50 +582,214 @@ internal object InstallationWorkflow {
             manifest.payloadFiles == payloadFiles(plan.targetRoot)
     }
 
-    private fun selectedInstallation(plan: VerifiedInstallationPlan): PriorSelection {
-        if (!Files.exists(plan.currentLink, LinkOption.NOFOLLOW_LINKS)) return PriorSelection.Absent
-        if (!Files.isSymbolicLink(plan.currentLink)) return PriorSelection.Rejected
-        val target = Files.readSymbolicLink(plan.currentLink)
+    private fun samePayload(plan: VerifiedInstallationPlan): Boolean {
+        val raw =
+            readBounded(
+                plan.targetRoot.resolve("installation.json"),
+                ControlDistributionLimits.maximumManifestBytes.toLong(),
+            ) ?: return false
+        val manifest =
+            try {
+                manifestJson.decodeFromString(InstallationManifest.serializer(), raw)
+            } catch (_: SerializationException) {
+                return false
+            }
+        return manifest.semanticVersion == plan.request.version.toString() &&
+            manifest.payloadIdentity == "sha256:${plan.payloadDigest.value}"
+    }
+
+    private fun selectedInstallation(plan: VerifiedInstallationPlan): PriorSelection =
+        if (Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)) selectedPhysicalInstallation(plan)
+        else selectedLegacyInstallation(plan)
+
+    private fun selectedPhysicalInstallation(plan: VerifiedInstallationPlan): PriorSelection {
+        if (!physicalDirectory(plan.targetRoot)) return PriorSelection.Rejected
+        if (Files.exists(plan.request.installRoot.value.resolve("current"), LinkOption.NOFOLLOW_LINKS))
+            return PriorSelection.Rejected
+        if (plan.request.force == InstallationSwitch.ENABLED) return PriorSelection.Selected(plan.targetRoot)
+        val manifest =
+            readBounded(
+                plan.targetRoot.resolve("installation.json"),
+                ControlDistributionLimits.maximumManifestBytes.toLong(),
+            ) ?: return PriorSelection.Rejected
+        val existing =
+            try {
+                manifestJson.decodeFromString(InstallationManifest.serializer(), manifest)
+            } catch (_: SerializationException) {
+                return PriorSelection.Rejected
+            }
+        if (
+            existing.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
+                existing.installationRoot != plan.targetRoot.toString()
+        )
+            return PriorSelection.Rejected
+        return PriorSelection.Selected(plan.targetRoot)
+    }
+
+    private fun selectedLegacyInstallation(plan: VerifiedInstallationPlan): PriorSelection {
+        // Legacy selectors are read only as an explicit, verified migration input.
+        val selector = plan.request.installRoot.value.resolve("current")
+        if (Files.notExists(selector, LinkOption.NOFOLLOW_LINKS)) return PriorSelection.Absent
+        if (!Files.isSymbolicLink(selector)) return PriorSelection.Rejected
+        val target = Files.readSymbolicLink(selector)
         if (target.nameCount != 2 || target.getName(0).toString() != "versions") return PriorSelection.Rejected
         val resolved = plan.request.installRoot.value.resolve(target).normalize()
-        if (resolved.parent != plan.versionsRoot) return PriorSelection.Rejected
+        if (resolved.parent != plan.request.installRoot.value.resolve("versions") || !physicalDirectory(resolved))
+            return PriorSelection.Rejected
         return PriorSelection.Selected(resolved)
     }
 
-    private fun qualifyCandidate(plan: VerifiedInstallationPlan): InstallationChildOutcome =
+    private fun qualifyCandidate(plan: VerifiedInstallationPlan, root: Path): InstallationChildOutcome =
         executeInstallationChild(
             InstallationChildStage.CANDIDATE_QUALIFICATION,
-            listOf(plan.targetRoot.resolve("bin/kast-complete").toString(), "--version"),
-            mapOf(
-                "HOME" to plan.request.home.value.toString(),
-                "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
-            ),
+            listOf(root.resolve("bin/kast-complete").toString(), "--version"),
+            mapOf("HOME" to plan.request.home.value.toString(), "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin")),
         )
 
-    private fun activate(plan: VerifiedInstallationPlan): ActivationResult {
-        val priorCurrent = linkTarget(plan.currentLink)
-        val priorCommand = managedCommandLink(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
-        val priorCodex = managedCommandLink(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
-        if (priorCurrent is LinkObservation.Rejected) return ActivationResult.Rejected
-        return try {
-            retireOwnedCommandLink(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"), priorCommand)
-            retireOwnedCommandLink(
-                plan.codexCommandLink,
-                plan.currentLink.resolve("bin/kast-codex-complete"),
-                priorCodex,
+    private fun activate(
+        plan: VerifiedInstallationPlan,
+        staged: Path,
+        prior: Path?,
+        baseline: InstallationRecoveryBaseline?,
+    ): ActivationResult {
+        val recovery = plan.request.installRoot.value.resolve("recovery")
+        if (!prepareOwnedDirectory(recovery)) return ActivationResult.Rejected()
+        val transaction = recovery.resolve("replacement")
+        if (Files.exists(transaction, LinkOption.NOFOLLOW_LINKS)) return ActivationResult.RecoveryRequired
+        Files.createDirectory(transaction)
+        setMode(transaction, "rwx------")
+        val receipt =
+            InstallationReplacementReceipt(
+                stage = InstallationReplacementStage.PREPARED,
+                installation = plan.targetRoot.toString(),
+                installationIdentity = observeInstallationFilesystemIdentity(staged),
+                previous = previousPayload(plan, prior, transaction),
             )
-            replaceLink(plan.currentLink, Path.of("versions/${plan.targetRoot.fileName}"))
-            ActivationResult.Complete
-        } catch (_: IOException) {
-            val restored =
-                listOf(
-                        restoreLink(plan.currentLink, priorCurrent),
-                        restoreRetiredCommandLink(plan.commandLink, priorCommand),
-                        restoreRetiredCommandLink(plan.codexCommandLink, priorCodex),
-                    )
-                    .all { it == LinkRestoration.RESTORED }
-            if (restored) ActivationResult.Rejected else ActivationResult.RecoveryRequired
+        return commitReplacement(ReplacementActivation(plan, transaction, receipt), staged, baseline)
+    }
+
+    private fun previousPayload(
+        plan: VerifiedInstallationPlan,
+        prior: Path?,
+        transaction: Path,
+    ): PreviousInstallationPayload =
+        when {
+            prior == null -> PreviousInstallationPayload.None
+            prior == plan.targetRoot ->
+                PreviousInstallationPayload.Physical(
+                    installation = prior.toString(),
+                    identity = observeInstallationFilesystemIdentity(prior),
+                    payload = transaction.resolve("payload").toString(),
+                    recovery = transaction.resolve("recovery").toString(),
+                )
+            else ->
+                PreviousInstallationPayload.Legacy(
+                    installation = prior.toString(),
+                    identity = observeInstallationFilesystemIdentity(prior),
+                    selector = plan.request.installRoot.value.resolve("current").toString(),
+                    target = "versions/${prior.fileName}",
+                    recovery = transaction.resolve("recovery").toString(),
+                )
         }
+
+    private fun commitReplacement(
+        context: ReplacementActivation,
+        staged: Path,
+        baseline: InstallationRecoveryBaseline?,
+    ): ActivationResult {
+        var current = context
+        var phase = ReplacementCommitPhase.PREPARED
+        try {
+            when (val written = writeInstallationReplacementReceipt(current.transaction, current.receipt)) {
+                InstallationReplacementWrite.Written -> Unit
+                is InstallationReplacementWrite.Rejected ->
+                    return rollbackReplacement(current, phase, written.failure.installationFailure())
+            }
+            if (baseline != null)
+                when (
+                    val copied =
+                        copyInstallationSnapshot(
+                            baseline.bundle,
+                            context.transaction.resolve("recovery"),
+                            InstallationSnapshotKind.RECOVERY,
+                        )
+                ) {
+                    InstallationSnapshot.Copied -> Unit
+                    is InstallationSnapshot.Rejected ->
+                        return rollbackReplacement(current, phase, copied.failure.installationFailure())
+                }
+            if (context.receipt.previous is PreviousInstallationPayload.Physical) {
+                move(context.plan.targetRoot, context.transaction.resolve("payload"))
+                phase = ReplacementCommitPhase.PRIOR_MOVED
+            }
+            move(staged, context.plan.targetRoot)
+            phase = ReplacementCommitPhase.PAYLOAD_COMMITTED
+            if (
+                prepareInstallationRecovery(context.plan.targetRoot, baseline) !=
+                    InstallationRecoveryPreparation.Prepared
+            )
+                return rollbackReplacement(current, phase, InstallationFailure.ACTIVATION_REJECTED)
+            current =
+                current.copy(
+                    receipt =
+                        current.receipt.copy(
+                            stage = InstallationReplacementStage.PAYLOAD_COMMITTED,
+                            installationIdentity = observeInstallationFilesystemIdentity(context.plan.targetRoot),
+                        )
+                )
+            return when (val written = writeInstallationReplacementReceipt(current.transaction, current.receipt)) {
+                InstallationReplacementWrite.Written -> ActivationResult.Complete
+                is InstallationReplacementWrite.Rejected ->
+                    rollbackReplacement(current, phase, written.failure.installationFailure())
+            }
+        } catch (_: IOException) {
+            return rollbackReplacement(current, phase, InstallationFailure.ACTIVATION_REJECTED)
+        }
+    }
+
+    private fun rollbackReplacement(
+        context: ReplacementActivation,
+        phase: ReplacementCommitPhase,
+        failure: InstallationFailure,
+    ): ActivationResult {
+        return try {
+            rollbackPayload(context, phase)
+            if (phase == ReplacementCommitPhase.PAYLOAD_COMMITTED) rollbackRecovery(context)
+            deleteTree(context.transaction)
+            ActivationResult.Rejected(failure)
+        } catch (_: IOException) {
+            writeInstallationReplacementReceipt(
+                context.transaction,
+                context.receipt.copy(stage = InstallationReplacementStage.RECOVERY_REQUIRED),
+            )
+            ActivationResult.RecoveryRequired
+        }
+    }
+
+    private fun rollbackPayload(context: ReplacementActivation, phase: ReplacementCommitPhase) {
+        if (
+            phase == ReplacementCommitPhase.PAYLOAD_COMMITTED &&
+                Files.exists(context.plan.targetRoot, LinkOption.NOFOLLOW_LINKS)
+        ) {
+            if (observeInstallationFilesystemIdentity(context.plan.targetRoot) != context.receipt.installationIdentity)
+                throw IOException("replacement payload identity changed")
+            deleteTree(context.plan.targetRoot)
+        }
+        if (
+            phase != ReplacementCommitPhase.PREPARED && context.receipt.previous is PreviousInstallationPayload.Physical
+        )
+            move(context.transaction.resolve("payload"), context.plan.targetRoot)
+    }
+
+    private fun rollbackRecovery(context: ReplacementActivation) {
+        val bundle = context.transaction.parent.resolve("installation")
+        if (Files.exists(bundle, LinkOption.NOFOLLOW_LINKS)) deleteTree(bundle)
+        val previous = context.transaction.resolve("recovery")
+        if (
+            context.receipt.previous is PreviousInstallationPayload.Physical &&
+                Files.exists(previous, LinkOption.NOFOLLOW_LINKS)
+        )
+            move(previous, bundle)
     }
 
     private fun enableAppServer(plan: VerifiedInstallationPlan): InstallationChildOutcome =
@@ -714,6 +822,18 @@ internal object InstallationWorkflow {
     }
 }
 
+private enum class ReplacementCommitPhase {
+    PREPARED,
+    PRIOR_MOVED,
+    PAYLOAD_COMMITTED,
+}
+
+private data class ReplacementActivation(
+    val plan: VerifiedInstallationPlan,
+    val transaction: Path,
+    val receipt: InstallationReplacementReceipt,
+)
+
 private sealed interface PlanVerification {
     data class Verified(val plan: VerifiedInstallationPlan) : PlanVerification
 
@@ -721,7 +841,7 @@ private sealed interface PlanVerification {
 }
 
 private sealed interface StageResult {
-    data object Complete : StageResult
+    data class Complete(val root: Path) : StageResult
 
     data class Rejected(val failure: InstallationFailure) : StageResult
 }
@@ -739,15 +859,7 @@ private sealed interface ActivationResult {
 
     data object Complete : ActivationResult
 
-    data object Rejected : ActivationResult
-}
-
-private sealed interface LinkObservation {
-    data object Absent : LinkObservation
-
-    data class Present(val target: Path) : LinkObservation
-
-    data object Rejected : LinkObservation
+    data class Rejected(val failure: InstallationFailure = InstallationFailure.ACTIVATION_REJECTED) : ActivationResult
 }
 
 private fun physicalDirectory(path: Path): Boolean =
@@ -890,65 +1002,6 @@ private fun move(source: Path, target: Path) {
         Files.move(source, target, StandardCopyOption.ATOMIC_MOVE)
     } catch (_: AtomicMoveNotSupportedException) {
         Files.move(source, target)
-    }
-}
-
-private fun linkTarget(path: Path): LinkObservation =
-    when {
-        !Files.exists(path, LinkOption.NOFOLLOW_LINKS) -> LinkObservation.Absent
-        !Files.isSymbolicLink(path) -> LinkObservation.Rejected
-        else -> LinkObservation.Present(Files.readSymbolicLink(path))
-    }
-
-private fun managedCommandLink(path: Path, expected: Path): LinkObservation =
-    when (val observed = linkTarget(path)) {
-        LinkObservation.Absent -> observed
-        is LinkObservation.Present -> if (observed.target == expected) observed else LinkObservation.Rejected
-        LinkObservation.Rejected -> observed
-    }
-
-private fun retireOwnedCommandLink(path: Path, expected: Path, prior: LinkObservation) {
-    if (prior !is LinkObservation.Present) return
-    if (managedCommandLink(path, expected) != prior) throw IOException("command ownership changed")
-    Files.delete(path)
-}
-
-private fun restoreRetiredCommandLink(path: Path, prior: LinkObservation): LinkRestoration =
-    if (prior is LinkObservation.Present) {
-        if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) LinkRestoration.REJECTED else restoreLink(path, prior)
-    } else LinkRestoration.RESTORED
-
-private fun replaceLink(path: Path, target: Path) {
-    Files.createDirectories(path.parent)
-    val temporary = Files.createTempFile(path.parent, ".${path.fileName}-", ".link")
-    try {
-        Files.delete(temporary)
-        Files.createSymbolicLink(temporary, target)
-        try {
-            Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-        } catch (_: AtomicMoveNotSupportedException) {
-            Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING)
-        }
-    } finally {
-        Files.deleteIfExists(temporary)
-    }
-}
-
-private enum class LinkRestoration {
-    RESTORED,
-    REJECTED,
-}
-
-private fun restoreLink(path: Path, observation: LinkObservation): LinkRestoration {
-    return try {
-        when (observation) {
-            LinkObservation.Absent -> Files.deleteIfExists(path)
-            is LinkObservation.Present -> replaceLink(path, observation.target)
-            LinkObservation.Rejected -> return LinkRestoration.REJECTED
-        }
-        LinkRestoration.RESTORED
-    } catch (_: IOException) {
-        LinkRestoration.REJECTED
     }
 }
 

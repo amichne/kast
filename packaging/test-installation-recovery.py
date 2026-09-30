@@ -456,5 +456,322 @@ class RecoveryTest(unittest.TestCase):
         self.assertTrue((self.outer / 'current').is_symlink())
         self.assertFalse((self.root / '.recovery-detached').exists())
 
+
+class SingleInstallationRecoveryTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = tempfile.TemporaryDirectory(prefix='kast-single-recovery-')
+        self.addCleanup(self.fixture.cleanup)
+        self.home = Path(self.fixture.name).resolve()
+        self.outer = self.home / 'kast'
+        self.root = self.outer / 'installation'
+        self.root.mkdir(parents=True)
+        self.bin = self.home / 'bin'
+        self.bin.mkdir()
+        self.plugins = self.home / 'plugins'
+        self.plugins.mkdir()
+        spec = importlib.util.spec_from_file_location('single_recovery_under_test', SCRIPT)
+        self.recovery = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = self.recovery
+        spec.loader.exec_module(self.recovery)
+        self.recovery.prepare(self.root, self.bin, self.plugins)
+        self.bundle = self.outer / 'recovery/installation'
+
+    def staged(self, name, text):
+        staged = self.home / name
+        (staged / 'kast-ide-hosted').mkdir(parents=True)
+        (staged / 'kast-ide-hosted/plugin.txt').write_text(text)
+        return staged
+
+    def pending(self, previous=None, stage=None):
+        r = self.recovery
+        transaction = self.outer / 'recovery/replacement'
+        transaction.mkdir()
+        r.save(transaction / 'receipt.json', r.Replacement(1, stage or r.ReplacementStage.COMMITTED,
+            str(self.root), r.Identity.observe(self.root), previous or r.NoPrevious('NONE')))
+        return transaction
+
+    def test_new_receipt_has_one_physical_identity_and_no_selectors(self):
+        document = json.loads((self.bundle / 'receipt.json').read_text())
+        self.assertEqual({'schemaVersion', 'installation', 'installationIdentity', 'plugin', 'pluginRoot', 'stage'}, set(document))
+        self.assertEqual(3, document['schemaVersion'])
+        self.assertEqual(str(self.root), document['installation'])
+        self.assertFalse((self.outer / 'current').exists())
+        self.assertFalse((self.outer / 'versions').exists())
+        self.assertFalse(any(path.is_symlink() for path in self.outer.rglob('*')))
+
+    def test_fresh_activation_seals_and_removes_only_pending_transaction(self):
+        r = self.recovery
+        transaction = self.pending()
+        r.activate_plugin(self.root, self.staged('candidate', 'new'), self.plugins)
+        self.assertEqual(r.Status.SEALED, r.seal_upgrade(self.root).status)
+        self.assertFalse(transaction.exists())
+        self.assertEqual('new', (self.plugins / 'kast-ide-hosted/plugin.txt').read_text())
+        self.assertTrue((self.bundle / 'receipt.json').is_file())
+
+    def test_replacement_installs_new_plugin_and_discards_transient_previous_payload(self):
+        r = self.recovery
+        r.activate_plugin(self.root, self.staged('first', 'old'), self.plugins)
+        receipt = r.load(self.bundle / 'receipt.json')
+        r.save(self.bundle / 'receipt.json', r.replace(receipt, stage=r.Status.PREPARED))
+        transaction = self.outer / 'recovery/replacement'
+        transaction.mkdir()
+        payload = transaction / 'payload'
+        payload.mkdir()
+        (payload / 'old.txt').write_text('old payload')
+        previous_recovery = transaction / 'recovery'
+        previous_recovery.mkdir()
+        previous = r.PhysicalPrevious('PHYSICAL', str(self.root), r.Identity.observe(payload), str(payload), str(previous_recovery))
+        r.save(transaction / 'receipt.json', r.Replacement(1, r.ReplacementStage.COMMITTED, str(self.root), r.Identity.observe(self.root), previous))
+        r.activate_plugin(self.root, self.staged('second', 'new'), self.plugins)
+        new_receipt = r.load(self.bundle / 'receipt.json')
+        backup = Path(new_receipt.plugin.backup)
+        self.assertEqual('old', (backup / 'plugin.txt').read_text())
+        self.assertEqual('new', (self.plugins / 'kast-ide-hosted/plugin.txt').read_text())
+        r.seal_upgrade(self.root)
+        self.assertFalse(transaction.exists())
+        self.assertFalse(backup.exists())
+        self.assertIsNone(r.load(self.bundle / 'receipt.json').plugin.priorIdentity)
+
+    def test_replacement_resumes_admitted_candidate_after_interruption_before_backup(self):
+        r = self.recovery
+        r.activate_plugin(self.root, self.staged('first', 'old'), self.plugins)
+        baseline = r.load(self.bundle / 'receipt.json')
+        r.save(self.bundle / 'receipt.json', r.replace(baseline, stage=r.Status.PREPARED))
+        destination = self.plugins / 'kast-ide-hosted'
+        old_identity = r.Identity.observe(destination)
+        staged = self.staged('second', 'new')
+        attempts = []
+
+        def interrupt(path, target):
+            pending = r.load(self.bundle / 'receipt.json')
+            self.assertEqual(destination, path)
+            self.assertEqual(Path(pending.plugin.backup), target)
+            attempts.append((path, target))
+            raise OSError('interruption before receipted baseline rename')
+
+        with patch.object(Path, 'rename', interrupt):
+            with self.assertRaises(OSError):
+                r.activate_plugin(self.root, staged, self.plugins)
+        self.assertEqual(1, len(attempts))
+        pending = r.load(self.bundle / 'receipt.json')
+        candidate = Path(pending.plugin.candidate)
+        self.assertEqual(old_identity, r.Identity.observe(destination))
+        self.assertEqual('old', (destination / 'plugin.txt').read_text())
+        self.assertEqual('new', (candidate / 'plugin.txt').read_text())
+        self.assertFalse(Path(pending.plugin.backup).exists())
+        self.assertEqual(r.Status.ACTIVE, r.activate_plugin(self.root, staged, self.plugins).status)
+        self.assertEqual(pending.plugin.candidateIdentity, r.Identity.observe(destination))
+        self.assertEqual(old_identity, r.Identity.observe(Path(pending.plugin.backup)))
+        self.assertEqual('new', (destination / 'plugin.txt').read_text())
+        self.assertFalse(candidate.exists())
+
+    def test_replacement_resumes_admitted_candidate_after_interruption_after_backup(self):
+        r = self.recovery
+        r.activate_plugin(self.root, self.staged('first', 'old'), self.plugins)
+        baseline = r.load(self.bundle / 'receipt.json')
+        r.save(self.bundle / 'receipt.json', r.replace(baseline, stage=r.Status.PREPARED))
+        destination = self.plugins / 'kast-ide-hosted'
+        old_identity = r.Identity.observe(destination)
+        staged = self.staged('second', 'new')
+        attempts = []
+        rename = Path.rename
+
+        def interrupt(path, target):
+            pending = r.load(self.bundle / 'receipt.json')
+            attempts.append((path, target))
+            if len(attempts) == 1:
+                self.assertEqual((destination, Path(pending.plugin.backup)), (path, target))
+                return rename(path, target)
+            self.assertEqual(2, len(attempts))
+            self.assertEqual((Path(pending.plugin.candidate), destination), (path, target))
+            raise OSError('interruption before receipted candidate rename')
+
+        with patch.object(Path, 'rename', interrupt):
+            with self.assertRaises(OSError):
+                r.activate_plugin(self.root, staged, self.plugins)
+        self.assertEqual(2, len(attempts))
+        pending = r.load(self.bundle / 'receipt.json')
+        candidate, backup = Path(pending.plugin.candidate), Path(pending.plugin.backup)
+        self.assertFalse(destination.exists())
+        self.assertEqual(old_identity, r.Identity.observe(backup))
+        self.assertEqual('old', (backup / 'plugin.txt').read_text())
+        self.assertEqual('new', (candidate / 'plugin.txt').read_text())
+        self.assertEqual(r.Status.ACTIVE, r.activate_plugin(self.root, staged, self.plugins).status)
+        self.assertEqual(pending.plugin.candidateIdentity, r.Identity.observe(destination))
+        self.assertEqual(old_identity, r.Identity.observe(backup))
+        self.assertEqual('new', (destination / 'plugin.txt').read_text())
+        self.assertFalse(candidate.exists())
+
+    def test_activation_retry_persists_active_receipt_after_candidate_was_renamed(self):
+        r = self.recovery
+        transaction = self.pending()
+        staged = self.staged('candidate', 'new')
+        destination = self.plugins / 'kast-ide-hosted'
+        receipt_path = self.bundle / 'receipt.json'
+        writes = []
+        save = r.save
+
+        def interrupt(path, document):
+            self.assertEqual(receipt_path, path)
+            self.assertIsInstance(document, r.Receipt)
+            writes.append(document.stage)
+            self.assertLessEqual(len(writes), 2)
+            if document.stage is r.Status.ACTIVE:
+                raise OSError('interruption before active receipt publication')
+            return save(path, document)
+
+        with patch.object(r, 'save', interrupt):
+            with self.assertRaises(OSError):
+                r.activate_plugin(self.root, staged, self.plugins)
+        self.assertEqual([r.Status.PLUGIN_PREPARED, r.Status.ACTIVE], writes)
+        pending = r.load(receipt_path)
+        self.assertEqual(r.Status.PLUGIN_PREPARED, pending.stage)
+        self.assertEqual(pending.plugin.candidateIdentity, r.Identity.observe(destination))
+        self.assertEqual('new', (destination / 'plugin.txt').read_text())
+        self.assertEqual(r.Status.ACTIVE, r.activate_plugin(self.root, staged, self.plugins).status)
+        self.assertEqual(r.Status.ACTIVE, r.load(receipt_path).stage)
+        self.assertEqual(pending.plugin.candidateIdentity, r.Identity.observe(destination))
+        self.assertEqual(r.Status.SEALED, r.seal_upgrade(self.root).status)
+        self.assertFalse(transaction.exists())
+
+    def test_finalization_retries_after_backup_deletion_before_receipt_publication(self):
+        r = self.recovery
+        r.activate_plugin(self.root, self.staged('first', 'old'), self.plugins)
+        baseline = r.load(self.bundle / 'receipt.json')
+        r.save(self.bundle / 'receipt.json', r.replace(baseline, stage=r.Status.PREPARED))
+        transaction = self.outer / 'recovery/replacement'
+        transaction.mkdir()
+        payload, recovery = transaction / 'payload', transaction / 'recovery'
+        payload.mkdir()
+        (payload / 'old.txt').write_text('old payload')
+        recovery.mkdir()
+        previous = r.PhysicalPrevious('PHYSICAL', str(self.root), r.Identity.observe(payload), str(payload), str(recovery))
+        r.save(transaction / 'receipt.json', r.Replacement(1, r.ReplacementStage.COMMITTED,
+            str(self.root), r.Identity.observe(self.root), previous))
+        staged = self.staged('second', 'new')
+        r.activate_plugin(self.root, staged, self.plugins)
+        active = r.load(self.bundle / 'receipt.json')
+        backup = Path(active.plugin.backup)
+        writes = []
+        save = r.save
+
+        def interrupt(path, document):
+            writes.append(path)
+            if len(writes) == 1:
+                self.assertEqual(transaction / 'receipt.json', path)
+                self.assertIsInstance(document, r.Replacement)
+                self.assertEqual(r.ReplacementStage.FINALIZING, document.stage)
+            elif len(writes) == 2:
+                self.assertEqual(self.bundle / 'receipt.json', path)
+                self.assertIsInstance(document, r.Receipt)
+                self.assertEqual(r.Status.FINALIZING, document.stage)
+                self.assertEqual(active.plugin.priorIdentity, document.plugin.priorIdentity)
+            else:
+                self.assertEqual(3, len(writes))
+                self.assertEqual(self.bundle / 'receipt.json', path)
+                self.assertIsInstance(document, r.Receipt)
+                self.assertEqual(r.Status.ACTIVE, document.stage)
+                self.assertIsNone(document.plugin.priorIdentity)
+                raise OSError('interruption after baseline removal before final receipt publication')
+            return save(path, document)
+
+        with patch.object(r, 'save', interrupt):
+            with self.assertRaises(OSError):
+                r.seal_upgrade(self.root)
+        self.assertEqual(3, len(writes))
+        pending = r.load(self.bundle / 'receipt.json')
+        self.assertEqual(r.Status.FINALIZING, pending.stage)
+        self.assertEqual(active.plugin.priorIdentity, pending.plugin.priorIdentity)
+        self.assertFalse(backup.exists())
+        self.assertEqual(r.ReplacementStage.FINALIZING,
+                         r.load(transaction / 'receipt.json', r.Replacement).stage)
+        self.assertEqual(previous.identity, r.Identity.observe(payload))
+        self.assertEqual('old payload', (payload / 'old.txt').read_text())
+        self.assertTrue(recovery.is_dir())
+        self.assertEqual(r.Status.ACTIVE, r.activate_plugin(self.root, staged, self.plugins).status)
+        self.assertEqual(r.Status.FINALIZING, r.load(self.bundle / 'receipt.json').stage)
+        self.assertEqual(r.Status.SEALED, r.seal_upgrade(self.root).status)
+        self.assertFalse(transaction.exists())
+        sealed = r.load(self.bundle / 'receipt.json')
+        self.assertEqual(r.Status.ACTIVE, sealed.stage)
+        self.assertIsNone(sealed.plugin.priorIdentity)
+        self.assertEqual(active.plugin.candidateIdentity, r.Identity.observe(self.plugins / 'kast-ide-hosted'))
+        self.assertEqual('new', (self.plugins / 'kast-ide-hosted/plugin.txt').read_text())
+
+    def test_finalization_retries_after_legacy_cleanup_before_transaction_receipt_removal(self):
+        r = self.recovery
+        prior = self.outer / 'versions' / ('1.2.3-' + 'a' * 64)
+        executable = prior / 'bin/kast-complete'
+        executable.parent.mkdir(parents=True)
+        executable.write_text('#!/bin/sh\nexit 0\n')
+        executable.chmod(0o700)
+        selector = self.outer / 'current'
+        target = 'versions/' + prior.name
+        selector.symlink_to(target)
+        manifest = {
+            'schemaVersion': 2, 'semanticVersion': '1.2.3', 'installationRoot': str(prior),
+            'payloadIdentity': 'sha256:' + 'a' * 64, 'stateRoot': str(prior / 'state'),
+            'configuration': str(prior / 'config/environment'),
+            'workspaceRegistry': str(prior / 'config/workspaces.json'),
+            'externalAnchors': [{'kind': 'current', 'path': str(selector), 'expectedLinkTarget': target}],
+            'payloadFiles': [{'path': 'bin/kast-complete',
+                             'sha256': 'sha256:' + hashlib.sha256(executable.read_bytes()).hexdigest(), 'mode': 448}],
+        }
+        (prior / 'installation.json').write_text(json.dumps(manifest))
+        transaction = self.outer / 'recovery/replacement'
+        transaction.mkdir()
+        recovery = transaction / 'recovery'
+        recovery.mkdir()
+        previous = r.LegacyPrevious('LEGACY', str(prior), r.Identity.observe(prior), str(selector), target, str(recovery))
+        transaction_receipt = transaction / 'receipt.json'
+        r.save(transaction_receipt, r.Replacement(1, r.ReplacementStage.COMMITTED,
+            str(self.root), r.Identity.observe(self.root), previous))
+        r.activate_plugin(self.root, self.staged('candidate', 'new'), self.plugins)
+        active_identity = r.Identity.observe(self.plugins / 'kast-ide-hosted')
+        attempts = []
+        unlink = Path.unlink
+
+        def interrupt(path, *arguments, **options):
+            if path == transaction_receipt:
+                attempts.append(path)
+                self.assertEqual(1, len(attempts))
+                raise OSError('interruption after legacy cleanup before final receipt removal')
+            self.assertEqual(selector, path)
+            return unlink(path, *arguments, **options)
+
+        with patch.object(Path, 'unlink', interrupt):
+            with self.assertRaises(OSError):
+                r.seal_upgrade(self.root)
+        self.assertEqual([transaction_receipt], attempts)
+        self.assertFalse(prior.exists())
+        self.assertFalse(selector.is_symlink())
+        self.assertFalse(recovery.exists())
+        self.assertEqual(r.ReplacementStage.FINALIZING, r.load(transaction_receipt, r.Replacement).stage)
+        self.assertEqual(active_identity, r.Identity.observe(self.plugins / 'kast-ide-hosted'))
+        self.assertEqual(r.Status.SEALED, r.seal_upgrade(self.root).status)
+        self.assertFalse(transaction.exists())
+        self.assertEqual(active_identity, r.Identity.observe(self.plugins / 'kast-ide-hosted'))
+        self.assertEqual('new', (self.plugins / 'kast-ide-hosted/plugin.txt').read_text())
+
+    def test_uncommitted_replacement_is_preserved_on_finalization_rejection(self):
+        r = self.recovery
+        transaction = self.pending(stage=r.ReplacementStage.PREPARED)
+        r.activate_plugin(self.root, self.staged('candidate', 'new'), self.plugins)
+        with self.assertRaises(r.Rejected) as rejected:
+            r.seal_upgrade(self.root)
+        self.assertEqual(r.Failure.RECEIPT, rejected.exception.failure)
+        self.assertTrue(transaction.exists())
+        self.assertEqual('new', (self.plugins / 'kast-ide-hosted/plugin.txt').read_text())
+
+    def test_symlink_installation_is_rejected_without_touching_target(self):
+        r = self.recovery
+        other = self.outer / 'alias'
+        other.symlink_to(self.root, target_is_directory=True)
+        with self.assertRaises(r.Rejected):
+            r.location(other)
+        self.assertTrue(other.is_symlink())
+        self.assertTrue((self.bundle / 'receipt.json').is_file())
+
+
 if __name__ == '__main__':
     unittest.main()

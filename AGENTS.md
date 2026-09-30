@@ -28,6 +28,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - [`cli/`](cli/AGENTS.md) - command graph, configuration, projections, and executable bootstrap.
 - [`copilot/`](copilot/extension.mjs) and [`pi/`](pi/extension.ts) - thin agent extensions over the shared tool RPC.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
+- [`agent-tools/`](agent-tools/README.md) - independently installable query skill, MCP plugin, and marketplace source.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
 - [`docs/`](docs/AGENTS.md) - public Mintlify documentation and visual evidence helpers.
 

@@ -48,13 +48,11 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
         environment["KAST_INSTALL_ROOT"]
             ?: throw ManagementRejected("installer-protocol", "installation root unavailable")
     val root =
-        try {
-            Path.of(rootRaw)
-        } catch (_: IllegalArgumentException) {
-            throw ManagementRejected("installer-protocol", "installation root invalid")
+        when (val resolved = ManagementRootResolution.Selected.admit(rootRaw)) {
+            is ManagementRootResolution.Selected -> resolved.root
+            is ManagementRootResolution.Rejected ->
+                throw ManagementRejected("installer-protocol", resolved.failure.reason)
         }
-    if (!root.isAbsolute || root.normalize() != root)
-        throw ManagementRejected("installer-protocol", "installation root invalid")
     when (arguments[1]) {
         "preflight" -> println(preflightPublicExecutable(root, environment).path)
         "commit" -> {
@@ -86,6 +84,7 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
                 StatusCommand(),
                 ConnectCommand(),
                 DisconnectCommand(),
+                PluginCommand(),
                 UpgradeCommand(),
                 UninstallCommand(),
             )
@@ -167,6 +166,27 @@ private class DisconnectCommand : ManagementNode("disconnect") {
     override fun selection() = ManagementCommand.Disconnect(harness)
 }
 
+private class PluginCommand : ManagementNode("plugin") {
+    private val json by option("--json", help = "Print the typed plugin installation outcome.").flag()
+    private val harness by
+        argument("harness")
+            .convert { raw ->
+                when (raw.lowercase()) {
+                    "codex" -> PluginHarness.CODEX
+                    else -> fail("Supported plugin harnesses: codex")
+                }
+            }
+            .optional()
+
+    override fun help(context: Context) =
+        "Install the release-bundled MCP and skill plugin. Supported plugin harnesses: codex."
+
+    override fun selection(): ManagementCommand {
+        if (json && harness == null) throw CliktError("--json requires a selected plugin harness")
+        return harness?.let { ManagementCommand.Plugin(it, json) } ?: ManagementCommand.ListPluginHarnesses
+    }
+}
+
 private class UpgradeCommand : ManagementNode("upgrade") {
     override fun help(context: Context) = "Install the latest verified release on the selected channel."
 
@@ -181,19 +201,29 @@ private class UninstallCommand : ManagementNode("uninstall") {
 
 internal data class ManagementRejected(val stage: String, val reason: String) : RuntimeException()
 
+/** An explicit root is authoritative; invalid input never selects the default installation. */
+internal fun resolveManagementRoot(environment: Map<String, String>): ManagementRootResolution {
+    val explicit = environment["KAST_INSTALL_ROOT"]
+    val raw =
+        if (explicit != null) explicit
+        else {
+            val home =
+                environment["HOME"] ?: return ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE)
+            val dataHome = environment["XDG_DATA_HOME"].takeUnless { it.isNullOrEmpty() } ?: "$home/.local/share"
+            "$dataHome/kast"
+        }
+    return ManagementRootResolution.Selected.admit(raw)
+}
+
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
 private fun perform(command: ManagementCommand) {
     val environment = System.getenv()
     val home = environment["HOME"] ?: throw ManagementRejected("environment", "HOME is unavailable")
-    val dataHome = environment["XDG_DATA_HOME"].takeUnless { it.isNullOrEmpty() } ?: "$home/.local/share"
     val root =
-        try {
-            Path.of(dataHome).resolve("kast")
-        } catch (_: IllegalArgumentException) {
-            throw ManagementRejected("environment", "installation root is invalid")
+        when (val resolved = resolveManagementRoot(environment)) {
+            is ManagementRootResolution.Selected -> resolved.root
+            is ManagementRootResolution.Rejected -> throw ManagementRejected("environment", resolved.failure.reason)
         }
-    if (!root.isAbsolute || root.normalize() != root)
-        throw ManagementRejected("environment", "installation root must be absolute")
     when (command) {
         is ManagementCommand.Status -> {
             val commandPath =
@@ -237,6 +267,25 @@ private fun perform(command: ManagementCommand) {
                 if (removed) "Removed ${command.harness.publicName} registration"
                 else "${command.harness.publicName} was not registered by this installation"
             )
+        }
+        ManagementCommand.ListPluginHarnesses -> println("Supported plugin harnesses: codex")
+        is ManagementCommand.Plugin -> {
+            val outcome =
+                when (command.harness) {
+                    PluginHarness.CODEX -> installCodexPlugin(root)
+                }
+            if (command.json) println(outcome.asJson())
+            when (outcome) {
+                is PluginInstallOutcome.Installed ->
+                    if (!command.json)
+                        println("Installed Kast plugin for Codex; restart Codex to load its MCP and skill")
+                is PluginInstallOutcome.AlreadyInstalled ->
+                    if (!command.json) println("Kast plugin for Codex is already installed")
+                is PluginInstallOutcome.Rejected -> {
+                    if (!command.json) System.err.println("kast: plugin: ${outcome.asJson()}")
+                    exitProcess(1)
+                }
+            }
         }
         ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home))
         ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home))

@@ -64,6 +64,29 @@ class PriorCleanupTest(unittest.TestCase):
             report = cleanup.run(self.selected, reader, writer if reader else None)
         return report, writer.getvalue()
 
+    def test_single_install_review_protects_managed_parent_and_pending_replacement(self):
+        original = self.selected
+        self.selected = self.outer / 'installation'
+        original.rename(self.selected)
+        document = json.loads((self.selected / 'installation.json').read_text())
+        document.update(schemaVersion=3, installationRoot=str(self.selected),
+            stateRoot=str(self.selected / 'state'), configuration=str(self.selected / 'config/environment'),
+            workspaceRegistry=str(self.selected / 'config/workspaces.json'))
+        (self.selected / 'installation.json').write_text(json.dumps(document))
+        (self.outer / 'current').unlink()
+        self.versions.rmdir()
+        protected = self.outer / 'management.json'
+        protected.write_text('protected management receipt')
+        pending = self.outer / 'recovery/replacement/payload'
+        pending.mkdir(parents=True)
+        report, _ = self.run_review()
+        self.assertEqual('complete', report.status)
+        self.assertEqual([], report.removed)
+        self.assertEqual('protected management receipt', protected.read_text())
+        self.assertTrue(pending.is_dir())
+        self.assertTrue(self.selected.is_dir())
+        self.assertFalse(self.versions.exists())
+
     def test_admitted_prior_is_removed_and_unproven_entry_requires_exact_yes(self):
         prior = self.version('1.0-' + 'b' * 64, '1.0', 'b')
         unknown = self.versions / 'kast-older'

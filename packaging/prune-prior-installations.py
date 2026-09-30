@@ -154,10 +154,10 @@ def observe_processes():
 
 
 def current_receipt(selected):
-    path = selected.parent.parent / 'recovery' / selected.name / 'receipt.json'
+    path = recovery.location(selected)[1] / 'receipt.json'
     receipt = recovery.load(path)
     recovery.validate(selected, receipt)
-    if receipt.priorInstallation is not None:
+    if isinstance(receipt, recovery.LegacyReceipt) and receipt.priorInstallation is not None:
         raise ValueError('selected recovery still depends on a prior installation')
     return receipt
 
@@ -169,11 +169,11 @@ def service_label(selected):
 def plan(selected, rows):
     admitted = lifecycle.Installation.admit(str(selected))
     lifecycle.require_selected(admitted)
-    outer = selected.parent.parent
+    outer = lifecycle.Installation.admit(str(selected)).managed_root
     if outer.is_symlink() or outer.stat().st_uid != os.getuid():
         raise ValueError('installation parent ownership is unproven')
     receipt = current_receipt(selected)
-    protected = {str(selected), str(outer / 'recovery' / selected.name)}
+    protected = {str(selected), str(outer / 'recovery' / selected.name), str(outer / 'recovery/replacement')}
     protected.update(anchor.get('path') for anchor in admitted.manifest['externalAnchors']
                      if isinstance(anchor, dict) and isinstance(anchor.get('path'), str))
     if receipt.plugin is not None:
@@ -182,7 +182,7 @@ def plan(selected, rows):
     processes = owned_processes(outer, selected, rows)
     planned = []
     legacy_roots = []
-    for path in entries(selected.parent):
+    for path in entries(outer / 'versions'):
         if path == selected:
             continue
         legacy_roots.append(path)
@@ -351,7 +351,7 @@ def process_holds_version(item, rows):
 
 
 def run(selected, reader=None, writer=None):
-    outer = selected.parent.parent
+    outer = lifecycle.Installation.admit(str(selected)).managed_root
     lock = outer / 'activation.lock'
     descriptor = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     try:

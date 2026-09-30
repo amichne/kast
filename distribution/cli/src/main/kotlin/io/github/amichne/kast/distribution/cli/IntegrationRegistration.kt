@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -18,15 +19,6 @@ private const val EXECUTABLE_PERMISSION_MASK = 73
 
 @Serializable
 private data class CodexTransport(val type: String, val command: String = "", val args: List<String> = emptyList())
-
-@Serializable private data class BundledPayload(val path: String, val sha256: String, val mode: Int)
-
-@Serializable
-private data class BundledManifest(
-    val schemaVersion: Int,
-    val installationRoot: String,
-    val payloadFiles: List<BundledPayload>,
-)
 
 private val codexJson = Json { ignoreUnknownKeys = true }
 private const val CODEX_DEADLINE_SECONDS = 8L
@@ -92,37 +84,19 @@ private fun writeStagedPayload(payload: RegistrationPayload, staged: Path) {
     if (sha256(staged) != payload.digest) throw ManagementRejected("connect", "staged payload is unverified")
 }
 
-private fun selectedInstallation(root: Path): Path {
-    val selected =
-        try {
-            root.resolve("current").toRealPath()
-        } catch (_: Exception) {
-            throw ManagementRejected("installation-admission", "selected installation is unavailable")
-        }
-    if (
-        selected.parent != root.toRealPath().resolve("versions") ||
-            !Files.isRegularFile(selected.resolve("installation.json"), LinkOption.NOFOLLOW_LINKS)
-    )
-        throw ManagementRejected("installation-admission", "selected installation is invalid")
-    return selected
-}
-
 @Suppress("ThrowsCount", "ComplexCondition")
-private fun verifiedBundledSource(installation: Path, connection: HarnessConnection): Path {
+internal fun verifiedBundledSource(installation: Path, connection: HarnessConnection): Path {
     val source = registrationSourceFor(installation, connection)
-    val raw =
-        readBoundedFile(installation.resolve("installation.json"), 67_108_864)
-            ?: throw ManagementRejected("connect", "release manifest is unavailable")
     val manifest =
-        try {
-            codexJson.decodeFromString<BundledManifest>(raw)
-        } catch (_: SerializationException) {
-            throw ManagementRejected("connect", "release manifest is invalid")
+        when (val read = readBundledManifest(installation)) {
+            is BundledManifestRead.Read -> read.manifest
+            BundledManifestRead.Unavailable -> throw ManagementRejected("connect", "release manifest is unavailable")
+            BundledManifestRead.Invalid -> throw ManagementRejected("connect", "release manifest is invalid")
         }
     val relative = installation.relativize(source).toString().replace('\\', '/')
     val entries = manifest.payloadFiles.filter { it.path == relative }
     if (
-        manifest.schemaVersion != 2 ||
+        manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
             manifest.installationRoot != installation.toString() ||
             entries.size != 1 ||
             !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS) ||
@@ -170,8 +144,14 @@ internal fun connectHarness(
         val destination = registrationDestinationFor(root, home, connection)
         val prior = receipt.registrations.singleOrNull { it.connection == connection }
         val force = ownership == RegistrationOwnership.REPLACE_SELECTED_SLOT
-        if (!force && prior != null && prior.destination != destination.toString())
-            throw ManagementRejected("connect", "recorded registration identity changed")
+        val migration =
+            if (!force && prior != null && prior.destination != destination.toString()) {
+                when (val admitted = LegacyMcpMigration.admit(root, prior)) {
+                    is LegacyConnectionAdmission.Admitted -> admitted.migration
+                    is LegacyConnectionAdmission.Rejected ->
+                        throw ManagementRejected("connect-migration", admitted.failure.name.lowercase())
+                }
+            } else null
         val selectedFile =
             if (connection == HarnessConnection.CODEX_MCP) codexHome.resolve("config.toml") else destination
         val registrationAnchor = if (connection == HarnessConnection.CODEX_MCP) codexHome else home
@@ -181,7 +161,12 @@ internal fun connectHarness(
         val replace =
             if (connection == HarnessConnection.CODEX_MCP) {
                 val observed = codexRegistration(executeCodex)
-                if (!force && observed != null && !ownsCodex(observed, destination))
+                if (migration != null && !ownsCodex(observed, migration.command))
+                    throw ManagementRejected(
+                        "connect-migration",
+                        LegacyConnectionRejection.LEGACY_REGISTRATION_UNVERIFIED.name.lowercase(),
+                    )
+                if (!force && migration == null && observed != null && !ownsCodex(observed, destination))
                     throw ManagementRejected("connect", "Codex name belongs to another configuration")
                 !ownsCodex(observed, destination)
             } else {

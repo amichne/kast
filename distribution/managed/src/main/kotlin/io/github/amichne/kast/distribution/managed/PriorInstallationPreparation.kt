@@ -35,15 +35,6 @@ fun preparePriorInstallationReplacement(prior: Path, home: Path): PriorInstallat
         PriorInstallationPreparation.FILESYSTEM_REJECTED
     }
 
-/** Moves one installation-owned entry aside without traversing it. */
-fun quarantineInstallationEntry(path: Path) {
-    Files.move(
-        path,
-        path.resolveSibling(".replaced-${path.fileName}-${java.util.UUID.randomUUID()}"),
-        java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-    )
-}
-
 fun resetInstallationTransport(installation: Path, home: Path): PriorInstallationPreparation {
     return try {
         val run = installation.resolve("state/run")

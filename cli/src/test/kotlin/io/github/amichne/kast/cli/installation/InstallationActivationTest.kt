@@ -48,10 +48,10 @@ class InstallationActivationTest {
                 report.activation,
             )
             assertTrue(
-                Files.readString(installation.resolve("current/config/environment"))
+                Files.readString(installation.resolve("installation/config/environment"))
                     .contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control")
             )
-            assertLoginAnchor(installation.resolve("current").toRealPath(), home)
+            assertLoginAnchor(installation.resolve("installation").toRealPath(), home)
         }
     }
 
@@ -117,7 +117,7 @@ class InstallationActivationTest {
         val result = executeFixtureInstallation(request)
         val complete = assertInstanceOf(InstallationOutcome.Complete::class.java, result)
         verifyPendingReport(complete.report)
-        val selected = install.resolve("current").toRealPath()
+        val selected = install.resolve("installation").toRealPath()
         assertTrue(Files.exists(selected.resolve("installation.json")))
         assertFalse(Files.readString(selected.resolve("config/environment")).contains("KAST_ENABLE_APP_SERVER"))
         val configuration = Files.readString(selected.resolve("config/environment"))
@@ -129,7 +129,7 @@ class InstallationActivationTest {
                 .apply { environment()["HOME"] = home.toString() }
                 .start()
         assertEquals(0, resume.waitFor())
-        assertEquals(selected, install.resolve("current").toRealPath())
+        assertEquals(selected, install.resolve("installation").toRealPath())
         assertEquals(configuration, Files.readString(selected.resolve("config/environment")))
         assertEquals(identity, Files.readString(selected.resolve("installation.json")))
     }

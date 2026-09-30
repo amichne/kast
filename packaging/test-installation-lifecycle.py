@@ -456,5 +456,70 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual('STATE_REJECTED', result['failure'])
         self.assertTrue(self.workspace.is_dir())
 
+
+class SingleInstallationLifecycleTest(unittest.TestCase):
+    def setUp(self):
+        fixture = tempfile.TemporaryDirectory(prefix='kast-single-lifecycle-')
+        self.addCleanup(fixture.cleanup)
+        self.outer = Path(fixture.name).resolve() / 'kast'
+        self.root = self.outer / 'installation'
+        (self.root / 'bin').mkdir(parents=True)
+        executable = self.root / 'bin/kast-complete'
+        executable.write_text('#!/bin/sh\nexit 0\n')
+        executable.chmod(0o700)
+        self.manifest = {'schemaVersion': 3, 'semanticVersion': '1.0.0',
+            'installationRoot': str(self.root), 'payloadIdentity': 'sha256:' + 'a' * 64,
+            'stateRoot': str(self.root / 'state'), 'configuration': str(self.root / 'config/environment'),
+            'workspaceRegistry': str(self.root / 'config/workspaces.json'), 'externalAnchors': [],
+            'payloadFiles': [{'path': 'bin/kast-complete', 'sha256': 'sha256:' + hashlib.sha256(executable.read_bytes()).hexdigest(), 'mode': 0o700}]}
+        self.save()
+
+    def save(self):
+        (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+
+    def test_one_ordinary_payload_is_admitted_without_selector(self):
+        admitted = lifecycle.Installation.admit(str(self.root))
+        lifecycle.require_selected(admitted)
+        self.assertEqual(self.outer, admitted.managed_root)
+        self.assertEqual([], lifecycle.prune_other_versions(admitted, False).removed)
+        self.assertFalse((self.outer / 'versions').exists())
+        self.assertFalse((self.outer / 'current').exists())
+
+    def test_selector_anchor_is_rejected_and_preserved_in_schema_three(self):
+        foreign = self.outer / 'current'
+        foreign.write_text('protected foreign entry')
+        self.manifest['externalAnchors'] = [{'kind': 'current', 'path': str(foreign), 'expectedLinkTarget': 'versions/old'}]
+        self.save()
+        state = self.root / 'state'
+        state.mkdir()
+        evidence = state / 'protected.txt'
+        evidence.write_text('protected invocation')
+        identity = lifecycle.FileIdentity.observe(state)
+        with self.assertRaises(lifecycle.Rejected) as rejected:
+            lifecycle.Installation.admit(str(self.root))
+        self.assertEqual(lifecycle.Failure.MANIFEST_REJECTED, rejected.exception.failure)
+        self.assertEqual(identity, lifecycle.FileIdentity.observe(state))
+        self.assertEqual('protected invocation', evidence.read_text())
+        self.assertEqual('protected foreign entry', foreign.read_text())
+
+    def test_pending_replacement_blocks_removal_and_preserves_both_payloads(self):
+        pending = self.outer / 'recovery/replacement/payload'
+        pending.mkdir(parents=True)
+        admitted = lifecycle.Installation.admit(str(self.root))
+        with self.assertRaises(lifecycle.Rejected) as rejected:
+            lifecycle.execute(admitted, 'remove', False)
+        self.assertEqual(lifecycle.Failure.RECOVERY_REJECTED, rejected.exception.failure)
+        self.assertTrue(pending.is_dir())
+        self.assertTrue(self.root.is_dir())
+
+    def test_ordinary_payload_removal_keeps_managed_parent_and_foreign_state(self):
+        protected = self.outer / 'management.json'
+        protected.write_text('protected receipt')
+        admitted = lifecycle.Installation.admit(str(self.root))
+        lifecycle.execute(admitted, 'remove', False)
+        self.assertFalse(self.root.exists())
+        self.assertEqual('protected receipt', protected.read_text())
+
+
 if __name__ == '__main__':
     unittest.main()

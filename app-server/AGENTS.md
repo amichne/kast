@@ -34,7 +34,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 - [KastCatalogSource.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt) - bounded packaged provider-contract reads without a Kast subprocess.
 
-- [InstalledConfigurationAlias.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledConfigurationAlias.kt) - owned current-alias resolution under the installation activation lock.
+- [SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt) - physical saved-file admission, bounded reads and configuration provenance.
 
 - [KastSourcePresentation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSourcePresentation.kt) - compact returned source precedes the unchanged canonical provider envelope.
 - [CodexToolTerminalReply.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolTerminalReply.kt) - single-document finite broker failure and cancellation replies.
