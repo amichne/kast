@@ -1,10 +1,10 @@
 ---
-title: "MCP investigation result"
-description: "The direct MCP result for health_check."
-openapi-schema: "reference/callables.openapi.json McpInvestigationResult"
+title: "MCP readiness result"
+description: "The direct MCP readiness result for health_check."
+openapi-schema: "reference/callables.openapi.json health_checkSemanticResult"
 mode: "wide"
 ---
 
-`complete` carries investigation `data`. `rejected` carries an
-`error`. The check observes readiness and does not establish future query
-success.
+`health_check` has its own generated readiness result, shown below. Its `complete` variant carries observation `data`; rejection carries the reported error. Do not apply that support-tool shape to `query_symbols` or `check_diagnostics`, whose structured results are their canonical operation documents.
+
+The check observes workspace binding and readiness at the time of the call. It does not establish future query success or complete semantic coverage. See the [MCP contract](/reference/mcp-catalog) for invocation and [Results](/reference/responses) for semantic reads.
