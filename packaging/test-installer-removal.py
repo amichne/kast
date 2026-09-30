@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline legacy entry-point proof: no live services and no effective removal command."""
+"""Offline removal entry-point proof: no live services and no effective removal command."""
 import hashlib
 import json
 import subprocess
@@ -19,7 +19,7 @@ class InstallerRemovalTest(unittest.TestCase):
                 self.env.pop(key)
         self.root = Path(self.env['HOME'])
         self.outer = self.root / '.local/share/kast'
-        self.product = self.outer / 'versions/1.0.0-fixture'
+        self.product = self.outer / 'installation'
         for directory in ('bin', 'lib', 'share/kast'):
             (self.product / directory).mkdir(parents=True)
         lifecycle = self.product / 'share/kast/installation-lifecycle.py'
@@ -47,9 +47,8 @@ class InstallerRemovalTest(unittest.TestCase):
                     payload.append({'path': file.relative_to(self.product).as_posix(),
                                     'sha256': 'sha256:' + hashlib.sha256(file.read_bytes()).hexdigest(),
                                     'mode': file.stat().st_mode & 0o777})
-        (self.product / 'installation.json').write_text(json.dumps({'schemaVersion': 1,
+        (self.product / 'installation.json').write_text(json.dumps({'schemaVersion': 3,
             'installationRoot': str(self.product), 'payloadFiles': payload}))
-        (self.outer / 'current').symlink_to('versions/' + self.product.name)
         fake = self.root / 'no-effects'
         fake.write_text('#!/bin/bash\nexit 0\n')
         fake.chmod(0o755)

@@ -50,6 +50,9 @@ plugin_name="kast-ide-hosted-v${version}-idea-${idea_build%%.*}.zip"
 catalog_name="kast-hosted-catalog-v${version}.json"
 knowledge_name="kast-module-knowledge-v${version}.json"
 sbom_name="kast-sbom-v${version}.cdx.json"
+skill_name="kast-skill-v${version}.zip"
+agent_plugin_name="kast-plugin-v${version}.zip"
+marketplace_name="kast-marketplace-v${version}.zip"
 control_source="${repository_root}/build/distributions/${control_name}"
 knowledge_source="${repository_root}/build/reports/kast-architecture/kast-module-knowledge.json"
 for source in "${control_source}" "${knowledge_source}"; do
@@ -81,7 +84,7 @@ python3 distribution/release/generate_sbom.py \
 
 (
   cd "${output_directory}"
-  for asset in "${control_name}" "${plugin_name}" "${catalog_name}" "${knowledge_name}" "${sbom_name}"; do
+  for asset in "${control_name}" "${plugin_name}" "${skill_name}" "${agent_plugin_name}" "${marketplace_name}" "${catalog_name}" "${knowledge_name}" "${sbom_name}"; do
     [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
     shasum -a 256 "${asset}" >"${asset}.sha256"
   done

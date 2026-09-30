@@ -62,7 +62,7 @@ class OneShotObservationTest {
             installation.resolve("installation.json"),
             Json.encodeToString(
                 OneShotTestManifest(
-                    2,
+                    3,
                     installation.toString(),
                     listOf(OneShotTestPayload("share/kast/one-shot-observation-v1", "sha256:${sha256(marker)}")),
                 )

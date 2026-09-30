@@ -21,7 +21,7 @@ internal fun registrationSourceFor(installation: Path, connection: HarnessConnec
 
 internal fun registrationDestinationFor(root: Path, home: Path, connection: HarnessConnection): Path =
     when (connection) {
-        HarnessConnection.CODEX_MCP -> root.resolve("current/bin/kast-mcp-complete")
+        HarnessConnection.CODEX_MCP -> root.resolve("installation/bin/kast-mcp-complete")
         HarnessConnection.CODEX_APP_SERVER -> home.resolve(".local/bin/kast-codex")
         HarnessConnection.COPILOT -> home.resolve(".copilot/extensions/kast/extension.mjs")
         HarnessConnection.PI -> home.resolve(".pi/agent/extensions/kast.ts")
@@ -30,7 +30,7 @@ internal fun registrationDestinationFor(root: Path, home: Path, connection: Harn
 /** The installed facade owns both interactive Codex and the App Server stdio protocol. */
 internal fun registrationPayload(root: Path, source: Path, connection: HarnessConnection): RegistrationPayload =
     if (connection == HarnessConnection.CODEX_APP_SERVER) {
-        val facade = root.resolve("current/bin/kast-codex-complete").toString().replace("'", "'\\''")
+        val facade = root.resolve("installation/bin/kast-codex-complete").toString().replace("'", "'\\''")
         val content = "#!/bin/sh\nexec '$facade' \"\$@\"\n"
         val digest = MessageDigest.getInstance("SHA-256").digest(content.toByteArray(Charsets.UTF_8))
         RegistrationPayload.Launcher(content, digest.joinToString("") { "%02x".format(it) })

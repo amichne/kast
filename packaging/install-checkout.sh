@@ -83,8 +83,8 @@ KAST_INSTALL_ASSETS_DIRECTORY="$scratch" \
   bash "$installer" ${options[@]+"${options[@]}"} >&2
 
 if [[ $mode == session ]]; then
-  physical_release=$(CDPATH='' cd -- "$KAST_INSTALL_ROOT/current" && pwd -P)
-  case "$physical_release" in "$KAST_INSTALL_ROOT/versions/"*) ;; *) echo 'kast-install: session release ownership rejected' >&2; exit 1 ;; esac
+  physical_release=$(CDPATH='' cd -- "$KAST_INSTALL_ROOT/installation" && pwd -P)
+  [[ ! -L "$KAST_INSTALL_ROOT/installation" && "$physical_release" == "$KAST_INSTALL_ROOT/installation" ]] || { echo 'kast-install: session installation ownership rejected' >&2; exit 1; }
   export KAST_RUNTIME_DIRECTORY="$physical_release/state/run"
   activation="$session_root/activate.sh"
   {

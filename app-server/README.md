@@ -18,7 +18,7 @@ Server endpoint by default. Register each repository or worktree explicitly
 before attaching a compatible client:
 
 ```sh
-"${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register /absolute/path/to/repository
+"${XDG_DATA_HOME:-$HOME/.local/share}/kast/installation/share/kast/libexec/kast-service" register /absolute/path/to/repository
 ```
 
 Registration is handled by the daemon management RPC. The private entry point

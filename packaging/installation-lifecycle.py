@@ -184,22 +184,32 @@ class Installation:
     @staticmethod
     def admit(raw):
         root = Path(raw)
-        if not root.is_absolute() or root.resolve(strict=True) != root or root.parent.name != 'versions':
+        if not root.is_absolute() or root.resolve(strict=True) != root :
             raise Rejected(Failure.MANIFEST_REJECTED)
         document = read_json(root / 'installation.json', CONTROL_MANIFEST_MAXIMUM_BYTES, Failure.MANIFEST_REJECTED)
         payload = document.get('payloadIdentity', '')
-        if (document.get('schemaVersion') not in {1, 2} or document.get('installationRoot') != str(root)
+        if (document.get('schemaVersion') not in {1, 2, 3} or document.get('installationRoot') != str(root)
                 or len(payload) != 71 or not payload.startswith('sha256:')
                 or any(c not in '0123456789abcdef' for c in payload[7:])
-                or root.name != document.get('semanticVersion', '') + '-' + payload[7:]
+                or (document['schemaVersion'] == 3 and root.name != 'installation')
+                or (document['schemaVersion'] in {1, 2} and (root.parent.name != 'versions'
+                    or root.name != document.get('semanticVersion', '') + '-' + payload[7:]))
                 or any(document.get(key) != str(root / suffix) for key, suffix in (
                     ('stateRoot', 'state'), ('configuration', 'config/environment'),
                     ('workspaceRegistry', 'config/workspaces.json')))):
             raise Rejected(Failure.MANIFEST_REJECTED)
         if not isinstance(document.get('externalAnchors'), list) or len(document['externalAnchors']) > 16:
             raise Rejected(Failure.MANIFEST_REJECTED)
+        if document['schemaVersion'] == 3 and any(
+                not isinstance(anchor, dict) or anchor.get('kind') not in {'login', 'socket-alias', 'upstream-directory'}
+                for anchor in document['externalAnchors']):
+            raise Rejected(Failure.MANIFEST_REJECTED)
         verify_payload(root, document)
         return Installation(root, document, FileIdentity.observe(root))
+    @property
+    def managed_root(self):
+        return self.root.parent if self.manifest['schemaVersion'] == 3 else self.root.parent.parent
+
     def revalidate(self):
         if self.root.resolve(strict=True) != self.root or FileIdentity.observe(self.root) != self.identity:
             raise Rejected(Failure.MANIFEST_REJECTED)
@@ -664,7 +674,12 @@ def delete_tree(path):
 
 def require_selected(installation):
     installation.revalidate()
-    outer = installation.root.parent.parent
+    outer = installation.managed_root
+    if installation.manifest['schemaVersion'] == 3:
+        if installation.root != outer / 'installation' or installation.root.stat().st_uid != os.getuid():
+            raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+        return
+    # Read-only ownership admission for legacy migration and cleanup.
     current = outer / 'current'
     expected = 'versions/' + installation.root.name
     if (not current.is_symlink() or os.readlink(current) != expected
@@ -674,7 +689,9 @@ def require_selected(installation):
 
 def prune_other_versions(selected, dry_run):
     require_selected(selected)
-    versions = selected.root.parent
+    versions = selected.managed_root / 'versions'
+    if selected.manifest['schemaVersion'] == 3 and not os.path.lexists(versions):
+        return PruneReport('installation.prune', str(selected.root), 'planned' if dry_run else 'pruned', [])
     if (versions.is_symlink() or versions.stat().st_uid != os.getuid()
             or selected.root.stat().st_uid != os.getuid()):
         raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
@@ -705,13 +722,17 @@ def prune_other_versions(selected, dry_run):
         removed.append(str(prior.root))
     require_selected(selected)
     with os.scandir(versions) as entries:
-        if {entry.name for entry in entries} != {selected.root.name}:
+        expected = set() if selected.manifest['schemaVersion'] == 3 else {selected.root.name}
+        if {entry.name for entry in entries} != expected:
             raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
     return PruneReport('installation.prune', str(selected.root), 'pruned', removed)
 
 
 def execute(installation, operation, dry_run):
     installation.revalidate()
+    if (installation.manifest['schemaVersion'] == 3 and operation == 'remove'
+            and os.path.lexists(installation.managed_root / 'recovery/replacement')):
+        raise Rejected(Failure.RECOVERY_REJECTED)
     state_identity = inspect_state(installation)
     roots = workspaces(installation)
     validate_owned_configuration(installation)
@@ -831,7 +852,7 @@ def finish_transition(installation, identity):
 
 
 def remove_anchors(installation):
-    outer = installation.root.parent.parent
+    outer = installation.managed_root
     current = outer / 'current'
     expected_current = 'versions/' + installation.root.name
     current_matches = current.is_symlink() and os.readlink(current) == expected_current
@@ -840,6 +861,8 @@ def remove_anchors(installation):
         kind = anchor.get('kind')
         path = Path(anchor.get('path', ''))
         target = anchor.get('expectedLinkTarget')
+        if installation.manifest['schemaVersion'] == 3 and kind in ('current', 'command', 'codex-command'):
+            raise Rejected(Failure.MANIFEST_REJECTED)
         if kind == 'current':
             if path != current or target != expected_current:
                 raise Rejected(Failure.MANIFEST_REJECTED)
@@ -880,7 +903,7 @@ def main():
         if arguments.operation == 'inspect':
             report = execute(installation, arguments.operation, arguments.dry_run)
         else:
-            lock = installation.root.parent.parent / 'activation.lock'
+            lock = installation.managed_root / 'activation.lock'
             descriptor = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
             try:
                 if not stat.S_ISREG(os.fstat(descriptor).st_mode):

@@ -4,13 +4,12 @@ title: Installation configuration
 description: Every external configuration input has declared ownership, parsing, defaults, and projection before it can affect the broker, installation or existing-IDE request.
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-30T00:00:00Z
 code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - path: distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledConfigurationAlias.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationValidation.kt
@@ -53,11 +52,10 @@ installation or an intentional alternate, retains its value and environment
 provenance; unset it to choose the invoked launcher's default. Strict ingress
 still rejects invalid or unavailable selections.
 
-The exact installation-owned `current/config/environment` alias may resolve to
-its manifest-declared immutable sibling under `versions`. Admission requires
-the current anchor, canonical target, matching ownership and a nonblocking shared
-activation lock. The alias and target identities are checked again after the
-pinned configuration read. Other symlinks remain rejected.
+The installed default selects `installation/config/environment` under the
+managed Kast root. The selected file must have an ordinary canonical absolute
+path. Symlinks in the file or its ancestors reject. Bounded reads retain the
+selected configuration's provenance and check file identity again after reading.
 
 `KAST_APP_SERVER_PUBLIC_ENDPOINT` defaults to `private`. Installation admits and
 persists an explicit `codex-control` selection through the same broker-owned type;

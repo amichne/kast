@@ -76,6 +76,9 @@ class CiCandidateTest(unittest.TestCase):
             names = (
                 control,
                 plugin,
+                f"kast-skill-v{VERSION}.zip",
+                f"kast-plugin-v{VERSION}.zip",
+                f"kast-marketplace-v{VERSION}.zip",
                 f"kast-hosted-catalog-v{VERSION}.json",
                 f"kast-module-knowledge-v{VERSION}.json",
                 f"kast-sbom-v{VERSION}.cdx.json",
@@ -89,7 +92,7 @@ class CiCandidateTest(unittest.TestCase):
                         {"name": "kast:source-revision", "value": REVISION},
                         *(
                             {"name": f"kast:archive:{name}", "value": f"sha256:{candidate.digest(directory / name)}"}
-                            for name in (control, plugin)
+                            for name in names[:-3]
                         ),
                     ]
                 },
@@ -98,6 +101,17 @@ class CiCandidateTest(unittest.TestCase):
             for name in names:
                 (directory / f"{name}.sha256").write_text(f"{candidate.digest(directory / name)}  {name}\n")
             candidate.validate(directory, VERSION, REVISION)
+
+            for name in names[2:5]:
+                with self.subTest(agent_archive=name):
+                    original = (directory / name).read_bytes()
+                    (directory / name).unlink()
+                    with self.assertRaisesRegex(candidate.CandidateError, "inventory"):
+                        candidate.validate(directory, VERSION, REVISION)
+                    (directory / name).write_bytes(b"changed-agent-payload")
+                    with self.assertRaisesRegex(candidate.CandidateError, "checksum"):
+                        candidate.validate(directory, VERSION, REVISION)
+                    (directory / name).write_bytes(original)
 
             (directory / control).write_bytes(b"changed")
             with self.assertRaises(candidate.CandidateError):
@@ -212,7 +226,8 @@ class PendingCandidateTest(unittest.TestCase):
             def download(command, **kwargs):
                 self.assertEqual(["gh", "run", "download", "20", "--repo", REPOSITORY,
                                   "-n", artifact["name"], "-D", str(directory)], command)
-                archives = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip")
+                archives = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
+                            f"kast-skill-v{VERSION}.zip", f"kast-plugin-v{VERSION}.zip", f"kast-marketplace-v{VERSION}.zip")
                 for name in (*archives, f"kast-hosted-catalog-v{VERSION}.json", f"kast-module-knowledge-v{VERSION}.json"):
                     (directory / name).write_bytes(name.encode())
                 sbom = {"bomFormat": "CycloneDX", "metadata": {"properties": [

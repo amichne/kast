@@ -114,8 +114,7 @@ bin=${KAST_BIN_DIR:-$HOME/.local/bin}
 [[ ${KAST_INSTALL_PROFILE:-} == persistent ]] && echo refresh-requested >> "$TEST_LOG"
 [[ -n ${KAST_VERSION:-} && -n ${KAST_RELEASE_BASE_URL:-} && -n ${KAST_INSTALL_ASSETS_DIRECTORY:-} ]] || exit 31
 if [[ -n ${KAST_INSTALL_ROOT:-} ]]; then
-  mkdir -p "$KAST_INSTALL_ROOT/versions/fixture"
-  ln -s versions/fixture "$KAST_INSTALL_ROOT/current"
+  mkdir -p "$KAST_INSTALL_ROOT/installation"
 fi
 ''')
 
@@ -143,7 +142,7 @@ fi
 first=$PATH
 source "$1"
 [[ $PATH == "$first" ]] || exit 2
-physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
+physical=$(cd "$KAST_INSTALL_ROOT/installation" && pwd -P)
 [[ $KAST_RUNTIME_DIRECTORY == "$physical/state/run" && -z ${KAST_CACHE_ROOT:-} && -z ${KAST_RUNTIME_STORE:-} ]] || exit 3
 [[ $PATH != *"$KAST_BIN_DIR"* ]] || exit 4
 '''
@@ -258,7 +257,7 @@ import json, os, shutil, subprocess, sys
 from pathlib import Path
 if os.environ["KAST_INSTALL_MODE"] != 'plan':
     outer = Path(os.environ['KAST_INSTALL_ROOT'])
-    installed = outer / 'versions' / ('1.2.3-' + 'a' * 64)
+    installed = outer / 'installation'
     installed.mkdir(parents=True, exist_ok=True)
     (installed / 'bin').mkdir()
     launcher = installed / 'bin/kast-mcp-complete'
@@ -271,7 +270,6 @@ if os.environ["KAST_INSTALL_MODE"] != 'plan':
     commands.mkdir(parents=True, exist_ok=True)
     subprocess.run([sys.executable, str(Path(os.environ['KAST_INSTALL_CONTROL_ROOT']) / 'share/kast/installation-recovery.py'),
                     'prepare', '--installation', str(installed), '--bin-directory', str(commands)], check=True)
-    (outer / 'current').symlink_to('versions/' + installed.name)
 keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE",
         "KAST_INSTALL_HOSTED_PLUGIN_SHA256", "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
         "KAST_INSTALL_JAVA_HOME", "KAST_INSTALL_ROOT", "KAST_BIN_DIR", "KAST_INSTALL_MODE"]
@@ -292,8 +290,7 @@ case "$*" in
     cp "$0" "$destination"
     printf '%s\\n' "$destination"
     ;;
-  'connect --help') printf '%s\\n' 'Usage: kast connect [<harness>]' ;;
-  'connect codex') ;;
+  'connect codex mcp') printf '%s\\n' 'connect codex mcp' >> "$MCP_LOG" ;;
   *) exit 94 ;;
 esac
 ''')
@@ -301,6 +298,13 @@ esac
         shutil.copyfile(Path(__file__).with_name('codex-mcp-registration.py'),
                         self.product / 'share/kast/codex-mcp-registration.py')
         shutil.copyfile(Path(__file__).with_name('installation-recovery.py'), self.product / 'share/kast/installation-recovery.py')
+        self.write_script(self.product / 'share/kast/prune-prior-installations.py', '''#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+expected = str(Path(os.environ['KAST_INSTALL_ROOT']) / 'installation')
+assert sys.argv[1:] == ['--installation', expected], sys.argv[1:]
+print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
+''')
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
         with tarfile.open(self.control, "w:gz") as archive:
             archive.add(self.product / "bin", arcname="bin")
@@ -407,7 +411,7 @@ esac
     def test_programmatic_plugin_install_uses_verified_release_line_archive(self):
         result = self.run_installer()
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("mcp add kast", (self.root / "mcp-calls").read_text())
+        self.assertIn("connect codex mcp", (self.root / "mcp-calls").read_text())
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
         self.assertIn("Restart IntelliJ IDEA", result.stderr)
@@ -417,7 +421,7 @@ esac
         result = self.run_installer("--skip-codex-mcp")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse((self.root / "mcp-calls").exists())
-        self.assertTrue((self.root / "install/current/bin/kast-mcp-complete").is_file())
+        self.assertTrue((self.root / "install/installation/bin/kast-mcp-complete").is_file())
 
     def test_interactive_decline_skips_codex_mcp_registration(self):
         result = self.run_interactive_installer("n\n")
@@ -429,7 +433,7 @@ esac
         result = self.run_interactive_installer("\n")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("Register a user-level Kast MCP server in Codex? [Y/n]", result.stderr)
-        self.assertIn("mcp add kast", (self.root / "mcp-calls").read_text())
+        self.assertIn("connect codex mcp", (self.root / "mcp-calls").read_text())
 
     def test_staged_installer_receives_no_tool_selection(self):
         self.env.pop("KAST_APP_SERVER_TOOLS", None)

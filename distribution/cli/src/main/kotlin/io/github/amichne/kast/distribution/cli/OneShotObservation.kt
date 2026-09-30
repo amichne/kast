@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -51,7 +52,10 @@ private fun qualifyMarker(installation: Path): MarkerQualification {
             return MarkerQualification.Unavailable
         }
     val markerEntries = manifest.payloadFiles.filter { it.path == "share/kast/one-shot-observation-v1" }
-    if (manifest.schemaVersion != 2 || manifest.installationRoot != installation.toString())
+    if (
+        manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
+            manifest.installationRoot != installation.toString()
+    )
         return MarkerQualification.Unavailable
     if (markerEntries.size != 1 || readBoundedFile(marker, MAXIMUM_MARKER_BYTES) != "1\n")
         return MarkerQualification.Unavailable

@@ -7,6 +7,10 @@ tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-30T00:00:00Z
 code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
+    symbols: [PluginInstallOutcome, PluginInstallFailure, installCodexPlugin]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginBundle.kt
+    symbols: [AdmittedPluginBundle]
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationRegistration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RegistrationPayload.kt
@@ -29,6 +33,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRegistryObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledEpochRetention.kt
+    symbols: [InstalledEpochRetention, InstalledEpochRetentionFailure]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationState.kt
     symbols: [BrokerInstallationState]
   - path: packaging/run-portable-tests.py
@@ -41,11 +47,15 @@ code_sources:
     symbols: [InstalledConfigurationSchema]
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
     symbols: [ManagedInstallationOwnedTree]
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationReplacementReceipt.kt
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationSnapshot.kt
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedCopiedEpoch.kt
   - path: packaging/configuration-schema.json
   - path: packaging/installation-lifecycle.py
   - path: packaging/installation-recovery.py
   - path: packaging/prune-prior-installations.py
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationRecoveryReceipt.kt
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/RecoveryPlugin.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
   - path: install.sh
   - path: packaging/codex-mcp-registration.py
@@ -54,8 +64,14 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/OneShotInvocationRecord.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationReplacementReceipt.kt
+    symbols: [InstallationReplacementReceipt, PreviousInstallationPayload, InstallationReplacementStage]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PendingInstallationReplacement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationManifest.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationOutcome.kt
+    symbols: [InstallationFailure, InstallationOutcome]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
     symbols: [InstallationRequest, InstallationProfile]
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
@@ -70,6 +86,11 @@ code_sources:
   - path: .github/scripts/ci/verify-checks.py
   - path: .githooks/pre-push
   - path: distribution/release/plugin-release.gradle.kts
+  - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
+    symbols: [GenerateAgentToolsTask]
+  - path: agent-tools/.codex-plugin/plugin.json
+  - path: agent-tools/.mcp.json
+  - path: .agents/plugins/marketplace.json
   - path: packaging/installer_fixture.py
   - path: packaging/run-installed-product.py
   - path: .github/scripts/release/build-assets.sh
@@ -84,13 +105,21 @@ code_sources:
 
 # Distribution and packaging
 
+The control payload includes a versioned Codex marketplace assembled from the
+canonical `agent-tools` skill and MCP configuration. `kast plugin codex` verifies
+the installed payload before using Codex's marketplace and plugin commands.
+Codex owns the installed plugin and its removal. Release assembly also emits
+independent skill, plugin, and marketplace ZIPs; candidate admission verifies
+their checksums and SBOM archive identities alongside the control and IDEA
+archives. Query examples in the skill are generated from the public tool schema.
+
 The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows payload and IDEA plugin activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for loaded version, ready workspaces, and live connection count. One-shot tool RPC calls publish a bounded process identity record while executing; native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, required launchers including the native management command, and one real session installation in an owned temporary root. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
-The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the selected version and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
+The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the ordinary payload and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 
 Codex registration requires the explicit `mcp` or `app-server` transport. MCP owns the selected `kast` server entry in Codex configuration. App Server owns `~/.local/bin/kast-codex`, an executable launcher for the selected installation's existing `kast-codex-complete` facade; the launcher accepts interactive Codex and `app-server` stdio invocation without adding an MCP entry or redirecting ordinary Desktop sessions. Schema-2 management receipts retain the closed connection identity. Schema-1 receipt admission refines existing Codex ownership to MCP while preserving its destination and payload digest. Both recorded Codex transports are independently owned; disconnecting Codex removes its recorded routes.
 
@@ -115,7 +144,7 @@ fail-closed compatibility result and precedes installation effects. Public insta
 LaunchAgent on without a prompt. Persistent installation asks in a terminal whether to register a user-level Codex MCP entry. Explicit register and skip flags bypass that prompt; non-interactive installation defaults to registration for compatibility. Skipping registration does not inspect or mutate Codex configuration and still installs the MCP launcher. Command collisions require explicit `--force` or manual removal.
 Local session installation retains the complete payload and defers service activation.
 
-Hosted-only schema-2 installations retire their coordinator without invoking
+Single-directory schema-3 and hosted-only schema-2 installations retire their coordinator without invoking
 the retired isolated-workspace `stop` command. Legacy schema-1 installations
 retain that obligation. Lifecycle rejection reports identify the bounded stage
 and outcome, including unresolved worker receipts; failed retirement preserves
@@ -136,7 +165,7 @@ is an explicit `kast-service register` action. The pending report does not claim
 After candidate qualification and recovery preparation, an ordinary upgrade
 admits the prior retirement command and asks the selected daemon for an exact
 update seal. A proven absent daemon needs no seal. Active daemon blockers or
-unproven service state reject before retirement and preserve the current links.
+unproven service state reject before retirement and preserve the installation.
 The installer commits a sealed request before invoking the prior service's
 disable control, so a failed or mismatched commit cannot stop that service.
 New releases use the private `kast-service` executable for activation and
@@ -153,7 +182,11 @@ Prior launchd retirement completes only after observing the selected service abs
 
 `ControlPayloadInventory` counts paths globally, including the three payload roots, before sorting or hashing. Installer and broker use that same admission; `verifyReleaseRuntimeAdmission` exercises the runtime identity owner on the actual staged control product. Limit diagnostics retain the resource and observed lower bound. The hosted-plugin ZIP has a separate archive budget.
 
-Before prior-service retirement and activation, `prepareInstallationRecovery` validates or saves a typed receipt and an offline Python bundle outside the immutable version payload. Ordinary upgrades retain the exact prior-installation recovery chain until the public installer completes plugin activation and Codex registration; corrupt candidate metadata rejects before stopping the selected release. Active plugin bytes alone occupy `plugins/kast-ide-hosted`; candidate, baseline and detached copies remain in the private sibling `.kast-plugin-recovery` on the same filesystem. Recovery admits exactly the legacy discovery-root layout or this retained layout, with one shared token and inode ownership proofs. Standalone recovery on retained historical receipts migrates receipt-listed legacy copies through the exact prior-installation chain; it saves the updated recovery script and location intent before atomic renames so interruption can resume. Standalone recovery rejects missing, cyclic, oversized or corrupt chains and foreign replacement identities. After successful activation, the installer exit trap validates the selected plugin and recovery chain, seals the selected receipt so it no longer depends on the prior payload, then asks the checksum-bound lifecycle helper to admit every version directory and retire unselected payloads. A failed effect retains prior evidence and reports an incomplete upgrade. `installation-recovery.py detach` fences launches, detaches matching command links and receipted plugin directories, and retains previous plugin backups outside discovery. It executes retirement only after full payload admission. Verified retired state is quarantined; uncertain processes and journals remain preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports older installations without requiring their executable to run. Python and JVM installation transitions use compatible POSIX record locks.
+The product has one ordinary payload at `<install-root>/installation`; schema 3 manifests and recovery receipts bind that physical path. Installation creates no `versions` directory or `current` selector. Native management and agent plugin registration use the stable physical directory. Before replacement, the installer admits the existing payload, protected state, retirement command and recovery baseline. The existing epoch owner validates any copied epoch against the old payload; it preserves an unchanged identity and removes only the admitted copied epoch when the new payload identity changes, so coordinator startup creates a fresh epoch. Protected journals and workspace enrollment remain retained. It stages the new payload and records a typed replacement transaction under `<install-root>/recovery/replacement`, then swaps the ordinary directory under the parent activation lock. A failed swap restores the admitted payload and receipt, or retains a finite recovery-required outcome when restoration cannot be proven.
+
+The replacement snapshot is temporary and remains until the shell bootstrap verifies IDEA plugin activation and completes Codex registration. Only active plugin bytes occupy `plugins/kast-ide-hosted`; a pending candidate and prior baseline stay outside plugin discovery in `.kast-plugin-recovery`. The installer finalizes the replacement only after checking the new physical installation identity and active plugin identity. It removes the admitted previous payload and transient baseline on success. Failed effects preserve recovery evidence and report an incomplete installation. Explicit legacy migration admits old manifests and selector ownership; normal runtime configuration does not follow legacy aliases. Historical unknown artifacts remain subject to the existing ownership review rather than guessed deletion.
+
+`installation-recovery.py detach` fences launches and detaches the receipted IDEA plugin. It executes retirement only after payload admission. Verified retired state is quarantined; uncertain processes and journals stay preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports explicit legacy recovery without executing an unverified installation. Python and JVM installation transitions use compatible POSIX record locks.
 
 `install.sh --force` uses the same verified release path with explicit reset authority.
 Under the activation lock it fences and retires the selected and same-version target
@@ -188,9 +221,9 @@ Read [configuration](../contracts/configuration.md) for ingress and ownership ru
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 
-`assembleRelease` ships exactly the control tarball and matching hosted-plugin ZIP with checksums. `GenerateControlMetadataTask` derives `ide-host.json` from the actual plugin bytes and build identities; installation verifies the exact name, version, length and digest. No semantic-runtime manifest, isolated indexer payload or topology store is shipped. Installation manifests use schema 2 and `hostedPluginSha256`; lifecycle inspection still admits historical schema-1 records so old owned installations can be retired safely.
+`assembleRelease` ships the control tarball, matching hosted-plugin ZIP, and the skill, Codex plugin and marketplace ZIPs with checksums. `GenerateControlMetadataTask` derives `ide-host.json` from the actual plugin bytes and build identities; installation verifies the exact name, version, length and digest. No semantic-runtime manifest, isolated indexer payload or topology store is shipped. Installation manifests use schema 3 and `hostedPluginSha256`; lifecycle inspection still admits historical schema-1 and schema-2 records so old owned installations can be retired safely.
 
-Release asset construction, checksums, SBOM inventory, and publication agree on the control and plugin pair.
+Release asset construction, checksums, SBOM inventory, and publication agree on all five archives.
 
 The [installed knowledge contract](../contracts/installed-knowledge.md) describes
 `kast knowledge`, its isolated PSI extraction, verified module ownership and

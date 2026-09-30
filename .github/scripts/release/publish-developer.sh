@@ -36,7 +36,11 @@ plugin="${plugins[0]}"
 catalog="$assets_directory/kast-hosted-catalog-v$version.json"
 knowledge="$assets_directory/kast-module-knowledge-v$version.json"
 sbom="$assets_directory/kast-sbom-v$version.cdx.json"
+skill="$assets_directory/kast-skill-v$version.zip"
+agent_plugin="$assets_directory/kast-plugin-v$version.zip"
+marketplace="$assets_directory/kast-marketplace-v$version.zip"
 assets=("$control" "$control.sha256" "$plugin" "$plugin.sha256"
+  "$skill" "$skill.sha256" "$agent_plugin" "$agent_plugin.sha256" "$marketplace" "$marketplace.sha256"
   "$catalog" "$catalog.sha256" "$knowledge" "$knowledge.sha256" "$sbom" "$sbom.sha256")
 
 if gh release view "$tag" --repo "$repository" >/dev/null 2>&1; then

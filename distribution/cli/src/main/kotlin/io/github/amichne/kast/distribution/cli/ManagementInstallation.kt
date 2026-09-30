@@ -45,11 +45,7 @@ internal fun preflightPublicExecutable(root: Path, environment: Map<String, Stri
             existing != null &&
                 Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) &&
                 sha256(path) == existing.executableSha256
-        val legacy =
-            existing == null &&
-                Files.isSymbolicLink(path) &&
-                Files.readSymbolicLink(path) == root.resolve("current/bin/kast-complete")
-        if (!owned && !legacy) throw ManagementRejected("path-preflight", "destination belongs to another owner")
+        if (!owned) throw ManagementRejected("path-preflight", "destination belongs to another owner")
     } else if (existing != null) {
         throw ManagementRejected("path-preflight", "recorded executable is missing")
     }
@@ -72,7 +68,7 @@ internal fun commitPublicExecutable(
     channel: ReleaseChannel,
 ): InstallDestination {
     val destination = preflightPublicExecutable(root, environment)
-    val source = root.resolve("current/share/kast/libexec/kast-management")
+    val source = root.resolve("installation/share/kast/libexec/kast-management")
     if (!Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS) || !Files.isExecutable(source))
         throw ManagementRejected("path-commit", "verified native executable is unavailable")
     val path = destination.path
@@ -150,4 +146,35 @@ internal fun sha256(path: Path): String {
         }
     }
     return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+internal enum class ManagementRootFailure(val reason: String) {
+    HOME_UNAVAILABLE("HOME is unavailable"),
+    EMPTY_PATH("installation root is empty"),
+    INVALID_PATH("installation root is invalid"),
+    RELATIVE_PATH("installation root must be absolute"),
+    UNNORMALIZED_PATH("installation root must be normalized"),
+}
+
+internal sealed interface ManagementRootResolution {
+    class Selected private constructor(val root: Path) : ManagementRootResolution {
+        companion object {
+            fun admit(raw: String): ManagementRootResolution {
+                if (raw.isEmpty()) return Rejected(ManagementRootFailure.EMPTY_PATH)
+                val root =
+                    try {
+                        Path.of(raw)
+                    } catch (_: IllegalArgumentException) {
+                        return Rejected(ManagementRootFailure.INVALID_PATH)
+                    }
+                return when {
+                    !root.isAbsolute -> Rejected(ManagementRootFailure.RELATIVE_PATH)
+                    root.normalize() != root -> Rejected(ManagementRootFailure.UNNORMALIZED_PATH)
+                    else -> Selected(root)
+                }
+            }
+        }
+    }
+
+    data class Rejected(val failure: ManagementRootFailure) : ManagementRootResolution
 }

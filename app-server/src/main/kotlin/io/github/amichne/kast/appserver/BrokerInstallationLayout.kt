@@ -5,7 +5,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
 
-/** Physical executable selection is retained; neither child launch nor routing follows `current`. */
+/** Physical executable selection determines the installed root for child launches and routing. */
 internal class BrokerInstallationLayout
 private constructor(
     val root: Path,

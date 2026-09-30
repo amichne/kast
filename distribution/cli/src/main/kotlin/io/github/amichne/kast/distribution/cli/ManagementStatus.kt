@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -173,7 +174,7 @@ internal fun readStatus(root: Path, commandPath: String): InstallationStatus {
                 }
             }
             ?.takeIf {
-                it.schemaVersion == 2 &&
+                it.schemaVersion == INSTALLATION_MANIFEST_SCHEMA_VERSION &&
                     it.installationRoot == selected.toString() &&
                     Regex("[0-9]+\\.[0-9]+\\.[0-9]+").matches(it.semanticVersion)
             }
@@ -204,13 +205,11 @@ internal fun readStatus(root: Path, commandPath: String): InstallationStatus {
 
 private fun resolvedInstallation(root: Path, receipt: ReceiptRead): Path? {
     if (receipt !is ReceiptRead.Read) return null
-    val pair =
-        try {
-            root.resolve("current").toRealPath() to root.toRealPath().resolve("versions")
-        } catch (_: Exception) {
-            return null
-        }
-    return pair.first.takeIf { it.parent == pair.second }
+    return try {
+        selectedInstallation(root)
+    } catch (_: ManagementRejected) {
+        null
+    }
 }
 
 internal fun readBoundedFile(path: Path, maximumBytes: Long): String? =

@@ -4,7 +4,6 @@ import io.github.amichne.kast.distribution.contract.configuration.RetiredConfigu
 import io.github.amichne.kast.distribution.contract.configuration.SavedConfigurationDocument
 import io.github.amichne.kast.distribution.managed.PriorInstallationPreparation
 import io.github.amichne.kast.distribution.managed.preparePriorInstallationReplacement
-import io.github.amichne.kast.distribution.managed.quarantineInstallationEntry
 import io.github.amichne.kast.distribution.managed.resetInstallationTransport
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
@@ -77,20 +76,6 @@ internal fun resetInstallation(
         }
     observe(InstallationChildObservation(stage = InstallationChildStage.FORCE_RESET, outcome = outcome))
     return outcome
-}
-
-/** Called under the installation activation lock, after checksum and path admission. */
-internal fun forceReplaceInstallations(roots: Set<Path>, home: Path, installRoot: Path): InstallationChildOutcome {
-    for (root in roots) {
-        val reset = resetInstallation(root, home)
-        if (reset != InstallationChildOutcome.COMPLETED) return reset
-        if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(root)
-        val recovery = installRoot.resolve("recovery").resolve(root.fileName)
-        if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(recovery)
-    }
-    val current = installRoot.resolve("current")
-    if (Files.exists(current, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(current)
-    return InstallationChildOutcome.COMPLETED
 }
 
 private const val SERVICE_NOT_FOUND = 113

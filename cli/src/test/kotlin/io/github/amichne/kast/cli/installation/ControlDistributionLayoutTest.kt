@@ -93,7 +93,8 @@ class ControlDistributionLayoutTest {
                 )
             ),
         )
-        val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+        discardFixtureReplacementAfterSetup(installation)
+        val prior = installation.resolve("installation")
         val workspace = Files.createDirectory(root.resolve("workspace"))
         Files.writeString(
             prior.resolve("config/workspaces.json"),

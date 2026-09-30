@@ -66,20 +66,8 @@ class InstallationWorkflowTest {
                 )
             ),
         )
-        val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        val retention =
-            Json.parseToJsonElement(Files.readString(selected.resolve("installation.json")))
-                .jsonObject
-                .getValue("retention")
-                .jsonObject
-        assertEquals(
-            "until-successful-upgrade-or-explicit-uninstall",
-            retention.getValue("payload").jsonPrimitive.content,
-        )
-        assertEquals(
-            "until-successful-upgrade-or-explicit-uninstall",
-            retention.getValue("config").jsonPrimitive.content,
-        )
+        val selected = installation.resolve("installation")
+        assertFreshInstallationOwnership(installation, selected)
         val values =
             Files.readAllLines(selected.resolve("config/environment"))
                 .filterNot { it.startsWith("#") }
@@ -94,6 +82,42 @@ class InstallationWorkflowTest {
         }
         assertEquals("0", values["KAST_DEBUG"])
         assertLauncherSelection(selected, root, installation)
+    }
+
+    private fun assertFreshInstallationOwnership(installation: Path, selected: Path) {
+        val pending =
+            assertInstanceOf(
+                PendingInstallationReplacement.Committed::class.java,
+                observePendingInstallationReplacement(installation),
+            )
+        assertEquals(
+            io.github.amichne.kast.distribution.contract.PreviousInstallationPayload.None,
+            pending.receipt.previous,
+        )
+        assertTrue(Files.notExists(installation.resolve("current")))
+        assertTrue(Files.notExists(installation.resolve("versions")))
+        val recovery =
+            Json.parseToJsonElement(Files.readString(installation.resolve("recovery/installation/receipt.json")))
+                .jsonObject
+        assertEquals(
+            setOf("schemaVersion", "installation", "installationIdentity", "plugin", "pluginRoot", "stage"),
+            recovery.keys,
+        )
+        assertEquals("3", recovery.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("Prepared", recovery.getValue("stage").jsonPrimitive.content)
+        val retention =
+            Json.parseToJsonElement(Files.readString(selected.resolve("installation.json")))
+                .jsonObject
+                .getValue("retention")
+                .jsonObject
+        assertEquals(
+            "until-successful-upgrade-or-explicit-uninstall",
+            retention.getValue("payload").jsonPrimitive.content,
+        )
+        assertEquals(
+            "until-successful-upgrade-or-explicit-uninstall",
+            retention.getValue("config").jsonPrimitive.content,
+        )
     }
 
     private fun assertLauncherSelection(selected: Path, root: Path, installation: Path) {
@@ -138,7 +162,8 @@ class InstallationWorkflowTest {
             (InstallationRequest.parse(environment + overrides) as Refinement.Refined).value
         val request = request()
         assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
-        val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+        discardFixtureReplacementAfterSetup(installation)
+        val selected = installation.resolve("installation")
         val run = Files.createDirectories(selected.resolve("state/run"))
         val stale = Files.writeString(run.resolve("c.sock"), "stale socket")
         Files.writeString(selected.resolve("config/workspaces.json"), "broken registry")
@@ -155,58 +180,6 @@ class InstallationWorkflowTest {
         assertEquals("keep", Files.readString(unrelated))
         assertTrue(Files.notExists(root.resolve("commands/kast")))
         assertTrue(Files.notExists(selected.resolve(".recovery-detached")))
-    }
-
-    @Test
-    fun `upgrade retains the admitted workspace registry`(@TempDir temporary: Path) {
-        val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
-        val home = Files.createDirectory(root.resolve("home"))
-        val codexHome = Files.createDirectory(home.resolve(".codex"))
-        val firstWorkspace = Files.createDirectory(root.resolve("first-workspace"))
-        val secondWorkspace = Files.createDirectory(root.resolve("second-workspace"))
-
-        assertInstanceOf(
-            InstallationOutcome.Complete::class.java,
-            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
-        )
-        val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        val registry =
-            Json.encodeToString(RegistryFixture(2, 2, listOf(firstWorkspace.toString(), secondWorkspace.toString())))
-        Files.writeString(prior.resolve("config/workspaces.json"), registry)
-
-        assertInstanceOf(
-            InstallationOutcome.Complete::class.java,
-            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.4")),
-        )
-
-        val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        assertEquals(registry, Files.readString(selected.resolve("config/workspaces.json")))
-    }
-
-    @Test
-    fun `upgrade rejects a corrupt prior registry and preserves selection`(@TempDir temporary: Path) {
-        val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
-        val home = Files.createDirectory(root.resolve("home"))
-        val codex = Files.createDirectory(root.resolve("codex"))
-        assertInstanceOf(
-            InstallationOutcome.Complete::class.java,
-            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.3")),
-        )
-        val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        Files.writeString(prior.resolve("config/workspaces.json"), "broken registry")
-        val rejected =
-            assertInstanceOf(
-                InstallationOutcome.Rejected::class.java,
-                executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.4")),
-            )
-        assertEquals(InstallationFailure.PRIOR_ADMISSION_EXIT_REJECTED, rejected.failure)
-        assertEquals("broken registry", Files.readString(prior.resolve("config/workspaces.json")))
-        val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        assertEquals(prior, selected)
     }
 
     @Test
@@ -261,34 +234,6 @@ class InstallationWorkflowTest {
             executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
         )
         assertEquals("unmanaged", Files.readString(foreign))
-        assertTrue(Files.notExists(commands.resolve("kast-codex")))
-    }
-
-    @Test
-    fun `upgrade retires only the prior Kast command links`(@TempDir temporary: Path) {
-        val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = Files.createDirectory(root.resolve("commands"))
-        val home = Files.createDirectory(root.resolve("home"))
-        val codexHome = Files.createDirectory(home.resolve(".codex"))
-        assertInstanceOf(
-            InstallationOutcome.Complete::class.java,
-            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
-        )
-        val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        Files.writeString(
-            prior.resolve("config/workspaces.json"),
-            Json.encodeToString(RegistryFixture(2, 0, emptyList())),
-        )
-        for ((name, executable) in listOf("kast" to "kast-complete", "kast-codex" to "kast-codex-complete")) {
-            Files.createSymbolicLink(commands.resolve(name), installation.resolve("current/bin/$executable"))
-        }
-
-        assertInstanceOf(
-            InstallationOutcome.Complete::class.java,
-            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.4")),
-        )
-        assertTrue(Files.notExists(commands.resolve("kast")))
         assertTrue(Files.notExists(commands.resolve("kast-codex")))
     }
 }
@@ -500,3 +445,10 @@ private data class PluginFixture(
 )
 
 @Serializable internal data class RegistryFixture(val schemaVersion: Int, val revision: Int, val roots: List<String>)
+
+/** Starting fact for the next workflow case: the outer installer has already disposed of its owned pending snapshot. */
+internal fun discardFixtureReplacementAfterSetup(installation: Path) {
+    val directory = installation.resolve("recovery/replacement")
+    check(observePendingInstallationReplacement(installation) is PendingInstallationReplacement.Committed)
+    Files.walk(directory).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+}

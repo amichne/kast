@@ -21,13 +21,31 @@ Use `kast status` to inspect the installation and `kast connect` to choose
 Codex, Copilot, or Pi. Restart IDEA after installation and restart a harness
 after connecting it. See [install and connect](https://kast.michne.com/start/).
 
+To install the Codex plugin with its MCP connection, query skill, and examples:
+
+```shell
+kast plugin codex
+```
+
+Restart Codex and select the exact repository or worktree. Codex manages this
+plugin; remove it with `codex plugin remove kast@kast`. Each release also includes
+standalone skill, plugin, and marketplace ZIPs with SHA-256 checksums. See the
+[agent tools package](agent-tools/README.md) for independent skill installation
+and manual marketplace setup. After upgrading Kast, rerun `kast plugin codex`
+to load the matching skill and examples.
+
 Installer output shows progress and readable failure reasons. Pass `--verbose`
 after the downloaded command's `--` separator to include structured diagnostic
 reports.
 
 Use `kast upgrade` to install the latest release on the selected channel.
-The upgrade interrupts existing calls and sessions. Kast removes prior versions
-that pass installation admission.
+The upgrade interrupts existing calls and sessions. Kast keeps one ordinary
+installation at `${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation`.
+It replaces that directory after admitting and stopping the previous payload;
+a successful upgrade removes its temporary recovery copy. Installation does
+not create selector links or selectable historical versions.
+To migrate from a release that uses `current`, run the published installer
+above once; the old release’s upgrade command predates this layout.
 For older Kast processes, login items, plugin backups, install directories, or
 manifest-listed anchors whose ownership is incomplete, the installer shows
 each exact item and asks before removing it. Answer `yes` for an individual

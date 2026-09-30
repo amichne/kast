@@ -3,13 +3,8 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardOpenOption.WRITE
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -17,100 +12,39 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class SavedConfigurationIngressTest {
-    // Budget: one private root with only the selected file/link, manifest and activation lock.
+    // Budget: one private root with only the selected physical file or rejected symlink.
     // No product, IDE or child process. Gradle/JUnit provisioning is outside this behavior budget.
     @Test
-    fun `receipted current alias loads the same configuration as its immutable path`(@TempDir temporary: Path) {
-        val fixture = aliasFixture(temporary)
-        val alias =
-            InstalledSavedConfigurationIngress.read(fixture.selected.toString(), emptyMap())
-                as SavedConfigurationIngress.Loaded
-        val pinned =
-            InstalledSavedConfigurationIngress.read(fixture.configuration.toString(), emptyMap())
-                as SavedConfigurationIngress.Loaded
-        assertEquals(listOf("KAST_READ_HOST_REFERENCE_ENTRIES" to "8192"), alias.sources.savedInstallation)
-        assertEquals(pinned.sources.savedInstallation, alias.sources.savedInstallation)
+    fun `direct stable installation file loads saved values and preserves selector provenance`(
+        @TempDir temporary: Path
+    ) {
+        val root = temporary.toRealPath().resolve("kast")
+        val configuration = Files.createDirectories(root.resolve("installation/config")).resolve("environment")
+        Files.writeString(configuration, "KAST_READ_HOST_REFERENCE_ENTRIES=8192\n")
+        val environment = mapOf("KAST_CONFIGURATION_FILE" to configuration.toString())
+        val loaded = InstalledSavedConfigurationIngress.load(environment) as SavedConfigurationIngress.Loaded
+        assertEquals(SavedConfigurationObservation.LOADED, loaded.observation)
+        assertEquals(listOf("KAST_READ_HOST_REFERENCE_ENTRIES" to "8192"), loaded.sources.savedInstallation)
+        assertEquals(environment, loaded.sources.environment)
     }
 
     @Test
-    fun `current alias rejects a held activation lock`(@TempDir temporary: Path) {
-        val fixture = aliasFixture(temporary)
-        FileChannel.open(fixture.lock, WRITE).use { channel ->
-            channel.lock().use {
-                val result =
-                    InstalledSavedConfigurationIngress.read(fixture.selected.toString(), emptyMap())
-                        as SavedConfigurationIngress.Rejected
-                assertEquals(
-                    SavedConfigurationIngressFailure.INVALID_INSTALLATION,
-                    (result.rejection as SavedConfigurationIngressRejection.File).failure,
-                )
-            }
-        }
-    }
-
-    @Test
-    fun `current alias replacement during pinned read rejects deterministically`(@TempDir temporary: Path) {
-        val fixture = aliasFixture(temporary)
-        var reads = 0
-        val changed =
-            InstalledConfigurationAlias.read(fixture.selected, emptyMap()) { pinnedPath, selected ->
-                reads++
-                assertEquals(fixture.configuration, pinnedPath)
-                assertEquals(emptyMap<String, String>(), selected)
-                val loaded = InstalledSavedConfigurationIngress.read(pinnedPath.toString(), selected)
-                Files.delete(fixture.current)
-                Files.createSymbolicLink(fixture.current, Path.of("versions/other"))
-                loaded
-            } as SavedConfigurationIngress.Rejected
-        assertEquals(1, reads)
-        assertEquals(
-            SavedConfigurationIngressFailure.CHANGED_DURING_READ,
-            (changed.rejection as SavedConfigurationIngressRejection.File).failure,
-        )
-    }
-
-    @Test
-    fun `current alias rejects a missing ownership manifest`(@TempDir temporary: Path) {
-        val fixture = aliasFixture(temporary)
-        Files.delete(fixture.configuration.parent.parent.resolve("installation.json"))
+    fun `saved configuration rejects a symlinked installation ancestor`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val installation = root.resolve("physical-installation")
+        val configuration = Files.createDirectories(installation.resolve("config")).resolve("environment")
+        val original = "KAST_READ_HOST_REFERENCE_ENTRIES=8192\n"
+        Files.writeString(configuration, original)
+        val symbolic = Files.createSymbolicLink(root.resolve("current"), installation)
         val result =
-            InstalledSavedConfigurationIngress.read(fixture.selected.toString(), emptyMap())
+            InstalledSavedConfigurationIngress.read(symbolic.resolve("config/environment").toString(), emptyMap())
                 as SavedConfigurationIngress.Rejected
         assertEquals(
-            SavedConfigurationIngressFailure.INVALID_INSTALLATION,
+            SavedConfigurationIngressFailure.NOT_REGULAR,
             (result.rejection as SavedConfigurationIngressRejection.File).failure,
         )
-    }
-
-    private data class AliasFixture(val current: Path, val configuration: Path, val lock: Path) {
-        val selected: Path = current.resolve("config/environment")
-    }
-
-    private fun aliasFixture(temporary: Path): AliasFixture {
-        val root = temporary.toRealPath()
-        val installation = root.resolve("versions/1.2.3-" + "a".repeat(64))
-        val configuration = Files.createDirectories(installation.resolve("config")).resolve("environment")
-        Files.writeString(configuration, "KAST_READ_HOST_REFERENCE_ENTRIES=8192\n")
-        val current = Files.createSymbolicLink(root.resolve("current"), root.relativize(installation))
-        val lock = Files.writeString(root.resolve("activation.lock"), "")
-        writeAliasManifest(installation, current, configuration, root)
-        return AliasFixture(current, configuration, lock)
-    }
-
-    private fun writeAliasManifest(installation: Path, current: Path, configuration: Path, root: Path) {
-        Files.writeString(
-            installation.resolve("installation.json"),
-            Json.encodeToString(
-                AliasManifestFixture(
-                    2,
-                    "1.2.3",
-                    installation.toString(),
-                    "sha256:" + "a".repeat(64),
-                    configuration.toString(),
-                    listOf(AliasAnchorFixture("current", current.toString(), root.relativize(installation).toString())),
-                )
-            ),
-        )
+        assertEquals(original, Files.readString(configuration))
+        assertTrue(Files.isSymbolicLink(symbolic))
     }
 
     @Test
@@ -169,15 +103,3 @@ class SavedConfigurationIngressTest {
         assertFalse(Files.exists(marker))
     }
 }
-
-@Serializable
-private data class AliasManifestFixture(
-    val schemaVersion: Int,
-    val semanticVersion: String,
-    val installationRoot: String,
-    val payloadIdentity: String,
-    val configuration: String,
-    val externalAnchors: List<AliasAnchorFixture>,
-)
-
-@Serializable private data class AliasAnchorFixture(val kind: String, val path: String, val expectedLinkTarget: String)

@@ -22,8 +22,10 @@ import uuid
 
 class Status(str, Enum):
     PREPARED = 'Prepared'
+    PLUGIN_PREPARED = 'PluginPrepared'
     PLANNED = 'Planned'
     ACTIVE = 'Active'
+    FINALIZING = 'UpgradeFinalizing'
     SEALED = 'UpgradeFinalized'
     CLEAN = 'CleanBaselineRestored'
     UNRESOLVED = 'DetachedWithUnresolvedState'
@@ -77,7 +79,7 @@ class Plugin:
 
 
 @dataclass(frozen=True)
-class Receipt:
+class LegacyReceipt:
     schemaVersion: int
     installation: str
     installationIdentity: Identity
@@ -86,6 +88,56 @@ class Receipt:
     plugin: typing.Optional[Plugin]
     pluginRoot: typing.Optional[str]
     stage: Status
+
+
+@dataclass(frozen=True)
+class Receipt:
+    schemaVersion: int
+    installation: str
+    installationIdentity: Identity
+    plugin: typing.Optional[Plugin]
+    pluginRoot: typing.Optional[str]
+    stage: Status
+
+
+class ReplacementStage(str, Enum):
+    PREPARED = 'PREPARED'
+    COMMITTED = 'PAYLOAD_COMMITTED'
+    FINALIZING = 'FINALIZING'
+    RECOVERY_REQUIRED = 'RECOVERY_REQUIRED'
+
+
+@dataclass(frozen=True)
+class NoPrevious:
+    type: str
+
+
+@dataclass(frozen=True)
+class PhysicalPrevious:
+    type: str
+    installation: str
+    identity: Identity
+    payload: str
+    recovery: str
+
+
+@dataclass(frozen=True)
+class LegacyPrevious:
+    type: str
+    installation: str
+    identity: Identity
+    selector: str
+    target: str
+    recovery: str
+
+
+@dataclass(frozen=True)
+class Replacement:
+    schemaVersion: int
+    stage: ReplacementStage
+    installation: str
+    installationIdentity: Identity
+    previous: typing.Union[NoPrevious, PhysicalPrevious, LegacyPrevious]
 
 
 @dataclass(frozen=True)
@@ -103,6 +155,10 @@ def decode(kind, value):
     """Strict dataclass boundary: unknown fields and absent fields are rejected."""
     origin = typing.get_origin(kind)
     if origin is typing.Union:
+        if kind == typing.Union[NoPrevious, PhysicalPrevious, LegacyPrevious]:
+            if not isinstance(value, dict) or value.get('type') not in {'NONE', 'PHYSICAL', 'LEGACY'}:
+                raise Rejected(Failure.RECEIPT)
+            return decode({'NONE': NoPrevious, 'PHYSICAL': PhysicalPrevious, 'LEGACY': LegacyPrevious}[value['type']], value)
         if value is None and type(None) in typing.get_args(kind):
             return None
         return decode(next(item for item in typing.get_args(kind) if item is not type(None)), value)
@@ -175,13 +231,19 @@ def load(path, kind=Receipt):
     if len(raw) > 65536:
         raise Rejected(Failure.RECEIPT)
     try:
-        return decode(kind, json.loads(raw, object_pairs_hook=unique))
+        document = json.loads(raw, object_pairs_hook=unique)
+        selected = LegacyReceipt if kind is Receipt and isinstance(document, dict) and document.get('schemaVersion') in (1, 2) else kind
+        return decode(selected, document)
     except (ValueError, UnicodeDecodeError):
         raise Rejected(Failure.RECEIPT) from None
 
 
 def location(root):
     physical(root)
+    if root.name == 'installation':
+        outer = physical(root.parent)
+        return outer, outer / 'recovery' / 'installation'
+    # Explicit legacy ownership boundary; no new versioned payloads are written.
     if root.parent.name != 'versions':
         raise Rejected(Failure.OWNERSHIP)
     physical(root.parent)
@@ -203,6 +265,13 @@ def prepare(root, bin_directory, plugin_root=None):
     physical(outer / 'recovery')
     bundle.mkdir(mode=0o700, exist_ok=True)
     physical(bundle)
+    if root.name == 'installation':
+        selected_plugin_root = str(physical(plugin_root)) if plugin_root is not None else None
+        receipt = Receipt(3, str(root), Identity.observe(root), None, selected_plugin_root, Status.PREPARED)
+        copy_recovery_scripts(bundle)
+        save(bundle / 'receipt.json', receipt)
+        sync(bundle.parent)
+        return Report(Status.PREPARED, [], str(retained_script(bundle)))
     current = outer / 'current'
     previous = None
     if os.path.lexists(current):
@@ -224,8 +293,15 @@ def prepare(root, bin_directory, plugin_root=None):
             prior = target
         links.append(Link(str(path), target, prior))
     selected_plugin_root = str(physical(plugin_root)) if plugin_root is not None else None
-    receipt = Receipt(1, str(root), Identity.observe(root), links,
+    receipt = LegacyReceipt(1, str(root), Identity.observe(root), links,
                       str(outer / previous) if previous else None, None, selected_plugin_root, Status.PREPARED)
+    copy_recovery_scripts(bundle)
+    save(bundle / 'receipt.json', receipt)
+    sync(bundle.parent)
+    return Report(Status.PREPARED, [], str(retained_script(bundle)))
+
+
+def copy_recovery_scripts(bundle):
     # Copy the trusted executing bundle, not a file from the damaged installation.
     shutil.copyfile(Path(__file__).resolve(), retained_script(bundle))
     os.chmod(retained_script(bundle), 0o600)
@@ -235,17 +311,32 @@ def prepare(root, bin_directory, plugin_root=None):
         shutil.copyfile(lifecycle, bundle / lifecycle.name)
         os.chmod(bundle / lifecycle.name, 0o600)
         sync(bundle / lifecycle.name)
-    save(bundle / 'receipt.json', receipt)
-    sync(bundle.parent)
-    return Report(Status.PREPARED, [], str(retained_script(bundle)))
 
 
 def validate(root, receipt):
-    if receipt.schemaVersion not in (1, 2) or receipt.installation != str(root) or receipt.installationIdentity != Identity.observe(root):
+    if receipt.schemaVersion not in (1, 2, 3) or receipt.installation != str(root) or receipt.installationIdentity != Identity.observe(root):
         raise Rejected(Failure.RECEIPT)
     outer, bundle = location(root)
     physical(bundle.parent)
     physical(bundle)
+    if isinstance(receipt, Receipt):
+        if receipt.schemaVersion != 3 or root != outer / 'installation':
+            raise Rejected(Failure.RECEIPT)
+    else:
+        validate_legacy_links(root, outer, receipt)
+    if receipt.plugin is not None:
+        plugin = receipt.plugin
+        destination = Path(plugin.destination)
+        if destination.name != 'kast-ide-hosted' or receipt.pluginRoot != str(destination.parent):
+            raise Rejected(Failure.RECEIPT)
+        physical(destination.parent)
+        plugin_layout(plugin)
+    return bundle
+
+
+def validate_legacy_links(root, outer, receipt):
+    if receipt.schemaVersion not in (1, 2) or root.parent != outer / 'versions':
+        raise Rejected(Failure.RECEIPT)
     if len(receipt.links) != (3 if receipt.schemaVersion == 1 else 1):
         raise Rejected(Failure.RECEIPT)
     current = receipt.links[0]
@@ -260,14 +351,6 @@ def validate(root, receipt):
                 raise Rejected(Failure.RECEIPT)
         if Path(command.path).parent != Path(codex.path).parent:
             raise Rejected(Failure.RECEIPT)
-    if receipt.plugin is not None:
-        plugin = receipt.plugin
-        destination = Path(plugin.destination)
-        if destination.name != 'kast-ide-hosted' or receipt.pluginRoot != str(destination.parent):
-            raise Rejected(Failure.RECEIPT)
-        physical(destination.parent)
-        plugin_layout(plugin)
-    return bundle
 
 
 class PluginLayout(Enum):
@@ -375,7 +458,7 @@ def migrate_plugin_chain(root):
         receipt = load(bundle / 'receipt.json')
         validate(current, receipt)
         chain.append((current, receipt))
-        current = Path(receipt.priorInstallation) if receipt.priorInstallation is not None else None
+        current = Path(receipt.priorInstallation) if isinstance(receipt, LegacyReceipt) and receipt.priorInstallation is not None else None
     for current, receipt in reversed(chain):
         migrate_plugin_receipt(current, receipt)
     return load(location(root)[1] / 'receipt.json')
@@ -396,8 +479,14 @@ def activate_plugin(root, staged, plugin_root, *, force=False):
     receipt = migrate_plugin_chain(root)
     retained = prepare_retention(plugin_root)
     destination = plugin_root / 'kast-ide-hosted'
-    if receipt.plugin is None:
-        if force and os.path.lexists(destination):
+    new_candidate = receipt.plugin is None or (isinstance(receipt, Receipt) and receipt.stage is Status.PREPARED)
+    if new_candidate:
+        if receipt.plugin is not None:
+            previous = receipt.plugin
+            if (previous.destination != str(destination) or
+                    Identity.observe(physical(destination)) != previous.candidateIdentity):
+                raise Rejected(Failure.OWNERSHIP)
+        if force and receipt.plugin is None and os.path.lexists(destination):
             if destination.lstat().st_uid != os.getuid():
                 raise Rejected(Failure.OWNERSHIP)
             # Move only the named entry; a symlink's target is never traversed.
@@ -420,13 +509,15 @@ def activate_plugin(root, staged, plugin_root, *, force=False):
         plugin = Plugin(str(destination), str(candidate), Identity.observe(candidate),
                         str(retained / ('.kast-ide-hosted.baseline-' + token)), prior,
                         str(retained / ('.kast-ide-hosted.detached-' + token)))
-        receipt = replace_stage(receipt, Status.PREPARED, plugin)
+        receipt = replace_stage(receipt, Status.PLUGIN_PREPARED if isinstance(receipt, Receipt) else Status.PREPARED, plugin)
         save(bundle / 'receipt.json', receipt)
     plugin = receipt.plugin
     candidate, backup = Path(plugin.candidate), Path(plugin.backup)
     if plugin.destination != str(destination):
         raise Rejected(Failure.OWNERSHIP)
     if destination.exists() and Identity.observe(destination) == plugin.candidateIdentity:
+        if receipt.stage is not Status.FINALIZING:
+            save(bundle / 'receipt.json', replace_stage(receipt, Status.ACTIVE))
         return Report(Status.ACTIVE, [Failure.RESTART], str(retained_script(bundle)))
     if plugin.priorIdentity is not None and not backup.exists():
         if Identity.observe(physical(destination)) != plugin.priorIdentity:
@@ -447,11 +538,12 @@ def seal_upgrade(root):
     outer, bundle = location(root)
     receipt = load(bundle / 'receipt.json')
     validate(root, receipt)
-    selector = outer / 'current'
-    if (not selector.is_symlink() or os.readlink(selector) != receipt.links[0].target
-            or Identity.observe(selector).owner != os.getuid()):
-        raise Rejected(Failure.OWNERSHIP)
-    if receipt.stage is not Status.ACTIVE or receipt.plugin is None:
+    if isinstance(receipt, LegacyReceipt):
+        selector = outer / 'current'
+        if (not selector.is_symlink() or os.readlink(selector) != receipt.links[0].target
+                or Identity.observe(selector).owner != os.getuid()):
+            raise Rejected(Failure.OWNERSHIP)
+    if receipt.stage not in (Status.ACTIVE, Status.FINALIZING) or receipt.plugin is None:
         raise Rejected(Failure.RECEIPT)
     plugin = receipt.plugin
     if (plugin_layout(plugin) is not PluginLayout.RETAINED
@@ -460,9 +552,26 @@ def seal_upgrade(root):
     # Activation has already copied legacy plugin evidence into the retained layout.
     # Revalidate the entire prior chain before removing its dependency from this receipt.
     receipt = migrate_plugin_chain(root)
-    selected_link = replace(receipt.links[0], priorTarget=None)
-    sealed = replace(receipt, priorInstallation=None, links=[selected_link, *receipt.links[1:]])
-    save(bundle / 'receipt.json', sealed)
+    if isinstance(receipt, LegacyReceipt):
+        selected_link = replace(receipt.links[0], priorTarget=None)
+        save(bundle / 'receipt.json', replace(receipt, priorInstallation=None, links=[selected_link, *receipt.links[1:]]))
+    else:
+        prepare_finalization(root)
+        if plugin.priorIdentity is not None:
+            backup = Path(plugin.backup)
+            if os.path.lexists(backup):
+                if Identity.observe(physical(backup)) != plugin.priorIdentity:
+                    raise Rejected(Failure.PLUGIN)
+            elif receipt.stage is not Status.FINALIZING:
+                raise Rejected(Failure.PLUGIN)
+            if receipt.stage is not Status.FINALIZING:
+                receipt = replace(receipt, stage=Status.FINALIZING)
+                save(bundle / 'receipt.json', receipt)
+            if os.path.lexists(backup):
+                shutil.rmtree(backup)
+                sync(backup.parent)
+            save(bundle / 'receipt.json', replace(receipt, stage=Status.ACTIVE, plugin=replace(plugin, priorIdentity=None)))
+        finalize_replacement(root)
     return Report(Status.SEALED, [], str(retained_script(bundle)))
 
 
@@ -636,20 +745,8 @@ def detach(root, dry_run):
     save(bundle / 'receipt.json', replace_stage(receipt, Status.UNRESOLVED))
     unresolved = retire_and_preserve(root, bundle)
     unresolved.extend(detach_login(root, bundle))
-    # Command links are only owned by this activation while current selects this version.
-    current = Path(receipt.links[0].path)
-    selector_matches = current.is_symlink() and os.readlink(current) == receipt.links[0].target
-    selector_absent = not os.path.lexists(current)
-    for link in reversed(receipt.links):
-        path = Path(link.path)
-        if not os.path.lexists(path):
-            continue
-        if (selector_matches or selector_absent) and path.is_symlink() and os.readlink(path) == link.target:
-            Identity.observe(path)
-            path.unlink()
-            sync(path.parent)
-        else:
-            unresolved.append(Failure.OWNERSHIP)
+    if isinstance(receipt, LegacyReceipt):
+        detach_legacy_links(receipt, unresolved)
     if receipt.plugin is None:
         if receipt.pluginRoot is None or os.path.lexists(physical(Path(receipt.pluginRoot)) / 'kast-ide-hosted'):
             unresolved.append(Failure.PLUGIN)
@@ -674,6 +771,129 @@ def detach(root, dry_run):
     status = Status.UNRESOLVED if unresolved else Status.CLEAN
     save(bundle / 'receipt.json', replace_stage(receipt, status))
     return Report(status, sorted(set(unresolved), key=lambda value: value.value), str(retained_script(bundle)))
+
+
+def detach_legacy_links(receipt, unresolved):
+    selector = Path(receipt.links[0].path)
+    matches = selector.is_symlink() and os.readlink(selector) == receipt.links[0].target
+    absent = not os.path.lexists(selector)
+    for link in reversed(receipt.links):
+        path = Path(link.path)
+        if not os.path.lexists(path):
+            continue
+        if (matches or absent) and path.is_symlink() and os.readlink(path) == link.target:
+            Identity.observe(path)
+            path.unlink()
+            sync(path.parent)
+        else:
+            unresolved.append(Failure.OWNERSHIP)
+
+
+def replacement_to_finalize(root):
+    outer, _ = location(root)
+    transaction = outer / 'recovery/replacement'
+    if not os.path.lexists(transaction):
+        return None
+    physical(transaction)
+    receipt = load(transaction / 'receipt.json', Replacement)
+    if (receipt.schemaVersion != 1 or receipt.stage not in (ReplacementStage.COMMITTED, ReplacementStage.FINALIZING) or
+            receipt.installation != str(root) or receipt.installationIdentity != Identity.observe(root)):
+        raise Rejected(Failure.RECEIPT)
+    if not shutil.rmtree.avoids_symlink_attacks:
+        raise Rejected(Failure.FILESYSTEM)
+    previous = receipt.previous
+    finalizing = receipt.stage is ReplacementStage.FINALIZING
+    if isinstance(previous, PhysicalPrevious):
+        payload = Path(previous.payload)
+        if (previous.installation != str(root) or previous.payload != str(transaction / 'payload') or
+                previous.recovery != str(transaction / 'recovery')):
+            raise Rejected(Failure.OWNERSHIP)
+        if os.path.lexists(payload):
+            if Identity.observe(physical(payload)) != previous.identity:
+                raise Rejected(Failure.OWNERSHIP)
+        elif not finalizing:
+            raise Rejected(Failure.OWNERSHIP)
+    elif isinstance(previous, LegacyPrevious):
+        prior = Path(previous.installation)
+        selector = outer / 'current'
+        if (prior.parent != outer / 'versions' or previous.selector != str(selector) or
+                previous.target != 'versions/' + prior.name or previous.recovery != str(transaction / 'recovery')):
+            raise Rejected(Failure.OWNERSHIP)
+        if os.path.lexists(prior):
+            if Identity.observe(physical(prior)) != previous.identity:
+                raise Rejected(Failure.OWNERSHIP)
+        elif not finalizing:
+            raise Rejected(Failure.OWNERSHIP)
+        if os.path.lexists(selector):
+            if not selector.is_symlink() or os.readlink(selector) != previous.target:
+                raise Rejected(Failure.OWNERSHIP)
+            Identity.observe(selector)
+        elif not finalizing:
+            raise Rejected(Failure.OWNERSHIP)
+    elif isinstance(previous, NoPrevious):
+        if os.path.lexists(transaction / 'payload') or os.path.lexists(transaction / 'recovery'):
+            raise Rejected(Failure.OWNERSHIP)
+    else:
+        raise Rejected(Failure.RECEIPT)
+    expected = {'receipt.json'} if isinstance(previous, NoPrevious) else {'receipt.json', 'payload', 'recovery'}
+    if any(path.name not in expected for path in transaction.iterdir()):
+        raise Rejected(Failure.OWNERSHIP)
+    recovery = transaction / 'recovery'
+    if os.path.lexists(recovery):
+        physical(recovery)
+    elif not isinstance(previous, NoPrevious) and not finalizing:
+        raise Rejected(Failure.OWNERSHIP)
+    return transaction, receipt
+
+
+def prepare_finalization(root):
+    admitted = replacement_to_finalize(root)
+    if admitted is not None:
+        transaction, receipt = admitted
+        if receipt.stage is ReplacementStage.COMMITTED:
+            save(transaction / 'receipt.json', replace(receipt, stage=ReplacementStage.FINALIZING))
+
+
+def finalize_replacement(root):
+    admitted = replacement_to_finalize(root)
+    if admitted is None:
+        return
+    transaction, receipt = admitted
+    if receipt.stage is not ReplacementStage.FINALIZING:
+        raise Rejected(Failure.RECEIPT)
+    previous = receipt.previous
+    if isinstance(previous, PhysicalPrevious):
+        payload = Path(previous.payload)
+        if os.path.lexists(payload):
+            shutil.rmtree(payload)
+            sync(transaction)
+    elif isinstance(previous, LegacyPrevious):
+        prior = Path(previous.installation)
+        if os.path.lexists(prior):
+            spec = importlib.util.spec_from_file_location('kast_finalize_legacy_lifecycle', Path(__file__).with_name('installation-lifecycle.py'))
+            lifecycle = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = lifecycle
+            spec.loader.exec_module(lifecycle)
+            try:
+                admitted = lifecycle.Installation.admit(str(prior))
+                lifecycle.execute(admitted, 'remove', False)
+            except lifecycle.Rejected:
+                raise Rejected(Failure.RETIREMENT) from None
+        selector = Path(previous.selector)
+        if os.path.lexists(selector):
+            if not selector.is_symlink() or os.readlink(selector) != previous.target:
+                raise Rejected(Failure.OWNERSHIP)
+            selector.unlink()
+            sync(selector.parent)
+        if prior.parent.exists() and not any(prior.parent.iterdir()):
+            prior.parent.rmdir()
+    recovery = transaction / 'recovery'
+    if os.path.lexists(recovery):
+        shutil.rmtree(recovery)
+        sync(transaction)
+    (transaction / 'receipt.json').unlink()
+    transaction.rmdir()
+    sync(transaction.parent)
 
 
 def main():

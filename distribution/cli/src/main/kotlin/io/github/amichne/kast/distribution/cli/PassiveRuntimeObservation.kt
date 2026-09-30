@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import java.io.DataInputStream
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
@@ -117,7 +118,11 @@ internal fun observeRuntime(installation: Path): PassiveRuntimeObservation {
         } catch (_: SerializationException) {
             return unavailable
         }
-    if (manifest.schemaVersion != 2 || manifest.installationRoot != installation.toString()) return unavailable
+    if (
+        manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
+            manifest.installationRoot != installation.toString()
+    )
+        return unavailable
     val hostHash =
         MessageDigest.getInstance("SHA-256")
             .digest(manifest.codexHome.toByteArray())

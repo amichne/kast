@@ -71,6 +71,10 @@ internal sealed interface ManagementCommand {
 
     data class Disconnect(val harness: Harness) : ManagementCommand
 
+    data object ListPluginHarnesses : ManagementCommand
+
+    data class Plugin(val harness: PluginHarness, val json: Boolean) : ManagementCommand
+
     data object Upgrade : ManagementCommand
 
     data object Uninstall : ManagementCommand

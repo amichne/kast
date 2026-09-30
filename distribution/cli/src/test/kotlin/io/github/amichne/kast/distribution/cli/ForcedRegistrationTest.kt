@@ -84,7 +84,7 @@ class ForcedRegistrationTest {
                             "add",
                             "kast",
                             "--",
-                            root.resolve("current/bin/kast-mcp-complete").toString(),
+                            root.resolve("installation/bin/kast-mcp-complete").toString(),
                         ),
                         arguments,
                     )

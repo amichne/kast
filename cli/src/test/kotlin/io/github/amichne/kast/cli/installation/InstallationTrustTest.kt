@@ -23,7 +23,7 @@ class InstallationTrustTest {
             InstallationOutcome.Complete::class.java,
             executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.3")),
         )
-        val current = Files.readSymbolicLink(installation.resolve("current"))
+        val current = Files.readString(installation.resolve("installation/installation.json"))
         val privateKey = home.resolve(".kast/approval/broker.pk8")
         val privateBytes = Files.readAllBytes(privateKey)
         Files.delete(home.resolve(".kast/approval/broker.pub"))
@@ -31,7 +31,7 @@ class InstallationTrustTest {
             InstallationOutcome.TrustRejected(io.github.amichne.kast.cli.ide.BrokerTrustFailure.INCOMPLETE_KEYS),
             executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.4")),
         )
-        assertEquals(current, Files.readSymbolicLink(installation.resolve("current")))
+        assertEquals(current, Files.readString(installation.resolve("installation/installation.json")))
         assertArrayEquals(privateBytes, Files.readAllBytes(privateKey))
         org.junit.jupiter.api.Assertions.assertFalse(Files.exists(home.resolve(".kast/approval/broker.pub")))
     }
