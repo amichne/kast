@@ -7,6 +7,9 @@ tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticAnalysisAttempt.kt
+  - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticNativePhaseTest.kt
+  - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedDiagnosticNativePhaseTest.kt
   - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttemptTest.kt
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
@@ -111,6 +114,8 @@ code_sources:
   - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderState.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderLocator.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationInventory.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventory.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijDefinitionInventory.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCalleeInventory.kt
@@ -205,6 +210,11 @@ detached inventory over the original admitted search universe. Sorted file,
 range and provider locators give the successor a direct candidate position;
 restoration does not replay the consumed compiler-confirmation prefix. An
 unavailable or unretainable inventory terminates with its exact limitation.
+Native locator accounting charges detached UTF-16 text and fixed object overhead
+independently of JSON projection estimates. It preserves every descriptor and
+scope identity. The native inventory gauge records the prepared state's required
+bytes, or the bounded failed attempt including its first unbufferable locator.
+These values govern retention admission; they are not measured JVM heap sizes.
 The same retained provider state owns detached definitions and callee inventories.
 Native definitions retain normalized declaration locators together with the
 original scoped provider file. Restoration rechecks that file's scope membership
@@ -414,6 +424,12 @@ production blocks with pinned-SDK `ProcessCanceledException` and coroutine
 cancellation after accepted facts or identities, then verify a clean re-entry and
 unchanged cancellation identity. This is simulated scheduling over production
 attempt code, not evidence of native IDE preemption or an executed K2 session.
+The same request-local observation capability records diagnostic scope entry
+before native admission, enumeration entry before guarded index work, and
+analysis entry immediately before K2 analysis and detached projection. The
+hosted receipt preserves bounded first-entry and cumulative duration evidence
+after success, rejection or cancellation drainage. It records no source text,
+diagnostic payload or retained compiler object.
 
 An evicted diagnostic continuation remains unavailable. A cached first page with
 a missing dependency rejects rather than silently starting another scan. Live

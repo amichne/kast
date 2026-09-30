@@ -12,6 +12,8 @@ import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RelationPublishedSnapshotIdentity
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGaugeValue
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -73,6 +75,7 @@ class RelationInventoryPreparationTest {
         assertTrue(RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE in result.coverage.limitations)
         assertEquals(2, observation.candidates)
         assertEquals(0, observation.prepared)
+        assertEquals(listOf(512L + locator(0).retainedBytes + locator(1).retainedBytes), observation.retentionEstimates)
         assertEquals(0L, result.batch.examinedWorkUnits.value)
     }
 
@@ -91,6 +94,7 @@ class RelationInventoryPreparationTest {
         val result = terminal(collector)
         assertTrue(RelationLimitation.RETENTION_LIMIT_REACHED in result.coverage.limitations)
         assertEquals(0, observation.prepared)
+        assertEquals(listOf(512L + first.retainedBytes), observation.retentionEstimates)
         assertEquals(0L, result.batch.examinedWorkUnits.value)
     }
 
@@ -147,6 +151,7 @@ class RelationInventoryPreparationTest {
         assertEquals(0, result.batch.resultCount.value)
         assertEquals(2, observation.candidates)
         assertEquals(1, observation.prepared)
+        assertEquals(listOf(prepared.state.retainedBytes), observation.retentionEstimates)
     }
 
     private fun terminal(collector: IntellijRelationCollector): RelationCompilation.Qualified {
@@ -177,6 +182,12 @@ class RelationInventoryPreparationTest {
     private class Observation : IntellijReadObservation {
         var candidates = 0
         var prepared = 0
+        val retentionEstimates = mutableListOf<Long>()
+
+        override fun measure(gauge: IntellijReadGauge, value: IntellijReadGaugeValue) {
+            assertEquals(IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES, gauge)
+            retentionEstimates += value.value
+        }
 
         override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
             when (counter) {

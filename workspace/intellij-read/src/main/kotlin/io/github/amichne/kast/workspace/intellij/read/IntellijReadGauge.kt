@@ -8,6 +8,8 @@ enum class IntellijReadGauge {
     QUERY_RETAINED_BYTES,
     QUERY_RETAINED_BYTES_HIGH_WATER,
     QUERY_RETAINED_ENTRIES,
+    /** Detached bytes required by the observed native inventory attempt, including a rejected final locator. */
+    RELATION_INVENTORY_RETAINED_BYTES,
     SOURCE_RETAINED_BYTES,
     SOURCE_RETAINED_BYTES_HIGH_WATER,
     SOURCE_RETAINED_ENTRIES,
@@ -37,6 +39,7 @@ internal fun IntellijReadGauge.merge(
     when (this) {
         IntellijReadGauge.QUERY_RETAINED_BYTES,
         IntellijReadGauge.QUERY_RETAINED_ENTRIES,
+        IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES,
         IntellijReadGauge.SOURCE_RETAINED_BYTES,
         IntellijReadGauge.SOURCE_RETAINED_ENTRIES,
         IntellijReadGauge.DIAGNOSTIC_RETAINED_BYTES,

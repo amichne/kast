@@ -14,6 +14,8 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticSourceFile
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -43,7 +45,10 @@ internal fun admitDiagnosticLease(
         else -> IntellijDiagnosticLeaseAdmission.Admitted
     }
 
-internal class IntellijDiagnosticCompilerQuery(private val fileAdmission: (Path) -> Boolean = { true }) {
+internal class IntellijDiagnosticCompilerQuery(
+    private val fileAdmission: (Path) -> Boolean = { true },
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+) {
     /**
      * Proof transition: `(Project, SemanticReadAuthority, DiagnosticScope) -> DiagnosticCompilation`.
      *
@@ -64,7 +69,7 @@ internal class IntellijDiagnosticCompilerQuery(private val fileAdmission: (Path)
         if (project.isDisposed) {
             return DiagnosticCompilation.Rejected(DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
         }
-        return guardedDiagnosticCompilation {
+        return guardedDiagnosticCompilation(observation) {
             readAction {
                 diagnosticCompilationAttempt(scope) { collector ->
                     if (DumbService.isDumb(project)) {
@@ -83,6 +88,7 @@ internal class IntellijDiagnosticCompilerQuery(private val fileAdmission: (Path)
         file: DiagnosticSourceFile,
         collector: IntellijDiagnosticCollector,
     ) {
+        observation.phase(IntellijReadPhase.DIAGNOSTIC_SCOPE)
         val virtualFile = LocalFileSystem.getInstance().findFileByPath(file.value)
         if (virtualFile == null || !virtualFile.isValid || virtualFile.isDirectory) {
             collector.recordLimitation(file, DiagnosticLimitationReason.FILE_UNAVAILABLE)
@@ -117,44 +123,13 @@ internal class IntellijDiagnosticCompilerQuery(private val fileAdmission: (Path)
             collector.recordLimitation(file, DiagnosticLimitationReason.UNSUPPORTED_FILE_KIND)
             return
         }
-        try {
-            val projections =
-                analyze(kotlinFile) {
-                    kotlinFile.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS).map {
-                        diagnostic ->
-                        projectDiagnostic(scope, file, diagnostic)
-                    }
-                }
-            val detached = mutableListOf<io.github.amichne.kast.diagnostic.contract.DiagnosticFact>()
-            projections.forEach { projection ->
-                when (projection) {
-                    is IntellijDiagnosticProjection.Projected -> detached += projection.facts
-                    IntellijDiagnosticProjection.Rejected -> {
-                        collector.recordLimitation(
-                            file,
-                            DiagnosticLimitationReason.UNSUPPORTED_DIAGNOSTIC,
-                        )
-                        return
-                    }
+        collectDiagnosticAnalysis(file, collector, observation) {
+            analyze(kotlinFile) {
+                kotlinFile.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS).map { diagnostic
+                    ->
+                    projectDiagnostic(scope, file, diagnostic)
                 }
             }
-            if (
-                detached.any { fact ->
-                    collector.accept(fact) == IntellijDiagnosticCollectionAdmission.REJECTED
-                }
-            ) {
-                collector.recordLimitation(file, DiagnosticLimitationReason.ANALYSIS_UNAVAILABLE)
-                return
-            }
-            collector.recordAnalyzed(file)
-        } catch (cancelled: ProcessCanceledException) {
-            throw cancelled
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: RuntimeException) {
-            collector.recordLimitation(file, DiagnosticLimitationReason.ANALYSIS_UNAVAILABLE)
-        } catch (_: LinkageError) {
-            collector.recordLimitation(file, DiagnosticLimitationReason.ANALYSIS_UNAVAILABLE)
         }
     }
 }

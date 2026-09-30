@@ -192,6 +192,7 @@ internal class HostedSemanticServices(
             fileAdmission = context.sourceFiles,
             limits = context.limits,
             scopeTimeLimit = context.timeAllowance.diagnosticScope,
+            observation = context.observation,
         )
     }
     val diagnostics by lazy { DiagnosticService(context.validation, diagnosticPorts.compiler) }

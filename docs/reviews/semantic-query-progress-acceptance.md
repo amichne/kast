@@ -1,6 +1,6 @@
 # Progressive semantic read acceptance
 
-Qualification is in progress. PR #891 is open, and the complete product gate passes at `7fd2ada6f3cd2df20b0497b0cac9310a96fe89a9`. The claims below record established contracts and the required native checks; they do not yet establish end-to-end completion.
+Qualification is in progress. PR #891 is open, and the complete product gate and hosted CI pass at `3040d7b0ab4ae4ae68a619fb3a2c0cdac91f5892`. The claims below record established contracts and the required native checks; they do not yet establish end-to-end completion.
 
 This change starts from fetched `amichne/kast` upstream `6b9d5e0d0d75e4632f8a023e6a9bc6a70212b24f`. The fixture and implementation are evaluated under exact compiler and workspace authority. Source, query, and diagnostic continuation ownership remain in their existing bounded stores.
 
@@ -40,6 +40,10 @@ Final integration regressions also distinguish temporary one-hop traversal page 
 The earlier intermediate diagnostic 40-page failure was an integration regression, not an upstream defect: the equivalent upstream native baseline completes 40/40 diagnostics. The final qualification must retain that already-correct behavior.
 
 Installed-host qualification of `7fd2ada6f` also exposed a progress projection defect: a filtered page refined 34 rejected candidates and retained source offset 956, but reported `INCREASE_EXECUTION_BUDGET` because it emitted zero rows. Query and source protocol projections now preserve the producer's advancing continuation as `RESUME` independently of output counts. A production query scheduler/protocol regression proves same-grant continuation and retained zero-row presentation; source projection tests preserve cursor identity and coverage. The native matrix must be repeated against the rebuilt artifact before claiming final qualification.
+
+The `3040d7b0` installed-host declaration matrix completes all five independently specified finite cases under limits 1, 5 and 20 with work 512 and 100,000, preserving stable authority within each drain and returning exactly the expected declarations without duplicates. Dense references exposed a separate integration defect: native locators charged every text unit at 24 bytes. The representative 1,001-locator inventory cost 7,543,840 quota bytes; pending confirmed rows pushed the checkpoint to 8,467,552 bytes, beyond the default 8,388,608-byte limit. A fresh empty store reproduced the terminal capacity failure, disproving the initial accumulated-page-cache hypothesis. Native locator accounting now charges UTF-16 storage plus fixed object overhead, preserving all descriptors and scope identities. The independent inventory estimate is 1,120,280 bytes; production evaluator regressions exhaust all 1,001 detached occurrences under the unchanged default checkpoint grant. Published-fact accounting remains unchanged. These are quota estimates, and the repaired installed artifact still needs native qualification.
+
+An initial diagnostic read after controlled fixture edit/restoration exceeded its two-second grant and rejected during content revalidation. Its native receipt recorded the semantic duration without identifying scope, enumeration or K2 analysis. Hosted diagnostic ports now pass the existing request-local observation capability through those concrete effect boundaries. Seven regressions prove bounded phase entry and preservation through success, finite failure and cancellation; hosted encoding tests preserve the duration evidence. No diagnostic budget or retry behavior changes. Native timing and the existing complete 40-diagnostic behavior remain qualification requirements.
 
 ## Compatibility
 

@@ -49,7 +49,7 @@ sealed interface RelationProviderLocator {
     val descriptor: RelationProviderItemDescriptor
 
     val retainedBytes: Long
-        get() = PROVIDER_LOCATOR_STRUCTURE_BYTES + detachedTextUnits() * PROVIDER_LOCATOR_TEXT_BYTES
+        get() = PROVIDER_LOCATOR_STRUCTURE_BYTES + detachedTextUnits() * PROVIDER_LOCATOR_UTF16_UNIT_BYTES
 
     data class Reference(
         override val file: SymbolDiscoveryFileIdentity,
@@ -65,7 +65,7 @@ sealed interface RelationProviderLocator {
         override val descriptor: RelationProviderItemDescriptor =
             RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refinedInvariant()
         override val retainedBytes: Long
-            get() = PUBLISHED_LOCATOR_STRUCTURE_BYTES + detachedTextUnits() * PROVIDER_LOCATOR_TEXT_BYTES
+            get() = PUBLISHED_LOCATOR_STRUCTURE_BYTES + detachedTextUnits() * PUBLISHED_LOCATOR_TEXT_BYTES
 
         companion object {
             /** Preserves a confirmed edge's exact published authority without claiming native discovery. */
@@ -151,6 +151,10 @@ internal fun RelationProviderLocator.detachedTextUnits(): Long =
             is RelationProviderLocator.Callee.Reference -> 0L
         }
 
-private const val PROVIDER_LOCATOR_STRUCTURE_BYTES = 256L
+// Quota estimate for the detached locator, range, two file identities, four String/backing-array headers,
+// references, collection slot and alignment. Strings are charged independently even when storage is shared.
+// This bounded field accounting is not a JVM heap measurement; JSON escaping belongs to projection budgets.
+private const val PROVIDER_LOCATOR_STRUCTURE_BYTES = 512L
+private const val PROVIDER_LOCATOR_UTF16_UNIT_BYTES = 2L
 private const val PUBLISHED_LOCATOR_STRUCTURE_BYTES = 1_024L
-private const val PROVIDER_LOCATOR_TEXT_BYTES = 24L
+private const val PUBLISHED_LOCATOR_TEXT_BYTES = 24L
