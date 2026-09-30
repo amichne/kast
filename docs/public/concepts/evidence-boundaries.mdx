@@ -65,4 +65,4 @@ Kast's source changes retain an exact target and report their verification outco
 
 Retrieved IDEA diagnostics and a verified bounded edit do not assert that the entire Gradle project builds or that the change satisfies business requirements.
 
-The canonical operation distinguishes complete, qualified, and rejected. Direct MCP has its own complete, partial, rejected, and unavailable wrappers; Tool RPC has separate reply variants. Use [Results](/reference/responses) to interpret the operation document inside the transport.
+Canonical semantic reads distinguish complete, qualified, and rejected. Direct MCP returns the operation document itself in `result.structuredContent`, without a generic `partial` wrapper or an additional semantic `data` layer. Invocation failures use the MCP wrapper and may have no admitted structured document. Tool RPC has separate reply variants. Use [Results](/reference/responses) to locate and interpret the operation document inside its transport.
