@@ -137,13 +137,14 @@ facts remain separate from incomplete enumeration. Query walk
 projection retains cumulative progress, independent reference occurrences, historical omissions, and page-local partial node expansions;
 a bounded-fan-out remainder is explicitly unexamined rather than silently absent. Traversal checkpoints carry complete omission objects, including provider, measured or unmeasured meaning, bounded sample, and remediation, through later pages. Query filters, retained inputs, set stages, and joins preserve producer observation provenance independently of emitted rows.
 
-Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. This cursor cannot resume execution; CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An admitted upstream checkpoint permits resumption even when the page emits no rows; retained-output fitting can require an increased allowance. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. This cursor cannot resume execution; CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 
 Source qualifications own closed resumable or terminal-incomplete progress. Native
 source checkpoints and hosted retained-output checkpoints are separate variants;
 retained output preserves original complete, resumable, or terminal coverage.
-Legacy cursor availability is derived from that authority. Empty native pages
-require an increased execution allowance. A terminal text-withheld explanation
+Legacy cursor availability is derived from that authority. An admitted native
+cursor permits resumption even when the page emits no entities; retained-output
+fitting can require an increased allowance. A terminal text-withheld explanation
 requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
 variants and mismatched checkpoint families.

@@ -208,7 +208,7 @@ class CanonicalQueryRetentionProtocolTest {
         val token = first.qualification.progress.continuationToken!!
         assertTrue(token.value.length < 64)
         assertEquals(
-            ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
+            ReadResumeActionDocument.RESUME,
             (first.qualification.progress as QueryQualifiedProgressDocument.Resumable).nextAction,
         )
         assertCheckpointBinding(protocol, token)

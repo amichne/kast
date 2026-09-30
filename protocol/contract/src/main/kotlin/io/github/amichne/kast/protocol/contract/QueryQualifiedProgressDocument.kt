@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.contract
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** A supported next action; a zero-output checkpoint requires an explicit allowance change. */
+/** Admitted producer progress resumes; retained-output fitting can require an increased allowance. */
 @Serializable
 enum class ReadResumeActionDocument {
     @SerialName("resume") RESUME,

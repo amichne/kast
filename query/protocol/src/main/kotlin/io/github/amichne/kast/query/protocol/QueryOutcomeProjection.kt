@@ -84,7 +84,6 @@ internal class QueryOutcomeProjection(
             coverage = presentation.coverage,
             continuationState = restored.result.producerProgress,
             output = request.output,
-            progressItemCount = restored.result.rowCount,
             presentedRetention = QueryResultRetention.Retained(request.result),
             presentedRowIds = presentation.rowIds,
             protectedResult = request.result,
@@ -105,7 +104,6 @@ internal class QueryOutcomeProjection(
         coverage: QueryCoverage.Qualified?,
         continuationState: QueryContinuationState?,
         output: QueryOutputDocument = request.output,
-        progressItemCount: Int? = null,
         retainedExecution: QueryExecutionResult? = null,
         presentedRetention: QueryResultRetention? = null,
         presentedRowIds: List<QueryResultRowReference>? = null,
@@ -127,7 +125,6 @@ internal class QueryOutcomeProjection(
                         request,
                         coverage,
                         continuationState,
-                        progressItemCount ?: evidence.items.size,
                         protectedResult,
                         progressOrigin,
                         publicationOwner,
@@ -189,7 +186,6 @@ internal class QueryOutcomeProjection(
         request: QueryRunRequest.Run,
         coverage: QueryCoverage.Qualified?,
         continuationState: QueryContinuationState?,
-        itemCount: Int,
         protectedResult: QueryResultReference?,
         origin: QueryProgressOrigin,
         publicationOwner: QueryExecutionClaim?,
@@ -202,8 +198,7 @@ internal class QueryOutcomeProjection(
         val minimum =
             QueryKnownMinimum.parse(provenCoverage.knownMinimum.value).refinedForQueryOrNull()
                 ?: return Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
-        val progress =
-            projectQueryProgress(request, state, itemCount, this.state, protectedResult, origin, publicationOwner)
+        val progress = projectQueryProgress(request, state, this.state, protectedResult, origin, publicationOwner)
         return when (
             val result =
                 QueryRunQualification.create(

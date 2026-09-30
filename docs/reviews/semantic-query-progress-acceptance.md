@@ -1,6 +1,6 @@
 # Progressive semantic read acceptance
 
-Qualification is in progress. The PR remains draft while the complete product gate and final installed-host measurements are completed. The claims below record established contracts and the required native checks; they do not yet establish end-to-end completion.
+Qualification is in progress. PR #891 is open, and the complete product gate passes at `7fd2ada6f3cd2df20b0497b0cac9310a96fe89a9`. The claims below record established contracts and the required native checks; they do not yet establish end-to-end completion.
 
 This change starts from fetched `amichne/kast` upstream `6b9d5e0d0d75e4632f8a023e6a9bc6a70212b24f`. The fixture and implementation are evaluated under exact compiler and workspace authority. Source, query, and diagnostic continuation ownership remain in their existing bounded stores.
 
@@ -38,6 +38,8 @@ Integration review of the new state owners exposed two additional gaps: initial 
 Final integration regressions also distinguish temporary one-hop traversal page limits from persistent omission evidence, preserve `PUBLISHED_PAGE_MISMATCH` when a smaller grant cannot refit an immutable published page, and admit typed diagnostic retention failure through the CLI result schema. Real production traversal/query drains, state-owner replay, and independently checked serialized result shapes prove those boundaries; they are not native performance measurements.
 
 The earlier intermediate diagnostic 40-page failure was an integration regression, not an upstream defect: the equivalent upstream native baseline completes 40/40 diagnostics. The final qualification must retain that already-correct behavior.
+
+Installed-host qualification of `7fd2ada6f` also exposed a progress projection defect: a filtered page refined 34 rejected candidates and retained source offset 956, but reported `INCREASE_EXECUTION_BUDGET` because it emitted zero rows. Query and source protocol projections now preserve the producer's advancing continuation as `RESUME` independently of output counts. A production query scheduler/protocol regression proves same-grant continuation and retained zero-row presentation; source projection tests preserve cursor identity and coverage. The native matrix must be repeated against the rebuilt artifact before claiming final qualification.
 
 ## Compatibility
 

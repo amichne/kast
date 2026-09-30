@@ -139,7 +139,7 @@ private fun DomainSourceReadResult.Qualified.project(
         protocolResult(snapshot, region, entities, text, authority)
             ?: return SourceQualifiedResultProjection.Rejected(SourceInternalObligation.RESULT_PROJECTION)
     val protocolQualification =
-        qualification.protocol(entities.size)
+        qualification.protocol()
             ?: return SourceQualifiedResultProjection.Rejected(SourceInternalObligation.QUALIFICATION_PROJECTION)
     return SourceQualifiedResultProjection.Projected(result, protocolQualification)
 }
@@ -295,10 +295,10 @@ private fun SourceSelector.protocolSelection(): SourceSelectionDocument? {
     )
 }
 
-private fun DomainSourceReadQualification.protocol(entityCount: Int): SourceReadQualification? {
+private fun DomainSourceReadQualification.protocol(): SourceReadQualification? {
     val count = SourceEntityCountDocument.parse(knownMinimumEntityCount.value).refinedOrNull() ?: return null
     val protocolLimitations = limitations.map { it.protocol() }
-    val progress = projectProgress(entityCount).refinedOrNull() ?: return null
+    val progress = projectProgress().refinedOrNull() ?: return null
     return SourceReadQualification.create(count, protocolLimitations, progress).refinedOrNull()
 }
 

@@ -11,9 +11,8 @@ import io.github.amichne.kast.source.contract.SourceReadContinuationState
 import io.github.amichne.kast.source.contract.SourceReadLimitation
 import io.github.amichne.kast.source.contract.SourceReadQualification
 
-internal fun SourceReadQualification.projectProgress(
-    entityCount: Int
-): Refinement<SourceQualifiedProgressDocument, ProtocolTextFailure> =
+internal fun SourceReadQualification.projectProgress():
+    Refinement<SourceQualifiedProgressDocument, ProtocolTextFailure> =
     when (val state = continuation) {
         SourceReadContinuationState.Unavailable ->
             Refinement.Refined(
@@ -34,8 +33,7 @@ internal fun SourceReadQualification.projectProgress(
                     Refinement.Refined(
                         SourceQualifiedProgressDocument.Resumable(
                             SourceCheckpointDocument.Upstream(token.value),
-                            if (entityCount == 0) ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET
-                            else ReadResumeActionDocument.RESUME,
+                            ReadResumeActionDocument.RESUME,
                         )
                     )
             }
