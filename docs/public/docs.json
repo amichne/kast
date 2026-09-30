@@ -19,26 +19,17 @@
           {
             "group": "Get started",
             "expanded": false,
-            "pages": [
-              "start",
-              "agent-harnesses",
-              "troubleshooting"
-            ]
+            "pages": ["start", "agent-harnesses", "troubleshooting"]
           }
         ]
       },
       {
         "group": "Using Kast",
-        "pages": [
-          "concepts/background-startup",
-          "search",
-          "query-pipelines",
-          "change",
-          "workspaces"
-        ]
+        "pages": ["concepts/background-startup", "search", "query-pipelines", "change", "workspaces"]
       },
       {
         "group": "Reference",
+        "openapi": "reference/callables.openapi.json",
         "pages": [
           "concepts/architecture",
           "concepts/evidence-boundaries",
@@ -48,12 +39,7 @@
           {
             "group": "Integration contracts",
             "expanded": false,
-            "pages": [
-              "reference/mcp-catalog",
-              "reference/rpc-catalog",
-              "reference/symbols",
-              "reference/compatibility"
-            ]
+            "pages": ["reference/mcp-catalog", "reference/rpc-catalog", "reference/symbols", "reference/compatibility"]
           },
           {
             "group": "Detailed schemas",
@@ -62,34 +48,17 @@
               {
                 "group": "Callable schemas",
                 "expanded": false,
-                "pages": [
-                  "POST /callables/query_symbols",
-                  "POST /callables/check_diagnostics",
-                  "POST /callables/add_declaration",
-                  "POST /callables/replace_body",
-                  "POST /callables/workspace_lifecycle"
-                ]
+                "pages": ["POST /callables/query_symbols", "POST /callables/check_diagnostics", "POST /callables/add_declaration", "POST /callables/replace_body", "POST /callables/workspace_lifecycle"]
               },
               {
                 "group": "Transport results",
                 "expanded": false,
-                "pages": [
-                  "reference/models/mcp-tool-call-result",
-                  "reference/models/mcp-read-result",
-                  "reference/models/mcp-investigation-result",
-                  "reference/models/mcp-change-result",
-                  "reference/models/tool-rpc-reply"
-                ]
+                "pages": ["reference/models/mcp-tool-call-result", "reference/models/mcp-read-result", "reference/models/mcp-investigation-result", "reference/models/mcp-change-result", "reference/models/tool-rpc-reply"]
               },
               {
                 "group": "Semantic results",
                 "expanded": false,
-                "pages": [
-                  "reference/models/query-item",
-                  "reference/models/relation-fact",
-                  "reference/models/diagnostic",
-                  "reference/models/live-evidence"
-                ]
+                "pages": ["reference/models/query-item", "reference/models/relation-fact", "reference/models/diagnostic", "reference/models/live-evidence"]
               }
             ]
           }
@@ -98,16 +67,7 @@
     ]
   },
   "navbar": {
-    "links": [
-      {
-        "href": "/",
-        "label": "Overview"
-      },
-      {
-        "label": "GitHub",
-        "href": "https://github.com/amichne/kast"
-      }
-    ],
+    "links": [{"label": "Overview", "href": "/"}, {"label": "GitHub", "href": "https://github.com/amichne/kast"}],
     "primary": {"type": "button", "label": "Install Kast", "href": "/start"}
   },
   "footer": {
