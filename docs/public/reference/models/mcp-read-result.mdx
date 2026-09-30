@@ -1,12 +1,12 @@
 ---
-title: "MCP semantic read result"
-description: "Complete, partial, rejected, and unavailable direct MCP outcomes."
-openapi-schema: "reference/callables.openapi.json McpReadResult"
+title: "MCP query result"
+description: "The canonical query document returned directly in MCP structuredContent."
+openapi-schema: "reference/callables.openapi.json query_symbolsSemanticResult"
 mode: "wide"
 ---
 
-`complete` includes the canonical `data`, coverage, and live basis.
-`partial` also requires a stop reason. `rejected` and `unavailable`
-carry an error. Decode `data` with the generated schema for the called
-tool; its operation-specific failures and qualifications remain intact.
+For `query_symbols`, `result.structuredContent` is the canonical operation document itself. Its semantic `status` is `complete`, `qualified`, or `rejected`; exact references, coverage, qualifications, and recovery evidence remain attached. There is no additional generic `partial` wrapper or nested semantic `data` object.
 
+This page renders the generated query-specific result schema. `check_diagnostics` has its own generated `check_diagnosticsSemanticResult` contract; do not decode every read through a generic query result shape.
+
+An invocation failure uses the [MCP tool call wrapper](/reference/models/mcp-tool-call-result) and may have no admitted structured document. See [Results](/reference/responses) for the distinction between transport completion and semantic coverage, or [Schemas and samples](/reference/schemas) for the other operation contracts.

@@ -10,12 +10,23 @@ Start your agent in the Kotlin Gradle repository you want to inspect and ask a K
 ## What happens on the first question
 
 ```mermaid
-flowchart TD
-  A["You ask your agent a code question"] --> B["Kast identifies the exact Gradle root"]
-  B --> C["Reuse or start the selected IntelliJ IDEA"]
-  C --> D["Open the project and wait for import and indexing"]
-  D --> E["Run the query and return facts with coverage"]
-  D --> F["Report a blocker that needs your attention"]
+%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
+flowchart TB
+  accTitle: Background preparation ends in a ready query or an explicit blocker
+  accDescr: A question selects an exact Gradle root and its IntelliJ IDEA host. Kast waits for project readiness, then runs the query or reports the blocker instead of returning an empty semantic answer.
+  A("Ask a code question") --> B("Identify the exact Gradle root")
+  B --> C("Reuse or start the selected IDEA")
+  C --> D("Wait for import and indexing")
+  D --> R{"Project ready?"}
+  R -->|Yes| E("Query and return facts with coverage")
+  R -->|Blocked| F("Report what needs attention")
+  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
+  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
+  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
+  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
+  class B,C authority;
+  class E evidence;
+  class F limited;
 ```
 
 Preparation can take longer than a later query against an already-ready project. Kast does not deliberately bring IDEA to the foreground, but background presentation is best effort. A trust prompt, unsaved-document blocker, or failed import can still require your attention in IDEA.

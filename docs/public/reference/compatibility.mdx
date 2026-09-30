@@ -19,6 +19,12 @@ Tool schemas and exact `ref` values are bound to their installed runtime
 and admitted workspace. Rediscover tools after an upgrade; search again
 when a reference is stale.
 
+## Current release and recorded examples
+
+The latest release checked for this documentation update is [Kast v0.48.0](https://github.com/amichne/kast/releases/tag/v0.48.0), published September 30, 2026, from [`ce91aad`](https://github.com/amichne/kast/commit/ce91aad64974f69de076412891e31c543ac9be95). It includes the progressive semantic-read changes and a breaking pre-1.0 schema migration. Upgrade the matched installation, restart affected clients, and rediscover their tools rather than carrying an older catalog across the boundary.
+
+The pinned query walkthroughs remain historical recordings. Their counts, offsets, and failure examples are evidence for the captured revision, not fresh validation of this release. Use [Query forms](/reference/api) and [Results](/reference/responses) for the current behavior, and the [generated schemas](/reference/schemas) for exact installed contracts. Never repair a stale reference by editing its version prefix.
+
 The Codex App Server integration remains a preview. See the
 [source-backed compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md)
 for its tested client boundary.

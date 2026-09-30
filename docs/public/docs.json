@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Install Kast, connect your coding agent, and learn with Kotlin query examples.",
+  "description": "Deterministic structure for probabilistic coding agents: compiler-grounded Kotlin facts, explicit evidence boundaries, and controlled source changes.",
   "colors": {"primary": "#3154C7", "light": "#8FA7FF", "dark": "#27439F"},
   "fonts": {"family": "SUSE"},
   "logo": "/images/kast-mark.svg",
@@ -11,46 +11,39 @@
   "background": {"color": {"light": "#FBFBF9", "dark": "#171816"}},
   "appearance": {"default": "light", "strict": false},
   "navigation": {
-    "tabs": [
+    "groups": [
       {
-        "tab": "Documentation",
-        "groups": [
+        "group": "Start here",
+        "pages": [
+          "index",
           {
-            "group": "Start here",
-            "pages": [
-              {
-                "group": "Get started",
-                "expanded": false,
-                "pages": ["start", "agent-harnesses", "troubleshooting"]
-              }
-            ]
-          },
-          {
-            "group": "Using Kast",
-            "pages": ["index", "concepts/background-startup", "search", "query-pipelines", "change", "workspaces"]
-          },
-          {
-            "group": "Reference",
-            "pages": ["reference/api", "reference/responses", "reference/schemas"]
+            "group": "Get started",
+            "expanded": false,
+            "pages": ["start", "agent-harnesses", "troubleshooting"]
           }
         ]
       },
       {
-        "tab": "How Kast works",
-        "hidden": true,
-        "pages": ["concepts/architecture", "concepts/evidence-boundaries"]
+        "group": "Using Kast",
+        "pages": ["concepts/background-startup", "search", "query-pipelines", "change", "workspaces"]
       },
       {
-        "tab": "API / RPC",
-        "hidden": true,
+        "group": "Reference",
         "openapi": "reference/callables.openapi.json",
-        "groups": [
+        "pages": [
+          "concepts/architecture",
+          "concepts/evidence-boundaries",
+          "reference/api",
+          "reference/responses",
+          "reference/schemas",
           {
-            "group": "Read the contracts",
+            "group": "Integration contracts",
+            "expanded": false,
             "pages": ["reference/mcp-catalog", "reference/rpc-catalog", "reference/symbols", "reference/compatibility"]
           },
           {
             "group": "Detailed schemas",
+            "expanded": false,
             "pages": [
               {
                 "group": "Callable schemas",
@@ -74,7 +67,7 @@
     ]
   },
   "navbar": {
-    "links": [{"label": "GitHub", "href": "https://github.com/amichne/kast"}],
+    "links": [{"label": "Overview", "href": "/"}, {"label": "GitHub", "href": "https://github.com/amichne/kast"}],
     "primary": {"type": "button", "label": "Install Kast", "href": "/start"}
   },
   "footer": {

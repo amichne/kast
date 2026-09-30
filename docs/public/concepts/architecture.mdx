@@ -1,41 +1,71 @@
 ---
 title: "How Kast works"
-description: "Follow a request from an agent to IDEA and back to a qualified result."
+description: "Follow a question through workspace admission, compiler-grounded execution, and evidence-preserving results."
 icon: "workflow"
+keywords:
+  - "architecture"
+  - "IntelliJ IDEA"
+  - "query"
+  - "evidence"
 mode: "wide"
-keywords: ["architecture", "IntelliJ IDEA", "query", "evidence"]
 ---
 
-Kast binds a request to the exact Gradle repository or worktree, prepares that project in IntelliJ IDEA, and asks the matching plugin for semantic evidence.
+Kast separates the agent's judgment from facts that the program can establish. A request is admitted for one exact Gradle repository or worktree, evaluated through the matching IntelliJ IDEA project, and returned with its semantic outcome and evidence boundaries intact.
 
-## Why use the project open in IDEA?
+## IDEA owns program meaning
 
-IntelliJ IDEA owns the imported Gradle model, Kotlin plugin state, and semantic indexes developers use while editing. Kast exposes bounded reads from that authority to agents instead of treating a separate text index as proof of compiler identity.
+IntelliJ IDEA owns the imported Gradle model, Kotlin plugin state, and semantic indexes used by the developer. Kast asks that authority for exact declarations and relationships. A separate text index, remembered name, or reconstructed reference does not become compiler proof.
 
-## From an admitted search to an answer
+Kast's adapters connect the agent to that authority; they do not replace it. The agent chooses the question and interprets the answer. Kast constrains which program facts can be claimed and which evidence can be reused.
+
+## From a question to a bounded answer
 
 ```mermaid
+%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
 flowchart TB
-  A["Query + admitted workspace"] --> B["Current live read basis"]
-  B --> C["Bounded semantic execution"]
-  C --> D{"Result state"}
-  D -->|Complete| E["Facts + exact refs + complete coverage"]
-  D -->|Qualified| F["Known facts + explicit limits"]
-  D -->|Rejected| G["Typed failure; no semantic result"]
+  accTitle: An admitted query keeps its semantic outcome explicit
+  accDescr: A query binds its source, scope, and steps to the current workspace authority. Bounded semantic execution returns complete, qualified, or rejected, without converting limits into success.
+  A("Source, scope, and ordered steps") --> B("Admit current workspace authority")
+  B --> C("Bounded semantic execution")
+  C --> D{"Semantic outcome"}
+  D --> E("Complete")
+  D --> F("Qualified")
+  D --> G("Rejected")
+  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
+  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
+  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
+  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
+  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
+  class B,C authority;
+  class E evidence;
+  class F limited;
+  class G rejected;
 ```
 
-The request's source, scope, and ordered steps specify the search; the live read basis identifies the semantic state against which it ran. The invariant is that successful facts stay attached to both. Kast can report exact positive facts and, with complete coverage, a scoped empty answer. A qualified result cannot prove absence; a rejected request establishes no semantic result. The basis identifies the live IDE read, not a permanent snapshot of every repository byte.
+**Complete** means the declared universe was covered. **Qualified** preserves returned facts together with incomplete obligations, omissions, and progress. **Rejected** means this request did not establish a successful semantic result. A working transport does not collapse those distinctions.
 
-## Readiness is part of the result
+The source, scope, and ordered steps identify the requested investigation. The live read basis identifies the semantic authority against which it ran. Neither is a permanent snapshot of every repository byte.
 
-A semantic request may need the project import or indexing to finish. A trust prompt, failed save, import error, or unavailable IDE state is reported as a blocker. Kast does not turn that failure into a successful empty answer.
+## Preserve facts and unfinished work
 
-Ordinary queries prepare the workspace themselves. The hosted App Server's workspace lifecycle tool exists for explicit project control.
+A bounded call need not restart the investigation. Supported progressive reads retain detached positions for work they have not consumed, while keeping established facts and limitations attached to the result. The current Kotlin-source `ALL_DECLARATIONS` path advances through admitted files and declaration offsets rather than reconstructing the consumed prefix.
 
-## What “same state” means here
+This does not make every provider or every limit resumable. A usable continuation advances the saved execution. An unsupported universe, indivisible oversized partition, or unavailable retained state must instead preserve a finite failure or terminal limitation. Even an empty page can represent input progress; inspect the reported progress rather than treating zero rows as exhaustion.
 
-For the production IDE plugin, a live read basis identifies the canonical workspace root, the owning IDE lifetime, its read epoch, and a saved, committed PSI content view. Kast re-admits that authority when it restores retained execution or result state. This is a live semantic identity, not a permanent cryptographic fingerprint or an archive of every repository byte.
+`RESUME` continues unfinished execution. `READ_RESULT` presents immutable retained rows without invoking semantic providers again. These have different handles and owners. Read [Results](/reference/responses#follow-progress-not-row-count) and [Combine query results](/query-pipelines) for the operational distinction.
 
-When the IDE's read epoch changes, retained query state is cleared. A fresh exact-symbol read can use bounded reacquisition and revalidation; a retained query result or continuation is restored only while its owner, lifetime, and basis remain admissible.
+Native compiler objects do not survive the request. Detached references and checkpoints are re-admitted under their owning workspace, lifetime, and basis before use.
 
-[See how query references continue work](/query-pipelines) and [what an answer proves later](/concepts/evidence-boundaries). The [transport contracts](/reference/mcp-catalog) define the public result wrappers.
+## Readiness is part of the boundary
+
+Ordinary queries [prepare the workspace themselves](/concepts/background-startup). Import or indexing may need to finish. A trust prompt, failed save, import error, or unavailable IDE state is reported as a blocker, not disguised as successful empty output.
+
+The hosted App Server's workspace lifecycle tool is separate explicit project control. Listing tools does not establish semantic readiness.
+
+## Validity is checked, not assumed
+
+The production plugin's live read basis identifies the canonical workspace root, owning IDE lifetime, read epoch, and a saved, committed source view. Retained execution and result state are restored only while that authority remains admissible and the bounded state is available.
+
+A changed read epoch invalidates retained query state. A fresh exact-symbol read may attempt bounded reacquisition and compiler revalidation, but a retained result or continuation does not silently replay against a different basis. A matching name or path is not continuity of proof.
+
+See [what an answer proves](/concepts/evidence-boundaries) for reuse and coverage, and [the transport contracts](/reference/mcp-catalog) for the public wrappers. The current implementation is mapped in the [source-bound semantic query guide](https://github.com/amichne/kast/blob/ce91aad64974f69de076412891e31c543ac9be95/knowledge/flows/semantic-query.md).

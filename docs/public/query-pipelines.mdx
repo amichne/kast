@@ -9,6 +9,10 @@ Use retained results when a question builds on earlier investigations. The next 
 This walkthrough continues [Find and trace code](/search) against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72).
 
 <Note>
+  This is a historical recording, not a fresh run of `v0.48.0`. Its exact counts, offsets, tokens, and terminal-discovery example describe that captured revision. The current contract supports progressive Kotlin-source declaration reads and retained occurrence and traversal output. Use [Query forms](/reference/api) and [Results](/reference/responses#follow-progress-not-row-count) for current behavior, and inspect each new run's own evidence.
+</Note>
+
+<Note>
   [Recorded requests and responses](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) accompany this walkthrough. Replace every angle-bracket placeholder with a token issued in your session. **A**, **B**, and **C** are guide labels, not accepted reference values. Keep the workspace stable between calls: builds or edits can advance its semantic basis and make retained inputs unavailable. See the [capture details](/reference/schemas#recorded-walkthrough).
 </Note>
 
@@ -85,11 +89,19 @@ Both are named `Concat`. Only the first implements `QueryStepSyntax`. Their issu
 **Recorded result (`04-union-filter`):** two rows with exhaustive coverage; both `QueryStepSyntax.Concat` and `ExactQueryStage.Concat` survive. The filter runs after the union, so it applies to symbols from either input. Their distinct identities remain distinct.
 
 ```mermaid
-flowchart LR
-  A["A: implementations"] --> U["Union by symbol identity"]
-  B["B: declarations named Concat"] --> U
-  U --> F["Keep name = Concat"]
-  F --> R["Two different declarations"]
+%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
+flowchart TB
+  accTitle: Union preserves identity before filtering the combined stream
+  accDescr: Retained implementations and declarations named Concat feed a union by semantic identity. A later name filter applies to both inputs, preserving the two distinct declarations in the historical recording.
+  A("A: implementations") --> U("Union by semantic identity")
+  B("B: declarations named Concat") --> U
+  U --> F("Keep name = Concat")
+  F --> R("Two distinct declarations")
+  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
+  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
+  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
+  class U,F authority;
+  class R evidence;
 ```
 
 The diagram describes the recorded result; a new run must establish its own coverage. To preserve duplicates and stream order instead, use `CONCAT` with an `input` field. For a third retained input, add another union step before the filter.
@@ -242,7 +254,9 @@ Call `RESUME` with that exact continuation and `maxElapsedMs: 15000`, omitting t
 
 ### Reject an incomplete absence check
 
-Searching for `Concat` with `maxResults: 1` and `retention: "RETAIN"` instead limits discovery (`10-incomplete-right`). That response has `coverage.exhaustive: false`, limitation `discovery-incomplete`, and terminal reason `upstream-incomplete`; it has no continuation. A bounded result is not always resumable.
+In the historical recording, searching for `Concat` with `maxResults: 1` and `retention: "RETAIN"` limits discovery (`10-incomplete-right`). That captured response has `coverage.exhaustive: false`, limitation `discovery-incomplete`, and terminal reason `upstream-incomplete`; it has no continuation.
+
+Do not use that older terminal-discovery example to predict a current `ALL_DECLARATIONS` result. Supported progressive reads can now retain undiscovered input. The durable rule is unchanged: inspect the actual qualification progress, because a bounded result is not always resumable and an incomplete right-hand input cannot prove absence.
 
 Using that incomplete retained result as the right side of `DIFFERENCE` (`11-reject-difference`) or an `ANTI` join (`16-reject-anti`) produces this recorded rejection excerpt:
 
