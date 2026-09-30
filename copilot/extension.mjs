@@ -83,7 +83,6 @@ const tools = reply.catalog.tools.map((tool) => {
     name: tool.name,
     description: tool.description,
     parameters: tool.inputSchema,
-    ...(tool.effect === "READ" ? { skipPermission: true } : {}),
     handler: async (args, context) => {
       const result = await run(["call", tool.name], JSON.stringify(args ?? {}), policy, context?.signal);
       return {

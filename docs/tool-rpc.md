@@ -47,8 +47,8 @@ copilot --experimental
 ```
 
 The extension obtains the live catalog and registers each tool with the Copilot
-SDK. Read tools skip per-call permission prompts; `add_declaration` retains the Copilot
-permission prompt. No Copilot MCP server is needed.
+SDK. All tools use Copilot's normal permission policy. The extension does not
+request permission to bypass tool prompts when it loads. No Copilot MCP server is needed.
 
 ## Pi
 
