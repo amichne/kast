@@ -1,11 +1,12 @@
 ---
-title: "MCP change result"
-description: "The direct MCP result for the one-call change tool."
-openapi-schema: "reference/callables.openapi.json McpChangeResult"
+title: "MCP declaration change result"
+description: "The canonical semantic result for add_declaration."
+openapi-schema: "reference/callables.openapi.json add_declarationSemanticResult"
 mode: "wide"
 ---
 
-`complete` carries the plan identity, preview, and verified application.
-`rejected` carries a typed error and may retain recovery evidence. Keep
-that evidence until the effect has a known outcome.
+This page renders the generated semantic result for `add_declaration`. MCP returns the admitted operation document in `result.structuredContent`; it does not replace the operation's verification and recovery evidence with a generic change wrapper.
 
+Keep the exact plan identity, verification outcome, and any recovery evidence until the effect has a known outcome. A returned document or a completed transport is not, by itself, proof that the change was verified.
+
+`replace_body` has a separate generated `replace_bodySemanticResult` contract. Use [Schemas and samples](/reference/schemas) for that tool's exact response, and [Change code](/change) for supported targets, verification, and recovery.
