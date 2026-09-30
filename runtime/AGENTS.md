@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: 9b6ab7c209f5 -->
+<!-- generated: 2026-09-29 | hash: 9b6ab7c209f5 -->
 
 # runtime
 
@@ -24,7 +24,9 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 - [HostedReadFailureReports.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadFailureReports.kt) - finite endpoint containment encodings preserve admitted execution reports.
 
 - [HostedConnectionAdmission.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt) - bounded connection ownership and post-release drain observations.
-- [HostedQueryContinuations.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt) - project-owned execution and encoded-output continuation stores.
+- [HostedQueryContinuations.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt) - one project-owned bounded query-state owner.
+- [HostedSourceStateStore.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt) - source producer/output claims, immutable replay, and fitted publication under one quota.
+- [HostedQueryPublicationSession.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt) - attempt-owned allocation, encoding proof, commit, and cancellation release.
 - [HostedReferenceStore.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt) - project-owned bounded compact reference lookup.
 
 - [HostedEndpointService.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt) - project endpoint ownership.

@@ -1,0 +1,578 @@
+{
+  "target": "fixture.reference.target.ReferenceOuter.Nested",
+  "referenceOccurrences": [
+    {
+      "file": "ReadJavaReferences.java",
+      "start": 81,
+      "end": 87,
+      "context": "IMPORT"
+    },
+    {
+      "file": "ReadJavaReferences.java",
+      "start": 141,
+      "end": 147,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadJavaReferences.java",
+      "start": 177,
+      "end": 183,
+      "context": "CODE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 80,
+      "end": 86,
+      "context": "IMPORT"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 134,
+      "end": 140,
+      "context": "ALIASED_IMPORT"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 179,
+      "end": 185,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 188,
+      "end": 194,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 234,
+      "end": 240,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 243,
+      "end": 249,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 289,
+      "end": 295,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 298,
+      "end": 304,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 344,
+      "end": 350,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 353,
+      "end": 359,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 399,
+      "end": 405,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 408,
+      "end": 414,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 454,
+      "end": 460,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 463,
+      "end": 469,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 509,
+      "end": 515,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 518,
+      "end": 524,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 564,
+      "end": 570,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 573,
+      "end": 579,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 619,
+      "end": 625,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 628,
+      "end": 634,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 674,
+      "end": 680,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 683,
+      "end": 689,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 729,
+      "end": 735,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 738,
+      "end": 744,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 784,
+      "end": 790,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 793,
+      "end": 799,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 839,
+      "end": 845,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 848,
+      "end": 854,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 894,
+      "end": 900,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 903,
+      "end": 909,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 949,
+      "end": 955,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 958,
+      "end": 964,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1004,
+      "end": 1010,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1013,
+      "end": 1019,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1059,
+      "end": 1065,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1068,
+      "end": 1074,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1114,
+      "end": 1120,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1123,
+      "end": 1129,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1169,
+      "end": 1175,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1178,
+      "end": 1184,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1224,
+      "end": 1230,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1233,
+      "end": 1239,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1279,
+      "end": 1285,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1288,
+      "end": 1294,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1334,
+      "end": 1340,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1343,
+      "end": 1349,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1389,
+      "end": 1395,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1398,
+      "end": 1404,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1444,
+      "end": 1450,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1453,
+      "end": 1459,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1499,
+      "end": 1505,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1508,
+      "end": 1514,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1554,
+      "end": 1560,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1563,
+      "end": 1569,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1609,
+      "end": 1615,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1618,
+      "end": 1624,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1664,
+      "end": 1670,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1673,
+      "end": 1679,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1719,
+      "end": 1725,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1728,
+      "end": 1734,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1774,
+      "end": 1780,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1783,
+      "end": 1789,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1829,
+      "end": 1835,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1838,
+      "end": 1844,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1884,
+      "end": 1890,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1893,
+      "end": 1899,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1939,
+      "end": 1945,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1948,
+      "end": 1954,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 1994,
+      "end": 2000,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2003,
+      "end": 2009,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2049,
+      "end": 2055,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2058,
+      "end": 2064,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2104,
+      "end": 2110,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2113,
+      "end": 2119,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2159,
+      "end": 2165,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2168,
+      "end": 2174,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2214,
+      "end": 2220,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2223,
+      "end": 2229,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2269,
+      "end": 2275,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2278,
+      "end": 2284,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2324,
+      "end": 2330,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2333,
+      "end": 2339,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2374,
+      "end": 2379,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadKotlinReferences.kt",
+      "start": 2382,
+      "end": 2387,
+      "context": "TYPE"
+    }
+  ],
+  "count": 128,
+  "importCount": 3,
+  "callerNames": [
+    "referenceOwner00",
+    "referenceOwner01",
+    "referenceOwner02",
+    "referenceOwner03",
+    "referenceOwner04",
+    "referenceOwner05",
+    "referenceOwner06",
+    "referenceOwner07",
+    "referenceOwner08",
+    "referenceOwner09",
+    "referenceOwner10",
+    "referenceOwner11",
+    "referenceOwner12",
+    "referenceOwner13",
+    "referenceOwner14",
+    "referenceOwner15",
+    "referenceOwner16",
+    "referenceOwner17",
+    "referenceOwner18",
+    "referenceOwner19",
+    "referenceOwner20",
+    "referenceOwner21",
+    "referenceOwner22",
+    "referenceOwner23",
+    "referenceOwner24",
+    "referenceOwner25",
+    "referenceOwner26",
+    "referenceOwner27",
+    "referenceOwner28",
+    "referenceOwner29",
+    "referenceOwner30",
+    "referenceOwner31",
+    "referenceOwner32",
+    "referenceOwner33",
+    "referenceOwner34",
+    "referenceOwner35",
+    "referenceOwner36",
+    "referenceOwner37",
+    "referenceOwner38",
+    "referenceOwner39",
+    "aliasOwner",
+    "javaReference"
+  ],
+  "referenceOccurrenceCount": 87,
+  "declarationOwnedOccurrenceCount": 84,
+  "declarationOwnerCount": 42,
+  "callers": [],
+  "exactIdentityExclusion": "Kotlin constructor calls resolve to CONSTRUCTOR identity; Java class-name references in new expressions resolve to CLASS identity and are included without implying a call edge."
+}

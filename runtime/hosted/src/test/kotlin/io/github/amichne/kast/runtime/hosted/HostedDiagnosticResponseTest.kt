@@ -44,34 +44,24 @@ import org.junit.jupiter.api.Test
 class HostedDiagnosticResponseTest {
     @Test
     fun `byte suffix replay preserves original analysis continuation and all occurrences`() = runTest {
-        val owner = RelationPagingFixture.live()
-        val basis = owner.authority.evidenceBasis()
+        val fixture = DiagnosticOutputFixture()
         val file = ProtocolText.parse("/workspace/Heavy.kt").refined()
-        val upstream = ProtocolText.parse("diagnostic:v1:analysis").refined()
+        val first = fixture.execute() as OperationOutcome.Qualified
+        val upstream = requireNotNull(first.qualification.continuation)
         val facts = facts(file)
         val progress = progress(file).copy(executionBudget = report())
         val semantic: HostedDiagnosticOutcome =
             OperationOutcome.Qualified(
                 EvidenceEnvelope(
                     CanonicalOperation.DIAGNOSTIC_CHECK.id,
-                    basis,
+                    fixture.owner.authority.evidenceBasis(),
                     DiagnosticCheckResult(BoundedProtocolList.create(facts).refined(), progress),
                 ),
                 analysisQualification(file, upstream),
             )
         val original = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.diagnosticCheck, semantic)
         val limit = ReturnedByteLimit.parse((original.document.toByteArray().size - 1).toLong()).refined()
-        val outputs = hostedDiagnosticOutputPages(ReadLimits.Default)
-        val request = DiagnosticCheckRequest(ProtocolText.parse(".").refined(), ProtocolCount.parse(4).refined())
-        val response =
-            encodeHostedDiagnosticResponse(
-                semantic.withDiagnosticBudget(report(limit.value)),
-                ReadLimits.Default,
-                limit,
-            ) { suffix ->
-                outputs.issue(request, owner.authority, suffix)
-            }
-                as HostedResponse.Canonical<*, *, *>
+        val response = fixture.fitAndPublish(semantic.withDiagnosticBudget(report(limit.value)), limit)
         assertTrue(response.document.toByteArray().size <= limit.value)
         val decoded =
             CanonicalOperationWireBindings.diagnosticCheck.decodeOutcome(response.document) as WireDecoding.Decoded
@@ -82,9 +72,11 @@ class HostedDiagnosticResponseTest {
         val prefix = response.semantic as OperationOutcome.Qualified
         val qualification = prefix.qualification as DiagnosticCheckQualification
         val token = requireNotNull(qualification.continuation)
-        val suffix =
-            outputs.restore(token, request.copy(continuation = token), owner.authority) as OperationOutcome.Qualified
-        assertEquals(suffix, outputs.restore(token, request.copy(continuation = token), owner.authority))
+        val suffix = fixture.execute(token) as OperationOutcome.Qualified
+        fixture.store.discard(fixture.claim)
+        val replayed = fixture.execute(token)
+        fixture.store.discard(fixture.claim)
+        assertEquals(suffix, replayed)
         assertEquals(upstream, suffix.qualification.continuation)
         assertEquals(
             facts,
@@ -111,7 +103,7 @@ class HostedDiagnosticResponseTest {
                 limit,
             ) {
                 retained++
-                HostedOutputRetention.CapacityExceeded
+                Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED)
             }
         assertEquals(0, retained)
         assertTrue(response.document.toByteArray().size <= limit.value)
@@ -129,7 +121,7 @@ class HostedDiagnosticResponseTest {
     }
 
     @Test
-    fun `retention refusal publishes finite reported rejection instead of prefix`() = runTest {
+    fun `retention refusal preserves a proven prefix exact inventory and finite terminal reason`() = runTest {
         val semantic = heavyOutcome()
         val reference = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.diagnosticCheck, semantic)
         val limit = ReturnedByteLimit.parse(reference.document.toByteArray().size.toLong() - 1).refined()
@@ -141,20 +133,30 @@ class HostedDiagnosticResponseTest {
                 limit,
             ) {
                 retained++
-                HostedOutputRetention.CapacityExceeded
+                Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED)
             }
         assertEquals(1, retained)
         assertTrue(response.document.toByteArray().size <= limit.value)
+        val decoded =
+            CanonicalOperationWireBindings.diagnosticCheck.decodeOutcome(response.document) as WireDecoding.Decoded
+        val qualified = decoded.value as OperationOutcome.Qualified
+        val original = semantic as OperationOutcome.Complete
+        val payload = qualified.evidence.payload
+        assertTrue(payload.diagnostics.values.isNotEmpty())
         assertEquals(
-            WireDecoding.Decoded(
-                OperationOutcome.Rejected(
-                    AdmittedDiagnosticCheckRejection(
-                        DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED,
-                        report(limit.value),
-                    )
-                )
-            ),
-            CanonicalOperationWireBindings.diagnosticCheck.decodeOutcome(response.document),
+            original.evidence.payload.diagnostics.values.take(payload.diagnostics.values.size),
+            payload.diagnostics.values,
+        )
+        assertEquals(original.evidence.basis, qualified.evidence.basis)
+        assertEquals(original.evidence.payload.progress?.inventory, payload.progress?.inventory)
+        assertEquals(original.evidence.payload.progress?.analyzedFiles, payload.progress?.analyzedFiles)
+        assertEquals(original.evidence.payload.progress?.knownDiagnosticCount, payload.progress?.knownDiagnosticCount)
+        assertEquals(report(limit.value), payload.progress?.executionBudget)
+        assertEquals(DiagnosticProgressStop.RETENTION_CAPACITY_EXCEEDED, payload.progress?.stop)
+        assertEquals(null, qualified.qualification.continuation)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument.CAPACITY_EXCEEDED,
+            qualified.qualification.retentionFailure,
         )
     }
 
@@ -238,3 +240,77 @@ class HostedDiagnosticResponseTest {
             is Refinement.Rejected -> error("Invalid fixture: $failure")
         }
 }
+
+/** Case-owned native dependencies are absent; the production diagnostic owner and fitter make every decision. */
+private class DiagnosticOutputFixture {
+    val owner = RelationPagingFixture.live()
+    val store = io.github.amichne.kast.query.protocol.DiagnosticCheckpointStore()
+    private val request =
+        DiagnosticCheckRequest(ProtocolText.parse(".").fixtureValue(), ProtocolCount.parse(4).fixtureValue())
+    lateinit var claim: io.github.amichne.kast.query.protocol.DiagnosticExecutionClaim
+    private val query =
+        io.github.amichne.kast.diagnostic.contract.DiagnosticScopeQuery.parse(owner.authority, ".").fixtureValue()
+    private val checkpoint =
+        object : io.github.amichne.kast.diagnostic.contract.DiagnosticScanCheckpoint {
+            override val query = this@DiagnosticOutputFixture.query
+            override val retainedBytes = 256L
+        }
+    private val protocol =
+        io.github.amichne.kast.query.protocol.CanonicalDiagnosticCheckProtocol(
+            io.github.amichne.kast.diagnostic.contract.DiagnosticScanOperations { _, _ ->
+                io.github.amichne.kast.diagnostic.contract.DiagnosticScanResult.Advancing(
+                    io.github.amichne.kast.diagnostic.contract.DiagnosticScanPage(
+                        emptyList(),
+                        emptyList(),
+                        emptySet(),
+                        io.github.amichne.kast.diagnostic.contract.DiagnosticScanInventory.Enumerating,
+                    ),
+                    checkpoint,
+                    io.github.amichne.kast.diagnostic.contract.DiagnosticScanStop.AnalysisPending,
+                )
+            },
+            io.github.amichne.kast.query.protocol.CanonicalQueryReferences(),
+            store,
+            io.github.amichne.kast.query.protocol.DiagnosticExecutionPublication { _, admitted, _ ->
+                claim = admitted
+                io.github.amichne.kast.query.protocol.DiagnosticExecutionPublicationResult.PREPARED
+            },
+        )
+    private val budget =
+        ResourceBudget(
+            ResultLimit.parse(4).fixtureValue(),
+            WorkUnitLimit.parse(100).fixtureValue(),
+            ElapsedTimeLimitMillis.parse(2000).fixtureValue(),
+        )
+
+    suspend fun execute(token: ProtocolText? = null) =
+        protocol.execute(request.copy(continuation = token), owner.authority, budget)
+
+    fun fitAndPublish(semantic: HostedDiagnosticOutcome, limit: ReturnedByteLimit): HostedResponse.Canonical<*, *, *> {
+        val response =
+            encodeHostedDiagnosticResponse(semantic, ReadLimits.Default, limit) { suffix ->
+                val bytes =
+                    CanonicalOperationWireBindings.diagnosticCheck.encodeOutcome(suffix)
+                        as io.github.amichne.kast.protocol.wire.WireEncoding.Encoded
+                store.issueOutput(
+                    claim,
+                    suffix,
+                    io.github.amichne.kast.query.protocol.QueryRetentionByteCount.parse(
+                            bytes.document.toByteArray().size.toLong()
+                        )
+                        .fixtureValue(),
+                )
+            }
+                as HostedResponse.Canonical<*, *, *>
+        val decoded =
+            CanonicalOperationWireBindings.diagnosticCheck.decodeOutcome(response.document) as WireDecoding.Decoded
+        store.commit(claim, decoded.value).fixtureValue()
+        return response
+    }
+}
+
+private fun <T> Refinement<T, *>.fixtureValue(): T =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Case fixture rejected: $failure")
+    }

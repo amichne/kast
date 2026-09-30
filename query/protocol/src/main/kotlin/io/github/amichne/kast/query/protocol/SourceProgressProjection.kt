@@ -11,16 +11,19 @@ import io.github.amichne.kast.source.contract.SourceReadContinuationState
 import io.github.amichne.kast.source.contract.SourceReadLimitation
 import io.github.amichne.kast.source.contract.SourceReadQualification
 
-internal fun SourceReadQualification.projectProgress(
-    entityCount: Int
-): Refinement<SourceQualifiedProgressDocument, ProtocolTextFailure> =
+internal fun SourceReadQualification.projectProgress():
+    Refinement<SourceQualifiedProgressDocument, ProtocolTextFailure> =
     when (val state = continuation) {
         SourceReadContinuationState.Unavailable ->
             Refinement.Refined(
                 SourceQualifiedProgressDocument.TerminalIncomplete(
-                    if (limitations == listOf(SourceReadLimitation.TEXT_BYTE_LIMIT_REACHED))
-                        SourceTerminalReasonDocument.TEXT_PROJECTION_WITHHELD
-                    else SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                    when {
+                        SourceReadLimitation.RETENTION_LIMIT_REACHED in limitations ->
+                            SourceTerminalReasonDocument.RETENTION_CAPACITY_EXCEEDED
+                        limitations == listOf(SourceReadLimitation.TEXT_BYTE_LIMIT_REACHED) ->
+                            SourceTerminalReasonDocument.TEXT_PROJECTION_WITHHELD
+                        else -> SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                    }
                 )
             )
         is SourceReadContinuationState.Available ->
@@ -30,8 +33,7 @@ internal fun SourceReadQualification.projectProgress(
                     Refinement.Refined(
                         SourceQualifiedProgressDocument.Resumable(
                             SourceCheckpointDocument.Upstream(token.value),
-                            if (entityCount == 0) ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET
-                            else ReadResumeActionDocument.RESUME,
+                            ReadResumeActionDocument.RESUME,
                         )
                     )
             }

@@ -1,6 +1,8 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalExpansionRemainderDocument
 import io.github.amichne.kast.protocol.contract.TraversalPartialExpansionDocument
@@ -13,6 +15,8 @@ internal data class TraversalPartialExpansionWireDocument(
     val depth: Int,
     val limitations: List<RelationLimitationWireDocument>,
     val remainder: TraversalExpansionRemainderWireDocument,
+    @SerialName("known_minimum") val knownMinimum: Int,
+    val omissions: List<RelationOmissionWireDocument>,
     val scope: TraversalExpansionScopeWireDocument = TraversalExpansionScopeWireDocument.PAGE,
 )
 
@@ -37,6 +41,8 @@ internal fun TraversalPartialExpansionDocument.toWireDocument() =
                 TraversalExpansionRemainderWireDocument.CONTINUATION_RETAINED
             TraversalExpansionRemainderDocument.NOT_EXPLORED -> TraversalExpansionRemainderWireDocument.NOT_EXPLORED
         },
+        knownMinimum.value,
+        omissions.values.map { it.toWireDocument() },
     )
 
 internal fun TraversalPartialExpansionWireDocument.toContract():
@@ -48,16 +54,24 @@ internal fun TraversalPartialExpansionWireDocument.toContract():
             subject to depth
         }
         .flatMapConverted { (subject, depth) ->
-            TraversalPartialExpansionDocument.create(
-                    subject,
-                    depth,
-                    limitations.map { it.toContract() },
-                    when (remainder) {
-                        TraversalExpansionRemainderWireDocument.CONTINUATION_RETAINED ->
-                            TraversalExpansionRemainderDocument.CONTINUATION_RETAINED
-                        TraversalExpansionRemainderWireDocument.NOT_EXPLORED ->
-                            TraversalExpansionRemainderDocument.NOT_EXPLORED
-                    },
-                )
-                .toWireDocumentConversion()
+            QueryKnownMinimum.parse(knownMinimum).toWireDocumentConversion().flatMapConverted { count ->
+                omissions.convertEach(RelationOmissionWireDocument::toContract).flatMapConverted { records ->
+                    BoundedProtocolList.create(records).toWireDocumentConversion().flatMapConverted { bounded ->
+                        TraversalPartialExpansionDocument.create(
+                                subject,
+                                depth,
+                                limitations.map { it.toContract() },
+                                when (remainder) {
+                                    TraversalExpansionRemainderWireDocument.CONTINUATION_RETAINED ->
+                                        TraversalExpansionRemainderDocument.CONTINUATION_RETAINED
+                                    TraversalExpansionRemainderWireDocument.NOT_EXPLORED ->
+                                        TraversalExpansionRemainderDocument.NOT_EXPLORED
+                                },
+                                count,
+                                bounded,
+                            )
+                            .toWireDocumentConversion()
+                    }
+                }
+            }
         }

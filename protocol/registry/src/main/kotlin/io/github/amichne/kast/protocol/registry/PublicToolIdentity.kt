@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-const val PUBLIC_TOOL_CONTRACT_VERSION = 3
+const val PUBLIC_TOOL_CONTRACT_VERSION = 4
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
@@ -24,7 +24,12 @@ enum class PublicToolIdentity(
             "d retained binding projection and joins. Join preserves both named output cells and occurr" +
             "ence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, trav" +
             "ersal record, or binding row output. Retained results preserve qualification and omissions" +
-            "; execution continuation and result presentation cursor remain distinct.",
+            "; execution continuation and result presentation cursor remain distinct. Discovery observa" +
+            "tions preserve the declared universe, phase counts, coverage and unfinished input. Referen" +
+            "ce occurrence rows retain compiler target identity and explicit declaration-owned, file-sc" +
+            "oped or unavailable ownership. A published execution page replays idempotently; concurrent" +
+            " use of one checkpoint is rejected with continuation-in-use until its owner publishes or d" +
+            "rains.",
         HostedToolLoading.EAGER,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

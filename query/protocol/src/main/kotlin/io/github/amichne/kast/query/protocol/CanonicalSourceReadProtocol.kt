@@ -139,7 +139,7 @@ private fun DomainSourceReadResult.Qualified.project(
         protocolResult(snapshot, region, entities, text, authority)
             ?: return SourceQualifiedResultProjection.Rejected(SourceInternalObligation.RESULT_PROJECTION)
     val protocolQualification =
-        qualification.protocol(entities.size)
+        qualification.protocol()
             ?: return SourceQualifiedResultProjection.Rejected(SourceInternalObligation.QUALIFICATION_PROJECTION)
     return SourceQualifiedResultProjection.Projected(result, protocolQualification)
 }
@@ -295,10 +295,10 @@ private fun SourceSelector.protocolSelection(): SourceSelectionDocument? {
     )
 }
 
-private fun DomainSourceReadQualification.protocol(entityCount: Int): SourceReadQualification? {
+private fun DomainSourceReadQualification.protocol(): SourceReadQualification? {
     val count = SourceEntityCountDocument.parse(knownMinimumEntityCount.value).refinedOrNull() ?: return null
     val protocolLimitations = limitations.map { it.protocol() }
-    val progress = projectProgress(entityCount).refinedOrNull() ?: return null
+    val progress = projectProgress().refinedOrNull() ?: return null
     return SourceReadQualification.create(count, protocolLimitations, progress).refinedOrNull()
 }
 
@@ -313,6 +313,7 @@ private fun SourceReadLimitation.protocol(): SourceReadLimitationDocument =
             SourceReadLimitationDocument.SEMANTIC_RESOLUTION_INCOMPLETE
         SourceReadLimitation.UNSUPPORTED_ENTITY -> SourceReadLimitationDocument.UNSUPPORTED_ENTITY
         SourceReadLimitation.PROVIDER_FAILURE -> SourceReadLimitationDocument.PROVIDER_FAILURE
+        SourceReadLimitation.RETENTION_LIMIT_REACHED -> SourceReadLimitationDocument.RETENTION_LIMIT_REACHED
     }
 
 private fun io.github.amichne.kast.source.contract.SourceRegionKind.protocol(): SourceRegionKindDocument =

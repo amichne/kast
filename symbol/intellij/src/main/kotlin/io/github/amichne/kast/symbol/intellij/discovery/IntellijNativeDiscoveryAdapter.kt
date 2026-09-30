@@ -43,43 +43,46 @@ internal class IntellijNativeDiscoveryAdapter(
         project: Project,
         request: SymbolDiscoveryRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
-    ): IntellijNativeDiscoveryResult = readAction {
-        when (
-            val scoped =
-                scopeQuery.execute(
-                    project = project,
-                    request = request.scope,
-                    modelCompilation = modelCompilation,
-                ) { compiledScope ->
-                    when (val target = request.target) {
-                        is SymbolDiscoveryTarget.All,
-                        is SymbolDiscoveryTarget.Name ->
-                            IntellijNativeDiscoveryQuery(
-                                    environmentState = { project.discoveryEnvironmentState() },
-                                    cancellationCheck = ProgressManager::checkCanceled,
-                                    observation = observation,
-                                    limits = limits,
-                                )
-                                .discoverNative(project, compiledScope, request)
-                        is SymbolDiscoveryTarget.Location,
-                        is SymbolDiscoveryTarget.Text ->
-                            IntellijSupplementalDiscoveryQuery(
-                                    project = project,
-                                    limits = limits,
-                                    environmentState = { project.discoveryEnvironmentState() },
-                                )
-                                .discover(compiledScope, request)
+    ): IntellijNativeDiscoveryResult {
+        val allowance = IntellijDeclarationDiscoveryAllowance(request)
+        return readAction {
+            when (
+                val scoped =
+                    scopeQuery.execute(
+                        project = project,
+                        request = request.scope,
+                        modelCompilation = modelCompilation,
+                    ) { compiledScope ->
+                        when (val target = request.target) {
+                            is SymbolDiscoveryTarget.All,
+                            is SymbolDiscoveryTarget.Name ->
+                                IntellijNativeDiscoveryQuery(
+                                        environmentState = { project.discoveryEnvironmentState() },
+                                        cancellationCheck = ProgressManager::checkCanceled,
+                                        observation = observation,
+                                        limits = limits,
+                                    )
+                                    .discoverNative(project, compiledScope, request, allowance)
+                            is SymbolDiscoveryTarget.Location,
+                            is SymbolDiscoveryTarget.Text ->
+                                IntellijSupplementalDiscoveryQuery(
+                                        project = project,
+                                        limits = limits,
+                                        environmentState = { project.discoveryEnvironmentState() },
+                                    )
+                                    .discover(compiledScope, request)
+                        }
                     }
-                }
-        ) {
-            is IntellijScopedQueryResult.Completed ->
-                when (val execution = scoped.value) {
-                    is IntellijNativeDiscoveryExecution.Produced ->
-                        IntellijNativeDiscoveryResult.Discovered(execution.outcome)
-                    is IntellijNativeDiscoveryExecution.Rejected ->
-                        IntellijNativeDiscoveryResult.Rejected(execution.reason)
-                }
-            is IntellijScopedQueryResult.Rejected -> IntellijNativeDiscoveryResult.ScopeRejected(scoped.failures)
+            ) {
+                is IntellijScopedQueryResult.Completed ->
+                    when (val execution = scoped.value) {
+                        is IntellijNativeDiscoveryExecution.Produced ->
+                            IntellijNativeDiscoveryResult.Discovered(execution.outcome)
+                        is IntellijNativeDiscoveryExecution.Rejected ->
+                            IntellijNativeDiscoveryResult.Rejected(execution.reason)
+                    }
+                is IntellijScopedQueryResult.Rejected -> IntellijNativeDiscoveryResult.ScopeRejected(scoped.failures)
+            }
         }
     }
 }

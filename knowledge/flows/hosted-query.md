@@ -4,7 +4,7 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns five canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
@@ -47,18 +47,26 @@ code_sources:
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceExecution.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
   - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourcePageCollectorTest.kt
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/NativeSourceSelections.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProtocolBudget.kt
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadCursor.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedOutputPages.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationEffect.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticPublicationSession.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyGraph.kt
+    symbols: [sourceDependencyClosure, sourceExpiredEntries]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalSource.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceOutputPages.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyExpiryTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
@@ -66,6 +74,7 @@ code_sources:
   - path: docs/hosted-read-configuration.md
   - path: experiments/host-observation/reproduce_semantic_queries.py
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadGauge.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
@@ -139,6 +148,17 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPreWriteObservation.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceEntityTraversalState.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceTraversal.kt
+  - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/SourceCursorReadTest.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRecords.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/DiagnosticProgressDocument.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionMeasurements.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateRecords.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
+  - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
 ---
 
 # Existing-IDE semantic query
@@ -388,7 +408,7 @@ The read policy is immutable per host service and rejects invalid settings. CLI/
 
 The new `tool` CLI family lowers the five [public intent tools](../contracts/public-tools.md) into the existing canonical operations before taking this same existing-IDE path. Native semantics and reference authority remain here; tool syntax is not compiler evidence.
 
-The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain buildable for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 4 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence.
+The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain buildable for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 5 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence. It records the first entry to each native phase before an opaque call, plus cumulative phase durations after drainage: source-partition preparation, declaration scan, exact refinement, reference inventory/partition/confirmation, diagnostic scope admission/enumeration/K2 analysis, freshness validation, retention, encoding, and cancellation drainage. Counters distinguish candidate and semantic work from retained-state accounting; the latter is a quota estimate rather than process heap measurement.
 
 The host defaults to 30,000 ms and derives positive semantic and diagnostic-scope
 allowances from the time remaining after admission and model capture. A bounded
@@ -412,8 +432,8 @@ a necessary lower bound, not an exact sufficient envelope size. The original
 encoder still fits bodies, reports and continuations against the admitted allowance.
 
 `HostedQueryContinuations` owns one `QueryStateStore` for detached query execution
-checkpoints and immutable retained results under the same entry, byte and lifetime
-limits. Transport output suffixes remain separate. Epoch replacement and project
+checkpoints, immutable retained results, detached transport suffixes, and publication claims under the same entry, byte and lifetime
+limits. Epoch replacement and project
 disposal clear the state. Resume takes only an issued continuation plus an optional
 new grant; the stored checkpoint supplies the admitted plan and pending tasks.
 Restored results require the same semantic basis, while read-result uses its own
@@ -430,9 +450,8 @@ Transport output cursors are replayable until expiry or eviction. Equal retained
 and outcomes have equal child identities; replay does not refresh expiry. The
 request identity retains the semantic request while excluding caller execution
 controls. Changed authority or semantic request is rejected. Each of the
-query state, query output, source output, traversal output,
-diagnostic output and diagnostic checkpoint stores has the configured entry/byte
-bound. No retained entry contains PSI or K2 state.
+query state, source output, and diagnostic checkpoint owners has its configured entry/byte
+bound. Query and diagnostic output suffixes use their respective execution owners; they no longer have parallel output stores. No retained entry contains PSI or K2 state.
 
 Query/search reads admit optional caller execution controls once at
 semantic entry.
@@ -445,22 +464,22 @@ publishes the newly admitted grant and excludes execution controls from retained
 semantic identity.
 
 Reissuing an equal detached query checkpoint returns its existing token without
-renewing its expiry or consuming another entry. Restoration is non-consuming.
+renewing its expiry or consuming another entry. Admission claims one unfinished token exclusively, while published pages replay their facts and successor without semantic execution. Concurrent use returns a finite in-use rejection. Allocations remain hidden until the fitted page commits after final host validation and native drainage. Cancellation, rejection, moved-read restart, and retired authority discard only the current attempt's allocations. Query, source and diagnostic owners check original token age independently of physical retention. Live pages pin dependencies against capacity eviction under the same quota; their validity ends at the oldest referenced dependency's deadline. Active claims preserve physical storage until release without renewing expiry, admitting an expired token, or publishing an expired dependency. Replay never renews page age.
 Query checkpoints and immutable results share one quota but retain distinct typed
 references. Query pipeline checkpoints and output suffixes exclude caller execution
 controls from semantic identity. Query page result limits also constrain retained
 output; every page preserves known item failures. A query `take` stage is not
 admitted. Source and traversal caller controls retain the same admitted report;
-traversal encoded fitting remains unfinished.
+traversal evidence is scheduled in bounded structural and occurrence units before encoded fitting.
 
-Source entity cursors retain typed token keys and exact snapshot, region, and
-selection identity. Their binding excludes entity/text page allowances; an equal
-source cursor position reuses its token. The source continuation owner is separate
-from native entity collection.
+Source entity cursors retain typed token keys and exact snapshot, region,
+selection identity, and detached structural frontier. Their binding excludes entity/text page allowances; an equal
+source cursor position reuses its token. The native cursor proof and encoded
+suffix share one hosted state owner; native entity collection retains no registry.
 
-The source continuation owner applies independent entry, charged-byte, and age bounds. It expires entries before admission and issuance, and replay does not renew token age. Retention includes detached snapshot/scope identity but no source payload. Oversized entries fail before issuance; retirement clears every entry.
+The source owner applies shared entry, charged-byte, and original-age bounds to detached cursor proofs, suffixes, published pages, and claims. Admission, deduplication and publication validate the complete dependency closure against the same semantic request and authority. A running cursor cannot become another attempt's deduplicated successor. Expiry preserves active claims' physical dependency storage, then removes expired entries and broken dependent pages that no active claim owns. A retained expired dependency rejects publication as `EXPIRED`; an absent or unavailable dependency rejects as `DEPENDENCY_UNAVAILABLE`. Oversized entries fail before issuance; retirement clears every entry.
 
-Source requests require an explicit resource grant. Hosted source admission retains the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read; failed admission retains the unstarted pipeline task. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not. Source encoding now fits the complete encoded envelope, including report and cursor, before publishing a nonempty entity prefix. Its `source-output:v1` cursor retains the detached suffix and original upstream qualification under the shared hosted `QUERY_CONTINUATION_*` policy, independently of the native `SOURCE_CONTINUATION_*` policy. Source output identity retains anchor, region, entity selection, and text projection but excludes entity/text page allowances and execution controls. Every page retains requested text; an indivisible item or mandatory envelope that cannot fit is rejected without an empty unchanged cursor.
+Source requests require an explicit resource grant. Hosted source admission retains the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read; failed admission retains the unstarted pipeline task. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not. Source encoding now fits the complete encoded envelope, including report and cursor, before publishing a nonempty entity prefix. Its `source-output:v1` cursor retains the detached suffix and original upstream qualification under the smaller of hosted `QUERY_CONTINUATION_*` and native `SOURCE_CONTINUATION_*` bounds in the same owner. Source output identity retains anchor, region, entity selection, and text projection but excludes entity/text page allowances and execution controls. Every page retains requested text; an indivisible item or mandatory envelope that cannot fit is rejected without an empty unchanged cursor.
 
 Source and traversal result projections preserve their admitted execution report through canonical wire decoding and CLI output. Their complete and qualified envelopes share the same closed installed execution schema. Hosted encoding measures the full response, including this report, against the current grant.
 
@@ -512,47 +531,59 @@ controlled local checks; installed containment/report qualification is separate.
 
 Execution-limit reports refine positive numeric amounts and validate caller/default selection, effective bounds, and canonical clamping before decoded fields become report evidence. Private construction prevents a report copy from bypassing those relationships.
 
-Native source enumeration asks the ordered page owner to admit each known declaration kind before deferred visibility and candidate projection. Excluded containers retain their structural selectors and traversal, and primary-constructor properties use the same kind admission. Native source enumeration feeds the existing ordered page owner incrementally. It retains only the selected entity page and one ordering/lookahead witness, discards excluded entities and previously delivered ordinals, and stops provider work at eligible lookahead. The production `IntellijSourceEntityAttempt.collect` boundary creates a fresh collector inside each read-action invocation; only the request execution meter survives. Controlled cancellation tests prove that a canceled invocation publishes no page, its facts do not enter the next invocation, and neither work nor elapsed allowance resets. Native IntelliJ retry scheduling remains separate installed evidence. Sequence-based fixtures use the same filter, ordering, and page owner, with their explicit fixed stream guard. Native collection uses the admitted caller work/time grant and does not reconstruct that guard.
+Native source enumeration admits declaration kinds before deferred visibility and
+candidate projection. Excluded containers preserve eligible descendants. The
+source cursor owns detached sibling/child tasks, provider descriptors, parent
+proofs, a same-node parameter phase, and proven lookahead. Each successor
+reacquires those locators directly instead of replaying delivered PSI or compiler
+projection. Structural revision advances even when a page has no newly eligible
+entity; emitted ordinals never decrease. Semantic omissions remain in the
+frontier while discharged page work/time limits do not falsely qualify final
+exhaustion. Each read-action attempt creates a fresh collector and retains the
+request execution meter. Cancellation discards that attempt without resetting
+its allowance. Physical PSI regressions cover 121 declarations at result limits
+1, 5 and 20 under work 32, excluded-container progress and same-node phases;
+installed K2 execution remains a separate qualification boundary.
 
 Decoded execution reports also retain their dimension rules: elapsed limits admit deadline clamps; result and byte limits admit transport clamps; work limits admit only the operator ceiling. Every result amount remains within the integer domain. Invalid dimension evidence is rejected by the report decoder before a report value is exposed.
 
-Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. That cursor pages immutable retained rows; it is not an execution continuation. CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An upstream page that advances retained work can resume under the same grant even when downstream filtering emits no rows. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. That cursor pages immutable retained rows; it is not an execution continuation. CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 
-Source qualifications own closed resumable or terminal-incomplete progress. Native
+Source qualifications own closed resumable, retention-unavailable, or terminal-incomplete progress. Native
 source checkpoints and hosted retained-output checkpoints are separate variants;
 retained output preserves original complete, resumable, or terminal coverage.
 Legacy cursor availability is derived from that authority. Empty native pages
-require an increased execution allowance. A terminal text-withheld explanation
+may resume structural progress under the same grant. A retention-unavailable
+page preserves its fitting facts and original upstream coverage without a token. A terminal text-withheld explanation
 requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
 variants and mismatched checkpoint families.
 
 ### Hosted continuation retention bounds
 
-Each `HostedQueryContinuations.Active` owns six independently bounded stores:
-one query state store sharing its capacity between execution checkpoints and
-immutable results, four output-suffix stores for query, source,
-traversal and diagnostic reads, and one diagnostic checkpoint store. For
-configured entry bound `C` and charged-byte bound `B`, these owners have an
-aggregate upper bound of `6 × C` entries and `6 × B` charged bytes. `B` is an
-accounting bound, not measured JVM heap use: output stores charge four times
-encoded request plus outcome bytes; query state charges each detached payload
-plus four times its normalized run request bytes. The separate native source
-continuation owner and compact reference store have their own policies.
+Each `HostedQueryContinuations.Active` owns three bounded state stores: query
+execution/results/output, source native cursors/output, and diagnostic scan/output.
+Each domain's claims and publications use its existing owner and quota. The source
+owner applies the smaller of source and query entry, byte, and lifetime bounds.
+There is no independent output-suffix quota or native source registry alongside
+these owners. Charged bytes estimate detached retention; they do not measure JVM
+heap use. Requests, locators, semantic rows, omission evidence, claims, cached
+pages, and output suffixes contribute to their owner's accounting. Source and
+diagnostic gauges retain independent current bytes, entry counts and maximum
+byte high-water marks rather than adding snapshots as work counters.
 
-The native source continuation owner expires at age greater than or equal to
-its TTL and evicts the least recently accessed checkpoint; a successful replay
-updates eviction order without renewing creation time. Its exact-boundary and
-access-order policies are distinct from the hosted stores. Hosted output and
-query-state entries expire when age is strictly greater than TTL. An entry
-remains available at exactly TTL; restore and identical reissuance do not renew
-its creation time. Capacity eviction removes the oldest inserted entry even if
-it was replayed. Owner retirement clears all six stores. Focused tests cover
-TTL−1, exact TTL, TTL+1, replay, eviction and clear for the relevant store
-owners; the four-store shared-owner test exercises query state plus query,
-source and traversal suffixes, without claiming six-store aggregate
-measurement. Retained values are detached identities and results; these stores
-do not retain PSI, K2 sessions or a live project.
+A retained published page pins the work it advertises. Attempt claims isolate
+new allocations until successful final publication. Commit releases superseded
+producer payloads, keeps the immutable fitted page and advertised dependency
+closure, and prunes unadvertised children. Cancellation releases
+only that attempt's allocations after drainage. Replaying an available published
+page returns its immutable successor without native prefix work or renewing its
+creation time. Query entries expire strictly after TTL; source and diagnostic
+entries retain their exact-boundary expiry policy. Capacity eviction must preserve
+active ownership and live page dependencies. Retirement clears all three owners.
+Focused tests prove quota refusal, expiry, replay, conflict, cancellation release,
+and page/successor publication together. Retained values contain detached proof
+and progress, never PSI, K2 sessions, native iterators, or a live project.
 
 ### Installed transport and authority qualification
 
@@ -629,3 +660,5 @@ produce separate recovery guidance; neither turns an unvalidated accumulator
 into successful evidence.
 
 Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Native semantic read admission does not invoke application lifecycle operations. The installed coordinator prepares the workspace before dispatch. For an existing project, application opening waits for any active import and requests one linked model reload on first attach, after tracked Gradle changes, or when the cached model is missing. Subsequent clean openings reuse the admitted model. Its socket client binds the request to the readiness-qualified project descriptor. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.
+
+Retention telemetry distinguishes the latest accounted bytes and entry count from the maximum accounted byte high-water mark. Gauges observe the existing state owner after allocation, final publication, and cancellation release; they do not sum snapshots or claim a process heap measurement.

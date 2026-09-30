@@ -66,6 +66,9 @@ internal enum class RelationLimitationWireDocument {
     @SerialName("byte_limit_reached") BYTE_LIMIT_REACHED,
     @SerialName("work_limit_reached") WORK_LIMIT_REACHED,
     @SerialName("time_limit_reached") TIME_LIMIT_REACHED,
+    @SerialName("candidate_limit_reached") CANDIDATE_LIMIT_REACHED,
+    @SerialName("retention_limit_reached") RETENTION_LIMIT_REACHED,
+    @SerialName("partition_inventory_unavailable") PARTITION_INVENTORY_UNAVAILABLE,
     @SerialName("dumb_mode_transition") DUMB_MODE_TRANSITION,
     @SerialName("unresolved_target") UNRESOLVED_TARGET,
     @SerialName("unsupported_item") UNSUPPORTED_ITEM,
@@ -94,6 +97,8 @@ internal data class DiagnosticCheckQualificationWireDocument(
     val limitations: List<DiagnosticLimitationWireDocument>,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val continuation: io.github.amichne.kast.protocol.contract.ProtocolText? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val retentionFailure: io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument? = null,
 )
 
 @Serializable
@@ -115,6 +120,14 @@ internal enum class DiagnosticLimitationReasonWireDocument {
 
 @Serializable
 internal enum class DiagnosticCheckRejectionWireDocument {
+    @SerialName("publication_owner_retired") PUBLICATION_OWNER_RETIRED,
+    @SerialName("publication_claim_unavailable") PUBLICATION_CLAIM_UNAVAILABLE,
+    @SerialName("publication_expired") PUBLICATION_EXPIRED,
+    @SerialName("publication_dependency_unavailable") PUBLICATION_DEPENDENCY_UNAVAILABLE,
+    @SerialName("publication_page_mismatch") PUBLICATION_PAGE_MISMATCH,
+    @SerialName("publication_non_advancing") PUBLICATION_NON_ADVANCING,
+    @SerialName("publication_invalid_fitted_page") PUBLICATION_INVALID_FITTED_PAGE,
+    @SerialName("continuation_in_use") CONTINUATION_IN_USE,
     @SerialName("enumeration_index_mode_unsupported") ENUMERATION_INDEX_MODE_UNSUPPORTED,
     @SerialName("execution_time_grant_too_small") EXECUTION_TIME_GRANT_TOO_SMALL,
     @SerialName("continuation_unavailable") CONTINUATION_UNAVAILABLE,

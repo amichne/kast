@@ -1,0 +1,244 @@
+{
+  "diagnostics": [
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 88,
+      "end": 109,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 138,
+      "end": 159,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 188,
+      "end": 209,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 238,
+      "end": 259,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 288,
+      "end": 309,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 338,
+      "end": 359,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 388,
+      "end": 409,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 438,
+      "end": 459,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 488,
+      "end": 509,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 538,
+      "end": 559,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 588,
+      "end": 609,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 638,
+      "end": 659,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 688,
+      "end": 709,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 738,
+      "end": 759,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 788,
+      "end": 809,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 838,
+      "end": 859,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 888,
+      "end": 909,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 938,
+      "end": 959,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 988,
+      "end": 1009,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1038,
+      "end": 1059,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1088,
+      "end": 1109,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1138,
+      "end": 1159,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1188,
+      "end": 1209,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1238,
+      "end": 1259,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1288,
+      "end": 1309,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1338,
+      "end": 1359,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1388,
+      "end": 1409,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1438,
+      "end": 1459,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1488,
+      "end": 1509,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1538,
+      "end": 1559,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1588,
+      "end": 1609,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1638,
+      "end": 1659,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1688,
+      "end": 1709,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1738,
+      "end": 1759,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1788,
+      "end": 1809,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1838,
+      "end": 1859,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1888,
+      "end": 1909,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1938,
+      "end": 1959,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 1988,
+      "end": 2009,
+      "code": "UNRESOLVED_REFERENCE"
+    },
+    {
+      "file": "ReadDiagnosticFixture.kt",
+      "start": 2038,
+      "end": 2059,
+      "code": "UNRESOLVED_REFERENCE"
+    }
+  ]
+}

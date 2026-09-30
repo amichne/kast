@@ -15,3 +15,15 @@ internal fun IntellijK2TargetConfirmation.observedBy(
         }
     )
 }
+
+internal fun IntellijReferenceTargetResult.observedBy(
+    observation: IntellijReadObservation
+): IntellijReferenceTargetResult = also {
+    observation.count(
+        when (this) {
+            is IntellijReferenceTargetResult.Confirmed -> IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS
+            IntellijReferenceTargetResult.Different -> IntellijReadCounter.RELATION_K2_DIFFERENT_TARGETS
+            IntellijReferenceTargetResult.Unresolved -> IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS
+        }
+    )
+}

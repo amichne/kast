@@ -67,7 +67,7 @@ class CanonicalQueryRetentionProtocolTest {
     @Suppress("LongMethod") // The checkpoint eviction and repeated read share one retention owner.
     @Test
     fun `retained result draining cannot recreate an evicted producer checkpoint`() = runTest {
-        val store = QueryStateStore(capacity = 2)
+        val store = QueryStateStore(capacity = 3)
         var calls = 0
         val protocol =
             CanonicalQueryProtocol(
@@ -106,7 +106,7 @@ class CanonicalQueryRetentionProtocolTest {
                     ),
                 )
                 .refined()
-        store.issueResult(request(), unrelated)
+        repeat(2) { assertInstanceOf(QueryResultIssuance.Issued::class.java, store.issueResult(request(), unrelated)) }
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(checkpoint, lease))
         repeat(2) {
             val read =
@@ -208,7 +208,7 @@ class CanonicalQueryRetentionProtocolTest {
         val token = first.qualification.progress.continuationToken!!
         assertTrue(token.value.length < 64)
         assertEquals(
-            ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
+            ReadResumeActionDocument.RESUME,
             (first.qualification.progress as QueryQualifiedProgressDocument.Resumable).nextAction,
         )
         assertCheckpointBinding(protocol, token)

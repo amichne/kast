@@ -64,6 +64,7 @@ internal class IntellijRelationCompilerQuery(
         if (project.isDisposed) {
             return RelationCompilation.Rejected(RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
         }
+        val allowance = IntellijRelationAllowance(System::nanoTime)
         return try {
             readAction {
                 val scope =
@@ -99,7 +100,13 @@ internal class IntellijRelationCompilerQuery(
                         is IntellijRelationSubjectLookup.Rejected ->
                             return@readAction RelationCompilation.Rejected(lookup.reason.compilerRejection())
                     }
-                val collector = IntellijRelationCollector(request, observation = observation, limits = limits)
+                val collector =
+                    IntellijRelationCollector(
+                        request,
+                        observation = observation,
+                        limits = limits,
+                        allowance = allowance,
+                    )
                 val termination =
                     IntellijK2RelationSearch(
                             project,

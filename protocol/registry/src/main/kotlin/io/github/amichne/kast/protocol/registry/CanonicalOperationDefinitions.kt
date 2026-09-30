@@ -111,7 +111,7 @@ object CanonicalOperationDefinitions {
             OperationScope.SOURCE,
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.source.read.v5"),
+            schema = schema("kast.source.read.v6"),
         )
 
     val queryRun =
@@ -128,7 +128,7 @@ object CanonicalOperationDefinitions {
             OperationScope.WORKSPACE,
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.query.run.v2"),
+            schema = schema("kast.query.run.v3"),
         )
 
     val diagnosticCheck =
@@ -145,7 +145,7 @@ object CanonicalOperationDefinitions {
             OperationScope.PROJECT,
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.diagnostic.check.v4"),
+            schema = schema("kast.diagnostic.check.v5"),
         )
 
     val change =

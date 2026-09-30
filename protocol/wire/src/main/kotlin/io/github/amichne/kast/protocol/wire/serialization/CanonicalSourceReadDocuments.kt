@@ -180,6 +180,7 @@ internal enum class SourceReadLimitationWireDocument {
     @SerialName("semantic-resolution-incomplete") SEMANTIC_RESOLUTION_INCOMPLETE,
     @SerialName("unsupported-entity") UNSUPPORTED_ENTITY,
     @SerialName("provider-failure") PROVIDER_FAILURE,
+    @SerialName("retention-limit-reached") RETENTION_LIMIT_REACHED,
 }
 
 @Serializable internal data class SourceLineRangeWireDocument(val startInclusive: Long, val endInclusive: Long)

@@ -1,14 +1,17 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
+import io.github.amichne.kast.protocol.contract.TraversalReferenceObservationDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.query.contract.QueryWalkCoverage
 import io.github.amichne.kast.query.contract.QueryWalkObservation
@@ -28,22 +31,7 @@ internal fun QueryWalkObservation.projectWalkObservation(
     val depth = ProtocolCount.parse(budget.depth.value).refinedWalkOrNull() ?: return null
     val frontier = QueryExpandedFrontierDocument.parse(expandedFrontier.value).refinedWalkOrNull() ?: return null
     val partials = partialExpansions.protocolDocuments(authority) ?: return null
-    val projectedCoverage =
-        when (val selected = coverage) {
-            QueryWalkCoverage.Complete -> QueryWalkCoverageDocument.Complete
-            is QueryWalkCoverage.Resumable ->
-                QueryWalkCoverageDocument.resumable(
-                        selected.limitations.map { it.protocolDocument() },
-                        selected.relationLimitations.map { it.protocolDocument() },
-                    )
-                    .refinedWalkOrNull() ?: return null
-            is QueryWalkCoverage.TerminalIncomplete ->
-                QueryWalkCoverageDocument.terminalIncomplete(
-                        selected.limitations.map { it.protocolDocument() },
-                        selected.relationLimitations.map { it.protocolDocument() },
-                    )
-                    .refinedWalkOrNull() ?: return null
-        }
+    val projectedCoverage = coverage.protocolDocument() ?: return null
     return QueryWalkObservationDocument(
         subject = subject,
         relation = meaning.protocolDocument(),
@@ -56,17 +44,57 @@ internal fun QueryWalkObservation.projectWalkObservation(
                 progress.totalEdges,
                 progress.maximumDepthReached,
             ),
-        strategy =
-            when (val selected = strategy) {
-                TraversalStrategy.BreadthFirst -> TraversalStrategyDocument.BreadthFirst
-                is TraversalStrategy.BoundedFanOut ->
-                    TraversalStrategyDocument.BoundedFanOut(
-                        ProtocolCount.parse(selected.maximumEdgesPerNode.value).refinedWalkOrNull() ?: return null
-                    )
-            },
+        strategy = strategy.protocolDocument() ?: return null,
         partialExpansions = partials,
         coverage = projectedCoverage,
+        inheritedOmissions = inheritedOmissions.protocolDocuments(authority) ?: return null,
+        referenceOccurrences = referenceOccurrences.protocolReferences(authority) ?: return null,
     )
+}
+
+private fun QueryWalkCoverage.protocolDocument(): QueryWalkCoverageDocument? =
+    when (this) {
+        QueryWalkCoverage.Complete -> QueryWalkCoverageDocument.Complete
+        is QueryWalkCoverage.Resumable ->
+            QueryWalkCoverageDocument.resumable(
+                    limitations.map { it.protocolDocument() },
+                    relationLimitations.map { it.protocolDocument() },
+                )
+                .refinedWalkOrNull()
+        is QueryWalkCoverage.TerminalIncomplete ->
+            QueryWalkCoverageDocument.terminalIncomplete(
+                    limitations.map { it.protocolDocument() },
+                    relationLimitations.map { it.protocolDocument() },
+                )
+                .refinedWalkOrNull()
+    }
+
+private fun TraversalStrategy.protocolDocument(): TraversalStrategyDocument? {
+    return when (this) {
+        TraversalStrategy.BreadthFirst -> TraversalStrategyDocument.BreadthFirst
+        is TraversalStrategy.BoundedFanOut ->
+            TraversalStrategyDocument.BoundedFanOut(
+                ProtocolCount.parse(maximumEdgesPerNode.value).refinedWalkOrNull() ?: return null
+            )
+    }
+}
+
+private fun List<io.github.amichne.kast.traversal.contract.TraversalReferenceObservation>.protocolReferences(
+    authority: QueryReferenceAuthority
+): BoundedProtocolList<TraversalReferenceObservationDocument>? {
+    val projected = map { observed ->
+        val expandedSubject =
+            when (val issued = authority.issueEndpoint(observed.entry.node.endpoint)) {
+                is RelationEndpointIssuance.Issued -> QueryReferenceDocument.ExactSymbol(issued.selector)
+                is RelationEndpointIssuance.Rejected -> return null
+            }
+        TraversalReferenceObservationDocument(
+            expandedSubject,
+            TraversalDepthDocument.parse(observed.entry.depth.value).refinedWalkOrNull() ?: return null,
+            observed.reference.protocolDocument(authority) ?: return null,
+        )
+    }
+    return BoundedProtocolList.create(projected).refinedWalkOrNull()
 }
 
 private fun <Value, Failure> Refinement<Value, Failure>.refinedWalkOrNull(): Value? =
@@ -81,6 +109,9 @@ internal fun RelationLimitation.protocolDocument(): RelationLimitationDocument =
         RelationLimitation.BYTE_LIMIT_REACHED -> RelationLimitationDocument.BYTE_LIMIT_REACHED
         RelationLimitation.WORK_LIMIT_REACHED -> RelationLimitationDocument.WORK_LIMIT_REACHED
         RelationLimitation.TIME_LIMIT_REACHED -> RelationLimitationDocument.TIME_LIMIT_REACHED
+        RelationLimitation.CANDIDATE_LIMIT_REACHED -> RelationLimitationDocument.CANDIDATE_LIMIT_REACHED
+        RelationLimitation.RETENTION_LIMIT_REACHED -> RelationLimitationDocument.RETENTION_LIMIT_REACHED
+        RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE -> RelationLimitationDocument.PARTITION_INVENTORY_UNAVAILABLE
         RelationLimitation.DUMB_MODE_TRANSITION -> RelationLimitationDocument.DUMB_MODE_TRANSITION
         RelationLimitation.UNRESOLVED_TARGET -> RelationLimitationDocument.UNRESOLVED_TARGET
         RelationLimitation.UNSUPPORTED_ITEM -> RelationLimitationDocument.UNSUPPORTED_ITEM

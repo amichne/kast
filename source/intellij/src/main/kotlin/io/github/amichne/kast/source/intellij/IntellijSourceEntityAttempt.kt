@@ -16,6 +16,7 @@ internal class IntellijSourceEntityAttempt
 private constructor(
     private val execution: IntellijSourceExecution,
     private val page: IntellijSourceEntityPageCollector,
+    val cursor: IntellijSourceEntityCursor,
 ) {
     val admission: SourceEntityCollectionAdmission
         get() = page.admission
@@ -24,9 +25,17 @@ private constructor(
 
     fun offer(entity: SourceEntity): SourceEntityCollectionAdmission = page.offer(entity)
 
-    fun projectDeclaration(kind: DeclarationKind, project: () -> Unit) = page.projectDeclaration(kind, project)
+    fun projectDeclaration(kind: DeclarationKind, depth: Int = 0, project: () -> Unit) =
+        page.projectDeclaration(kind, depth, project)
 
     fun finish(): IntellijSourceEntityPage = page.finish()
+
+    val lookahead: SourceEntity?
+        get() = page.lookahead
+
+    fun finish(
+        traversal: io.github.amichne.kast.source.contract.SourceEntityTraversalState?
+    ): IntellijSourceEntityPage = page.finish(traversal)
 
     companion object {
         /** Cancellation escapes unchanged, so a canceled invocation cannot return its detached page. */
@@ -37,6 +46,12 @@ private constructor(
             limit: SourceEntityLimit,
             read: (IntellijSourceEntityAttempt) -> NativeSourceEntityProjection,
         ): NativeSourceEntityProjection =
-            read(IntellijSourceEntityAttempt(execution, IntellijSourceEntityPageCollector(selection, cursor, limit)))
+            read(
+                IntellijSourceEntityAttempt(
+                    execution,
+                    IntellijSourceEntityPageCollector(selection, cursor, limit),
+                    cursor,
+                )
+            )
     }
 }

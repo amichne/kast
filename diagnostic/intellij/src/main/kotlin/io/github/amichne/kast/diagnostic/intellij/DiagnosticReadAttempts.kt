@@ -7,6 +7,8 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import kotlinx.coroutines.CancellationException
 
 /** Called inside each retryable read action; no mutable collector survives an interrupted attempt. */
@@ -19,8 +21,12 @@ internal fun diagnosticCompilationAttempt(
     return collector.finish()
 }
 
-internal suspend fun guardedDiagnosticCompilation(block: suspend () -> DiagnosticCompilation): DiagnosticCompilation =
-    try {
+internal suspend fun guardedDiagnosticCompilation(
+    observation: IntellijReadObservation = IntellijReadObservation.None,
+    block: suspend () -> DiagnosticCompilation,
+): DiagnosticCompilation {
+    observation.phase(IntellijReadPhase.DIAGNOSTIC_SCOPE)
+    return try {
         block()
     } catch (cancelled: ProcessCanceledException) {
         throw cancelled
@@ -31,6 +37,7 @@ internal suspend fun guardedDiagnosticCompilation(block: suspend () -> Diagnosti
     } catch (_: LinkageError) {
         DiagnosticCompilation.Rejected(DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
     }
+}
 
 /** The allowance spans retries; only the original detached cursor seeds each new collector. */
 internal fun diagnosticEnumerationAttempt(

@@ -46,7 +46,12 @@ class QueryProgressSchemaTest {
                 val qualification =
                     QueryRunQualification.create(
                             QueryKnownMinimum.parse(1).refined(),
-                            listOf(QueryLimitationDocument.BYTE_LIMIT_REACHED),
+                            if (progress is QueryQualifiedProgressDocument.RetentionUnavailable)
+                                listOf(
+                                    QueryLimitationDocument.BYTE_LIMIT_REACHED,
+                                    QueryLimitationDocument.RETENTION_LIMIT_REACHED,
+                                )
+                            else listOf(QueryLimitationDocument.BYTE_LIMIT_REACHED),
                             progress,
                         )
                         .refined()
@@ -122,7 +127,8 @@ class QueryProgressSchemaTest {
                         ),
                         ReadResumeActionDocument.RESUME,
                     )
-                }
+                } +
+                coverage.map(QueryQualifiedProgressDocument::RetentionUnavailable)
         }
 
     private fun assertCompatibility(progress: QueryQualifiedProgressDocument, document: JsonObject) {
@@ -130,6 +136,10 @@ class QueryProgressSchemaTest {
             is QueryQualifiedProgressDocument.Resumable -> {
                 assertEquals(JsonPrimitive(progress.checkpoint.token.value), document["continuation"])
                 assertNull(document["terminal_reason"])
+            }
+            is QueryQualifiedProgressDocument.RetentionUnavailable -> {
+                assertNull(document["continuation"])
+                assertEquals(JsonPrimitive("checkpoint-capacity-exceeded"), document["terminal_reason"])
             }
             is QueryQualifiedProgressDocument.TerminalIncomplete -> {
                 assertNull(document["continuation"])

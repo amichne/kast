@@ -4,7 +4,7 @@ title: Public intent tools
 description: Public query, diagnostics, and bounded source changes lower into canonical operations without transferring compiler authority.
 resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
 tags: [tools, query, protocol, agents]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/WorkspaceLifecycleRequest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
@@ -44,6 +44,7 @@ code_sources:
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultRowCliDocuments.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolBindingContractTest.kt
@@ -55,7 +56,7 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Nullable DTO fields lower null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.
 
-`query_symbols` and `check_diagnostics` are eager. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits declaration discovery, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols or binding rows according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
+`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits declaration discovery, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, or binding rows according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
@@ -157,10 +158,10 @@ states do not independently override canonical complete/qualified/rejected statu
 Canonical rejected query and source tool documents require the derived
 `next_action` alongside the unchanged finite failure and any admitted budget.
 Unknown or absent actions fail the installed schema. The
-[outcome contract](operation-outcomes.md) defines the six recovery directions;
+[outcome contract](operation-outcomes.md) defines the closed recovery directions, including waiting for an active checkpoint;
 action text does not authorize silent reference refresh or an automatic retry.
 
-The server projection advertises query occurrence output for individual relation facts and query traversal-record output for bounded multi-step reachability. Retired standalone names are rejected; catalog digest binding remains required before dispatch.
+The version-4 server projection advertises occurrence output for compiler-confirmed references with explicit declaration, file-scoped, or unavailable ownership, and traversal-record output for bounded multi-step reachability. Required discovery/reference observations preserve coverage separately from rows; traversal partial expansions preserve detailed omissions and inherited omission meaning. Retired standalone names are rejected; catalog digest binding remains required before dispatch.
 
 Workspace setup belongs to the agent catalog, separately from the user CLI surface.
 The private invocation binding remains available to the harness, while root help

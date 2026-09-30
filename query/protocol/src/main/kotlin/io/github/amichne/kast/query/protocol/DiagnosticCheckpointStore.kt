@@ -1,8 +1,5 @@
 package io.github.amichne.kast.query.protocol
 
-import io.github.amichne.kast.diagnostic.contract.DiagnosticScanCheckpoint
-import io.github.amichne.kast.diagnostic.contract.DiagnosticScanInventory
-import io.github.amichne.kast.diagnostic.contract.DiagnosticScanPage
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScanRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScanResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeQuery
@@ -12,76 +9,37 @@ import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
-import java.util.UUID
+import io.github.amichne.kast.query.protocol.DiagnosticStateAttempt as Attempt
+import io.github.amichne.kast.query.protocol.DiagnosticStateEntry as Entry
+import io.github.amichne.kast.query.protocol.DiagnosticStateExecution as Execution
+import io.github.amichne.kast.query.protocol.DiagnosticStateInput as Input
+import io.github.amichne.kast.query.protocol.DiagnosticStateKey as Key
+import io.github.amichne.kast.query.protocol.DiagnosticStateLifetime as Lifetime
 import java.util.concurrent.TimeUnit
 
-internal sealed interface DiagnosticNextPage {
-    data object Terminal : DiagnosticNextPage
-
-    data class Continue(val token: ProtocolText) : DiagnosticNextPage
-}
-
-internal data class DiagnosticStoredPage(val result: DiagnosticScanResult, val next: DiagnosticNextPage)
-
-internal sealed interface DiagnosticCheckpointAdmission {
-    data class Replay(val page: DiagnosticStoredPage) : DiagnosticCheckpointAdmission
-
-    data class Execute(
-        val request: DiagnosticScanRequest,
-        val key: DiagnosticReplayKey,
-        val createdAt: Long,
-        val limit: ProtocolCount,
-    ) : DiagnosticCheckpointAdmission
-
-    data class Rejected(val reason: DiagnosticCheckRejection) : DiagnosticCheckpointAdmission
-}
-
-internal sealed interface DiagnosticReplayOrigin {
-    data class First(val path: String, val lease: SemanticReadAuthority, val limit: ProtocolCount) :
-        DiagnosticReplayOrigin
-
-    data class Resume(val token: ProtocolText) : DiagnosticReplayOrigin
-}
-
-internal data class DiagnosticReplayKey(val origin: DiagnosticReplayOrigin, val grant: RequestedExecutionBudget)
-
-/**
- * Diagnostic-owned retained progress and response replay, under the existing query retention policy. Every child
- * inherits the scan's creation time. All state is detached; no service or IDE object enters this store. Checkpoints and
- * replay payloads share this store's one combined entry/byte bound. Replay identifies caller/configured selections, not
- * the host's invocation-specific elapsed clamp. Each invocation projects its own actual admitted report.
- */
+/** One detached quota owns scan checkpoints, fitted output suffixes and immutable published pages. */
 class DiagnosticCheckpointStore(
-    private val capacity: Int = ReadLimitParameter.QUERY_CONTINUATION_ENTRIES.defaultValue,
-    private val maximumBytes: Long = ReadLimitParameter.QUERY_CONTINUATION_BYTES.defaultValue.toLong(),
+    internal val capacity: Int = ReadLimitParameter.QUERY_CONTINUATION_ENTRIES.defaultValue,
+    internal val maximumBytes: Long = ReadLimitParameter.QUERY_CONTINUATION_BYTES.defaultValue.toLong(),
     private val maximumCheckpointBytes: Long = ReadLimitParameter.QUERY_CHECKPOINT_BYTES.defaultValue.toLong(),
     ttlMillis: Long = ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS.defaultValue.toLong(),
-    private val clock: () -> Long = System::nanoTime,
+    internal val clock: () -> Long = System::nanoTime,
 ) {
-    private data class Checkpoint(val value: DiagnosticScanCheckpoint, val createdAt: Long, val limit: ProtocolCount) {
-        val bytes = value.retainedBytes + value.query.retainedIdentityBytes() + ENTRY_OVERHEAD
-    }
+    internal var lifetime = Lifetime.ACTIVE
+    internal val ttl = TimeUnit.MILLISECONDS.toNanos(ttlMillis)
+    internal val entries = linkedMapOf<Key, Entry>()
+    internal val attempts = linkedMapOf<DiagnosticExecutionClaim, Attempt>()
+    internal var highWaterBytes = 0L
 
-    private data class Replay(
-        val query: DiagnosticScopeQuery,
-        val limit: ProtocolCount,
-        val key: DiagnosticReplayKey,
-        val page: DiagnosticStoredPage,
-        val createdAt: Long,
-    ) {
-        val bytes = page.retainedBytes() + query.retainedIdentityBytes() + key.retainedBytes() + ENTRY_OVERHEAD
-    }
-
-    private enum class Lifetime {
-        ACTIVE,
-        RETIRED,
-    }
-
-    private var lifetime = Lifetime.ACTIVE
-    private val ttl = TimeUnit.MILLISECONDS.toNanos(ttlMillis)
-    private val checkpoints = linkedMapOf<ProtocolText, Checkpoint>()
-    private val replays = linkedMapOf<DiagnosticReplayKey, Replay>()
+    @Synchronized
+    fun retentionMeasurements(): QueryRetentionMeasurements =
+        QueryRetentionMeasurements(
+            QueryRetentionByteCount.measured(bytes()),
+            QueryRetentionByteCount.measured(highWaterBytes),
+            io.github.amichne.kast.query.contract.QueryCount.parse(entries.size + attempts.size).let {
+                (it as Refinement.Refined).value
+            },
+        )
 
     @Synchronized
     internal fun admit(
@@ -91,201 +49,271 @@ class DiagnosticCheckpointStore(
         grant: RequestedExecutionBudget,
     ): DiagnosticCheckpointAdmission {
         expire()
-        if (lifetime == Lifetime.RETIRED) return unavailable()
-        val origin =
-            if (token == null) DiagnosticReplayOrigin.First(query.path.toString(), query.lease, limit)
-            else DiagnosticReplayOrigin.Resume(token)
-        val key = DiagnosticReplayKey(origin, grant)
-        when (val replay = lookupReplay(key, query, limit)) {
-            ReplayLookup.Missing -> Unit
-            is ReplayLookup.Retained -> return DiagnosticCheckpointAdmission.Replay(replay.page)
-            is ReplayLookup.Rejected -> return DiagnosticCheckpointAdmission.Rejected(replay.reason)
+        if (lifetime == Lifetime.RETIRED) return rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE)
+        if (attempts.size >= capacity) return rejected(DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED)
+        val key = if (token == null) Key.First(DiagnosticReplayKey(query, limit, grant)) else Key.Continuation(token)
+        val entry =
+            when (val retained = acquireEntry(key, query)) {
+                is Refinement.Refined -> retained.value
+                is Refinement.Rejected -> return rejected(retained.failure)
+            }
+        when (val admitted = admitEntry(key, entry, query, limit)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return rejected(admitted.failure)
         }
-        if (token == null)
-            return DiagnosticCheckpointAdmission.Execute(DiagnosticScanRequest.First(query), key, clock(), limit)
-        val entry = checkpoints[token] ?: return unavailable()
-        when (val admitted = matchingQuery(query, entry.value.query, limit, entry.limit)) {
-            is Refinement.Rejected -> return DiagnosticCheckpointAdmission.Rejected(admitted.failure)
+        return claimEntry(key, entry, query, limit)
+    }
+
+    private fun acquireEntry(key: Key, query: DiagnosticScopeQuery): Refinement<Entry, DiagnosticCheckRejection> {
+        entries[key]?.let {
+            if (clock() - it.createdAt >= ttl) return unavailable()
+            return Refinement.Refined(it)
+        }
+        if (key is Key.Continuation) return unavailable()
+        val bytes = query.diagnosticRetainedIdentityBytes() + DIAGNOSTIC_ENTRY_OVERHEAD
+        if (!makeCapacity(2, bytes + DIAGNOSTIC_ENTRY_OVERHEAD)) return diagnosticCapacityRejected()
+        val entry =
+            Entry(
+                query,
+                (key as Key.First).key.limit,
+                Input.Scan(DiagnosticScanRequest.First(query)),
+                bytes,
+                clock(),
+                null,
+            )
+        entries[key] = entry
+        return Refinement.Refined(entry)
+    }
+
+    private fun admitEntry(
+        key: Key,
+        entry: Entry,
+        query: DiagnosticScopeQuery,
+        limit: ProtocolCount,
+    ): Refinement<Unit, DiagnosticCheckRejection> {
+        if (entry.owner != null) return unavailable()
+        when (val admitted = diagnosticMatchingQuery(query, entry.query, limit, entry.limit)) {
+            is Refinement.Rejected -> return admitted
             is Refinement.Refined -> Unit
         }
-        return DiagnosticCheckpointAdmission.Execute(
-            DiagnosticScanRequest.Resume(entry.value),
-            key,
-            entry.createdAt,
-            limit,
-        )
+        if (entry.execution is Execution.Running)
+            return Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_IN_USE)
+        val published = entry.execution as? Execution.Published
+        if (published != null && published.children.any { entries[it]?.owner != null || it !in entries })
+            return unavailable()
+        if (!makeCapacity(1, DIAGNOSTIC_ENTRY_OVERHEAD, setOf(key))) return diagnosticCapacityRejected()
+        return Refinement.Refined(Unit)
+    }
+
+    private fun claimEntry(
+        key: Key,
+        entry: Entry,
+        query: DiagnosticScopeQuery,
+        limit: ProtocolCount,
+    ): DiagnosticCheckpointAdmission {
+        val claim = DiagnosticExecutionClaim()
+        val published = entry.execution as? Execution.Published
+        attempts[claim] = Attempt(key, query, limit, entry.createdAt, published?.page)
+        if (published == null) entries[key] = entry.copy(execution = Execution.Running(claim))
+        else attempts.getValue(claim).children.addAll(published.children)
+        return when {
+            published != null -> DiagnosticCheckpointAdmission.Outcome(published.page, claim)
+            entry.input is Input.Output -> DiagnosticCheckpointAdmission.Outcome(entry.input.page, claim)
+            entry.input is Input.Scan -> DiagnosticCheckpointAdmission.Execute(entry.input.request, claim)
+            else -> rejected(DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION)
+        }
     }
 
     @Synchronized
-    internal fun publish(
+    internal fun stageScan(
         admission: DiagnosticCheckpointAdmission.Execute,
         result: DiagnosticScanResult,
     ): Refinement<DiagnosticStoredPage, DiagnosticCheckRejection> {
-        expire()
-        if (lifetime == Lifetime.RETIRED || clock() - admission.createdAt >= ttl)
-            return Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE)
-        when (val replay = lookupReplay(admission.key, admission.request.query, admission.limit)) {
-            ReplayLookup.Missing -> Unit
-            is ReplayLookup.Retained -> return Refinement.Refined(replay.page)
-            is ReplayLookup.Rejected -> return Refinement.Rejected(replay.reason)
-        }
-        val next =
-            when (val issued = nextPage(result)) {
+        val attempt = attempts[admission.claim] ?: return unavailable()
+        if (!active(attempt)) return unavailable()
+        val page =
+            when (result) {
+                is DiagnosticScanResult.Advancing -> result.page
+                is DiagnosticScanResult.Complete -> result.page
+                is DiagnosticScanResult.Qualified -> result.page
+                is DiagnosticScanResult.Rejected ->
+                    return Refinement.Refined(DiagnosticStoredPage(result, DiagnosticNextPage.Terminal))
+            }
+        if (page.facts.any { it.scope.lease != attempt.query.lease })
+            return Refinement.Rejected(DiagnosticCheckRejection.STALE_CONTINUATION)
+        if (result !is DiagnosticScanResult.Advancing)
+            return Refinement.Refined(DiagnosticStoredPage(result, DiagnosticNextPage.Terminal))
+        if (
+            diagnosticMatchingQuery(result.checkpoint.query, attempt.query, attempt.limit, attempt.limit)
+                is Refinement.Rejected
+        )
+            return Refinement.Rejected(DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION)
+        if (result.checkpoint.retainedBytes < 0)
+            return Refinement.Rejected(DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION)
+        if (result.checkpoint.retainedBytes > maximumCheckpointBytes)
+            return Refinement.Refined(DiagnosticStoredPage(result, DiagnosticNextPage.RetentionUnavailable))
+        val bytes =
+            result.checkpoint.retainedBytes +
+                result.checkpoint.query.diagnosticRetainedIdentityBytes() +
+                DIAGNOSTIC_ENTRY_OVERHEAD
+        if (bytes > maximumCheckpointBytes || !makeCapacity(1, bytes))
+            return Refinement.Refined(DiagnosticStoredPage(result, DiagnosticNextPage.RetentionUnavailable))
+        val token =
+            when (val issued = issueToken(SCAN_PREFIX)) {
                 is Refinement.Refined -> issued.value
                 is Refinement.Rejected -> return issued
             }
-        val page = DiagnosticStoredPage(result, next)
-        val replay = Replay(admission.request.query, admission.limit, admission.key, page, admission.createdAt)
-        val extraBytes =
-            replay.bytes +
-                if (result is DiagnosticScanResult.Advancing)
-                    result.checkpoint.retainedBytes + result.checkpoint.query.retainedIdentityBytes() + ENTRY_OVERHEAD
-                else 0L
-        val extraEntries = if (next is DiagnosticNextPage.Continue) 2 else 1
-        if (extraEntries > capacity || extraBytes > maximumBytes) return capacityRejected()
-        makeCapacity(extraEntries, extraBytes)
-        if (next is DiagnosticNextPage.Continue && result is DiagnosticScanResult.Advancing) {
-            checkpoints[next.token] = Checkpoint(result.checkpoint, admission.createdAt, admission.limit)
-        }
-        replays[admission.key] = replay
-        return Refinement.Refined(page)
+        val key = Key.Continuation(token)
+        entries[key] =
+            Entry(
+                attempt.query,
+                attempt.limit,
+                Input.Scan(DiagnosticScanRequest.Resume(result.checkpoint)),
+                bytes,
+                attempt.createdAt,
+                admission.claim,
+            )
+        attempt.children += key
+        return Refinement.Refined(DiagnosticStoredPage(result, DiagnosticNextPage.Continue(token)))
     }
 
-    private sealed interface ReplayLookup {
-        data object Missing : ReplayLookup
-
-        data class Retained(val page: DiagnosticStoredPage) : ReplayLookup
-
-        data class Rejected(val reason: DiagnosticCheckRejection) : ReplayLookup
-    }
-
-    private fun lookupReplay(
-        key: DiagnosticReplayKey,
-        query: DiagnosticScopeQuery,
-        limit: ProtocolCount,
-    ): ReplayLookup {
-        val replay = replays[key] ?: return ReplayLookup.Missing
-        when (val admitted = matchingQuery(query, replay.query, limit, replay.limit)) {
-            is Refinement.Rejected -> return ReplayLookup.Rejected(admitted.failure)
-            is Refinement.Refined -> Unit
-        }
-        val next = replay.page.next
-        if (next !is DiagnosticNextPage.Continue || next.token in checkpoints) return ReplayLookup.Retained(replay.page)
-        return when (key.origin) {
-            is DiagnosticReplayOrigin.Resume -> ReplayLookup.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE)
-            is DiagnosticReplayOrigin.First -> {
-                // An orphaned replay cannot block a new tokenless read or revive an evicted continuation.
-                replays.remove(key)
-                ReplayLookup.Missing
-            }
-        }
-    }
-
-    private fun makeCapacity(extraEntries: Int, extraBytes: Long) {
-        while (
-            checkpoints.size + replays.size + extraEntries > capacity || retainedBytes() + extraBytes > maximumBytes
-        ) {
-            evictOldest()
-        }
-    }
-
-    private fun nextPage(result: DiagnosticScanResult): Refinement<DiagnosticNextPage, DiagnosticCheckRejection> {
-        if (result !is DiagnosticScanResult.Advancing) return Refinement.Refined(DiagnosticNextPage.Terminal)
-        if (
-            result.checkpoint.retainedBytes + result.checkpoint.query.retainedIdentityBytes() + ENTRY_OVERHEAD >
-                maximumCheckpointBytes
-        )
-            return capacityRejected()
+    /** The suffix is invisible until its parent's final fitted page commits under the same claim. */
+    @Synchronized
+    fun issueOutput(
+        claim: DiagnosticExecutionClaim,
+        page: DiagnosticPublishedPage,
+        measuredBytes: QueryRetentionByteCount,
+    ): Refinement<ProtocolText, DiagnosticCheckRejection> {
+        val attempt = attempts[claim] ?: return unavailable()
+        if (!active(attempt)) return unavailable()
+        if (attempt.replay != null) return Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED)
+        val detached = page.publicationPage()
+        if (!detached.matches(attempt.query)) return Refinement.Rejected(DiagnosticCheckRejection.STALE_CONTINUATION)
+        if (measuredBytes.value > maximumBytes / DIAGNOSTIC_CHARACTER_BYTES) return diagnosticCapacityRejected()
+        val byteCount =
+            detached.diagnosticRetainedBytes().coerceAtLeast(measuredBytes.value * DIAGNOSTIC_CHARACTER_BYTES) +
+                attempt.query.diagnosticRetainedIdentityBytes() +
+                DIAGNOSTIC_ENTRY_OVERHEAD
+        val count = detached.factCount()
+        val parentInput = entries[attempt.parent]?.input
+        if (count == 0 || parentInput is Input.Output && count >= parentInput.page.factCount())
+            return Refinement.Rejected(DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION)
+        if (!makeCapacity(1, byteCount)) return diagnosticCapacityRejected()
         val token =
-            when (val parsed = ProtocolText.parse("diagnostic:v1:" + UUID.randomUUID())) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return capacityRejected()
+            when (val issued = issueToken(OUTPUT_PREFIX)) {
+                is Refinement.Refined -> issued.value
+                is Refinement.Rejected -> return issued
             }
-        if (token in checkpoints) return capacityRejected()
-        return Refinement.Refined(DiagnosticNextPage.Continue(token))
+        val key = Key.Continuation(token)
+        entries[key] = Entry(attempt.query, attempt.limit, Input.Output(detached), byteCount, attempt.createdAt, claim)
+        attempt.children += key
+        return Refinement.Refined(token)
+    }
+
+    /** Commit is atomic: the immutable final page and every successor become visible together. */
+    @Synchronized
+    fun commit(
+        claim: DiagnosticExecutionClaim,
+        page: DiagnosticPublishedPage,
+    ): Refinement<Unit, DiagnosticPublicationFailure> {
+        val attempt =
+            when (val admitted = admitPublicationAttempt(claim)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val parent =
+            entries[attempt.parent] ?: return publicationRejected(DiagnosticPublicationFailure.DEPENDENCY_UNAVAILABLE)
+        val final = page.publicationPage()
+        if (!final.matches(attempt.query)) return publicationRejected(DiagnosticPublicationFailure.INVALID_FITTED_PAGE)
+        if (attempt.replay != null) return commitReplay(claim, attempt, final)
+        val referenced =
+            when (val admitted = admitPublicationDependencies(claim, attempt, parent, final)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val bytes =
+            final.diagnosticRetainedBytes() + parent.query.diagnosticRetainedIdentityBytes() + DIAGNOSTIC_ENTRY_OVERHEAD
+        if (!makeCapacity(0, (bytes - parent.bytes).coerceAtLeast(0)))
+            return publicationRejected(DiagnosticPublicationFailure.CAPACITY_EXCEEDED)
+        entries.entries.removeIf { it.value.owner === claim && it.key !in referenced }
+        entries[attempt.parent] =
+            parent.copy(
+                input = Input.Consumed,
+                bytes = bytes,
+                owner = null,
+                execution = Execution.Published(final, referenced),
+            )
+        entries.replaceAll { _, value -> if (value.owner === claim) value.copy(owner = null) else value }
+        attempts.remove(claim)
+        return Refinement.Refined(Unit)
+    }
+
+    private fun admitPublicationAttempt(
+        claim: DiagnosticExecutionClaim
+    ): Refinement<Attempt, DiagnosticPublicationFailure> {
+        if (lifetime == Lifetime.RETIRED) return publicationRejected(DiagnosticPublicationFailure.OWNER_RETIRED)
+        val attempt = attempts[claim] ?: return publicationRejected(DiagnosticPublicationFailure.CLAIM_UNAVAILABLE)
+        if (clock() - attempt.createdAt >= ttl) return publicationRejected(DiagnosticPublicationFailure.EXPIRED)
+        return Refinement.Refined(attempt)
+    }
+
+    private fun commitReplay(
+        claim: DiagnosticExecutionClaim,
+        attempt: Attempt,
+        final: DiagnosticPublishedPage,
+    ): Refinement<Unit, DiagnosticPublicationFailure> {
+        if (attempt.replay != final) return publicationRejected(DiagnosticPublicationFailure.PUBLISHED_PAGE_MISMATCH)
+        if (attempt.children.any { it !in entries })
+            return publicationRejected(DiagnosticPublicationFailure.DEPENDENCY_UNAVAILABLE)
+        attempts.remove(claim)
+        return Refinement.Refined(Unit)
+    }
+
+    private fun admitPublicationDependencies(
+        claim: DiagnosticExecutionClaim,
+        attempt: Attempt,
+        parent: Entry,
+        final: DiagnosticPublishedPage,
+    ): Refinement<Set<Key>, DiagnosticPublicationFailure> {
+        if ((parent.execution as? Execution.Running)?.claim !== claim)
+            return publicationRejected(DiagnosticPublicationFailure.CLAIM_UNAVAILABLE)
+        val selected = final.continuation()?.let { Key.Continuation(it) }
+        if (selected == attempt.parent) return publicationRejected(DiagnosticPublicationFailure.NON_ADVANCING_SUCCESSOR)
+        if (selected != null && selected !in attempt.children)
+            return publicationRejected(DiagnosticPublicationFailure.DEPENDENCY_UNAVAILABLE)
+        val referenced = reachable(selected)
+        if (selected != null && referenced.isEmpty())
+            return publicationRejected(DiagnosticPublicationFailure.DEPENDENCY_UNAVAILABLE)
+        return Refinement.Refined(referenced)
+    }
+
+    @Synchronized
+    fun discard(claim: DiagnosticExecutionClaim) {
+        val attempt = attempts.remove(claim) ?: return
+        entries.entries.removeIf { it.value.owner === claim }
+        val parent = entries[attempt.parent]
+        if ((parent?.execution as? Execution.Running)?.claim === claim) {
+            if (attempt.parent is Key.First) entries.remove(attempt.parent)
+            else entries[attempt.parent] = parent.copy(execution = Execution.Ready)
+        }
+        expire()
     }
 
     @Synchronized
     fun retire() {
         lifetime = Lifetime.RETIRED
-        checkpoints.clear()
-        replays.clear()
+        entries.clear()
+        attempts.clear()
     }
 
-    private fun retainedBytes(): Long = checkpoints.values.sumOf { it.bytes } + replays.values.sumOf { it.bytes }
+    private fun rejected(reason: DiagnosticCheckRejection) = DiagnosticCheckpointAdmission.Rejected(reason)
 
-    private fun expire() {
-        val now = clock()
-        checkpoints.entries.removeIf { now - it.value.createdAt >= ttl }
-        replays.entries.removeIf { now - it.value.createdAt >= ttl }
-    }
+    private fun publicationRejected(reason: DiagnosticPublicationFailure) = Refinement.Rejected(reason)
 
-    private fun evictOldest() {
-        val firstCheckpoint = checkpoints.entries.firstOrNull()
-        val firstReplay = replays.entries.firstOrNull()
-        if (
-            firstCheckpoint != null &&
-                (firstReplay == null || firstCheckpoint.value.createdAt <= firstReplay.value.createdAt)
-        ) {
-            checkpoints.remove(firstCheckpoint.key)
-        } else if (firstReplay != null) replays.remove(firstReplay.key)
+    private fun unavailable() = Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE)
+
+    companion object {
+        const val SCAN_PREFIX = "diagnostic:v1:"
+        const val OUTPUT_PREFIX = "diagnostic-output:v1:"
     }
 }
-
-private fun matchingQuery(
-    current: DiagnosticScopeQuery,
-    original: DiagnosticScopeQuery,
-    currentLimit: ProtocolCount,
-    originalLimit: ProtocolCount,
-): Refinement<Unit, DiagnosticCheckRejection> =
-    when {
-        current.lease != original.lease -> Refinement.Rejected(DiagnosticCheckRejection.STALE_CONTINUATION)
-        current.path != original.path || currentLimit != originalLimit ->
-            Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_REQUEST_MISMATCH)
-        else -> Refinement.Refined(Unit)
-    }
-
-private fun unavailable() = DiagnosticCheckpointAdmission.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE)
-
-private fun capacityRejected(): Refinement.Rejected<DiagnosticCheckRejection> =
-    Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED)
-
-private fun DiagnosticStoredPage.retainedBytes(): Long =
-    when (val value = result) {
-        is DiagnosticScanResult.Advancing -> value.page.retainedBytes() + value.checkpoint.retainedBytes
-        is DiagnosticScanResult.Complete -> value.page.retainedBytes()
-        is DiagnosticScanResult.Qualified -> value.page.retainedBytes()
-        is DiagnosticScanResult.Rejected -> ENTRY_OVERHEAD
-    }
-
-private fun DiagnosticScanPage.retainedBytes(): Long =
-    ENTRY_OVERHEAD +
-        facts.sumOf {
-            FACT_OVERHEAD +
-                (it.message.value.length.toLong() + it.code.value.length + it.location.file.value.length) *
-                    CHARACTER_BYTES
-        } +
-        analyzedFiles.sumOf { ENTRY_OVERHEAD + it.value.length * CHARACTER_BYTES } +
-        limitations.sumOf { ENTRY_OVERHEAD + it.file.value.length * CHARACTER_BYTES } +
-        when (val inventory = inventory) {
-            DiagnosticScanInventory.Enumerating -> 0L
-            is DiagnosticScanInventory.Exhausted ->
-                inventory.files.sumOf { ENTRY_OVERHEAD + it.value.length * CHARACTER_BYTES }
-        }
-
-private const val ENTRY_OVERHEAD = 512L
-private const val FACT_OVERHEAD = 2048L
-private const val CHARACTER_BYTES = 4L
-
-private fun DiagnosticScopeQuery.retainedIdentityBytes(): Long =
-    ENTRY_OVERHEAD + path.toString().length * CHARACTER_BYTES + lease.retainedIdentityBytes()
-
-private fun SemanticReadAuthority.retainedIdentityBytes(): Long =
-    ENTRY_OVERHEAD + (workspaceRoot.value.length.toLong() + identity.revisionKey.value.length) * CHARACTER_BYTES
-
-private fun DiagnosticReplayKey.retainedBytes(): Long =
-    ENTRY_OVERHEAD +
-        when (val value = origin) {
-            is DiagnosticReplayOrigin.First -> value.path.length * CHARACTER_BYTES + value.lease.retainedIdentityBytes()
-            is DiagnosticReplayOrigin.Resume -> value.token.value.length * CHARACTER_BYTES
-        }

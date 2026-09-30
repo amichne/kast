@@ -187,7 +187,7 @@
         "type"
       ],
       "additionalProperties": false,
-      "description": "Enumerate declarations under existing bounded execution. All does not mean unlimited work or guaranteed complete coverage."
+      "description": "Enumerate the four supported Kotlin declaration families in admitted source files, ordered by canonical file identity and source position (KOTLIN_FILE_SOURCE_V2). Bounded pages preserve undiscovered files and source positions. Resume the exact continuation to advance the same semantic universe; discovery observations report exhaustion, retained progress, or a precise terminal cause."
     },
     "ReferenceSource": {
       "type": "object",
@@ -243,13 +243,19 @@
           "$ref": "#/$defs/SymbolsOutput"
         },
         {
+          "$ref": "#/$defs/OccurrencesOutput"
+        },
+        {
+          "$ref": "#/$defs/TraversalRecordsOutput"
+        },
+        {
           "$ref": "#/$defs/BindingRowsOutput"
         },
         {
           "type": "null"
         }
       ],
-      "description": "Present retained symbols or typed binding rows without rerunning stages. Omission or null selects symbol fields and rejects a retained binding-row result."
+      "description": "Present retained symbols, compiler-confirmed occurrences, depth-bearing traversal records or typed binding rows without rerunning stages. Omission or null selects symbol fields and rejects a retained occurrence or binding-row result."
     },
     "SymbolsOutput": {
       "type": "object",
@@ -1149,7 +1155,7 @@
   "tools": [
     {
       "name": "query_symbols",
-      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct.",
+      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct. Discovery observations preserve the declared universe, phase counts, coverage and unfinished input. Reference occurrence rows retain compiler target identity and explicit declaration-owned, file-scoped or unavailable ownership. A published execution page replays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner publishes or drains.",
       "deferLoading": false,
       "schema": {
         "type": "object",
@@ -1494,14 +1500,19 @@
       "name": "workspace_lifecycle",
       "description": "Inspect or explicitly control one selected IDEA workspace. Ordinary semantic calls prepare the exact project and wait for native readiness automatically; do not use this tool as a routine read preflight. For a requested control operation, open, present, release or close an exact project. The host owns document save, VFS refresh and model reload selection. Opening is background best effort. Preserve returned host and project identities and reuse request IDs only for the same operation. Pending work requires status, not repeated open. Trust and failed saves require user resolution. Release never closes a project. Borrowed or presented projects are protected from agent cleanup; request_user_close requests exact-target controller approval.",
       "binding": "WorkspaceLifecycleToolInput",
-      "hosts": ["APP_SERVER"]
+      "hosts": [
+        "APP_SERVER"
+      ]
     },
     {
       "name": "health_check",
       "description": "Observe exact workspace binding and saved/indexed readiness. This passive check does not validate semantic answers.",
       "binding": "McpHealthRequest",
-      "hosts": ["MCP", "RPC"]
+      "hosts": [
+        "MCP",
+        "RPC"
+      ]
     }
   ],
-  "contractVersion": 3
+  "contractVersion": 4
 }

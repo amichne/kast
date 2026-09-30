@@ -131,7 +131,7 @@ class HostedPublicationDeadlineTest {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val executor =
             HostedQueryExecutor(backgroundScope, { now }) { limits ->
-                HostedReadDiagnostics({ now }, limits, receipts::add)
+                HostedReadDiagnostics({ now }, limits, publish = receipts::add)
             }
         var providerCalls = 0
         val result =

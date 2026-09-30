@@ -168,11 +168,11 @@ internal data class PublicToolSymbolsOutput(
 
 @Serializable
 @SerialName("OCCURRENCES")
-internal data object PublicToolOccurrencesOutput : PublicToolOutput
+internal data object PublicToolOccurrencesOutput : PublicToolOutput, PublicToolReadResultOutput
 
 @Serializable
 @SerialName("TRAVERSAL_RECORDS")
-internal data object PublicToolTraversalRecordsOutput : PublicToolOutput
+internal data object PublicToolTraversalRecordsOutput : PublicToolOutput, PublicToolReadResultOutput
 
 @Serializable
 @SerialName("VISIBILITY")

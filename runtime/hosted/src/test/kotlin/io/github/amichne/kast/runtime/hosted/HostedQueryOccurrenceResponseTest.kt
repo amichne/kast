@@ -20,6 +20,7 @@ import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionMeasurementDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionSamplesDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
@@ -94,8 +95,13 @@ class HostedQueryOccurrenceResponseTest {
                     RelationProviderDocument.INTELLIJ_REFERENCES_V2,
                     RelationLimitationDocument.PROVIDER_FAILURE,
                     RelationOmissionMeasurementDocument.UnmeasuredOnPage,
-                    BoundedProtocolList.create(
-                            emptyList<io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument>()
+                    RelationOmissionSamplesDocument.complete(
+                            BoundedProtocolList.create(
+                                    emptyList<
+                                        io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument
+                                    >()
+                                )
+                                .refined()
                         )
                         .refined(),
                 )

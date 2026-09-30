@@ -148,7 +148,7 @@ private fun RelationBatch.qualifiedObservation(): KastSpanObservation =
 
 private fun RelationBatch.measurements(): Set<KastSpanMeasurement> =
     setOf(
-        KastSpanMeasurement.RecordCount(exactSpanCount(facts.size.toLong())),
+        KastSpanMeasurement.RecordCount(exactSpanCount(semanticResultCount.toLong())),
         KastSpanMeasurement.WorkUnitCount(exactSpanCount(examinedWorkUnits.value)),
     )
 
@@ -183,8 +183,17 @@ private enum class RelationCompilerOutputAdmission {
 private fun RelationCompilation.Complete.admitFor(request: RelationRequest): RelationCompilerOutputAdmission {
     if (
         batch.request !== request ||
-            coverage.exactCount.value != batch.facts.size ||
-            batch.resultCount.value != batch.facts.size
+            coverage.exactCount.value != batch.semanticResultCount ||
+            batch.resultCount.value != batch.semanticResultCount
+    ) {
+        return RelationCompilerOutputAdmission.Rejected
+    }
+    if (
+        batch.referenceOccurrences.any {
+            it.target !== request.subject ||
+                it.authority != request.subject.lease.identity ||
+                it.meaning != request.meaning
+        }
     ) {
         return RelationCompilerOutputAdmission.Rejected
     }
@@ -198,27 +207,18 @@ private fun RelationCompilation.Complete.admitFor(request: RelationRequest): Rel
  * ownership. Rejected is the closed compiler-contract failure.
  */
 private fun RelationCompilation.Qualified.admitFor(request: RelationRequest): RelationCompilerOutputAdmission {
+    if (batch.request !== request || !admittedCount() || coverage.limitations.isEmpty())
+        return RelationCompilerOutputAdmission.Rejected
+    val resumable = coverage as? io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.Resumable
+    if (resumable != null && !resumable.continuation.admits(request)) return RelationCompilerOutputAdmission.Rejected
     if (
-        batch.request !== request ||
-            coverage.knownMinimum.value != batch.facts.size ||
-            batch.resultCount.value != batch.facts.size ||
-            coverage.limitations.isEmpty()
+        batch.referenceOccurrences.any {
+            it.target !== request.subject ||
+                it.authority != request.subject.lease.identity ||
+                it.meaning != request.meaning
+        }
     ) {
         return RelationCompilerOutputAdmission.Rejected
-    }
-    val admittedCoverage = coverage
-    if (admittedCoverage is io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.Resumable) {
-        val continuation = admittedCoverage.continuation
-        if (
-            continuation.subject != request.subject.fingerprint ||
-                continuation.scope != request.scopeFingerprint ||
-                continuation.meaning != request.meaning ||
-                continuation.authority != request.subject.lease.identity ||
-                continuation.nextProviderCursor.provider != request.providerCursor.provider ||
-                continuation.nextProviderCursor.nextPosition.value < request.providerCursor.nextPosition.value
-        ) {
-            return RelationCompilerOutputAdmission.Rejected
-        }
     }
     return batch.facts.admitFor(request.subject, request)
 }
@@ -260,3 +260,14 @@ private fun RelationCompilerRejection.toPublicRejection(): RelationReadRejection
         RelationCompilerRejection.CONTINUATION_CURSOR_MOVED -> RelationReadRejection.CONTINUATION_CURSOR_MOVED
         RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION -> RelationReadRejection.COMPILER_CONTRACT_VIOLATION
     }
+
+private fun RelationCompilation.Qualified.admittedCount(): Boolean =
+    coverage.knownMinimum.value == batch.semanticResultCount && batch.resultCount.value == batch.semanticResultCount
+
+private fun io.github.amichne.kast.relation.contract.RelationContinuation.admits(request: RelationRequest): Boolean {
+    if (subject != request.subject.fingerprint || scope != request.scopeFingerprint || meaning != request.meaning)
+        return false
+    return authority == request.subject.lease.identity &&
+        nextProviderCursor.provider == request.providerCursor.provider &&
+        nextProviderCursor.nextPosition.value >= request.providerCursor.nextPosition.value
+}

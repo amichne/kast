@@ -143,6 +143,8 @@ private constructor(
     val expandedFrontier: TraversalFrontierCount,
     val progress: TraversalProgress,
     val partialExpansions: List<TraversalPartialExpansion>,
+    val inheritedOmissions: List<TraversalPartialExpansion>,
+    val referenceOccurrences: List<TraversalReferenceObservation>,
 ) {
     companion object {
         /**
@@ -163,6 +165,8 @@ private constructor(
             expandedFrontier: Int,
             progress: TraversalProgress = TraversalProgress.Initial,
             partialExpansions: List<TraversalPartialExpansion> = emptyList(),
+            inheritedOmissions: List<TraversalPartialExpansion> = emptyList(),
+            referenceOccurrences: List<TraversalReferenceObservation> = emptyList(),
         ): Refinement<TraversalPage, TraversalPageFailure> {
             when (
                 val measures = admitMeasures(plan, encodedBytes, examinedWorkUnits, elapsedMillis, expandedFrontier)
@@ -170,7 +174,17 @@ private constructor(
                 is Refinement.Rejected -> return measures
                 is Refinement.Refined -> Unit
             }
-            when (val contents = admitContents(plan, records, encodedBytes, expandedFrontier, partialExpansions)) {
+            when (
+                val contents =
+                    admitContents(
+                        plan,
+                        records,
+                        encodedBytes,
+                        expandedFrontier,
+                        partialExpansions,
+                        referenceOccurrences,
+                    )
+            ) {
                 is Refinement.Rejected -> return contents
                 is Refinement.Refined -> Unit
             }
@@ -184,6 +198,8 @@ private constructor(
                     expandedFrontier = TraversalFrontierCount(expandedFrontier),
                     progress = progress,
                     partialExpansions = partialExpansions.sortedBy { it.entry }.toList(),
+                    inheritedOmissions = java.util.Collections.unmodifiableList(inheritedOmissions.distinct().toList()),
+                    referenceOccurrences = java.util.Collections.unmodifiableList(referenceOccurrences.toList()),
                 )
             )
         }
@@ -213,12 +229,15 @@ private constructor(
             encodedBytes: Long,
             expandedFrontier: Int,
             partialExpansions: List<TraversalPartialExpansion>,
+            referenceOccurrences: List<TraversalReferenceObservation>,
         ): Refinement<Unit, TraversalPageFailure> {
             if (records != records.sorted()) return Refinement.Rejected(TraversalPageFailure.NON_DETERMINISTIC_RECORDS)
             if (records.distinct().size != records.size)
                 return Refinement.Rejected(TraversalPageFailure.DUPLICATE_RECORD)
-            if (records.size > plan.budget.records.value)
-                return Refinement.Rejected(TraversalPageFailure.RECORD_LIMIT_EXCEEDED)
+            when (val admitted = admitReferences(plan, records, referenceOccurrences)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
             if (
                 partialExpansions.size > expandedFrontier ||
                     partialExpansions.map { it.entry.node.fingerprint }.distinct().size != partialExpansions.size
@@ -231,11 +250,41 @@ private constructor(
                 }
             )
                 return Refinement.Rejected(TraversalPageFailure.PARTIAL_EXPANSION_MISMATCH)
-            val measured = records.sumOf { record ->
-                record.fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-            }
+            val measured =
+                records.sumOf { record ->
+                    record.fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+                } +
+                    referenceOccurrences.sumOf {
+                        it.reference.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+                    }
             return if (measured != encodedBytes) Refinement.Rejected(TraversalPageFailure.ENCODED_BYTE_COUNT_MISMATCH)
             else Refinement.Refined(Unit)
+        }
+
+        private fun admitReferences(
+            plan: TraversalPlan,
+            records: List<TraversalRecord>,
+            references: List<TraversalReferenceObservation>,
+        ): Refinement<Unit, TraversalPageFailure> {
+            val semanticCount =
+                records.size +
+                    references.count { observation ->
+                        records.none {
+                            it.fact.occurrence == observation.reference.occurrence &&
+                                it.fact.target == observation.reference.target
+                        }
+                    }
+            if (semanticCount > plan.budget.records.value)
+                return Refinement.Rejected(TraversalPageFailure.RECORD_LIMIT_EXCEEDED)
+            if (references != references.distinct().sorted())
+                return Refinement.Rejected(TraversalPageFailure.PARTIAL_EXPANSION_MISMATCH)
+            if (
+                references.any {
+                    it.reference.authority != plan.start.lease.identity || it.reference.meaning != plan.meaning
+                }
+            )
+                return Refinement.Rejected(TraversalPageFailure.PARTIAL_EXPANSION_MISMATCH)
+            return Refinement.Refined(Unit)
         }
     }
 }

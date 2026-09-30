@@ -28,6 +28,8 @@ import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.kotlin.idea.KotlinFileType
@@ -38,6 +40,7 @@ internal fun projectBoundDiagnosticEnumeration(
     authority: SemanticReadAuthority,
     limits: ReadLimits,
     admitsFile: (Path) -> Boolean,
+    observation: IntellijReadObservation = IntellijReadObservation.None,
 ): DiagnosticScopeEnumerator = DiagnosticScopeEnumerator { request, budget ->
     val start = System.nanoTime()
     val allowance =
@@ -48,7 +51,7 @@ internal fun projectBoundDiagnosticEnumeration(
         return@DiagnosticScopeEnumerator DiagnosticEnumerationResult.Rejected(
             DiagnosticEnumerationFailure.IndexModeUnsupported
         )
-    guardedDiagnosticEnumeration {
+    guardedDiagnosticEnumeration(observation) {
         readAction { DiagnosticIndexScope(project, authority, limits, admitsFile).collect(request, allowance) }
     }
 }
@@ -82,9 +85,11 @@ private class DiagnosticIndexScope(
 }
 
 internal suspend fun guardedDiagnosticEnumeration(
-    block: suspend () -> DiagnosticEnumerationResult
-): DiagnosticEnumerationResult =
-    try {
+    observation: IntellijReadObservation = IntellijReadObservation.None,
+    block: suspend () -> DiagnosticEnumerationResult,
+): DiagnosticEnumerationResult {
+    observation.phase(IntellijReadPhase.DIAGNOSTIC_ENUMERATION)
+    return try {
         block()
     } catch (cancelled: ProcessCanceledException) {
         throw cancelled
@@ -95,6 +100,7 @@ internal suspend fun guardedDiagnosticEnumeration(
     } catch (_: LinkageError) {
         DiagnosticEnumerationResult.Rejected(DiagnosticScopeResolutionFailure.UNAVAILABLE)
     }
+}
 
 private fun collectIndexedDiagnosticFiles(
     project: Project,

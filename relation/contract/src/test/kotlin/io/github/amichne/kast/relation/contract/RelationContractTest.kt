@@ -117,9 +117,10 @@ class RelationContractTest {
                     RelationResultCount.parse(0).refined(),
                 )
                 .refined()
-        val cursor = expanded.providerCursor.advance(RelationProviderItemDescriptor.parse("first").refined())
+        val state = pendingReferences(expanded)
+        val cursor = state.providerCursor
         val compiled =
-            RelationCompilation.qualifiedResumable(batch, setOf(RelationLimitation.RESULT_LIMIT_REACHED), cursor)
+            RelationCompilation.qualifiedResumable(batch, setOf(RelationLimitation.RESULT_LIMIT_REACHED), cursor, state)
                 .refined()
         val continuation = (compiled.coverage as RelationIncompleteCoverage.Resumable).continuation
         assertThrows(UnsupportedOperationException::class.java) {
@@ -229,12 +230,14 @@ class RelationContractTest {
                     setOf(RelationLimitation.UNRESOLVED_TARGET),
                 )
                 .refined()
-        val cursor = request.providerCursor.advance(RelationProviderItemDescriptor.parse("first").refined())
+        val state = pendingReferences(request)
+        val cursor = state.providerCursor
         val resumable =
             RelationCompilation.qualifiedResumable(
                     batch,
                     setOf(RelationLimitation.RESULT_LIMIT_REACHED),
                     cursor,
+                    state,
                 )
                 .refined()
 
@@ -276,6 +279,7 @@ class RelationContractTest {
                 batch,
                 setOf(RelationLimitation.TIME_LIMIT_REACHED),
                 request.providerCursor,
+                pendingReferences(request),
             )
 
         assertEquals(
@@ -290,15 +294,148 @@ class RelationContractTest {
         val second = RelationProviderItemDescriptor.parse("second").refined()
 
         val forward =
-            RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1).advance(first).advance(second)
+            RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V2).advance(first).advance(second)
         val moved =
-            RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V1).advance(second).advance(first)
+            RelationProviderCursor.start(RelationProviderKind.INTELLIJ_REFERENCES_V2).advance(second).advance(first)
 
         assertEquals(2L, forward.nextPosition.value)
         org.junit.jupiter.api.Assertions.assertNotEquals(
             forward.consumedPrefixDigest,
             moved.consumedPrefixDigest,
         )
+    }
+
+    @Test
+    fun `compiler confirmed alias occurrence has file ownership and cannot manufacture a declaration edge`() {
+        val request = request(RelationMeaning.References)
+        val target =
+            RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity).refined()
+        val location = RelationOccurrence.fromBoundary(request.subject.file, 8, 14).refined()
+        val occurrence =
+            RelationReferenceOccurrence.confirmed(
+                    request,
+                    target,
+                    location,
+                    RelationReferenceContext.ALIASED_IMPORT,
+                    RelationReferenceOwnership.FileScoped(RelationReferenceContext.ALIASED_IMPORT),
+                    RelationProvenance.K2_AUTHORED_SOURCE,
+                )
+                .refined()
+
+        assertSame(request.subject, occurrence.target)
+        assertEquals(request.subject.lease.identity, occurrence.authority)
+        assertEquals(RelationFactCoverage.EXACT_COMPILER_CONFIRMED, occurrence.coverage)
+        assertEquals(
+            RelationReferenceProjectionFailure.FILE_SCOPED,
+            (occurrence.declarationFact(request) as Refinement.Rejected).failure,
+        )
+        assertEquals(
+            RelationReferenceTargetFailure.DIFFERENT_COMPILER_IDENTITY,
+            (RelationConfirmedReferenceTarget.fromCompiler(request.subject, related(request.subject).compilerIdentity)
+                    as Refinement.Rejected)
+                .failure,
+        )
+        assertEquals(
+            RelationReferenceOccurrenceFailure.FILE_CONTEXT_MISMATCH,
+            (RelationReferenceOccurrence.confirmed(
+                    request,
+                    target,
+                    location,
+                    RelationReferenceContext.CODE,
+                    RelationReferenceOwnership.FileScoped(RelationReferenceContext.ALIASED_IMPORT),
+                    RelationProvenance.K2_AUTHORED_SOURCE,
+                ) as Refinement.Rejected)
+                .failure,
+        )
+    }
+
+    @Test
+    fun `owned reference carries the original endpoint proof into a real declaration edge`() {
+        val request = request(RelationMeaning.References)
+        val owner = related(request.subject)
+        val target =
+            RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity).refined()
+        val location = RelationOccurrence.fromBoundary(owner.file, 73, 79).refined()
+        val occurrence =
+            RelationReferenceOccurrence.confirmed(
+                    request,
+                    target,
+                    location,
+                    RelationReferenceContext.TYPE,
+                    RelationReferenceOwnership.DeclarationOwned(owner),
+                    RelationProvenance.K2_AUTHORED_SOURCE,
+                )
+                .refined()
+        val edge = occurrence.declarationFact(request).refined()
+
+        assertSame(owner, edge.source)
+        assertSame(request.subject, edge.target)
+        assertSame(location, edge.occurrence)
+    }
+
+    @Test
+    fun `detached reference successors preserve unread input and share immutable inventories`() {
+        val request = request(RelationMeaning.References)
+        val file = request.subject.file
+        val first =
+            RelationProviderLocator.Reference(
+                file,
+                io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange.parse(1, 2).refined(),
+                RelationProviderItemDescriptor.parse("first").refined(),
+            )
+        val second =
+            RelationProviderLocator.Reference(
+                file,
+                io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange.parse(3, 4).refined(),
+                RelationProviderItemDescriptor.parse("second").refined(),
+            )
+        val locators = mutableListOf(first, second)
+        val prepared = RelationProviderState.references(locators)
+        locators.clear()
+        val successor = prepared.consume()
+
+        assertEquals(listOf(first, second), prepared.prepared)
+        assertEquals(listOf(second), successor.prepared)
+        assertSame(second, successor.prepared.single())
+        assertEquals(prepared.retainedBytes, successor.retainedBytes)
+        assertNotEquals(prepared.canonicalProjection(), successor.canonicalProjection())
+        assertEquals(false, successor.consume().hasUnfinishedWork)
+        assertThrows(UnsupportedOperationException::class.java) {
+            (prepared.prepared as MutableList).clear()
+        }
+    }
+
+    @Test
+    fun `a published batch owns immutable exact facts independently of the caller list`() {
+        val request = request(RelationMeaning.Callees)
+        val fact =
+            RelationFact.create(
+                    request,
+                    request.subject,
+                    related(request.subject),
+                    RelationOccurrence.fromBoundary(request.subject.file, 41, 42).refined(),
+                    RelationProvenance.K2_AUTHORED_SOURCE,
+                )
+                .refined()
+        val input = mutableListOf(fact)
+        val batch =
+            RelationBatch.create(
+                    request,
+                    input,
+                    RelationByteCount.parse(fact.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong())
+                        .refined(),
+                    RelationWorkCount.parse(1).refined(),
+                    RelationResultCount.parse(1).refined(),
+                )
+                .refined()
+        input.clear()
+        assertEquals(listOf(fact), batch.facts)
+        assertThrows(UnsupportedOperationException::class.java) {
+            (batch.facts as MutableList<RelationFact>).clear()
+        }
+        assertSame(fact, batch.facts.single())
+        assertEquals(1, batch.resultCount.value)
+        assertEquals(RelationFactCoverage.EXACT_COMPILER_CONFIRMED, batch.facts.single().coverage)
     }
 
     private fun related(subject: RelationEndpoint): RelationEndpoint.Resolved =
@@ -324,6 +461,18 @@ class RelationContractTest {
                     .refined(),
             )
             .refined()
+
+    private fun pendingReferences(request: RelationRequest): RelationProviderState =
+        RelationProviderState.references(
+            listOf(0, 1).map { ordinal ->
+                RelationProviderLocator.Reference(
+                    request.subject.file,
+                    io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange.parse(ordinal, ordinal + 1)
+                        .refined(),
+                    RelationProviderItemDescriptor.parse("pending:$ordinal").refined(),
+                )
+            }
+        )
 
     private fun request(meaning: RelationMeaning): RelationRequest =
         RelationRequest.start(

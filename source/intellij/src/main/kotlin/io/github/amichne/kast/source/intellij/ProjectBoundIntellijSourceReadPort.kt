@@ -2,6 +2,7 @@ package io.github.amichne.kast.source.intellij
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.source.contract.SourceReadContinuationPort
 import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.source.contract.SourceReadScope
 import io.github.amichne.kast.source.contract.readScope
@@ -20,7 +21,7 @@ object ProjectBoundIntellijSourceReadPort {
         authority: SemanticReadAuthority,
         model: WorkspaceSearchScopeModel,
         fileAdmission: IntellijSemanticSourceFileAdmission,
-        continuations: IntellijSourceReadContinuations,
+        continuations: SourceReadContinuationPort,
         limits: ReadLimits = ReadLimits.Default,
         observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation =
             io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,

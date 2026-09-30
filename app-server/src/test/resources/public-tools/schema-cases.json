@@ -1121,14 +1121,14 @@
     "schema_valid": false
   },
   {
-    "id": "read-result-rejects-occurrence-output",
+    "id": "read-result-rejects-unknown-output",
     "tool": "query_symbols",
     "arguments": {
       "request": {
         "type": "READ_RESULT",
         "result": "result:v1:00000000-0000-0000-0000-000000000000",
         "output": {
-          "type": "OCCURRENCES"
+          "type": "UNKNOWN"
         }
       }
     },
@@ -1260,14 +1260,15 @@
     "schema_valid": false
   },
   {
-    "id": "read-result-rejects-traversal-record-output",
+    "id": "read-result-traversal-rejects-symbol-fields",
     "tool": "query_symbols",
     "arguments": {
       "request": {
         "type": "READ_RESULT",
         "result": "result:v1:00000000-0000-0000-0000-000000000000",
         "output": {
-          "type": "TRAVERSAL_RECORDS"
+          "type": "TRAVERSAL_RECORDS",
+          "fields": ["NAME"]
         }
       }
     },

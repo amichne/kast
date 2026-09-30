@@ -123,6 +123,8 @@ private data class DiagnosticQualificationCliDocument(
     val limitations: List<DiagnosticLimitationCliDocument>,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val continuation: String? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val retentionFailure: io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument? = null,
 )
 
 @Serializable
@@ -168,6 +170,7 @@ private fun DiagnosticCheckQualification.toCliDocument() =
         analyzedFiles = analyzedFiles.map { it.value },
         limitations = limitations.map(DiagnosticLimitationDocument::toCliDocument),
         continuation = continuation?.value,
+        retentionFailure = retentionFailure,
     )
 
 private fun DiagnosticLimitationDocument.toCliDocument() =

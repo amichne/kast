@@ -7,12 +7,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiReference
-import com.intellij.psi.search.PsiElementProcessor
-import com.intellij.psi.search.searches.DefinitionsScopedSearch
-import com.intellij.psi.search.searches.ReferencesSearch
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
-import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
@@ -21,18 +16,13 @@ import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationOmissionSample
-import io.github.amichne.kast.relation.contract.RelationProvenance
-import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.workspace.intellij.read.IntellijGeneratedSourceState
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import org.jetbrains.kotlin.idea.references.KtReference
-import org.jetbrains.kotlin.psi.KtCallElement
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /** Request-local K2-confirmed implementation of all seven closed one-hop relation meanings. */
 internal class IntellijK2RelationSearch(
@@ -75,356 +65,216 @@ internal class IntellijK2RelationSearch(
     ) {
         private val limitations = linkedSetOf<RelationLimitation>()
 
-        fun references(plan: IntellijRelationPlan.References): IntellijRelationTermination {
-            val references = mutableListOf<PsiReference>()
-            val providerExhausted =
-                ReferencesSearch.search(subject, scope.nativeScope, false)
-                    .forEach(
-                        Processor { reference ->
-                            cancellationCheck()
-                            if (!providerCandidateReady()) return@Processor false
-                            references += reference
-                            true
-                        }
-                    )
-            if (!providerExhausted || !providerEnumerationReady()) {
-                return termination(ProviderTermination.HALTED)
-            }
-            val ordered = references.canonicalRelationProviderOrder { reference ->
-                providerItemDescriptor(
-                    reference.element,
-                    reference.rangeInElement,
-                    "reference:${reference.javaClass.name}",
+        private val referenceEmitter =
+            IntellijReferenceOccurrenceEmitter(
+                request = request,
+                projection = projection,
+                collector = collector,
+                provenance = { it.relationOccurrenceProvenance(project, limits) },
+                omit = { limitation, element, range -> incompleteItem(limitation, element, range) },
+            )
+
+        fun references(plan: IntellijRelationPlan.References): IntellijRelationTermination =
+            IntellijRetainedRelationRead(
+                    project = project,
+                    scope = scope,
+                    projection = projection,
+                    limits = limits,
+                    observation = observation,
+                    cancellationCheck = cancellationCheck,
                 )
+                .references(
+                    request = request,
+                    subject = subject,
+                    collector = collector,
+                    process = { reference -> processReference(plan, reference) },
+                    termination = ::termination,
+                )
+
+        private fun processReference(plan: IntellijRelationPlan.References, reference: PsiReference): Boolean {
+            observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.REFERENCE_CONFIRMATION)
+            when (packageDisposition(reference.element)) {
+                ProviderItemDisposition.READY -> Unit
+                ProviderItemDisposition.SKIPPED -> return true
+                ProviderItemDisposition.HALTED -> return false
             }
-            for (item in ordered) {
-                cancellationCheck()
-                val reference = item.value
-                when (beginProviderItem(item.descriptor)) {
-                    ProviderItemDisposition.READY -> Unit
-                    ProviderItemDisposition.SKIPPED -> continue
-                    ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
-                }
-                when (packageDisposition(reference.element)) {
-                    ProviderItemDisposition.READY -> Unit
-                    ProviderItemDisposition.SKIPPED -> continue
-                    ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
-                }
-                val kotlinReference = reference as? KtReference
-                if (kotlinReference == null) {
-                    if (reference.element.containingFile !is PsiJavaFile) {
-                        observation.terminated(IntellijReadTermination.NON_KOTLIN_REFERENCE)
-                        if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM))
-                            return termination(ProviderTermination.HALTED)
-                        continue
-                    }
-                    if (!plan.admitsJava(reference)) {
-                        if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
-                        continue
-                    }
-                    when (projection.confirmJavaTarget(reference, request.subject).observedBy(observation)) {
-                        IntellijK2TargetConfirmation.EXACT_SUBJECT -> {
-                            val related = reference.element.relatedOwner()
-                            val continued =
-                                when (related) {
-                                    is SupportedContainingDeclaration.Found ->
-                                        emit(related.projection, reference.element, reference.rangeInElement)
-                                    SupportedContainingDeclaration.Unresolved ->
-                                        incompleteItem(
-                                            RelationLimitation.UNRESOLVED_TARGET,
-                                            reference.element,
-                                            reference.rangeInElement,
-                                        )
-                                    SupportedContainingDeclaration.Excluded -> collector.dismissProviderItem()
-                                    SupportedContainingDeclaration.Unsupported ->
-                                        incompleteItem(
-                                            RelationLimitation.UNSUPPORTED_ITEM,
-                                            reference.element,
-                                            reference.rangeInElement,
-                                        )
-                                }
-                            if (!continued) return termination(ProviderTermination.HALTED)
-                        }
-                        IntellijK2TargetConfirmation.DIFFERENT_SYMBOL ->
-                            if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
-                        IntellijK2TargetConfirmation.UNRESOLVED ->
-                            if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET))
-                                return termination(ProviderTermination.HALTED)
-                    }
-                    continue
-                }
-                val admitted =
-                    when (val admission = plan.admit(kotlinReference)) {
-                        IntellijRelationReferenceAdmission.Skipped -> {
-                            if (!collector.dismissProviderItem()) {
-                                return termination(ProviderTermination.HALTED)
-                            }
-                            continue
-                        }
-                        is IntellijRelationReferenceAdmission.Admitted -> admission
-                    }
-                when (projection.confirmTarget(admitted).observedBy(observation)) {
-                    IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> {
-                        // Compiler identity proves this indexed candidate is unrelated to the selected subject.
-                        if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
-                        continue
-                    }
-                    IntellijK2TargetConfirmation.UNRESOLVED -> {
-                        if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) {
-                            return termination(ProviderTermination.HALTED)
-                        }
-                        continue
-                    }
-                    IntellijK2TargetConfirmation.EXACT_SUBJECT -> Unit
-                }
-                val related =
-                    when (val containing = reference.element.relatedOwner()) {
-                        is SupportedContainingDeclaration.Found -> containing.projection
-                        SupportedContainingDeclaration.Unresolved -> {
-                            if (
-                                !incompleteItem(
-                                    RelationLimitation.UNRESOLVED_TARGET,
-                                    reference.element,
-                                    reference.rangeInElement,
-                                )
-                            )
-                                return termination(ProviderTermination.HALTED)
-                            continue
-                        }
-                        SupportedContainingDeclaration.Excluded -> {
-                            if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
-                            continue
-                        }
-                        SupportedContainingDeclaration.Unsupported -> {
-                            if (
-                                !incompleteItem(
-                                    RelationLimitation.UNSUPPORTED_ITEM,
-                                    reference.element,
-                                    reference.rangeInElement,
-                                )
-                            ) {
-                                return termination(ProviderTermination.HALTED)
-                            }
-                            continue
-                        }
-                    }
-                if (!emit(related, reference.element, reference.rangeInElement)) {
-                    return termination(ProviderTermination.HALTED)
-                }
+            return when (val kotlin = reference as? KtReference) {
+                null -> processJavaReference(plan, reference)
+                else -> processKotlinReference(plan, kotlin)
             }
-            return termination(ProviderTermination.TERMINAL)
         }
 
-        fun definitions(relation: IntellijDefinitionRelation): IntellijRelationTermination {
-            val definitions = mutableListOf<PsiElement>()
-            val providerExhausted =
-                DefinitionsScopedSearch.search(subject, scope.nativeScope, false)
-                    .forEach(
-                        Processor { definition ->
-                            cancellationCheck()
-                            if (!providerCandidateReady()) return@Processor false
-                            definitions += definition
-                            true
-                        }
+        private fun processJavaReference(plan: IntellijRelationPlan.References, reference: PsiReference): Boolean {
+            if (reference.element.containingFile !is PsiJavaFile) {
+                observation.terminated(IntellijReadTermination.NON_KOTLIN_REFERENCE)
+                return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+            }
+            if (!plan.admitsJava(reference)) return collector.dismissProviderItem()
+            if (request.meaning == RelationMeaning.References || request.meaning == RelationMeaning.TypeUses) {
+                return referenceEmitter.confirm(
+                    reference,
+                    projection.confirmJavaReferenceTarget(reference, request.subject).observedBy(observation),
+                )
+            }
+            return when (projection.confirmJavaTarget(reference, request.subject).observedBy(observation)) {
+                IntellijK2TargetConfirmation.EXACT_SUBJECT -> emitRelatedReference(reference)
+                IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> collector.dismissProviderItem()
+                IntellijK2TargetConfirmation.UNRESOLVED -> incompleteItem(RelationLimitation.UNRESOLVED_TARGET)
+            }
+        }
+
+        private fun processKotlinReference(plan: IntellijRelationPlan.References, reference: KtReference): Boolean {
+            val admitted =
+                when (val admission = plan.admit(reference)) {
+                    IntellijRelationReferenceAdmission.Skipped -> return collector.dismissProviderItem()
+                    is IntellijRelationReferenceAdmission.Admitted -> admission
+                }
+            if (request.meaning == RelationMeaning.References || request.meaning == RelationMeaning.TypeUses) {
+                return referenceEmitter.confirm(
+                    reference,
+                    projection.confirmReferenceTarget(reference, request.subject).observedBy(observation),
+                )
+            }
+            return when (projection.confirmTarget(admitted).observedBy(observation)) {
+                IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> collector.dismissProviderItem()
+                IntellijK2TargetConfirmation.UNRESOLVED -> incompleteItem(RelationLimitation.UNRESOLVED_TARGET)
+                IntellijK2TargetConfirmation.EXACT_SUBJECT -> emitRelatedReference(reference)
+            }
+        }
+
+        private fun emitRelatedReference(reference: PsiReference): Boolean =
+            when (val related = reference.element.relatedOwner()) {
+                is SupportedContainingDeclaration.Found ->
+                    emit(related.projection, reference.element, reference.rangeInElement)
+                SupportedContainingDeclaration.Unresolved ->
+                    incompleteItem(RelationLimitation.UNRESOLVED_TARGET, reference.element, reference.rangeInElement)
+                SupportedContainingDeclaration.Excluded -> collector.dismissProviderItem()
+                SupportedContainingDeclaration.Unsupported ->
+                    incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, reference.element, reference.rangeInElement)
+            }
+
+        private fun retainedReader() =
+            IntellijRetainedRelationRead(
+                project,
+                scope,
+                projection,
+                limits,
+                observation,
+                cancellationCheck,
+            )
+
+        fun definitions(relation: IntellijDefinitionRelation): IntellijRelationTermination =
+            retainedReader()
+                .definitions(
+                    request,
+                    subject,
+                    collector,
+                    { definition ->
+                        processDefinition(definition, relation)
+                    },
+                    ::termination,
+                )
+
+        private fun processDefinition(
+            definition: IntellijRestoredDefinition,
+            relation: IntellijDefinitionRelation,
+        ): Boolean {
+            when (packageDisposition(definition.element)) {
+                ProviderItemDisposition.READY -> Unit
+                ProviderItemDisposition.SKIPPED -> return true
+                ProviderItemDisposition.HALTED -> return false
+            }
+            return when (definition) {
+                is IntellijRestoredDefinition.Unsupported ->
+                    incompleteItem(
+                        RelationLimitation.UNSUPPORTED_ITEM,
+                        definition.element,
+                        definition.element.textRange.shiftLeft(definition.element.textRange.startOffset),
                     )
-            if (!providerExhausted || !providerEnumerationReady()) {
-                return termination(ProviderTermination.HALTED)
-            }
-            val supportedIdentities = hashSetOf<RelationProviderItemDescriptor>()
-            val normalized = definitions.map { provider ->
-                when (val result = normalizeRelationDefinition(provider)) {
-                    is IntellijRelationDefinition.Supported -> result.declaration
-                    IntellijRelationDefinition.Unsupported -> provider
-                }
-            }
-            val ordered = normalized.canonicalRelationProviderOrder { definition ->
-                providerItemDescriptor(
-                    definition,
-                    definition.textRange.shiftLeft(definition.textRange.startOffset),
-                    "definition:${definition.javaClass.name}",
-                )
-            }
-            for (item in ordered) {
-                cancellationCheck()
-                val definition = item.value
-                val normalizedDefinition = normalizeRelationDefinition(definition)
-                if (
-                    normalizedDefinition is IntellijRelationDefinition.Supported &&
-                        !supportedIdentities.add(item.descriptor)
-                )
-                    continue
-                when (beginProviderItem(item.descriptor)) {
-                    ProviderItemDisposition.READY -> Unit
-                    ProviderItemDisposition.SKIPPED -> continue
-                    ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
-                }
-                when (packageDisposition(definition)) {
-                    ProviderItemDisposition.READY -> Unit
-                    ProviderItemDisposition.SKIPPED -> continue
-                    ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
-                }
-                val candidate =
-                    when (normalizedDefinition) {
-                        is IntellijRelationDefinition.Supported -> normalizedDefinition.declaration
-                        IntellijRelationDefinition.Unsupported -> null
-                    }
-                if (candidate == null) {
-                    if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
-                        return termination(ProviderTermination.HALTED)
-                    }
-                    continue
-                }
-                val continued =
-                    when (projection.confirmDefinition(subject, candidate, relation)) {
+                is IntellijRestoredDefinition.Normalized ->
+                    when (projection.confirmDefinition(subject, definition.declaration, relation)) {
                         IntellijK2DefinitionConfirmation.DIFFERENT_RELATION -> collector.dismissProviderItem()
                         IntellijK2DefinitionConfirmation.UNSUPPORTED ->
                             incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
                         IntellijK2DefinitionConfirmation.CONFIRMED ->
                             emit(
-                                candidate,
-                                candidate,
-                                candidate.textRange.shiftLeft(candidate.textRange.startOffset),
+                                definition.declaration,
+                                definition.declaration,
+                                definition.declaration.textRange.shiftLeft(
+                                    definition.declaration.textRange.startOffset
+                                ),
                             )
                     }
-                if (!continued) return termination(ProviderTermination.HALTED)
             }
-            return termination(ProviderTermination.TERMINAL)
         }
 
-        fun callees(): IntellijRelationTermination {
-            if (subject !is KtNamedDeclaration)
-                return IntellijRelationTermination.TerminalIncomplete(setOf(RelationLimitation.UNSUPPORTED_ITEM))
-            val candidates = mutableListOf<CalleeProviderItem>()
-            val callsExhausted =
-                PsiTreeUtil.processElements(
-                    subject,
-                    PsiElementProcessor<PsiElement> { element ->
-                        cancellationCheck()
-                        if (!providerEnumerationReady()) return@PsiElementProcessor false
-                        val call = element as? KtCallElement ?: return@PsiElementProcessor true
-                        val owner = call.nearestDeclaration()
-                        val enclosing =
-                            when (owner) {
-                                is ContainingDeclaration.Deferred -> owner.enclosingDeclaration()
-                                is ContainingDeclaration.Found,
-                                ContainingDeclaration.Unsupported -> owner
-                            }
-                        if (enclosing !is ContainingDeclaration.Found || enclosing.declaration !== subject)
-                            return@PsiElementProcessor true
-                        if (!providerCandidateReady()) return@PsiElementProcessor false
-                        when (val references = call.calleeReferences()) {
-                            is KotlinCallReferences.Found ->
-                                references.references.forEach { reference ->
-                                    if (!providerCandidateReady()) return@PsiElementProcessor false
-                                    candidates += CalleeProviderItem.Reference(reference, owner)
-                                }
-                            KotlinCallReferences.Unresolved -> {
-                                if (!providerCandidateReady()) return@PsiElementProcessor false
-                                candidates += CalleeProviderItem.Unresolved(call, owner)
-                            }
+        fun callees(): IntellijRelationTermination =
+            retainedReader().callees(request, subject, collector, ::processCallee, ::termination)
+
+        private fun processCallee(candidate: CalleeProviderItem): Boolean {
+            val owner =
+                when (val admitted = projection.callOwner(candidate.owner)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected ->
+                        return when (val failure = admitted.failure) {
+                            CallOwnershipFailure.ExcludedCallback -> collector.dismissProviderItem()
+                            is CallOwnershipFailure.Incomplete -> incompleteCallee(candidate, failure.limitation)
                         }
-                        true
-                    },
-                )
-            if (!callsExhausted || !providerEnumerationReady()) return termination(ProviderTermination.HALTED)
-            val ordered = candidates.canonicalRelationProviderOrder { candidate ->
-                candidate.descriptor()
-            }
-            for (item in ordered) {
-                cancellationCheck()
-                when (beginProviderItem(item.descriptor)) {
-                    ProviderItemDisposition.READY -> Unit
-                    ProviderItemDisposition.SKIPPED -> continue
-                    ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
                 }
-                val candidate = item.value
-                val owner =
-                    when (val admitted = projection.callOwner(candidate.owner)) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> {
-                            when (val failure = admitted.failure) {
-                                CallOwnershipFailure.ExcludedCallback ->
-                                    if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
-                                is CallOwnershipFailure.Incomplete -> {
-                                    val (element, range) =
-                                        when (candidate) {
-                                            is CalleeProviderItem.Reference ->
-                                                candidate.reference.element to candidate.reference.rangeInElement
-                                            is CalleeProviderItem.Unresolved ->
-                                                candidate.call to
-                                                    candidate.call.textRange.shiftLeft(
-                                                        candidate.call.textRange.startOffset
-                                                    )
-                                        }
-                                    if (!incompleteItem(failure.limitation, element, range))
-                                        return termination(ProviderTermination.HALTED)
-                                }
-                            }
-                            continue
+            return when (candidate) {
+                is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
+                is CalleeProviderItem.Reference ->
+                    when (val resolved = projection.resolve(candidate.reference)) {
+                        IntellijK2ResolvedDeclaration.Unresolved -> {
+                            observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
+                            incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
+                        }
+                        is IntellijK2ResolvedDeclaration.Found -> {
+                            observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
+                            processCalleeTarget(owner, resolved.declaration, candidate.reference)
                         }
                     }
-                when (candidate) {
-                    is CalleeProviderItem.Unresolved ->
-                        if (
-                            !incompleteItem(
-                                RelationLimitation.UNRESOLVED_TARGET,
-                                candidate.call,
-                                candidate.call.textRange.shiftLeft(candidate.call.textRange.startOffset),
-                            )
-                        ) {
-                            return termination(ProviderTermination.HALTED)
-                        }
-                    is CalleeProviderItem.Reference ->
-                        when (val resolved = projection.resolve(candidate.reference)) {
-                            IntellijK2ResolvedDeclaration.Unresolved -> {
-                                observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
-                                if (
-                                    !incompleteItem(
-                                        RelationLimitation.UNRESOLVED_TARGET,
-                                        candidate.reference.element,
-                                        candidate.reference.rangeInElement,
-                                    )
-                                ) {
-                                    return termination(ProviderTermination.HALTED)
-                                }
-                            }
-                            is IntellijK2ResolvedDeclaration.Found -> {
-                                observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
-                                val file = resolved.declaration.containingFile?.virtualFile
-                                if (
-                                    file != null &&
-                                        request.searchScope is
-                                            io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace &&
-                                        (request.searchScope
-                                                as io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace)
-                                            .libraries ==
-                                            io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy.EXCLUDE &&
-                                        IntellijProjectFileIndexClassifier.classify(project, file, limits) is
-                                            IntellijProjectFileClassification.Library
-                                ) {
-                                    observation.terminated(IntellijReadTermination.LIBRARY_POLICY_EXCLUSION)
-                                    if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
-                                } else if (file == null || !scope.nativeScope.contains(file)) {
-                                    observation.terminated(IntellijReadTermination.CALLEE_OUTSIDE_NATIVE_SCOPE)
-                                    if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
-                                        return termination(ProviderTermination.HALTED)
-                                    }
-                                } else {
-                                    when (packageDisposition(resolved.declaration)) {
-                                        ProviderItemDisposition.READY -> Unit
-                                        ProviderItemDisposition.SKIPPED -> continue
-                                        ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
-                                    }
-                                    if (!emitCallee(owner, resolved.declaration, candidate.reference)) {
-                                        return termination(ProviderTermination.HALTED)
-                                    }
-                                }
-                            }
-                        }
-                }
             }
-            return termination(ProviderTermination.TERMINAL)
         }
+
+        private fun processCalleeTarget(
+            owner: ContainingDeclaration.Found,
+            target: PsiNamedElement,
+            reference: KtReference,
+        ): Boolean {
+            val file = target.containingFile?.virtualFile
+            val workspace = request.searchScope as? io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace
+            if (
+                file != null &&
+                    workspace?.libraries == io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy.EXCLUDE &&
+                    IntellijProjectFileIndexClassifier.classify(project, file, limits) is
+                        IntellijProjectFileClassification.Library
+            ) {
+                observation.terminated(IntellijReadTermination.LIBRARY_POLICY_EXCLUSION)
+                return collector.dismissProviderItem()
+            }
+            if (file == null || !scope.nativeScope.contains(file)) {
+                observation.terminated(IntellijReadTermination.CALLEE_OUTSIDE_NATIVE_SCOPE)
+                return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+            }
+            return when (packageDisposition(target)) {
+                ProviderItemDisposition.READY -> emitCallee(owner, target, reference)
+                ProviderItemDisposition.SKIPPED -> true
+                ProviderItemDisposition.HALTED -> false
+            }
+        }
+
+        private fun incompleteCallee(candidate: CalleeProviderItem, limitation: RelationLimitation): Boolean =
+            when (candidate) {
+                is CalleeProviderItem.Reference ->
+                    incompleteItem(limitation, candidate.reference.element, candidate.reference.rangeInElement)
+                is CalleeProviderItem.Unresolved ->
+                    incompleteItem(
+                        limitation,
+                        candidate.call,
+                        candidate.call.textRange.shiftLeft(candidate.call.textRange.startOffset),
+                    )
+            }
 
         private fun emitCallee(
             owner: ContainingDeclaration.Found,
@@ -452,26 +302,6 @@ internal class IntellijK2RelationSearch(
                     } else {
                         ProviderItemDisposition.HALTED
                     }
-            }
-
-        private fun providerEnumerationReady(): Boolean =
-            when (collector.admitProviderEnumeration()) {
-                IntellijRelationProviderEnumerationAdmission.READY -> true
-                IntellijRelationProviderEnumerationAdmission.HALTED -> false
-            }
-
-        private fun providerCandidateReady(): Boolean =
-            when (collector.admitProviderCandidate()) {
-                IntellijRelationProviderEnumerationAdmission.READY -> true
-                IntellijRelationProviderEnumerationAdmission.HALTED -> false
-            }
-
-        private fun beginProviderItem(descriptor: RelationProviderItemDescriptor): ProviderItemDisposition =
-            when (collector.beginProviderItem(descriptor)) {
-                IntellijRelationProviderItemAdmission.READY -> ProviderItemDisposition.READY
-                IntellijRelationProviderItemAdmission.SKIPPED_VERIFIED_PREFIX -> ProviderItemDisposition.SKIPPED
-                IntellijRelationProviderItemAdmission.HALTED,
-                IntellijRelationProviderItemAdmission.CURSOR_MOVED -> ProviderItemDisposition.HALTED
             }
 
         private fun emit(
@@ -528,7 +358,7 @@ internal class IntellijK2RelationSearch(
                         return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
                 }
             val provenance =
-                when (val result = occurrenceFile.provenance()) {
+                when (val result = occurrenceFile.relationOccurrenceProvenance(project, limits)) {
                     is OccurrenceProvenance.Found -> result.provenance
                     OccurrenceProvenance.Unsupported ->
                         return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
@@ -579,19 +409,4 @@ internal class IntellijK2RelationSearch(
                 else -> IntellijRelationTermination.Terminal
             }
     }
-
-    private fun com.intellij.openapi.vfs.VirtualFile.provenance(): OccurrenceProvenance =
-        when (val classification = IntellijProjectFileIndexClassifier.classify(project, this, limits)) {
-            is IntellijProjectFileClassification.Source ->
-                when (classification.generated) {
-                    IntellijGeneratedSourceState.AUTHORED ->
-                        OccurrenceProvenance.Found(RelationProvenance.K2_AUTHORED_SOURCE)
-                    IntellijGeneratedSourceState.GENERATED ->
-                        OccurrenceProvenance.Found(RelationProvenance.K2_GENERATED_SOURCE)
-                }
-            is IntellijProjectFileClassification.Library ->
-                OccurrenceProvenance.Found(RelationProvenance.K2_PROJECT_LIBRARY)
-            is IntellijProjectFileClassification.NotSource,
-            is IntellijProjectFileClassification.Rejected -> OccurrenceProvenance.Unsupported
-        }
 }

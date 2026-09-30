@@ -184,6 +184,9 @@ enum class RelationLimitationDocument {
     BYTE_LIMIT_REACHED,
     WORK_LIMIT_REACHED,
     TIME_LIMIT_REACHED,
+    CANDIDATE_LIMIT_REACHED,
+    RETENTION_LIMIT_REACHED,
+    PARTITION_INVENTORY_UNAVAILABLE,
     DUMB_MODE_TRANSITION,
     UNRESOLVED_TARGET,
     UNSUPPORTED_ITEM,
@@ -334,6 +337,7 @@ enum class DiagnosticCheckQualificationFailure {
     NON_CANONICAL_ANALYZED_FILES,
     NON_CANONICAL_LIMITATIONS,
     ANALYZED_LIMITED_OVERLAP,
+    CONTINUATION_RETENTION_CONFLICT,
 }
 
 /** Exact diagnostic coverage, truncation state, and every file-specific limitation. */
@@ -345,6 +349,7 @@ private constructor(
     val analyzedFiles: List<ProtocolText>,
     val limitations: List<DiagnosticLimitationDocument>,
     val continuation: ProtocolText? = null,
+    val retentionFailure: DiagnosticRetentionFailureDocument? = null,
 ) : OperationQualification {
     companion object {
         fun create(
@@ -353,8 +358,17 @@ private constructor(
             analyzedFiles: List<ProtocolText>,
             limitations: List<DiagnosticLimitationDocument>,
             continuation: ProtocolText? = null,
+            retentionFailure: DiagnosticRetentionFailureDocument? = null,
         ): Refinement<DiagnosticCheckQualification, DiagnosticCheckQualificationFailure> {
-            if (!resultLimitReached && limitations.isEmpty() && continuation == null) {
+            if (
+                retentionFailure != null &&
+                    continuation != null &&
+                    !Regex("diagnostic-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                        .matches(continuation.value)
+            ) {
+                return Refinement.Rejected(DiagnosticCheckQualificationFailure.CONTINUATION_RETENTION_CONFLICT)
+            }
+            if (isCompleteDiagnosticQualification(resultLimitReached, limitations, continuation, retentionFailure)) {
                 return Refinement.Rejected(DiagnosticCheckQualificationFailure.COMPLETE)
             }
             if (analyzedFiles != analyzedFiles.distinct().sortedBy(ProtocolText::value)) {
@@ -378,6 +392,7 @@ private constructor(
                     java.util.List.copyOf(analyzedFiles),
                     java.util.List.copyOf(limitations),
                     continuation,
+                    retentionFailure,
                 )
             )
         }
@@ -385,8 +400,16 @@ private constructor(
 }
 
 enum class DiagnosticCheckRejection : DiagnosticCheckFailure {
+    PUBLICATION_OWNER_RETIRED,
+    PUBLICATION_CLAIM_UNAVAILABLE,
+    PUBLICATION_EXPIRED,
+    PUBLICATION_DEPENDENCY_UNAVAILABLE,
+    PUBLICATION_PAGE_MISMATCH,
+    PUBLICATION_NON_ADVANCING,
+    PUBLICATION_INVALID_FITTED_PAGE,
     ENUMERATION_INDEX_MODE_UNSUPPORTED,
     EXECUTION_TIME_GRANT_TOO_SMALL,
+    CONTINUATION_IN_USE,
     CONTINUATION_UNAVAILABLE,
     CONTINUATION_REQUEST_MISMATCH,
     STALE_CONTINUATION,
@@ -406,3 +429,16 @@ enum class DiagnosticCheckRejection : DiagnosticCheckFailure {
     SCOPE_LIMIT_EXCEEDED,
     SCOPE_UNAVAILABLE,
 }
+
+/** Complete coverage has neither a result boundary, omitted files, nor retained or unavailable progress. */
+private fun isCompleteDiagnosticQualification(
+    resultLimitReached: Boolean,
+    limitations: List<DiagnosticLimitationDocument>,
+    continuation: ProtocolText?,
+    retentionFailure: DiagnosticRetentionFailureDocument?,
+): Boolean =
+    when {
+        resultLimitReached || limitations.isNotEmpty() -> false
+        continuation != null || retentionFailure != null -> false
+        else -> true
+    }

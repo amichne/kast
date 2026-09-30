@@ -24,6 +24,8 @@ import io.github.amichne.kast.relation.contract.RelationIncompleteCoverage
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
+import io.github.amichne.kast.relation.contract.RelationProviderLocator
+import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
@@ -32,6 +34,7 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
@@ -194,13 +197,13 @@ class RelationServiceTest {
     fun `qualified empty evidence retains known minimum and continuation`() {
         val workspace = published(19L)
         val request = request(workspace.readLease)
+        val state = pendingReferenceInventory(request)
         val qualified =
             RelationCompilation.qualifiedResumable(
                     emptyBatch(request),
                     setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-                    request.providerCursor.advance(
-                        RelationProviderItemDescriptor.parse("filtered-provider-item").refined()
-                    ),
+                    state.providerCursor,
+                    state,
                 )
                 .refined()
         val trace = RecordingRelationObservability()
@@ -237,6 +240,17 @@ class RelationServiceTest {
             trace.observations,
         )
     }
+
+    private fun pendingReferenceInventory(request: RelationRequest): RelationProviderState =
+        RelationProviderState.references(
+            listOf(
+                RelationProviderLocator.Reference(
+                    request.subject.file,
+                    ExactDeclarationTextRange.parse(71, 72).refined(),
+                    RelationProviderItemDescriptor.parse("unvisited-provider-item").refined(),
+                )
+            )
+        )
 
     private fun emptyBatch(request: RelationRequest): RelationBatch =
         RelationBatch.create(

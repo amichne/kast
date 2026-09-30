@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: e9e206c7a991 -->
+<!-- generated: 2026-09-29 | hash: e9e206c7a991 -->
 
 # relation
 
@@ -9,6 +9,8 @@ Defines semantic relationship requests and facts, coordinates relation reads, an
 
 ## Key Files
 
+- [RelationReferenceOccurrence.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt) - compiler-confirmed target and occurrence identity with declaration, file, or unavailable ownership.
+- [IntellijReferenceInventory.kt](intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventory.kt) - bounded detached native locator inventory under the original scope.
 - [RelationOmissionEvidence.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationOmissionEvidence.kt) - provider/version and measured or unmeasured omission evidence.
 - [contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt) - request model.
 - [contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt) - evidence model.

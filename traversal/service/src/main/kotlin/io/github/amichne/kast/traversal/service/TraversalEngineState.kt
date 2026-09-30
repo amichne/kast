@@ -21,6 +21,7 @@ internal class MutableTraversalState(
     val visited: MutableSet<RelationEndpointFingerprint>,
     var pending: TraversalPendingState,
     val terminalRelationLimitations: MutableSet<RelationLimitation>,
+    val retainedOmissions: MutableList<io.github.amichne.kast.traversal.contract.TraversalPartialExpansion>,
 ) {
     /**
      * Proof transition: `MutableTraversalState -> TraversalWorkAvailability`.
@@ -76,6 +77,7 @@ internal class MutableTraversalState(
                 checkpoint.visited.toMutableSet(),
                 checkpoint.pending,
                 checkpoint.terminalRelationLimitations.toMutableSet(),
+                checkpoint.retainedOmissions.toMutableList(),
             )
     }
 }
@@ -115,7 +117,20 @@ internal class TraversalAccounting(
     var examinedWorkUnits: Long = 0L,
     var elapsedMillis: Long = 0L,
     var expandedFrontier: Int = 0,
+    val inheritedOmissions: List<io.github.amichne.kast.traversal.contract.TraversalPartialExpansion> = emptyList(),
+    val referenceOccurrences: MutableList<io.github.amichne.kast.traversal.contract.TraversalReferenceObservation> =
+        mutableListOf(),
 ) {
+    val semanticResultCount: Int
+        get() =
+            records.size +
+                referenceOccurrences.count { observation ->
+                    records.none {
+                        it.fact.occurrence == observation.reference.occurrence &&
+                            it.fact.target == observation.reference.target
+                    }
+                }
+
     /**
      * Proof transition: `(TraversalAccounting, TraversalPlan) -> Refinement<TraversalPage, TraversalPageFailure>`.
      *
@@ -145,6 +160,8 @@ internal class TraversalAccounting(
             expandedFrontier,
             progress,
             partialExpansions,
+            inheritedOmissions,
+            referenceOccurrences.sorted(),
         )
     }
 }

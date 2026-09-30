@@ -71,133 +71,6 @@ data class RelationBudget(
     val returnedBytes: RelationByteLimit,
 )
 
-enum class RelationProviderPositionFailure {
-    NEGATIVE
-}
-
-@JvmInline
-value class RelationProviderPosition private constructor(val value: Long) {
-    companion object {
-        val Zero: RelationProviderPosition = RelationProviderPosition(0L)
-
-        /**
-         * Proof transition: `Long -> Refinement<RelationProviderPosition, RelationProviderPositionFailure>`.
-         *
-         * Establishes a non-negative native enumeration position. [RelationProviderPositionFailure] is the closed
-         * expected failure. Raw positions may be extracted only by the relation compiler collector and continuation
-         * codec.
-         */
-        fun parse(raw: Long): Refinement<RelationProviderPosition, RelationProviderPositionFailure> =
-            if (raw >= 0L) {
-                Refinement.Refined(RelationProviderPosition(raw))
-            } else {
-                Refinement.Rejected(RelationProviderPositionFailure.NEGATIVE)
-            }
-    }
-}
-
-/** Stable provider enumeration contract; V2 orders detached descriptors before applying bounds. */
-enum class RelationProviderKind {
-    INTELLIJ_REFERENCES_V1,
-    INTELLIJ_DEFINITIONS_V1,
-    INTELLIJ_CALLEES_V1,
-    INTELLIJ_REFERENCES_V2,
-    INTELLIJ_DEFINITIONS_V2,
-    INTELLIJ_CALLEES_V2;
-
-    companion object {
-        fun forMeaning(meaning: RelationMeaning): RelationProviderKind =
-            when (meaning) {
-                RelationMeaning.References,
-                RelationMeaning.Callers,
-                RelationMeaning.TypeUses -> INTELLIJ_REFERENCES_V2
-                RelationMeaning.Implementations,
-                RelationMeaning.Inheritors,
-                RelationMeaning.Overrides -> INTELLIJ_DEFINITIONS_V2
-                RelationMeaning.Callees -> INTELLIJ_CALLEES_V2
-            }
-    }
-}
-
-enum class RelationProviderItemDescriptorFailure {
-    BLANK
-}
-
-/** Stable detached identity of one provider item. */
-@JvmInline
-value class RelationProviderItemDescriptor private constructor(val value: String) {
-    companion object {
-        fun parse(raw: String): Refinement<RelationProviderItemDescriptor, RelationProviderItemDescriptorFailure> =
-            if (raw.isBlank()) {
-                Refinement.Rejected(RelationProviderItemDescriptorFailure.BLANK)
-            } else {
-                Refinement.Refined(RelationProviderItemDescriptor(raw))
-            }
-    }
-}
-
-enum class RelationProviderPrefixDigestFailure {
-    INVALID_SHA256
-}
-
-@JvmInline
-value class RelationProviderPrefixDigest private constructor(val value: String) {
-    companion object {
-        fun parse(raw: String): Refinement<RelationProviderPrefixDigest, RelationProviderPrefixDigestFailure> =
-            if (raw.isCanonicalSha256()) {
-                Refinement.Refined(RelationProviderPrefixDigest(raw))
-            } else {
-                Refinement.Rejected(RelationProviderPrefixDigestFailure.INVALID_SHA256)
-            }
-
-        internal fun digest(bytes: ByteArray): RelationProviderPrefixDigest =
-            RelationProviderPrefixDigest(bytes.sha256())
-    }
-}
-
-/** Native resume position bound to the exact ordered prefix already consumed. */
-data class RelationProviderCursor
-private constructor(
-    val provider: RelationProviderKind,
-    val nextPosition: RelationProviderPosition,
-    val consumedPrefixDigest: RelationProviderPrefixDigest,
-) {
-    fun advance(item: RelationProviderItemDescriptor): RelationProviderCursor {
-        check(nextPosition.value < Long.MAX_VALUE) { "Relation provider position overflow" }
-        val canonical = buildString {
-            appendContinuationField(consumedPrefixDigest.value)
-            appendContinuationField(item.value)
-        }
-        return RelationProviderCursor(
-            provider,
-            RelationProviderPosition.parse(nextPosition.value + 1L).refinedInvariant(),
-            RelationProviderPrefixDigest.digest(canonical.toByteArray(StandardCharsets.UTF_8)),
-        )
-    }
-
-    companion object {
-        fun start(provider: RelationProviderKind): RelationProviderCursor {
-            val canonical = "kast-relation-provider-prefix-v1:${provider.name}"
-            return RelationProviderCursor(
-                provider,
-                RelationProviderPosition.Zero,
-                RelationProviderPrefixDigest.digest(canonical.toByteArray(StandardCharsets.UTF_8)),
-            )
-        }
-
-        fun restore(
-            provider: RelationProviderKind,
-            nextPosition: RelationProviderPosition,
-            consumedPrefixDigest: RelationProviderPrefixDigest,
-        ): RelationProviderCursor =
-            RelationProviderCursor(
-                provider,
-                nextPosition,
-                consumedPrefixDigest,
-            )
-    }
-}
-
 enum class RelationScopeFingerprintFailure {
     INVALID_SHA256
 }
@@ -254,7 +127,7 @@ enum class RelationContinuationRestorationFailure {
     INTEGRITY_MISMATCH
 }
 
-/** Resume authority bound to one exact subject, scope, meaning, authority, and provider prefix. */
+/** Resume authority bound to one exact subject, scope, meaning, authority, and retained provider inventory. */
 class RelationContinuation
 private constructor(
     val subject: RelationEndpointFingerprint,
@@ -264,6 +137,7 @@ private constructor(
     val nextProviderCursor: RelationProviderCursor,
     val fingerprint: RelationContinuationFingerprint,
     val retainedLimitations: Set<RelationLimitation>,
+    val providerState: RelationProviderState,
 ) {
     companion object {
         /**
@@ -277,12 +151,16 @@ private constructor(
             request: RelationRequest,
             nextProviderCursor: RelationProviderCursor,
             limitations: Set<RelationLimitation> = emptySet(),
+            providerState: RelationProviderState,
         ): RelationContinuation {
             val retained =
                 Collections.unmodifiableSet(
                     LinkedHashSet((request.retainedLimitations + limitations).filterNot { it in relationPageLimits })
                 )
-            check(nextProviderCursor.provider == RelationProviderKind.forMeaning(request.meaning))
+            check(request.admitsProvider(nextProviderCursor.provider))
+            check(providerState.provider == nextProviderCursor.provider)
+            check(providerState.providerCursor == nextProviderCursor)
+            check(providerState.confirmAuthority(request.subject.lease.identity) is Refinement.Refined)
             val scope = request.scopeFingerprint
             return RelationContinuation(
                 subject = request.subject.fingerprint,
@@ -291,6 +169,7 @@ private constructor(
                 authority = request.subject.lease.identity,
                 nextProviderCursor = nextProviderCursor,
                 retainedLimitations = retained,
+                providerState = providerState,
                 fingerprint =
                     relationContinuationFingerprint(
                         request.subject.fingerprint,
@@ -299,6 +178,7 @@ private constructor(
                         request.subject.lease.identity,
                         nextProviderCursor,
                         retained,
+                        providerState,
                     ),
             )
         }
@@ -312,17 +192,24 @@ private constructor(
             nextProviderCursor: RelationProviderCursor,
             fingerprint: RelationContinuationFingerprint,
             retainedLimitations: Set<RelationLimitation> = emptySet(),
-        ): Refinement<RelationContinuation, RelationContinuationRestorationFailure> =
-            if (
-                fingerprint ==
-                    relationContinuationFingerprint(
-                        subject,
-                        meaning,
-                        scope,
-                        authority,
-                        nextProviderCursor,
-                        retainedLimitations,
-                    )
+            providerState: RelationProviderState,
+        ): Refinement<RelationContinuation, RelationContinuationRestorationFailure> {
+            if (providerState.confirmAuthority(authority) is Refinement.Rejected) {
+                return Refinement.Rejected(RelationContinuationRestorationFailure.INTEGRITY_MISMATCH)
+            }
+            return if (
+                providerState.providerCursor == nextProviderCursor &&
+                    nextProviderCursor.provider.supports(meaning, authority) &&
+                    fingerprint ==
+                        relationContinuationFingerprint(
+                            subject,
+                            meaning,
+                            scope,
+                            authority,
+                            nextProviderCursor,
+                            retainedLimitations,
+                            providerState,
+                        )
             ) {
                 Refinement.Refined(
                     RelationContinuation(
@@ -333,11 +220,13 @@ private constructor(
                         nextProviderCursor,
                         fingerprint,
                         Collections.unmodifiableSet(LinkedHashSet(retainedLimitations)),
+                        providerState,
                     )
                 )
             } else {
                 Refinement.Rejected(RelationContinuationRestorationFailure.INTEGRITY_MISMATCH)
             }
+        }
     }
 }
 
@@ -398,6 +287,14 @@ private constructor(
             RelationReadPosition.Start -> RelationProviderCursor.start(RelationProviderKind.forMeaning(meaning))
             is RelationReadPosition.Resume -> position.continuation.nextProviderCursor
         }
+
+    /** The compiler establishes the provider on Start; every resumed read retains that exact provider. */
+    fun admitsProvider(provider: RelationProviderKind): Boolean =
+        provider.supports(meaning, subject.lease.identity) &&
+            when (position) {
+                RelationReadPosition.Start -> true
+                is RelationReadPosition.Resume -> provider == position.continuation.nextProviderCursor.provider
+            }
 
     companion object {
         /**
@@ -510,7 +407,7 @@ private constructor(
                     Refinement.Rejected(RelationResumeFailure.GENERATION_MISMATCH)
                 continuation.subject != subject.fingerprint ->
                     Refinement.Rejected(RelationResumeFailure.SUBJECT_MISMATCH)
-                continuation.nextProviderCursor.provider != RelationProviderKind.forMeaning(meaning) ->
+                !continuation.nextProviderCursor.provider.supports(meaning, subject.lease.identity) ->
                     Refinement.Rejected(RelationResumeFailure.PROVIDER_MISMATCH)
                 else ->
                     Refinement.Refined(
@@ -537,12 +434,6 @@ private fun RelationMeaning.canonicalName(): String =
         RelationMeaning.TypeUses -> "type-uses"
     }
 
-private fun StringBuilder.appendContinuationField(value: String) {
-    append(value.toByteArray(StandardCharsets.UTF_8).size)
-    append(':')
-    append(value)
-}
-
 private fun relationContinuationFingerprint(
     subject: RelationEndpointFingerprint,
     meaning: RelationMeaning,
@@ -550,6 +441,7 @@ private fun relationContinuationFingerprint(
     authority: SemanticReadIdentity,
     cursor: RelationProviderCursor,
     retainedLimitations: Set<RelationLimitation>,
+    providerState: RelationProviderState,
 ): RelationContinuationFingerprint {
     val canonical = buildString {
         appendContinuationField(subject.value)
@@ -560,6 +452,7 @@ private fun relationContinuationFingerprint(
         appendContinuationField(cursor.nextPosition.value.toString())
         appendContinuationField(cursor.consumedPrefixDigest.value)
         retainedLimitations.sortedBy { it.ordinal }.forEach { appendContinuationField(it.name) }
+        appendContinuationField(providerState.canonicalProjection())
     }
     return RelationContinuationFingerprint.digest(canonical)
 }

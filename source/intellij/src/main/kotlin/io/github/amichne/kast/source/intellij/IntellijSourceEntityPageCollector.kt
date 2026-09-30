@@ -1,5 +1,6 @@
 package io.github.amichne.kast.source.intellij
 
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.source.contract.Containment
 import io.github.amichne.kast.source.contract.DeclarationKind
 import io.github.amichne.kast.source.contract.DeclarationVisibility
@@ -7,7 +8,11 @@ import io.github.amichne.kast.source.contract.EntityFilter
 import io.github.amichne.kast.source.contract.EntitySelection
 import io.github.amichne.kast.source.contract.SourceEntity
 import io.github.amichne.kast.source.contract.SourceEntityLimit
+import io.github.amichne.kast.source.contract.SourceEntityTraversalState
+import io.github.amichne.kast.source.contract.SourceEntityTraversalTask
+import io.github.amichne.kast.source.contract.SourceReadEntityCursor
 import io.github.amichne.kast.source.contract.SourceReadLimitation
+import io.github.amichne.kast.source.contract.SourceSelector
 import io.github.amichne.kast.source.contract.VisibilitySelection
 
 internal enum class SourceEntityCollectionAdmission {
@@ -24,64 +29,93 @@ internal class IntellijSourceEntityPageCollector(
     private sealed interface State {
         data object Collecting : State
 
+        data object PageFull : State
+
         data class Stopped(val page: IntellijSourceEntityPage) : State
     }
 
     private var state: State = State.Collecting
     private val page = ArrayList<SourceEntity>(limit.value)
-    private var matched = 0
     private var previous: SourceEntity? = null
+    var lookahead: SourceEntity? = null
+        private set
 
     val admission: SourceEntityCollectionAdmission
         get() =
             when (state) {
                 State.Collecting -> SourceEntityCollectionAdmission.ACCEPTING
+                State.PageFull -> SourceEntityCollectionAdmission.STOPPED
                 is State.Stopped -> SourceEntityCollectionAdmission.STOPPED
             }
 
     /** Keeps structural traversal outside deferred compiler projection. */
-    fun projectDeclaration(kind: DeclarationKind, project: () -> Unit) {
+    fun projectDeclaration(kind: DeclarationKind, depth: Int = 0, project: () -> Unit) {
+        if (selection.containment != Containment.DESCENDANTS && depth != 0) return
         if (selection.filters.any { it is EntityFilter.Declarations && kind in it.kinds.values }) project()
     }
 
     fun offer(entity: SourceEntity): SourceEntityCollectionAdmission {
-        if (state is State.Stopped) return SourceEntityCollectionAdmission.STOPPED
+        if (state != State.Collecting) return SourceEntityCollectionAdmission.STOPPED
         val prior = previous
         if (prior != null && SOURCE_ENTITY_ORDER.compare(prior, entity) > 0) {
             return stop(IntellijSourceEntityPage.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION))
         }
         previous = entity
         if (!entity.matches(selection)) return SourceEntityCollectionAdmission.ACCEPTING
-        if (matched < cursor.startOrdinal) {
-            matched += 1
-            return SourceEntityCollectionAdmission.ACCEPTING
-        }
         if (page.size == limit.value) {
-            val next = cursor.startOrdinal + page.size
-            return stop(
-                IntellijSourceEntityPage.Prefix(
-                    page.toList(),
-                    next + 1,
-                    setOf(SourceReadLimitation.ENTITY_LIMIT_REACHED),
-                    next,
-                )
-            )
+            lookahead = entity
+            state = State.PageFull
+            return SourceEntityCollectionAdmission.STOPPED
         }
         page += entity
-        matched += 1
         return SourceEntityCollectionAdmission.ACCEPTING
     }
 
-    fun finish(): IntellijSourceEntityPage =
+    fun finish(traversal: SourceEntityTraversalState? = null): IntellijSourceEntityPage =
         when (val current = state) {
             State.Collecting -> {
                 val completed =
-                    IntellijSourceEntityPage.Complete(page.toList(), cursor.startOrdinal + page.size, emptySet())
+                    if (traversal == null)
+                        IntellijSourceEntityPage.Complete(page.toList(), cursor.startOrdinal + page.size, emptySet())
+                    else prefix(traversal)
                 stop(completed)
                 completed
             }
+            State.PageFull -> {
+                val retained = traversal ?: lookaheadPosition(checkNotNull(lookahead))
+                val result = prefix(retained)
+                stop(result)
+                result
+            }
             is State.Stopped -> current.page
         }
+
+    private fun prefix(traversal: SourceEntityTraversalState): IntellijSourceEntityPage.Prefix =
+        IntellijSourceEntityPage.Prefix(
+            page.toList(),
+            cursor.startOrdinal + page.size + if (lookahead == null) 0 else 1,
+            traversal.limitations +
+                if (lookahead == null) emptySet() else setOf(SourceReadLimitation.ENTITY_LIMIT_REACHED),
+            cursor.startOrdinal + page.size,
+            traversal,
+        )
+
+    private fun lookaheadPosition(entity: SourceEntity): SourceEntityTraversalState {
+        var region: SourceSelector = entity.parentSelector
+        while (true) region =
+            when (val selector = region) {
+                is SourceSelector.RootRegion -> break
+                is SourceSelector.NestedRegion -> selector.parent
+                is SourceSelector.Entity -> selector.parent
+            }
+        val revision = (cursor.evidence as? SourceReadEntityCursor.Continued)?.proof?.traversal?.revision ?: 0L
+        return (SourceEntityTraversalState.create(
+                region,
+                revision + 1,
+                listOf(SourceEntityTraversalTask.ProvenEntity(entity)),
+            ) as Refinement.Refined)
+            .value
+    }
 
     private fun stop(result: IntellijSourceEntityPage): SourceEntityCollectionAdmission {
         state = State.Stopped(result)

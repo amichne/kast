@@ -190,6 +190,7 @@ private constructor(
                                 limits = progress.limits,
                                 timeAllowance = timeAllowance,
                                 freshness = freshnessCheck,
+                                publicationEffects = progress.publicationEffects,
                             )
                         try {
                             evaluate(context)

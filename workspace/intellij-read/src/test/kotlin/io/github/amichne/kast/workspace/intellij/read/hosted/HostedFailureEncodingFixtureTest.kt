@@ -60,6 +60,7 @@ class HostedFailureEncodingFixtureTest {
                 val admitted =
                     failure is HostedQueryFailure.Freshness ||
                         failure is HostedQueryFailure.Platform ||
+                        failure is HostedQueryFailure.Publication ||
                         failure in
                             listOf(
                                 HostedQueryFailure.RETIRED,
@@ -198,6 +199,8 @@ class HostedFailureEncodingFixtureTest {
                 HostedQueryFailure.Configuration::class -> configurationFailures()
                 HostedQueryFailure.Platform::class ->
                     HostedPlatformFailureCause.entries.map(HostedQueryFailure::Platform)
+                HostedQueryFailure.Publication::class ->
+                    HostedPublicationFailureCause.entries.map(HostedQueryFailure::Publication)
                 HostedQueryFailure.ProjectAdmission::class -> projectFailures()
                 HostedQueryFailure.ModelCapture::class ->
                     DetachedModelCaptureFailure.entries.map {

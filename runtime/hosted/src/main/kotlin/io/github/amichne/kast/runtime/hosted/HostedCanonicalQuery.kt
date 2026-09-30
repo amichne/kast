@@ -5,8 +5,6 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
-import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.protocol.CanonicalDiagnosticCheckProtocol
@@ -16,7 +14,6 @@ import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.source.contract.SourceTextByteLimit
-import io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
@@ -29,7 +26,6 @@ internal suspend fun evaluateHostedCanonicalQuery(
     project: Project,
     context: HostedSemanticReadContext,
     request: HostedRequest.Read,
-    continuations: IntellijSourceReadContinuations,
 ): HostedResponse {
     val services =
         when (val admitted = admitHostedSemanticServices(project, context)) {
@@ -37,8 +33,8 @@ internal suspend fun evaluateHostedCanonicalQuery(
             is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
         }
     return when (request) {
-        is HostedRequest.Query -> evaluateHostedQuery(project, services, context, request, continuations)
-        is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)
+        is HostedRequest.Query -> evaluateHostedQuery(project, services, context, request)
+        is HostedRequest.Source -> evaluateHostedSource(project, services, context, request)
         is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(project, services, context, request)
     }
 }
@@ -48,32 +44,30 @@ private suspend fun evaluateHostedQuery(
     services: HostedSemanticServices,
     context: HostedSemanticReadContext,
     request: HostedRequest.Query,
-    continuations: IntellijSourceReadContinuations,
 ): HostedResponse {
     val queryContinuations =
         when (val admitted = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
         }
-    val token = (request.request as? QueryRunRequest.Resume)?.continuation
+    val publication = HostedQueryPublicationSession(context, request.request)
     val outcome =
-        if (token is QueryExecutionContinuation.Output) {
-            queryContinuations.restore(token, context.authority)
-        } else {
-            CanonicalQueryProtocol(
-                    QueryService(
-                        discovery = services.discovery,
-                        exact = services.exact,
-                        source = services.source(continuations),
-                        relations = services.relations,
-                        traversal = traversalOperations(services.relations),
-                        traversalCeiling = services.budgets.hostedTraversalBudget,
-                    ),
-                    services.readReferences,
-                    queryContinuations.queryState,
-                )
-                .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
-        }
+        CanonicalQueryProtocol(
+                QueryService(
+                    discovery = services.discovery,
+                    exact = services.exact,
+                    source =
+                        services.source(io.github.amichne.kast.source.contract.SourceReadContinuationPort.Cursorless),
+                    relations = services.relations,
+                    traversal = traversalOperations(services.relations),
+                    traversalCeiling = services.budgets.hostedTraversalBudget,
+                ),
+                services.readReferences,
+                queryContinuations.queryState,
+                publication,
+            )
+            .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
+    context.observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.ENCODING)
     return encodeHostedQueryResponse(
         semantic =
             outcome.withQueryBudget(
@@ -83,9 +77,9 @@ private suspend fun evaluateHostedQuery(
         observation = context.observation,
         maximumResults = context.executionBudget.results.effective,
         maximumBytes = context.executionBudget.returnedBytes.effective,
-    ) { remaining ->
-        queryContinuations.issue(request.request, context.authority, remaining.withQueryBudget(null))
-    }
+        published = publication::fitted,
+        retain = publication::retain,
+    )
 }
 
 private suspend fun evaluateHostedDiagnostic(
@@ -99,27 +93,38 @@ private suspend fun evaluateHostedDiagnostic(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
         }
-    val token = request.request.continuation
+    val publication = HostedDiagnosticPublicationSession(context)
     val outcome =
-        if (token != null && token.value.startsWith(DIAGNOSTIC_OUTPUT_PREFIX)) {
-            retained.diagnosticOutputs.restore(token, request.request, context.authority)
-        } else {
-            CanonicalDiagnosticCheckProtocol(
-                    services.diagnosticScans,
-                    services.readReferences,
-                    retained.diagnosticCheckpoints,
-                )
-                .execute(request.request, context.authority, services.budgets.hostedQueryBudget.resources)
+        CanonicalDiagnosticCheckProtocol(
+                services.diagnosticScans,
+                services.readReferences,
+                retained.diagnosticCheckpoints,
+                publication,
+            )
+            .execute(request.request, context.authority, services.budgets.hostedQueryBudget.resources)
+    val response =
+        encodeHostedDiagnosticResponse(
+            outcome.withDiagnosticBudget(
+                io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
+            ),
+            context.limits,
+            context.executionBudget.returnedBytes.effective,
+            context.executionBudget.results.effective,
+            publication::retain,
+        )
+    if (response.outcome == io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluationOutcome.REJECTED) {
+        publication.discard()
+        return response
+    }
+    return when (val fitted = publication.fitted(response)) {
+        is Refinement.Refined -> response
+        is Refinement.Rejected -> {
+            publication.discard()
+            HostedResponse.ReadRejected(
+                fitted.failure,
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryStage.RESULT_DETACHED,
+            )
         }
-    return encodeHostedDiagnosticResponse(
-        outcome.withDiagnosticBudget(
-            io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
-        ),
-        context.limits,
-        context.executionBudget.returnedBytes.effective,
-        context.executionBudget.results.effective,
-    ) { remaining ->
-        retained.diagnosticOutputs.issue(request.request, context.authority, remaining)
     }
 }
 

@@ -129,12 +129,13 @@ class IntellijSourceCallReferenceReadTest {
             IntellijSourceReadPort(
                 IntellijSourceRegionAccess { _, request, cursor ->
                     val selected =
-                        IntellijSourceEntityPage.select(
+                        selectDetachedSourceFixture(
                             fixture.entities.asSequence(),
                             request.entities,
                             cursor,
                             request.entityLimit,
-                        ) as IntellijSourceEntityPage.Complete
+                        )
+                            as IntellijSourceEntityPage.Complete
                     IntellijSourceRegionAccessResult.Selected(
                         IntellijSelectedSourceCapture.create(
                                 fixture.snapshot,
@@ -171,7 +172,7 @@ class IntellijSourceCallReferenceReadTest {
         IntellijSourceReadPort(
             IntellijSourceRegionAccess { _, request, cursor ->
                 val page =
-                    IntellijSourceEntityPage.select(
+                    selectDetachedSourceFixture(
                         fixture.entities.asSequence(),
                         request.entities,
                         cursor,
@@ -187,7 +188,8 @@ class IntellijSourceCallReferenceReadTest {
                         )
                         .refined()
                 )
-            }
+            },
+            TestSourceCursorPort(),
         )
 
     private fun read(

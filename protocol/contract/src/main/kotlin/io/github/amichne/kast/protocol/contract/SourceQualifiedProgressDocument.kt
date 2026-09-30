@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 enum class SourceTerminalReasonDocument {
     @SerialName("upstream-incomplete") UPSTREAM_INCOMPLETE,
     @SerialName("text-projection-withheld") TEXT_PROJECTION_WITHHELD,
+    @SerialName("retention-capacity-exceeded") RETENTION_CAPACITY_EXCEEDED,
 }
 
 /** The qualification owns progress; legacy cursor availability is a derived projection. */
@@ -18,6 +19,11 @@ sealed interface SourceQualifiedProgressDocument {
         val checkpoint: SourceCheckpointDocument,
         @SerialName("next_action") val nextAction: ReadResumeActionDocument,
     ) : SourceQualifiedProgressDocument
+
+    /** The captured universe proof survives a refusal to retain its detached output suffix. */
+    @Serializable
+    @SerialName("retention_unavailable")
+    data class RetentionUnavailable(val upstream: SourcePreparedCoverageDocument) : SourceQualifiedProgressDocument
 
     @Serializable
     @SerialName("terminal_incomplete")
@@ -54,7 +60,8 @@ sealed interface SourcePreparedCoverageDocument {
 
 internal fun SourceQualifiedProgressDocument.hasCanonicalSyntax(): Boolean =
     when (this) {
-        is SourceQualifiedProgressDocument.TerminalIncomplete -> true
+        is SourceQualifiedProgressDocument.TerminalIncomplete,
+        is SourceQualifiedProgressDocument.RetentionUnavailable -> true
         is SourceQualifiedProgressDocument.Resumable ->
             when (val reference = checkpoint) {
                 is SourceCheckpointDocument.Upstream -> NATIVE_TOKEN.matches(reference.token.value)
@@ -69,6 +76,13 @@ internal fun SourceQualifiedProgressDocument.hasSupportedTerminalReason(
     limitations: List<SourceReadLimitationDocument>
 ): Boolean =
     when (this) {
+        is SourceQualifiedProgressDocument.RetentionUnavailable ->
+            SourceReadLimitationDocument.RETENTION_LIMIT_REACHED in limitations &&
+                when (val coverage = upstream) {
+                    SourcePreparedCoverageDocument.Complete,
+                    SourcePreparedCoverageDocument.Resumable -> true
+                    is SourcePreparedCoverageDocument.TerminalIncomplete -> coverage.reason.isSupportedBy(limitations)
+                }
         is SourceQualifiedProgressDocument.TerminalIncomplete -> reason.isSupportedBy(limitations)
         is SourceQualifiedProgressDocument.Resumable ->
             when (val cursor = checkpoint) {
@@ -85,6 +99,8 @@ internal fun SourceQualifiedProgressDocument.hasSupportedTerminalReason(
 
 private fun SourceTerminalReasonDocument.isSupportedBy(limitations: List<SourceReadLimitationDocument>): Boolean =
     when (this) {
+        SourceTerminalReasonDocument.RETENTION_CAPACITY_EXCEEDED ->
+            SourceReadLimitationDocument.RETENTION_LIMIT_REACHED in limitations
         SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE -> true
         SourceTerminalReasonDocument.TEXT_PROJECTION_WITHHELD ->
             SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED in limitations

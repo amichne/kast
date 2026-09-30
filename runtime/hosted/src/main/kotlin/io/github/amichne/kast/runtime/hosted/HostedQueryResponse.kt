@@ -8,7 +8,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
-import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
@@ -19,6 +18,8 @@ import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
 import io.github.amichne.kast.protocol.contract.budgetPresence
+import io.github.amichne.kast.protocol.contract.presentationPrefix
+import io.github.amichne.kast.protocol.contract.presentationSuffix
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -32,9 +33,10 @@ internal fun encodeHostedQueryResponse(
     maximumResults: ResultLimit = ResultLimit.parse(limits[ReadLimitParameter.SEMANTIC_RESULTS].value).proven(),
     maximumBytes: ReturnedByteLimit =
         ReturnedByteLimit.parse(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong()).proven(),
+    published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)? = null,
     retain: ((HostedQueryOutcome) -> HostedOutputRetention)? = null,
 ): HostedResponse =
-    encodeHostedQueryResponseDocument(semantic, limits, observation, maximumResults, maximumBytes, retain)
+    encodeHostedQueryResponseDocument(semantic, limits, observation, maximumResults, maximumBytes, retain, published)
         .withReadBudget(
             when (semantic) {
                 is OperationOutcome.Complete -> semantic.evidence.payload.executionBudget.presence()
@@ -50,6 +52,7 @@ private fun encodeHostedQueryResponseDocument(
     maximumResults: ResultLimit,
     maximumBytes: ReturnedByteLimit,
     retain: ((HostedQueryOutcome) -> HostedOutputRetention)?,
+    published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
 ): HostedResponse {
     val original =
         HostedResponse.Canonical.encode(CanonicalOperationWireBindings.queryRun, semantic, limits, maximumBytes)
@@ -73,19 +76,25 @@ private fun encodeHostedQueryResponseDocument(
         is OperationOutcome.Rejected -> return original
     }
     val size = evidence.payload.items.values.size
-    if (original !is HostedResponse.Oversized && size <= maximumResults.value) return original
+    if (original !is HostedResponse.Oversized && size <= maximumResults.value) {
+        return original.publishEncodedPage(semantic, published)
+    }
     if (original is HostedResponse.Oversized) observation.terminated(IntellijReadTermination.RESPONSE_BYTE_LIMIT)
     val rejection =
         if (original is HostedResponse.Oversized) original
         else HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
     // Without a continuation owner no prefix may be irreversibly published.
     if (retain == null) return rejection
+    if (evidence.payload.presentationPrefix(size) is Refinement.Rejected)
+        return rejectedQueryRetention(
+            io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause.INVALID_FITTED_PAGE
+        )
     val exhausted = queryPageLimitations(limitations, original, size, maximumResults)
     val fitting = QueryPageEncoding(evidence, minimum, exhausted, semantic.preparedCoverage(), limits, maximumBytes)
     val bestCount = largestHostedQueryPrefix(minOf(size - 1, maximumResults.value), fitting::placeholder)
     // An empty prefix cannot advance a byte-bound continuation. Fail with finite rejection instead.
     if (bestCount == 0) return rejection
-    return retain(semantic.querySuffix(bestCount)).encodeOr(rejection) { token -> fitting.encode(bestCount, token) }
+    return fitting.retainPrefix(semantic, bestCount, retain, published, observation)
 }
 
 private fun queryPageLimitations(
@@ -109,30 +118,131 @@ private class QueryPageEncoding(
     val limits: ReadLimits,
     val maximumBytes: ReturnedByteLimit,
 ) {
+    fun retainPrefix(
+        semantic: HostedQueryOutcome,
+        count: Int,
+        retain: (HostedQueryOutcome) -> HostedOutputRetention,
+        published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
+        observation: IntellijReadObservation,
+    ): HostedResponse {
+        val suffix =
+            when (val selected = semantic.querySuffix(count)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected ->
+                    return rejectedQueryRetention(
+                        io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause
+                            .INVALID_FITTED_PAGE
+                    )
+            }
+        return when (val retained = retain(suffix)) {
+            is HostedOutputRetention.Retained ->
+                when (val parsed = QueryExecutionContinuation.Output.parse(retained.token.value)) {
+                    is Refinement.Refined -> encode(count, parsed.value, published)
+                    is Refinement.Rejected ->
+                        rejectedQueryRetention(
+                            io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause
+                                .INVALID_FITTED_PAGE
+                        )
+                }
+            HostedOutputRetention.CapacityExceeded -> {
+                observation.terminated(IntellijReadTermination.RETENTION_LIMIT)
+                unavailable(count, published)
+            }
+            is HostedOutputRetention.Rejected -> rejectedQueryRetention(retained.cause)
+        }
+    }
+
     fun placeholder(count: Int): HostedResponse = encode(count, QUERY_PLACEHOLDER)
 
-    fun encode(count: Int, token: QueryExecutionContinuation.Output): HostedResponse =
-        HostedResponse.Canonical.encode(
-            CanonicalOperationWireBindings.queryRun,
-            OperationOutcome.Qualified(
-                evidence.copy(
-                    payload =
-                        evidence.payload.copy(
-                            items = BoundedProtocolList.create(evidence.payload.items.values.take(count)).proven()
-                        )
-                ),
-                QueryRunQualification.create(
-                        minimum,
-                        limitations,
+    fun encode(
+        count: Int,
+        token: QueryExecutionContinuation.Output,
+        published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)? = null,
+    ): HostedResponse {
+        val page =
+            when (
+                val selected =
+                    page(
+                        count,
                         QueryQualifiedProgressDocument.Resumable(
                             QueryCheckpointDocument.RetainedOutput(token, upstream),
                             ReadResumeActionDocument.RESUME,
                         ),
                     )
+            ) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return invalidPage()
+            }
+        return HostedResponse.Canonical.encode(CanonicalOperationWireBindings.queryRun, page, limits, maximumBytes)
+            .also { response ->
+                if (response is HostedResponse.Canonical<*, *, *>) published?.invoke(encodedPublication(page, response))
+            }
+    }
+
+    fun unavailable(
+        maximumCount: Int,
+        published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
+    ): HostedResponse {
+        fun encode(count: Int): HostedResponse {
+            val page =
+                when (val selected = page(count, QueryQualifiedProgressDocument.RetentionUnavailable(upstream))) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected -> return invalidPage()
+                }
+            return HostedResponse.Canonical.encode(
+                CanonicalOperationWireBindings.queryRun,
+                page,
+                limits,
+                maximumBytes,
+            )
+        }
+        val count = largestHostedQueryPrefix(maximumCount, ::encode)
+        if (count == 0)
+            return rejectedQueryRetention(
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause.CAPACITY_EXCEEDED
+            )
+        return encode(count).also { response ->
+            if (response is HostedResponse.Canonical<*, *, *>) {
+                when (val selected = page(count, QueryQualifiedProgressDocument.RetentionUnavailable(upstream))) {
+                    is Refinement.Refined -> published?.invoke(encodedPublication(selected.value, response))
+                    is Refinement.Rejected -> error("A deterministic fitted presentation changed its window proof")
+                }
+            }
+        }
+    }
+
+    private fun page(
+        count: Int,
+        progress: QueryQualifiedProgressDocument,
+    ): Refinement<
+        io.github.amichne.kast.query.protocol.QueryPublishedPage,
+        io.github.amichne.kast.protocol.contract.QueryPresentationWindowFailure,
+    > {
+        val payload =
+            when (val selected = evidence.payload.presentationPrefix(count)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return selected
+            }
+        val pageLimitations =
+            if (progress is QueryQualifiedProgressDocument.RetentionUnavailable)
+                (limitations + QueryLimitationDocument.RETENTION_LIMIT_REACHED).distinct().sortedBy { it.ordinal }
+            else limitations
+        return Refinement.Refined(
+            OperationOutcome.Qualified(
+                evidence.copy(payload = payload),
+                QueryRunQualification.create(
+                        minimum,
+                        pageLimitations,
+                        progress,
+                    )
                     .proven(),
-            ),
-            limits,
-            maximumBytes,
+            )
+        )
+    }
+
+    private fun invalidPage(): HostedResponse =
+        rejectedQueryRetention(
+            io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause.INVALID_FITTED_PAGE
         )
 }
 
@@ -140,25 +250,39 @@ private val QUERY_PLACEHOLDER =
     QueryExecutionContinuation.Output.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000")
         .proven()
 
-private fun HostedQueryOutcome.querySuffix(count: Int): HostedQueryOutcome {
-    fun EvidenceEnvelope<QueryRunResult>.suffix() =
-        copy(payload = payload.copy(items = BoundedProtocolList.create(payload.items.values.drop(count)).proven()))
+private fun HostedQueryOutcome.querySuffix(
+    count: Int
+): Refinement<HostedQueryOutcome, io.github.amichne.kast.protocol.contract.QueryPresentationWindowFailure> {
     return when (this) {
         is OperationOutcome.Complete -> {
-            val suffix = evidence.suffix()
-            OperationOutcome.Complete(
-                suffix.copy(
-                    payload =
-                        suffix.payload.copy(
-                            presentationOrigin =
-                                evidence.payload.presentationOrigin
-                                    ?: QueryKnownMinimum.parse(evidence.payload.items.values.size).proven()
-                        )
+            val suffix =
+                when (val selected = evidence.payload.presentationSuffix(count)) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected -> return selected
+                }
+            Refinement.Refined(
+                OperationOutcome.Complete(
+                    evidence.copy(
+                        payload =
+                            suffix.copy(
+                                presentationOrigin =
+                                    evidence.payload.presentationOrigin
+                                        ?: QueryKnownMinimum.parse(evidence.payload.items.values.size).proven()
+                            )
+                    )
                 )
             )
         }
-        is OperationOutcome.Qualified -> OperationOutcome.Qualified(evidence.suffix(), qualification)
-        is OperationOutcome.Rejected -> this
+        is OperationOutcome.Qualified -> {
+            when (val selected = evidence.payload.presentationSuffix(count)) {
+                is Refinement.Refined ->
+                    Refinement.Refined(
+                        OperationOutcome.Qualified(evidence.copy(payload = selected.value), qualification)
+                    )
+                is Refinement.Rejected -> selected
+            }
+        }
+        is OperationOutcome.Rejected -> Refinement.Refined(this)
     }
 }
 
@@ -186,20 +310,13 @@ private fun largestHostedQueryPrefix(maximum: Int, encode: (Int) -> HostedRespon
     return bestCount
 }
 
-private fun HostedOutputRetention.encodeOr(
-    original: HostedResponse,
-    encode: (QueryExecutionContinuation.Output) -> HostedResponse,
+private fun rejectedQueryRetention(
+    cause: io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause
 ): HostedResponse =
-    when (this) {
-        is HostedOutputRetention.Retained ->
-            when (val parsed = QueryExecutionContinuation.Output.parse(token.value)) {
-                is Refinement.Refined -> encode(parsed.value)
-                is Refinement.Rejected -> original
-            }
-        HostedOutputRetention.Unavailable -> unavailableHostedRetention()
-        HostedOutputRetention.CapacityExceeded,
-        HostedOutputRetention.EncodingRejected -> original
-    }
+    HostedResponse.ReadRejected(
+        io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure.Publication(cause),
+        io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryStage.RESULT_DETACHED,
+    )
 
 internal fun HostedQueryOutcome.withQueryBudget(
     report: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport?
@@ -215,3 +332,37 @@ internal fun HostedQueryOutcome.withQueryBudget(
         is OperationOutcome.Rejected ->
             if (report == null) this else OperationOutcome.Rejected(AdmittedQueryRunRejection(reason.reason(), report))
     }
+
+/** This projection preserves the closed semantic reason while per-call budget reports stay at presentation. */
+internal fun HostedQueryOutcome.publicationPage(): io.github.amichne.kast.query.protocol.QueryPublishedPage =
+    when (this) {
+        is OperationOutcome.Complete ->
+            OperationOutcome.Complete(evidence.copy(payload = evidence.payload.copy(executionBudget = null)))
+        is OperationOutcome.Qualified ->
+            OperationOutcome.Qualified(
+                evidence.copy(payload = evidence.payload.copy(executionBudget = null)),
+                qualification,
+            )
+        is OperationOutcome.Rejected -> OperationOutcome.Rejected(reason.reason())
+    }
+
+/** Carries the successful encoding bound into the existing publication owner without encoding again. */
+private fun encodedPublication(
+    page: io.github.amichne.kast.query.protocol.QueryPublishedPage,
+    response: HostedResponse.Canonical<*, *, *>,
+): io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded =
+    io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded.fromEncoding(
+        page.publicationPage(),
+        io.github.amichne.kast.query.protocol.QueryRetentionByteCount.parse(
+                response.document.toByteArray(Charsets.UTF_8).size.toLong()
+            )
+            .proven(),
+    )
+
+private fun HostedResponse.publishEncodedPage(
+    page: io.github.amichne.kast.query.protocol.QueryPublishedPage,
+    published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
+): HostedResponse {
+    if (this is HostedResponse.Canonical<*, *, *>) published?.invoke(encodedPublication(page, this))
+    return this
+}

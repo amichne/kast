@@ -14,6 +14,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceFiles
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
 import io.github.amichne.kast.workspace.intellij.read.ProjectSourceFileFailure
 import java.nio.file.Path
@@ -34,6 +36,7 @@ private constructor(
             limits: ReadLimits = ReadLimits.Default,
             scopeTimeLimit: io.github.amichne.kast.kernel.ElapsedTimeLimitMillis =
                 diagnosticScopeBudget(limits).elapsedTimeLimit,
+            observation: IntellijReadObservation = IntellijReadObservation.None,
         ): ProjectBoundIntellijDiagnosticPorts {
             fun admits(path: Path): Boolean =
                 model.workspaceRoot == authority.workspaceRoot &&
@@ -41,11 +44,18 @@ private constructor(
                     fileAdmission.admits(path, SymbolDiscoverySourceSets.All)
             val adapter =
                 IntellijDiagnosticCompilerAdapter(
-                    IntellijDiagnosticCompilerQuery(::admits),
+                    IntellijDiagnosticCompilerQuery(::admits, observation),
                     LoggingIntellijDiagnosticCompilationObserver,
                 )
             return ProjectBoundIntellijDiagnosticPorts(
-                enumeration = projectBoundDiagnosticEnumeration(project, authority, limits, ::admits),
+                enumeration =
+                    projectBoundDiagnosticEnumeration(
+                        project = project,
+                        authority = authority,
+                        limits = limits,
+                        admitsFile = ::admits,
+                        observation = observation,
+                    ),
                 compiler =
                     DiagnosticCompilerPort { scope ->
                         if (model.workspaceRoot != authority.workspaceRoot) {
@@ -54,6 +64,7 @@ private constructor(
                     },
                 scopes =
                     DiagnosticScopeResolver { query ->
+                        observation.phase(IntellijReadPhase.DIAGNOSTIC_SCOPE)
                         readAction {
                             if (
                                 project.isDisposed ||

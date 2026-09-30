@@ -160,6 +160,8 @@ private fun QueryRunResult.toQueryWireDocument() =
         failures = failures.values.map(QueryItemFailureDocument::toWire),
         omissions = omissions.values.map(QueryRelationOmissionDocument::toWire),
         walkObservations = walkObservations.values.map(QueryWalkObservationDocument::toWireDocument),
+        referenceObservations = referenceObservations.values.map { it.toWireDocument() },
+        discoveryObservations = discoveryObservations.values,
         retention = retention,
         nextCursor = nextCursor,
         executionBudget = executionBudget,
@@ -176,17 +178,27 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                             walkObservations
                                 .convertEach(QueryWalkObservationWireDocument::toContract)
                                 .flatMapConverted { observations ->
-                                    observations.bounded().mapConverted { boundedObservations ->
-                                        QueryRunResult(
-                                            items = boundedItems,
-                                            failures = boundedFailures,
-                                            omissions = boundedOmissions,
-                                            walkObservations = boundedObservations,
-                                            retention = retention,
-                                            nextCursor = nextCursor,
-                                            executionBudget = executionBudget,
-                                            referenceAcquisitions = referenceAcquisitions,
-                                        )
+                                    observations.bounded().flatMapConverted { boundedObservations ->
+                                        referenceObservations
+                                            .convertEach(RelationReferenceOccurrenceWireDocument::toContract)
+                                            .flatMapConverted { references ->
+                                                references.bounded().flatMapConverted { boundedReferences ->
+                                                    discoveryObservations.bounded().mapConverted { boundedDiscoveries ->
+                                                        QueryRunResult(
+                                                            items = boundedItems,
+                                                            failures = boundedFailures,
+                                                            omissions = boundedOmissions,
+                                                            walkObservations = boundedObservations,
+                                                            referenceObservations = boundedReferences,
+                                                            discoveryObservations = boundedDiscoveries,
+                                                            retention = retention,
+                                                            nextCursor = nextCursor,
+                                                            executionBudget = executionBudget,
+                                                            referenceAcquisitions = referenceAcquisitions,
+                                                        )
+                                                    }
+                                                }
+                                            }
                                     }
                                 }
                         }

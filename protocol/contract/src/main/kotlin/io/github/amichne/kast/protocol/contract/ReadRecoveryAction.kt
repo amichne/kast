@@ -11,6 +11,7 @@ enum class ReadRecoveryAction {
     @SerialName("correct_request") CORRECT_REQUEST,
     @SerialName("adjust_budget_or_scope") ADJUST_BUDGET_OR_SCOPE,
     @SerialName("wait_for_workspace") WAIT_FOR_WORKSPACE,
+    @SerialName("wait_for_checkpoint") WAIT_FOR_CHECKPOINT,
     @SerialName("save_source") SAVE_SOURCE,
     @SerialName("report_failure") REPORT_FAILURE,
 }
@@ -39,6 +40,8 @@ fun SourceReadFailure.recoveryAction(): ReadRecoveryAction =
         SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE,
         SourceReadRejection.CONTRACT_VIOLATION -> ReadRecoveryAction.REPORT_FAILURE
         SourceReadRejection.CONTINUATION_UNAVAILABLE -> ReadRecoveryAction.RESTART_READ
+        SourceReadRejection.CONTINUATION_IN_USE -> ReadRecoveryAction.WAIT_FOR_CHECKPOINT
+        SourceReadRejection.CONTINUATION_CAPACITY_EXCEEDED -> ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
     }
 
 fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
@@ -50,6 +53,10 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
         is QueryRunRejection.ExecutionRejected ->
             when (rejection.reason) {
                 QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE,
+                QueryExecutionRejectionDocument.CONTINUATION_OWNER_RETIRED,
+                QueryExecutionRejectionDocument.CONTINUATION_CLAIM_UNAVAILABLE,
+                QueryExecutionRejectionDocument.CONTINUATION_EXPIRED,
+                QueryExecutionRejectionDocument.CONTINUATION_DEPENDENCY_UNAVAILABLE,
                 QueryExecutionRejectionDocument.RESULT_UNAVAILABLE,
                 QueryExecutionRejectionDocument.RESULT_STALE_BASIS -> ReadRecoveryAction.RESTART_READ
                 QueryExecutionRejectionDocument.CONTINUATION_MISMATCH,
@@ -61,8 +68,13 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
                 QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH,
                 QueryExecutionRejectionDocument.REQUEST_REJECTED,
                 QueryExecutionRejectionDocument.BUDGET_REJECTED -> ReadRecoveryAction.CORRECT_REQUEST
+                QueryExecutionRejectionDocument.CONTINUATION_IN_USE -> ReadRecoveryAction.WAIT_FOR_CHECKPOINT
+                QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED ->
+                    ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
                 QueryExecutionRejectionDocument.REFERENCE_STALE -> ReadRecoveryAction.REACQUIRE_AUTHORITY
                 QueryExecutionRejectionDocument.DISCOVERY_REJECTED,
+                QueryExecutionRejectionDocument.PUBLISHED_PAGE_MISMATCH,
+                QueryExecutionRejectionDocument.NON_ADVANCING_CONTINUATION,
                 QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION -> ReadRecoveryAction.REPORT_FAILURE
             }
     }

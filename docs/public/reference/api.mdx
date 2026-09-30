@@ -47,7 +47,7 @@ Replace token placeholders with issued values. They are teaching labels, not val
 | Input | Use it when |
 | --- | --- |
 | `SEARCH_DECLARATIONS` | You know a simple declaration name. Exact, case-sensitive matching is the default; fuzzy matching is explicit. |
-| `ALL_DECLARATIONS` | You need bounded enumeration in a chosen scope. It does not mean unlimited work. |
+| `ALL_DECLARATIONS` | Enumerate supported Kotlin declarations in the chosen source scope, progressively across continuations. File path and source offset determine order. |
 | `AT_LOCATION` | Supply a workspace-relative `file` and UTF-16 `offset` to find the nearest containing named declaration, not go-to-definition. |
 | `SYMBOL_REFS` | A previous result already identified the symbols. Copy its references unchanged. |
 | `RESULT` | You want to reuse retained rows, optionally selecting their issued row IDs. |
@@ -86,7 +86,7 @@ Discovery accepts a directory or package scope. Without a scope override, it sea
 | Output | What it preserves |
 | --- | --- |
 | `SYMBOLS` | Exact identity and kind, plus selected `NAME`, `LOCATION`, `SIGNATURE`, or bounded committed `SOURCE`. |
-| `OCCURRENCES` | Individual relationship facts and repeated use sites. |
+| `OCCURRENCES` | Individual relationship facts and compiler-confirmed use sites, including file-scoped imports and aliases. |
 | `TRAVERSAL_RECORDS` | Established relation facts with their hop depth. |
 | `BINDING_ROWS` | Named symbol cells from an inner join. |
 
@@ -95,6 +95,12 @@ An omitted output selects symbols with name and location. An explicit symbol out
 ## Defaults and limits
 
 You can omit execution budgets. Kast applies configured defaults and ceilings; omission is not unlimited work. Budgets do not change the requested scope or output shape.
+
+A qualified page can contain useful proven results and unfinished work. Follow its issued continuation until completion or a finite terminal reason; an empty page does not prove an empty universe. `ALL_DECLARATIONS` retains undiscovered source partitions and pending refinement, so a downstream filter does not make an early rejected prefix exhaustive. Oversized indivisible partitions or unavailable retention terminate with evidence.
+
+Replaying a published continuation returns the same semantic page and successor without repeating the scan. Concurrent use of an unfinished continuation reports `continuation-in-use`; wait for the active attempt before retrying. Continuations remain bound to the original workspace state. Expiry, eviction, or a changed semantic basis require a new investigation.
+
+Reference occurrences retain their confirmed target, source range, context, provenance, and ownership. An import or alias may be file-scoped without an enclosing declaration. Such an occurrence is useful evidence but cannot become a declaration or call graph endpoint. Walks preserve these non-expandable occurrences and detailed omission evidence alongside their declaration frontier.
 
 Every public tool accepts optional root-level `verbose: true` for additional execution detail. Omission or `false` keeps the compact result. Verbosity does not change the query's meaning or erase limitations.
 

@@ -23,6 +23,10 @@ import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionMeasurementDocument
+import io.github.amichne.kast.protocol.contract.RelationProviderDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalExpansionRemainderDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
@@ -64,6 +68,8 @@ class QueryWalkCliProjectionTest {
                     TraversalDepthDocument.parse(0).value(),
                     listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
                     TraversalExpansionRemainderDocument.NOT_EXPLORED,
+                    knownMinimum = QueryKnownMinimum.parse(0).value(),
+                    omissions = unmeasuredPageOmissions(),
                 )
                 .value()
         val observation =
@@ -94,17 +100,35 @@ class QueryWalkCliProjectionTest {
                     EvidenceBasis.Published(EvidenceGeneration.parse(1).value()),
                     result,
                 ),
-                QueryRunQualification.create(
-                        QueryKnownMinimum.parse(0).value(),
-                        listOf(QueryLimitationDocument.TRAVERSAL_INCOMPLETE),
-                        QueryQualifiedProgressDocument.TerminalIncomplete(
-                            QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
-                        ),
-                    )
-                    .value(),
+                walkQualification(),
             )
         return outcome
     }
+
+    private fun walkQualification(): QueryRunQualification =
+        QueryRunQualification.create(
+                QueryKnownMinimum.parse(0).value(),
+                listOf(QueryLimitationDocument.TRAVERSAL_INCOMPLETE),
+                QueryQualifiedProgressDocument.TerminalIncomplete(QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE),
+            )
+            .value()
+
+    private fun unmeasuredPageOmissions(): BoundedProtocolList<RelationOmissionDocument> =
+        BoundedProtocolList.create(
+                listOf(
+                    RelationOmissionDocument.create(
+                            RelationProviderDocument.INTELLIJ_REFERENCES_V2,
+                            RelationLimitationDocument.RESULT_LIMIT_REACHED,
+                            RelationOmissionMeasurementDocument.UnmeasuredOnPage,
+                            io.github.amichne.kast.protocol.contract.RelationOmissionSamplesDocument.complete(
+                                    BoundedProtocolList.create(emptyList<RelationOmissionLocationDocument>()).value()
+                                )
+                                .value(),
+                        )
+                        .value()
+                )
+            )
+            .value()
 
     private fun <T, F> Refinement<T, F>.value(): T = (this as Refinement.Refined).value
 }

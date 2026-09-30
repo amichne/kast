@@ -4,7 +4,7 @@ title: Operation outcomes
 description: Semantic success is complete or explicitly qualified and carries either published or live evidence; rejection carries no successful payload.
 resource: file://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
 tags: [outcome, evidence, failure]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadReferenceAcquisitions.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
@@ -71,6 +71,7 @@ Query admission has distinct finite reasons for unknown projected binding names 
 | `restart_read` | Start a new read without an unavailable continuation, under fresh admission. |
 | `adjust_budget_or_scope` | Inspect the reported work or time exhaustion and effective grant; narrow the request or increase a caller limit within its ceiling. |
 | `correct_request` | Correct unsupported controls or restore the original continuation-bound request; changed semantics require a new read. |
+| `wait_for_checkpoint` | Wait for the active owner of this checkpoint before retrying; no competing successor is published. |
 | `wait_for_workspace` | Observe workspace readiness before a later request. |
 | `save_source` | Save source and allow IDE document-to-PSI synchronization before a later request. |
 | `report_failure` | Report compiler, discovery or internal contract failure when the reason proves no recovery prerequisite. |
@@ -79,9 +80,9 @@ These directions grant no automatic retry, source write, workspace opening,
 import, or refresh capability. Qualified progress keeps its separate continuation
 actions; rejection recovery does not assert successful or complete output.
 
-Qualified query results retain relation omissions and walk observations alongside
-known rows. Each walk observation preserves depth, frontier progress, partial
-expansions, and complete, resumable, or terminal incomplete coverage. Query
+Qualified query results retain discovery and reference observations, detailed relation omissions, and walk observations alongside
+known rows. Positive compiler-confirmed occurrences survive unavailable declaration ownership; file-scoped imports do not acquire invented declaration identity. Each walk observation preserves depth, frontier progress, partial
+expansions, inherited omission provenance, independent non-expandable occurrences, and complete, resumable, or terminal incomplete coverage. Query
 qualification carries the execution continuation when unfinished work is
 resumable. The query execution budget limits further work; a larger grant does
 not by itself establish completeness.

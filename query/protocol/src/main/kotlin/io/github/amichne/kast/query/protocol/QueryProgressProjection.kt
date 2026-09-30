@@ -12,10 +12,10 @@ import io.github.amichne.kast.query.contract.QueryTerminalReason
 internal fun projectQueryProgress(
     request: QueryRunRequest.Run,
     continuation: QueryContinuationState,
-    itemCount: Int,
     state: QueryStateStore,
     protectedResult: QueryResultReference? = null,
     origin: QueryProgressOrigin = QueryProgressOrigin.EXECUTION,
+    publicationOwner: QueryExecutionClaim? = null,
 ): QueryQualifiedProgressDocument =
     when (continuation) {
         is QueryContinuationState.Resumable ->
@@ -23,7 +23,7 @@ internal fun projectQueryProgress(
                 val issued =
                     when (origin) {
                         QueryProgressOrigin.EXECUTION ->
-                            state.issueCheckpoint(request, continuation.checkpoint, protectedResult)
+                            state.issueCheckpoint(request, continuation.checkpoint, protectedResult, publicationOwner)
                         QueryProgressOrigin.RETAINED_RESULT ->
                             state.retainedCheckpoint(request, continuation.checkpoint)
                     }
@@ -31,8 +31,7 @@ internal fun projectQueryProgress(
                 is QueryCheckpointIssuance.Issued ->
                     QueryQualifiedProgressDocument.Resumable(
                         QueryCheckpointDocument.Upstream(issued.token),
-                        if (itemCount == 0) ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET
-                        else ReadResumeActionDocument.RESUME,
+                        ReadResumeActionDocument.RESUME,
                     )
                 QueryCheckpointIssuance.Unavailable ->
                     QueryQualifiedProgressDocument.TerminalIncomplete(QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE)

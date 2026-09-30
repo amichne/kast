@@ -176,7 +176,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                         return@launch
                     }
                 }
-            val continuations = io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations(limits)
             val root =
                 try {
                     val basePath = project.basePath
@@ -223,7 +222,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     if (!lifecycleAdmission.enter()) HostedResponse.Rejected(HostedEndpointFailure.PLATFORM_UNAVAILABLE)
                     else
                         try {
-                            dispatch(root, request, continuations, limits, refresh, gradleChanges)
+                            dispatch(root, request, limits, refresh, gradleChanges)
                         } finally {
                             lifecycleAdmission.leave()
                         }
@@ -240,7 +239,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             changes.close()
                             query.detach()
                         } finally {
-                            continuations.retire()
                             owner.close()
                             endpointRetirement.set(EndpointRetirement.RETIRED)
                         }
@@ -256,7 +254,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
     private suspend fun dispatch(
         root: CanonicalWorkspaceRoot,
         request: HostedRequest,
-        continuations: io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations,
         limits: io.github.amichne.kast.kernel.ReadLimits,
         refresh: io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh,
         gradleChanges: HostedGradleChangeTracker,
@@ -314,14 +311,11 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 }
             is HostedRequest.PlanChange ->
                 observeHostedChange(HostedChangeStage.PLANNING) { planHostedChange(project, query, request) }
-            is HostedRequest.Read -> dispatchRead(request, continuations)
+            is HostedRequest.Read -> dispatchRead(request)
         }
     }
 
-    private suspend fun dispatchRead(
-        request: HostedRequest.Read,
-        continuations: io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations,
-    ): HostedResponse =
+    private suspend fun dispatchRead(request: HostedRequest.Read): HostedResponse =
         when (
             val result =
                 retryPresemanticIndexing(
@@ -337,7 +331,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                                 io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadReplayPolicy
                                     .SINGLE_EVALUATION,
                         ) { context ->
-                            evaluateHostedCanonicalQuery(project, context, request, continuations)
+                            evaluateHostedCanonicalQuery(project, context, request)
                                 .withReadBudget(
                                     ExecutionBudgetPresence.Present(ExecutionBudgetReport.from(context.executionBudget))
                                 )

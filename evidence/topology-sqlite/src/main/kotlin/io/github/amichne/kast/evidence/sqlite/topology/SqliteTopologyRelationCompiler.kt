@@ -12,8 +12,12 @@ import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
-import io.github.amichne.kast.relation.contract.RelationProviderCursor
-import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
+import io.github.amichne.kast.relation.contract.RelationProviderConsumption
+import io.github.amichne.kast.relation.contract.RelationProviderKind
+import io.github.amichne.kast.relation.contract.RelationProviderLocator
+import io.github.amichne.kast.relation.contract.RelationProviderState
+import io.github.amichne.kast.relation.contract.RelationPublishedSnapshotIdentity
+import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
@@ -45,6 +49,9 @@ import java.nio.charset.StandardCharsets
 class SqliteTopologyRelationCompiler private constructor(private val content: TopologySnapshotContent) :
     RelationCompilerPort {
     private val snapshot: PublishedTopologySnapshot = content.snapshot
+    private val publication: RelationPublishedSnapshotIdentity =
+        RelationPublishedSnapshotIdentity.admit(snapshot.identity.lease, snapshot.manifest.digest.value).refinedOrNull()
+            ?: error("An admitted topology snapshot has a canonical digest")
 
     companion object {
         /**
@@ -114,42 +121,67 @@ class SqliteTopologyRelationCompiler private constructor(private val content: To
         if (!subject.inside(request.subject.scope)) {
             return RelationCompilation.Rejected(RelationCompilerRejection.OUTSIDE_SCOPE)
         }
-        val facts =
+        val state =
+            when (val retained = providerState(request, subject)) {
+                is Refinement.Refined -> retained.value
+                is Refinement.Rejected -> return RelationCompilation.Rejected(retained.failure)
+            }
+        return page(request, state)
+    }
+
+    private fun providerState(
+        request: RelationRequest,
+        subject: RevalidatedTopologySubject,
+    ): Refinement<RelationProviderState, RelationCompilerRejection> =
+        when (val position = request.position) {
+            RelationReadPosition.Start -> preparePublishedFacts(request, subject)
+            is RelationReadPosition.Resume -> {
+                val retained = position.continuation.providerState
+                if (retained.provider == RelationProviderKind.PUBLISHED_TOPOLOGY_V1) Refinement.Refined(retained)
+                else Refinement.Rejected(RelationCompilerRejection.CONTINUATION_CURSOR_MOVED)
+            }
+        }
+
+    private fun preparePublishedFacts(
+        request: RelationRequest,
+        subject: RevalidatedTopologySubject,
+    ): Refinement<RelationProviderState, RelationCompilerRejection> {
+        val eligible =
             content.edges
                 .asSequence()
                 .filter { subject.matches(request.meaning, it) }
                 .filter { it.source.inside(request.subject.scope) && it.target.inside(request.subject.scope) }
-                .map { edge -> edge.toRelationFact(request) }
-                .toList()
-        if (facts.any { it is RelationFactProjection.Rejected }) {
-            return RelationCompilation.Rejected(RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION)
+        val facts = mutableListOf<RelationFact>()
+        for (edge in eligible) {
+            when (val projection = edge.toRelationFact(request)) {
+                is RelationFactProjection.Projected -> facts += projection.fact
+                RelationFactProjection.Rejected ->
+                    return Refinement.Rejected(RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION)
+            }
         }
-        return page(
-            request,
-            facts.map { (it as RelationFactProjection.Projected).fact }.sorted(),
-        )
+        return when (val prepared = RelationProviderState.publishedFacts(publication, facts)) {
+            is Refinement.Refined -> prepared
+            is Refinement.Rejected -> Refinement.Rejected(RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION)
+        }
     }
 
-    private fun page(request: RelationRequest, facts: List<RelationFact>): RelationCompilation {
-        val requestedCursor = request.providerCursor
-        val offset = requestedCursor.nextPosition.value
-        if (offset > facts.size.toLong()) {
-            return RelationCompilation.Rejected(RelationCompilerRejection.CONTINUATION_CURSOR_MOVED)
-        }
-        var observedPrefix = RelationProviderCursor.start(requestedCursor.provider)
-        facts.take(offset.toInt()).forEach { fact ->
-            observedPrefix = observedPrefix.advance(fact.providerDescriptor())
-        }
-        if (observedPrefix != requestedCursor) {
-            return RelationCompilation.Rejected(RelationCompilerRejection.CONTINUATION_CURSOR_MOVED)
-        }
+    private fun page(request: RelationRequest, inventory: RelationProviderState): RelationCompilation {
         val resultLimit = request.budget.resources.resultLimit.value
         val workLimit = request.budget.resources.workUnitLimit.value
         val byteLimit = request.budget.returnedBytes.value
         val page = mutableListOf<RelationFact>()
+        var state = inventory
         var bytes = 0L
         var boundary: RelationPageBoundary = RelationPageBoundary.NotReached
-        for (fact in facts.drop(offset.toInt())) {
+        for (locator in inventory.prepared) {
+            if (locator !is RelationProviderLocator.PublishedFact || locator.publication != publication) {
+                return RelationCompilation.Rejected(RelationCompilerRejection.CONTINUATION_CURSOR_MOVED)
+            }
+            val fact =
+                when (val rebound = locator.fact.forRequest(request)) {
+                    is RelationFactProjection.Projected -> rebound.fact
+                    RelationFactProjection.Rejected -> return contractRejected()
+                }
             val factBytes = fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size
             boundary =
                 when {
@@ -158,22 +190,13 @@ class SqliteTopologyRelationCompiler private constructor(private val content: To
                     bytes + factBytes > byteLimit -> RelationPageBoundary.Reached.BYTE_LIMIT
                     else -> RelationPageBoundary.NotReached
                 }
-            if (boundary is RelationPageBoundary.Reached) {
-                break
-            }
+            if (boundary is RelationPageBoundary.Reached) break
             page += fact
             bytes += factBytes
+            state = state.consume(RelationProviderConsumption.GraphConfirmed(locator.fact))
         }
-        val byteCount =
-            when (val parsed = RelationByteCount.parse(bytes)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return contractRejected()
-            }
-        val workCount =
-            when (val parsed = RelationWorkCount.parse(page.size.toLong())) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return contractRejected()
-            }
+        val byteCount = RelationByteCount.parse(bytes).refinedOrNull() ?: return contractRejected()
+        val workCount = RelationWorkCount.parse(page.size.toLong()).refinedOrNull() ?: return contractRejected()
         val batch =
             when (
                 val admitted =
@@ -188,20 +211,39 @@ class SqliteTopologyRelationCompiler private constructor(private val content: To
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return contractRejected()
             }
-        val nextOffset = offset + page.size
-        if (nextOffset == facts.size.toLong()) return RelationCompilation.complete(batch)
+        if (!state.hasUnfinishedWork) return RelationCompilation.complete(batch)
         val limitations =
             when (val reached = boundary) {
                 RelationPageBoundary.NotReached -> return contractRejected()
                 is RelationPageBoundary.Reached -> setOf(reached.limitation)
             }
-        var next = requestedCursor
-        page.forEach { fact ->
-            next = next.advance(fact.providerDescriptor())
-        }
-        return when (val qualified = RelationCompilation.qualifiedResumable(batch, limitations, next)) {
+        val qualified =
+            if (state.consumedLocatorCount == inventory.consumedLocatorCount)
+                RelationCompilation.qualifiedTerminal(batch, limitations)
+            else RelationCompilation.qualifiedResumable(batch, limitations, state.providerCursor, state)
+        return when (qualified) {
             is Refinement.Refined -> qualified.value
             is Refinement.Rejected -> contractRejected()
+        }
+    }
+
+    /** Rebinds only the admitted exact subject; every related endpoint and occurrence proof stays retained. */
+    private fun RelationFact.forRequest(request: RelationRequest): RelationFactProjection {
+        if (subject.fingerprint != request.subject.fingerprint || meaning != request.meaning)
+            return RelationFactProjection.Rejected
+        val outgoing = meaning == RelationMeaning.Callees
+        return when (
+            val rebound =
+                RelationFact.create(
+                    request,
+                    if (outgoing) request.subject else source,
+                    if (outgoing) target else request.subject,
+                    occurrence,
+                    provenance,
+                )
+        ) {
+            is Refinement.Refined -> RelationFactProjection.Projected(rebound.value)
+            is Refinement.Rejected -> RelationFactProjection.Rejected
         }
     }
 
@@ -257,10 +299,6 @@ class SqliteTopologyRelationCompiler private constructor(private val content: To
 
     private fun contractRejected(): RelationCompilation =
         RelationCompilation.Rejected(RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION)
-
-    private fun RelationFact.providerDescriptor(): RelationProviderItemDescriptor =
-        RelationProviderItemDescriptor.parse(canonicalProjection()).refinedOrNull()
-            ?: error("A canonical relation fact is never blank")
 
     private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? =
         when (this) {

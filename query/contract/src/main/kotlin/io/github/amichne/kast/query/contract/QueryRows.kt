@@ -100,6 +100,12 @@ private fun QuerySymbol.bindingValue(): QueryBindingValue =
 internal fun QuerySymbol.detached(): QuerySymbol =
     copy(connections = Collections.unmodifiableList(connections.toList()))
 
+internal fun QueryOccurrence.detached(): QueryOccurrence =
+    when (this) {
+        is QueryOccurrence.Reference -> this
+        is QueryOccurrence.Declaration -> copy(symbol = symbol.detached())
+    }
+
 internal fun QueryBindingRow.detached(): QueryBindingRow {
     val mode =
         when (val admitted = QueryJoinMode.Inner.create(left.name, right.name)) {
@@ -124,6 +130,20 @@ sealed interface QueryRows {
         }
 
         override fun equals(other: Any?): Boolean = other is Symbols && values == other.values
+
+        override fun hashCode(): Int = values.hashCode()
+    }
+
+    class Occurrences private constructor(private val snapshot: List<QueryOccurrence>) : QueryRows {
+        val values: List<QueryOccurrence>
+            get() = snapshot
+
+        companion object {
+            fun of(values: List<QueryOccurrence>): Occurrences =
+                Occurrences(Collections.unmodifiableList(values.map(QueryOccurrence::detached)))
+        }
+
+        override fun equals(other: Any?): Boolean = other is Occurrences && values == other.values
 
         override fun hashCode(): Int = values.hashCode()
     }

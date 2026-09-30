@@ -121,10 +121,10 @@ class IntellijSourcePageCollectorTest {
     }
 
     @Test
-    fun `resumption drops the previous eligible prefix before retaining one page and lookahead`() {
+    fun `resumption receives only unfinished facts and preserves cumulative entity count`() {
         val collector = collector(start = 2, limit = 2)
         val entities = (0..4).map { entity(it) }
-        entities.forEach { collector.offer(it) }
+        entities.drop(2).forEach { collector.offer(it) }
         val page = collector.finish() as IntellijSourceEntityPage.Prefix
         assertEquals(entities.subList(2, 4), page.entities)
         assertEquals(4, page.nextOrdinal)

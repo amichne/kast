@@ -8,7 +8,8 @@ enum class TraversalExpansionRemainderDocument {
 }
 
 enum class TraversalPartialExpansionDocumentFailure {
-    EMPTY_LIMITATIONS
+    EMPTY_LIMITATIONS,
+    INCONSISTENT_OMISSIONS,
 }
 
 /** Page-local qualified node reads. Depth belongs to the subject node, not its returned edges. */
@@ -19,6 +20,8 @@ private constructor(
     val depth: TraversalDepthDocument,
     val limitations: List<RelationLimitationDocument>,
     val remainder: TraversalExpansionRemainderDocument,
+    val knownMinimum: QueryKnownMinimum,
+    val omissions: BoundedProtocolList<RelationOmissionDocument>,
 ) {
     companion object {
         val Empty: BoundedProtocolList<TraversalPartialExpansionDocument> =
@@ -29,8 +32,12 @@ private constructor(
             depth: TraversalDepthDocument,
             limitations: List<RelationLimitationDocument>,
             remainder: TraversalExpansionRemainderDocument,
+            knownMinimum: QueryKnownMinimum,
+            omissions: BoundedProtocolList<RelationOmissionDocument>,
         ): Refinement<TraversalPartialExpansionDocument, TraversalPartialExpansionDocumentFailure> =
             if (limitations.isEmpty()) Refinement.Rejected(TraversalPartialExpansionDocumentFailure.EMPTY_LIMITATIONS)
+            else if (omissions.values.map { it.reason } != limitations.distinct().sortedBy { it.ordinal })
+                Refinement.Rejected(TraversalPartialExpansionDocumentFailure.INCONSISTENT_OMISSIONS)
             else
                 Refinement.Refined(
                     TraversalPartialExpansionDocument(
@@ -38,6 +45,8 @@ private constructor(
                         depth,
                         limitations.distinct().sortedBy { it.ordinal },
                         remainder,
+                        knownMinimum,
+                        omissions,
                     )
                 )
     }

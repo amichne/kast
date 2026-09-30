@@ -234,7 +234,7 @@ private fun SymbolSelector.projectedUtf8Size(): Long = buildString {
 }
     .utf8Size()
 
-private fun String.utf8Size(): Long = toByteArray(StandardCharsets.UTF_8).size.toLong()
+internal fun String.utf8Size(): Long = toByteArray(StandardCharsets.UTF_8).size.toLong()
 
 private fun saturatedSum(values: List<Long>): Long = values.fold(0L, ::saturatedAdd)
 
@@ -254,4 +254,11 @@ private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
     when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Internally derived query value violated its invariant: $failure")
+    }
+
+internal fun io.github.amichne.kast.query.contract.QueryOccurrence.projectedUtf8Size(): Long =
+    when (this) {
+        is io.github.amichne.kast.query.contract.QueryOccurrence.Reference -> value.projectedUtf8Size()
+        is io.github.amichne.kast.query.contract.QueryOccurrence.Declaration ->
+            symbol.projectedUtf8Size() + fact.canonicalProjection().utf8Size()
     }

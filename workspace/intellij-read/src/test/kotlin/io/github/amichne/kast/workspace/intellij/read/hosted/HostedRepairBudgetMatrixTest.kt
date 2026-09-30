@@ -25,7 +25,7 @@ class HostedRepairBudgetMatrixTest {
             val clock = { (testScheduler.currentTime - origin) * 1_000_000L }
             val executor =
                 HostedQueryExecutor(backgroundScope, clock) { limits ->
-                    HostedReadDiagnostics(clock, limits, receipts::add)
+                    HostedReadDiagnostics(clock, limits, publish = receipts::add)
                 }
             val expectedGrant = if (policy == Policy.SHORT) 2_750L else requestedMillis
             lateinit var report: ExecutionBudgetReport

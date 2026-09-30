@@ -16,4 +16,5 @@ dependencies {
     implementation(project(":source:contract"))
     implementation(project(":symbol:contract"))
     implementation(project(":traversal:contract"))
+    testImplementation(project(":traversal:service"))
 }

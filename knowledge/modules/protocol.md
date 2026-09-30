@@ -4,7 +4,7 @@ title: Protocol
 description: Canonical operation contracts are completed by an exact registry and projected into generated wire documents.
 resource: file://protocol
 tags: [kotlin, protocol, serialization]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/HostedFailureBudgetSchemaTest.kt
@@ -69,8 +69,8 @@ both or neither evidence basis. Source snapshot documents likewise distinguish
 published source-state identity from the live saved, PSI-committed view. A live
 stamp is never serialized as a workspace generation or source-state identity.
 
-The canonical read revisions are `query.run.v2`, `source.read.v4`, and
-`diagnostic.check.v3`.
+The canonical read revisions are `query.run.v3`, `source.read.v6`, and
+`diagnostic.check.v5`.
 Provider qualification requires
 that version and every canonical hosted tool. The build generates `provider-catalog.json`
 from the shared schema owner without CLI invocation metadata. Its successful read schemas carry mutually exclusive published and
@@ -98,10 +98,10 @@ The current [public tool contracts](../contracts/public-tools.md) distinguish pr
 
 The hosted endpoint rejection schema admits bounded, discriminated change-failure detail and rejects unknown causes or contradictory outer failure codes. Runtime encoded-shape tests validate each closed variant against this independently owned schema.
 
-Query occurrence rows retain individual relation facts, while structured omissions
+Query occurrence rows retain individual relation facts or independent compiler-confirmed reference occurrences. Reference targets retain their identity, source range, context, provenance, coverage, and closed declaration-owned, file-scoped, or unavailable ownership. Discovery and reference observations are required success-document collections, independent of emitted row count. The public tool contract is revision 4 and canonical read schema identities reject older incompatible peers before effects. Structured omissions
 retain subject, relation kind, provider reason, measurement, samples, and finite
 remediation. Traversal may embed a relation-domain continuation while one node's
-relation read remains unfinished; it does not expose a standalone relation route.
+relation read remains unfinished; it does not expose a standalone relation route. Direct expansion and a depth-one traversal retain the same detailed omission measurement, provider/version, bounded sample, and remediation; historical expansion provenance remains separate from the current page.
 
 Query binding rows retain two named exact-symbol cells and proven occurrence
 facts. The wire decoder rejects pairs with different canonical symbol IDs or

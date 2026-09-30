@@ -1,0 +1,35 @@
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.util.Processor
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.relation.contract.RelationProviderLocator
+import io.github.amichne.kast.relation.contract.RelationProviderState
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
+
+/** One authoritative ReferencesSearch under the original native universe; no PSI survives preparation. */
+internal class IntellijReferenceInventory(
+    private val scope: CompiledRelationScope,
+    private val locators: IntellijRelationLocators,
+    private val collector: IntellijRelationCollector,
+    private val cancellationCheck: () -> Unit,
+    private val limits: ReadLimits,
+    private val observation: IntellijReadObservation,
+) {
+    fun prepare(subject: PsiNamedElement): RelationInventoryPreparation {
+        observation.phase(IntellijReadPhase.REFERENCE_INVENTORY)
+        val inventory = IntellijRelationInventory<RelationProviderLocator.Reference>(collector, limits, observation)
+        val exhausted =
+            ReferencesSearch.search(subject, scope.nativeScope, false)
+                .forEach(
+                    Processor { reference ->
+                        cancellationCheck()
+                        collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
+                            inventory.append(locators.reference(reference))
+                    }
+                )
+        return inventory.finish(exhausted, RelationProviderState::references)
+    }
+}

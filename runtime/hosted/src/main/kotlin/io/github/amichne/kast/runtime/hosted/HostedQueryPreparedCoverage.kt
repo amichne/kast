@@ -11,6 +11,7 @@ internal fun HostedQueryOutcome.preparedCoverage(): QueryPreparedCoverageDocumen
         is OperationOutcome.Complete -> QueryPreparedCoverageDocument.Complete
         is OperationOutcome.Qualified ->
             when (val progress = qualification.progress) {
+                is QueryQualifiedProgressDocument.RetentionUnavailable -> progress.upstream
                 is QueryQualifiedProgressDocument.TerminalIncomplete ->
                     QueryPreparedCoverageDocument.TerminalIncomplete(progress.reason)
                 is QueryQualifiedProgressDocument.Resumable ->

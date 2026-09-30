@@ -4,7 +4,7 @@ title: Source and workspace identity
 description: Semantic reads preserve published or live authority, constrained selectors, coordinates, and source content views without converting IDE stamps into publication identity.
 resource: file://source/contract
 tags: [source, identity, workspace, symbol]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CompactSourceReadDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReadFormatProjection.kt
@@ -53,6 +53,11 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadSimpleRequest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadCursor.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceEntityTraversalState.kt
+  - path: source/contract/src/test/kotlin/io/github/amichne/kast/source/contract/SourceReadCursorProofTest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
 ---
 
 # Source and workspace identity
@@ -128,7 +133,7 @@ read capability. Native revalidation remains mandatory after lookup.
 ## Source output format
 
 The canonical internal `SourceReadRequest.format` defaults to `expanded` for
-existing anchor callers. The public hosted v4/v5 exact-symbol shortcut uses an admitted
+existing anchor callers. The public hosted v6 exact-symbol shortcut uses an admitted
 `ExactSymbolSelector` and defaults to `compact`, declaration region, complete
 text, no entities, and the first page. Its typed request normalizes to the same
 canonical source read; a malformed or wrong-family selector fails admission.
@@ -165,6 +170,15 @@ Compact presentation reads that admitted inner payload, emits unchanged returned
 source first, and retains the complete original envelope as the final content item.
 The isolated native read harness checks this actual content ordering separately
 from schema validation and reports bounded content byte counts without source text.
+
+Native entity continuations preserve the selected snapshot, exact region and
+semantic request together with a detached structural frontier. The emitted
+ordinal records delivered entities; an independent revision proves unfinished
+input advanced even when no new entity matched. Locator ranges, provider
+descriptors, parent/depth proofs and proven lookahead stay in that snapshot.
+Restoration cannot change filters, containment, format, anchor or authority.
+Source cursors are owned by the same hosted state store as fitted output suffixes
+and immutable successor pages; no live PSI or compiler session is retained.
 
 ## Source failure origin
 

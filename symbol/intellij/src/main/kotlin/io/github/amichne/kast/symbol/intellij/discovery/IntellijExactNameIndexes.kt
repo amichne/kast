@@ -21,11 +21,14 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
     project: Project,
     scope: CompiledIntellijSearchScope,
     request: SymbolDiscoveryRequest,
+    allowance: IntellijDeclarationDiscoveryAllowance = IntellijDeclarationDiscoveryAllowance(request),
 ): IntellijNativeDiscoveryExecution {
     if (scope.population == IntellijScopePopulation.KNOWN_EMPTY) return discover(scope, request, emptyList())
     val target = request.target
     val kinds = request.requestedDeclarationKinds()
-    return if (request.usesScopedDeclarationEnumeration()) {
+    return if (target is SymbolDiscoveryTarget.All && target.kind != SymbolNameDiscoveryKind.FILE) {
+        discoverIncrementalScopedDeclarations(project, scope, request, limits, allowance, observation)
+    } else if (request.usesScopedDeclarationEnumeration()) {
         discoverDeclarations(scope, request) { observe, qualify, accept ->
             collectScopedKotlinDeclarations(
                 project = project,

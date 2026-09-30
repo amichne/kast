@@ -20,6 +20,7 @@ internal suspend fun <Value> runHostedReadTransaction(
         }
     val value = evaluate(allowance.allowance)
     progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
+    progress.observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.FRESHNESS_VALIDATION)
     return when (val admitted = validate()) {
         is Refinement.Rejected -> HostedSemanticRead.Rejected(admitted.failure)
         is Refinement.Refined -> {

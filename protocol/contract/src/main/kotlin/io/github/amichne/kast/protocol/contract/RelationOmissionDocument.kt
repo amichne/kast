@@ -6,12 +6,10 @@ import kotlinx.serialization.Serializable
 /** Returned facts remain exact; omission evidence describes enumeration completeness separately. */
 @Serializable
 enum class RelationProviderDocument {
-    INTELLIJ_REFERENCES_V1,
-    INTELLIJ_DEFINITIONS_V1,
-    INTELLIJ_CALLEES_V1,
     INTELLIJ_REFERENCES_V2,
     INTELLIJ_DEFINITIONS_V2,
     INTELLIJ_CALLEES_V2,
+    PUBLISHED_TOPOLOGY_V1,
 }
 
 @Serializable
@@ -44,14 +42,18 @@ data class RelationOmissionLocationDocument(val file: ProtocolText, val range: S
 enum class RelationOmissionDocumentFailure {
     NEGATIVE_COUNT,
     TOO_MANY_SAMPLES,
+    DUPLICATE_SAMPLES,
+    INVALID_TRUNCATION,
+    INCONSISTENT_SAMPLE_MEASUREMENT,
 }
 
+@ConsistentCopyVisibility
 data class RelationOmissionDocument
 private constructor(
     val provider: RelationProviderDocument,
     val reason: RelationLimitationDocument,
     val measurement: RelationOmissionMeasurementDocument,
-    val samples: BoundedProtocolList<RelationOmissionLocationDocument>,
+    val samples: RelationOmissionSamplesDocument,
 ) {
     val remediation: RelationRemediationDocument
         get() =
@@ -59,18 +61,20 @@ private constructor(
                 RelationLimitationDocument.RESULT_LIMIT_REACHED,
                 RelationLimitationDocument.BYTE_LIMIT_REACHED,
                 RelationLimitationDocument.WORK_LIMIT_REACHED,
-                RelationLimitationDocument.TIME_LIMIT_REACHED -> RelationRemediationDocument.INCREASE_READ_LIMIT
+                RelationLimitationDocument.TIME_LIMIT_REACHED,
+                RelationLimitationDocument.CANDIDATE_LIMIT_REACHED,
+                RelationLimitationDocument.RETENTION_LIMIT_REACHED -> RelationRemediationDocument.INCREASE_READ_LIMIT
                 RelationLimitationDocument.DUMB_MODE_TRANSITION -> RelationRemediationDocument.WAIT_FOR_INDEXING
                 RelationLimitationDocument.UNRESOLVED_TARGET -> RelationRemediationDocument.RESOLVE_SOURCE_ERRORS
                 RelationLimitationDocument.UNSUPPORTED_ITEM -> RelationRemediationDocument.USE_SUPPORTED_DECLARATIONS
                 RelationLimitationDocument.PROVIDER_FAILURE -> RelationRemediationDocument.RETRY_PROVIDER
                 RelationLimitationDocument.PROVIDER_INCOMPLETE,
-                RelationLimitationDocument.PROVIDER_STALLED -> RelationRemediationDocument.REPAIR_PROVIDER
+                RelationLimitationDocument.PROVIDER_STALLED,
+                RelationLimitationDocument.PARTITION_INVENTORY_UNAVAILABLE ->
+                    RelationRemediationDocument.REPAIR_PROVIDER
             }
 
     companion object {
-        private const val MAXIMUM_SAMPLES = 3
-
         val Empty: BoundedProtocolList<RelationOmissionDocument> =
             (BoundedProtocolList.create(emptyList<RelationOmissionDocument>()) as Refinement.Refined).value
 
@@ -78,10 +82,14 @@ private constructor(
             provider: RelationProviderDocument,
             reason: RelationLimitationDocument,
             measurement: RelationOmissionMeasurementDocument,
-            samples: BoundedProtocolList<RelationOmissionLocationDocument>,
-        ): Refinement<RelationOmissionDocument, RelationOmissionDocumentFailure> =
-            if (samples.values.size <= MAXIMUM_SAMPLES)
-                Refinement.Refined(RelationOmissionDocument(provider, reason, measurement, samples))
-            else Refinement.Rejected(RelationOmissionDocumentFailure.TOO_MANY_SAMPLES)
+            samples: RelationOmissionSamplesDocument,
+        ): Refinement<RelationOmissionDocument, RelationOmissionDocumentFailure> {
+            val minimum =
+                samples.locations.values.size +
+                    if (samples.retention == RelationOmissionSampleRetentionDocument.TRUNCATED) 1 else 0
+            if (measurement is RelationOmissionMeasurementDocument.ObservedOnPage && measurement.items.value < minimum)
+                return Refinement.Rejected(RelationOmissionDocumentFailure.INCONSISTENT_SAMPLE_MEASUREMENT)
+            return Refinement.Refined(RelationOmissionDocument(provider, reason, measurement, samples))
+        }
     }
 }

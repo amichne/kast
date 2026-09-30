@@ -38,6 +38,12 @@ sealed interface QueryResultItemDocument {
         override val rowId: QueryResultRowReference? = null,
     ) : QueryResultItemDocument
 
+    data class ReferenceOccurrence(
+        val ref: QueryReferenceDocument.ExactSymbol,
+        val occurrence: RelationReferenceOccurrenceDocument,
+        override val rowId: QueryResultRowReference? = null,
+    ) : QueryResultItemDocument
+
     data class TraversalRecord(
         val ref: QueryReferenceDocument.ExactSymbol,
         val record: TraversalRecordDocument,

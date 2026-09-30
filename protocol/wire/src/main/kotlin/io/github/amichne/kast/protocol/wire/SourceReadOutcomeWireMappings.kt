@@ -15,6 +15,7 @@ internal fun SourceReadLimitationDocument.toWireDocument(): SourceReadLimitation
             SourceReadLimitationWireDocument.SEMANTIC_RESOLUTION_INCOMPLETE
         SourceReadLimitationDocument.UNSUPPORTED_ENTITY -> SourceReadLimitationWireDocument.UNSUPPORTED_ENTITY
         SourceReadLimitationDocument.PROVIDER_FAILURE -> SourceReadLimitationWireDocument.PROVIDER_FAILURE
+        SourceReadLimitationDocument.RETENTION_LIMIT_REACHED -> SourceReadLimitationWireDocument.RETENTION_LIMIT_REACHED
     }
 
 internal fun SourceReadLimitationWireDocument.toContract(): SourceReadLimitationDocument =
@@ -30,4 +31,5 @@ internal fun SourceReadLimitationWireDocument.toContract(): SourceReadLimitation
             SourceReadLimitationDocument.SEMANTIC_RESOLUTION_INCOMPLETE
         SourceReadLimitationWireDocument.UNSUPPORTED_ENTITY -> SourceReadLimitationDocument.UNSUPPORTED_ENTITY
         SourceReadLimitationWireDocument.PROVIDER_FAILURE -> SourceReadLimitationDocument.PROVIDER_FAILURE
+        SourceReadLimitationWireDocument.RETENTION_LIMIT_REACHED -> SourceReadLimitationDocument.RETENTION_LIMIT_REACHED
     }

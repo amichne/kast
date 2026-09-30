@@ -34,7 +34,7 @@ internal object HostedDescriptorFixture {
         val type: String = "KAST_IDE_HOST",
         val protocol: Int = 3,
         val hostPid: Int = 123,
-        val querySchema: String = "kast.query.run.v2",
+        val querySchema: String = "kast.query.run.v3",
         val operations: List<Operation> = HostedDescriptorFixture.operations,
         val indexAuthority: String = "existing_ide_kotlin_stub_index",
     )
@@ -47,7 +47,7 @@ internal object HostedDescriptorFixture {
         val host: String,
         val type: String = "KAST_IDE_ENDPOINT",
         val hostPid: Int = 123,
-        val querySchema: String = "kast.query.run.v2",
+        val querySchema: String = "kast.query.run.v3",
         val operations: List<Operation> = HostedDescriptorFixture.operations,
     )
 

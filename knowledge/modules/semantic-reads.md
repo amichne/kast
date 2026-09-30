@@ -4,9 +4,12 @@ title: Semantic read domains
 description: Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
 resource: file://query
 tags: [kotlin, semantic, query, compiler]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticAnalysisAttempt.kt
+  - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticNativePhaseTest.kt
+  - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedDiagnosticNativePhaseTest.kt
   - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttemptTest.kt
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
@@ -16,8 +19,17 @@ code_sources:
   - path: diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceCompilerProjection.kt
   - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityReadTest.kt
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadCursor.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDetachedRetention.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyGraph.kt
+    symbols: [sourceDependencyClosure, sourceExpiredEntries]
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyExpiryTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt
   - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadOutcome.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt
@@ -27,6 +39,17 @@ code_sources:
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedNativeDiscoveryCollector.kt
   - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedDeclarationDiscoveryTest.kt
   - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryPlanningTest.kt
+  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolDiscoveryProgress.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdapter.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdmission.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationDiscoveryState.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationPartitionScanner.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationFileScanner.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryLeafDeclaration.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationDiscoveryAllowance.kt
+  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscoveryTest.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryDiscoveryObservation.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryConstraintAdmission.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
@@ -76,6 +99,28 @@ code_sources:
   - path: relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt
   - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceEntityTraversalState.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceTraversal.kt
+  - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/SourceCursorReadTest.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/DiagnosticProgressDocument.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateContracts.kt
+  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/DiagnosticPublicationTest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionMeasurements.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadGauge.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateRecords.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
+  - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderState.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderLocator.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationInventory.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventory.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijDefinitionInventory.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCalleeInventory.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRetainedRelationRead.kt
+  - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt
 ---
 
 # Semantic read domains
@@ -155,11 +200,63 @@ For reference relations, a K2 identity that differs from the selected subject
 proves an indexed candidate is unrelated and is dismissed without an omission.
 An unavailable K2 identity still qualifies coverage as unresolved.
 
-The corrected scoped `ALL` path enumerates Kotlin declarations through the admitted file-type index without workspace name enumeration. Generated primary-constructor properties retain K2 property identity. Java reference endpoints retain compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
+Compiler-confirmed reference observations retain the selected target, occurrence
+file/range, context, authority and provenance separately from declaration
+ownership. A resolved declaration owner can project a real relation fact.
+Imports, aliases and file-level annotations remain file-scoped observations;
+unavailable ownership carries a finite cause. Neither case fabricates a
+declaration owner or a call edge. Native `ReferencesSearch` prepares one bounded
+detached inventory over the original admitted search universe. Sorted file,
+range and provider locators give the successor a direct candidate position;
+restoration does not replay the consumed compiler-confirmation prefix. An
+unavailable or unretainable inventory terminates with its exact limitation.
+Native locator accounting charges detached UTF-16 text and fixed object overhead
+independently of JSON projection estimates. It preserves every descriptor and
+scope identity. The native inventory gauge records the prepared state's required
+bytes, or the bounded failed attempt including its first unbufferable locator.
+These values govern retention admission; they are not measured JVM heap sizes.
+The same retained provider state owns detached definitions and callee inventories.
+Native definitions retain normalized declaration locators together with the
+original scoped provider file. Restoration rechecks that file's scope membership
+before compiler-confirming the normalized declaration. Callee discovery retains
+exact call sites in the selected declaration. Compiler refinement restores only
+the unconsumed suffix. The inventory owns its preparation unit and consumed-item
+cursor, so a continuation cannot independently reconstruct cursor progress.
+This preserves the original provider universe and compiler emission policy.
+
+Traversal observations bind each partial expansion to its original subject and
+depth. They retain known minima and detailed provider, measurement, sample and
+remediation evidence. Samples retain at most three distinct located observations.
+The owned sample collection proves whether all observed locations remain or a
+further distinct location was discarded. Complete samples do not claim that
+every omitted input supplied a location. Wire and CLI projections retain this
+complete or truncated proof beside the bounded locations. Observed omissions and unvisited expansions survive an
+aggregate checkpoint as inherited evidence. An unmeasured resumable budget or
+provider boundary describes pending work; exact successor exhaustion can
+refine that boundary to complete coverage without discarding a measured omission.
+
+The scoped `ALL` path starts with admitted model-owned source roots and retains a
+lexical frontier of unopened VFS directory/file partitions. Each directory is
+expanded once into a bounded detached child snapshot; each active Kotlin file
+resumes from its next source offset after reacquiring PSI. No global inventory
+or consumed PSI prefix is replayed behind the continuation. The remainder binds
+scope, target, constraints, authority and provider ordering; its advancing input
+revision and discovered/completed file counts distinguish progress from
+exhaustion. An unavailable, oversized or unretainable partition produces a
+finite blocked cause rather than an unusable successor. Current ALL source
+ordering is `kotlin-file-source-v2`, then declaration source offset. ALL and named
+declaration observations explicitly declare a Kotlin language universe even
+when exhausted or blocked; this does not imply Java declaration discovery. Physical
+PSI fixtures exercise native traversal; installed K2 qualification remains a
+separate proof boundary. Timings and counts for partition discovery, file
+reacquisition, examined leaves and projection survive query composition as
+bounded observations. Metadata is charged to returned bytes and checkpoint
+retention without consuming semantic row capacity. Generated primary-constructor properties retain K2 property identity. Java reference endpoints retain compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
 
 Search planning applies cheap scope and declaration-family constraints before
-expensive work. Project-only fuzzy declarations share scoped Kotlin-file enumeration
-with `ALL`; mixed declaration families use one symbol discovery request. Exact
+expensive work. Project-only fuzzy declarations retain ranked scoped Kotlin-file enumeration;
+`ALL` uses the detached partition producer. Mixed declaration families use one
+symbol discovery request. Exact
 searches invoke only the short-name indexes for requested families. Kind exclusion
 precedes package PSI in candidate admission, and scoped enumeration selects kinds
 before candidate capacity. File-index callbacks end before package inspection;
@@ -209,6 +306,24 @@ checked before visibility resolution and candidate construction; structural
 selectors, parents, ranges and depths still preserve eligible descendants inside
 excluded containers. The focused excluded-input and cancellation tests prove
 these boundaries without claiming installed IDE qualification.
+
+Source cursors carry a detached snapshot, selected region, semantic request,
+emitted-entity ordinal, and advancing structural traversal revision. Pending
+work retains source ranges, provider descriptors, structural parents and depths,
+same-node parameter phases, and already-proven lookahead entities. Native
+restoration resumes these locators directly; it does not traverse and refine the
+consumed entity prefix. A successor may keep its emitted ordinal when bounded
+work advances through excluded containers before another eligible entity. The hosted source state store owns these cursors and
+encoded output suffixes under one publication session. It checks authority and
+request identity before native reads; only final admitted publication exposes
+children. Rejected or cancelled publication revokes its own allocations, and
+published pages replay their cached result without re-entering the provider.
+Byte, entry and original token-age bounds apply to the shared owner. Admission,
+deduplication and publication require the complete dependency closure to remain
+live under the same semantic request and authority. A younger output page cannot
+extend an older cursor's deadline, and a running cursor cannot become another
+attempt's deduplicated successor. One-shot source projections use the cursorless
+port and cannot advertise retained cursor capacity.
 
 Source continuation admission preserves finite causes before invoking the provider:
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
@@ -264,15 +379,19 @@ explicitly. Neither outcome publishes an unchanged continuation. The adapter
 avoids `getContainingFilesIterator`, whose pinned implementation builds a full
 file-ID set before returning its lazily reified virtual files.
 
-Diagnostic checkpoints and replay payloads share one pool bounded by
-`QUERY_CONTINUATION_ENTRIES` and `QUERY_CONTINUATION_BYTES`. Diagnostic encoded
-output uses the existing separate output pool with the same limits. The diagnostic
-aggregate therefore permits twice each configured pool limit (defaults: 128
-entries and 64 MiB), independently of other read owners. Each scan checkpoint
+Diagnostic scan checkpoints, encoded output suffixes, replay pages and active
+claims share one owner bounded by `QUERY_CONTINUATION_ENTRIES` and
+`QUERY_CONTINUATION_BYTES` (defaults: 64 entries and 32 MiB). Each scan checkpoint
 also obeys `QUERY_CHECKPOINT_BYTES` (default 8 MiB). Identity text, pending file
 sets, diagnostics, coverage, replay keys and object overhead are charged before
-publication. The scan pool inherits the original creation time; output entries
-follow the existing per-entry expiry policy. Project/epoch disposal clears both.
+publication. Children remain hidden until the exact fitted page commits after
+final host validation. Replay preserves the same successor without renewing age;
+project or epoch retirement clears the owner. Scan-checkpoint retention refusal
+keeps established diagnostic facts, inventory, analyzed files and known count,
+with `retention_capacity_exceeded` and no unusable native successor. Output
+retention refusal similarly publishes a fitting proven prefix with the closed
+`retentionFailure` cause. A retained output page can still drain established
+facts while carrying an original scan retention failure.
 
 Pinned SDK 262.9437.185 `processValuesInScope` returns immediately when its
 processor returns false. The adapter supplies `IdFilter.ACCEPT_ALL` and its own
@@ -305,13 +424,24 @@ production blocks with pinned-SDK `ProcessCanceledException` and coroutine
 cancellation after accepted facts or identities, then verify a clean re-entry and
 unchanged cancellation identity. This is simulated scheduling over production
 attempt code, not evidence of native IDE preemption or an executed K2 session.
+The same request-local observation capability records diagnostic scope entry
+before native admission, enumeration entry before guarded index work, and
+analysis entry immediately before K2 analysis and detached projection. The
+hosted receipt preserves bounded first-entry and cumulative duration evidence
+after success, rejection or cancellation drainage. It records no source text,
+diagnostic payload or retained compiler object.
 
-An evicted diagnostic continuation remains unavailable. If its first-page replay
-survives without the required checkpoint, a tokenless request may discard that
-orphaned replay and start a fresh bounded scan. The same retained-child check
-applies during publication, including interleaved admissions. Resume requests do
-not restart implicitly, and expiry, capacity and semantic request checks retain
-their existing authority.
+An evicted diagnostic continuation remains unavailable. A cached first page with
+a missing dependency rejects rather than silently starting another scan. Live
+published pages pin their transitive dependencies against capacity eviction
+under the same quota. All query, source and diagnostic owners still enforce each
+token's original deadline. Active claims preserve physical storage until release,
+without permitting fresh admission or publication after expiry. A younger page's
+validity ends at the oldest referenced dependency's deadline. The source owner
+also prunes expired or broken pages outside active claims. Expiry, capacity, retirement and semantic request
+checks retain their distinct finite meaning. Source and diagnostic owner gauges
+report current retained bytes and entry counts, with an independent maximum byte
+high-water mark. These values estimate detached quota accounting, not JVM heap.
 
 Internal exact symbol resolution rejects invalid PSI as stale and a matching declaration without a source range as unsupported. Unexpected native failures remain distinct from genuine index unavailability through query and wire projection; the existing native diagnostic receipt retains the correlated failure stage and class. Neither rejection becomes a complete empty result.
 

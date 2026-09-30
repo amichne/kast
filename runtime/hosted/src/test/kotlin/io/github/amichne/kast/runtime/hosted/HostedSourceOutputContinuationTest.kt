@@ -26,11 +26,11 @@ class HostedSourceOutputContinuationTest {
     @Test
     fun `higher allowances drain the retained source prefix without erasing terminal coverage`() = runTest {
         val fixture = HostedSourcePagingFixture.create()
-        val outputs = hostedSourceOutputPages(ReadLimits.Default)
+        val outputs = HostedSourceStateStore(ReadLimits.Default)
         val small = fixture.request.copy(entityLimit = SourceEntityLimitDocument.parse(1).sourceFixtureValue())
         fun firstPage() =
             encodeHostedSourceResponse(fixture.outcome, ReadLimits.Default, results(1), bytes(65_536)) {
-                outputs.issue(small, fixture.owner.authority, it)
+                outputs.retainAcceptedFixtureSuffix(small, fixture.owner.authority, it)
             }
         val first = firstPage().qualified()
         val token = first.token()
@@ -41,7 +41,7 @@ class HostedSourceOutputContinuationTest {
                 executionBudget = ExecutionBudgetDocument(maxResults = results(100), maxReturnedBytes = bytes(65_536)),
                 page = SourceReadPageDocument.Continue(token),
             )
-        val restored = outputs.restore(token, higher, fixture.owner.authority)
+        val restored = outputs.readFixtureSuffix(token, higher, fixture.owner.authority)
         val final =
             encodeHostedSourceResponse(restored, ReadLimits.Default, results(100), bytes(65_536)) {
                     error("The restored suffix fits this larger grant")
@@ -52,15 +52,16 @@ class HostedSourceOutputContinuationTest {
         assertEquals(fixture.outcome.evidence.payload.entities.values, firstEntities + finalEntities)
         assertEquals(fixture.outcome.qualification, final.qualification)
         assertEquals(token, firstPage().qualified().token())
-        assertEquals(restored, outputs.restore(token, higher, fixture.owner.authority))
+        assertEquals(restored, outputs.readFixtureSuffix(token, higher, fixture.owner.authority))
     }
 
     @Test
     fun `source output continuation binds projection and scope and fails after retirement`() = runTest {
         val fixture = HostedSourcePagingFixture.create()
-        val outputs = hostedSourceOutputPages(ReadLimits.Default)
+        val outputs = HostedSourceStateStore(ReadLimits.Default)
         val retained =
-            outputs.issue(fixture.request, fixture.owner.authority, fixture.outcome) as HostedOutputRetention.Retained
+            outputs.retainAcceptedFixtureSuffix(fixture.request, fixture.owner.authority, fixture.outcome)
+                as HostedOutputRetention.Retained
         val changed =
             listOf(
                 fixture.request.copy(region = SourceRegionSelectionDocument.Anchor),
@@ -73,22 +74,26 @@ class HostedSourceOutputContinuationTest {
         changed.forEach { request ->
             assertEquals(
                 OperationOutcome.Rejected(SourceReadRejection.CONTINUATION_REQUEST_MISMATCH),
-                outputs.restore(retained.token, request, fixture.owner.authority),
+                outputs.readFixtureSuffix(retained.token, request, fixture.owner.authority),
             )
         }
         assertEquals(
             OperationOutcome.Rejected(SourceReadRejection.CONTINUATION_REQUEST_MISMATCH),
-            outputs.restore(retained.token, fixture.request, HostedSourcePagingFixture.create().owner.authority),
+            outputs.readFixtureSuffix(
+                retained.token,
+                fixture.request,
+                HostedSourcePagingFixture.create().owner.authority,
+            ),
         )
         outputs.clear()
         assertEquals(
             OperationOutcome.Rejected(SourceReadRejection.CONTINUATION_UNAVAILABLE),
-            outputs.restore(retained.token, fixture.request, fixture.owner.authority),
+            outputs.readFixtureSuffix(retained.token, fixture.request, fixture.owner.authority),
         )
     }
 
     @Test
-    fun `unretainable suffix and indivisible response reject without empty cursor loops`() = runTest {
+    fun `unretainable suffix preserves a proven prefix while an indivisible response has no cursor loop`() = runTest {
         val fixture = HostedSourcePagingFixture.create()
         val limits =
             ReadLimits.resolve(
@@ -99,12 +104,31 @@ class HostedSourceOutputContinuationTest {
                         )
                 )
                 .sourceFixtureValue()
-        val outputs = hostedSourceOutputPages(limits)
+        val outputs = HostedSourceStateStore(limits)
         val capacity =
             encodeHostedSourceResponse(fixture.outcome, limits, results(1), bytes(65_536)) {
-                outputs.issue(fixture.request, fixture.owner.authority, it)
+                outputs.retainAcceptedFixtureSuffix(fixture.request, fixture.owner.authority, it)
             }
-        assertEquals(HostedEndpointFailure.RESULT_TOO_LARGE, (capacity as HostedResponse.Rejected).failure)
+        val retainedPrefix = capacity.qualified()
+        val preserved = retainedPrefix.evidence.payload as io.github.amichne.kast.protocol.contract.SourceReadResult
+        assertEquals(fixture.outcome.evidence.payload.entities.values.take(1), preserved.entities.values)
+        val qualification = retainedPrefix.qualification as SourceReadQualification
+        assertEquals(fixture.outcome.qualification.knownMinimumEntityCount, qualification.knownMinimumEntityCount)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument.Unavailable,
+            qualification.continuation,
+        )
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument.RetentionUnavailable(
+                fixture.outcome.preparedCoverage()
+            ),
+            qualification.progress,
+        )
+        assertEquals(
+            true,
+            io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument.RETENTION_LIMIT_REACHED in
+                qualification.limitations,
+        )
         val indivisible =
             encodeHostedSourceResponse(fixture.outcome, ReadLimits.Default, results(1), bytes(1)) {
                 error("No entity plus mandatory envelope fits; no cursor may be issued")

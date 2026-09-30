@@ -50,26 +50,30 @@ class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: S
     val operations = RelationOperations(::read)
     private val startRequest =
         RelationRequest.start(selector, RelationMeaning.References, budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
-    private val cursors =
-        (0L..3L).runningFold(startRequest.providerCursor) { cursor, index ->
-            cursor.advance(
-                RelationProviderItemDescriptor.parse(fact(startRequest, index).canonicalProjection()).refined()
-            )
-        }
+    private val inventory =
+        RelationProviderState.references(
+            (0L..3L).map { index ->
+                val fact = fact(startRequest, index)
+                RelationProviderLocator.Reference(
+                    fact.occurrence.file,
+                    fact.occurrence.range,
+                    RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refined(),
+                )
+            }
+        )
 
     suspend fun firstPage(): RelationReadResult = operations.read(startRequest)
 
     private suspend fun read(request: RelationRequest): RelationReadResult {
         observedBoundaries += request.boundary
-        val start = request.providerCursor.nextPosition.value
-        check(request.providerCursor == cursors[start.toInt()]) { "Provider prefix changed" }
+        var state = (request.position as? RelationReadPosition.Resume)?.continuation?.providerState ?: inventory
+        val start = state.consumedLocatorCount.value
         val end = minOf(4, start + request.budget.resources.resultLimit.value)
-        var cursor = request.providerCursor
         val facts =
             (start until end).map { index ->
                 consumed += index
                 val fact = fact(request, index)
-                cursor = cursor.advance(RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refined())
+                state = state.consume(RelationProviderConsumption.GraphConfirmed(fact))
                 fact
             }
         val batch =
@@ -88,7 +92,8 @@ class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: S
                 RelationCompilation.qualifiedResumable(
                         batch,
                         setOf(RelationLimitation.RESULT_LIMIT_REACHED),
-                        cursor,
+                        state.providerCursor,
+                        state,
                     )
                     .refined()
             RelationReadResult.Qualified(batch, compilation.coverage)

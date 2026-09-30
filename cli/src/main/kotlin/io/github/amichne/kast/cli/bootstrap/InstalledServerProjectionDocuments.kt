@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.wire.presentation.cliName
@@ -244,6 +245,23 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema()), required = false),
             ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema()), required = false),
             ServerSchemaProperty("walk_observations", arraySchema(queryWalkObservationSchema())),
+            ServerSchemaProperty(
+                "reference_observations",
+                arraySchema(
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+                            .referenceObservationSerializer
+                    )
+                ),
+            ),
+            ServerSchemaProperty(
+                "discovery_observations",
+                arraySchema(
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument.serializer()
+                    )
+                ),
+            ),
             queryResultRetentionProperty(),
             queryResultCursorProperty(),
         ),
@@ -272,6 +290,23 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema()), required = false),
             ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema()), required = false),
             ServerSchemaProperty("walk_observations", arraySchema(queryWalkObservationSchema())),
+            ServerSchemaProperty(
+                "reference_observations",
+                arraySchema(
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+                            .referenceObservationSerializer
+                    )
+                ),
+            ),
+            ServerSchemaProperty(
+                "discovery_observations",
+                arraySchema(
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument.serializer()
+                    )
+                ),
+            ),
             queryResultRetentionProperty(),
             queryResultCursorProperty(),
             ServerSchemaProperty(
@@ -323,20 +358,7 @@ private fun queryQualificationSchema(): JsonObject =
             "limitations",
             nonEmptyArraySchema(
                 enumSchema(
-                    listOf(
-                        "result-limit-reached",
-                        "byte-limit-reached",
-                        "work-limit-reached",
-                        "time-limit-reached",
-                        "discovery-incomplete",
-                        "refinement-incomplete",
-                        "visibility-incomplete",
-                        "source-incomplete",
-                        "relation-incomplete",
-                        "traversal-incomplete",
-                        "row-selection-incomplete",
-                        "join-input-incomplete",
-                    ),
+                    QueryLimitationDocument.entries.map(Enum<*>::cliName),
                     "Every aggregate query limitation.",
                 )
             ),
@@ -348,11 +370,12 @@ private fun queryResultItemSchema(): JsonObject =
         queryExactSymbolItemSchema(),
         queryOccurrenceItemSchema(),
         queryTraversalRecordItemSchema(),
-        queryBindingRowItemSchema(),
+        queryTypedResultItemSchema("binding_row"),
+        queryTypedResultItemSchema("reference-occurrence"),
     )
 
 /** Select the typed joined-row variant; the sealed serializer supplies its required discriminator. */
-private fun queryBindingRowItemSchema(): JsonObject =
+private fun queryTypedResultItemSchema(kind: String): JsonObject =
     generatedRequestSchema(io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.itemSerializer)
         .getValue("anyOf")
         .jsonArray
@@ -365,7 +388,7 @@ private fun queryBindingRowItemSchema(): JsonObject =
                 .jsonObject
                 .getValue("const")
                 .jsonPrimitive
-                .content == "binding_row"
+                .content == kind
         }
 
 private fun queryExactSymbolItemSchema(): JsonObject =
@@ -449,47 +472,8 @@ private fun queryTraversalRecordItemSchema(): JsonObject =
     )
 
 private fun queryWalkObservationSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("subject", queryOutputReferenceSchema("exact-symbol")),
-        ServerSchemaProperty("relation", relationSchema()),
-        ServerSchemaProperty("maximum_depth", integerSchema(1, description = "Requested traversal depth bound.")),
-        ServerSchemaProperty("expanded_frontier", integerSchema(0, description = "Nodes expanded on this page.")),
-        ServerSchemaProperty(
-            "progress",
-            generatedRequestSchema(io.github.amichne.kast.protocol.contract.TraversalProgressDocument.serializer()),
-        ),
-        ServerSchemaProperty(
-            "strategy",
-            generatedRequestSchema(io.github.amichne.kast.protocol.contract.TraversalStrategyDocument.serializer()),
-        ),
-        ServerSchemaProperty("partial_expansions", arraySchema(queryWalkPartialExpansionSchema())),
-        ServerSchemaProperty("coverage", queryWalkCoverageSchema()),
-    )
-
-private fun queryWalkPartialExpansionSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("subject", queryOutputReferenceSchema("exact-symbol")),
-        ServerSchemaProperty("depth", integerSchema(0, description = "Partially expanded subject depth.")),
-        ServerSchemaProperty("limitations", relationLimitationsSchema()),
-        ServerSchemaProperty(
-            "remainder",
-            enumSchema(listOf("continuation_retained", "not_explored"), "Disposition of unenumerated neighbors."),
-        ),
-        ServerSchemaProperty("scope", constantSchema("page", "Only qualified node reads performed on this page.")),
-    )
-
-private fun queryWalkCoverageSchema(): JsonObject =
-    unionSchema(
-        objectSchema(ServerSchemaProperty("kind", constantSchema("complete", "Traversal coverage state."))),
-        *listOf("resumable", "terminal_incomplete")
-            .map { kind ->
-                objectSchema(
-                    ServerSchemaProperty("kind", constantSchema(kind, "Traversal coverage state.")),
-                    ServerSchemaProperty("limitations", traversalLimitationsSchema()),
-                    ServerSchemaProperty("relation_limitations", relationLimitationsSchema()),
-                )
-            }
-            .toTypedArray(),
+    generatedRequestSchema(
+        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.walkObservationSerializer
     )
 
 private fun queryRelationOmissionSchema(): JsonObject =
@@ -944,45 +928,16 @@ internal fun sourceTextProjectionSchema(): JsonObject =
         ),
     )
 
-private fun traversalLimitationsSchema(): JsonObject =
-    arraySchema(
-        enumSchema(
-            listOf(
-                "record-limit-reached",
-                "byte-limit-reached",
-                "work-limit-reached",
-                "time-limit-reached",
-                "depth-limit-reached",
-                "frontier-limit-reached",
-                "one-hop-incomplete",
-                "no-progress",
-            ),
-            "Every traversal limitation.",
-        )
-    )
-
-private fun relationLimitationsSchema(): JsonObject =
-    arraySchema(
-        enumSchema(
-            listOf(
-                "result-limit-reached",
-                "byte-limit-reached",
-                "work-limit-reached",
-                "time-limit-reached",
-                "dumb-mode-transition",
-                "unresolved-target",
-                "unsupported-item",
-                "provider-failure",
-                "provider-incomplete",
-                "provider-stalled",
-            ),
-            "Every relation coverage limitation.",
-        )
-    )
-
 private fun diagnosticQualificationSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty("continuation", textSchema("Retained same-basis diagnostic progress."), required = false),
+        ServerSchemaProperty(
+            "retentionFailure",
+            generatedRequestSchema(
+                io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument.serializer()
+            ),
+            required = false,
+        ),
         ServerSchemaProperty(
             "knownDiagnosticCount",
             integerSchema(0, description = "Known diagnostic count before result truncation."),

@@ -33,7 +33,7 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
             return TraversalResult.Rejected(TraversalRejection.TraversalContractViolation)
         }
         val state = MutableTraversalState.from(checkpoint)
-        val accounting = TraversalAccounting()
+        val accounting = TraversalAccounting(inheritedOmissions = checkpoint.retainedOmissions)
 
         while (true) {
             val work =
@@ -136,6 +136,20 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                 records += record
             }
             accounting.records += records
+            for (reference in batch.referenceOccurrences) {
+                when (
+                    val observed =
+                        io.github.amichne.kast.traversal.contract.TraversalReferenceObservation.create(
+                            plan,
+                            entry,
+                            reference,
+                        )
+                ) {
+                    is Refinement.Refined -> accounting.referenceOccurrences += observed.value
+                    is Refinement.Rejected ->
+                        return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
+                }
+            }
             accounting.encodedBytes += batch.encodedBytes.value
             accounting.examinedWorkUnits += batch.examinedWorkUnits.value
             accounting.elapsedMillis += read.elapsedMillis.value
@@ -177,11 +191,16 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                             TraversalPartialExpansion.create(
                                 plan,
                                 entry,
-                                coverage.limitations,
+                                relationResult,
                                 remainder,
                             )
                     ) {
-                        is Refinement.Refined -> accounting.partialExpansions += partial.value
+                        is Refinement.Refined -> {
+                            accounting.partialExpansions += partial.value
+                            val retained = partial.value.retainedExpansions()
+                            state.retainedOmissions += retained
+                            state.terminalRelationLimitations += retained.flatMap { it.limitations }
+                        }
                         is Refinement.Rejected ->
                             return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
                     }
@@ -303,6 +322,7 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                         state.pending,
                         state.terminalRelationLimitations,
                         page.progress,
+                        state.retainedOmissions,
                     )
             ) {
                 is Refinement.Refined -> admitted.value

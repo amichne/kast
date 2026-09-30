@@ -1,1 +1,1 @@
-{"subject":"exact:fixture-node","depth":2,"limitations":["result_limit_reached"],"remainder":"not_explored","scope":"page"}
+{"subject":"exact:fixture-node","depth":2,"limitations":["result_limit_reached"],"remainder":"not_explored","known_minimum":0,"omissions":[{"provider":"INTELLIJ_CALLEES_V2","reason":"RESULT_LIMIT_REACHED","measurement":{"type":"unmeasured_on_page"},"samples":{"type":"complete","locations":[]},"remediation":"INCREASE_READ_LIMIT"}],"scope":"page"}

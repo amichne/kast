@@ -26,7 +26,7 @@ internal fun admitTraversalRead(
     next: TraversalFrontierEntry,
     accounting: TraversalAccounting,
 ): TraversalReadAdmission {
-    val remainingRecords = plan.budget.records.value - accounting.records.size
+    val remainingRecords = plan.budget.records.value - accounting.semanticResultCount
     val remainingBytes = plan.budget.returnedBytes.value - accounting.encodedBytes
     val remainingWork = plan.budget.workUnits.value - accounting.examinedWorkUnits
     val remainingTime = plan.budget.elapsedTime.value - accounting.elapsedMillis

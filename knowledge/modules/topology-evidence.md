@@ -11,6 +11,9 @@ code_sources:
   - path: topology/service/src/main/kotlin/io/github/amichne/kast/topology/service/TopologyGraphService.kt
   - path: topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/InstalledIntellijTopologyExtractor.kt
   - path: evidence/topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/topology/SqliteTopologySnapshotStore.kt
+  - path: evidence/topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/topology/SqliteTopologyRelationCompiler.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderState.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderLocator.kt
   - path: evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/WorkspacePublication.kt
     symbols: [WorkspacePublicationCommit]
   - path: evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStores.kt
@@ -29,6 +32,8 @@ The shipped SQLite adapter stores live change plans, permanent application-attem
 `HostedChangeFailure` preserves state-root, location, database, plan, receipt and plan-lookup failures through endpoint serialization and bounded diagnostic observations. Missing plans, corrupt rows, incompatible versions and I/O rejection remain distinct. Successful open and lookup stages emit completion evidence without paths or source payloads.
 
 The topology contract/build/service/IntelliJ modules remain active and buildable for upcoming graph work. They retain complete-generation proofs, generation reuse, compiler-backed extraction, graph algorithms and bounded source-root synchronization. `evidence:topology-sqlite` owns topology snapshot publication, restart-safe storage and relation compilation independently of the shipped mutation adapter. Architecture checks keep these five modules outside the plugin, CLI and coordinator dependency graphs. Existing tests cover extraction rejection, graph identity, snapshot corruption and failed-publication retention.
+
+Retained SQLite relation reads use the shared immutable provider inventory and continuation contract. The `PUBLISHED_TOPOLOGY_V1` provider carries already confirmed published facts, their exact lease, and their snapshot digest. Each resumed page consumes the remaining inventory with an advancing ordinal; it neither rebuilds the relation inventory nor replays consumed facts. A different snapshot under the same generation cannot consume that remainder. Native locators still require fresh compiler confirmation.
 
 Production relation and traversal reads use the current IDEA index through the live read authority. Historical published-evidence contracts remain interpretable; the plugin never fabricates a generation from a live epoch. The isolated workspace publication implementation remains retired.
 

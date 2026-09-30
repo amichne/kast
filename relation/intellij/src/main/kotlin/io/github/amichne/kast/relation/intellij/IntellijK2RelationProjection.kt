@@ -34,56 +34,6 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
-internal enum class IntellijRelationSubjectFailure {
-    STALE_SELECTOR,
-    OUTSIDE_SCOPE,
-    AMBIGUOUS_SUBJECT,
-    UNSUPPORTED_SUBJECT,
-    COMPILER_IDENTITY_UNAVAILABLE,
-}
-
-internal sealed interface IntellijRelationSubjectLookup {
-    data class Found(
-        val declaration: PsiNamedElement,
-        val evidence: CompilerGroundedSymbolEvidence,
-    ) : IntellijRelationSubjectLookup
-
-    data class Rejected(val reason: IntellijRelationSubjectFailure) : IntellijRelationSubjectLookup
-}
-
-internal sealed interface IntellijRelationDeclarationProjection {
-    data class Projected(
-        val declaration: PsiNamedElement,
-        val evidence: CompilerGroundedSymbolEvidence,
-    ) : IntellijRelationDeclarationProjection
-
-    data object Unsupported : IntellijRelationDeclarationProjection
-}
-
-internal enum class IntellijK2TargetConfirmation {
-    EXACT_SUBJECT,
-    DIFFERENT_SYMBOL,
-    UNRESOLVED,
-}
-
-internal enum class IntellijK2DefinitionConfirmation {
-    CONFIRMED,
-    DIFFERENT_RELATION,
-    UNSUPPORTED,
-}
-
-internal sealed interface IntellijK2ResolvedDeclaration {
-    data class Found(val declaration: PsiNamedElement) : IntellijK2ResolvedDeclaration
-
-    data object Unresolved : IntellijK2ResolvedDeclaration
-}
-
-internal sealed interface IntellijDetachedRelationFile {
-    data class Found(val identity: SymbolDiscoveryFileIdentity) : IntellijDetachedRelationFile
-
-    data object Unsupported : IntellijDetachedRelationFile
-}
-
 /** Request-local exact lookup and K2 projection for relation subjects and endpoints. */
 internal class IntellijK2RelationProjection(
     private val project: com.intellij.openapi.project.Project,
@@ -213,10 +163,7 @@ internal class IntellijK2RelationProjection(
             is IntellijRelationReferenceAdmission.Admitted.ClassConstruction -> confirmClassConstruction(admitted)
         }
 
-    private fun confirmExactTarget(
-        reference: KtReference,
-        subject: RelationEndpoint,
-    ): IntellijK2TargetConfirmation {
+    fun confirmReferenceTarget(reference: KtReference, subject: RelationEndpoint): IntellijReferenceTargetResult {
         val identity =
             when (
                 val result =
@@ -227,14 +174,26 @@ internal class IntellijK2RelationProjection(
                     }
             ) {
                 is IntellijCompilerProjectionResult.Projected -> result.projection.identity
-                IntellijCompilerProjectionResult.Unsupported -> return IntellijK2TargetConfirmation.UNRESOLVED
+                IntellijCompilerProjectionResult.Unsupported -> return IntellijReferenceTargetResult.Unresolved
             }
-        return if (identity == subject.compilerIdentity) {
-            IntellijK2TargetConfirmation.EXACT_SUBJECT
-        } else {
-            IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
+        return when (
+            val proof =
+                io.github.amichne.kast.relation.contract.RelationConfirmedReferenceTarget.fromCompiler(
+                    subject,
+                    identity,
+                )
+        ) {
+            is Refinement.Refined -> IntellijReferenceTargetResult.Confirmed(proof.value)
+            is Refinement.Rejected -> IntellijReferenceTargetResult.Different
         }
     }
+
+    private fun confirmExactTarget(reference: KtReference, subject: RelationEndpoint): IntellijK2TargetConfirmation =
+        when (confirmReferenceTarget(reference, subject)) {
+            is IntellijReferenceTargetResult.Confirmed -> IntellijK2TargetConfirmation.EXACT_SUBJECT
+            IntellijReferenceTargetResult.Different -> IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
+            IntellijReferenceTargetResult.Unresolved -> IntellijK2TargetConfirmation.UNRESOLVED
+        }
 
     private fun confirmClassConstruction(
         admitted: IntellijRelationReferenceAdmission.Admitted.ClassConstruction
@@ -340,17 +299,32 @@ internal class IntellijK2RelationProjection(
         }
 
     /** Java resolution finds the declaration; K2 then proves its exact retained compiler identity. */
-    fun confirmJavaTarget(reference: PsiReference, subject: RelationEndpoint): IntellijK2TargetConfirmation {
+    fun confirmJavaReferenceTarget(reference: PsiReference, subject: RelationEndpoint): IntellijReferenceTargetResult {
         val declaration =
-            reference.resolve()?.navigationElement as? PsiNamedElement ?: return IntellijK2TargetConfirmation.UNRESOLVED
+            reference.resolve()?.navigationElement as? PsiNamedElement
+                ?: return IntellijReferenceTargetResult.Unresolved
         return when (val result = project(declaration)) {
-            IntellijRelationDeclarationProjection.Unsupported -> IntellijK2TargetConfirmation.UNRESOLVED
+            IntellijRelationDeclarationProjection.Unsupported -> IntellijReferenceTargetResult.Unresolved
             is IntellijRelationDeclarationProjection.Projected ->
-                if (result.evidence.compilerIdentity == subject.compilerIdentity)
-                    IntellijK2TargetConfirmation.EXACT_SUBJECT
-                else IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
+                when (
+                    val proof =
+                        io.github.amichne.kast.relation.contract.RelationConfirmedReferenceTarget.fromCompiler(
+                            subject,
+                            result.evidence.compilerIdentity,
+                        )
+                ) {
+                    is Refinement.Refined -> IntellijReferenceTargetResult.Confirmed(proof.value)
+                    is Refinement.Rejected -> IntellijReferenceTargetResult.Different
+                }
         }
     }
+
+    fun confirmJavaTarget(reference: PsiReference, subject: RelationEndpoint): IntellijK2TargetConfirmation =
+        when (confirmJavaReferenceTarget(reference, subject)) {
+            is IntellijReferenceTargetResult.Confirmed -> IntellijK2TargetConfirmation.EXACT_SUBJECT
+            IntellijReferenceTargetResult.Different -> IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
+            IntellijReferenceTargetResult.Unresolved -> IntellijK2TargetConfirmation.UNRESOLVED
+        }
 
     /** Detaches one request-local VFS value under the exact selector root. */
     fun detach(file: VirtualFile): IntellijDetachedRelationFile = file.detachNative()

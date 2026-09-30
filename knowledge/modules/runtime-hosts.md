@@ -4,7 +4,7 @@ title: Runtime and process hosts
 description: The existing IDEA plugin owns semantic execution; CLI and App Server own installation, transport, sessions and exact challenge signing.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/SessionRequests.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeAdmission.kt
@@ -101,6 +101,20 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyGraph.kt
+    symbols: [sourceDependencyClosure, sourceExpiredEntries]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRecords.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionMeasurements.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateRecords.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyExpiryTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
 ---
 
 # Runtime and process hosts
@@ -140,17 +154,24 @@ read permit, source epoch, import, or indexing wait. Query admission still check
 saved content and current authority. Older hosts may omit the new observation;
 absence provides no readiness proof.
 
-`HostedQueryContinuations` owns bounded expiring query state and encoded-output state
-for the current project read authority. Lookup follows fresh host admission and
-checks the semantic basis. Its active epoch owns one query state store for execution
-checkpoints and immutable semantic results, a diagnostic checkpoint store, and
-query, diagnostic, source, relation and traversal output suffix stores. Each store
-has an entry, charged-byte and TTL bound; the query state store charges its two
-entry kinds against one shared capacity. Project disposal or epoch replacement
-clears them. Restore does not renew creation time and cannot restore a foreign or
-stale authority. See the
-[hosted retention bounds](../flows/hosted-query.md#hosted-continuation-retention-bounds)
-for aggregate accounting and the separate native source owner.
+`HostedQueryContinuations` owns three bounded stores for the current project read
+authority: query execution/results/output, source native cursors/output, and
+diagnostic scan/output. Lookup follows fresh host admission and checks the
+semantic basis. Claims, cached fitted pages and their advertised dependencies
+share each owner's entry, charged-byte and TTL bounds. There is no parallel
+output-suffix pool or separate native source registry. Allocations remain hidden
+until final freshness, deadline and native-drain checks permit atomic publication.
+Commit replaces consumed producer payloads with the exact immutable page and
+prunes unadvertised children. Cancellation releases only its own attempt. Project
+disposal or epoch replacement retires all owners; replay never renews token age.
+All owners check each token's original deadline even when an active claim pins
+its physical storage. A younger page remains valid only while every referenced
+dependency remains within its original age bound. Claimed storage does not admit
+expired tokens or permit publication after expiry. The source owner prunes expired
+and broken unclaimed dependency pages while preserving claimed storage for cleanup.
+Current-byte, entry-count and byte high-water gauges remain separate for each
+owner and estimate quota accounting rather than heap memory. See the
+[hosted retention bounds](../flows/hosted-query.md#hosted-continuation-retention-bounds).
 
 Connection admission bounds parallel semantic dispatch; each hosted read independently owns a bounded lifetime permit. Epoch ownership transitions and mutation application retain their narrower synchronization.
 `CONNECTION_RELEASE` is emitted after the admitted connection's semaphore permit

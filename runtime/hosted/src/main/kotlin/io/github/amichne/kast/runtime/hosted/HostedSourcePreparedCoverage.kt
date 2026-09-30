@@ -10,6 +10,11 @@ internal fun HostedSourceOutcome.preparedCoverage(): SourcePreparedCoverageDocum
         is OperationOutcome.Complete -> SourcePreparedCoverageDocument.Complete
         is OperationOutcome.Qualified ->
             when (val progress = qualification.progress) {
+                is SourceQualifiedProgressDocument.RetentionUnavailable ->
+                    SourcePreparedCoverageDocument.TerminalIncomplete(
+                        io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
+                            .RETENTION_CAPACITY_EXCEEDED
+                    )
                 is SourceQualifiedProgressDocument.TerminalIncomplete ->
                     SourcePreparedCoverageDocument.TerminalIncomplete(progress.reason)
                 is SourceQualifiedProgressDocument.Resumable ->

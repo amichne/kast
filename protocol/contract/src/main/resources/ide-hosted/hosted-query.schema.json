@@ -55,7 +55,8 @@
             "RESULT_LIMIT_EXCEEDED",
             "LIVE_AUTHORITY_REJECTED",
             "NAMED_SOURCE_SCOPE_REJECTED",
-            "CONFIGURATION_REJECTED"
+            "CONFIGURATION_REJECTED",
+            "PUBLICATION_REJECTED"
           ]
         },
         "detail": {},
@@ -80,62 +81,85 @@
       "allOf": [
         {
           "if": {
+            "required": [
+              "failure"
+            ],
             "properties": {
               "failure": {
-                "const": "CONFIGURATION_REJECTED"
+                "const": "PUBLICATION_REJECTED"
               }
             }
           },
           "then": {
             "properties": {
               "detail": {
-                "$ref": "#/$defs/configurationFailure"
+                "$ref": "#/$defs/publicationFailureDetail"
               }
             }
           },
           "else": {
-            "properties": {
-              "detail": {
-                "oneOf": [
-                  {
-                    "type": "string",
-                    "maxLength": 128
-                  },
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "stage": {
-                        "type": "string",
-                        "maxLength": 64
-                      },
-                      "cause": {
-                        "enum": [
-                          "OBSERVATION_FAILED",
-                          "RUNTIME",
-                          "LINKAGE"
-                        ]
-                      },
-                      "field": {
-                        "type": "string",
-                        "maxLength": 64
-                      }
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "failure": {
+                      "const": "CONFIGURATION_REJECTED"
                     }
-                  },
-                  {
-                    "type": "array",
-                    "maxItems": 64,
-                    "items": {
-                      "type": "string",
-                      "maxLength": 128
-                    }
-                  },
-                  {
-                    "$ref": "#/$defs/namedSourceScopeFailure"
                   }
-                ]
+                },
+                "then": {
+                  "properties": {
+                    "detail": {
+                      "$ref": "#/$defs/configurationFailure"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "detail": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "stage": {
+                              "type": "string",
+                              "maxLength": 64
+                            },
+                            "cause": {
+                              "enum": [
+                                "OBSERVATION_FAILED",
+                                "RUNTIME",
+                                "LINKAGE"
+                              ]
+                            },
+                            "field": {
+                              "type": "string",
+                              "maxLength": 64
+                            }
+                          }
+                        },
+                        {
+                          "type": "array",
+                          "maxItems": 64,
+                          "items": {
+                            "type": "string",
+                            "maxLength": 128
+                          }
+                        },
+                        {
+                          "$ref": "#/$defs/namedSourceScopeFailure"
+                        }
+                      ]
+                    }
+                  }
+                }
               }
-            }
+            ]
           }
         }
       ]
@@ -708,6 +732,40 @@
               "maxLength": 512
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "instruction"
+          ],
+          "properties": {
+            "kind": {
+              "const": "retained_state_unavailable"
+            },
+            "instruction": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "instruction"
+          ],
+          "properties": {
+            "kind": {
+              "const": "reduce_retained_work"
+            },
+            "instruction": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          }
         }
       ]
     },
@@ -1066,6 +1124,27 @@
         "KAST_READ_PROCESS_OUTPUT_BYTES",
         "KAST_READ_PROCESS_TIMEOUT_MILLIS"
       ]
+    },
+    "publicationFailureDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cause"
+      ],
+      "properties": {
+        "cause": {
+          "enum": [
+            "OWNER_RETIRED",
+            "CLAIM_UNAVAILABLE",
+            "EXPIRED",
+            "DEPENDENCY_UNAVAILABLE",
+            "PUBLISHED_PAGE_MISMATCH",
+            "NON_ADVANCING_SUCCESSOR",
+            "INVALID_FITTED_PAGE",
+            "CAPACITY_EXCEEDED"
+          ]
+        }
+      }
     }
   }
 }

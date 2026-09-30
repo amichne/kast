@@ -20,6 +20,7 @@ internal constructor(
     val limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
     val timeAllowance: HostedSemanticTimeAllowance,
     private val freshness: HostedReadFreshness,
+    private val publicationEffects: HostedReadPublicationOwner = HostedReadPublicationOwner(),
 ) {
     val executionBudget
         get() = timeAllowance.executionBudget
@@ -55,6 +56,10 @@ internal constructor(
                 Refinement.Rejected(HostedQueryFailure.MODEL_MOVED)
             else -> Refinement.Refined(HostedPreWriteObservation.capture(authority.reference, freshness.beforeWrite))
         }
+
+    fun preparePublication(effect: HostedReadPublicationEffect): Refinement<Unit, HostedQueryFailure> =
+        if (lifetime == Lifetime.ACTIVE) publicationEffects.prepare(effect)
+        else Refinement.Rejected(HostedQueryFailure.STALE_REQUEST)
 
     internal suspend fun validate(): Refinement<Unit, HostedQueryFailure> =
         when (lifetime) {

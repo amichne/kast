@@ -304,7 +304,7 @@ class SymbolDiscoveryTest {
     fun `workspace-relative root honors direct and recursive containment`() {
         listOf(
                 SymbolDiscoveryContainment.DIRECT to listOf("ZItem"),
-                SymbolDiscoveryContainment.DESCENDANTS to listOf("AItem", "NoMatch", "ZItem"),
+                SymbolDiscoveryContainment.DESCENDANTS to listOf("ZItem", "AItem", "NoMatch"),
             )
             .forEach { (containment, expected) ->
                 val outcome =

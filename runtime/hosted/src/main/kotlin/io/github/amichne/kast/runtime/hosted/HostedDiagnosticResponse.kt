@@ -11,7 +11,6 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticProgressStage
@@ -26,16 +25,6 @@ internal typealias HostedDiagnosticOutcome =
     OperationOutcome<DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckFailure>
 
 internal const val DIAGNOSTIC_OUTPUT_PREFIX = "diagnostic-output:v1:"
-
-internal fun hostedDiagnosticOutputPages(limits: ReadLimits) =
-    HostedOutputPages(
-        CanonicalOperationWireBindings.diagnosticCheck,
-        DIAGNOSTIC_OUTPUT_PREFIX,
-        limits,
-        normalize = { request: DiagnosticCheckRequest -> request.copy(continuation = null, executionBudget = null) },
-        unavailable = DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE,
-        mismatch = DiagnosticCheckRejection.CONTINUATION_REQUEST_MISMATCH,
-    )
 
 internal fun HostedDiagnosticOutcome.withDiagnosticBudget(report: ExecutionBudgetReport?): HostedDiagnosticOutcome =
     when (this) {
@@ -58,7 +47,7 @@ internal fun encodeHostedDiagnosticResponse(
     maximumBytes: ReturnedByteLimit,
     maximumResults: ResultLimit =
         ResultLimit.parse(io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS).proven(),
-    retain: (HostedDiagnosticOutcome) -> HostedOutputRetention,
+    retain: (HostedDiagnosticOutcome) -> Refinement<ProtocolText, DiagnosticCheckRejection>,
 ): HostedResponse =
     encodeHostedDiagnosticDocument(semantic, limits, maximumBytes, maximumResults, retain)
         .withReadBudget(
@@ -74,7 +63,7 @@ private fun encodeHostedDiagnosticDocument(
     limits: ReadLimits,
     maximumBytes: ReturnedByteLimit,
     maximumResults: ResultLimit,
-    retain: (HostedDiagnosticOutcome) -> HostedOutputRetention,
+    retain: (HostedDiagnosticOutcome) -> Refinement<ProtocolText, DiagnosticCheckRejection>,
 ): HostedResponse {
     val original =
         HostedResponse.Canonical.encode(CanonicalOperationWireBindings.diagnosticCheck, semantic, limits, maximumBytes)
@@ -100,29 +89,32 @@ private fun encodeHostedDiagnosticDocument(
             limits,
             maximumBytes,
         )
-    val remainder =
-        evidence.copy(
-            payload =
-                evidence.payload.copy(
-                    diagnostics = BoundedProtocolList.create(evidence.payload.diagnostics.values.drop(count)).proven()
-                )
-        )
-    val suffix =
-        when (semantic) {
-            is OperationOutcome.Complete -> OperationOutcome.Complete(remainder)
-            is OperationOutcome.Qualified -> OperationOutcome.Qualified(remainder, semantic.qualification)
-        }
+    val suffix = semantic.diagnosticSuffix(count)
     return when (val retained = retain(suffix.withDiagnosticBudget(null))) {
-        is HostedOutputRetention.Retained -> fitting.encode(count, retained.token)
-        HostedOutputRetention.CapacityExceeded ->
-            diagnosticEncodingRejection(
-                DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED,
-                evidence.payload.progress?.executionBudget,
-                limits,
-                maximumBytes,
-            )
-        HostedOutputRetention.Unavailable -> unavailableHostedRetention()
-        HostedOutputRetention.EncodingRejected -> HostedResponse.Rejected(HostedEndpointFailure.RESPONSE_REJECTED)
+        is Refinement.Refined -> fitting.encode(count, retained.value)
+        is Refinement.Rejected ->
+            if (retained.failure == DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED)
+                fitting.retentionUnavailable(count)
+            else
+                diagnosticEncodingRejection(
+                    retained.failure,
+                    evidence.payload.progress?.executionBudget,
+                    limits,
+                    maximumBytes,
+                )
+    }
+}
+
+private fun HostedDiagnosticOutcome.diagnosticSuffix(count: Int): HostedDiagnosticOutcome {
+    fun EvidenceEnvelope<DiagnosticCheckResult>.dropFacts() =
+        copy(
+            payload =
+                payload.copy(diagnostics = BoundedProtocolList.create(payload.diagnostics.values.drop(count)).proven())
+        )
+    return when (this) {
+        is OperationOutcome.Complete -> OperationOutcome.Complete(evidence.dropFacts())
+        is OperationOutcome.Qualified -> OperationOutcome.Qualified(evidence.dropFacts(), qualification)
+        is OperationOutcome.Rejected -> this
     }
 }
 
@@ -163,6 +155,37 @@ private class DiagnosticPageEncoding(
 ) {
     fun placeholder(count: Int) = encode(count, PLACEHOLDER)
 
+    fun retentionUnavailable(count: Int): HostedResponse =
+        HostedResponse.Canonical.encode(
+            CanonicalOperationWireBindings.diagnosticCheck,
+            OperationOutcome.Qualified(
+                evidence.copy(
+                    payload =
+                        evidence.payload.copy(
+                            diagnostics =
+                                BoundedProtocolList.create(evidence.payload.diagnostics.values.take(count)).proven(),
+                            progress =
+                                evidence.payload.progress?.copy(
+                                    stage = DiagnosticProgressStage.FINISHED,
+                                    stop = DiagnosticProgressStop.RETENTION_CAPACITY_EXCEEDED,
+                                ),
+                        )
+                ),
+                DiagnosticCheckQualification.create(
+                        qualification.knownDiagnosticCount,
+                        true,
+                        qualification.analyzedFiles,
+                        qualification.limitations,
+                        retentionFailure =
+                            io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument
+                                .CAPACITY_EXCEEDED,
+                    )
+                    .proven(),
+            ),
+            limits,
+            maximumBytes,
+        )
+
     fun encode(count: Int, token: ProtocolText): HostedResponse =
         HostedResponse.Canonical.encode(
             CanonicalOperationWireBindings.diagnosticCheck,
@@ -185,6 +208,7 @@ private class DiagnosticPageEncoding(
                         qualification.analyzedFiles,
                         qualification.limitations,
                         token,
+                        qualification.retentionFailure,
                     )
                     .proven(),
             ),

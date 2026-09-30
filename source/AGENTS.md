@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: e9e206c7a991 -->
+<!-- generated: 2026-09-29 | hash: e9e206c7a991 -->
 
 # source
 
@@ -9,6 +9,8 @@ Models exact source selection, ranges, snapshots, and identity; serves reads thr
 
 ## Key Files
 
+- [SourceReadCursor.kt](contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadCursor.kt) - exact semantic request, snapshot, structural frontier, and cumulative progress proof.
+- [IntellijSourceTraversal.kt](intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceTraversal.kt) - restored structural work without ordinal prefix replay.
 - [IntellijSourceEntityPageCollector.kt](intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt) - kind admission before compiler projection and ordered eligible-page capacity.
 - [contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelector.kt](contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelector.kt) - source selection domain.
 - [contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSnapshot.kt](contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSnapshot.kt) - captured source evidence.
