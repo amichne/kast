@@ -98,7 +98,7 @@ Compact output preserves semantic results, coverage, limitations, exact referenc
 </Accordion>
 
 <Accordion title="Where the operation document sits in each transport">
-  Direct MCP carries its structured result in `result.structuredContent`, with semantic read data in `data`. Tool RPC returns a top-level `type` and a `document` for completed, qualified, or rejected documents. Hosted App Server invocations have a `status` and, when completed, a `document`.
+  Direct MCP puts the canonical semantic operation document itself in `result.structuredContent`; queries do not add a generic `partial` wrapper or nest that document under `data`. The support tool `health_check` has its own readiness schema. Tool RPC returns a top-level `type` and a `document` for completed, qualified, or rejected documents. Hosted App Server invocations have a `status` and, when completed, a `document`.
 
   Integrators should use the [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog) contract rather than infer wrappers from a tutorial excerpt. The full contracts are collected on [Schemas and samples](/reference/schemas).
 </Accordion>
