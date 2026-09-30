@@ -16,10 +16,43 @@ internal enum class ReleaseChannel {
 
 @Serializable
 internal data class ManagedRegistration(
-    val harness: Harness,
+    val connection: HarnessConnection,
     val destination: String,
     val payloadSha256: String,
 )
+
+@Serializable private data class ReceiptVersion(val schemaVersion: Int)
+
+@Serializable
+private data class LegacyManagedRegistration(val harness: Harness, val destination: String, val payloadSha256: String)
+
+@Serializable
+private data class LegacyManagementReceipt(
+    val schemaVersion: Int,
+    val installationRoot: String,
+    val executable: String,
+    val executableSha256: String,
+    val channel: ReleaseChannel,
+    val registrations: List<LegacyManagedRegistration>,
+) {
+    fun refine(): ManagementReceipt =
+        ManagementReceipt(
+            2,
+            installationRoot,
+            executable,
+            executableSha256,
+            channel,
+            registrations.map { registration ->
+                val connection =
+                    when (registration.harness) {
+                        Harness.CODEX -> HarnessConnection.CODEX_MCP
+                        Harness.COPILOT -> HarnessConnection.COPILOT
+                        Harness.PI -> HarnessConnection.PI
+                    }
+                ManagedRegistration(connection, registration.destination, registration.payloadSha256)
+            },
+        )
+}
 
 @Serializable
 internal data class ManagementReceipt(
@@ -83,21 +116,34 @@ internal sealed interface ReceiptRead {
 
 internal fun receiptPath(root: Path): Path = root.resolve("management.json")
 
-@Suppress("ComplexCondition")
-internal fun readReceipt(root: Path): ReceiptRead {
-    val raw = readBoundedFile(receiptPath(root), 65536) ?: return ReceiptRead.Unavailable("receipt_unavailable")
+private fun decodeReceipt(raw: String): ReceiptRead {
     val receipt =
         try {
-            managementJson.decodeFromString<ManagementReceipt>(raw)
+            when (manifestJson.decodeFromString<ReceiptVersion>(raw).schemaVersion) {
+                1 -> managementJson.decodeFromString<LegacyManagementReceipt>(raw).refine()
+                2 -> managementJson.decodeFromString<ManagementReceipt>(raw)
+                else -> return ReceiptRead.Unavailable("receipt_invalid")
+            }
         } catch (_: SerializationException) {
             return ReceiptRead.Unavailable("receipt_invalid")
         } catch (_: IllegalArgumentException) {
             return ReceiptRead.Unavailable("receipt_invalid")
         }
+    return ReceiptRead.Read(receipt)
+}
+
+@Suppress("ComplexCondition")
+internal fun readReceipt(root: Path): ReceiptRead {
+    val raw = readBoundedFile(receiptPath(root), 65536) ?: return ReceiptRead.Unavailable("receipt_unavailable")
+    val receipt =
+        when (val decoded = decodeReceipt(raw)) {
+            is ReceiptRead.Read -> decoded.receipt
+            is ReceiptRead.Unavailable -> return decoded
+        }
     if (
-        receipt.schemaVersion != 1 ||
+        receipt.schemaVersion != 2 ||
             receipt.installationRoot != root.toString() ||
-            receipt.registrations.map { it.harness }.toSet().size != receipt.registrations.size ||
+            receipt.registrations.map { it.connection }.toSet().size != receipt.registrations.size ||
             !validSha256(receipt.executableSha256) ||
             receipt.registrations.any { !validSha256(it.payloadSha256) }
     )

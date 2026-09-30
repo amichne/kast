@@ -5,7 +5,7 @@ icon: "download"
 keywords: ["install", "IntelliJ IDEA", "Kotlin"]
 ---
 
-Install Kast once, then [connect the agent you use](/agent-harnesses). You do not need to choose a transport or configure a workspace to get started.
+Install Kast once, then [connect the agent you use](/agent-harnesses). For Codex, choose `mcp` or `app-server` when connecting.
 
 ## Before you install
 
@@ -20,6 +20,8 @@ Run this in a terminal:
 ```
 
 The installer installs the matched IDEA plugin, Kast-owned services, and the native `kast` management command. It may offer to connect Codex during interactive setup; you can choose or change your agent afterward.
+
+Installer output shows progress and readable failure reasons. To include structured diagnostic reports, append `-- --verbose` to the command above.
 
 Restart IntelliJ IDEA to load the plugin, then check the installation:
 

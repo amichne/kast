@@ -14,9 +14,17 @@ import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceRecoveryEvidence
 import io.github.amichne.kast.appserver.runtime.WorkspaceRecoverySettlement
+import io.github.amichne.kast.kernel.EvidenceEnvelope
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
+import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
+import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
+import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
 import io.github.amichne.kast.protocol.contract.ChangeRequest
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalChangeCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import java.nio.file.Files
@@ -31,6 +39,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -78,7 +87,18 @@ class KastSingleChangeInvocationTest {
     }
 
     @Test
-    fun `unverified write recovers inside the same broker call and returns failure evidence`() = runBlocking {
+    fun `unverified write preserves actual projected recovery rolled back`() =
+        assertProjectedRecovery(ChangeRecoveryDocumentState.ROLLED_BACK)
+
+    @Test
+    fun `unverified write preserves actual projected recovery prior state`() =
+        assertProjectedRecovery(ChangeRecoveryDocumentState.PRIOR_STATE)
+
+    @Test
+    fun `unverified write preserves actual projected recovery recovery required`() =
+        assertProjectedRecovery(ChangeRecoveryDocumentState.RECOVERY_REQUIRED)
+
+    private fun assertProjectedRecovery(recoveryState: ChangeRecoveryDocumentState) = runBlocking {
         enroll()
         val observed = mutableListOf<String>()
         val invocation = invocation { operation ->
@@ -95,7 +115,7 @@ class KastSingleChangeInvocationTest {
                     observed += "write-${operation.kind.name}"
                     if (operation.kind.name == "CHANGE_APPLY")
                         ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Qualified(document(TestUnverified())))
-                    else semantic(TestRecovery())
+                    else projectedRecovery(recoveryState)
                 }
                 else -> error("Unexpected operation")
             }
@@ -106,8 +126,7 @@ class KastSingleChangeInvocationTest {
         val body = output.document.getValue("document").jsonObject
         assertEquals("rejected", body.getValue("status").jsonPrimitive.content)
         val error = body.getValue("error").jsonObject
-        assertEquals("APPLY_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
-        assertEquals("rolled_back", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        assertProjectedRecoveryEvidence(error, recoveryState)
         assertEquals(
             listOf(
                 "plan",
@@ -247,8 +266,7 @@ class KastSingleChangeInvocationTest {
         val cancellation = CompletableDeferred<Throwable>()
         val settlement = WorkspaceRecoverySettlement()
         val observed = mutableListOf<String>()
-        val incomplete =
-            ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Qualified(document(TestRecoveryRequired())))
+        val incomplete = projectedRecovery(ChangeRecoveryDocumentState.RECOVERY_REQUIRED)
         val job =
             launch(settlement) {
                 try {
@@ -269,7 +287,7 @@ class KastSingleChangeInvocationTest {
         operation: ExistingIdeOperation,
         enteredApply: CompletableDeferred<Unit>,
         observed: MutableList<String>,
-        recovery: ExistingIdeExchange = semantic(TestRecovery()),
+        recovery: ExistingIdeExchange = projectedRecovery(),
     ): ExistingIdeExchange =
         when (operation) {
             is ExistingIdeOperation.Plan -> {
@@ -308,7 +326,7 @@ class KastSingleChangeInvocationTest {
                         enteredRecovery.complete(Unit)
                         awaitCancellation()
                     }
-                    semantic(TestRecovery())
+                    projectedRecovery()
                 }
             else -> error("Unexpected operation")
         }
@@ -363,6 +381,28 @@ class KastSingleChangeInvocationTest {
         }
     }
 
+    private fun projectedRecovery(
+        state: ChangeRecoveryDocumentState = ChangeRecoveryDocumentState.ROLLED_BACK
+    ): ExistingIdeExchange {
+        val evidence =
+            EvidenceEnvelope(
+                CanonicalOperation.CHANGE_RECOVER.id,
+                (EvidenceGeneration.parse(1) as Refinement.Refined).value,
+                ChangeRecoverResult(state),
+            )
+        val outcome =
+            when (state) {
+                ChangeRecoveryDocumentState.PRIOR_STATE,
+                ChangeRecoveryDocumentState.ROLLED_BACK ->
+                    CanonicalChangeCliDocuments.projectRecovery(OperationOutcome.Complete(evidence))
+                ChangeRecoveryDocumentState.RECOVERY_REQUIRED ->
+                    CanonicalChangeCliDocuments.projectRecovery(
+                        OperationOutcome.Qualified(evidence, ChangeRecoverQualification.MANUAL_RECOVERY_REQUIRED)
+                    )
+            }
+        return ExistingIdeExchange.Semantic(outcome)
+    }
+
     private inline fun <reified T> document(value: T): CanonicalJsonDocument =
         CanonicalJsonDocument.generated(kotlinx.serialization.serializer<T>()).create(value)
 
@@ -386,11 +426,6 @@ private data class TestUnverified(val status: String = "qualified", val state: S
 @Serializable
 private data class TestHostRejection(val type: String = "rejected", val failure: String = "SOURCE_CHANGED")
 
-@Serializable private data class TestRecovery(val status: String = "complete", val state: String = "rolled_back")
-
-@Serializable
-private data class TestRecoveryRequired(val status: String = "qualified", val state: String = "recovery_required")
-
 @Serializable
 private data class TestChallenge(
     val version: Int = 1,
@@ -404,3 +439,21 @@ private data class TestChallenge(
 
 @Serializable
 private data class TestPreview(val path: String = "src/Target.kt", val diff: String = "+fun added() = Unit")
+
+private fun assertProjectedRecoveryEvidence(error: JsonObject, state: ChangeRecoveryDocumentState) {
+    val expectedCode =
+        if (state == ChangeRecoveryDocumentState.RECOVERY_REQUIRED) "RECOVERY_UNAVAILABLE" else "APPLY_UNVERIFIED"
+    val expectedState =
+        when (state) {
+            ChangeRecoveryDocumentState.PRIOR_STATE -> "prior-state"
+            ChangeRecoveryDocumentState.ROLLED_BACK -> "rolled-back"
+            ChangeRecoveryDocumentState.RECOVERY_REQUIRED -> "recovery-required"
+        }
+    assertEquals(expectedCode, error.getValue("code").jsonPrimitive.content)
+    val recovery = error.getValue("recovery").jsonObject
+    assertEquals(expectedState, recovery.getValue("state").jsonPrimitive.content)
+    if (state == ChangeRecoveryDocumentState.RECOVERY_REQUIRED) {
+        assertEquals("qualified", recovery.getValue("status").jsonPrimitive.content)
+        assertEquals("manual-recovery-required", recovery.getValue("qualification").jsonPrimitive.content)
+    } else assertEquals("complete", recovery.getValue("status").jsonPrimitive.content)
+}

@@ -70,13 +70,114 @@ success() { ui_line success 32 "$*"; }
 info() { ui_line info 2 "$*"; }
 warning() { ui_line warning 33 "$*"; }
 
+# Presentation only: child exit status and structured reports retain their authority.
+# Public bootstrap also supports older verified payloads with the same command protocol.
+run_installer_step() {
+  local label="$1" report="$2"
+  shift 2
+  local output_root output status=0
+  output_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install-output.XXXXXX")" || return "$?"
+  output="$output_root/stdout"
+  [[ -z "$report" ]] || output="$report"
+  if "$@" > "$output" 2> "$output_root/stderr"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [[ "$verbose" == 1 ]]; then
+    cat "$output" || status=$?
+    cat "$output_root/stderr" >&2 || status=$?
+  else
+    python3 - "$label" "$status" "$output" "$output_root/stderr" <<'PYTHON' >&2
+import json
+from pathlib import Path
+import sys
+
+label, code = sys.argv[1], int(sys.argv[2])
+
+def readable(value):
+    if not isinstance(value, (str, int)) or isinstance(value, bool):
+        return ''
+    return ''.join(character if character.isprintable() else ' ' for character in str(value))[:240]
+
+def details(document):
+    # Select display fields only; never interpret this projection as domain admission.
+    result = []
+    for key in ('stage', 'outcome', 'reason', 'failure', 'field', 'exitCode'):
+        value = document.get(key)
+        if isinstance(value, dict):
+            value = ' '.join(filter(None, (readable(value.get('type')), readable(value.get('exitCode')))))
+        text = readable(value)
+        if text:
+            result.append(text)
+    for key in ('unresolved', 'blockers'):
+        values = document.get(key)
+        if isinstance(values, list):
+            result.extend(filter(None, (readable(value) for value in values[:8])))
+    return '; '.join(result)
+
+if code:
+    print(f'  x {label} failed (exit {code})')
+shown = 0
+for name in sys.argv[3:]:
+    try:
+        with Path(name).open('rb') as source:
+            raw = source.read(65537)
+    except OSError:
+        print('  > Installer diagnostics could not be read; rerun with --verbose to inspect them.')
+        continue
+    decoded = raw[:65536].decode('utf-8', errors='replace')
+    try:
+        json.loads(decoded)
+    except (ValueError, RecursionError):
+        lines = decoded.splitlines()[:64]
+    else:
+        lines = [decoded]
+    for line in lines:
+        if shown >= 12:
+            break
+        stripped = line.lstrip()
+        try:
+            document = json.loads(line)
+        except (ValueError, RecursionError):
+            if stripped.startswith(('{', '[')):
+                text = 'Structured diagnostics are unavailable; rerun with --verbose to inspect them.'
+            else:
+                text = readable(line)
+        else:
+            if not isinstance(document, dict):
+                continue
+            activation = document.get('activation')
+            if isinstance(activation, dict) and activation.get('type') == 'pending':
+                text = 'App server activation is pending: ' + details(activation)
+                resume = readable(activation.get('resume'))
+                if resume:
+                    text += '; resume with ' + resume
+            elif document.get('status') == 'retained' and isinstance(document.get('retained'), list):
+                text = f"{len(document['retained'])} prior Kast entries retained for review"
+            elif code:
+                text = details(document)
+            else:
+                # Routine structured telemetry remains available through --verbose.
+                continue
+        if text:
+            print('  > ' + text)
+            shown += 1
+    if len(raw) > 65536:
+        print('  > Additional diagnostics are available with --verbose.')
+PYTHON
+  fi
+  rm -rf -- "$output_root" || status=$?
+  return "$status"
+}
+
 usage() {
   cat <<'USAGE'
 Bootstrap Kast for the current user.
 
 Usage:
   install.sh [--idea-home <absolute-path>] [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
-             [--register-codex-mcp | --skip-codex-mcp]
+             [--register-codex-mcp | --skip-codex-mcp] [--verbose]
   install.sh --help
 
 The default command installs the latest release into:
@@ -92,7 +193,10 @@ When `--idea-home` is omitted, installation checks `/Applications`,
 Pass arguments to a downloaded installer after Bash's `$0` separator:
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --help
 
-`--dry-run` downloads and verifies the matched release, then prints the exact
+`--verbose` includes the full structured child reports and diagnostic output.
+Default output shows progress, activation qualifications, and failure reasons.
+
+`--dry-run` downloads and verifies the matched release, then prints the
 installation plan without changing installation state.
 
 `--developer-latest` installs the newest verified developer build from the
@@ -399,7 +503,7 @@ activate_hosted_plugin() {
   local -a options=()
   [[ "$force" == 0 ]] || options+=(--force)
   selected="$(cd "$install_root/current" && pwd -P)"
-  python3 "$control_root/share/kast/installation-recovery.py" activate-plugin \
+  run_installer_step "IDEA plugin activation" "" python3 "$control_root/share/kast/installation-recovery.py" activate-plugin \
     --installation "$selected" --staged-plugin "$staged" --plugin-root "$plugin_root" ${options[@]+"${options[@]}"}
 }
 
@@ -411,6 +515,7 @@ mode=apply
 force=0
 developer_latest=0
 codex_mcp_choice=unspecified
+verbose=0
 
 if [[ "${1:-}" == uninstall ]]; then
   action=uninstall
@@ -435,6 +540,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --dry-run)
       mode=plan
+      shift
+      ;;
+    --verbose)
+      verbose=1
       shift
       ;;
     --developer-latest)
@@ -496,7 +605,9 @@ if [[ "$action" == uninstall ]]; then
   lifecycle="$selected/share/kast/installation-lifecycle.py"
   [[ -f "$lifecycle" && ! -L "$lifecycle" ]] || fail "selected installation has no lifecycle control"
   if [[ "$mode" == plan ]]; then
-    exec python3 "$lifecycle" --installation "$selected" remove --dry-run --json
+    run_installer_step "Installation removal plan" "" python3 "$lifecycle" --installation "$selected" remove --dry-run --json
+    success "planned removal of Kast at $selected; use --verbose for the structured plan"
+    exit 0
   else
     registration="$selected/share/kast/codex-mcp-registration.py"
     if [[ "$managed_registrations" == 0 && -f "$registration" && ! -L "$registration" ]]; then
@@ -504,10 +615,11 @@ if [[ "$action" == uninstall ]]; then
       cp "$registration" "$unregister_copy"
       trap 'rm -f -- "$unregister_copy"' EXIT
     fi
-    python3 "$lifecycle" --installation "$selected" remove --json
+    run_installer_step "Installation removal" "" python3 "$lifecycle" --installation "$selected" remove --json
     if [[ -n "${unregister_copy:-}" ]] && command -v codex >/dev/null 2>&1; then
       python3 "$unregister_copy" uninstall "$install_root"
     fi
+    success "removed the selected Kast installation"
     exit 0
   fi
 fi
@@ -595,12 +707,12 @@ cleanup() {
     if ! selected="$(CDPATH='' cd -- "$install_root/current" && pwd -P)"; then
       ui_line error 31 'kast-install: upgraded installation selection is unavailable; prior versions were retained'
       status=1
-    elif ! python3 "$control_root/share/kast/installation-recovery.py" seal-upgrade \
-      --installation "$selected" >&2; then
+    elif ! run_installer_step "Upgrade recovery finalization" "" python3 "$control_root/share/kast/installation-recovery.py" seal-upgrade \
+      --installation "$selected"; then
       ui_line error 31 'kast-install: upgrade recovery could not be finalized; prior versions were retained'
       status=1
-    elif ! python3 "$control_root/share/kast/prune-prior-installations.py" \
-      --installation "$selected" >&2; then
+    elif ! run_installer_step "Prior installation review" "" python3 "$control_root/share/kast/prune-prior-installations.py" \
+      --installation "$selected"; then
       ui_line error 31 'kast-install: prior installation review could not be completed'
       status=1
     fi
@@ -645,7 +757,7 @@ fi
 
 info "The app server provides the complete Kast suite. Persistent installations start it at login."
 if [[ "$profile" == persistent && "$codex_mcp_choice" == skip ]]; then
-  info "Codex MCP registration is skipped; configure Kast through your chosen MCP provider."
+  info "Codex MCP registration is skipped; use the app server or kast connect for your harness."
 fi
 note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') the app server and private service control"
 
@@ -670,10 +782,11 @@ export JAVA_HOME="$java_home"
 installation_options=()
 [[ "$force" == 0 ]] || installation_options+=(--force)
 if [[ -n "${KAST_MANAGEMENT_REPORT_PATH:-}" && "$mode" == apply && "$profile" == persistent ]]; then
-  "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"} > "$KAST_MANAGEMENT_REPORT_PATH"
-  cat "$KAST_MANAGEMENT_REPORT_PATH"
+  run_installer_step "App server and service installation" "$KAST_MANAGEMENT_REPORT_PATH" \
+    "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
 else
-  "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
+  run_installer_step "App server and service installation" "" \
+    "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
 fi
 if [[ "$mode" == plan ]]; then
   success "verified hosted plugin $plugin_digest for IntelliJ IDEA $idea_version (build $idea_build)"
@@ -690,7 +803,14 @@ else
   if [[ "$profile" == persistent && "$codex_mcp_choice" == register ]]; then
     [[ -x "$install_root/current/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
     python3 "$install_root/current/share/kast/codex-mcp-registration.py" install "$install_root"
-    "$installed_management" connect codex
+    # The explicit installer flag selects MCP. Older released native parsers predate
+    # the transport argument; the verified command's help identifies that boundary.
+    connect_usage="$("$installed_management" connect --help)" || fail "native Codex connection syntax is unavailable"
+    case "$connect_usage" in
+      *"<transport>"*) "$installed_management" connect codex mcp ;;
+      *"<harness>"*) "$installed_management" connect codex ;;
+      *) fail "native Codex connection syntax is unsupported" ;;
+    esac
   fi
   installation_complete=1
 fi

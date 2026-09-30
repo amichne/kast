@@ -2,14 +2,24 @@ package io.github.amichne.kast.cli.mcp
 
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.kernel.EvidenceEnvelope
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
+import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
+import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalChangeCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -115,7 +125,18 @@ class McpSingleChangeToolTest {
     }
 
     @Test
-    fun `unverified apply attempts recovery in the same call and preserves both outcomes`() {
+    fun `unverified apply preserves actual projected recovery rolled back`() =
+        assertProjectedRecovery(ChangeRecoveryDocumentState.ROLLED_BACK)
+
+    @Test
+    fun `unverified apply preserves actual projected recovery prior state`() =
+        assertProjectedRecovery(ChangeRecoveryDocumentState.PRIOR_STATE)
+
+    @Test
+    fun `unverified apply preserves actual projected recovery recovery required`() =
+        assertProjectedRecovery(ChangeRecoveryDocumentState.RECOVERY_REQUIRED)
+
+    private fun assertProjectedRecovery(recoveryState: ChangeRecoveryDocumentState) {
         val phases = mutableListOf<McpChangePhase>()
         val tool =
             McpSingleChangeTool(
@@ -127,7 +148,7 @@ class McpSingleChangeToolTest {
                         McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
                         McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
                         McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
-                        McpChangePhase.RECOVER -> complete(TestRecovery())
+                        McpChangePhase.RECOVER -> projectedRecovery(recoveryState)
                     }
                 },
                 { "signed-for-${it.operation}" },
@@ -139,12 +160,11 @@ class McpSingleChangeToolTest {
         assertEquals("rejected", output.getValue("status").jsonPrimitive.content)
         assertTrue(McpStructuredResults.validates("add_declaration", output))
         val error = output.getValue("error").jsonObject
-        assertEquals("APPLY_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
         assertEquals(
             "recovery_required",
             error.getValue("application").jsonObject.getValue("state").jsonPrimitive.content,
         )
-        assertEquals("rolled_back", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        assertProjectedRecoveryEvidence(error, recoveryState)
         assertEquals(McpChangePhase.RECOVER, phases.last())
     }
 
@@ -161,7 +181,7 @@ class McpSingleChangeToolTest {
                         McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
                         McpChangePhase.APPLY -> error("transport lost after attempted write")
                         McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
-                        McpChangePhase.RECOVER -> complete(TestRecovery())
+                        McpChangePhase.RECOVER -> projectedRecovery()
                     }
                 },
                 { "signed-for-${it.operation}" },
@@ -172,7 +192,7 @@ class McpSingleChangeToolTest {
         val output = Json.parseToJsonElement(result.document.value).jsonObject
         val error = output.getValue("error").jsonObject
         assertEquals("APPLY_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
-        assertEquals("rolled_back", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        assertEquals("rolled-back", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
         assertEquals(McpChangePhase.RECOVER, phases.last())
     }
 
@@ -212,7 +232,7 @@ class McpSingleChangeToolTest {
                         McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
                         McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
                         McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
-                        McpChangePhase.RECOVER -> qualified(TestRecoveryRequired())
+                        McpChangePhase.RECOVER -> projectedRecovery(ChangeRecoveryDocumentState.RECOVERY_REQUIRED)
                     }
                 },
                 { "signed-for-${it.operation}" },
@@ -221,7 +241,7 @@ class McpSingleChangeToolTest {
         val result = tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent()).jsonObject)
         val error = Json.parseToJsonElement(result.document.value).jsonObject.getValue("error").jsonObject
         assertEquals("RECOVERY_UNAVAILABLE", error.getValue("code").jsonPrimitive.content)
-        assertEquals("recovery_required", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        assertEquals("recovery-required", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
     }
 
     @Test
@@ -286,6 +306,32 @@ class McpSingleChangeToolTest {
             preview = ApprovalPreview("src/Target.kt", "+fun added() = Unit"),
         )
 
+    private fun projectedRecovery(
+        state: ChangeRecoveryDocumentState = ChangeRecoveryDocumentState.ROLLED_BACK
+    ): CliExit {
+        val evidence =
+            EvidenceEnvelope(
+                CanonicalOperation.CHANGE_RECOVER.id,
+                (EvidenceGeneration.parse(1) as Refinement.Refined).value,
+                ChangeRecoverResult(state),
+            )
+        val outcome =
+            when (state) {
+                ChangeRecoveryDocumentState.PRIOR_STATE,
+                ChangeRecoveryDocumentState.ROLLED_BACK ->
+                    CanonicalChangeCliDocuments.projectRecovery(OperationOutcome.Complete(evidence))
+                ChangeRecoveryDocumentState.RECOVERY_REQUIRED ->
+                    CanonicalChangeCliDocuments.projectRecovery(
+                        OperationOutcome.Qualified(evidence, ChangeRecoverQualification.MANUAL_RECOVERY_REQUIRED)
+                    )
+            }
+        return when (outcome) {
+            is ProjectedOperationOutcome.Complete -> CliExit.Complete(outcome.document)
+            is ProjectedOperationOutcome.Qualified -> CliExit.Qualified(outcome.document)
+            is ProjectedOperationOutcome.Rejected -> error("unexpected recovery projection")
+        }
+    }
+
     private inline fun <reified T> document(value: T) = CanonicalJsonDocument.generated(serializer<T>()).create(value)
 
     private inline fun <reified T> complete(value: T) = CliExit.Complete(document(value))
@@ -313,12 +359,25 @@ private data class TestApplication(
 @Serializable
 private data class TestUnverifiedApplication(val status: String = "qualified", val state: String = "recovery_required")
 
-@Serializable private data class TestRecovery(val status: String = "complete", val state: String = "rolled_back")
-
-@Serializable
-private data class TestRecoveryRequired(val status: String = "qualified", val state: String = "recovery_required")
-
 @Serializable
 private data class TestRecoveryRejection(val status: String = "rejected", val reason: String = "journal_unavailable")
 
 @Serializable private data class TestPlanningRejection(val status: String = "rejected", val reason: String = "stale")
+
+private fun assertProjectedRecoveryEvidence(error: JsonObject, state: ChangeRecoveryDocumentState) {
+    val expectedCode =
+        if (state == ChangeRecoveryDocumentState.RECOVERY_REQUIRED) "RECOVERY_UNAVAILABLE" else "APPLY_UNVERIFIED"
+    val expectedState =
+        when (state) {
+            ChangeRecoveryDocumentState.PRIOR_STATE -> "prior-state"
+            ChangeRecoveryDocumentState.ROLLED_BACK -> "rolled-back"
+            ChangeRecoveryDocumentState.RECOVERY_REQUIRED -> "recovery-required"
+        }
+    assertEquals(expectedCode, error.getValue("code").jsonPrimitive.content)
+    val recovery = error.getValue("recovery").jsonObject
+    assertEquals(expectedState, recovery.getValue("state").jsonPrimitive.content)
+    if (state == ChangeRecoveryDocumentState.RECOVERY_REQUIRED) {
+        assertEquals("qualified", recovery.getValue("status").jsonPrimitive.content)
+        assertEquals("manual-recovery-required", recovery.getValue("qualification").jsonPrimitive.content)
+    } else assertEquals("complete", recovery.getValue("status").jsonPrimitive.content)
+}

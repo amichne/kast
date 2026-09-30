@@ -136,13 +136,21 @@ private class ConnectCommand : ManagementNode("connect") {
                 Harness.parse(raw) ?: fail("Supported harnesses: codex, copilot, pi")
             }
             .optional()
+    private val transport by argument("transport").optional()
 
-    override fun help(context: Context) = "Register the release-bundled integration at user scope."
+    override fun help(context: Context) =
+        "Register the release-bundled integration at user scope. Codex requires mcp or app-server."
 
     override fun selection(): ManagementCommand {
         if (force && harness == null) throw CliktError("--force requires a selected harness")
+        val connection =
+            when (val admission = admitConnection(harness, transport)) {
+                is ConnectionAdmission.Selected -> admission.connection
+                is ConnectionAdmission.Rejected -> throw CliktError(admission.failure.explanation)
+                ConnectionAdmission.ListAvailable -> null
+            }
         return ManagementCommand.Connect(
-            harness,
+            connection,
             if (force) RegistrationOwnership.REPLACE_SELECTED_SLOT else RegistrationOwnership.REQUIRE_OWNED,
         )
     }
@@ -201,7 +209,8 @@ private fun perform(command: ManagementCommand) {
                 println("Installation: ${status.resolvedInstallationPath.value ?: "unavailable"}")
                 println("Installed: ${status.installedVersion.value ?: "unavailable"}")
                 println("Loaded: ${status.loadedVersion.value ?: "unavailable"}")
-                val integrations = status.registrations.value?.joinToString { it.harness.publicName } ?: "unavailable"
+                val integrations =
+                    status.registrations.value?.joinToString { it.connection.publicName } ?: "unavailable"
                 println("Recorded integrations: $integrations")
                 println("Active workspaces: ${status.activeWorkspaces.value?.joinToString() ?: "unavailable"}")
                 println("Live connections: ${status.liveConnections.value ?: "unavailable"}")
@@ -209,13 +218,17 @@ private fun perform(command: ManagementCommand) {
             }
         }
         is ManagementCommand.Connect -> {
-            if (command.harness == null) println("Supported harnesses: codex, copilot, pi")
+            if (command.connection == null) println("Supported integrations: codex mcp, codex app-server, copilot, pi")
             else {
-                val repeated = connectHarness(root, Path.of(home), command.harness, command.ownership)
+                val repeated = connectHarness(root, Path.of(home), command.connection, command.ownership)
                 println(
-                    if (repeated) "${command.harness.publicName} is already registered"
-                    else "Registered ${command.harness.publicName}; restart the harness to load it"
+                    if (repeated) "${command.connection.publicName} is already registered"
+                    else "Registered ${command.connection.publicName}"
                 )
+                if (command.connection == HarnessConnection.CODEX_APP_SERVER) {
+                    val launcher = Path.of(home).resolve(".local/bin/kast-codex")
+                    println("Launch $launcher for Codex, or $launcher app-server for an App Server client.")
+                } else println("Restart the harness to load it")
             }
         }
         is ManagementCommand.Disconnect -> {

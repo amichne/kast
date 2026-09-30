@@ -68,12 +68,12 @@ class InstallerRemovalTest(unittest.TestCase):
             self.fixture.mark_passed()
         self.fixture.__exit__(None, None, None)
 
-    def uninstall(self):
-        return subprocess.run(['bash', str(INSTALLER), 'uninstall'],
+    def uninstall(self, *options):
+        return subprocess.run(['bash', str(INSTALLER), 'uninstall', *options],
                               env=self.env, capture_output=True, text=True)
 
     def test_uninstall_dispatches_only_to_selected_installation_lifecycle(self):
-        result = self.uninstall()
+        result = self.uninstall('--verbose')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), json.dumps(['--installation', str(self.product), 'remove', '--json']),
                          'entry point must invoke bounded lifecycle removal, never broad rm')

@@ -100,7 +100,7 @@ internal fun commitPublicExecutable(
             if (previous != null) Files.copy(path, previous, StandardCopyOption.REPLACE_EXISTING)
             val next =
                 ManagementReceipt(
-                    schemaVersion = 1,
+                    schemaVersion = 2,
                     installationRoot = root.toString(),
                     executable = path.toString(),
                     executableSha256 = sha256(staged),

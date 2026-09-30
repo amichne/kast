@@ -21,6 +21,10 @@ Use `kast status` to inspect the installation and `kast connect` to choose
 Codex, Copilot, or Pi. Restart IDEA after installation and restart a harness
 after connecting it. See [install and connect](https://kast.michne.com/start/).
 
+Installer output shows progress and readable failure reasons. Pass `--verbose`
+after the downloaded command's `--` separator to include structured diagnostic
+reports.
+
 Use `kast upgrade` to install the latest release on the selected channel.
 The upgrade interrupts existing calls and sessions. Kast removes prior versions
 that pass installation admission.

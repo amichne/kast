@@ -28,6 +28,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.ChangeRecoveryCliState
 import io.github.amichne.kast.protocol.wire.presentation.ChangeRunCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
@@ -240,11 +241,11 @@ internal class KastSingleChangeInvocation(
             }
         if (state.status != NativeStatus.COMPLETE) return SingleChangeRecoveryAttempt.Unresolved(document)
         return when (state.state) {
-            NativeRecoveryOutcome.PRIOR_STATE ->
+            ChangeRecoveryCliState.PRIOR_STATE ->
                 SingleChangeRecoveryAttempt.Resolved(document, ResolvedMutationRecovery.PRIOR_STATE)
-            NativeRecoveryOutcome.ROLLED_BACK ->
+            ChangeRecoveryCliState.ROLLED_BACK ->
                 SingleChangeRecoveryAttempt.Resolved(document, ResolvedMutationRecovery.ROLLED_BACK)
-            NativeRecoveryOutcome.RECOVERY_REQUIRED -> SingleChangeRecoveryAttempt.Unresolved(document)
+            ChangeRecoveryCliState.RECOVERY_REQUIRED -> SingleChangeRecoveryAttempt.Unresolved(document)
         }
     }
 
@@ -357,14 +358,7 @@ internal class KastSingleChangeInvocation(
 
 @Serializable private data class ApplicationState(val status: NativeStatus, val state: NativeApplyState? = null)
 
-@Serializable private data class NativeRecoveryState(val status: NativeStatus, val state: NativeRecoveryOutcome)
-
-@Serializable
-private enum class NativeRecoveryOutcome {
-    @SerialName("prior_state") PRIOR_STATE,
-    @SerialName("rolled_back") ROLLED_BACK,
-    @SerialName("recovery_required") RECOVERY_REQUIRED,
-}
+@Serializable private data class NativeRecoveryState(val status: NativeStatus, val state: ChangeRecoveryCliState)
 
 @Serializable
 private enum class NativeStatus {

@@ -122,26 +122,60 @@ else:
         scripts = {
             'share/kast/libexec/kast-management': b'''#!/bin/sh
 set -eu
-[ "$1" = --internal-install ] || exit 92
-case "$2" in
-  preflight|commit) printf '%s\\n' "$HOME/.local/bin/kast" ;;
-  *) exit 93 ;;
-esac
+if [ "$1" = --internal-install ]; then
+  case "$2" in
+    preflight) ;;
+    commit) mkdir -p "$HOME/.local/bin"; cp "$0" "$HOME/.local/bin/kast" ;;
+    *) exit 93 ;;
+  esac
+  printf '%s\\n' "$HOME/.local/bin/kast"
+elif [ "$1" = connect ] && [ "$2" = --help ]; then
+  if [ "${LEGACY_MANAGEMENT:-0}" = 1 ]; then
+    printf '%s\\n' 'Usage: kast connect [<harness>]'
+  else
+    printf '%s\\n' 'Usage: kast connect [<harness>] [<transport>]'
+  fi
+elif [ "$1" = connect ]; then
+  printf 'connect' >> "$TEST_LOG"
+  shift
+  for argument in "$@"; do printf ':%s' "$argument" >> "$TEST_LOG"; done
+  printf '\\n' >> "$TEST_LOG"
+else
+  exit 92
+fi
 ''',
             'share/kast/libexec/kast-service': b'''#!/bin/sh
 set -eu
 [ "$1" = install ] || exit 91
+if [ "${FAIL_SERVICE:-0}" != 0 ]; then
+  printf '%s\\n' '{"event":"kast_installation_retirement","stage":"OBSERVE_AFTER","outcome":{"type":"DEADLINE_EXCEEDED"}}' >&2
+  printf '%s\\n' '{"operation":"installation.install","status":"rejected","reason":"replacement-exit-rejected"}' >&2
+  exit "$FAIL_SERVICE"
+fi
 mkdir -p "$KAST_INSTALL_ROOT/versions/1.2.4-candidate"
 rm "$KAST_INSTALL_ROOT/current"
 ln -s versions/1.2.4-candidate "$KAST_INSTALL_ROOT/current"
+mkdir -p "$KAST_INSTALL_ROOT/current/bin" "$KAST_INSTALL_ROOT/current/share/kast"
+printf '#!/bin/sh\\nexit 0\\n' > "$KAST_INSTALL_ROOT/current/bin/kast-mcp-complete"
+chmod +x "$KAST_INSTALL_ROOT/current/bin/kast-mcp-complete"
+cp "$KAST_INSTALL_CONTROL_ROOT/share/kast/codex-mcp-registration.py" "$KAST_INSTALL_ROOT/current/share/kast/codex-mcp-registration.py"
 printf 'service\\n' >> "$TEST_LOG"
-printf '%s\\n' '{"operation":"installation.install","status":"installed","activation":{"type":"ready"},"semanticVersion":"1.2.4"}'
+printf '%s\\n' '{"event":"kast_installation","stage":"APP_SERVER_ENABLE","outcome":"COMPLETED"}' >&2
+if [ "${PENDING_ACTIVATION:-0}" = 1 ]; then
+  printf '%s\\n' '{"operation":"installation.install","status":"installed-activation-pending","activation":{"type":"pending","reason":"EXIT_REJECTED","resume":"kast codex"},"semanticVersion":"1.2.4"}'
+else
+  printf '%s\\n' '{"operation":"installation.install","status":"installed","activation":{"type":"ready"},"semanticVersion":"1.2.4"}'
+fi
 ''',
             'share/kast/installation-recovery.py': b'''import os,sys
 operation = sys.argv[1]
 assert operation in ('activate-plugin', 'seal-upgrade')
 with open(os.environ['TEST_LOG'], 'a') as log: log.write(('plugin' if operation == 'activate-plugin' else 'seal') + '\\n')
-sys.exit(int(os.environ.get('FAIL_PLUGIN' if operation == 'activate-plugin' else 'FAIL_SEAL', '0')))
+code = int(os.environ.get('FAIL_PLUGIN' if operation == 'activate-plugin' else 'FAIL_SEAL', '0'))
+print('{"status":"RecoveryBlocked","unresolved":["PLUGIN_OWNERSHIP_UNPROVEN"],"recoveryExecutable":""}' if code else
+      '{"status":"Active","unresolved":[],"recoveryExecutable":""}' if operation == 'activate-plugin' else
+      '{"status":"UpgradeFinalized","unresolved":[],"recoveryExecutable":""}')
+sys.exit(code)
 ''',
             'share/kast/prune-prior-installations.py': b'''import os,sys
 assert sys.argv[1:3] == ['--installation', os.path.realpath(os.environ['KAST_INSTALL_ROOT'] + '/versions/1.2.4-candidate')]
@@ -149,6 +183,10 @@ assert sys.argv[3:] == []
 with open(os.environ['TEST_LOG'], 'a') as log: log.write('review\\n')
 print('{"status":"retained","removed":[],"retained":["prior"]}')
 sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
+''',
+            'share/kast/codex-mcp-registration.py': b'''import os,sys
+assert sys.argv[1] in ('check', 'install')
+with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.argv[1] + '\\n')
 ''',
         }
         control = assets / 'kast-control-v1.2.4-macos-aarch64.tar.gz'
@@ -162,6 +200,33 @@ sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
         )
         return idea, environment, prior, log
 
+    def test_explicit_mcp_registration_uses_transport_when_native_parser_supports_it(self):
+        with tempfile.TemporaryDirectory(prefix='kast-installer-codex-mode-') as directory:
+            idea, environment, _, log = self.upgrade_fixture(directory)
+            codex = Path(directory) / 'bin/codex'
+            codex.write_text('#!/bin/sh\nexit 0\n')
+            codex.chmod(0o755)
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--register-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('connect:codex:mcp', log.read_text().splitlines())
+
+    def test_explicit_mcp_registration_supports_legacy_released_native_parser(self):
+        with tempfile.TemporaryDirectory(prefix='kast-installer-codex-legacy-') as directory:
+            idea, environment, _, log = self.upgrade_fixture(directory)
+            environment['LEGACY_MANAGEMENT'] = '1'
+            codex = Path(directory) / 'bin/codex'
+            codex.write_text('#!/bin/sh\nexit 0\n')
+            codex.chmod(0o755)
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--register-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('connect:codex', log.read_text().splitlines())
+
     def test_upgrade_finalizes_only_after_plugin_activation(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-trap-') as directory:
             idea, environment, prior, log = self.upgrade_fixture(directory)
@@ -172,6 +237,65 @@ sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(['service', 'plugin', 'seal', 'review'], log.read_text().splitlines())
             self.assertTrue(prior.exists())  # The scripted prune effect is proved separately by lifecycle tests.
+            self.assertEqual('', result.stdout)
+            self.assertNotIn('{', result.stderr)
+            self.assertIn('1 prior Kast entries retained', result.stderr)
+
+    def test_verbose_preserves_structured_stage_and_recovery_output(self):
+        with tempfile.TemporaryDirectory(prefix='kast-upgrade-verbose-') as directory:
+            idea, environment, _, _ = self.upgrade_fixture(directory)
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp', '--verbose'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('"activation":{"type":"ready"}', result.stdout)
+            self.assertIn('"status":"Active"', result.stdout)
+            self.assertIn('"status":"UpgradeFinalized"', result.stdout)
+            self.assertIn('"status":"retained"', result.stdout)
+            self.assertIn('"stage":"APP_SERVER_ENABLE"', result.stderr)
+
+    def test_default_failure_reports_reason_and_child_outcome_without_json(self):
+        with tempfile.TemporaryDirectory(prefix='kast-upgrade-rejected-') as directory:
+            idea, environment, prior, _ = self.upgrade_fixture(directory)
+            environment['FAIL_SERVICE'] = '42'
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(42, result.returncode)
+            self.assertEqual('', result.stdout)
+            self.assertNotIn('{', result.stderr)
+            self.assertIn('replacement-exit-rejected', result.stderr)
+            self.assertIn('OBSERVE_AFTER', result.stderr)
+            self.assertIn('DEADLINE_EXCEEDED', result.stderr)
+            self.assertIn('exit 42', result.stderr)
+            self.assertTrue(prior.exists())
+            self.assertNotIn('installed Kast 1.2.4', result.stderr)
+
+    def test_default_output_preserves_pending_activation_qualification(self):
+        with tempfile.TemporaryDirectory(prefix='kast-upgrade-pending-') as directory:
+            idea, environment, _, _ = self.upgrade_fixture(directory)
+            environment['PENDING_ACTIVATION'] = '1'
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertNotIn('{', result.stdout + result.stderr)
+            self.assertIn('App server activation is pending: EXIT_REJECTED; resume with kast codex', result.stderr)
+
+    def test_verbose_failure_preserves_structured_rejection(self):
+        with tempfile.TemporaryDirectory(prefix='kast-upgrade-rejected-verbose-') as directory:
+            idea, environment, _, _ = self.upgrade_fixture(directory)
+            environment['FAIL_SERVICE'] = '42'
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp', '--verbose'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(42, result.returncode)
+            self.assertIn('"reason":"replacement-exit-rejected"', result.stderr)
+            self.assertIn('"outcome":{"type":"DEADLINE_EXCEEDED"}', result.stderr)
 
     def test_upgrade_reports_private_installation_activation_to_management_cli(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-report-') as directory:
@@ -183,8 +307,12 @@ sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertEqual('installed', json.loads(report.read_text())['status'])
-            self.assertIn(report.read_text().strip(), result.stdout)
+            self.assertEqual(
+                '{"operation":"installation.install","status":"installed","activation":{"type":"ready"},"semanticVersion":"1.2.4"}\n',
+                report.read_text(),
+            )
+            self.assertEqual('', result.stdout)
+            self.assertNotIn('{', result.stderr)
 
     def test_failed_plugin_activation_preserves_prior_without_pruning(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-trap-') as directory:
@@ -197,6 +325,9 @@ sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
             self.assertNotEqual(0, result.returncode)
             self.assertEqual(['service', 'plugin'], log.read_text().splitlines())
             self.assertTrue(prior.exists())
+            self.assertNotIn('{', result.stdout + result.stderr)
+            self.assertIn('PLUGIN_OWNERSHIP_UNPROVEN', result.stderr)
+            self.assertIn('exit 17', result.stderr)
 
     def test_failed_review_rejects_upgrade_without_claiming_success(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-trap-') as directory:
@@ -409,7 +540,7 @@ sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
                 "XDG_DATA_HOME": str(root / "data"),
             }
             result = subprocess.run(
-                ["bash", str(INSTALLER), "uninstall", "--dry-run"],
+                ["bash", str(INSTALLER), "uninstall", "--dry-run", "--verbose"],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertEqual(0, result.returncode, result.stderr)

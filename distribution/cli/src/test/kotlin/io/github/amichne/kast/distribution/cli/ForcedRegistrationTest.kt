@@ -15,23 +15,23 @@ class ForcedRegistrationTest {
 
     @Test
     fun `forced takeover replaces only the selected adapter and rolls back receipt failure`() {
-        val (root, home) = integrationFixture(temporary, Harness.PI)
+        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
         val target = home.resolve(".pi/agent/extensions/kast.ts")
         Files.createDirectories(target.parent)
         Files.writeString(target, "foreign adapter")
         val sibling = target.resolveSibling("other.ts")
         Files.writeString(sibling, "unrelated")
         val receipt = Files.readAllBytes(receiptPath(root))
-        org.junit.jupiter.api.assertThrows<ManagementRejected> { connectHarness(root, home, Harness.PI) }
+        org.junit.jupiter.api.assertThrows<ManagementRejected> { connectHarness(root, home, HarnessConnection.PI) }
         assertEquals("foreign adapter", Files.readString(target))
-        assertFalse(connectHarness(root, home, Harness.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT))
+        assertFalse(connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT))
         assertEquals("release adapter", Files.readString(target))
         assertEquals("unrelated", Files.readString(sibling))
-        assertTrue(connectHarness(root, home, Harness.PI))
+        assertTrue(connectHarness(root, home, HarnessConnection.PI))
         Files.writeString(target, "another foreign adapter")
         Files.write(receiptPath(root), receipt)
         org.junit.jupiter.api.assertThrows<ManagementRejected> {
-            connectHarness(root, home, Harness.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT) { _, _ ->
+            connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT) { _, _ ->
                 throw java.io.IOException("injected receipt commit failure")
             }
         }
@@ -43,7 +43,7 @@ class ForcedRegistrationTest {
     @Suppress("LongMethod") // One transaction with exact preimage and scripted process assertions.
     @Test
     fun `forced Codex takeover restores full config and receipt after partial receipt write`() {
-        val (root, home) = integrationFixture(temporary, Harness.CODEX)
+        val (root, home) = integrationFixture(temporary, HarnessConnection.CODEX_MCP)
         val codexHome = home.resolve(".codex")
         Files.createDirectories(codexHome)
         val config = codexHome.resolve("config.toml")
@@ -99,7 +99,7 @@ class ForcedRegistrationTest {
             connectHarness(
                 root,
                 home,
-                Harness.CODEX,
+                HarnessConnection.CODEX_MCP,
                 RegistrationOwnership.REPLACE_SELECTED_SLOT,
                 codexHome,
                 execute,
@@ -115,21 +115,21 @@ class ForcedRegistrationTest {
 
     @Test
     fun `force rejects symlink slots and retains backup on failed rollback`() {
-        val (root, home) = integrationFixture(temporary, Harness.PI)
+        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
         val target = home.resolve(".pi/agent/extensions/kast.ts")
         Files.createDirectories(target.parent)
         val outside = temporary.resolve("outside.ts")
         Files.writeString(outside, "protected")
         Files.createSymbolicLink(target, outside)
         org.junit.jupiter.api.assertThrows<ManagementRejected> {
-            connectHarness(root, home, Harness.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT)
+            connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT)
         }
         assertEquals("protected", Files.readString(outside))
         Files.delete(target)
         Files.writeString(target, "foreign adapter")
         val failure =
             org.junit.jupiter.api.assertThrows<ManagementRejected> {
-                connectHarness(root, home, Harness.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT) { _, _ ->
+                connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT) { _, _ ->
                     Files.delete(target)
                     Files.createDirectory(target)
                     Files.writeString(target.resolve("concurrent"), "protected")
@@ -147,13 +147,13 @@ class ForcedRegistrationTest {
 
     @Test
     fun `failed receipt does not overwrite a concurrent registration change`() {
-        val (root, home) = integrationFixture(temporary, Harness.PI)
+        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
         val target = home.resolve(".pi/agent/extensions/kast.ts")
         Files.createDirectories(target.parent)
         Files.writeString(target, "original")
         val failure =
             org.junit.jupiter.api.assertThrows<ManagementRejected> {
-                connectHarness(root, home, Harness.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT) { _, _ ->
+                connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT) { _, _ ->
                     Files.writeString(target, "concurrent owner")
                     throw java.io.IOException("receipt failed")
                 }
@@ -169,7 +169,7 @@ class ForcedRegistrationTest {
     fun `force requires one selected harness and retains ordinary idempotence`() {
         assertEquals(
             ManagementParsing.Selected(
-                ManagementCommand.Connect(Harness.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT)
+                ManagementCommand.Connect(HarnessConnection.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT)
             ),
             parseManagementCommand(listOf("connect", "pi", "--force")),
         )

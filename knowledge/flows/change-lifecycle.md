@@ -26,6 +26,8 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt
     symbols: [HostedToolDefinition]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalChangeCliDocuments.kt
+    symbols: [CanonicalChangeCliDocuments, ChangeRecoveryCliState]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt
@@ -88,6 +90,11 @@ A definitive host or semantic apply rejection remains `APPLY_REJECTED` with its
 host document and does not start recovery. A workspace preparation rejection
 before dispatch also remains `APPLY_REJECTED`. An uncertain apply retains its
 separate recovery path.
+
+The CLI recovery projection and both one-call callers share `ChangeRecoveryCliState`
+for `prior-state`, `rolled-back`, and `recovery-required`. Complete prior-state or
+rollback evidence preserves the failed application as `APPLY_UNVERIFIED`;
+qualified recovery retains its evidence and remains `RECOVERY_UNAVAILABLE`.
 
 If the broker coroutine is cancelled after apply starts, including during its
 first recovery attempt, a bounded,

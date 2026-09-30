@@ -14,6 +14,8 @@ import io.github.amichne.kast.protocol.contract.ChangePlanResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
+import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 object CanonicalChangeCliDocuments {
@@ -89,7 +91,7 @@ object CanonicalChangeCliDocuments {
                     ChangeRecoveryCompleteCliDocument(
                         CanonicalOperation.CHANGE_RECOVER.id.value,
                         "complete",
-                        result.state.cliName(),
+                        result.state.cliState(),
                         live = live,
                     )
                 )
@@ -99,7 +101,7 @@ object CanonicalChangeCliDocuments {
                     ChangeRecoveryQualifiedCliDocument(
                         CanonicalOperation.CHANGE_RECOVER.id.value,
                         "qualified",
-                        result.state.cliName(),
+                        result.state.cliState(),
                         qualification.cliName(),
                         live = live,
                     )
@@ -258,7 +260,7 @@ private fun ChangeFilePreview.cliDocument(): ChangeFilePreviewCliDocument =
 private data class ChangeRecoveryCompleteCliDocument(
     val operation: String,
     val status: String,
-    val state: String,
+    val state: ChangeRecoveryCliState,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val live: LiveReadCliEvidence? = null,
 )
@@ -267,11 +269,26 @@ private data class ChangeRecoveryCompleteCliDocument(
 private data class ChangeRecoveryQualifiedCliDocument(
     val operation: String,
     val status: String,
-    val state: String,
+    val state: ChangeRecoveryCliState,
     val qualification: String,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val live: LiveReadCliEvidence? = null,
 )
+
+/** Closed recovery states shared by the CLI projection and its one-call mutation consumers. */
+@Serializable
+enum class ChangeRecoveryCliState {
+    @SerialName("prior-state") PRIOR_STATE,
+    @SerialName("rolled-back") ROLLED_BACK,
+    @SerialName("recovery-required") RECOVERY_REQUIRED,
+}
+
+private fun ChangeRecoveryDocumentState.cliState(): ChangeRecoveryCliState =
+    when (this) {
+        ChangeRecoveryDocumentState.PRIOR_STATE -> ChangeRecoveryCliState.PRIOR_STATE
+        ChangeRecoveryDocumentState.ROLLED_BACK -> ChangeRecoveryCliState.ROLLED_BACK
+        ChangeRecoveryDocumentState.RECOVERY_REQUIRED -> ChangeRecoveryCliState.RECOVERY_REQUIRED
+    }
 
 private val planCompleteFactory = CanonicalJsonDocument.generated(ChangePlanCompleteCliDocument.serializer())
 private val planQualifiedFactory = CanonicalJsonDocument.generated(ChangePlanQualifiedCliDocument.serializer())
