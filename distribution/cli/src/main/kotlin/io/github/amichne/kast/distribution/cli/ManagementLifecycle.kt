@@ -148,12 +148,12 @@ private fun reportMatchesSelectedInstallation(report: InstallerReport, root: Pat
 internal fun upgradeInstallation(root: Path, home: Path) {
     val prior = requireOwnedExecutable(root)
     val report = installLatest(root, prior)
-    val failures = mutableListOf<Harness>()
+    val failures = mutableListOf<HarnessConnection>()
     prior.registrations.forEach { registration ->
         try {
-            connectHarness(root, home, registration.harness)
+            connectHarness(root, home, registration.connection)
         } catch (_: ManagementRejected) {
-            failures += registration.harness
+            failures += registration.connection
         }
     }
     if (failures.isNotEmpty()) {
@@ -192,12 +192,12 @@ internal fun uninstallInstallation(root: Path, home: Path) {
             "shutdown or managed removal failed with exit $code; installation remains incomplete",
         )
     }
-    val failed = mutableListOf<Harness>()
+    val failed = mutableListOf<HarnessConnection>()
     receipt.registrations.forEach { registration ->
         try {
-            disconnectHarness(root, home, registration.harness)
+            disconnectConnection(root, home, registration.connection)
         } catch (_: ManagementRejected) {
-            failed += registration.harness
+            failed += registration.connection
         }
     }
     if (failed.isNotEmpty())

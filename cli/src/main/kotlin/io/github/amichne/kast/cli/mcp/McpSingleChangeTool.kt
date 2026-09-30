@@ -18,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.ChangeRejection
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
 import io.github.amichne.kast.protocol.contract.ChangeRunError
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.wire.presentation.ChangeRecoveryCliState
 import io.github.amichne.kast.protocol.wire.presentation.ChangeRunCliDocuments
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
@@ -117,7 +118,7 @@ internal class McpSingleChangeTool(
                 try {
                     val state = changeJson.decodeFromJsonElement<McpRecoveryState>(recovery)
                     state.status == McpRecoveryStatus.COMPLETE &&
-                        state.state in setOf(McpRecoveryOutcome.PRIOR_STATE, McpRecoveryOutcome.ROLLED_BACK)
+                        state.state in setOf(ChangeRecoveryCliState.PRIOR_STATE, ChangeRecoveryCliState.ROLLED_BACK)
                 } catch (_: SerializationException) {
                     false
                 }
@@ -256,20 +257,13 @@ private enum class McpApplicationOutcome {
     @SerialName("recovery_required") RECOVERY_REQUIRED,
 }
 
-@Serializable private data class McpRecoveryState(val status: McpRecoveryStatus, val state: McpRecoveryOutcome)
+@Serializable private data class McpRecoveryState(val status: McpRecoveryStatus, val state: ChangeRecoveryCliState)
 
 @Serializable
 private enum class McpRecoveryStatus {
     @SerialName("complete") COMPLETE,
     @SerialName("qualified") QUALIFIED,
     @SerialName("rejected") REJECTED,
-}
-
-@Serializable
-private enum class McpRecoveryOutcome {
-    @SerialName("prior_state") PRIOR_STATE,
-    @SerialName("rolled_back") ROLLED_BACK,
-    @SerialName("recovery_required") RECOVERY_REQUIRED,
 }
 
 private val changeJson = Json {

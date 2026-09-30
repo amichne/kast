@@ -64,10 +64,14 @@ for (const harness of ['copilot', 'pi']) {
     const loaded = await load(harness);
     assert.ifError(loaded.error);
     assert.deepEqual(loaded.registered.map(t => t.name), catalog.catalog.tools.map(t => t.name));
+    if (harness === 'copilot') {
+      assert.ok(catalog.catalog.tools.some(tool => tool.effect === 'READ'));
+      assert.ok(catalog.catalog.tools.some(tool => tool.effect === 'WRITE'));
+    }
     for (const tool of loaded.registered) {
       const original = catalog.catalog.tools.find(t => t.name === tool.name);
       assert.deepEqual(JSON.parse(JSON.stringify(tool.parameters)), original.inputSchema);
-      if (harness === 'copilot') assert.equal(tool.skipPermission, original.effect === 'READ' ? true : undefined);
+      if (harness === 'copilot') assert.equal(tool.skipPermission, undefined, `${original.effect} ${tool.name} must retain host permission policy`);
     }
     const query = loaded.registered.find(t => t.name === 'query_symbols');
     const result = harness === 'pi'

@@ -103,7 +103,7 @@ def verify_assembled_installer(fixture: InstallerFixture, control: Path, plugin:
     })
     result = subprocess.run(
         [str(fixture.tools["bash"]), str(Path(__file__).resolve().parent.parent / "install.sh"),
-         "--idea-home", str(idea)],
+         "--idea-home", str(idea), "--verbose"],
         env=environment, cwd=fixture.root / "workspace", capture_output=True, text=True, timeout=120,
     )
     reports = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]

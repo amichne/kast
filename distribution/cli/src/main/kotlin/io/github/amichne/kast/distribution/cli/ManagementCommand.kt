@@ -15,6 +15,45 @@ internal enum class Harness(val publicName: String) {
     }
 }
 
+@Serializable
+internal enum class HarnessConnection(val harness: Harness, val publicName: String) {
+    CODEX_MCP(Harness.CODEX, "codex mcp"),
+    CODEX_APP_SERVER(Harness.CODEX, "codex app-server"),
+    COPILOT(Harness.COPILOT, "copilot"),
+    PI(Harness.PI, "pi"),
+}
+
+internal enum class ConnectionFailure(val explanation: String) {
+    CODEX_TRANSPORT_REQUIRED("Codex requires an explicit transport: mcp or app-server"),
+    CODEX_TRANSPORT_UNSUPPORTED("Supported Codex transports: mcp, app-server"),
+    OTHER_HARNESS_TRANSPORT("Only Codex accepts a transport: mcp or app-server"),
+}
+
+internal sealed interface ConnectionAdmission {
+    data object ListAvailable : ConnectionAdmission
+
+    data class Selected(val connection: HarnessConnection) : ConnectionAdmission
+
+    data class Rejected(val failure: ConnectionFailure) : ConnectionAdmission
+}
+
+internal fun admitConnection(harness: Harness?, transport: String?): ConnectionAdmission {
+    if (harness != Harness.CODEX && transport != null)
+        return ConnectionAdmission.Rejected(ConnectionFailure.OTHER_HARNESS_TRANSPORT)
+    return when (harness) {
+        Harness.CODEX ->
+            when (transport) {
+                "mcp" -> ConnectionAdmission.Selected(HarnessConnection.CODEX_MCP)
+                "app-server" -> ConnectionAdmission.Selected(HarnessConnection.CODEX_APP_SERVER)
+                null -> ConnectionAdmission.Rejected(ConnectionFailure.CODEX_TRANSPORT_REQUIRED)
+                else -> ConnectionAdmission.Rejected(ConnectionFailure.CODEX_TRANSPORT_UNSUPPORTED)
+            }
+        Harness.COPILOT -> ConnectionAdmission.Selected(HarnessConnection.COPILOT)
+        Harness.PI -> ConnectionAdmission.Selected(HarnessConnection.PI)
+        null -> ConnectionAdmission.ListAvailable
+    }
+}
+
 internal enum class RegistrationOwnership {
     REQUIRE_OWNED,
     REPLACE_SELECTED_SLOT,
@@ -26,7 +65,7 @@ internal sealed interface ManagementCommand {
     data object Version : ManagementCommand
 
     data class Connect(
-        val harness: Harness?,
+        val connection: HarnessConnection?,
         val ownership: RegistrationOwnership = RegistrationOwnership.REQUIRE_OWNED,
     ) : ManagementCommand
 

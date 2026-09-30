@@ -46,6 +46,25 @@ class ManagementCliTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `Codex requires an explicit supported transport`() {
+        assertTrue(parseManagementCommand(listOf("connect", "codex")) is ManagementParsing.Print)
+        assertEquals(
+            ManagementParsing.Selected(ManagementCommand.Connect(HarnessConnection.CODEX_MCP)),
+            parseManagementCommand(listOf("connect", "codex", "mcp")),
+        )
+        assertEquals(
+            ManagementParsing.Selected(ManagementCommand.Connect(HarnessConnection.CODEX_APP_SERVER)),
+            parseManagementCommand(listOf("connect", "codex", "app-server")),
+        )
+        assertTrue((parseManagementCommand(listOf("connect", "codex", "--force")) as ManagementParsing.Print).error)
+        assertTrue((parseManagementCommand(listOf("connect", "codex", "other")) as ManagementParsing.Print).error)
+        assertTrue((parseManagementCommand(listOf("connect", "pi", "mcp")) as ManagementParsing.Print).error)
+        assertTrue(
+            (parseManagementCommand(listOf("connect", "copilot", "app-server")) as ManagementParsing.Print).error
+        )
+    }
+
+    @Test
     fun `Clikt exposes only management commands and selects status by default`() {
         assertEquals(ManagementParsing.Selected(ManagementCommand.Status(false)), parseManagementCommand(emptyList()))
         assertEquals(
@@ -53,7 +72,7 @@ class ManagementCliTest {
             parseManagementCommand(listOf("status", "--json")),
         )
         assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Connect(Harness.PI)),
+            ManagementParsing.Selected(ManagementCommand.Connect(HarnessConnection.PI)),
             parseManagementCommand(listOf("connect", "pi")),
         )
         assertEquals(
@@ -93,7 +112,7 @@ class ManagementCliTest {
         writeManagementReceipt(
             root,
             ManagementReceipt(
-                1,
+                2,
                 root.toString(),
                 executable.toString(),
                 sha256(executable),
@@ -111,10 +130,10 @@ class ManagementCliTest {
 
     @Test
     fun `Pi registration is idempotent and disconnect preserves a foreign replacement`() {
-        val (root, home) = integrationFixture(temporary, Harness.PI)
+        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
         val target = home.resolve(".pi/agent/extensions/kast.ts")
-        assertFalse(connectHarness(root, home, Harness.PI))
-        assertTrue(connectHarness(root, home, Harness.PI))
+        assertFalse(connectHarness(root, home, HarnessConnection.PI))
+        assertTrue(connectHarness(root, home, HarnessConnection.PI))
         assertEquals("release adapter", Files.readString(target))
         Files.writeString(target, "foreign adapter")
         org.junit.jupiter.api.assertThrows<ManagementRejected> { disconnectHarness(root, home, Harness.PI) }
@@ -127,20 +146,20 @@ class ManagementCliTest {
 
     @Test
     fun `matching unowned Pi file is not adopted or removed`() {
-        val (root, home) = integrationFixture(temporary, Harness.PI)
+        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
         val target = home.resolve(".pi/agent/extensions/kast.ts")
         Files.createDirectories(target.parent)
         Files.writeString(target, "release adapter")
-        org.junit.jupiter.api.assertThrows<ManagementRejected> { connectHarness(root, home, Harness.PI) }
+        org.junit.jupiter.api.assertThrows<ManagementRejected> { connectHarness(root, home, HarnessConnection.PI) }
         assertEquals("release adapter", Files.readString(target))
         assertEquals(emptyList<ManagedRegistration>(), (readReceipt(root) as ReceiptRead.Read).receipt.registrations)
     }
 
     @Test
     fun `Copilot registration installs and removes only its bundled adapter`() {
-        val (root, home) = integrationFixture(temporary, Harness.COPILOT)
+        val (root, home) = integrationFixture(temporary, HarnessConnection.COPILOT)
         val target = home.resolve(".copilot/extensions/kast/extension.mjs")
-        assertFalse(connectHarness(root, home, Harness.COPILOT))
+        assertFalse(connectHarness(root, home, HarnessConnection.COPILOT))
         assertEquals("release adapter", Files.readString(target))
         assertTrue(disconnectHarness(root, home, Harness.COPILOT))
         assertFalse(Files.exists(target))
@@ -148,7 +167,7 @@ class ManagementCliTest {
 
     @Test
     fun `upgrade reports pending service activation after verified installation`() {
-        val (root, home) = integrationFixture(temporary, Harness.PI)
+        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
         val report =
             Json.encodeToString(
                 TestInstallReport(
@@ -226,20 +245,26 @@ class ManagementCliTest {
     }
 }
 
-internal fun integrationFixture(temporary: Path, harness: Harness): Pair<Path, Path> {
+internal fun integrationFixture(
+    temporary: Path,
+    connection: HarnessConnection,
+    sourceContent: String = "release adapter",
+): Pair<Path, Path> {
     val root = temporary.resolve("kast")
     val home = temporary.resolve("home")
     val version = root.resolve("versions/1.2.3-deadbeef")
     val relative =
-        when (harness) {
-            Harness.COPILOT -> "share/kast/adapters/copilot/extension.mjs"
-            Harness.PI -> "share/kast/adapters/pi/extension.ts"
-            Harness.CODEX -> "bin/kast-mcp-complete"
+        when (connection) {
+            HarnessConnection.COPILOT -> "share/kast/adapters/copilot/extension.mjs"
+            HarnessConnection.PI -> "share/kast/adapters/pi/extension.ts"
+            HarnessConnection.CODEX_MCP -> "bin/kast-mcp-complete"
+            HarnessConnection.CODEX_APP_SERVER -> "bin/kast-codex-complete"
         }
     val source = version.resolve(relative)
     Files.createDirectories(source.parent)
     Files.createDirectories(home)
-    Files.writeString(source, "release adapter")
+    Files.writeString(source, sourceContent)
+    if (connection == HarnessConnection.CODEX_APP_SERVER) source.toFile().setExecutable(true, false)
     Files.writeString(
         version.resolve("installation.json"),
         Json.encodeToString(
@@ -250,7 +275,7 @@ internal fun integrationFixture(temporary: Path, harness: Harness): Pair<Path, P
                     TestPayload(
                         relative,
                         "sha256:${sha256(source)}",
-                        420,
+                        if (connection == HarnessConnection.CODEX_APP_SERVER) 493 else 420,
                     )
                 ),
                 "1.2.3",
@@ -263,7 +288,7 @@ internal fun integrationFixture(temporary: Path, harness: Harness): Pair<Path, P
     writeManagementReceipt(
         root,
         ManagementReceipt(
-            1,
+            2,
             root.toString(),
             executable.toString(),
             sha256(executable),

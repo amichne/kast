@@ -4,11 +4,12 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-28T00:00:00Z
+timestamp: 2026-09-30T00:00:00Z
 code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationRegistration.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RegistrationPayload.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PassiveRuntimeObservation.kt
@@ -91,6 +92,10 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 
 The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the selected version and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 
+Codex registration requires the explicit `mcp` or `app-server` transport. MCP owns the selected `kast` server entry in Codex configuration. App Server owns `~/.local/bin/kast-codex`, an executable launcher for the selected installation's existing `kast-codex-complete` facade; the launcher accepts interactive Codex and `app-server` stdio invocation without adding an MCP entry or redirecting ordinary Desktop sessions. Schema-2 management receipts retain the closed connection identity. Schema-1 receipt admission refines existing Codex ownership to MCP while preserving its destination and payload digest. Both recorded Codex transports are independently owned; disconnecting Codex removes its recorded routes.
+
+The public installer renders progress, activation qualifications, and finite failure details for people. `--verbose` retains full child JSON reports and diagnostics. Native upgrades retain the private installation report on disk without printing it by default.
+
 CI selects checks on Linux before allocating product runners. Independent public MDX pages and Mintlify navigation run only documentation validation, for both pull requests and complete before/head push ranges. Installer-linked pages and the generated callable reference retain product, portable, and documentation checks. Conventional Kotlin sources and packaging inputs retain the product and portable checks without Mintlify validation or the separate Gradle graph-membership dry run. Build wiring, unclassified paths, uncertain diffs, and manual CI dispatch retain every check. The stable completion job requires every selected job to succeed and permits only explicitly planned skips. Documentation validation is a reusable workflow with its manual dispatch retained. When product validation is selected, main CI runs preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Full pull-request CI and pre-push fetch the published release catalog anew for each gate invocation, select its highest stable semantic version, and pass that version to the checkout build. Missing release authority rejects without a local-tag or placeholder fallback. Exact release-candidate builds retain their explicitly resolved candidate version. CI retains Gradle profile reports from full pull-request gates and main candidate builds for task timing review. The product job restores Gradle's local task-output cache; main and same-repository pull requests save new entries, while fork pull requests only restore entries. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. An active exact-source main CI run yields `PENDING` when no successful exact candidate is available; the release attempt exits before fallback construction and can be retried after CI completes. Producer state is observed before artifacts so a run completing between observations may supply its candidate without a rebuild. This is conservative observation, not a lock against future runs. A missing candidate follows the existing exact-version build gate only when no active producer was observed; incomplete observations, unsupported workflow states, and invalid candidates reject. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
 
 An explicitly dispatched developer workflow runs only from `main` and builds
@@ -141,6 +146,8 @@ the exact prior daemon remains reachable and reports its committed request.
 The upgrade result retains finite blockers and daemon rejection causes.
 
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Ordinary installation rejects a failed prior admission or retirement with a stage-specific failure and preserves the selected release. An untrusted same-version payload or recovery receipt likewise rejects without replacement. Explicit `--force` remains a separate reset operation.
+
+Prior launchd retirement completes only after observing the selected service absent. A `bootout` exit alone cannot prove retirement: the owner repeats bounded `launchctl list` observations within one ten-second deadline and preserves a finite deadline, I/O, interruption, or exit rejection. The typed `kast_installation_retirement` event retains the `OBSERVE_BEFORE`, `BOOTOUT`, and `OBSERVE_AFTER` stage with the closed result and its admitted exit code where present; it excludes command arguments, service labels, and child output. The public installer renders those facts for people and retains full records through `--verbose`.
 
 `ControlDistributionLimits` owns the maximum verified control-product entry count and manifest size used by staged installation and runtime identity admission. The shell bootstrap, installed lifecycle, build verifier, and Kotlin owner are checked for the same entry limit, and release layout verification rejects a product outside that bound before publication. Upgrade admission uses the new, checksum-verified lifecycle implementation to inspect the prior installation. Failed inspection or retirement rejects the upgrade. This retains the resource limits while preventing copied limits from drifting below the product that the build produced.
 
@@ -231,7 +238,8 @@ After installation admission and before retiring or replacing any installation, 
 
 The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. The login LaunchAgent retains the service label and daemon executable, adding only the private login argument. Offline recovery admits that entry only when removing the argument from its bounded bytes yields the retained service plist for the exact Codex-home profile; it also recognizes the older one-shot entry. The assembled-product check verifies the private launchers are present and executable; their argument and readiness rules remain with their Kotlin owners.
 
-`kast connect <codex|copilot|pi> --force` authorizes takeover of that harness's
+`kast connect codex <mcp|app-server> --force` or
+`kast connect <copilot|pi> --force` authorizes takeover of that integration's
 Kast registration slot. The existing lock and release-manifest admission still
 apply. Registration and receipt preimages are captured before replacement;
 failed transactions restore both. Codex restoration uses the full original

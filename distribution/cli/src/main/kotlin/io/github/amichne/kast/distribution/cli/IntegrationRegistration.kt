@@ -6,10 +6,13 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+
+private const val EXECUTABLE_PERMISSION_MASK = 73
 
 @Serializable private data class CodexServer(val name: String, val transport: CodexTransport)
 
@@ -78,19 +81,16 @@ private fun codexRegistration(execute: (List<String>) -> ProcessObservation = { 
     return matches.singleOrNull()
 }
 
-private fun sourceFor(installation: Path, harness: Harness): Path =
-    when (harness) {
-        Harness.CODEX -> installation.resolve("bin/kast-mcp-complete")
-        Harness.COPILOT -> installation.resolve("share/kast/adapters/copilot/extension.mjs")
-        Harness.PI -> installation.resolve("share/kast/adapters/pi/extension.ts")
+private fun writeStagedPayload(payload: RegistrationPayload, staged: Path) {
+    when (payload) {
+        is RegistrationPayload.BundledFile -> Files.copy(payload.source, staged, StandardCopyOption.REPLACE_EXISTING)
+        is RegistrationPayload.Launcher -> {
+            Files.writeString(staged, payload.content)
+            Files.setPosixFilePermissions(staged, PosixFilePermissions.fromString("rwxr-xr-x"))
+        }
     }
-
-private fun destinationFor(root: Path, home: Path, harness: Harness): Path =
-    when (harness) {
-        Harness.CODEX -> root.resolve("current/bin/kast-mcp-complete")
-        Harness.COPILOT -> home.resolve(".copilot/extensions/kast/extension.mjs")
-        Harness.PI -> home.resolve(".pi/agent/extensions/kast.ts")
-    }
+    if (sha256(staged) != payload.digest) throw ManagementRejected("connect", "staged payload is unverified")
+}
 
 private fun selectedInstallation(root: Path): Path {
     val selected =
@@ -108,8 +108,8 @@ private fun selectedInstallation(root: Path): Path {
 }
 
 @Suppress("ThrowsCount", "ComplexCondition")
-private fun verifiedBundledSource(installation: Path, harness: Harness): Path {
-    val source = sourceFor(installation, harness)
+private fun verifiedBundledSource(installation: Path, connection: HarnessConnection): Path {
+    val source = registrationSourceFor(installation, connection)
     val raw =
         readBoundedFile(installation.resolve("installation.json"), 67_108_864)
             ?: throw ManagementRejected("connect", "release manifest is unavailable")
@@ -126,7 +126,9 @@ private fun verifiedBundledSource(installation: Path, harness: Harness): Path {
             manifest.installationRoot != installation.toString() ||
             entries.size != 1 ||
             !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS) ||
-            entries.single().sha256 != "sha256:${sha256(source)}"
+            entries.single().sha256 != "sha256:${sha256(source)}" ||
+            (connection == HarnessConnection.CODEX_APP_SERVER &&
+                (entries.single().mode and EXECUTABLE_PERMISSION_MASK == 0 || !Files.isExecutable(source)))
     )
         throw ManagementRejected("connect", "release-bundled integration is unverified")
     return source
@@ -154,7 +156,7 @@ private fun ownsCodex(server: CodexServer?, destination: Path): Boolean =
 internal fun connectHarness(
     root: Path,
     home: Path,
-    harness: Harness,
+    connection: HarnessConnection,
     ownership: RegistrationOwnership = RegistrationOwnership.REQUIRE_OWNED,
     codexHome: Path = System.getenv("CODEX_HOME")?.let(Path::of) ?: home.resolve(".codex"),
     executeCodex: (List<String>) -> ProcessObservation = { runBounded(it, codexHome) },
@@ -162,20 +164,22 @@ internal fun connectHarness(
 ): Boolean =
     withRegistrationLock(root) {
         val receipt = admittedReceipt(root)
-        val source = verifiedBundledSource(selectedInstallation(root), harness)
-        val digest = sha256(source)
-        val destination = destinationFor(root, home, harness)
-        val prior = receipt.registrations.singleOrNull { it.harness == harness }
+        val source = verifiedBundledSource(selectedInstallation(root), connection)
+        val payload = registrationPayload(root, source, connection)
+        val digest = payload.digest
+        val destination = registrationDestinationFor(root, home, connection)
+        val prior = receipt.registrations.singleOrNull { it.connection == connection }
         val force = ownership == RegistrationOwnership.REPLACE_SELECTED_SLOT
         if (!force && prior != null && prior.destination != destination.toString())
             throw ManagementRejected("connect", "recorded registration identity changed")
-        val selectedFile = if (harness == Harness.CODEX) codexHome.resolve("config.toml") else destination
-        val registrationAnchor = if (harness == Harness.CODEX) codexHome else home
+        val selectedFile =
+            if (connection == HarnessConnection.CODEX_MCP) codexHome.resolve("config.toml") else destination
+        val registrationAnchor = if (connection == HarnessConnection.CODEX_MCP) codexHome else home
         requireRegistrationPath(selectedFile, registrationAnchor)
         val existing = Files.exists(selectedFile, LinkOption.NOFOLLOW_LINKS)
         val current = if (existing) sha256(selectedFile) else null
         val replace =
-            if (harness == Harness.CODEX) {
+            if (connection == HarnessConnection.CODEX_MCP) {
                 val observed = codexRegistration(executeCodex)
                 if (!force && observed != null && !ownsCodex(observed, destination))
                     throw ManagementRejected("connect", "Codex name belongs to another configuration")
@@ -183,10 +187,11 @@ internal fun connectHarness(
             } else {
                 if (!force && existing && (prior == null || (current != digest && current != prior.payloadSha256)))
                     throw ManagementRejected("connect", "integration file belongs to another owner")
-                current != digest
+                current != digest || (payload is RegistrationPayload.Launcher && !Files.isExecutable(destination))
             }
-        val record = ManagedRegistration(harness, destination.toString(), digest)
-        val next = receipt.copy(registrations = receipt.registrations.filterNot { it.harness == harness } + record)
+        val record = ManagedRegistration(connection, destination.toString(), digest)
+        val next =
+            receipt.copy(registrations = receipt.registrations.filterNot { it.connection == connection } + record)
         // Capture both preimages before any replacement. Codex's full configuration is opaque:
         // restoring these bytes preserves fields outside the inspection DTO, including credentials.
         val registration = captureRegistrationPreimage(selectedFile, registrationAnchor)
@@ -200,7 +205,7 @@ internal fun connectHarness(
         var registrationAfter = registrationPostimage(selectedFile)
         try {
             if (replace) {
-                if (harness == Harness.CODEX) {
+                if (connection == HarnessConnection.CODEX_MCP) {
                     val add =
                         try {
                             executeCodex(listOf("codex", "mcp", "add", "kast", "--", destination.toString()))
@@ -212,9 +217,7 @@ internal fun connectHarness(
                 } else {
                     val staged = Files.createTempFile(destination.parent, ".kast-", ".new")
                     try {
-                        Files.copy(source, staged, StandardCopyOption.REPLACE_EXISTING)
-                        if (sha256(staged) != digest)
-                            throw ManagementRejected("connect", "staged payload is unverified")
+                        writeStagedPayload(payload, staged)
                         Files.move(
                             staged,
                             destination,
@@ -227,7 +230,7 @@ internal fun connectHarness(
                     }
                 }
             }
-            if (harness == Harness.CODEX) {
+            if (connection == HarnessConnection.CODEX_MCP) {
                 if (!ownsCodex(codexRegistration(executeCodex), destination))
                     throw ManagementRejected("connect", "Codex registration was not verified")
             } else if (sha256(destination) != digest) {
@@ -257,13 +260,18 @@ internal fun connectHarness(
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod")
 internal fun disconnectHarness(root: Path, home: Path, harness: Harness): Boolean =
+    HarnessConnection.entries.filter { it.harness == harness }.map { disconnectConnection(root, home, it) }.any { it }
+
+@Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod")
+internal fun disconnectConnection(root: Path, home: Path, connection: HarnessConnection): Boolean =
     withRegistrationLock(root) {
         val receipt = admittedReceipt(root)
-        val prior = receipt.registrations.singleOrNull { it.harness == harness } ?: return@withRegistrationLock false
-        val destination = destinationFor(root, home, harness)
+        val prior =
+            receipt.registrations.singleOrNull { it.connection == connection } ?: return@withRegistrationLock false
+        val destination = registrationDestinationFor(root, home, connection)
         if (prior.destination != destination.toString())
             throw ManagementRejected("disconnect", "recorded registration identity changed")
-        if (harness == Harness.CODEX) {
+        if (connection == HarnessConnection.CODEX_MCP) {
             val observed = codexRegistration()
             if (observed != null && !ownsCodex(observed, destination))
                 throw ManagementRejected("disconnect", "Codex name belongs to another configuration")
@@ -272,17 +280,20 @@ internal fun disconnectHarness(root: Path, home: Path, harness: Harness): Boolea
                 if (remove !is ProcessObservation.Exited || remove.code != 0 || codexRegistration() != null)
                     throw ManagementRejected("disconnect", "Codex removal was not verified")
             }
-        } else if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
-            if (
-                !Files.isRegularFile(destination, LinkOption.NOFOLLOW_LINKS) ||
-                    sha256(destination) != prior.payloadSha256
-            )
-                throw ManagementRejected("disconnect", "integration file is no longer owned")
-            Files.delete(destination)
+        } else {
+            requireRegistrationPath(destination, home)
+            if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
+                if (
+                    !Files.isRegularFile(destination, LinkOption.NOFOLLOW_LINKS) ||
+                        sha256(destination) != prior.payloadSha256
+                )
+                    throw ManagementRejected("disconnect", "integration file is no longer owned")
+                Files.delete(destination)
+            }
         }
         writeManagementReceipt(
             root,
-            receipt.copy(registrations = receipt.registrations.filterNot { it.harness == harness }),
+            receipt.copy(registrations = receipt.registrations.filterNot { it.connection == connection }),
         )
         true
     }

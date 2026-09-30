@@ -8,13 +8,25 @@ Choose your agent below. `kast connect` registers the bundled integration; the f
 
 <Tabs>
   <Tab title="Codex">
+    Choose a transport explicitly. For the App Server integration:
+
     ```shell
-    kast connect codex
+    kast connect codex app-server
+    cd /path/to/kotlin-repository
+    kast-codex
+    ```
+
+    This installs an owned launcher at `~/.local/bin/kast-codex`. It attaches the Codex client to Kast's persistent broker and existing IDEA host. An App Server client can use `kast-codex app-server` for JSONL stdio. Connecting records this launcher; start a fresh thread to load the dynamic tools. The launcher does not redirect an ordinary Codex Desktop session.
+
+    For direct MCP instead:
+
+    ```shell
+    kast connect codex mcp
     cd /path/to/kotlin-repository
     codex
     ```
 
-    Start a new Codex session after connecting. This registers the direct MCP integration. Kast's hosted Codex App Server is a separate, preview integration; it is not a prerequisite for this setup.
+    This registers the direct MCP integration. Start a new Codex session after connecting. `kast connect codex` without a transport fails with usage guidance.
   </Tab>
   <Tab title="Copilot">
     ```shell
@@ -53,7 +65,8 @@ Then try [Find and trace code](/search). You ask the question; your agent choose
 Reconnecting the same payload is safe. Kast preserves a conflicting registration by default. Inspect the reported conflict before explicitly replacing only that harness's Kast slot:
 
 ```shell
-kast connect codex --force
+kast connect codex app-server --force
+# or: kast connect codex mcp --force
 # or: kast connect copilot --force
 # or: kast connect pi --force
 ```
@@ -66,12 +79,12 @@ Forced connection verifies the bundled payload and captures the previous registr
 kast disconnect copilot
 ```
 
-Replace `copilot` with the harness you connected. This removes an owned registration; it is not a command to stop every existing agent session or IDEA process. Restart the affected harness so it stops using its loaded integration.
+Replace `copilot` with the harness you connected. `kast disconnect codex` removes its owned App Server launcher and MCP registration when recorded. Restart the affected harness so it stops using its loaded integration.
 
 After `kast upgrade`, restart IDEA and your connected harnesses so they load the matched payload and rediscover its catalog.
 
 <Accordion title="Connect a different client">
-  Custom clients can use [direct MCP](/reference/mcp-catalog) or [one-shot Tool RPC](/reference/rpc-catalog). These are integration details, not additional setup steps for Codex, Copilot, or Pi.
+  Custom clients can launch `kast-codex app-server` after connecting Codex with the App Server transport, or use [direct MCP](/reference/mcp-catalog) or [one-shot Tool RPC](/reference/rpc-catalog).
 
   The [repository integration guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) documents the adapter boundary. The [App Server compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) describes the preview hosted path.
 </Accordion>

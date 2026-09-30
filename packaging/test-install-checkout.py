@@ -292,6 +292,7 @@ case "$*" in
     cp "$0" "$destination"
     printf '%s\\n' "$destination"
     ;;
+  'connect --help') printf '%s\\n' 'Usage: kast connect [<harness>]' ;;
   'connect codex') ;;
   *) exit 94 ;;
 esac

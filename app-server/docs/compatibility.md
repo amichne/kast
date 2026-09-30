@@ -78,7 +78,9 @@ longer changes service identity in the checkout build.
 
 ## Availability in independently started Codex sessions
 
-The installed `kast codex` launcher starts a client attached to Kast's private
+`kast connect codex app-server` publishes the owned `kast-codex` launcher for
+the selected installation's `kast-codex-complete` facade. Launching `kast-codex`
+starts a client attached to Kast's private
 broker. Repository registration persists across tasks, but it does not inject
 Kast's broker-owned `dynamicTools` into an independently started Codex thread.
 The canonical Codex control socket can be selected only when Kast proves that
@@ -93,7 +95,7 @@ Installation must reject an incumbent it cannot prove it owns. An implicit CLI
 launch can fall back to an embedded server when discovery fails, so socket
 publication alone cannot establish tool availability. Desktop builds may choose
 their own stdio App Server; Kast cannot inject thread-start tools into such a
-session. The supported launcher remains `kast codex`, with `kast codex desktop`
+session. The supported launcher is `kast-codex`, with `kast-codex desktop`
 requiring its separate build-specific UI gate. Broader claims need fresh CLI and
 Desktop sessions, resumed threads, concurrent sessions, absent IDEA,
 unregistered roots, and mutation approval tested against the same installed
@@ -117,7 +119,7 @@ interactive CLI tool exposure or Desktop UI discovery. The façade remains avail
 
 Source inspection of [Codex 0.154.0 TUI startup](https://github.com/openai/codex/blob/rust-v0.154.0/codex-rs/tui/src/lib.rs)
 shows implicit canonical discovery for compatible launch settings, and embedded
-App Server fallback on connection failure. Consequently `kast codex` retains
+App Server fallback on connection failure. Consequently `kast-codex` retains
 explicit remote attachment until ordinary interactive discovery and failure
 behavior satisfy the required gate. Removing that attachment now would permit an
 apparently successful unaugmented session after a daemon failure.
@@ -130,7 +132,7 @@ supersede this candidate's canonical transport receipt.
 
 ## Stdio desktop launch
 
-The current launch path is `kast codex desktop` → a process-local
+The current launch path is `kast-codex desktop` → a process-local
 `CODEX_CLI_PATH=.../kast-codex` → JSONL stdio → the existing persistent broker.
 Daemon discovery remains available to CLI clients. The historical daemon-only
 desktop observations below do not qualify the new desktop UI path.
