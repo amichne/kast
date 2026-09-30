@@ -40,6 +40,7 @@ import io.github.amichne.kast.query.protocol.QueryOutputIssuance
 import io.github.amichne.kast.query.protocol.QueryPublicationCommit
 import io.github.amichne.kast.query.protocol.QueryPublicationPageCharge
 import io.github.amichne.kast.query.protocol.QueryRetentionByteCount
+import io.github.amichne.kast.query.protocol.QueryRetentionMeasurements
 import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.symbol.contract.SymbolDescription
@@ -80,102 +81,101 @@ class HostedQueryPublicationProjectionTest {
             val owner = RelationPagingFixture.live()
             val request = request(owner)
             val budget = budget()
-            lateinit var checkpoint: QueryCheckpoint
-            var checkpointCaptures = 0
+            val checkpoint = captureCheckpoint(owner, request, budget)
+            val case = CheckpointReplayCase(owner, request, budget, checkpoint)
+            val original = case.publishOriginal()
+            case.assertSmallerRefitRejected(original)
+            case.assertOriginalReplay(original)
+        }
+
+    private suspend fun captureCheckpoint(
+        owner: RelationPagingFixture,
+        request: QueryRunRequest.Run,
+        budget: QueryBudget,
+    ): QueryCheckpoint {
+        lateinit var checkpoint: QueryCheckpoint
+        var captures = 0
+        CanonicalQueryProtocol(
+                QueryOperations { admitted ->
+                    captures++
+                    checkpoint =
+                        object : QueryCheckpoint {
+                            override val plan = admitted.plan
+                            override val lease = admitted.lease
+                            override val retainedBytes = 1024L
+                        }
+                    complete(owner)
+                },
+                owner.references,
+            )
+            .execute(request, owner.authority, budget)
+        assertEquals(1, captures)
+        return checkpoint
+    }
+
+    private data class PublishedCheckpointPage(
+        val semantic: HostedQueryOutcome,
+        val response: HostedResponse,
+        val measurements: QueryRetentionMeasurements,
+    )
+
+    private inner class CheckpointReplayCase(
+        private val owner: RelationPagingFixture,
+        request: QueryRunRequest.Run,
+        private val budget: QueryBudget,
+        checkpoint: QueryCheckpoint,
+    ) {
+        private val store = QueryStateStore(clock = { 0L })
+        private val issued =
+            assertInstanceOf(QueryCheckpointIssuance.Issued::class.java, store.issueCheckpoint(request, checkpoint))
+        private val resume = QueryRunRequest.Resume(issued.token)
+        private lateinit var claim: QueryExecutionClaim
+        private var fitted: QueryPublicationPageCharge.Encoded? = null
+        private var preparations = 0
+        private var executions = 0
+        private var suffixAttempts = 0
+        private val protocol =
             CanonicalQueryProtocol(
-                    QueryOperations { admitted ->
-                        checkpointCaptures++
-                        checkpoint =
-                            object : QueryCheckpoint {
-                                override val plan = admitted.plan
-                                override val lease = admitted.lease
-                                override val retainedBytes = 1024L
-                            }
-                        complete(owner)
-                    },
-                    owner.references,
-                )
-                .execute(request, owner.authority, budget)
-            assertEquals(1, checkpointCaptures)
-            val store = QueryStateStore(clock = { 0L })
-            val issued =
-                assertInstanceOf(QueryCheckpointIssuance.Issued::class.java, store.issueCheckpoint(request, checkpoint))
-            val resume = QueryRunRequest.Resume(issued.token)
-            lateinit var claim: QueryExecutionClaim
-            var preparations = 0
-            var executions = 0
-            val protocol =
-                CanonicalQueryProtocol(
-                    QueryOperations { admitted ->
-                        executions++
-                        assertEquals(1, executions)
-                        assertSame(checkpoint, admitted.checkpoint)
-                        complete(owner)
-                    },
-                    owner.references,
-                    store,
-                    QueryExecutionPublication { retained, active, _ ->
-                        assertSame(store, retained)
-                        preparations++
-                        claim = active
-                        QueryExecutionPublicationResult.PREPARED
-                    },
-                )
+                QueryOperations { admitted ->
+                    executions++
+                    assertEquals(1, executions)
+                    assertSame(checkpoint, admitted.checkpoint)
+                    complete(owner)
+                },
+                owner.references,
+                store,
+                QueryExecutionPublication { retained, active, _ ->
+                    assertSame(store, retained)
+                    preparations++
+                    claim = active
+                    QueryExecutionPublicationResult.PREPARED
+                },
+            )
+
+        suspend fun publishOriginal(): PublishedCheckpointPage {
             val originalPage = protocol.execute(resume, owner.authority, budget)
             assertInstanceOf(OperationOutcome.Complete::class.java, originalPage)
-            var fitted: QueryPublicationPageCharge.Encoded? = null
-            val original =
-                encodeHostedQueryResponse(
-                    originalPage,
-                    maximumResults = budget.resources.resultLimit,
-                    maximumBytes = bytes(),
-                    published = { fitted = it },
-                )
+            val original = encodeOriginalGrant(originalPage)
             assertInstanceOf(HostedResponse.Canonical::class.java, original)
-            val originalCharge = requireNotNull(fitted)
-            assertEquals(
-                QueryPublicationCommit.Committed,
-                store.commitPublication(claim, originalCharge.page, originalCharge),
-            )
-            store.releasePublication(claim)
-            val published = store.retentionMeasurements()
+            commitFitted()
+            return PublishedCheckpointPage(originalPage, original, store.retentionMeasurements())
+        }
 
+        suspend fun assertSmallerRefitRejected(original: PublishedCheckpointPage) {
             val smallerLimit = ResultLimit.parse(1).refined()
             val smallerRequest = resume.copy(executionBudget = ExecutionBudgetDocument(maxResults = smallerLimit))
             val smallerBudget = budget.copy(resources = budget.resources.copy(resultLimit = smallerLimit))
             val replayedPage = protocol.execute(smallerRequest, owner.authority, smallerBudget)
-            assertEquals(originalPage, replayedPage)
+            assertEquals(original.semantic, replayedPage)
             val beforeFitting = store.retentionMeasurements()
             fitted = null
-            var suffixAttempts = 0
             val refused =
                 encodeHostedQueryResponse(
                     replayedPage,
                     maximumResults = smallerLimit,
                     maximumBytes = bytes(),
                     published = { fitted = it },
-                    retain = { suffix ->
-                        suffixAttempts++
-                        val page = suffix.publicationPage()
-                        val encoded =
-                            assertInstanceOf(
-                                WireEncoding.Encoded::class.java,
-                                CanonicalOperationWireBindings.queryRun.encodeOutcome(page),
-                            )
-                        val result =
-                            store.issueOutput(
-                                smallerRequest,
-                                owner.authority,
-                                page,
-                                claim,
-                                QueryRetentionByteCount.parse(
-                                        encoded.document.toByteArray(Charsets.UTF_8).size.toLong()
-                                    )
-                                    .refined(),
-                            )
-                        assertEquals(QueryOutputIssuance.PublishedPageImmutable, result)
-                        result.hostedRetention()
-                    },
+                    retain = { suffix -> retainSuffix(smallerRequest, suffix) },
                 )
             val rejection = assertInstanceOf(HostedResponse.ReadRejected::class.java, refused)
             assertEquals(
@@ -187,28 +187,57 @@ class HostedQueryPublicationProjectionTest {
             assertNull(fitted)
             assertEquals(beforeFitting, store.retentionMeasurements())
             store.releasePublication(claim)
-            assertEquals(published.retainedBytes, store.retentionMeasurements().retainedBytes)
-            assertEquals(published.retainedEntries, store.retentionMeasurements().retainedEntries)
+            assertEquals(original.measurements.retainedBytes, store.retentionMeasurements().retainedBytes)
+            assertEquals(original.measurements.retainedEntries, store.retentionMeasurements().retainedEntries)
+        }
 
+        suspend fun assertOriginalReplay(original: PublishedCheckpointPage) {
             val unchanged = protocol.execute(resume, owner.authority, budget)
-            assertEquals(originalPage, unchanged)
-            val replay =
-                encodeHostedQueryResponse(
-                    unchanged,
-                    maximumResults = budget.resources.resultLimit,
-                    maximumBytes = bytes(),
-                    published = { fitted = it },
-                )
-            assertEquals(original.document, replay.document)
-            val replayCharge = requireNotNull(fitted)
-            assertEquals(
-                QueryPublicationCommit.Committed,
-                store.commitPublication(claim, replayCharge.page, replayCharge),
-            )
-            store.releasePublication(claim)
+            assertEquals(original.semantic, unchanged)
+            val replay = encodeOriginalGrant(unchanged)
+            assertEquals(original.response.document, replay.document)
+            commitFitted()
             assertEquals(1, executions)
             assertEquals(3, preparations)
         }
+
+        private fun encodeOriginalGrant(page: HostedQueryOutcome): HostedResponse =
+            encodeHostedQueryResponse(
+                page,
+                maximumResults = budget.resources.resultLimit,
+                maximumBytes = bytes(),
+                published = { fitted = it },
+            )
+
+        private fun retainSuffix(request: QueryRunRequest.Resume, suffix: HostedQueryOutcome): HostedOutputRetention {
+            suffixAttempts++
+            val page = suffix.publicationPage()
+            val encoded =
+                assertInstanceOf(
+                    WireEncoding.Encoded::class.java,
+                    CanonicalOperationWireBindings.queryRun.encodeOutcome(page),
+                )
+            val result =
+                store.issueOutput(
+                    request,
+                    owner.authority,
+                    page,
+                    claim,
+                    QueryRetentionByteCount.parse(encoded.document.toByteArray(Charsets.UTF_8).size.toLong()).refined(),
+                )
+            assertEquals(QueryOutputIssuance.PublishedPageImmutable, result)
+            return result.hostedRetention()
+        }
+
+        private fun commitFitted() {
+            val charge = requireNotNull(fitted)
+            assertEquals(
+                QueryPublicationCommit.Committed,
+                store.commitPublication(claim, charge.page, charge),
+            )
+            store.releasePublication(claim)
+        }
+    }
 
     private fun request(owner: RelationPagingFixture) =
         QueryRunRequest.Run(

@@ -169,11 +169,14 @@ internal class QueryExecutionState(
     }
 
     fun traversalLimited(qualification: TraversalQualification) {
-        if (
-            qualification is TraversalQualification.TerminalIncomplete ||
-                TraversalLimitation.ONE_HOP_INCOMPLETE in qualification.limitations
-        ) {
-            upstreamLimit(QueryLimitation.TRAVERSAL_INCOMPLETE)
+        when (qualification) {
+            is TraversalQualification.TerminalIncomplete -> upstreamLimit(QueryLimitation.TRAVERSAL_INCOMPLETE)
+            is TraversalQualification.Resumable -> {
+                // The typed checkpoint distinguishes retained page work from proven permanent omissions.
+                if (qualification.continuation.checkpoint.terminalRelationLimitations.isNotEmpty()) {
+                    upstreamLimit(QueryLimitation.TRAVERSAL_INCOMPLETE)
+                }
+            }
         }
     }
 

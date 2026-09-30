@@ -932,6 +932,13 @@ private fun diagnosticQualificationSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty("continuation", textSchema("Retained same-basis diagnostic progress."), required = false),
         ServerSchemaProperty(
+            "retentionFailure",
+            generatedRequestSchema(
+                io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument.serializer()
+            ),
+            required = false,
+        ),
+        ServerSchemaProperty(
             "knownDiagnosticCount",
             integerSchema(0, description = "Known diagnostic count before result truncation."),
         ),

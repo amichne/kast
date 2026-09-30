@@ -1,6 +1,6 @@
 # Progressive semantic read acceptance
 
-Qualification is in progress. The PR remains draft while final review repairs, the complete product gate, and final installed-host measurements are completed. The claims below record established contracts and the required native checks; they do not yet establish end-to-end completion.
+Qualification is in progress. The PR remains draft while the complete product gate and final installed-host measurements are completed. The claims below record established contracts and the required native checks; they do not yet establish end-to-end completion.
 
 This change starts from fetched `amichne/kast` upstream `6b9d5e0d0d75e4632f8a023e6a9bc6a70212b24f`. The fixture and implementation are evaluated under exact compiler and workspace authority. Source, query, and diagnostic continuation ownership remain in their existing bounded stores.
 
@@ -34,6 +34,8 @@ Observations include closed phases, durations, outcomes, discovery/refinement/re
 8. Definition and callee producers still used the older prefix-replay collector. The shared provider remainder now carries their immutable inventory and exact advancing cursor; the legacy replay branch is removed.
 
 Integration review of the new state owners exposed two additional gaps: initial retained reads and composition needed to pin their exact inputs before publication ownership could evict them; active claims and younger retained pages needed to preserve every dependency's original logical age while retaining physical storage for drainage. These gaps were identified during this implementation, not independently demonstrated as upstream defects. Focused owner tests cover input pinning, fresh admission, publication expiry, dependency age, and release accounting.
+
+Final integration regressions also distinguish temporary one-hop traversal page limits from persistent omission evidence, preserve `PUBLISHED_PAGE_MISMATCH` when a smaller grant cannot refit an immutable published page, and admit typed diagnostic retention failure through the CLI result schema. Real production traversal/query drains, state-owner replay, and independently checked serialized result shapes prove those boundaries; they are not native performance measurements.
 
 The earlier intermediate diagnostic 40-page failure was an integration regression, not an upstream defect: the equivalent upstream native baseline completes 40/40 diagnostics. The final qualification must retain that already-correct behavior.
 
