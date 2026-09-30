@@ -125,7 +125,7 @@ internal class IntellijK2RelationSearch(
 
         private fun processKotlinReference(plan: IntellijRelationPlan.References, reference: KtReference): Boolean {
             val admitted =
-                when (val admission = plan.admit(reference)) {
+                when (val admission = plan.admit(reference, observation)) {
                     IntellijRelationReferenceAdmission.Skipped -> return collector.dismissProviderItem()
                     is IntellijRelationReferenceAdmission.Admitted -> admission
                 }

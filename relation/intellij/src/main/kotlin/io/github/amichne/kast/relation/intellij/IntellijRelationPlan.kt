@@ -7,6 +7,9 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import org.jetbrains.kotlin.idea.references.KtInvokeFunctionReference
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtTypeReference
@@ -157,24 +160,36 @@ internal fun IntellijRelationSubjectLookup.Found.plan(request: RelationRequest):
  * Admitted variants carry the exact proof required by their K2 confirmation policy. Skipped is a closed nonmatching PSI
  * shape. Raw PSI remains inside the request-local relation adapter.
  */
-internal fun IntellijRelationPlan.References.admit(reference: KtReference): IntellijRelationReferenceAdmission =
+internal fun IntellijRelationPlan.References.admit(
+    reference: KtReference,
+    observation: IntellijReadObservation = IntellijReadObservation.None,
+): IntellijRelationReferenceAdmission =
     when (val plan = confirmation) {
         is IntellijReferenceConfirmationPlan.ExactSymbol ->
-            if (plan.shape.admits(reference.element)) {
+            if (plan.shape.admits(reference)) {
                 IntellijRelationReferenceAdmission.Admitted.ExactSymbol(reference, endpoint)
             } else {
                 IntellijRelationReferenceAdmission.Skipped
             }
         IntellijReferenceConfirmationPlan.ClassConstruction ->
             IntellijRelationReferenceAdmission.Admitted.ClassConstruction.admit(reference, subject)
+    }.also { admitted ->
+        observation.count(
+            when (admitted) {
+                is IntellijRelationReferenceAdmission.Admitted -> IntellijReadCounter.RELATION_REFERENCE_SHAPES_ADMITTED
+                IntellijRelationReferenceAdmission.Skipped -> IntellijReadCounter.RELATION_REFERENCE_SHAPES_SKIPPED
+            }
+        )
     }
 
-private fun IntellijExactReferenceShape.admits(element: PsiElement): Boolean =
+private fun IntellijExactReferenceShape.admits(reference: KtReference): Boolean =
     when (this) {
         IntellijExactReferenceShape.ANY -> true
-        IntellijExactReferenceShape.CALL -> element.isCallCallee()
+        // An implicit invoke reference owns the entire call, including arguments, rather than its callee name.
+        // The native reference type proves the call shape; K2 confirmation still proves the selected target.
+        IntellijExactReferenceShape.CALL -> reference is KtInvokeFunctionReference || reference.element.isCallCallee()
         IntellijExactReferenceShape.TYPE ->
-            PsiTreeUtil.getParentOfType(element, KtTypeReference::class.java, false) != null
+            PsiTreeUtil.getParentOfType(reference.element, KtTypeReference::class.java, false) != null
     }
 
 private fun PsiElement.isCallCallee(): Boolean {

@@ -96,6 +96,8 @@ code_sources:
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2CallOwnership.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationProjection.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPlan.kt
+    symbols: [IntellijRelationPlanKind]
   - path: relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt
   - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
@@ -330,6 +332,11 @@ missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
 a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
 `CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.
 
+Kotlin caller admission recognizes native implicit `invoke` references, whose
+PSI element spans the entire call rather than its callee name. Both implicit
+and explicit call shapes still require K2 confirmation of the selected target.
+Constructor caller admission retains its separate callee-range and constructor-owner proof.
+
 Kotlin one-hop calls use an explicit lexical ownership boundary. Calls in local
 property initializers belong to the enclosing callable. A named nested function
 keeps its own owner; callers do not climb past it. A K2-resolved function without
@@ -342,7 +349,9 @@ are excluded as proven non-caller boundaries. Accessors remain unsupported.
 Unresolved/ambiguous argument mappings retain `UNRESOLVED_TARGET`. The admitted
 named owner survives until endpoint projection; the inner occurrence,
 independent target resolution, scope and lifetime remain unchanged. Owner
-counters distinguish admitted, excluded, and unavailable boundaries. Omission
+counters distinguish admitted, excluded, and unavailable boundaries. Kotlin
+reference-shape counters distinguish admitted sites from sites skipped by the
+selected relation shape before K2 target confirmation. Omission
 samples remain for unavailable ownership. Reference and type-use ownership is
 unchanged.
 PSI tests prove lexical boundaries only; the native call oracle checks compiler
