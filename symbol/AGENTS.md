@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: e9e206c7a991 -->
+<!-- generated: 2026-09-30 | hash: e9e206c7a991 -->
 
 # symbol
 
@@ -8,6 +8,9 @@
 Defines symbol discovery and exact declaration identity, provides domain services, and implements compiler/PSI-backed IntelliJ adapters.
 
 ## Key Files
+
+- [SymbolDiscoveryProgress.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolDiscoveryProgress.kt) - declared source universe, coverage, and detached advancing remainder.
+- [IntellijIncrementalDeclarationDiscovery.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt) - lexical unopened partitions and active-file structural positions for bounded Kotlin discovery.
 
 - [ExactRevalidation.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt) - detached locator and fresh compiler revalidation contracts.
 - [ExactRevalidationService.kt](service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt) - read-only reacquisition with current content, scope and compiler identity proof.

@@ -49,7 +49,6 @@ import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
-import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
@@ -221,12 +220,9 @@ internal class VerifiedMutationFixture {
     fun qualifiedResultingRelation(): RelationReadResult {
         val batch = relationBatch(selector(resultingWorkspace), RelationMeaning.References)
         val qualified =
-            RelationCompilation.qualifiedResumable(
+            RelationCompilation.qualifiedTerminal(
                     batch,
                     setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-                    batch.request.providerCursor.advance(
-                        RelationProviderItemDescriptor.parse("resulting-relation").refined()
-                    ),
                 )
                 .refined()
         return RelationReadResult.Qualified(qualified.batch, qualified.coverage)
