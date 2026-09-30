@@ -304,11 +304,12 @@ class QueryJoinBoundaryTest {
                         selected,
                         RelationMeaning.Callees,
                         RelationOmissionEvidence.fromObservedPage(
-                            RelationProviderKind.forMeaning(RelationMeaning.Callees),
-                            RelationLimitation.UNSUPPORTED_ITEM,
-                            RelationOmissionMeasurement.UnmeasuredOnPage,
-                            emptyList(),
-                        ),
+                                RelationProviderKind.forMeaning(RelationMeaning.Callees),
+                                RelationLimitation.UNSUPPORTED_ITEM,
+                                RelationOmissionMeasurement.UnmeasuredOnPage,
+                                io.github.amichne.kast.relation.contract.RelationOmissionSamples.Empty,
+                            )
+                            .refined(),
                     )
                     .refined()
             val right =

@@ -14,6 +14,7 @@ enum class QueryLimitationDocument {
     RELATION_INCOMPLETE,
     TRAVERSAL_INCOMPLETE,
     ROW_SELECTION_INCOMPLETE,
+    RETENTION_LIMIT_REACHED,
 }
 
 enum class QueryKnownMinimumFailure {
@@ -32,6 +33,7 @@ value class QueryKnownMinimum private constructor(val value: Int) {
 enum class QueryRunQualificationFailure {
     EMPTY_LIMITATIONS,
     NON_CANONICAL_LIMITATIONS,
+    MISSING_RETENTION_LIMITATION,
 }
 
 class QueryRunQualification
@@ -50,6 +52,9 @@ private constructor(
                 limitations.isEmpty() -> Refinement.Rejected(QueryRunQualificationFailure.EMPTY_LIMITATIONS)
                 limitations != limitations.distinct().sortedBy { it.ordinal } ->
                     Refinement.Rejected(QueryRunQualificationFailure.NON_CANONICAL_LIMITATIONS)
+                progress is QueryQualifiedProgressDocument.RetentionUnavailable &&
+                    QueryLimitationDocument.RETENTION_LIMIT_REACHED !in limitations ->
+                    Refinement.Rejected(QueryRunQualificationFailure.MISSING_RETENTION_LIMITATION)
                 else -> Refinement.Refined(QueryRunQualification(knownMinimum, limitations.toList(), progress))
             }
     }

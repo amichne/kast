@@ -168,7 +168,7 @@ internal fun RelationFactWireDocument.toContract(): WireDocumentConversion<Relat
         )
     }
 
-private fun RelationOccurrenceWireDocument.toContract(): WireDocumentConversion<RelationOccurrenceDocument> =
+internal fun RelationOccurrenceWireDocument.toContract(): WireDocumentConversion<RelationOccurrenceDocument> =
     combineConverted(
         candidateSelector.toProtocolText(),
         file.toProtocolText(),
@@ -186,7 +186,7 @@ internal fun TraversalRecordWireDocument.toContract(): WireDocumentConversion<Tr
         ::TraversalRecordDocument,
     )
 
-private fun SymbolDocument.toWireDocument() =
+internal fun SymbolDocument.toWireDocument() =
     SymbolWireDocument(
         selector.value,
         kind.toWireDocument(),
@@ -204,7 +204,7 @@ private fun SymbolDocument.toWireDocument() =
  * Proof transition: `SymbolWireDocument -> WireDocumentConversion<SymbolDocument>`. Establishes an exact symbol with a
  * closed qualified-identity state and valid range; raw symbol primitives exist only at this wire boundary.
  */
-private fun SymbolWireDocument.toContract(): WireDocumentConversion<SymbolDocument> =
+internal fun SymbolWireDocument.toContract(): WireDocumentConversion<SymbolDocument> =
     combineConverted(
             selector.toProtocolText(),
             name.toProtocolText(),
@@ -361,7 +361,7 @@ internal fun SourceRangeWireDocument.toContract(): WireDocumentConversion<Source
             SourceRangeDocument.create(start, end).toWireDocumentConversion()
         }
 
-private fun RelationKindDocument.toRelationWireDocument(): RelationKindWireDocument =
+internal fun RelationKindDocument.toRelationWireDocument(): RelationKindWireDocument =
     when (this) {
         RelationKindDocument.REFERENCES -> RelationKindWireDocument.REFERENCES
         RelationKindDocument.CALLERS -> RelationKindWireDocument.CALLERS
@@ -372,7 +372,7 @@ private fun RelationKindDocument.toRelationWireDocument(): RelationKindWireDocum
         RelationKindDocument.TYPE_USES -> RelationKindWireDocument.TYPE_USES
     }
 
-private fun RelationKindWireDocument.toRelationContract(): RelationKindDocument =
+internal fun RelationKindWireDocument.toRelationContract(): RelationKindDocument =
     when (this) {
         RelationKindWireDocument.REFERENCES -> RelationKindDocument.REFERENCES
         RelationKindWireDocument.CALLERS -> RelationKindDocument.CALLERS
@@ -383,27 +383,27 @@ private fun RelationKindWireDocument.toRelationContract(): RelationKindDocument 
         RelationKindWireDocument.TYPE_USES -> RelationKindDocument.TYPE_USES
     }
 
-private fun RelationProvenanceDocument.toWireDocument(): RelationProvenanceWireDocument =
+internal fun RelationProvenanceDocument.toWireDocument(): RelationProvenanceWireDocument =
     when (this) {
         RelationProvenanceDocument.K2_AUTHORED_SOURCE -> RelationProvenanceWireDocument.K2_AUTHORED_SOURCE
         RelationProvenanceDocument.K2_GENERATED_SOURCE -> RelationProvenanceWireDocument.K2_GENERATED_SOURCE
         RelationProvenanceDocument.K2_PROJECT_LIBRARY -> RelationProvenanceWireDocument.K2_PROJECT_LIBRARY
     }
 
-private fun RelationProvenanceWireDocument.toContract(): RelationProvenanceDocument =
+internal fun RelationProvenanceWireDocument.toContract(): RelationProvenanceDocument =
     when (this) {
         RelationProvenanceWireDocument.K2_AUTHORED_SOURCE -> RelationProvenanceDocument.K2_AUTHORED_SOURCE
         RelationProvenanceWireDocument.K2_GENERATED_SOURCE -> RelationProvenanceDocument.K2_GENERATED_SOURCE
         RelationProvenanceWireDocument.K2_PROJECT_LIBRARY -> RelationProvenanceDocument.K2_PROJECT_LIBRARY
     }
 
-private fun RelationFactCoverageDocument.toWireDocument(): RelationFactCoverageWireDocument =
+internal fun RelationFactCoverageDocument.toWireDocument(): RelationFactCoverageWireDocument =
     when (this) {
         RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED ->
             RelationFactCoverageWireDocument.EXACT_COMPILER_CONFIRMED
     }
 
-private fun RelationFactCoverageWireDocument.toContract(): RelationFactCoverageDocument =
+internal fun RelationFactCoverageWireDocument.toContract(): RelationFactCoverageDocument =
     when (this) {
         RelationFactCoverageWireDocument.EXACT_COMPILER_CONFIRMED ->
             RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED

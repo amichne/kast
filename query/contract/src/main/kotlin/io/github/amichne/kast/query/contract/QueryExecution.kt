@@ -100,6 +100,18 @@ data class QuerySymbol(
         get() = description.selector
 }
 
+/** Occurrence identity survives independently of any declaration projection. */
+sealed interface QueryOccurrence {
+    data class Reference(val value: io.github.amichne.kast.relation.contract.RelationReferenceOccurrence) :
+        QueryOccurrence
+
+    data class Declaration(val symbol: QuerySymbol, val fact: RelationFact) : QueryOccurrence {
+        init {
+            require(fact in symbol.connections)
+        }
+    }
+}
+
 /** Source is obtained only after exact-symbol admission, within the same read authority. */
 sealed interface QuerySymbolSource {
     data object Pending : QuerySymbolSource
@@ -155,6 +167,8 @@ data class QueryResult(
     val failures: List<QueryItemFailure>,
     val omissions: List<QueryRelationOmission> = emptyList(),
     val walkObservations: List<QueryWalkObservation> = emptyList(),
+    val referenceObservations: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+    val discoveryObservations: List<QueryDiscoveryObservation> = emptyList(),
 )
 
 enum class QueryCountFailure {

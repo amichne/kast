@@ -113,7 +113,7 @@ for (const harness of ['copilot', 'pi']) {
     const reply = structuredClone(catalog); reply.catalog.schemaVersion = 999;
     const loaded = await load(harness, reply);
     assert.equal(loaded.registered.length, 0);
-    assert.match(loaded.error?.message ?? '', /catalog.*expected=3.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
+    assert.match(loaded.error?.message ?? '', /catalog.*expected=4.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
   });
   test(`${harness} validates the last entry before registering the first`, async () => {
     const reply = structuredClone(catalog); reply.catalog.tools.at(-1).inputSchema = null;

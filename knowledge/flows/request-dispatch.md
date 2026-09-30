@@ -4,7 +4,7 @@ title: Request dispatch
 description: Hosted requests retain canonical outcomes through native evaluation, bounded encoding and host projection.
 resource: file://runtime/hosted
 tags: [runtime, protocol, dispatch]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
@@ -56,6 +56,14 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticPublicationSession.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationEffect.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPublicationFailureCause.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateRecords.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
 ---
 
 # Request dispatch
@@ -90,6 +98,15 @@ completion check before publication. Exhaustion or a regressed clock rejects wit
 diagnostic stage stop. Other read operations retain their existing host-containment
 completion policy. Host timeout and cancellation drainage remain independently
 owned by the existing executor.
+
+Query, source and diagnostic handlers register one final publication effect in
+the current hosted read. Their existing owner hides new checkpoints and fitted
+output suffixes until final freshness validation, deadline completion, native
+drainage and permit completion succeed. The exact immutable page and advertised
+successor commit together. Rejection and cancellation discard only the current
+attempt; replay returns the same published page without executing the consumed
+semantic prefix. Publication rejection carries a closed exact cause rather than
+erasing retention, expiry or conflicting-claim evidence as generic staleness.
 
 Canonical semantic-read handlers delegate request admission, reference codecs,
 and outcome projection to [`query:protocol`](../modules/query-protocol.md).

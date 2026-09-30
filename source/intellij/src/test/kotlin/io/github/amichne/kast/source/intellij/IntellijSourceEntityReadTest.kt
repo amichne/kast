@@ -260,9 +260,9 @@ class IntellijSourceEntityReadTest {
     }
 
     @Test
-    fun `project continuation owner survives rebinding and rejects changed context and retirement`() {
+    fun `detached cursor admission survives adapter rebinding and rejects changed context`() {
         val fixture = fixture()
-        val continuations = IntellijSourceReadContinuations()
+        val continuations = TestSourceCursorPort()
         val selection =
             matching(
                 Containment.DESCENDANTS,
@@ -282,29 +282,13 @@ class IntellijSourceEntityReadTest {
                 is SourceReadResult.Rejected
         )
         assertTrue(read(port(fixture), fixture, selection, limit = 1, page = page) is SourceReadResult.Rejected)
-        continuations.retire()
-        assertTrue(read(rebound, fixture, selection, limit = 1, page = page) is SourceReadResult.Rejected)
-        assertTrue(read(rebound, fixture, selection, limit = 1) is SourceReadResult.Rejected)
     }
 
     @Test
     fun `continuation refusal preserves cause before invoking source provider`() {
-        var now = 0L
         var invocations = 0
         val fixture = fixture()
-        val owner =
-            IntellijSourceReadContinuations(
-                io.github.amichne.kast.kernel.ReadLimits.resolve(
-                        environment =
-                            mapOf(
-                                io.github.amichne.kast.kernel.ReadLimitParameter.SOURCE_CONTINUATION_TTL_MILLIS
-                                    .environmentKey to "10"
-                            )
-                    )
-                    .refined()
-            ) {
-                now
-            }
+        val owner = TestSourceCursorPort()
         val port = port(fixture, owner) { invocations += 1 }
         val selection = matching(Containment.DESCENDANTS, declarations(setOf(DeclarationKind.FUNCTION), null))
         val first = read(port, fixture, selection, limit = 1) as SourceReadResult.Qualified
@@ -327,9 +311,7 @@ class IntellijSourceEntityReadTest {
             reason(read(unknownOwner, fixture, selection, page = page)),
         )
         assertEquals(1, invocations)
-        now = 10_000_000L
-        assertEquals(SourceReadRejection.CONTINUATION_UNAVAILABLE, reason(read(port, fixture, selection, page = page)))
-        owner.retire()
+        owner.rejectAdmissions(SourceReadRejection.CONTINUATION_UNAVAILABLE)
         assertEquals(SourceReadRejection.CONTINUATION_UNAVAILABLE, reason(read(port, fixture, selection, page = page)))
         assertEquals(SourceReadRejection.CONTINUATION_UNAVAILABLE, reason(read(port, fixture, selection)))
         assertEquals(1, invocations)
@@ -351,14 +333,14 @@ class IntellijSourceEntityReadTest {
 
     private fun port(
         fixture: Fixture,
-        continuations: IntellijSourceReadContinuations = IntellijSourceReadContinuations(),
+        continuations: io.github.amichne.kast.source.contract.SourceReadContinuationPort = TestSourceCursorPort(),
         onSelect: () -> Unit = {},
     ): IntellijSourceReadPort =
         IntellijSourceReadPort(
             IntellijSourceRegionAccess { _, request, cursor ->
                 onSelect()
                 val page =
-                    IntellijSourceEntityPage.select(
+                    selectDetachedSourceFixture(
                         fixture.entities.asSequence(),
                         request.entities,
                         cursor,

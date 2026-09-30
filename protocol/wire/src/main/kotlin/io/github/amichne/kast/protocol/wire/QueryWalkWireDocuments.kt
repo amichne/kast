@@ -10,9 +10,11 @@ import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
+import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalPartialExpansionDocument
 import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
+import io.github.amichne.kast.protocol.contract.TraversalReferenceObservationDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -28,7 +30,33 @@ internal data class QueryWalkObservationWireDocument(
     val strategy: TraversalStrategyDocument,
     @SerialName("partial_expansions") val partialExpansions: List<TraversalPartialExpansionWireDocument>,
     val coverage: QueryWalkCoverageWireDocument,
+    @SerialName("inherited_omissions") val inheritedOmissions: List<TraversalPartialExpansionWireDocument>,
+    @SerialName("reference_occurrences") val referenceOccurrences: List<TraversalReferenceObservationWireDocument>,
 )
+
+@Serializable
+internal data class TraversalReferenceObservationWireDocument(
+    val subject: QueryReferenceWireDocument.ExactSymbol,
+    val depth: Int,
+    val reference: RelationReferenceOccurrenceWireDocument,
+)
+
+internal fun TraversalReferenceObservationDocument.toWireDocument() =
+    TraversalReferenceObservationWireDocument(
+        QueryReferenceWireDocument.ExactSymbol(subject.token.value),
+        depth.value,
+        reference.toWireDocument(),
+    )
+
+internal fun TraversalReferenceObservationWireDocument.toContract():
+    WireDocumentConversion<TraversalReferenceObservationDocument> =
+    combineConverted(
+        ProtocolText.parse(subject.token).toWireDocumentConversion(),
+        TraversalDepthDocument.parse(depth).toWireDocumentConversion(),
+        reference.toContract(),
+    ) { subject, depth, reference ->
+        TraversalReferenceObservationDocument(QueryReferenceDocument.ExactSymbol(subject), depth, reference)
+    }
 
 @Serializable
 @JsonClassDiscriminator("kind")
@@ -106,6 +134,8 @@ internal fun QueryWalkObservationDocument.toWireDocument() =
         strategy = strategy,
         partialExpansions = partialExpansions.values.map(TraversalPartialExpansionDocument::toWireDocument),
         coverage = coverage.toWireDocument(),
+        inheritedOmissions = inheritedOmissions.values.map(TraversalPartialExpansionDocument::toWireDocument),
+        referenceOccurrences = referenceOccurrences.values.map(TraversalReferenceObservationDocument::toWireDocument),
     )
 
 private fun QueryWalkCoverageDocument.toWireDocument(): QueryWalkCoverageWireDocument =
@@ -131,18 +161,35 @@ internal fun QueryWalkObservationWireDocument.toContract(): WireDocumentConversi
                 partialExpansions.convertEach(TraversalPartialExpansionWireDocument::toContract).flatMapConverted {
                     partials ->
                     BoundedProtocolList.create(partials).toWireDocumentConversion().flatMapConverted { bounded ->
-                        coverage.toContract().mapConverted { admittedCoverage ->
-                            QueryWalkObservationDocument(
-                                subject = QueryReferenceDocument.ExactSymbol(token),
-                                relation = relation.toContract(),
-                                maximumDepth = depth,
-                                expandedFrontier = frontier,
-                                progress = progress,
-                                strategy = strategy,
-                                partialExpansions = bounded,
-                                coverage = admittedCoverage,
-                            )
-                        }
+                        inheritedOmissions
+                            .convertEach(TraversalPartialExpansionWireDocument::toContract)
+                            .flatMapConverted { inherited ->
+                                BoundedProtocolList.create(inherited).toWireDocumentConversion().flatMapConverted {
+                                    retained ->
+                                    referenceOccurrences
+                                        .convertEach(TraversalReferenceObservationWireDocument::toContract)
+                                        .flatMapConverted { references ->
+                                            BoundedProtocolList.create(references)
+                                                .toWireDocumentConversion()
+                                                .flatMapConverted { observed ->
+                                                    coverage.toContract().mapConverted { admittedCoverage ->
+                                                        QueryWalkObservationDocument(
+                                                            subject = QueryReferenceDocument.ExactSymbol(token),
+                                                            relation = relation.toContract(),
+                                                            maximumDepth = depth,
+                                                            expandedFrontier = frontier,
+                                                            progress = progress,
+                                                            strategy = strategy,
+                                                            partialExpansions = bounded,
+                                                            coverage = admittedCoverage,
+                                                            inheritedOmissions = retained,
+                                                            referenceOccurrences = observed,
+                                                        )
+                                                    }
+                                                }
+                                        }
+                                }
+                            }
                     }
                 }
             }

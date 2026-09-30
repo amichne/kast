@@ -33,6 +33,11 @@ enum class IntellijReadCounter {
     RELATION_CALL_OWNERS_UNAVAILABLE,
     RELATION_CALL_OWNERS_EXCLUDED,
     RELATION_CANDIDATES,
+    RELATION_PARTITIONS_PREPARED,
+    RELATION_LOCATORS_RESTORED,
+    RELATION_REPLAYED_PREFIX,
+    SOURCE_STRUCTURAL_TASKS,
+    SOURCE_ENTITIES_PROJECTED,
     RELATION_FACTS,
     RELATION_ITEMS_OMITTED,
     REVALIDATION_FILES_HASHED,
@@ -70,6 +75,7 @@ enum class IntellijReadTermination {
     TIME_LIMIT,
     RESULT_LIMIT,
     BYTE_LIMIT,
+    RETENTION_LIMIT,
     RESPONSE_BYTE_LIMIT,
     UNSCOPED_PROVIDER,
     PROVIDER_FAILURE,
@@ -96,6 +102,12 @@ enum class IntellijReadTermination {
     RELATION_UNSUPPORTED_ITEM,
     RELATION_PROVIDER_INCOMPLETE,
     RELATION_PROVIDER_STALLED,
+    QUERY_PUBLICATION_OWNER_RETIRED,
+    QUERY_PUBLICATION_CLAIM_UNAVAILABLE,
+    QUERY_PUBLICATION_EXPIRED,
+    QUERY_PUBLICATION_DEPENDENCY_UNAVAILABLE,
+    QUERY_PUBLICATION_PAGE_MISMATCH,
+    QUERY_PUBLICATION_NON_ADVANCING,
 }
 
 enum class IntellijReadStage {
@@ -106,6 +118,25 @@ enum class IntellijReadStage {
     RELATION,
     SOURCE,
     TRANSPORT,
+}
+
+/** Bounded effect phases; a phase proves entry, separately from successful drainage. */
+enum class IntellijReadPhase {
+    DISCOVERY_INVENTORY,
+    DECLARATION_SCAN,
+    EXACT_REFINEMENT,
+    REFERENCE_INVENTORY,
+    REFERENCE_PARTITION,
+    REFERENCE_CONFIRMATION,
+    DEFINITION_INVENTORY,
+    DEFINITION_CONFIRMATION,
+    CALLEE_INVENTORY,
+    CALLEE_CONFIRMATION,
+    SOURCE_ENUMERATION,
+    FRESHNESS_VALIDATION,
+    RETENTION,
+    ENCODING,
+    CANCELLATION_DRAINAGE,
 }
 
 enum class IntellijReadUnexpectedKind {
@@ -145,7 +176,11 @@ private constructor(
 
 /** Request-local diagnostic capability; owners choose whether to observe. */
 interface IntellijReadObservation {
+    fun phase(value: IntellijReadPhase) {}
+
     fun unexpected(failure: IntellijReadUnexpectedFailure) {}
+
+    fun measure(gauge: IntellijReadGauge, value: IntellijReadGaugeValue) {}
 
     fun count(
         counter: IntellijReadCounter,

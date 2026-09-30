@@ -198,6 +198,7 @@ internal class IntellijSymbolSelectorResolver(
             IntellijSymbolSelectorLeaseAdmission.Admitted -> Unit
             is IntellijSymbolSelectorLeaseAdmission.Rejected -> return rejectedResolution(admission.reason)
         }
+        observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.EXACT_REFINEMENT)
         return readAction {
             when (
                 val scoped =
@@ -238,6 +239,7 @@ internal class IntellijSymbolSelectorResolver(
             IntellijSymbolSelectorLeaseAdmission.Admitted -> Unit
             is IntellijSymbolSelectorLeaseAdmission.Rejected -> return rejectedDescription(admission.reason)
         }
+        observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.EXACT_REFINEMENT)
         return readAction {
             when (
                 val scoped =

@@ -14,11 +14,14 @@ class RelationCooperativeBudgetTest {
         val fixture = RelationReadTest()
         val request = fixture.request(RelationMeaning.References, workLimit = 1)
         val collector = IntellijRelationCollector(request, clockNanoseconds = { 1L })
+        val retained = detachedRelationInventory(request, listOf("first", "second"))
+        collector.retainProviderState(retained, preparedPartition = true)
         assertEquals(
             IntellijRelationProviderItemAdmission.READY,
             collector.beginProviderItem(fixture.providerItem("first")),
         )
         assertTrue(collector.examineIncomplete(RelationLimitation.UNRESOLVED_TARGET))
+        collector.retainProviderState(retained.consume())
         assertEquals(
             IntellijRelationProviderItemAdmission.HALTED,
             collector.beginProviderItem(fixture.providerItem("second")),
@@ -27,7 +30,7 @@ class RelationCooperativeBudgetTest {
             collector.finish(IntellijRelationTermination.Resumable(emptySet())) as RelationCompilation.Qualified
         val coverage = result.coverage as RelationIncompleteCoverage.Resumable
         assertEquals(1L, result.batch.examinedWorkUnits.value)
-        assertEquals(1L, coverage.continuation.nextProviderCursor.nextPosition.value)
+        assertEquals(2L, coverage.continuation.nextProviderCursor.nextPosition.value)
         assertTrue(RelationLimitation.UNRESOLVED_TARGET in coverage.limitations)
         assertTrue(RelationLimitation.WORK_LIMIT_REACHED in coverage.limitations)
     }

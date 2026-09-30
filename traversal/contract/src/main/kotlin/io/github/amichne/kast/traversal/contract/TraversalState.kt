@@ -5,11 +5,9 @@ import io.github.amichne.kast.relation.contract.RelationContinuation
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationLimitation
-import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationScopeFingerprint
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 import java.util.Collections
 
 enum class TraversalDepthFailure {
@@ -201,6 +199,7 @@ enum class TraversalCheckpointFailure {
     VISITED_FRONTIER_OVERLAP,
     PENDING_NODE_NOT_VISITED,
     PENDING_NODE_IN_FRONTIER,
+    RETAINED_OMISSION_MISMATCH,
 }
 
 /** Detached deterministic traversal state carried by a qualified continuation. */
@@ -212,7 +211,14 @@ private constructor(
     val pending: TraversalPendingState,
     val terminalRelationLimitations: Set<RelationLimitation>,
     val progress: TraversalProgress,
+    val retainedOmissions: List<TraversalPartialExpansion>,
 ) {
+    val retainedBytes: Long =
+        (frontier.sumOf { it.toString().toByteArray(StandardCharsets.UTF_8).size.toLong() } +
+            visited.sumOf { it.value.length.toLong() } +
+            pending.toString().toByteArray(StandardCharsets.UTF_8).size.toLong() +
+            retainedOmissions.sumOf { it.toString().toByteArray(StandardCharsets.UTF_8).size.toLong() }) * 4L + 512L
+
     companion object {
         /**
          * Proof transition: `TraversalPlan -> TraversalCheckpoint`.
@@ -227,6 +233,7 @@ private constructor(
                 pending = TraversalPendingState.None,
                 terminalRelationLimitations = emptySet(),
                 progress = TraversalProgress.Initial,
+                retainedOmissions = emptyList(),
             )
 
         /**
@@ -244,6 +251,7 @@ private constructor(
             pending: TraversalPendingState,
             terminalRelationLimitations: Set<RelationLimitation> = emptySet(),
             progress: TraversalProgress = TraversalProgress.Initial,
+            retainedOmissions: List<TraversalPartialExpansion> = emptyList(),
         ): Refinement<TraversalCheckpoint, TraversalCheckpointFailure> {
             if (frontier != frontier.sorted()) {
                 return Refinement.Rejected(TraversalCheckpointFailure.NON_DETERMINISTIC_FRONTIER)
@@ -268,6 +276,10 @@ private constructor(
             if (pending is TraversalPendingState.Active && pending.read.entry.node.fingerprint in frontierIds) {
                 return Refinement.Rejected(TraversalCheckpointFailure.PENDING_NODE_IN_FRONTIER)
             }
+            when (val admitted = admitRetainedOmissions(plan, retainedOmissions, terminalRelationLimitations)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
             return Refinement.Refined(
                 TraversalCheckpoint(
                     plan.identity,
@@ -276,103 +288,29 @@ private constructor(
                     pending,
                     Collections.unmodifiableSet(LinkedHashSet(terminalRelationLimitations.sortedBy { it.ordinal })),
                     progress,
-                )
-            )
-        }
-    }
-}
-
-enum class TraversalContinuationFailure {
-    IDENTITY_MISMATCH,
-    INTEGRITY_MISMATCH,
-}
-
-/** Opaque deterministic resume state bound to one traversal semantic identity. */
-class TraversalContinuation
-private constructor(
-    val start: SymbolSelector,
-    val meaning: RelationMeaning,
-    val identity: TraversalIdentityFingerprint,
-    val checkpoint: TraversalCheckpoint,
-    val fingerprint: TraversalContinuationFingerprint,
-    val strategy: TraversalStrategy,
-    val maximumDepth: TraversalDepthLimit,
-) {
-    companion object {
-        /**
-         * Proof transition: `(TraversalPlan, TraversalCheckpoint) -> Refinement<TraversalContinuation,
-         * TraversalContinuationFailure>`.
-         *
-         * Establishes an opaque continuation bound to the plan's exact selector, meaning, root, generation, scope,
-         * frontier, visited set, and pending relation page. [TraversalContinuationFailure] is the closed expected
-         * failure. Raw encoding is permitted only at continuation transport.
-         */
-        fun issue(
-            plan: TraversalPlan,
-            checkpoint: TraversalCheckpoint,
-        ): Refinement<TraversalContinuation, TraversalContinuationFailure> {
-            if (checkpoint.identity != plan.identity) {
-                return Refinement.Rejected(TraversalContinuationFailure.IDENTITY_MISMATCH)
-            }
-            val canonical = buildString {
-                appendTraversalField(plan.identity.value)
-                appendTraversalField(checkpoint.progress.checkpointSequence.toString())
-                appendTraversalField(checkpoint.progress.totalReads.toString())
-                appendTraversalField(checkpoint.progress.totalEdges.toString())
-                appendTraversalField(checkpoint.progress.maximumDepthReached.toString())
-                appendTraversalField(checkpoint.frontier.size.toString())
-                checkpoint.frontier.forEach { entry ->
-                    appendTraversalField(entry.depth.value.toString())
-                    appendTraversalField(entry.node.fingerprint.value)
-                }
-                appendTraversalField(checkpoint.visited.size.toString())
-                checkpoint.visited.sortedBy(RelationEndpointFingerprint::value).forEach { visited ->
-                    appendTraversalField(visited.value)
-                }
-                appendTraversalField(checkpoint.terminalRelationLimitations.size.toString())
-                checkpoint.terminalRelationLimitations
-                    .sortedBy { it.ordinal }
-                    .forEach { limitation ->
-                        appendTraversalField(limitation.name)
-                    }
-                when (val pending = checkpoint.pending) {
-                    TraversalPendingState.None -> appendTraversalField("-")
-                    is TraversalPendingState.Active ->
-                        appendTraversalField(pending.read.relationContinuation.fingerprint.value)
-                }
-            }
-            val digest = MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8))
-            return Refinement.Refined(
-                TraversalContinuation(
-                    plan.start,
-                    plan.meaning,
-                    plan.identity,
-                    checkpoint,
-                    TraversalContinuationFingerprint.established(
-                        digest.joinToString(separator = "") { byte ->
-                            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-                        }
-                    ),
-                    plan.strategy,
-                    plan.budget.depth,
+                    Collections.unmodifiableList(retainedOmissions.distinct().toList()),
                 )
             )
         }
 
-        /** Restores decoded checkpoint authority only when its deterministic digest is exact. */
-        fun restore(
+        private fun admitRetainedOmissions(
             plan: TraversalPlan,
-            checkpoint: TraversalCheckpoint,
-            fingerprint: TraversalContinuationFingerprint,
-        ): Refinement<TraversalContinuation, TraversalContinuationFailure> =
-            when (val issued = issue(plan, checkpoint)) {
-                is Refinement.Rejected -> issued
-                is Refinement.Refined ->
-                    if (issued.value.fingerprint == fingerprint) {
-                        issued
-                    } else {
-                        Refinement.Rejected(TraversalContinuationFailure.INTEGRITY_MISMATCH)
-                    }
-            }
+            omissions: List<TraversalPartialExpansion>,
+            terminal: Set<RelationLimitation>,
+        ): Refinement<Unit, TraversalCheckpointFailure> {
+            if (omissions.distinct().size != omissions.size)
+                return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)
+            if (
+                omissions.any {
+                    it.entry.node.endpoint.lease != plan.start.lease || it.entry.node.endpoint.scope != plan.scope
+                }
+            )
+                return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)
+            if (omissions.any { it.entry.depth.value >= plan.budget.depth.value })
+                return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)
+            if (omissions.any { it.omissions.none { evidence -> evidence.reason in terminal } })
+                return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)
+            return Refinement.Refined(Unit)
+        }
     }
 }

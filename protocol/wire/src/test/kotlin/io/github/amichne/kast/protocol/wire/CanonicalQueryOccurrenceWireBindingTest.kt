@@ -177,7 +177,10 @@ class CanonicalQueryOccurrenceWireBindingTest {
                     RelationOmissionMeasurementDocument.ObservedOnPage(
                         RelationObservedItemsDocument.parse(2).refined()
                     ),
-                    bounded(listOf(RelationOmissionLocationDocument(caller.file, caller.range))),
+                    io.github.amichne.kast.protocol.contract.RelationOmissionSamplesDocument.complete(
+                            bounded(listOf(RelationOmissionLocationDocument(caller.file, caller.range)))
+                        )
+                        .refined(),
                 )
                 .refined()
         return QueryRunResult(

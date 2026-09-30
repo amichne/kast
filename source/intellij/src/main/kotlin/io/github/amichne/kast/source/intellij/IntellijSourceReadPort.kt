@@ -1,17 +1,19 @@
 package io.github.amichne.kast.source.intellij
 
-import io.github.amichne.kast.kernel.ReadLimitParameter
-import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.source.contract.EntitySelection
 import io.github.amichne.kast.source.contract.RegionSelection
 import io.github.amichne.kast.source.contract.SourceEntity
 import io.github.amichne.kast.source.contract.SourceEntityCount
-import io.github.amichne.kast.source.contract.SourceEntityLimit
 import io.github.amichne.kast.source.contract.SourceRange
 import io.github.amichne.kast.source.contract.SourceReadAnchor
 import io.github.amichne.kast.source.contract.SourceReadContext
+import io.github.amichne.kast.source.contract.SourceReadContinuationPort
 import io.github.amichne.kast.source.contract.SourceReadContinuationState
+import io.github.amichne.kast.source.contract.SourceReadCursorFailure
+import io.github.amichne.kast.source.contract.SourceReadCursorProof
+import io.github.amichne.kast.source.contract.SourceReadCursorRetentionFailure
+import io.github.amichne.kast.source.contract.SourceReadEntityCursor
 import io.github.amichne.kast.source.contract.SourceReadLimitation
 import io.github.amichne.kast.source.contract.SourceReadPage
 import io.github.amichne.kast.source.contract.SourceReadPort
@@ -84,13 +86,13 @@ internal fun interface IntellijSourceRegionAccess {
 internal data class IntellijSourceEntityCursor
 internal constructor(
     val startOrdinal: Int,
-    internal val expectedSnapshot: SourceSnapshot? = null,
-    internal val expectedRegionFingerprint: String? = null,
+    internal val evidence: SourceReadEntityCursor = SourceReadEntityCursor.First,
 ) {
     init {
         require(startOrdinal >= 0)
-        require((expectedSnapshot == null) == (expectedRegionFingerprint == null))
     }
+
+    constructor(evidence: SourceReadEntityCursor) : this(evidence.startOrdinal, evidence)
 }
 
 /** One exact, bounded prefix of the supported structural entity stream. */
@@ -99,6 +101,7 @@ internal sealed interface IntellijSourceEntityPage {
     val knownMinimumEntityCount: Int
     val limitations: Set<SourceReadLimitation>
     val nextOrdinal: Int?
+    val traversal: io.github.amichne.kast.source.contract.SourceEntityTraversalState?
 
     data class Complete
     internal constructor(
@@ -107,6 +110,7 @@ internal sealed interface IntellijSourceEntityPage {
         override val limitations: Set<SourceReadLimitation>,
     ) : IntellijSourceEntityPage {
         override val nextOrdinal: Int? = null
+        override val traversal: io.github.amichne.kast.source.contract.SourceEntityTraversalState? = null
     }
 
     data class Prefix
@@ -115,6 +119,7 @@ internal sealed interface IntellijSourceEntityPage {
         override val knownMinimumEntityCount: Int,
         override val limitations: Set<SourceReadLimitation>,
         override val nextOrdinal: Int,
+        override val traversal: io.github.amichne.kast.source.contract.SourceEntityTraversalState,
     ) : IntellijSourceEntityPage
 
     data class Rejected internal constructor(val reason: IntellijSourceReadRejection) : IntellijSourceEntityPage {
@@ -122,41 +127,11 @@ internal sealed interface IntellijSourceEntityPage {
         override val knownMinimumEntityCount: Int = 0
         override val limitations: Set<SourceReadLimitation> = emptySet()
         override val nextOrdinal: Int? = null
+        override val traversal: io.github.amichne.kast.source.contract.SourceEntityTraversalState? = null
     }
 
     companion object {
         fun empty(): IntellijSourceEntityPage = Complete(emptyList(), 0, emptySet())
-
-        /**
-         * Consumes at most one exact page plus lookahead, while a separate fixed work ceiling prevents an adversarial
-         * non-matching PSI stream from becoming unbounded.
-         */
-        fun select(
-            source: Sequence<SourceEntity>,
-            selection: EntitySelection,
-            cursor: IntellijSourceEntityCursor,
-            limit: SourceEntityLimit,
-            limits: ReadLimits = ReadLimits.Default,
-        ): IntellijSourceEntityPage {
-            if (selection == EntitySelection.None) {
-                return if (cursor.startOrdinal == 0) {
-                    empty()
-                } else {
-                    Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-                }
-            }
-            val collector = IntellijSourceEntityPageCollector(selection as EntitySelection.Matching, cursor, limit)
-            val iterator = source.iterator()
-            var examined = 0
-            while (collector.admission == SourceEntityCollectionAdmission.ACCEPTING && iterator.hasNext()) {
-                if (examined == limits[ReadLimitParameter.SOURCE_ENTITY_WORK].value) {
-                    return collector.finish().withLimitation(SourceReadLimitation.WORK_LIMIT_REACHED)
-                }
-                collector.offer(iterator.next())
-                examined += 1
-            }
-            return collector.finish()
-        }
     }
 }
 
@@ -195,18 +170,7 @@ private constructor(
             if (entityPage is IntellijSourceEntityPage.Rejected) {
                 return Refinement.Rejected(entityPage.reason)
             }
-            if (
-                entityPage.knownMinimumEntityCount < entityPage.entities.size ||
-                    entityPage.entities.any { entity ->
-                        entity.selector.snapshot != snapshot ||
-                            entity.selector.range.startInclusive < regionSelector.range.startInclusive ||
-                            entity.selector.range.endExclusive > regionSelector.range.endExclusive
-                    } ||
-                    (entityPage.nextOrdinal == null &&
-                        SourceReadLimitation.ENTITY_LIMIT_REACHED in entityPage.limitations) ||
-                    (entityPage.nextOrdinal != null &&
-                        SourceReadLimitation.ENTITY_LIMIT_REACHED !in entityPage.limitations)
-            ) {
+            if (!entityPage.admittedBy(snapshot, regionSelector)) {
                 return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             }
             return Refinement.Refined(
@@ -291,7 +255,7 @@ private constructor(
 /** First native slice: exact symbol anchor to complete committed declaration text. */
 internal class IntellijSourceReadPort(
     private val regions: IntellijSourceRegionAccess,
-    private val continuations: IntellijSourceReadContinuations = IntellijSourceReadContinuations(),
+    private val continuations: SourceReadContinuationPort = SourceReadContinuationPort.Cursorless,
 ) : SourceReadPort {
 
     constructor(
@@ -346,8 +310,8 @@ internal class IntellijSourceReadPort(
     ): SourceReadResult {
         val cursor =
             when (val admission = continuations.admit(context, request)) {
-                is IntellijSourceContinuationAdmission.Admitted -> admission.cursor
-                is IntellijSourceContinuationAdmission.Rejected -> return rejected(admission.reason.publicReason())
+                is Refinement.Refined -> IntellijSourceEntityCursor(admission.value)
+                is Refinement.Rejected -> return rejected(admission.failure)
             }
         val capture =
             when (val result = regions.select(context, request, cursor)) {
@@ -417,6 +381,7 @@ internal class IntellijSourceReadPort(
                 add(SourceReadLimitation.TEXT_BYTE_LIMIT_REACHED)
             }
         }
+            .toMutableSet()
         val projectedText =
             if (returnedBytes > request.textByteLimit.value) {
                 SourceTextProjection.Withheld(SourceTextWithheldReason.BYTE_LIMIT_REACHED)
@@ -425,13 +390,9 @@ internal class IntellijSourceReadPort(
             }
         if (limitations.isNotEmpty()) {
             val continuation =
-                when (val next = page.nextOrdinal) {
-                    null -> SourceReadContinuationState.Unavailable
-                    else ->
-                        when (val issued = continuations.issue(request, capture, next)) {
-                            is Refinement.Refined -> SourceReadContinuationState.Available(issued.value)
-                            is Refinement.Rejected -> return rejected(issued.failure)
-                        }
+                when (val prepared = prepareContinuation(request, capture, cursor, limitations)) {
+                    is Refinement.Refined -> prepared.value
+                    is Refinement.Rejected -> return rejected(prepared.failure)
                 }
             val qualification =
                 when (
@@ -472,11 +433,60 @@ internal class IntellijSourceReadPort(
             is Refinement.Rejected -> rejected(SourceReadRejection.CONTRACT_VIOLATION)
         }
     }
+
+    private fun prepareContinuation(
+        request: SourceReadRequest,
+        capture: IntellijSelectedSourceCapture,
+        cursor: IntellijSourceEntityCursor,
+        limitations: MutableSet<SourceReadLimitation>,
+    ): Refinement<SourceReadContinuationState, SourceReadRejection> {
+        val page = capture.entityPage
+        val next = page.nextOrdinal ?: return Refinement.Refined(SourceReadContinuationState.Unavailable)
+        val proof =
+            when (
+                val refined =
+                    SourceReadCursorProof.create(
+                        request,
+                        capture.regionSelector,
+                        cursor.evidence,
+                        next,
+                        checkNotNull(page.traversal),
+                    )
+            ) {
+                is Refinement.Refined -> refined.value
+                is Refinement.Rejected ->
+                    return when (refined.failure) {
+                        SourceReadCursorFailure.NON_ADVANCING ->
+                            Refinement.Refined(SourceReadContinuationState.Unavailable)
+                        SourceReadCursorFailure.AUTHORITY_MISMATCH,
+                        SourceReadCursorFailure.REQUEST_MISMATCH,
+                        SourceReadCursorFailure.TRAVERSAL_MISMATCH,
+                        SourceReadCursorFailure.ENTITY_STREAM_ABSENT ->
+                            Refinement.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                    }
+            }
+        return when (val issued = continuations.issue(proof)) {
+            is Refinement.Refined -> Refinement.Refined(SourceReadContinuationState.Available(issued.value))
+            is Refinement.Rejected ->
+                when (issued.failure) {
+                    SourceReadCursorRetentionFailure.CAPACITY_EXCEEDED -> {
+                        limitations += SourceReadLimitation.RETENTION_LIMIT_REACHED
+                        Refinement.Refined(SourceReadContinuationState.Unavailable)
+                    }
+                    SourceReadCursorRetentionFailure.OWNER_UNAVAILABLE ->
+                        Refinement.Rejected(SourceReadRejection.CONTINUATION_UNAVAILABLE)
+                    SourceReadCursorRetentionFailure.INVALID_STATE ->
+                        Refinement.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                }
+        }
+    }
 }
 
 private fun IntellijSourceEntityCursor.admits(capture: IntellijSelectedSourceCapture): Boolean =
-    expectedSnapshot == null ||
-        (expectedSnapshot == capture.snapshot && expectedRegionFingerprint == capture.regionSelector.fingerprint.value)
+    when (val current = evidence) {
+        SourceReadEntityCursor.First -> true
+        is SourceReadEntityCursor.Continued -> current.proof.matches(capture.regionSelector)
+    }
 
 private fun SourceSelector.regionKind(): SourceRegionKind? =
     when (this) {
@@ -575,9 +585,15 @@ private fun IntellijSourceReadRejection.publicReason(): SourceReadRejection =
         IntellijSourceReadRejection.CONTRACT_VIOLATION -> SourceReadRejection.CONTRACT_VIOLATION
     }
 
-private fun IntellijSourceContinuationRejection.publicReason(): SourceReadRejection =
-    when (this) {
-        IntellijSourceContinuationRejection.UNAVAILABLE -> SourceReadRejection.CONTINUATION_UNAVAILABLE
-        IntellijSourceContinuationRejection.CONTEXT_MISMATCH -> SourceReadRejection.SOURCE_SNAPSHOT_MISMATCH
-        IntellijSourceContinuationRejection.REQUEST_MISMATCH -> SourceReadRejection.CONTINUATION_REQUEST_MISMATCH
-    }
+private fun IntellijSourceEntityPage.admittedBy(snapshot: SourceSnapshot, region: SourceSelector): Boolean {
+    if (knownMinimumEntityCount < entities.size) return false
+    if (entities.any { !it.selector.admittedBy(snapshot, region) }) return false
+    if (nextOrdinal == null && SourceReadLimitation.ENTITY_LIMIT_REACHED in limitations) return false
+    val frontier = traversal ?: return true
+    return frontier.region.snapshot == snapshot && frontier.region.fingerprint == region.fingerprint
+}
+
+private fun SourceSelector.admittedBy(snapshot: SourceSnapshot, region: SourceSelector): Boolean =
+    this.snapshot == snapshot &&
+        range.startInclusive >= region.range.startInclusive &&
+        range.endExclusive <= region.range.endExclusive

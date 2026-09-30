@@ -57,6 +57,57 @@ class DiagnosticProgressWireTest {
     }
 
     @Test
+    fun `retention refusal preserves a closed cause and refuses a contradictory native successor`() {
+        val cause = io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument.CAPACITY_EXCEEDED
+        val qualification =
+            DiagnosticCheckQualification.create(
+                    DiagnosticKnownCountDocument.parse(4).refined(),
+                    true,
+                    emptyList(),
+                    emptyList(),
+                    retentionFailure = cause,
+                )
+                .refined()
+        val encoded =
+            CanonicalReadSerializers.diagnosticCheckQualification.encode(qualification, WireValueRole.QUALIFICATION)
+                as WireValueEncoding.Encoded
+        assertEquals("capacity_exceeded", encoded.value.jsonObject.getValue("retentionFailure").jsonPrimitive.content)
+        assertFalse(encoded.value.jsonObject.containsKey("continuation"))
+        assertEquals(
+            WireDecoding.Decoded(qualification),
+            CanonicalReadSerializers.diagnosticCheckQualification.decode(encoded.value, WireValueRole.QUALIFICATION),
+        )
+        assertEquals(
+            Refinement.Rejected(
+                io.github.amichne.kast.protocol.contract.DiagnosticCheckQualificationFailure
+                    .CONTINUATION_RETENTION_CONFLICT
+            ),
+            DiagnosticCheckQualification.create(
+                DiagnosticKnownCountDocument.parse(4).refined(),
+                true,
+                emptyList(),
+                emptyList(),
+                ProtocolText.parse("diagnostic:v1:native").refined(),
+                cause,
+            ),
+        )
+        val output = ProtocolText.parse("diagnostic-output:v1:00000000-0000-0000-0000-000000000001").refined()
+        assertEquals(
+            cause,
+            DiagnosticCheckQualification.create(
+                    DiagnosticKnownCountDocument.parse(4).refined(),
+                    true,
+                    emptyList(),
+                    emptyList(),
+                    output,
+                    cause,
+                )
+                .refined()
+                .retentionFailure,
+        )
+    }
+
+    @Test
     fun `every diagnostic rejection has its own exact finite wire name`() {
         for (reason in DiagnosticCheckRejection.entries) {
             val encoded =

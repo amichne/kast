@@ -218,6 +218,11 @@ class TraversalServiceTest {
                 TraversalQualification.Resumable::class.java,
                 stopped.qualification,
             )
+        assertEquals(
+            io.github.amichne.kast.relation.contract.RelationOmissionMeasurement.UnmeasuredOnPage,
+            stopped.page.partialExpansions.single().omissions.single().measurement,
+        )
+        assertTrue(stoppedQualification.continuation.checkpoint.retainedOmissions.isEmpty())
         val resumed =
             TraversalPlan.resume(
                     a,
@@ -227,22 +232,23 @@ class TraversalServiceTest {
                 )
                 .refined()
 
-        assertInstanceOf(
-            TraversalResult.Complete::class.java,
-            runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(resumed) },
-        )
-
-        val resumedPosition =
+        val exhausted =
             assertInstanceOf(
-                RelationReadPosition.Resume::class.java,
-                requests.last().position,
+                TraversalResult.Complete::class.java,
+                runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(resumed) },
             )
-        assertEquals(
-            stoppedQualification.continuation.checkpoint.let {
-                (it.pending as TraversalPendingState.Active).read.relationContinuation.fingerprint
-            },
-            resumedPosition.continuation.fingerprint,
-        )
+        assertTrue(exhausted.page.inheritedOmissions.isEmpty())
+
+        assertExactContinuation(stoppedQualification, requests.last().position)
+    }
+
+    private fun assertExactContinuation(
+        qualification: TraversalQualification.Resumable,
+        position: RelationReadPosition,
+    ) {
+        val resumedPosition = assertInstanceOf(RelationReadPosition.Resume::class.java, position)
+        val pending = qualification.continuation.checkpoint.pending as TraversalPendingState.Active
+        assertEquals(pending.read.relationContinuation.fingerprint, resumedPosition.continuation.fingerprint)
     }
 
     @Test

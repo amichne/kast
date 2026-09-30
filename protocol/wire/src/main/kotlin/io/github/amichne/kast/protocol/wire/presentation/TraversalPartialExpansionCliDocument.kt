@@ -11,6 +11,8 @@ data class TraversalPartialExpansionCliDocument(
     val depth: Int,
     val limitations: List<String>,
     val remainder: TraversalExpansionRemainderCliDocument,
+    @SerialName("known_minimum") val knownMinimum: Int,
+    val omissions: List<RelationOmissionCliDocument>,
     val scope: TraversalExpansionScopeCliDocument = TraversalExpansionScopeCliDocument.PAGE,
 )
 
@@ -35,4 +37,6 @@ fun TraversalPartialExpansionDocument.toCliDocument() =
                 TraversalExpansionRemainderCliDocument.CONTINUATION_RETAINED
             TraversalExpansionRemainderDocument.NOT_EXPLORED -> TraversalExpansionRemainderCliDocument.NOT_EXPLORED
         },
+        knownMinimum.value,
+        omissions.values.map { it.toCliDocument() },
     )

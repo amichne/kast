@@ -23,6 +23,11 @@ sealed interface QueryQualifiedProgressDocument {
     @Serializable
     @SerialName("terminal_incomplete")
     data class TerminalIncomplete(val reason: QueryTerminalReasonDocument) : QueryQualifiedProgressDocument
+
+    /** Useful proven prefix, with original coverage retained and no usable retained successor. */
+    @Serializable
+    @SerialName("retention_unavailable")
+    data class RetentionUnavailable(val upstream: QueryPreparedCoverageDocument) : QueryQualifiedProgressDocument
 }
 
 /** Retained output permits draining proven facts; it cannot establish upstream resumability. */
@@ -59,7 +64,8 @@ val QueryQualifiedProgressDocument.continuationToken: QueryExecutionContinuation
     get() =
         when (this) {
             is QueryQualifiedProgressDocument.Resumable -> checkpoint.token
-            is QueryQualifiedProgressDocument.TerminalIncomplete -> null
+            is QueryQualifiedProgressDocument.TerminalIncomplete,
+            is QueryQualifiedProgressDocument.RetentionUnavailable -> null
         }
 
 val QueryQualifiedProgressDocument.terminalReason: QueryTerminalReasonDocument?
@@ -67,4 +73,6 @@ val QueryQualifiedProgressDocument.terminalReason: QueryTerminalReasonDocument?
         when (this) {
             is QueryQualifiedProgressDocument.Resumable -> null
             is QueryQualifiedProgressDocument.TerminalIncomplete -> reason
+            is QueryQualifiedProgressDocument.RetentionUnavailable ->
+                QueryTerminalReasonDocument.CHECKPOINT_CAPACITY_EXCEEDED
         }

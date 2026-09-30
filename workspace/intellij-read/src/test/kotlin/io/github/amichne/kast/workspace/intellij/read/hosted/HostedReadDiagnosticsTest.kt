@@ -10,6 +10,44 @@ import org.junit.jupiter.api.Test
 
 class HostedReadDiagnosticsTest {
     @Test
+    fun `native phase entries are bounded and durations survive completion or rejection`() {
+        for (outcome in
+            listOf(HostedDiagnosticOutcome.Completed, HostedDiagnosticOutcome.Rejected(HostedQueryFailure.CANCELLED))) {
+            var now = 0L
+            val entries = mutableListOf<HostedNativePhaseEntry>()
+            val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+            val diagnostic = HostedReadDiagnostics({ now }, publishPhase = entries::add, publish = receipts::add)
+            diagnostic.phase(IntellijReadPhase.DECLARATION_SCAN)
+            now = 5L
+            diagnostic.phase(IntellijReadPhase.EXACT_REFINEMENT)
+            now = 12L
+            diagnostic.phase(IntellijReadPhase.DECLARATION_SCAN)
+            now = 15L
+            diagnostic.finish(outcome)
+            diagnostic.phase(IntellijReadPhase.RETENTION)
+            diagnostic.finish(outcome)
+            assertEquals(
+                listOf(IntellijReadPhase.DECLARATION_SCAN, IntellijReadPhase.EXACT_REFINEMENT),
+                entries.map { it.phase },
+            )
+            assertEquals(listOf(0L, 5L), entries.map { it.enteredNanos })
+            assertEquals(1, receipts.size)
+            assertEquals(
+                listOf(
+                    HostedNativePhaseDuration(IntellijReadPhase.DECLARATION_SCAN, 8),
+                    HostedNativePhaseDuration(IntellijReadPhase.EXACT_REFINEMENT, 7),
+                ),
+                receipts.single().nativePhaseDurations,
+            )
+            assertEquals(
+                HostedNativePhaseState.Entered(IntellijReadPhase.DECLARATION_SCAN),
+                receipts.single().nativePhase,
+            )
+            assertEquals(outcome, receipts.single().outcome)
+        }
+    }
+
+    @Test
     fun `semantic evaluation classification survives transaction completion and typed receipt encoding`() =
         kotlinx.coroutines.test.runTest {
             for (expected in
@@ -21,7 +59,11 @@ class HostedReadDiagnosticsTest {
                 val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
                 val executor =
                     HostedQueryExecutor(backgroundScope) { limits ->
-                        HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000 }, limits, receipts::add)
+                        HostedReadDiagnostics(
+                            { testScheduler.currentTime * 1_000_000 },
+                            limits,
+                            publish = receipts::add,
+                        )
                     }
                 val result =
                     executor.execute(executor.endpoint, outcome = { HostedDiagnosticOutcome.Evaluated(expected) }) {
@@ -35,7 +77,7 @@ class HostedReadDiagnosticsTest {
                 val document =
                     kotlinx.serialization.json.Json.parseToJsonElement(receipts.single().encode())
                         as kotlinx.serialization.json.JsonObject
-                assertEquals(kotlinx.serialization.json.JsonPrimitive(4), document.getValue("schemaVersion"))
+                assertEquals(kotlinx.serialization.json.JsonPrimitive(5), document.getValue("schemaVersion"))
                 val outcome = document.getValue("outcome") as kotlinx.serialization.json.JsonObject
                 assertEquals(setOf("type", "outcome"), outcome.keys)
                 assertEquals(kotlinx.serialization.json.JsonPrimitive("evaluated"), outcome.getValue("type"))
@@ -56,7 +98,7 @@ class HostedReadDiagnosticsTest {
                 ) as io.github.amichne.kast.kernel.Refinement.Refined)
                 .value
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
-        val diagnostic = HostedReadDiagnostics({ 0L }, limits, receipts::add)
+        val diagnostic = HostedReadDiagnostics({ 0L }, limits, publish = receipts::add)
         val failure = IllegalStateException("secret source payload")
         failure.stackTrace =
             arrayOf(
@@ -90,7 +132,7 @@ class HostedReadDiagnosticsTest {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val executor =
             HostedQueryExecutor(backgroundScope) { policy ->
-                HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000 }, policy, receipts::add)
+                HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000 }, policy, publish = receipts::add)
             }
         val result =
             executor.execute(executor.endpoint, limits) {
@@ -163,6 +205,89 @@ class HostedReadDiagnosticsTest {
         assertEquals(259, receipts.single().counters.single().count)
         executor.retire()
         executor.drain()
+    }
+
+    @Test
+    fun `source and diagnostic retained owners keep independent snapshots and high water marks`() {
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val diagnostic = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+        fun value(raw: Long) =
+            (IntellijReadGaugeValue.parse(raw) as io.github.amichne.kast.kernel.Refinement.Refined).value
+        val owners =
+            listOf(
+                listOf(
+                    IntellijReadGauge.SOURCE_RETAINED_BYTES,
+                    IntellijReadGauge.SOURCE_RETAINED_BYTES_HIGH_WATER,
+                    IntellijReadGauge.SOURCE_RETAINED_ENTRIES,
+                ),
+                listOf(
+                    IntellijReadGauge.DIAGNOSTIC_RETAINED_BYTES,
+                    IntellijReadGauge.DIAGNOSTIC_RETAINED_BYTES_HIGH_WATER,
+                    IntellijReadGauge.DIAGNOSTIC_RETAINED_ENTRIES,
+                ),
+            )
+        for (gauges in owners) {
+            diagnostic.measure(gauges[0], value(80))
+            diagnostic.measure(gauges[1], value(80))
+            diagnostic.measure(gauges[0], value(20))
+            diagnostic.measure(gauges[1], value(20))
+            diagnostic.measure(gauges[2], value(2))
+        }
+        diagnostic.finish(HostedDiagnosticOutcome.Completed)
+        assertEquals(
+            owners.flatMap {
+                listOf(
+                    HostedNativeGauge(it[0], value(20)),
+                    HostedNativeGauge(it[1], value(80)),
+                    HostedNativeGauge(it[2], value(2)),
+                )
+            },
+            receipts.single().gauges,
+        )
+    }
+
+    @Test
+    fun `retention snapshots use latest values and high water uses maximum without summing`() {
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val diagnostic = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+        fun measurement(value: Long) =
+            (IntellijReadGaugeValue.parse(value) as io.github.amichne.kast.kernel.Refinement.Refined).value
+        diagnostic.measure(IntellijReadGauge.QUERY_RETAINED_BYTES, measurement(80))
+        diagnostic.measure(IntellijReadGauge.QUERY_RETAINED_BYTES_HIGH_WATER, measurement(80))
+        diagnostic.measure(IntellijReadGauge.QUERY_RETAINED_BYTES, measurement(20))
+        diagnostic.measure(IntellijReadGauge.QUERY_RETAINED_BYTES_HIGH_WATER, measurement(20))
+        diagnostic.measure(IntellijReadGauge.QUERY_RETAINED_ENTRIES, measurement(2))
+        diagnostic.finish(HostedDiagnosticOutcome.Completed)
+        diagnostic.measure(IntellijReadGauge.QUERY_RETAINED_BYTES, measurement(99))
+        assertEquals(
+            listOf(
+                HostedNativeGauge(IntellijReadGauge.QUERY_RETAINED_BYTES, measurement(20)),
+                HostedNativeGauge(IntellijReadGauge.QUERY_RETAINED_BYTES_HIGH_WATER, measurement(80)),
+                HostedNativeGauge(IntellijReadGauge.QUERY_RETAINED_ENTRIES, measurement(2)),
+            ),
+            receipts.single().gauges,
+        )
+        val encoded =
+            kotlinx.serialization.json.Json.parseToJsonElement(receipts.single().encode())
+                as kotlinx.serialization.json.JsonObject
+        val gauges = encoded.getValue("gauges") as kotlinx.serialization.json.JsonArray
+        assertEquals(3, gauges.size)
+        for ((index, expected) in
+            listOf(
+                    "QUERY_RETAINED_BYTES" to 20L,
+                    "QUERY_RETAINED_BYTES_HIGH_WATER" to 80L,
+                    "QUERY_RETAINED_ENTRIES" to 2L,
+                )
+                .withIndex()) {
+            val gauge = gauges[index] as kotlinx.serialization.json.JsonObject
+            assertEquals(setOf("gauge", "value"), gauge.keys)
+            assertEquals(kotlinx.serialization.json.JsonPrimitive(expected.first), gauge.getValue("gauge"))
+            assertEquals(kotlinx.serialization.json.JsonPrimitive(expected.second), gauge.getValue("value"))
+        }
+        assertEquals(
+            io.github.amichne.kast.kernel.Refinement.Rejected(IntellijReadGaugeFailure.NEGATIVE_MEASUREMENT),
+            IntellijReadGaugeValue.parse(-1),
+        )
     }
 
     @Test

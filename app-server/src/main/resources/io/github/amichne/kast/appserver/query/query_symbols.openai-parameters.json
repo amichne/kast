@@ -210,7 +210,7 @@
         "scope"
       ],
       "additionalProperties": false,
-      "description": "Enumerate declarations under existing bounded execution. All does not mean unlimited work or guaranteed complete coverage."
+      "description": "Enumerate the four supported Kotlin declaration families in admitted source files, ordered by canonical file identity and source position (KOTLIN_FILE_SOURCE_V2). Bounded pages preserve undiscovered files and source positions. Resume the exact continuation to advance the same semantic universe; discovery observations report exhaustion, retained progress, or a precise terminal cause."
     },
     "ReferenceSource": {
       "type": "object",
@@ -263,13 +263,19 @@
           "$ref": "#/$defs/SymbolsOutput"
         },
         {
+          "$ref": "#/$defs/OccurrencesOutput"
+        },
+        {
+          "$ref": "#/$defs/TraversalRecordsOutput"
+        },
+        {
           "$ref": "#/$defs/BindingRowsOutput"
         },
         {
           "type": "null"
         }
       ],
-      "description": "Present retained symbols or typed binding rows without rerunning stages. Omission or null selects symbol fields and rejects a retained binding-row result."
+      "description": "Present retained symbols, compiler-confirmed occurrences, depth-bearing traversal records or typed binding rows without rerunning stages. Omission or null selects symbol fields and rejects a retained occurrence or binding-row result."
     },
     "SymbolsOutput": {
       "type": "object",

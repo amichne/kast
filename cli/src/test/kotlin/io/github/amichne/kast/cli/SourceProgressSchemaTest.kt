@@ -43,10 +43,7 @@ class SourceProgressSchemaTest {
                 val qualification =
                     SourceReadQualification.create(
                             SourceEntityCountDocument.parse(0).proven(),
-                            listOf(
-                                SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED,
-                                SourceReadLimitationDocument.WORK_LIMIT_REACHED,
-                            ),
+                            progress.fixtureLimitations(),
                             progress,
                         )
                         .proven()
@@ -81,7 +78,8 @@ class SourceProgressSchemaTest {
                 assertEquals(JsonPrimitive("available"), cursor["type"])
                 assertEquals(JsonPrimitive(progress.checkpoint.token.value), cursor["continuation"])
             }
-            is SourceQualifiedProgressDocument.TerminalIncomplete ->
+            is SourceQualifiedProgressDocument.TerminalIncomplete,
+            is SourceQualifiedProgressDocument.RetentionUnavailable ->
                 assertEquals(JsonPrimitive("unavailable"), cursor["type"])
         }
     }
@@ -100,6 +98,7 @@ class SourceProgressSchemaTest {
                 SourceTerminalReasonDocument.entries.map(SourcePreparedCoverageDocument::TerminalIncomplete)
         return listOf(upstream) +
             terminals +
+            coverage.map(SourceQualifiedProgressDocument::RetentionUnavailable) +
             coverage.map {
                 SourceQualifiedProgressDocument.Resumable(
                     SourceCheckpointDocument.RetainedOutput(
@@ -109,6 +108,30 @@ class SourceProgressSchemaTest {
                     ReadResumeActionDocument.RESUME,
                 )
             }
+    }
+
+    private fun SourceQualifiedProgressDocument.fixtureLimitations(): List<SourceReadLimitationDocument> {
+        val baseline =
+            listOf(
+                SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED,
+                SourceReadLimitationDocument.WORK_LIMIT_REACHED,
+            )
+        val needsRetention =
+            when (this) {
+                is SourceQualifiedProgressDocument.RetentionUnavailable -> true
+                is SourceQualifiedProgressDocument.TerminalIncomplete ->
+                    reason == SourceTerminalReasonDocument.RETENTION_CAPACITY_EXCEEDED
+                is SourceQualifiedProgressDocument.Resumable ->
+                    when (val cursor = checkpoint) {
+                        is SourceCheckpointDocument.Upstream -> false
+                        is SourceCheckpointDocument.RetainedOutput ->
+                            (cursor.upstream as? SourcePreparedCoverageDocument.TerminalIncomplete)?.reason ==
+                                SourceTerminalReasonDocument.RETENTION_CAPACITY_EXCEEDED
+                    }
+            }
+        return if (needsRetention)
+            (baseline + SourceReadLimitationDocument.RETENTION_LIMIT_REACHED).sortedBy { it.ordinal }
+        else baseline
     }
 
     private fun <Value> Refinement<Value, *>.proven(): Value = (this as Refinement.Refined).value

@@ -37,7 +37,7 @@ class HostedSourceResponseTest {
                     fixture.outcome.evidence.copy(payload = fixture.outcome.evidence.payload.copy(format = format))
             )
         val originalRequest = fixture.request.copy(format = format)
-        val outputs = hostedSourceOutputPages(ReadLimits.Default)
+        val outputs = HostedSourceStateStore(ReadLimits.Default)
         val encoded = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.sourceRead, original)
         assertTrue(encoded is HostedResponse.Canonical<*, *, *>)
         val maximum = ReturnedByteLimit.parse(encoded.document.toByteArray().size.toLong() - 1).sourceFixtureValue()
@@ -48,7 +48,7 @@ class HostedSourceResponseTest {
                 ResultLimit.parse(6).sourceFixtureValue(),
                 maximum,
             ) { remaining ->
-                outputs.issue(originalRequest, fixture.owner.authority, remaining)
+                outputs.retainAcceptedFixtureSuffix(originalRequest, fixture.owner.authority, remaining)
             }
         assertTrue(response is HostedResponse.Canonical<*, *, *>, "Expected fitting source prefix, got $response")
         assertTrue(response.document.toByteArray().size <= maximum.value)
@@ -61,14 +61,14 @@ class HostedSourceResponseTest {
         assertTrue(qualification.limitations.containsAll(original.qualification.limitations))
         val token = (qualification.continuation as SourceReadContinuationStateDocument.Available).continuation
         val request = originalRequest.copy(page = SourceReadPageDocument.Continue(token))
-        val suffix = outputs.restore(token, request, fixture.owner.authority) as OperationOutcome.Qualified
+        val suffix = outputs.readFixtureSuffix(token, request, fixture.owner.authority) as OperationOutcome.Qualified
         assertEquals(
             original.evidence.payload.entities.values,
             result.entities.values + suffix.evidence.payload.entities.values,
         )
         assertEquals(original.qualification, suffix.qualification)
         assertEquals(original.evidence.payload.text, result.text)
-        assertEquals(suffix, outputs.restore(token, request, fixture.owner.authority))
+        assertEquals(suffix, outputs.readFixtureSuffix(token, request, fixture.owner.authority))
     }
 
     @Test

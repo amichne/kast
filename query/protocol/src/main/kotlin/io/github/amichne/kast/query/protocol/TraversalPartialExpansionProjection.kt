@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalExpansionRemainderDocument
 import io.github.amichne.kast.protocol.contract.TraversalPartialExpansionDocument
@@ -12,36 +13,42 @@ import io.github.amichne.kast.traversal.contract.TraversalExpansionRemainder
 internal fun List<QueryWalkPartialExpansion>.protocolDocuments(
     authority: QueryReferenceAuthority
 ): BoundedProtocolList<TraversalPartialExpansionDocument>? {
-    val documents = mutableListOf<TraversalPartialExpansionDocument>()
-    for (partial in this) {
-        val reference =
-            when (val issued = authority.issueEndpoint(partial.entry.node.endpoint)) {
-                is RelationEndpointIssuance.Issued -> issued.selector
-                is RelationEndpointIssuance.Rejected -> return null
-            }
-        val depth =
-            when (val admitted = TraversalDepthDocument.parse(partial.entry.depth.value)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return null
-            }
-        val document =
-            TraversalPartialExpansionDocument.create(
-                reference,
-                depth,
-                partial.limitations.map(RelationLimitation::protocolDocument),
-                when (partial.remainder) {
-                    TraversalExpansionRemainder.CONTINUATION_RETAINED ->
-                        TraversalExpansionRemainderDocument.CONTINUATION_RETAINED
-                    TraversalExpansionRemainder.NOT_EXPLORED -> TraversalExpansionRemainderDocument.NOT_EXPLORED
-                },
-            )
-        when (document) {
-            is Refinement.Refined -> documents += document.value
-            is Refinement.Rejected -> return null
+    val documents = map { partial -> partial.protocolDocument(authority) ?: return null }
+    return BoundedProtocolList.create(documents).refinedExpansionOrNull()
+}
+
+private fun QueryWalkPartialExpansion.protocolDocument(
+    authority: QueryReferenceAuthority
+): TraversalPartialExpansionDocument? {
+    val reference =
+        when (val issued = authority.issueEndpoint(entry.node.endpoint)) {
+            is RelationEndpointIssuance.Issued -> issued.selector
+            is RelationEndpointIssuance.Rejected -> return null
         }
+    val depth = TraversalDepthDocument.parse(entry.depth.value).refinedExpansionOrNull() ?: return null
+    val minimum = QueryKnownMinimum.parse(knownMinimum.value).refinedExpansionOrNull() ?: return null
+    val omissions =
+        BoundedProtocolList.create(omissions.map { it.protocolDocument() ?: return null }).refinedExpansionOrNull()
+            ?: return null
+    return TraversalPartialExpansionDocument.create(
+            reference,
+            depth,
+            limitations.map(RelationLimitation::protocolDocument),
+            remainder.protocolDocument(),
+            minimum,
+            omissions,
+        )
+        .refinedExpansionOrNull()
+}
+
+private fun TraversalExpansionRemainder.protocolDocument(): TraversalExpansionRemainderDocument =
+    when (this) {
+        TraversalExpansionRemainder.CONTINUATION_RETAINED -> TraversalExpansionRemainderDocument.CONTINUATION_RETAINED
+        TraversalExpansionRemainder.NOT_EXPLORED -> TraversalExpansionRemainderDocument.NOT_EXPLORED
     }
-    return when (val bounded = BoundedProtocolList.create(documents)) {
-        is Refinement.Refined -> bounded.value
+
+private fun <Value, Failure> Refinement<Value, Failure>.refinedExpansionOrNull(): Value? =
+    when (this) {
+        is Refinement.Refined -> value
         is Refinement.Rejected -> null
     }
-}

@@ -1,0 +1,6014 @@
+{
+  "target": "fixture.reference.dense.DenseReferenceTarget",
+  "referenceOccurrences": [
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 69,
+      "end": 89,
+      "context": "IMPORT"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 138,
+      "end": 158,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 190,
+      "end": 210,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 242,
+      "end": 262,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 294,
+      "end": 314,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 346,
+      "end": 366,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 398,
+      "end": 418,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 450,
+      "end": 470,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 502,
+      "end": 522,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 554,
+      "end": 574,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 606,
+      "end": 626,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 658,
+      "end": 678,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 710,
+      "end": 730,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 762,
+      "end": 782,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 814,
+      "end": 834,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 866,
+      "end": 886,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 918,
+      "end": 938,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 970,
+      "end": 990,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1022,
+      "end": 1042,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1074,
+      "end": 1094,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1126,
+      "end": 1146,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1178,
+      "end": 1198,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1230,
+      "end": 1250,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1282,
+      "end": 1302,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1334,
+      "end": 1354,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1386,
+      "end": 1406,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1438,
+      "end": 1458,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1490,
+      "end": 1510,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1542,
+      "end": 1562,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1594,
+      "end": 1614,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1646,
+      "end": 1666,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1698,
+      "end": 1718,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1750,
+      "end": 1770,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1802,
+      "end": 1822,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1854,
+      "end": 1874,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1906,
+      "end": 1926,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 1958,
+      "end": 1978,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2010,
+      "end": 2030,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2062,
+      "end": 2082,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2114,
+      "end": 2134,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2166,
+      "end": 2186,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2218,
+      "end": 2238,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2270,
+      "end": 2290,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2322,
+      "end": 2342,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2374,
+      "end": 2394,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2426,
+      "end": 2446,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2478,
+      "end": 2498,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2530,
+      "end": 2550,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2582,
+      "end": 2602,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2634,
+      "end": 2654,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2686,
+      "end": 2706,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2738,
+      "end": 2758,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2790,
+      "end": 2810,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2842,
+      "end": 2862,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2894,
+      "end": 2914,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2946,
+      "end": 2966,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 2998,
+      "end": 3018,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3050,
+      "end": 3070,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3102,
+      "end": 3122,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3154,
+      "end": 3174,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3206,
+      "end": 3226,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3258,
+      "end": 3278,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3310,
+      "end": 3330,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3362,
+      "end": 3382,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3414,
+      "end": 3434,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3466,
+      "end": 3486,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3518,
+      "end": 3538,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3570,
+      "end": 3590,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3622,
+      "end": 3642,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3674,
+      "end": 3694,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3726,
+      "end": 3746,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3778,
+      "end": 3798,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3830,
+      "end": 3850,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3882,
+      "end": 3902,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3934,
+      "end": 3954,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 3986,
+      "end": 4006,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4038,
+      "end": 4058,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4090,
+      "end": 4110,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4142,
+      "end": 4162,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4194,
+      "end": 4214,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4246,
+      "end": 4266,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4298,
+      "end": 4318,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4350,
+      "end": 4370,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4402,
+      "end": 4422,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4454,
+      "end": 4474,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4506,
+      "end": 4526,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4558,
+      "end": 4578,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4610,
+      "end": 4630,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4662,
+      "end": 4682,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4714,
+      "end": 4734,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4766,
+      "end": 4786,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4818,
+      "end": 4838,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4870,
+      "end": 4890,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4922,
+      "end": 4942,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 4974,
+      "end": 4994,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5026,
+      "end": 5046,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5078,
+      "end": 5098,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5130,
+      "end": 5150,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5182,
+      "end": 5202,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5234,
+      "end": 5254,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5286,
+      "end": 5306,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5338,
+      "end": 5358,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5390,
+      "end": 5410,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5442,
+      "end": 5462,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5494,
+      "end": 5514,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5546,
+      "end": 5566,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5598,
+      "end": 5618,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5650,
+      "end": 5670,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5702,
+      "end": 5722,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5754,
+      "end": 5774,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5806,
+      "end": 5826,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5858,
+      "end": 5878,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5910,
+      "end": 5930,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 5962,
+      "end": 5982,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6014,
+      "end": 6034,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6066,
+      "end": 6086,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6118,
+      "end": 6138,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6170,
+      "end": 6190,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6222,
+      "end": 6242,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6274,
+      "end": 6294,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6326,
+      "end": 6346,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6378,
+      "end": 6398,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6430,
+      "end": 6450,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6482,
+      "end": 6502,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6534,
+      "end": 6554,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6586,
+      "end": 6606,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6638,
+      "end": 6658,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6690,
+      "end": 6710,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6742,
+      "end": 6762,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6794,
+      "end": 6814,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6846,
+      "end": 6866,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6898,
+      "end": 6918,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 6950,
+      "end": 6970,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7002,
+      "end": 7022,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7054,
+      "end": 7074,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7106,
+      "end": 7126,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7158,
+      "end": 7178,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7210,
+      "end": 7230,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7262,
+      "end": 7282,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7314,
+      "end": 7334,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7366,
+      "end": 7386,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7418,
+      "end": 7438,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7470,
+      "end": 7490,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7522,
+      "end": 7542,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7574,
+      "end": 7594,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7626,
+      "end": 7646,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7678,
+      "end": 7698,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7730,
+      "end": 7750,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7782,
+      "end": 7802,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7834,
+      "end": 7854,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7886,
+      "end": 7906,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7938,
+      "end": 7958,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 7990,
+      "end": 8010,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8042,
+      "end": 8062,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8094,
+      "end": 8114,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8146,
+      "end": 8166,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8198,
+      "end": 8218,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8250,
+      "end": 8270,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8302,
+      "end": 8322,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8354,
+      "end": 8374,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8406,
+      "end": 8426,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8458,
+      "end": 8478,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8510,
+      "end": 8530,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8562,
+      "end": 8582,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8614,
+      "end": 8634,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8666,
+      "end": 8686,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8718,
+      "end": 8738,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8770,
+      "end": 8790,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8822,
+      "end": 8842,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8874,
+      "end": 8894,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8926,
+      "end": 8946,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 8978,
+      "end": 8998,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9030,
+      "end": 9050,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9082,
+      "end": 9102,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9134,
+      "end": 9154,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9186,
+      "end": 9206,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9238,
+      "end": 9258,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9290,
+      "end": 9310,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9342,
+      "end": 9362,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9394,
+      "end": 9414,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9446,
+      "end": 9466,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9498,
+      "end": 9518,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9550,
+      "end": 9570,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9602,
+      "end": 9622,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9654,
+      "end": 9674,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9706,
+      "end": 9726,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9758,
+      "end": 9778,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9810,
+      "end": 9830,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9862,
+      "end": 9882,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9914,
+      "end": 9934,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 9966,
+      "end": 9986,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10018,
+      "end": 10038,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10070,
+      "end": 10090,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10122,
+      "end": 10142,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10174,
+      "end": 10194,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10226,
+      "end": 10246,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10278,
+      "end": 10298,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10330,
+      "end": 10350,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10382,
+      "end": 10402,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10434,
+      "end": 10454,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10486,
+      "end": 10506,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10538,
+      "end": 10558,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10590,
+      "end": 10610,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10642,
+      "end": 10662,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10694,
+      "end": 10714,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10746,
+      "end": 10766,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10798,
+      "end": 10818,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10850,
+      "end": 10870,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10902,
+      "end": 10922,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 10954,
+      "end": 10974,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11006,
+      "end": 11026,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11058,
+      "end": 11078,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11110,
+      "end": 11130,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11162,
+      "end": 11182,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11214,
+      "end": 11234,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11266,
+      "end": 11286,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11318,
+      "end": 11338,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11370,
+      "end": 11390,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11422,
+      "end": 11442,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11474,
+      "end": 11494,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11526,
+      "end": 11546,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11578,
+      "end": 11598,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11630,
+      "end": 11650,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11682,
+      "end": 11702,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11734,
+      "end": 11754,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11786,
+      "end": 11806,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11838,
+      "end": 11858,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11890,
+      "end": 11910,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11942,
+      "end": 11962,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 11994,
+      "end": 12014,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12046,
+      "end": 12066,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12098,
+      "end": 12118,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12150,
+      "end": 12170,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12202,
+      "end": 12222,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12254,
+      "end": 12274,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12306,
+      "end": 12326,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12358,
+      "end": 12378,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12410,
+      "end": 12430,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12462,
+      "end": 12482,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12514,
+      "end": 12534,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12566,
+      "end": 12586,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12618,
+      "end": 12638,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12670,
+      "end": 12690,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12722,
+      "end": 12742,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12774,
+      "end": 12794,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12826,
+      "end": 12846,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12878,
+      "end": 12898,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12930,
+      "end": 12950,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 12982,
+      "end": 13002,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13034,
+      "end": 13054,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13086,
+      "end": 13106,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13138,
+      "end": 13158,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13190,
+      "end": 13210,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13242,
+      "end": 13262,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13294,
+      "end": 13314,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13346,
+      "end": 13366,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13398,
+      "end": 13418,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13450,
+      "end": 13470,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13502,
+      "end": 13522,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13554,
+      "end": 13574,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13606,
+      "end": 13626,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13658,
+      "end": 13678,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13710,
+      "end": 13730,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13762,
+      "end": 13782,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13814,
+      "end": 13834,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13866,
+      "end": 13886,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13918,
+      "end": 13938,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 13970,
+      "end": 13990,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14022,
+      "end": 14042,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14074,
+      "end": 14094,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14126,
+      "end": 14146,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14178,
+      "end": 14198,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14230,
+      "end": 14250,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14282,
+      "end": 14302,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14334,
+      "end": 14354,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14386,
+      "end": 14406,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14438,
+      "end": 14458,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14490,
+      "end": 14510,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14542,
+      "end": 14562,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14594,
+      "end": 14614,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14646,
+      "end": 14666,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14698,
+      "end": 14718,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14750,
+      "end": 14770,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14802,
+      "end": 14822,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14854,
+      "end": 14874,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14906,
+      "end": 14926,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 14958,
+      "end": 14978,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15010,
+      "end": 15030,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15062,
+      "end": 15082,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15114,
+      "end": 15134,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15166,
+      "end": 15186,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15218,
+      "end": 15238,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15270,
+      "end": 15290,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15322,
+      "end": 15342,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15374,
+      "end": 15394,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15426,
+      "end": 15446,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15478,
+      "end": 15498,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15530,
+      "end": 15550,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15582,
+      "end": 15602,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15634,
+      "end": 15654,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15686,
+      "end": 15706,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15738,
+      "end": 15758,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15790,
+      "end": 15810,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15842,
+      "end": 15862,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15894,
+      "end": 15914,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15946,
+      "end": 15966,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 15998,
+      "end": 16018,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16050,
+      "end": 16070,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16102,
+      "end": 16122,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16154,
+      "end": 16174,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16206,
+      "end": 16226,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16258,
+      "end": 16278,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16310,
+      "end": 16330,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16362,
+      "end": 16382,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16414,
+      "end": 16434,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16466,
+      "end": 16486,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16518,
+      "end": 16538,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16570,
+      "end": 16590,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16622,
+      "end": 16642,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16674,
+      "end": 16694,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16726,
+      "end": 16746,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16778,
+      "end": 16798,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16830,
+      "end": 16850,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16882,
+      "end": 16902,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16934,
+      "end": 16954,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 16986,
+      "end": 17006,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17038,
+      "end": 17058,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17090,
+      "end": 17110,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17142,
+      "end": 17162,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17194,
+      "end": 17214,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17246,
+      "end": 17266,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17298,
+      "end": 17318,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17350,
+      "end": 17370,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17402,
+      "end": 17422,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17454,
+      "end": 17474,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17506,
+      "end": 17526,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17558,
+      "end": 17578,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17610,
+      "end": 17630,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17662,
+      "end": 17682,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17714,
+      "end": 17734,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17766,
+      "end": 17786,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17818,
+      "end": 17838,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17870,
+      "end": 17890,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17922,
+      "end": 17942,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 17974,
+      "end": 17994,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18026,
+      "end": 18046,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18078,
+      "end": 18098,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18130,
+      "end": 18150,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18182,
+      "end": 18202,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18234,
+      "end": 18254,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18286,
+      "end": 18306,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18338,
+      "end": 18358,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18390,
+      "end": 18410,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18442,
+      "end": 18462,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18494,
+      "end": 18514,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18546,
+      "end": 18566,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18598,
+      "end": 18618,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18650,
+      "end": 18670,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18702,
+      "end": 18722,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18754,
+      "end": 18774,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18806,
+      "end": 18826,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18858,
+      "end": 18878,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18910,
+      "end": 18930,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 18962,
+      "end": 18982,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19014,
+      "end": 19034,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19066,
+      "end": 19086,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19118,
+      "end": 19138,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19170,
+      "end": 19190,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19222,
+      "end": 19242,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19274,
+      "end": 19294,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19326,
+      "end": 19346,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19378,
+      "end": 19398,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19430,
+      "end": 19450,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19482,
+      "end": 19502,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19534,
+      "end": 19554,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19586,
+      "end": 19606,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19638,
+      "end": 19658,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19690,
+      "end": 19710,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19742,
+      "end": 19762,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19794,
+      "end": 19814,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19846,
+      "end": 19866,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19898,
+      "end": 19918,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 19950,
+      "end": 19970,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20002,
+      "end": 20022,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20054,
+      "end": 20074,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20106,
+      "end": 20126,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20158,
+      "end": 20178,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20210,
+      "end": 20230,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20262,
+      "end": 20282,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20314,
+      "end": 20334,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20366,
+      "end": 20386,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20418,
+      "end": 20438,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20470,
+      "end": 20490,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20522,
+      "end": 20542,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20574,
+      "end": 20594,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20626,
+      "end": 20646,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20678,
+      "end": 20698,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20730,
+      "end": 20750,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20782,
+      "end": 20802,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20834,
+      "end": 20854,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20886,
+      "end": 20906,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20938,
+      "end": 20958,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 20990,
+      "end": 21010,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21042,
+      "end": 21062,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21094,
+      "end": 21114,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21146,
+      "end": 21166,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21198,
+      "end": 21218,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21250,
+      "end": 21270,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21302,
+      "end": 21322,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21354,
+      "end": 21374,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21406,
+      "end": 21426,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21458,
+      "end": 21478,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21510,
+      "end": 21530,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21562,
+      "end": 21582,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21614,
+      "end": 21634,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21666,
+      "end": 21686,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21718,
+      "end": 21738,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21770,
+      "end": 21790,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21822,
+      "end": 21842,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21874,
+      "end": 21894,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21926,
+      "end": 21946,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 21978,
+      "end": 21998,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22030,
+      "end": 22050,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22082,
+      "end": 22102,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22134,
+      "end": 22154,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22186,
+      "end": 22206,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22238,
+      "end": 22258,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22290,
+      "end": 22310,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22342,
+      "end": 22362,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22394,
+      "end": 22414,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22446,
+      "end": 22466,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22498,
+      "end": 22518,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22550,
+      "end": 22570,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22602,
+      "end": 22622,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22654,
+      "end": 22674,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22706,
+      "end": 22726,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22758,
+      "end": 22778,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22810,
+      "end": 22830,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22862,
+      "end": 22882,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22914,
+      "end": 22934,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 22966,
+      "end": 22986,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23018,
+      "end": 23038,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23070,
+      "end": 23090,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23122,
+      "end": 23142,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23174,
+      "end": 23194,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23226,
+      "end": 23246,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23278,
+      "end": 23298,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23330,
+      "end": 23350,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23382,
+      "end": 23402,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23434,
+      "end": 23454,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23486,
+      "end": 23506,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23538,
+      "end": 23558,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23590,
+      "end": 23610,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23642,
+      "end": 23662,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23694,
+      "end": 23714,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23746,
+      "end": 23766,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23798,
+      "end": 23818,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23850,
+      "end": 23870,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23902,
+      "end": 23922,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 23954,
+      "end": 23974,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24006,
+      "end": 24026,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24058,
+      "end": 24078,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24110,
+      "end": 24130,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24162,
+      "end": 24182,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24214,
+      "end": 24234,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24266,
+      "end": 24286,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24318,
+      "end": 24338,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24370,
+      "end": 24390,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24422,
+      "end": 24442,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24474,
+      "end": 24494,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24526,
+      "end": 24546,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24578,
+      "end": 24598,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24630,
+      "end": 24650,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24682,
+      "end": 24702,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24734,
+      "end": 24754,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24786,
+      "end": 24806,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24838,
+      "end": 24858,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24890,
+      "end": 24910,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24942,
+      "end": 24962,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 24994,
+      "end": 25014,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25046,
+      "end": 25066,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25098,
+      "end": 25118,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25150,
+      "end": 25170,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25202,
+      "end": 25222,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25254,
+      "end": 25274,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25306,
+      "end": 25326,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25358,
+      "end": 25378,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25410,
+      "end": 25430,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25462,
+      "end": 25482,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25514,
+      "end": 25534,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25566,
+      "end": 25586,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25618,
+      "end": 25638,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25670,
+      "end": 25690,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25722,
+      "end": 25742,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25774,
+      "end": 25794,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25826,
+      "end": 25846,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25878,
+      "end": 25898,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25930,
+      "end": 25950,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 25982,
+      "end": 26002,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26034,
+      "end": 26054,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26086,
+      "end": 26106,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26138,
+      "end": 26158,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26190,
+      "end": 26210,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26242,
+      "end": 26262,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26294,
+      "end": 26314,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26346,
+      "end": 26366,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26398,
+      "end": 26418,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26450,
+      "end": 26470,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26502,
+      "end": 26522,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26554,
+      "end": 26574,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26606,
+      "end": 26626,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26658,
+      "end": 26678,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26710,
+      "end": 26730,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26762,
+      "end": 26782,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26814,
+      "end": 26834,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26866,
+      "end": 26886,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26918,
+      "end": 26938,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 26970,
+      "end": 26990,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27022,
+      "end": 27042,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27074,
+      "end": 27094,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27126,
+      "end": 27146,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27178,
+      "end": 27198,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27230,
+      "end": 27250,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27282,
+      "end": 27302,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27334,
+      "end": 27354,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27386,
+      "end": 27406,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27438,
+      "end": 27458,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27490,
+      "end": 27510,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27542,
+      "end": 27562,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27594,
+      "end": 27614,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27646,
+      "end": 27666,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27698,
+      "end": 27718,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27750,
+      "end": 27770,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27802,
+      "end": 27822,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27854,
+      "end": 27874,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27906,
+      "end": 27926,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 27958,
+      "end": 27978,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28010,
+      "end": 28030,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28062,
+      "end": 28082,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28114,
+      "end": 28134,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28166,
+      "end": 28186,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28218,
+      "end": 28238,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28270,
+      "end": 28290,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28322,
+      "end": 28342,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28374,
+      "end": 28394,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28426,
+      "end": 28446,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28478,
+      "end": 28498,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28530,
+      "end": 28550,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28582,
+      "end": 28602,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28634,
+      "end": 28654,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28686,
+      "end": 28706,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28738,
+      "end": 28758,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28790,
+      "end": 28810,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28842,
+      "end": 28862,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28894,
+      "end": 28914,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28946,
+      "end": 28966,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 28998,
+      "end": 29018,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29050,
+      "end": 29070,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29102,
+      "end": 29122,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29154,
+      "end": 29174,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29206,
+      "end": 29226,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29258,
+      "end": 29278,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29310,
+      "end": 29330,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29362,
+      "end": 29382,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29414,
+      "end": 29434,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29466,
+      "end": 29486,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29518,
+      "end": 29538,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29570,
+      "end": 29590,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29622,
+      "end": 29642,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29674,
+      "end": 29694,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29726,
+      "end": 29746,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29778,
+      "end": 29798,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29830,
+      "end": 29850,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29882,
+      "end": 29902,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29934,
+      "end": 29954,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 29986,
+      "end": 30006,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30038,
+      "end": 30058,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30090,
+      "end": 30110,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30142,
+      "end": 30162,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30194,
+      "end": 30214,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30246,
+      "end": 30266,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30298,
+      "end": 30318,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30350,
+      "end": 30370,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30402,
+      "end": 30422,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30454,
+      "end": 30474,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30506,
+      "end": 30526,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30558,
+      "end": 30578,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30610,
+      "end": 30630,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30662,
+      "end": 30682,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30714,
+      "end": 30734,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30766,
+      "end": 30786,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30818,
+      "end": 30838,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30870,
+      "end": 30890,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30922,
+      "end": 30942,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 30974,
+      "end": 30994,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31026,
+      "end": 31046,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31078,
+      "end": 31098,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31130,
+      "end": 31150,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31182,
+      "end": 31202,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31234,
+      "end": 31254,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31286,
+      "end": 31306,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31338,
+      "end": 31358,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31390,
+      "end": 31410,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31442,
+      "end": 31462,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31494,
+      "end": 31514,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31546,
+      "end": 31566,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31598,
+      "end": 31618,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31650,
+      "end": 31670,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31702,
+      "end": 31722,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31754,
+      "end": 31774,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31806,
+      "end": 31826,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31858,
+      "end": 31878,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31910,
+      "end": 31930,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 31962,
+      "end": 31982,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32014,
+      "end": 32034,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32066,
+      "end": 32086,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32118,
+      "end": 32138,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32170,
+      "end": 32190,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32222,
+      "end": 32242,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32274,
+      "end": 32294,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32326,
+      "end": 32346,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32378,
+      "end": 32398,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32430,
+      "end": 32450,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32482,
+      "end": 32502,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32534,
+      "end": 32554,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32586,
+      "end": 32606,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32638,
+      "end": 32658,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32690,
+      "end": 32710,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32742,
+      "end": 32762,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32794,
+      "end": 32814,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32846,
+      "end": 32866,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32898,
+      "end": 32918,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 32950,
+      "end": 32970,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33002,
+      "end": 33022,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33054,
+      "end": 33074,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33106,
+      "end": 33126,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33158,
+      "end": 33178,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33210,
+      "end": 33230,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33262,
+      "end": 33282,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33314,
+      "end": 33334,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33366,
+      "end": 33386,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33418,
+      "end": 33438,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33470,
+      "end": 33490,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33522,
+      "end": 33542,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33574,
+      "end": 33594,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33626,
+      "end": 33646,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33678,
+      "end": 33698,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33730,
+      "end": 33750,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33782,
+      "end": 33802,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33834,
+      "end": 33854,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33886,
+      "end": 33906,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33938,
+      "end": 33958,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 33990,
+      "end": 34010,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34042,
+      "end": 34062,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34094,
+      "end": 34114,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34146,
+      "end": 34166,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34198,
+      "end": 34218,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34250,
+      "end": 34270,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34302,
+      "end": 34322,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34354,
+      "end": 34374,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34406,
+      "end": 34426,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34458,
+      "end": 34478,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34510,
+      "end": 34530,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34562,
+      "end": 34582,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34614,
+      "end": 34634,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34666,
+      "end": 34686,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34718,
+      "end": 34738,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34770,
+      "end": 34790,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34822,
+      "end": 34842,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34874,
+      "end": 34894,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34926,
+      "end": 34946,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 34978,
+      "end": 34998,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35030,
+      "end": 35050,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35082,
+      "end": 35102,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35134,
+      "end": 35154,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35186,
+      "end": 35206,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35238,
+      "end": 35258,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35290,
+      "end": 35310,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35342,
+      "end": 35362,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35394,
+      "end": 35414,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35446,
+      "end": 35466,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35498,
+      "end": 35518,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35550,
+      "end": 35570,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35602,
+      "end": 35622,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35654,
+      "end": 35674,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35706,
+      "end": 35726,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35758,
+      "end": 35778,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35810,
+      "end": 35830,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35862,
+      "end": 35882,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35914,
+      "end": 35934,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 35966,
+      "end": 35986,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36018,
+      "end": 36038,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36070,
+      "end": 36090,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36122,
+      "end": 36142,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36174,
+      "end": 36194,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36226,
+      "end": 36246,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36278,
+      "end": 36298,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36330,
+      "end": 36350,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36382,
+      "end": 36402,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36434,
+      "end": 36454,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36486,
+      "end": 36506,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36538,
+      "end": 36558,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36590,
+      "end": 36610,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36642,
+      "end": 36662,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36694,
+      "end": 36714,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36746,
+      "end": 36766,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36798,
+      "end": 36818,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36850,
+      "end": 36870,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36902,
+      "end": 36922,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 36954,
+      "end": 36974,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37006,
+      "end": 37026,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37058,
+      "end": 37078,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37110,
+      "end": 37130,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37162,
+      "end": 37182,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37214,
+      "end": 37234,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37266,
+      "end": 37286,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37318,
+      "end": 37338,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37370,
+      "end": 37390,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37422,
+      "end": 37442,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37474,
+      "end": 37494,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37526,
+      "end": 37546,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37578,
+      "end": 37598,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37630,
+      "end": 37650,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37682,
+      "end": 37702,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37734,
+      "end": 37754,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37786,
+      "end": 37806,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37838,
+      "end": 37858,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37890,
+      "end": 37910,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37942,
+      "end": 37962,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 37994,
+      "end": 38014,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38046,
+      "end": 38066,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38098,
+      "end": 38118,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38150,
+      "end": 38170,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38202,
+      "end": 38222,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38254,
+      "end": 38274,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38306,
+      "end": 38326,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38358,
+      "end": 38378,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38410,
+      "end": 38430,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38462,
+      "end": 38482,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38514,
+      "end": 38534,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38566,
+      "end": 38586,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38618,
+      "end": 38638,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38670,
+      "end": 38690,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38722,
+      "end": 38742,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38774,
+      "end": 38794,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38826,
+      "end": 38846,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38878,
+      "end": 38898,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38930,
+      "end": 38950,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 38982,
+      "end": 39002,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39034,
+      "end": 39054,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39086,
+      "end": 39106,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39138,
+      "end": 39158,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39190,
+      "end": 39210,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39242,
+      "end": 39262,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39294,
+      "end": 39314,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39346,
+      "end": 39366,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39398,
+      "end": 39418,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39450,
+      "end": 39470,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39502,
+      "end": 39522,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39554,
+      "end": 39574,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39606,
+      "end": 39626,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39658,
+      "end": 39678,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39710,
+      "end": 39730,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39762,
+      "end": 39782,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39814,
+      "end": 39834,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39866,
+      "end": 39886,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39918,
+      "end": 39938,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 39970,
+      "end": 39990,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40022,
+      "end": 40042,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40074,
+      "end": 40094,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40126,
+      "end": 40146,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40178,
+      "end": 40198,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40230,
+      "end": 40250,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40282,
+      "end": 40302,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40334,
+      "end": 40354,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40386,
+      "end": 40406,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40438,
+      "end": 40458,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40490,
+      "end": 40510,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40542,
+      "end": 40562,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40594,
+      "end": 40614,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40646,
+      "end": 40666,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40698,
+      "end": 40718,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40750,
+      "end": 40770,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40802,
+      "end": 40822,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40854,
+      "end": 40874,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40906,
+      "end": 40926,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 40958,
+      "end": 40978,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41010,
+      "end": 41030,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41062,
+      "end": 41082,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41114,
+      "end": 41134,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41166,
+      "end": 41186,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41218,
+      "end": 41238,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41270,
+      "end": 41290,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41322,
+      "end": 41342,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41374,
+      "end": 41394,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41426,
+      "end": 41446,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41478,
+      "end": 41498,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41530,
+      "end": 41550,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41582,
+      "end": 41602,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41634,
+      "end": 41654,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41686,
+      "end": 41706,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41738,
+      "end": 41758,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41790,
+      "end": 41810,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41842,
+      "end": 41862,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41894,
+      "end": 41914,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41946,
+      "end": 41966,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 41998,
+      "end": 42018,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42050,
+      "end": 42070,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42102,
+      "end": 42122,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42154,
+      "end": 42174,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42206,
+      "end": 42226,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42258,
+      "end": 42278,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42310,
+      "end": 42330,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42362,
+      "end": 42382,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42414,
+      "end": 42434,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42466,
+      "end": 42486,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42518,
+      "end": 42538,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42570,
+      "end": 42590,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42622,
+      "end": 42642,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42674,
+      "end": 42694,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42726,
+      "end": 42746,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42778,
+      "end": 42798,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42830,
+      "end": 42850,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42882,
+      "end": 42902,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42934,
+      "end": 42954,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 42986,
+      "end": 43006,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43038,
+      "end": 43058,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43090,
+      "end": 43110,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43142,
+      "end": 43162,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43194,
+      "end": 43214,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43246,
+      "end": 43266,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43298,
+      "end": 43318,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43350,
+      "end": 43370,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43402,
+      "end": 43422,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43454,
+      "end": 43474,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43506,
+      "end": 43526,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43558,
+      "end": 43578,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43610,
+      "end": 43630,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43662,
+      "end": 43682,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43714,
+      "end": 43734,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43766,
+      "end": 43786,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43818,
+      "end": 43838,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43870,
+      "end": 43890,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43922,
+      "end": 43942,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 43974,
+      "end": 43994,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44026,
+      "end": 44046,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44078,
+      "end": 44098,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44130,
+      "end": 44150,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44182,
+      "end": 44202,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44234,
+      "end": 44254,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44286,
+      "end": 44306,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44338,
+      "end": 44358,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44390,
+      "end": 44410,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44442,
+      "end": 44462,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44494,
+      "end": 44514,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44546,
+      "end": 44566,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44598,
+      "end": 44618,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44650,
+      "end": 44670,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44702,
+      "end": 44722,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44754,
+      "end": 44774,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44806,
+      "end": 44826,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44858,
+      "end": 44878,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44910,
+      "end": 44930,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 44962,
+      "end": 44982,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45014,
+      "end": 45034,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45066,
+      "end": 45086,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45118,
+      "end": 45138,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45170,
+      "end": 45190,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45222,
+      "end": 45242,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45274,
+      "end": 45294,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45326,
+      "end": 45346,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45378,
+      "end": 45398,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45430,
+      "end": 45450,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45482,
+      "end": 45502,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45534,
+      "end": 45554,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45586,
+      "end": 45606,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45638,
+      "end": 45658,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45690,
+      "end": 45710,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45742,
+      "end": 45762,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45794,
+      "end": 45814,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45846,
+      "end": 45866,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45898,
+      "end": 45918,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 45950,
+      "end": 45970,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46002,
+      "end": 46022,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46054,
+      "end": 46074,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46106,
+      "end": 46126,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46158,
+      "end": 46178,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46210,
+      "end": 46230,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46262,
+      "end": 46282,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46314,
+      "end": 46334,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46366,
+      "end": 46386,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46418,
+      "end": 46438,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46470,
+      "end": 46490,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46522,
+      "end": 46542,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46574,
+      "end": 46594,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46626,
+      "end": 46646,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46678,
+      "end": 46698,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46730,
+      "end": 46750,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46782,
+      "end": 46802,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46834,
+      "end": 46854,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46886,
+      "end": 46906,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46938,
+      "end": 46958,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 46990,
+      "end": 47010,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47042,
+      "end": 47062,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47094,
+      "end": 47114,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47146,
+      "end": 47166,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47198,
+      "end": 47218,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47250,
+      "end": 47270,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47302,
+      "end": 47322,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47354,
+      "end": 47374,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47406,
+      "end": 47426,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47458,
+      "end": 47478,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47510,
+      "end": 47530,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47562,
+      "end": 47582,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47614,
+      "end": 47634,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47666,
+      "end": 47686,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47718,
+      "end": 47738,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47770,
+      "end": 47790,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47822,
+      "end": 47842,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47874,
+      "end": 47894,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47926,
+      "end": 47946,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 47978,
+      "end": 47998,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48030,
+      "end": 48050,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48082,
+      "end": 48102,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48134,
+      "end": 48154,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48186,
+      "end": 48206,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48238,
+      "end": 48258,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48290,
+      "end": 48310,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48342,
+      "end": 48362,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48394,
+      "end": 48414,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48446,
+      "end": 48466,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48498,
+      "end": 48518,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48550,
+      "end": 48570,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48602,
+      "end": 48622,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48654,
+      "end": 48674,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48706,
+      "end": 48726,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48758,
+      "end": 48778,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48810,
+      "end": 48830,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48862,
+      "end": 48882,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48914,
+      "end": 48934,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 48966,
+      "end": 48986,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49018,
+      "end": 49038,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49070,
+      "end": 49090,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49122,
+      "end": 49142,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49174,
+      "end": 49194,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49226,
+      "end": 49246,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49278,
+      "end": 49298,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49330,
+      "end": 49350,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49382,
+      "end": 49402,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49434,
+      "end": 49454,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49486,
+      "end": 49506,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49538,
+      "end": 49558,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49590,
+      "end": 49610,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49642,
+      "end": 49662,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49694,
+      "end": 49714,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49746,
+      "end": 49766,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49798,
+      "end": 49818,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49850,
+      "end": 49870,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49902,
+      "end": 49922,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 49954,
+      "end": 49974,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50006,
+      "end": 50026,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50058,
+      "end": 50078,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50110,
+      "end": 50130,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50162,
+      "end": 50182,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50214,
+      "end": 50234,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50266,
+      "end": 50286,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50318,
+      "end": 50338,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50370,
+      "end": 50390,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50422,
+      "end": 50442,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50474,
+      "end": 50494,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50526,
+      "end": 50546,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50578,
+      "end": 50598,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50630,
+      "end": 50650,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50682,
+      "end": 50702,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50734,
+      "end": 50754,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50786,
+      "end": 50806,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50838,
+      "end": 50858,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50890,
+      "end": 50910,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50942,
+      "end": 50962,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 50994,
+      "end": 51014,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51046,
+      "end": 51066,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51098,
+      "end": 51118,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51150,
+      "end": 51170,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51202,
+      "end": 51222,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51254,
+      "end": 51274,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51306,
+      "end": 51326,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51358,
+      "end": 51378,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51410,
+      "end": 51430,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51462,
+      "end": 51482,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51514,
+      "end": 51534,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51566,
+      "end": 51586,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51618,
+      "end": 51638,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51670,
+      "end": 51690,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51722,
+      "end": 51742,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51774,
+      "end": 51794,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51826,
+      "end": 51846,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51878,
+      "end": 51898,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51930,
+      "end": 51950,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 51982,
+      "end": 52002,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 52034,
+      "end": 52054,
+      "context": "TYPE"
+    },
+    {
+      "file": "ReadDenseReferences.kt",
+      "start": 52086,
+      "end": 52106,
+      "context": "TYPE"
+    }
+  ],
+  "declarationOwnedCount": 1000,
+  "fileScopedCount": 1,
+  "expectedCallEdges": 0
+}

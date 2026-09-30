@@ -57,6 +57,7 @@ import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 internal class HostedSourcePagingFixture
 private constructor(
     val owner: RelationPagingFixture,
+    val selected: SourceSelector,
     val request: SourceReadRequest,
     val outcome: OperationOutcome.Qualified<SourceReadResult, SourceReadQualification>,
 ) {
@@ -102,6 +103,7 @@ private constructor(
                     .sourceFixtureValue()
             return HostedSourcePagingFixture(
                 owner,
+                root,
                 request(root),
                 OperationOutcome.Qualified(
                     EvidenceEnvelope(CanonicalOperation.SOURCE_READ.id, basis, result),
@@ -184,4 +186,133 @@ internal fun <T> Refinement<T, *>.sourceFixtureValue(): T =
     when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Source fixture rejected: $failure")
+    }
+
+internal typealias SourceOutputFixtureStore = HostedSourceStateStore
+
+/** Existing projection tests explicitly accept a detached fixture page; host rejection tests keep the attempt open. */
+internal fun SourceOutputFixtureStore.retainAcceptedFixtureSuffix(
+    request: SourceReadRequest,
+    lease: io.github.amichne.kast.workspace.contract.SemanticReadAuthority,
+    outcome:
+        OperationOutcome<
+            SourceReadResult,
+            SourceReadQualification,
+            io.github.amichne.kast.protocol.contract.SourceReadFailure,
+        >,
+): HostedOutputRetention {
+    val session =
+        when (val admitted = acquire(request, lease, null, 65_536)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected ->
+                return when (admitted.failure) {
+                    HostedOutputAcquisitionFailure.CAPACITY_EXCEEDED -> HostedOutputRetention.CapacityExceeded
+                    HostedOutputAcquisitionFailure.UNAVAILABLE,
+                    HostedOutputAcquisitionFailure.MISMATCH,
+                    HostedOutputAcquisitionFailure.IN_USE ->
+                        HostedOutputRetention.Rejected(
+                            io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause
+                                .CLAIM_UNAVAILABLE
+                        )
+                }
+        }
+    val retained = session.issue(outcome)
+    if (retained is HostedOutputRetention.Retained) {
+        val response =
+            HostedResponse.Canonical.encode(
+                io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings.sourceRead,
+                retainedFixturePage(outcome, retained.token),
+            )
+        session.finish(response).sourceFixtureValue()
+        session.commit().sourceFixtureValue()
+    } else session.discard()
+    return retained
+}
+
+internal fun SourceOutputFixtureStore.readFixtureSuffix(
+    token: ProtocolText,
+    request: SourceReadRequest,
+    lease: io.github.amichne.kast.workspace.contract.SemanticReadAuthority,
+): OperationOutcome<
+    SourceReadResult,
+    SourceReadQualification,
+    io.github.amichne.kast.protocol.contract.SourceReadFailure,
+> {
+    val session =
+        when (val admitted = acquire(request, lease, token, 65_536)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected ->
+                return OperationOutcome.Rejected(
+                    when (admitted.failure) {
+                        HostedOutputAcquisitionFailure.UNAVAILABLE ->
+                            io.github.amichne.kast.protocol.contract.SourceReadRejection.CONTINUATION_UNAVAILABLE
+                        HostedOutputAcquisitionFailure.MISMATCH ->
+                            io.github.amichne.kast.protocol.contract.SourceReadRejection.CONTINUATION_REQUEST_MISMATCH
+                        HostedOutputAcquisitionFailure.IN_USE ->
+                            io.github.amichne.kast.protocol.contract.SourceReadRejection.CONTINUATION_IN_USE
+                        HostedOutputAcquisitionFailure.CAPACITY_EXCEEDED ->
+                            io.github.amichne.kast.protocol.contract.SourceReadRejection.CONTINUATION_CAPACITY_EXCEEDED
+                    }
+                )
+        }
+    val outcome =
+        when (val input = session.input) {
+            is HostedSourceInput.Retained -> input.outcome
+            is HostedSourceInput.Published -> input.outcome
+            HostedSourceInput.Initial -> error("A suffix token must select retained output")
+        }
+    session.discard()
+    return outcome
+}
+
+private fun retainedFixturePage(outcome: HostedSourceOutcome, token: ProtocolText): HostedSourceOutcome =
+    when (outcome) {
+        is OperationOutcome.Complete ->
+            OperationOutcome.Qualified(
+                outcome.evidence.copy(
+                    payload =
+                        outcome.evidence.payload.copy(
+                            entities =
+                                BoundedProtocolList.create(emptyList<SourceEntityDocument>()).sourceFixtureValue()
+                        )
+                ),
+                SourceReadQualification.create(
+                        SourceEntityCountDocument.parse(outcome.evidence.payload.entities.values.size)
+                            .sourceFixtureValue(),
+                        listOf(SourceReadLimitationDocument.ENTITY_LIMIT_REACHED),
+                        SourceQualifiedProgressDocument.Resumable(
+                            io.github.amichne.kast.protocol.contract.SourceCheckpointDocument.RetainedOutput(
+                                token,
+                                outcome.preparedCoverage(),
+                            ),
+                            io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.RESUME,
+                        ),
+                    )
+                    .sourceFixtureValue(),
+            )
+        is OperationOutcome.Qualified ->
+            OperationOutcome.Qualified(
+                outcome.evidence.copy(
+                    payload =
+                        outcome.evidence.payload.copy(
+                            entities =
+                                BoundedProtocolList.create(emptyList<SourceEntityDocument>()).sourceFixtureValue()
+                        )
+                ),
+                SourceReadQualification.create(
+                        outcome.qualification.knownMinimumEntityCount,
+                        (outcome.qualification.limitations + SourceReadLimitationDocument.ENTITY_LIMIT_REACHED)
+                            .distinct()
+                            .sortedBy { it.ordinal },
+                        SourceQualifiedProgressDocument.Resumable(
+                            io.github.amichne.kast.protocol.contract.SourceCheckpointDocument.RetainedOutput(
+                                token,
+                                outcome.preparedCoverage(),
+                            ),
+                            io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.RESUME,
+                        ),
+                    )
+                    .sourceFixtureValue(),
+            )
+        is OperationOutcome.Rejected -> error("Rejected fixture has no detached suffix")
     }

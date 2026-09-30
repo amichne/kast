@@ -28,7 +28,13 @@ enum class DiagnosticProgressStop {
     @SerialName("enumeration_file_limit") ENUMERATION_FILE_LIMIT,
     @SerialName("analysis_pending") ANALYSIS_PENDING,
     @SerialName("output_pending") OUTPUT_PENDING,
+    @SerialName("retention_capacity_exceeded") RETENTION_CAPACITY_EXCEEDED,
     @SerialName("finished") FINISHED,
+}
+
+@Serializable
+enum class DiagnosticRetentionFailureDocument {
+    @SerialName("capacity_exceeded") CAPACITY_EXCEEDED
 }
 
 /** Cumulative coverage and stage belong to the original unchanged basis. */

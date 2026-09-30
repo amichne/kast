@@ -4,7 +4,7 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ReacquiringQueryReferences.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/ReadAcquisitionAccounting.kt
@@ -28,10 +28,28 @@ code_sources:
     symbols: [CanonicalQueryProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
     symbols: [QueryOutcomeProjection]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectionRows.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentationWindowMapping.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultEnvelope.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjection.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRetainedPresentationWindow.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QuerySyntaxAdmission.kt
     symbols: [evidenceBasis]
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRecords.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPublicationTransition.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRetention.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateContracts.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryExecutionPublication.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryDiscoveryObservation.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedEvidence.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryItemProjector.kt
@@ -66,7 +84,7 @@ code_sources:
 `query:protocol` owns reusable admission and projection for query, symbol, source,
 and diagnostic reads. Its dependencies are domain contracts
 and canonical protocol contracts. It has no IntelliJ project, workspace opener,
-publication store, or worker capability.
+native publication authority, or worker capability. Its detached state store does not grant semantic authority.
 
 The owning host supplies the current `SemanticReadAuthority`, operation ports,
 and budgets. `CanonicalQueryProtocol` restores input references, admits the typed
@@ -84,7 +102,7 @@ root, host, epoch, version, and content view must match it. Restoration does not
 open an IDE or prove a declaration is current. Native read adapters must still
 revalidate scope, location, compiler evidence, and content.
 
-Run admission reacquires exact references from the source and `concat` steps through one bounded request capability. An invalid composed token reports its step and position. Retained symbol and binding result sources restore immutable, basis-bound rows with their original qualification, including an empty result, without rediscovery. Issued row IDs can select a subset of one owning result; unknown or foreign row IDs reject, and a proper subset records incomplete selection. `intersect` and `difference` accept retained symbol right operands; plan admission rejects `difference` when the right input lacks complete coverage, has failures, or retains producer progress. Canonical admission refines bounded binding names and restores each join right input from a retained result. Invalid row-kind transitions, unknown projected bindings, and incompatible output modes reject before domain effects. `concat` appends inputs; a following `distinct_symbols` retains the first row for each canonical identity. An inner join projects a typed pair of named symbol or proven occurrence cells. `project_binding` selects one named cell before symbol stages continue, including when the input is a selected retained binding result. The binding-row document checks equal canonical symbol IDs and verifies each occurrence fact against its cell symbol connections; wire decoding rejects forged pairs. Retained results distinguish symbol rows from binding rows and preserve column names even when no rows match. Binding rows cannot serve as symbol join right inputs; read-result requires the matching output kind while preserving row IDs and evidence. A resume action supplies only the issued continuation and optional new grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page. A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
+Run admission reacquires exact references from the source and `concat` steps through one bounded request capability. An invalid composed token reports its step and position. Retained symbol and binding result sources restore immutable, basis-bound rows with their original qualification, including an empty result, without rediscovery. Issued row IDs can select a subset of one owning result; unknown or foreign row IDs reject, and a proper subset records incomplete selection. `intersect` and `difference` accept retained symbol right operands; plan admission rejects `difference` when the right input lacks complete coverage, has failures, or retains producer progress. Canonical admission refines bounded binding names and restores each join right input from a retained result. Invalid row-kind transitions, unknown projected bindings, and incompatible output modes reject before domain effects. `concat` appends inputs; a following `distinct_symbols` retains the first row for each canonical identity. An inner join projects a typed pair of named symbol or proven occurrence cells. `project_binding` selects one named cell before symbol stages continue, including when the input is a selected retained binding result. The binding-row document checks equal canonical symbol IDs and verifies each occurrence fact against its cell symbol connections; wire decoding rejects forged pairs. Retained results distinguish symbol, occurrence, traversal, and binding rows and preserve column names even when no rows match. Reference occurrences retain compiler-confirmed targets separately from declaration ownership. Declaration-only composition requires a proven declaration cell; file-scoped imports cannot become declaration or call graph endpoints. Binding rows cannot serve as symbol join right inputs; read-result requires the matching output kind while preserving row IDs and evidence. A resume action supplies only the issued continuation and optional new grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page. A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
 
 Selector documents retain directory, package, declaration-kind, and exact Gradle
 source-set constraints for source-owned declaration candidates and exact symbols.
@@ -109,15 +127,15 @@ restores the original plan, authority, and remaining work; no separate public
 traversal or relation token is issued. Query relation expansion returns
 individual occurrence items and structured omissions through `query.run`.
 
-`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; `distinct_symbols` and set stages use the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. `QueryStateStore` shares one bounded, expiring quota between typed execution checkpoints and immutable retained results; their tokens and restoration outcomes remain separate. An unfinished query walk keeps its domain continuation with strategy, maximum depth, cumulative progress, and earlier provider limitations inside that execution checkpoint.
+`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; `distinct_symbols` and set stages use the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. `QueryStateStore` shares one bounded, expiring quota among typed execution checkpoints, immutable retained results, detached output suffixes, and request claims; their tokens and restoration outcomes remain separate. Each producer token admits one active claim. Concurrent use yields `CONTINUATION_IN_USE`; a published page replays its immutable facts and successor without semantic work. Hosted execution stages allocations under the claim, then commits the fitted page and its successor after freshness, deadline, and cancellation drainage. Discard releases only that attempt's allocations. Committing a producer replaces its consumed execution or output payload with the immutable published page and required dependency identities; the consumed payload no longer counts as retained work. Live pages retain their dependency closure under the same quota. Each token keeps its original age; a younger page remains usable only while all advertised dependencies are valid. Active claims pin physical storage through drainage without admitting expired inputs to a new request. Initial composition pins its exact inputs and rechecks their original age at publication, including discarded output. Replay never renews token age. Capacity and unavailable state produce finite rejection rather than a native restart. An unfinished query walk keeps its domain continuation with strategy, maximum depth, cumulative progress, and earlier provider limitations inside that execution checkpoint.
 
 Query relation omission projection retains the exact subject and relation,
 provider/version, page-local observed or unmeasured omissions, bounded source
 samples and a closed remediation. Budget stops qualify that page's unmeasured
 remainder; they do not manufacture observed missing facts. Known occurrence
 facts remain separate from incomplete enumeration. Query walk
-projection retains cumulative progress and page-local partial node expansions;
-a bounded-fan-out remainder is explicitly unexamined rather than silently absent.
+projection retains cumulative progress, independent reference occurrences, historical omissions, and page-local partial node expansions;
+a bounded-fan-out remainder is explicitly unexamined rather than silently absent. Traversal checkpoints carry complete omission objects, including provider, measured or unmeasured meaning, bounded sample, and remediation, through later pages. Query filters, retained inputs, set stages, and joins preserve producer observation provenance independently of emitted rows.
 
 Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. This cursor cannot resume execution; CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 

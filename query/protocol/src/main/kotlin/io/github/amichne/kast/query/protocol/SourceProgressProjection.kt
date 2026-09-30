@@ -18,9 +18,13 @@ internal fun SourceReadQualification.projectProgress(
         SourceReadContinuationState.Unavailable ->
             Refinement.Refined(
                 SourceQualifiedProgressDocument.TerminalIncomplete(
-                    if (limitations == listOf(SourceReadLimitation.TEXT_BYTE_LIMIT_REACHED))
-                        SourceTerminalReasonDocument.TEXT_PROJECTION_WITHHELD
-                    else SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                    when {
+                        SourceReadLimitation.RETENTION_LIMIT_REACHED in limitations ->
+                            SourceTerminalReasonDocument.RETENTION_CAPACITY_EXCEEDED
+                        limitations == listOf(SourceReadLimitation.TEXT_BYTE_LIMIT_REACHED) ->
+                            SourceTerminalReasonDocument.TEXT_PROJECTION_WITHHELD
+                        else -> SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                    }
                 )
             )
         is SourceReadContinuationState.Available ->

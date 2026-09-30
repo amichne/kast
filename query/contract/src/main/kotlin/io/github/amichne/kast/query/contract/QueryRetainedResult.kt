@@ -4,10 +4,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.Collections
 
-private const val RETAINED_STATE_BASE_BYTES = 512L
-private const val RETAINED_STATE_OVERHEAD_MULTIPLIER = 8L
-private const val MAX_UTF8_BYTES_PER_UTF16_CODE_UNIT = 3L
-
 enum class QueryRetainedResultFailure {
     EXECUTION_REJECTED,
     BASIS_MISMATCH,
@@ -51,11 +47,15 @@ protected constructor(
     traversalObservations: List<QueryWalkObservation>,
     resultCoverage: QueryCoverage,
     val producerProgress: QueryContinuationState?,
+    referenceObservations: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence>,
+    discoveryObservations: List<QueryDiscoveryObservation>,
 ) {
     private val itemFailures = Collections.unmodifiableList(itemFailures.toList())
     private val relationOmissions = Collections.unmodifiableList(relationOmissions.toList())
     private val traversalObservations = Collections.unmodifiableList(traversalObservations.toList())
     private val resultCoverage = resultCoverage.copyCoverage()
+    val referenceObservations = Collections.unmodifiableList(referenceObservations.toList())
+    val discoveryObservations = Collections.unmodifiableList(discoveryObservations.toList())
 
     val failures: List<QueryItemFailure>
         get() = itemFailures
@@ -125,7 +125,9 @@ protected constructor(
         observations: List<QueryWalkObservation>,
         coverage: QueryCoverage,
         progress: QueryContinuationState?,
-    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress) {
+        references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+        discoveries: List<QueryDiscoveryObservation> = emptyList(),
+    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress, references, discoveries) {
         private val rows = Collections.unmodifiableList(rows.map(QuerySymbol::detached))
 
         val symbols: List<QuerySymbol>
@@ -135,7 +137,17 @@ protected constructor(
             get() = rows.size
 
         override val retainedBytes: Long =
-            retainedStorageBytes(rows, failures, omissions, observations, coverage, progress, lease)
+            retainedStorageBytes(
+                rows,
+                failures,
+                omissions,
+                observations,
+                coverage,
+                progress,
+                lease,
+                references,
+                discoveries,
+            )
 
         override fun selectRows(indices: List<Int>): Refinement<Symbols, QueryRetainedResultFailure> {
             validateIndices(indices)?.let {
@@ -151,6 +163,70 @@ protected constructor(
                     walkObservations,
                     selectedCoverage,
                     selectedProgress,
+                    referenceObservations,
+                    discoveryObservations,
+                )
+            )
+        }
+    }
+
+    class Occurrences
+    internal constructor(
+        lease: SemanticReadAuthority,
+        rows: List<QueryOccurrence>,
+        failures: List<QueryItemFailure>,
+        omissions: List<QueryRelationOmission>,
+        observations: List<QueryWalkObservation>,
+        coverage: QueryCoverage,
+        progress: QueryContinuationState?,
+        references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+        discoveries: List<QueryDiscoveryObservation> = emptyList(),
+    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress, references, discoveries) {
+        private val rows = Collections.unmodifiableList(rows.map(QueryOccurrence::detached))
+        val occurrences: List<QueryOccurrence>
+            get() = rows
+
+        override val rowCount: Int
+            get() = rows.size
+
+        override val retainedBytes: Long =
+            retainedStorageBytes(
+                    rows.filterIsInstance<QueryOccurrence.Declaration>().map { it.symbol },
+                    failures,
+                    omissions,
+                    observations,
+                    coverage,
+                    progress,
+                    lease,
+                    references,
+                    discoveries,
+                )
+                .saturatedAdd(
+                    rows.sumOf { occurrence ->
+                        when (occurrence) {
+                            is QueryOccurrence.Reference -> occurrence.value.retainedBytes.saturatedMultiply(8L)
+                            is QueryOccurrence.Declaration ->
+                                occurrence.fact.canonicalProjection().utf8UpperBound().saturatedMultiply(8L)
+                        }
+                    }
+                )
+
+        override fun selectRows(indices: List<Int>): Refinement<Occurrences, QueryRetainedResultFailure> {
+            validateIndices(indices)?.let {
+                return Refinement.Rejected(it)
+            }
+            val (selectedCoverage, selectedProgress) = selectionCoverage(indices.size)
+            return Refinement.Refined(
+                Occurrences(
+                    lease,
+                    indices.map(rows::get),
+                    failures,
+                    omissions,
+                    walkObservations,
+                    selectedCoverage,
+                    selectedProgress,
+                    referenceObservations,
+                    discoveryObservations,
                 )
             )
         }
@@ -166,7 +242,9 @@ protected constructor(
         observations: List<QueryWalkObservation>,
         coverage: QueryCoverage,
         progress: QueryContinuationState?,
-    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress) {
+        references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+        discoveries: List<QueryDiscoveryObservation> = emptyList(),
+    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress, references, discoveries) {
         private val rows = Collections.unmodifiableList(rows.map(QueryBindingRow::detached))
 
         val bindingRows: List<QueryBindingRow>
@@ -184,6 +262,8 @@ protected constructor(
                     coverage,
                     progress,
                     lease,
+                    references,
+                    discoveries,
                 )
                 .saturatedAdd(rows.size.toLong().saturatedMultiply(RETAINED_STATE_BASE_BYTES))
 
@@ -202,6 +282,8 @@ protected constructor(
                     walkObservations,
                     selectedCoverage,
                     selectedProgress,
+                    referenceObservations,
+                    discoveryObservations,
                 )
             )
         }
@@ -260,6 +342,20 @@ protected constructor(
                         result.walkObservations,
                         coverage,
                         progress,
+                        result.referenceObservations,
+                        result.discoveryObservations,
+                    )
+                is QueryRows.Occurrences ->
+                    Occurrences(
+                        lease,
+                        rows.values,
+                        result.failures,
+                        result.omissions,
+                        result.walkObservations,
+                        coverage,
+                        progress,
+                        result.referenceObservations,
+                        result.discoveryObservations,
                     )
                 is QueryRows.Bindings ->
                     Bindings(
@@ -271,103 +367,9 @@ protected constructor(
                         result.walkObservations,
                         coverage,
                         progress,
+                        result.referenceObservations,
+                        result.discoveryObservations,
                     )
             }
     }
 }
-
-private fun Refinement<QueryCount, QueryCountFailure>.refinedCount(): QueryCount =
-    when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("A collection size cannot be negative")
-    }
-
-private fun QueryCoverage.copyCoverage(): QueryCoverage =
-    when (this) {
-        is QueryCoverage.Complete -> copy()
-        is QueryCoverage.Qualified ->
-            when (val copied = QueryCoverage.Qualified.create(knownMinimum, limitations.toSet())) {
-                is Refinement.Refined -> copied.value
-                is Refinement.Rejected -> error("A qualified query result lost its limitations")
-            }
-    }
-
-private fun QuerySymbol.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    selector.lease != lease ||
-        connections.any { fact ->
-            fact.authority != lease.identity ||
-                fact.subject.lease != lease ||
-                fact.source.lease != lease ||
-                fact.target.lease != lease
-        }
-
-private fun QueryResult.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    (when (val resultRows = rows) {
-        is QueryRows.Symbols -> resultRows.values.any { it.hasForeignBasis(lease) }
-        is QueryRows.Bindings ->
-            resultRows.values.any { row ->
-                row.left.value.symbol.hasForeignBasis(lease) || row.right.value.symbol.hasForeignBasis(lease)
-            }
-    }) ||
-        failures.any { it.hasForeignBasis(lease) } ||
-        omissions.any { it.subject.lease != lease } ||
-        walkObservations.any { it.subject.lease != lease }
-
-private fun QueryWalkCoverage.isTerminallyIncomplete(): Boolean =
-    this is QueryWalkCoverage.TerminalIncomplete ||
-        (this is QueryWalkCoverage.Resumable &&
-            io.github.amichne.kast.traversal.contract.TraversalLimitation.ONE_HOP_INCOMPLETE in limitations)
-
-private fun QueryItemFailure.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    when (this) {
-        is QueryItemFailure.Refinement -> candidate.lease != lease
-        is QueryItemFailure.Visibility -> selector.lease != lease
-        is QueryItemFailure.ExactReference -> selector.lease != lease
-        is QueryItemFailure.PredicateUnproven -> selector.lease != lease
-        is QueryItemFailure.Source -> selector.lease != lease
-        is QueryItemFailure.Relation -> selector.lease != lease
-        is QueryItemFailure.Walk -> selector.lease != lease
-    }
-
-private fun retainedStorageBytes(
-    rows: List<QuerySymbol>,
-    failures: List<QueryItemFailure>,
-    omissions: List<QueryRelationOmission>,
-    walkObservations: List<QueryWalkObservation>,
-    coverage: QueryCoverage,
-    progress: QueryContinuationState?,
-    lease: SemanticReadAuthority,
-): Long {
-    val sourceText =
-        rows.fold(0L) { size, row ->
-            val returned = row.source as? QuerySymbolSource.Returned
-            size.saturatedAdd(returned?.value?.text?.utf8UpperBound() ?: 0L)
-        }
-    val relationEvidence =
-        rows.fold(0L) { size, row ->
-            row.connections.fold(size) { total, fact ->
-                total.saturatedAdd(fact.canonicalProjection().utf8UpperBound())
-            }
-        }
-    val checkpoint = (progress as? QueryContinuationState.Resumable)?.checkpoint
-    val priorRetainedSource = (checkpoint?.plan as? AdmittedQueryPlan.Retained)?.source?.retainedBytes ?: 0L
-    return RETAINED_STATE_BASE_BYTES.saturatedAdd(rows.toString().utf8UpperBound())
-        .saturatedAdd(failures.toString().utf8UpperBound())
-        .saturatedAdd(omissions.toString().utf8UpperBound())
-        .saturatedAdd(walkObservations.toString().utf8UpperBound())
-        .saturatedAdd(coverage.toString().utf8UpperBound())
-        .saturatedAdd(lease.toString().utf8UpperBound())
-        .saturatedAdd(sourceText)
-        .saturatedAdd(relationEvidence)
-        .saturatedAdd(checkpoint?.retainedBytes ?: 0L)
-        .saturatedAdd(priorRetainedSource)
-        .saturatedMultiply(RETAINED_STATE_OVERHEAD_MULTIPLIER)
-}
-
-private fun String.utf8UpperBound(): Long = length.toLong().saturatedMultiply(MAX_UTF8_BYTES_PER_UTF16_CODE_UNIT)
-
-private fun Long.saturatedAdd(other: Long): Long =
-    if (this < 0L || other < 0L || this > Long.MAX_VALUE - other) Long.MAX_VALUE else this + other
-
-private fun Long.saturatedMultiply(other: Long): Long =
-    if (this < 0L || other < 0L || this > Long.MAX_VALUE / other) Long.MAX_VALUE else this * other

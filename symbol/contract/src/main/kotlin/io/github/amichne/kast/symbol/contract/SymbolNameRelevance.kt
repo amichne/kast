@@ -63,7 +63,20 @@ private fun oneEditApart(left: String, right: String): Boolean {
 /** Deterministic best-first order is part of the discovery request, retained before exact refinement. */
 fun SymbolDiscoveryRequest.candidateOrder(): Comparator<SymbolDiscoveryCandidate> {
     val name = target as? SymbolDiscoveryTarget.Name
-    return if (name != null && name.match == SymbolDiscoveryMatch.FUZZY)
+    return if (target is SymbolDiscoveryTarget.All && target.kind != SymbolNameDiscoveryKind.FILE)
+        compareBy<SymbolDiscoveryCandidate>(
+            { it.location.file.stableValue },
+            {
+                when (val location = it.location) {
+                    is SymbolDiscoveryCandidateLocation.Declaration -> location.offset.value
+                    is SymbolDiscoveryCandidateLocation.Text -> location.range.startInclusive.value
+                    is SymbolDiscoveryCandidateLocation.File -> -1
+                }
+            },
+            { it.kind.ordinal },
+            { it.name.value },
+        )
+    else if (name != null && name.match == SymbolDiscoveryMatch.FUZZY)
         compareBy<SymbolDiscoveryCandidate> { name.pattern.relevance(it.name.value) }.thenBy { it }
     else naturalOrder()
 }

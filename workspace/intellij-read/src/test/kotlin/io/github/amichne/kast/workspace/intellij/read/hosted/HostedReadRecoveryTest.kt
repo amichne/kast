@@ -9,6 +9,52 @@ import org.junit.jupiter.api.Test
 
 class HostedReadRecoveryTest {
     @Test
+    fun `publication rejection retains every exact cause without claiming source movement`() {
+        for (cause in HostedPublicationFailureCause.entries) {
+            val document =
+                Json.parseToJsonElement(
+                        HostedQueryWire.encode(
+                            HostedQueryResult.Rejected(
+                                HostedQueryFailure.Publication(cause),
+                                HostedQueryStage.RESULT_DETACHED,
+                            )
+                        )
+                    )
+                    .jsonObject
+            assertEquals("PUBLICATION_REJECTED", document.getValue("failure").jsonPrimitive.content)
+            assertEquals(cause.name, document.getValue("detail").jsonObject.getValue("cause").jsonPrimitive.content)
+            assertEquals("RESULT_DETACHED", document.getValue("stage").jsonPrimitive.content)
+            val expected =
+                when (cause) {
+                    HostedPublicationFailureCause.EXPIRED,
+                    HostedPublicationFailureCause.DEPENDENCY_UNAVAILABLE -> "retained_state_unavailable"
+                    HostedPublicationFailureCause.CAPACITY_EXCEEDED -> "reduce_retained_work"
+                    HostedPublicationFailureCause.OWNER_RETIRED,
+                    HostedPublicationFailureCause.CLAIM_UNAVAILABLE,
+                    HostedPublicationFailureCause.PUBLISHED_PAGE_MISMATCH,
+                    HostedPublicationFailureCause.NON_ADVANCING_SUCCESSOR,
+                    HostedPublicationFailureCause.INVALID_FITTED_PAGE -> "review_failure"
+                }
+            assertEquals(expected, document.getValue("recovery").jsonObject.getValue("kind").jsonPrimitive.content)
+            val expectedInstruction =
+                when (cause) {
+                    HostedPublicationFailureCause.EXPIRED,
+                    HostedPublicationFailureCause.DEPENDENCY_UNAVAILABLE ->
+                        "The retained semantic execution state is no longer usable. Start a fresh read; this result did not publish a successor."
+                    HostedPublicationFailureCause.CAPACITY_EXCEEDED ->
+                        "The host could not retain this page and its unfinished work within the declared capacity. Inspect the retention limits and reduce the retained work before starting a fresh read."
+                    else -> null
+                }
+            if (expectedInstruction != null) {
+                assertEquals(
+                    expectedInstruction,
+                    document.getValue("recovery").jsonObject.getValue("instruction").jsonPrimitive.content,
+                )
+            }
+        }
+    }
+
+    @Test
     fun `epoch movement reports restart read for both freshness and retained ownership rejection`() {
         val failures =
             listOf(

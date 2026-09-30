@@ -16,6 +16,7 @@ internal fun projectQueryProgress(
     state: QueryStateStore,
     protectedResult: QueryResultReference? = null,
     origin: QueryProgressOrigin = QueryProgressOrigin.EXECUTION,
+    publicationOwner: QueryExecutionClaim? = null,
 ): QueryQualifiedProgressDocument =
     when (continuation) {
         is QueryContinuationState.Resumable ->
@@ -23,7 +24,7 @@ internal fun projectQueryProgress(
                 val issued =
                     when (origin) {
                         QueryProgressOrigin.EXECUTION ->
-                            state.issueCheckpoint(request, continuation.checkpoint, protectedResult)
+                            state.issueCheckpoint(request, continuation.checkpoint, protectedResult, publicationOwner)
                         QueryProgressOrigin.RETAINED_RESULT ->
                             state.retainedCheckpoint(request, continuation.checkpoint)
                     }

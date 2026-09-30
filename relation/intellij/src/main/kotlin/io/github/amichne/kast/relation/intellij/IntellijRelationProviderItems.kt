@@ -72,22 +72,6 @@ internal sealed interface CalleeProviderItem {
     data class Reference(val reference: KtReference, override val owner: ContainingDeclaration) : CalleeProviderItem
 }
 
-internal fun CalleeProviderItem.descriptor(): RelationProviderItemDescriptor =
-    when (this) {
-        is CalleeProviderItem.Unresolved ->
-            providerItemDescriptor(
-                call,
-                call.textRange.shiftLeft(call.textRange.startOffset),
-                "unresolved-call",
-            )
-        is CalleeProviderItem.Reference ->
-            providerItemDescriptor(
-                reference.element,
-                reference.rangeInElement,
-                "callee-reference:${reference.javaClass.name}",
-            )
-    }
-
 internal enum class ProviderTermination {
     TERMINAL,
     HALTED,

@@ -17,6 +17,7 @@ import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryBinding
 import io.github.amichne.kast.query.contract.QueryBindingRow
 import io.github.amichne.kast.query.contract.QueryBindingValue
+import io.github.amichne.kast.query.contract.QueryOccurrence
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolSource
@@ -33,10 +34,36 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
                     QueryOutputDocument.TraversalRecords -> projectTraversalRecords(rows.values)
                     QueryOutputDocument.BindingRows -> QueryProjection.Rejected
                 }
+            is QueryRows.Occurrences ->
+                if (output == QueryOutputDocument.Occurrences) rows.values.mapProjected(::projectOccurrence)
+                else QueryProjection.Rejected
             is QueryRows.Bindings ->
                 if (output == QueryOutputDocument.BindingRows) rows.values.mapProjected(::projectBindingRow)
                 else QueryProjection.Rejected
         }
+
+    private fun projectOccurrence(value: QueryOccurrence): QueryResultItemDocument? {
+        return when (value) {
+            is QueryOccurrence.Reference -> {
+                val document = value.value.protocolDocument(authority) ?: return null
+                QueryResultItemDocument.ReferenceOccurrence(
+                    QueryReferenceDocument.ExactSymbol(document.target.selector),
+                    document,
+                )
+            }
+            is QueryOccurrence.Declaration -> {
+                val token =
+                    when (val issued = authority.issueExact(value.symbol.selector)) {
+                        is ExactSelectorIssuance.Issued -> issued.selector
+                        is ExactSelectorIssuance.Rejected -> return null
+                    }
+                QueryResultItemDocument.Occurrence(
+                    QueryReferenceDocument.ExactSymbol(token),
+                    value.fact.protocolDocument(authority) ?: return null,
+                )
+            }
+        }
+    }
 
     private fun projectBindingRow(row: QueryBindingRow): QueryResultItemDocument.BindingRow? {
         val left = projectBinding(row.left) ?: return null

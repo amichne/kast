@@ -21,6 +21,11 @@ import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionMeasurementDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionSamplesDocument
+import io.github.amichne.kast.protocol.contract.RelationProviderDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalExpansionRemainderDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
@@ -76,6 +81,38 @@ class HostedQueryWalkResponseTest {
             1,
             records.map { it.record.relation.source.selector to it.record.relation.target.selector }.distinct().size,
         )
+    }
+
+    @Test
+    fun `retention capacity preserves a useful prefix and the original incomplete coverage`() = runTest {
+        val (records, observation, outcome) = walkFixture()
+        var published: io.github.amichne.kast.query.protocol.QueryPublishedPage? = null
+        val response =
+            encodeHostedQueryResponse(
+                outcome,
+                maximumResults = ResultLimit.parse(1).refined(),
+                published = { published = it.page },
+                retain = { HostedOutputRetention.CapacityExceeded },
+            )
+                as HostedResponse.Canonical<*, *, *>
+        val qualified = response.semantic as OperationOutcome.Qualified
+        val result = qualified.evidence.payload as QueryRunResult
+        assertEquals(listOf(records.first()), result.items.values)
+        assertEquals(listOf(observation), result.walkObservations.values)
+        val progress =
+            (qualified.qualification as QueryRunQualification).progress
+                as QueryQualifiedProgressDocument.RetentionUnavailable
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryPreparedCoverageDocument.TerminalIncomplete(
+                QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
+            ),
+            progress.upstream,
+        )
+        assertEquals(
+            (outcome as OperationOutcome.Qualified).qualification.knownMinimum,
+            (qualified.qualification as QueryRunQualification).knownMinimum,
+        )
+        assertEquals(response.semantic, published)
     }
 
     private data class WalkFixture(
@@ -134,6 +171,8 @@ class HostedQueryWalkResponseTest {
                             TraversalDepthDocument.parse(0).refined(),
                             listOf(RelationLimitationDocument.WORK_LIMIT_REACHED),
                             TraversalExpansionRemainderDocument.NOT_EXPLORED,
+                            knownMinimum = QueryKnownMinimum.parse(0).refined(),
+                            omissions = unmeasuredPageOmissions(),
                         )
                         .refined()
                 )
@@ -148,6 +187,23 @@ class HostedQueryWalkResponseTest {
                 .refined(),
         )
     }
+
+    private fun unmeasuredPageOmissions(): BoundedProtocolList<RelationOmissionDocument> =
+        BoundedProtocolList.create(
+                listOf(
+                    RelationOmissionDocument.create(
+                            RelationProviderDocument.INTELLIJ_REFERENCES_V2,
+                            RelationLimitationDocument.WORK_LIMIT_REACHED,
+                            RelationOmissionMeasurementDocument.UnmeasuredOnPage,
+                            RelationOmissionSamplesDocument.complete(
+                                    BoundedProtocolList.create(emptyList<RelationOmissionLocationDocument>()).refined()
+                                )
+                                .refined(),
+                        )
+                        .refined()
+                )
+            )
+            .refined()
 
     private fun <Value> bounded(values: List<Value>): BoundedProtocolList<Value> =
         BoundedProtocolList.create(values).refined()

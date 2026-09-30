@@ -101,9 +101,25 @@ data class QueryWalkObservationDocument(
     val strategy: TraversalStrategyDocument,
     val partialExpansions: BoundedProtocolList<TraversalPartialExpansionDocument>,
     val coverage: QueryWalkCoverageDocument,
+    val inheritedOmissions: BoundedProtocolList<TraversalPartialExpansionDocument> =
+        TraversalPartialExpansionDocument.Empty,
+    val referenceOccurrences: BoundedProtocolList<TraversalReferenceObservationDocument> =
+        TraversalReferenceObservationDocument.Empty,
 ) {
     companion object {
         val Empty: BoundedProtocolList<QueryWalkObservationDocument> =
             (BoundedProtocolList.create(emptyList<QueryWalkObservationDocument>()) as Refinement.Refined).value
+    }
+}
+
+/** An occurrence witnessed by one expanded node; file ownership carries no graph edge. */
+data class TraversalReferenceObservationDocument(
+    val subject: QueryReferenceDocument.ExactSymbol,
+    val depth: TraversalDepthDocument,
+    val reference: RelationReferenceOccurrenceDocument,
+) {
+    companion object {
+        val Empty: BoundedProtocolList<TraversalReferenceObservationDocument> =
+            (BoundedProtocolList.create(emptyList<TraversalReferenceObservationDocument>()) as Refinement.Refined).value
     }
 }

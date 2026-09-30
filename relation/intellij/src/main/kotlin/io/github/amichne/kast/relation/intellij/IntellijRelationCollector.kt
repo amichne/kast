@@ -3,52 +3,20 @@ package io.github.amichne.kast.relation.intellij
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.relation.contract.RelationBatch
-import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationCompilation
-import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationOmissionSample
-import io.github.amichne.kast.relation.contract.RelationProviderCursor
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
+import io.github.amichne.kast.relation.contract.RelationProviderState
+import io.github.amichne.kast.relation.contract.RelationReadPosition
+import io.github.amichne.kast.relation.contract.RelationReferenceOccurrence
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.relation.contract.RelationResultCount
-import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.retainedLimitations
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import java.nio.charset.StandardCharsets
-
-/** Closed native provider termination; only [Terminal] can prove exact enumeration. */
-sealed interface IntellijRelationTermination {
-    data object Terminal : IntellijRelationTermination
-
-    data class TerminalIncomplete(val limitations: Set<RelationLimitation>) : IntellijRelationTermination
-
-    data class Resumable(val limitations: Set<RelationLimitation>) : IntellijRelationTermination
-}
-
-internal enum class IntellijRelationProviderItemAdmission {
-    READY,
-    SKIPPED_VERIFIED_PREFIX,
-    HALTED,
-    CURSOR_MOVED,
-}
-
-internal enum class IntellijRelationProviderEnumerationAdmission {
-    READY,
-    HALTED,
-}
-
-private enum class IntellijRelationCollectionState {
-    COLLECTING,
-    HALTED,
-    ENUMERATION_LIMIT,
-    CURSOR_MOVED,
-    CONTRACT_REJECTED,
-}
 
 /** Request-local bounded collector for already K2-confirmed detached relation facts. */
 internal class IntellijRelationCollector(
@@ -56,18 +24,28 @@ internal class IntellijRelationCollector(
     private val clockNanoseconds: () -> Long = System::nanoTime,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val limits: ReadLimits = ReadLimits.Default,
+    private val allowance: IntellijRelationAllowance = IntellijRelationAllowance(clockNanoseconds),
 ) {
-    private val startedAt = clockNanoseconds()
+    var providerConsumption: io.github.amichne.kast.relation.contract.RelationProviderConsumption =
+        io.github.amichne.kast.relation.contract.RelationProviderConsumption.Unconfirmed
+        private set
+
+    private val startedAt = allowance.startedAt
     private val facts = mutableListOf<RelationFact>()
+    private val referenceOccurrences = mutableListOf<RelationReferenceOccurrence>()
+    private var providerState: RelationProviderState? =
+        (request.position as? RelationReadPosition.Resume)?.continuation?.providerState
     private val limitations = request.retainedLimitations.toMutableSet()
     private val omissions = IntellijRelationOmissionObservation(request.providerCursor.provider)
     private val requestedCursor = request.providerCursor
-    private var observedPrefix = RelationProviderCursor.start(requestedCursor.provider)
     private var nextProviderCursor = requestedCursor
-    private var prefixVerified = requestedCursor.nextPosition.value == 0L
     private var pendingProviderItem: RelationProviderItemDescriptor? = null
-    private var nativeCandidates = 0
-    private var examined = 0L
+    private val nativeCandidates: Int
+        get() = allowance.nativeCandidates
+
+    private val examined: Long
+        get() = allowance.examined
+
     private var retainedBytes = 0L
     private var state = IntellijRelationCollectionState.COLLECTING
 
@@ -83,7 +61,6 @@ internal class IntellijRelationCollector(
                 }
             IntellijRelationCollectionState.HALTED,
             IntellijRelationCollectionState.ENUMERATION_LIMIT,
-            IntellijRelationCollectionState.CURSOR_MOVED,
             IntellijRelationCollectionState.CONTRACT_REJECTED -> IntellijRelationProviderEnumerationAdmission.HALTED
         }
 
@@ -94,22 +71,21 @@ internal class IntellijRelationCollector(
         }
         if (nativeCandidates >= limits[ReadLimitParameter.RELATION_CANDIDATES].value) {
             observation.terminated(IntellijReadTermination.CANDIDATE_CAP)
-            limitations += RelationLimitation.WORK_LIMIT_REACHED
+            limitations += RelationLimitation.CANDIDATE_LIMIT_REACHED
             state = IntellijRelationCollectionState.ENUMERATION_LIMIT
             return IntellijRelationProviderEnumerationAdmission.HALTED
         }
-        nativeCandidates += 1
+        allowance.collectCandidate()
         observation.count(IntellijReadCounter.RELATION_CANDIDATES)
         return IntellijRelationProviderEnumerationAdmission.READY
     }
 
     /**
-     * Observes one native item before semantic filtering. Resume pages re-enumerate and verify the entire consumed
-     * prefix; new items remain pending until accepted, qualified, or dismissed.
+     * Admits the next retained provider item before semantic filtering. No consumed native prefix is replayed. An item
+     * remains pending until its semantic confirmation, exclusion or omission is committed.
      */
     fun beginProviderItem(item: RelationProviderItemDescriptor): IntellijRelationProviderItemAdmission {
         when (state) {
-            IntellijRelationCollectionState.CURSOR_MOVED -> return IntellijRelationProviderItemAdmission.CURSOR_MOVED
             IntellijRelationCollectionState.HALTED,
             IntellijRelationCollectionState.ENUMERATION_LIMIT,
             IntellijRelationCollectionState.CONTRACT_REJECTED -> return IntellijRelationProviderItemAdmission.HALTED
@@ -123,17 +99,6 @@ internal class IntellijRelationCollector(
             halt(RelationLimitation.TIME_LIMIT_REACHED)
             return IntellijRelationProviderItemAdmission.HALTED
         }
-        if (!prefixVerified) {
-            observedPrefix = observedPrefix.advance(item)
-            if (observedPrefix.nextPosition == requestedCursor.nextPosition) {
-                if (observedPrefix.consumedPrefixDigest != requestedCursor.consumedPrefixDigest) {
-                    state = IntellijRelationCollectionState.CURSOR_MOVED
-                    return IntellijRelationProviderItemAdmission.CURSOR_MOVED
-                }
-                prefixVerified = true
-            }
-            return IntellijRelationProviderItemAdmission.SKIPPED_VERIFIED_PREFIX
-        }
         return admitSemanticItem(item)
     }
 
@@ -142,10 +107,12 @@ internal class IntellijRelationCollector(
         when {
             examined >= request.budget.resources.workUnitLimit.value ->
                 haltAdmission(RelationLimitation.WORK_LIMIT_REACHED)
-            facts.size >= request.budget.resources.resultLimit.value ->
+            semanticResultCount() >= request.budget.resources.resultLimit.value ->
                 haltAdmission(RelationLimitation.RESULT_LIMIT_REACHED)
             else -> {
                 pendingProviderItem = item
+                providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.Unconfirmed
+                allowance.examine()
                 IntellijRelationProviderItemAdmission.READY
             }
         }
@@ -162,7 +129,7 @@ internal class IntellijRelationCollector(
             else -> {
                 nextProviderCursor = nextProviderCursor.advance(pending)
                 pendingProviderItem = null
-                true
+                if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
             }
         }
 
@@ -173,13 +140,11 @@ internal class IntellijRelationCollector(
     fun accept(fact: RelationFact): Boolean {
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         val pending = pendingProviderItem ?: return contractHalt()
-        if (elapsedLimitReached()) return halt(RelationLimitation.TIME_LIMIT_REACHED)
-        if (examined >= request.budget.resources.workUnitLimit.value) {
-            return halt(RelationLimitation.WORK_LIMIT_REACHED)
-        }
-        if (facts.size >= request.budget.resources.resultLimit.value) {
+        if (semanticResultCount() >= request.budget.resources.resultLimit.value) {
             return halt(RelationLimitation.RESULT_LIMIT_REACHED)
         }
+
+        if (fact in facts) return dismissProviderItem()
 
         val factBytes = fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
         if (retainedBytes + factBytes > request.budget.returnedBytes.value) {
@@ -188,11 +153,11 @@ internal class IntellijRelationCollector(
 
         nextProviderCursor = nextProviderCursor.advance(pending)
         pendingProviderItem = null
-        examined += 1L
         retainedBytes += factBytes
         facts += fact
+        providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.GraphConfirmed(fact)
         observation.count(IntellijReadCounter.RELATION_FACTS)
-        return true
+        return if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
     }
 
     /** Records one explicit compiler/provider coverage loss without manufacturing a fact. */
@@ -208,91 +173,99 @@ internal class IntellijRelationCollector(
     ): Boolean {
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         val pending = pendingProviderItem ?: return contractHalt()
-        if (elapsedLimitReached()) return halt(RelationLimitation.TIME_LIMIT_REACHED)
-        if (examined >= request.budget.resources.workUnitLimit.value) {
-            return halt(RelationLimitation.WORK_LIMIT_REACHED)
-        }
         nextProviderCursor = nextProviderCursor.advance(pending)
         pendingProviderItem = null
-        examined += 1L
         omissions.record(limitation, sample)
         observation.count(IntellijReadCounter.RELATION_ITEMS_OMITTED)
         limitations += limitation
         observation.terminated(limitation.observedTermination())
+        return if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
+    }
+
+    /** Completion consumes a detached snapshot; this collector remains the only mutable native attempt owner. */
+    fun finish(termination: IntellijRelationTermination): RelationCompilation =
+        IntellijRelationPageCompletion(
+                request = request,
+                facts = facts,
+                occurrences = referenceOccurrences,
+                examined = examined,
+                state = state,
+                pending = pendingProviderItem != null,
+                providerState = providerState,
+                requestedCursor = requestedCursor,
+                nextCursor = nextProviderCursor,
+                limitations = limitations.toMutableSet(),
+                omissions = omissions,
+                observation = observation,
+            )
+            .finish(termination)
+
+    fun blockPartition(limitation: RelationLimitation): Boolean {
+        limitations += limitation
+        state = IntellijRelationCollectionState.ENUMERATION_LIMIT
+        pendingProviderItem = null
+        observation.terminated(limitation.observedTermination())
+        return false
+    }
+
+    val providerItemConsumed: Boolean
+        get() = pendingProviderItem == null
+
+    private fun semanticResultCount(): Int =
+        referenceOccurrences.size +
+            facts.count { fact ->
+                referenceOccurrences.none { it.occurrence == fact.occurrence && it.target == fact.target }
+            }
+
+    fun retainProviderState(value: RelationProviderState, preparedPartition: Boolean = false): Boolean {
+        if (value.provider != requestedCursor.provider) return contractHalt()
+        if (preparedPartition) {
+            if (requestedCursor.nextPosition.value != 0L) return contractHalt()
+            nextProviderCursor = value.providerCursor
+        } else if (nextProviderCursor != value.providerCursor) return contractHalt()
+        providerState = value
+        if (value.retainedBytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value) {
+            return blockPartition(RelationLimitation.RETENTION_LIMIT_REACHED)
+        }
         return true
     }
 
-    /** Produces exact, resumable, terminal-incomplete, or typed moved-cursor output. */
-    fun finish(termination: IntellijRelationTermination): RelationCompilation {
-        if (
-            !prefixVerified && state == IntellijRelationCollectionState.COLLECTING ||
-                state == IntellijRelationCollectionState.CURSOR_MOVED
-        ) {
-            return RelationCompilation.Rejected(RelationCompilerRejection.CONTINUATION_CURSOR_MOVED)
-        }
-        if (
-            state == IntellijRelationCollectionState.CONTRACT_REJECTED ||
-                pendingProviderItem != null && termination !is IntellijRelationTermination.Resumable
-        ) {
-            return contractRejected()
-        }
-        when (termination) {
-            IntellijRelationTermination.Terminal -> Unit
-            is IntellijRelationTermination.TerminalIncomplete ->
-                limitations +=
-                    termination.limitations.ifEmpty {
-                        if (limitations.isEmpty()) setOf(RelationLimitation.PROVIDER_INCOMPLETE) else emptySet()
-                    }
-            is IntellijRelationTermination.Resumable ->
-                limitations +=
-                    termination.limitations.ifEmpty {
-                        if (limitations.isEmpty()) setOf(RelationLimitation.PROVIDER_INCOMPLETE) else emptySet()
-                    }
-        }
-
-        val orderedFacts = facts.distinct().sorted()
-        val bytes =
-            RelationByteCount.parse(
-                    orderedFacts.sumOf {
-                        it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-                    }
-                )
-                .refinedOrReject() ?: return contractRejected()
-        val work = RelationWorkCount.parse(examined).refinedOrReject() ?: return contractRejected()
-        val results = RelationResultCount.parse(orderedFacts.size).refinedOrReject() ?: return contractRejected()
-        val batch =
-            RelationBatch.create(
-                    request = request,
-                    facts = orderedFacts,
-                    encodedBytes = bytes,
-                    examinedWorkUnits = work,
-                    resultCount = results,
-                )
-                .refinedOrReject()
-                ?.withOmissions(omissions.summarize(limitations))
-                ?.refinedOrReject() ?: return contractRejected()
-
-        // Canonical order is unproven after overflow; a continuation cannot promise progress.
-        val resumable =
-            state != IntellijRelationCollectionState.ENUMERATION_LIMIT &&
-                (termination is IntellijRelationTermination.Resumable ||
-                    state == IntellijRelationCollectionState.HALTED)
-        if (!resumable && limitations.isEmpty()) {
-            observation.terminated(IntellijReadTermination.COMPLETE)
-            return RelationCompilation.complete(batch)
-        }
-        val advanced = nextProviderCursor.nextPosition.value > requestedCursor.nextPosition.value
-        if (resumable && !advanced) {
-            limitations += RelationLimitation.PROVIDER_STALLED
-            observation.terminated(IntellijReadTermination.RELATION_PROVIDER_STALLED)
-        }
-        val qualified =
-            if (resumable && advanced) {
-                RelationCompilation.qualifiedResumable(batch, limitations, nextProviderCursor)
-            } else {
-                RelationCompilation.qualifiedTerminal(batch, limitations)
+    fun acceptReference(value: RelationReferenceOccurrence): Boolean {
+        if (state != IntellijRelationCollectionState.COLLECTING) return false
+        val pending = pendingProviderItem ?: return contractHalt()
+        val fact =
+            when (val projected = value.declarationFact(request)) {
+                is Refinement.Refined -> projected.value
+                is Refinement.Rejected -> null
             }
-        return qualified.refinedOrReject() ?: contractRejected()
+        val bytes =
+            value.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() +
+                (fact?.canonicalProjection()?.toByteArray(StandardCharsets.UTF_8)?.size?.toLong() ?: 0L)
+        if (retainedBytes + bytes > request.budget.returnedBytes.value)
+            return halt(RelationLimitation.BYTE_LIMIT_REACHED)
+        nextProviderCursor = nextProviderCursor.advance(pending)
+        pendingProviderItem = null
+        retainedBytes += bytes
+        providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.Confirmed(value)
+        referenceOccurrences += value
+        when (val ownership = value.ownership) {
+            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.Unavailable -> {
+                val reason =
+                    when (ownership.cause) {
+                        io.github.amichne.kast.relation.contract.RelationOwnershipUnavailableCause
+                            .UNSUPPORTED_DECLARATION -> RelationLimitation.UNSUPPORTED_ITEM
+                        io.github.amichne.kast.relation.contract.RelationOwnershipUnavailableCause
+                            .UNRESOLVED_DECLARATION -> RelationLimitation.UNSUPPORTED_ITEM
+                    }
+                omissions.record(reason, RelationOmissionSample.Located(value.occurrence))
+                qualify(reason)
+            }
+            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.DeclarationOwned,
+            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.FileScoped -> Unit
+        }
+        if (fact != null) facts += fact
+        observation.count(IntellijReadCounter.RELATION_FACTS)
+        return if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
     }
 
     private fun elapsedLimitReached(): Boolean {
@@ -313,32 +286,7 @@ internal class IntellijRelationCollector(
         return false
     }
 
-    private fun contractRejected(): RelationCompilation.Rejected =
-        RelationCompilation.Rejected(RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION)
-
-    private fun <Value, Failure> Refinement<Value, Failure>.refinedOrReject(): Value? =
-        when (this) {
-            is Refinement.Refined -> value
-            is Refinement.Rejected -> null
-        }
-
     private companion object {
         const val NANOS_PER_MILLISECOND = 1_000_000L
     }
 }
-
-internal const val MAX_NATIVE_RELATION_CANDIDATES = 10_000
-
-private fun RelationLimitation.observedTermination(): IntellijReadTermination =
-    when (this) {
-        RelationLimitation.RESULT_LIMIT_REACHED -> IntellijReadTermination.RESULT_LIMIT
-        RelationLimitation.BYTE_LIMIT_REACHED -> IntellijReadTermination.BYTE_LIMIT
-        RelationLimitation.WORK_LIMIT_REACHED -> IntellijReadTermination.WORK_LIMIT
-        RelationLimitation.TIME_LIMIT_REACHED -> IntellijReadTermination.TIME_LIMIT
-        RelationLimitation.DUMB_MODE_TRANSITION -> IntellijReadTermination.INDEXING
-        RelationLimitation.UNRESOLVED_TARGET -> IntellijReadTermination.RELATION_UNRESOLVED_TARGET
-        RelationLimitation.UNSUPPORTED_ITEM -> IntellijReadTermination.RELATION_UNSUPPORTED_ITEM
-        RelationLimitation.PROVIDER_FAILURE -> IntellijReadTermination.PROVIDER_FAILURE
-        RelationLimitation.PROVIDER_INCOMPLETE -> IntellijReadTermination.RELATION_PROVIDER_INCOMPLETE
-        RelationLimitation.PROVIDER_STALLED -> IntellijReadTermination.RELATION_PROVIDER_STALLED
-    }

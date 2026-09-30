@@ -62,7 +62,7 @@ internal class IntellijNativeDiscoveryQuery(
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock = SystemIntellijDiscoveryNanoClock,
-    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    internal val observation: IntellijReadObservation = IntellijReadObservation.None,
     internal val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**

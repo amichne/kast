@@ -209,7 +209,7 @@ class RelationReadTest {
                 collector.finish(IntellijRelationTermination.Resumable(setOf(RelationLimitation.PROVIDER_INCOMPLETE))),
             )
         assertTrue(result.batch.facts.isEmpty())
-        assertTrue(RelationLimitation.WORK_LIMIT_REACHED in result.coverage.limitations)
+        assertTrue(RelationLimitation.CANDIDATE_LIMIT_REACHED in result.coverage.limitations)
         assertInstanceOf(
             io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.TerminalIncomplete::class.java,
             result.coverage,
@@ -360,12 +360,15 @@ class RelationReadTest {
     }
 
     @Test
-    fun `filtered provider item advances cursor without manufacturing work or result`() {
+    fun `filtered provider item consumes its work allowance without manufacturing a result`() {
         val request = request(RelationMeaning.References)
         val collector = IntellijRelationCollector(request, clockNanoseconds = { 1L })
+        val retained = detachedRelationInventory(request, listOf("filtered", "remaining"))
+        collector.retainProviderState(retained, preparedPartition = true)
 
         collector.beginProviderItem(providerItem("filtered"))
         collector.dismissProviderItem()
+        collector.retainProviderState(retained.consume())
         val result =
             collector.finish(IntellijRelationTermination.Resumable(setOf(RelationLimitation.PROVIDER_INCOMPLETE)))
 
@@ -375,8 +378,8 @@ class RelationReadTest {
                 io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.Resumable::class.java,
                 qualified.coverage,
             )
-        assertEquals(1L, coverage.continuation.nextProviderCursor.nextPosition.value)
-        assertEquals(0L, qualified.batch.examinedWorkUnits.value)
+        assertEquals(2L, coverage.continuation.nextProviderCursor.nextPosition.value)
+        assertEquals(1L, qualified.batch.examinedWorkUnits.value)
         assertEquals(0, qualified.batch.resultCount.value)
     }
 
@@ -405,55 +408,24 @@ class RelationReadTest {
             io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.TerminalIncomplete::class.java,
             result.coverage,
         )
-        assertTrue(RelationLimitation.PROVIDER_STALLED in result.coverage.limitations)
-    }
-
-    @Test
-    fun `moved provider prefix rejects instead of resuming by numeric position`() {
-        val request = request(RelationMeaning.References)
-        val batch = emptyBatch(request)
-        val expected = request.providerCursor.advance(providerItem("expected"))
-        val resumable =
-            RelationCompilation.qualifiedResumable(
-                    batch,
-                    setOf(RelationLimitation.RESULT_LIMIT_REACHED),
-                    expected,
-                )
-                .refined()
-        val continuation =
-            (resumable.coverage as io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.Resumable)
-                .continuation
-        val resumed =
-            RelationRequest.resume(
-                    (request.subject as RelationEndpoint.Subject).selector,
-                    request.meaning,
-                    request.budget,
-                    continuation,
-                )
-                .refined()
-        val collector = IntellijRelationCollector(resumed, clockNanoseconds = { 1L })
-
-        assertEquals(
-            IntellijRelationProviderItemAdmission.CURSOR_MOVED,
-            collector.beginProviderItem(providerItem("changed")),
-        )
-        assertEquals(
-            io.github.amichne.kast.relation.contract.RelationCompilerRejection.CONTINUATION_CURSOR_MOVED,
-            assertInstanceOf(
-                    RelationCompilation.Rejected::class.java,
-                    collector.finish(IntellijRelationTermination.Resumable(emptySet())),
-                )
-                .reason,
-        )
+        assertEquals(setOf(RelationLimitation.TIME_LIMIT_REACHED), result.coverage.limitations)
     }
 
     @Test
     fun `result limit leaves the first unreturned provider item for resume`() {
         val request = request(RelationMeaning.References, resultLimit = 1)
         val collector = IntellijRelationCollector(request, clockNanoseconds = { 1L })
+        val retained =
+            detachedRelationInventory(
+                request,
+                listOf("first", "second"),
+                listOf(exactFixtureRange(71, 74), exactFixtureRange(91, 94)),
+            )
+        collector.retainProviderState(retained, preparedPartition = true)
 
         collector.beginProviderItem(providerItem("first"))
         assertTrue(collector.accept(fact(request)))
+        collector.retainProviderState(retained.consume(collector.providerConsumption))
         assertEquals(IntellijRelationProviderItemAdmission.HALTED, collector.beginProviderItem(providerItem("second")))
         org.junit.jupiter.api.Assertions.assertFalse(collector.accept(fact(request)))
         val qualified =
@@ -467,7 +439,7 @@ class RelationReadTest {
                 qualified.coverage,
             )
 
-        assertEquals(1L, coverage.continuation.nextProviderCursor.nextPosition.value)
+        assertEquals(2L, coverage.continuation.nextProviderCursor.nextPosition.value)
         assertEquals(1L, qualified.batch.examinedWorkUnits.value)
         assertEquals(1, qualified.batch.resultCount.value)
     }
@@ -479,25 +451,40 @@ class RelationReadTest {
         request: RelationRequest,
         items: List<ProviderFixture> = providerFixtures(),
     ): RelationCompilation {
+        val position = request.position
+        var retained =
+            if (position is io.github.amichne.kast.relation.contract.RelationReadPosition.Resume)
+                position.continuation.providerState
+            else
+                detachedRelationInventory(
+                    request,
+                    items.map { it.descriptor },
+                    items.map { item ->
+                        val start = item.fact?.offset ?: 0
+                        exactFixtureRange(start, start + 3)
+                    },
+                )
         val collector = IntellijRelationCollector(request, clockNanoseconds = { 1L })
-        for (ordered in
-            items.canonicalRelationProviderOrder { item ->
-                providerItem(item.descriptor)
-            }) {
-            when (collector.beginProviderItem(ordered.descriptor)) {
-                IntellijRelationProviderItemAdmission.SKIPPED_VERIFIED_PREFIX -> continue
-                IntellijRelationProviderItemAdmission.READY ->
-                    when (val fixture = ordered.value.fact) {
-                        null -> assertTrue(collector.dismissProviderItem())
-                        else ->
-                            if (!collector.accept(fact(request, fixture.identity, fixture.offset))) {
-                                return collector.finish(IntellijRelationTermination.Resumable(emptySet()))
-                            }
-                    }
-                IntellijRelationProviderItemAdmission.HALTED,
-                IntellijRelationProviderItemAdmission.CURSOR_MOVED ->
-                    return collector.finish(IntellijRelationTermination.Resumable(emptySet()))
+        collector.retainProviderState(
+            retained,
+            preparedPartition = position is io.github.amichne.kast.relation.contract.RelationReadPosition.Start,
+        )
+        val byDescriptor = items.associateBy { providerItem(it.descriptor) }
+        while (retained.hasUnfinishedWork) {
+            val locator = retained.prepared.first()
+            if (collector.beginProviderItem(locator.descriptor) != IntellijRelationProviderItemAdmission.READY)
+                return collector.finish(IntellijRelationTermination.Resumable(emptySet()))
+            val fixture = byDescriptor.getValue(locator.descriptor).fact
+            val continued =
+                when (fixture) {
+                    null -> collector.dismissProviderItem()
+                    else -> collector.accept(fact(request, fixture.identity, fixture.offset))
+                }
+            if (collector.providerItemConsumed) {
+                retained = retained.consume(collector.providerConsumption)
+                collector.retainProviderState(retained)
             }
+            if (!continued) return collector.finish(IntellijRelationTermination.Resumable(emptySet()))
         }
         return collector.finish(IntellijRelationTermination.Terminal)
     }
@@ -510,7 +497,7 @@ class RelationReadTest {
             ProviderFixture("second", FactFixture("sample.Related.second()", 91)),
         )
 
-    private fun fact(
+    internal fun fact(
         request: RelationRequest,
         identity: String = "sample.Related.run()",
         occurrenceOffset: Int = 71,

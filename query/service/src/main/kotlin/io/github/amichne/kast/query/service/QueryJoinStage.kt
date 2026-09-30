@@ -33,7 +33,9 @@ internal class QueryJoinStage(
         val evidence =
             right.failures.map(PipelineTask::Failure) +
                 right.omissions.map(PipelineTask::Omission) +
-                right.walkObservations.map(PipelineTask::WalkObservation)
+                right.walkObservations.map(PipelineTask::WalkObservation) +
+                right.referenceObservations.map(PipelineTask::ReferenceObservation) +
+                right.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) }
         evidence.asReversed().forEach(tasks::addFirst)
         return true
     }

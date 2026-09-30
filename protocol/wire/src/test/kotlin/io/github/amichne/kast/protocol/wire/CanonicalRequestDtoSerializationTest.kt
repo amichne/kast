@@ -85,10 +85,31 @@ class CanonicalRequestDtoSerializationTest {
         assertThrows(SerializationException::class.java) {
             strictJson.decodeFromString(QueryRunRequest.serializer(), read.replace("\"cursor\":0", "\"cursor\":-1"))
         }
-        val occurrenceOutput = read.replace("\"type\":\"symbols\",\"fields\":[]", "\"type\":\"occurrences\"")
-        assertTrue(occurrenceOutput != read)
         assertThrows(SerializationException::class.java) {
-            strictJson.decodeFromString(QueryRunRequest.serializer(), occurrenceOutput)
+            strictJson.decodeFromString(
+                QueryRunRequest.serializer(),
+                read.replace("\"type\":\"symbols\"", "\"type\":\"unknown\""),
+            )
+        }
+    }
+
+    @Test
+    fun `retained result read admits each closed output with an independent discriminator`() {
+        val result =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined).value
+        for ((request, type) in
+            listOf(
+                QueryRunRequest.ReadResult.occurrences(result) to "occurrences",
+                QueryRunRequest.ReadResult.traversalRecords(result) to "traversal_records",
+                QueryRunRequest.ReadResult.bindingRows(result) to "binding_rows",
+            )) {
+            val variant = strictJson.encodeToString(QueryRunRequest.serializer(), request)
+            val decoded =
+                strictJson.decodeFromString(QueryRunRequest.serializer(), variant) as QueryRunRequest.ReadResult
+            assertEquals(request.output, decoded.output)
+            val encodedOutput = strictJson.parseToJsonElement(variant).jsonObject.getValue("output").jsonObject
+            assertEquals(setOf("type"), encodedOutput.keys)
+            assertEquals(type, encodedOutput.getValue("type").jsonPrimitive.content)
         }
     }
 

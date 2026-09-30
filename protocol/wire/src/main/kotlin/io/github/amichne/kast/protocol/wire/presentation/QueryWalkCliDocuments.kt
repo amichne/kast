@@ -8,6 +8,8 @@ import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
+import io.github.amichne.kast.protocol.wire.TraversalReferenceObservationWireDocument
+import io.github.amichne.kast.protocol.wire.toWireDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -27,6 +29,8 @@ internal data class QueryWalkObservationCliDocument(
     val strategy: TraversalStrategyDocument,
     @SerialName("partial_expansions") val partialExpansions: List<TraversalPartialExpansionCliDocument>,
     val coverage: QueryWalkCoverageCliDocument,
+    @SerialName("inherited_omissions") val inheritedOmissions: List<TraversalPartialExpansionCliDocument>,
+    @SerialName("reference_occurrences") val referenceOccurrences: List<TraversalReferenceObservationWireDocument>,
 )
 
 @Serializable
@@ -71,6 +75,8 @@ internal fun QueryWalkObservationDocument.toQueryCliDocument() =
                     selected.relationLimitations.map { it.cliName() },
                 )
         },
+        inheritedOmissions.values.map { it.toCliDocument() },
+        referenceOccurrences.values.map { it.toWireDocument() },
     )
 
 @Serializable

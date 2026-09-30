@@ -11,6 +11,11 @@ internal data class QueryRunResultWireDocument(
     val failures: List<QueryItemFailureWireDocument>,
     val omissions: List<QueryRelationOmissionWireDocument>,
     @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationWireDocument>,
+    @SerialName("reference_observations")
+    val referenceObservations: List<RelationReferenceOccurrenceWireDocument> = emptyList(),
+    @SerialName("discovery_observations")
+    val discoveryObservations: List<io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument> =
+        emptyList(),
     val retention: io.github.amichne.kast.protocol.contract.QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
@@ -35,6 +40,14 @@ internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("output-kind-mismatch") OUTPUT_KIND_MISMATCH,
     @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
     @SerialName("continuation-mismatch") CONTINUATION_MISMATCH,
+    @SerialName("continuation-in-use") CONTINUATION_IN_USE,
+    @SerialName("continuation-capacity-exceeded") CONTINUATION_CAPACITY_EXCEEDED,
+    @SerialName("continuation-owner-retired") CONTINUATION_OWNER_RETIRED,
+    @SerialName("continuation-claim-unavailable") CONTINUATION_CLAIM_UNAVAILABLE,
+    @SerialName("continuation-expired") CONTINUATION_EXPIRED,
+    @SerialName("continuation-dependency-unavailable") CONTINUATION_DEPENDENCY_UNAVAILABLE,
+    @SerialName("published-page-mismatch") PUBLISHED_PAGE_MISMATCH,
+    @SerialName("non-advancing-continuation") NON_ADVANCING_CONTINUATION,
     @SerialName("request-rejected") REQUEST_REJECTED,
     @SerialName("discovery-rejected") DISCOVERY_REJECTED,
     @SerialName("reference-stale") REFERENCE_STALE,
@@ -62,4 +75,5 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("relation-incomplete") RELATION_INCOMPLETE,
     @SerialName("traversal-incomplete") TRAVERSAL_INCOMPLETE,
     @SerialName("row-selection-incomplete") ROW_SELECTION_INCOMPLETE,
+    @SerialName("retention-limit-reached") RETENTION_LIMIT_REACHED,
 }

@@ -20,6 +20,8 @@ import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryProgress
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRemainder
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -89,6 +91,7 @@ internal class QueryReadStages(
     suspend fun discover(
         syntax: QueryDiscoverySyntax,
         state: QueryExecutionState,
+        remainder: SymbolDiscoveryRemainder? = null,
     ): DiscoveryExecution {
         val selections = mutableListOf<SymbolDiscoverySelection>()
         var progress: DiscoveryExecution = DiscoveryExecution.NotStarted
@@ -118,6 +121,7 @@ internal class QueryReadStages(
                         },
                     budget = childBudget,
                     constraints = constraints(syntax, kind),
+                    remainder = remainder,
                 )
             val outcome =
                 when (val result = discovery.discover(request)) {
@@ -133,18 +137,31 @@ internal class QueryReadStages(
             state.observeTime()
             val batch = outcome.batch()
             state.consume(batch.examinedWorkUnits.value)
-            if (outcome is SymbolDiscoveryOutcome.Qualified) {
-                state.discoveryLimited(outcome.qualifications.values)
-            }
+            observeDiscoveryLimitations(outcome, state)
             batch.candidates.indices.forEach { ordinal ->
                 when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
                     is Refinement.Refined -> selections += selected.value
                     is Refinement.Rejected -> state.contractViolation = true
                 }
             }
-            progress = DiscoveryExecution.Discovered(selections.toList())
+            progress =
+                DiscoveryExecution.Discovered(
+                    selections.toList(),
+                    outcome.progress,
+                    io.github.amichne.kast.query.contract.QueryDiscoveryObservation.from(request, outcome),
+                )
         }
         return progress
+    }
+
+    private fun observeDiscoveryLimitations(outcome: SymbolDiscoveryOutcome, state: QueryExecutionState) {
+        if (outcome is SymbolDiscoveryOutcome.Qualified) {
+            when (outcome.progress) {
+                is SymbolDiscoveryProgress.Resumable -> state.discoveryPageLimited(outcome.qualifications.values)
+                SymbolDiscoveryProgress.Exhausted,
+                is SymbolDiscoveryProgress.Blocked -> state.discoveryLimited(outcome.qualifications.values)
+            }
+        }
     }
 
     suspend fun refine(
@@ -275,7 +292,11 @@ internal class QueryReadStages(
 internal sealed interface DiscoveryExecution {
     data object NotStarted : DiscoveryExecution
 
-    data class Discovered(val values: List<SymbolDiscoverySelection>) : DiscoveryExecution
+    data class Discovered(
+        val values: List<SymbolDiscoverySelection>,
+        val progress: SymbolDiscoveryProgress = SymbolDiscoveryProgress.Exhausted,
+        val observation: io.github.amichne.kast.query.contract.QueryDiscoveryObservation? = null,
+    ) : DiscoveryExecution
 
     data class Rejected(val result: QueryExecutionResult.Rejected) : DiscoveryExecution
 }

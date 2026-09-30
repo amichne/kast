@@ -31,6 +31,10 @@ internal fun RelationLimitationDocument.toWireDocument(): RelationLimitationWire
         RelationLimitationDocument.BYTE_LIMIT_REACHED -> RelationLimitationWireDocument.BYTE_LIMIT_REACHED
         RelationLimitationDocument.WORK_LIMIT_REACHED -> RelationLimitationWireDocument.WORK_LIMIT_REACHED
         RelationLimitationDocument.TIME_LIMIT_REACHED -> RelationLimitationWireDocument.TIME_LIMIT_REACHED
+        RelationLimitationDocument.CANDIDATE_LIMIT_REACHED -> RelationLimitationWireDocument.CANDIDATE_LIMIT_REACHED
+        RelationLimitationDocument.RETENTION_LIMIT_REACHED -> RelationLimitationWireDocument.RETENTION_LIMIT_REACHED
+        RelationLimitationDocument.PARTITION_INVENTORY_UNAVAILABLE ->
+            RelationLimitationWireDocument.PARTITION_INVENTORY_UNAVAILABLE
         RelationLimitationDocument.DUMB_MODE_TRANSITION -> RelationLimitationWireDocument.DUMB_MODE_TRANSITION
         RelationLimitationDocument.UNRESOLVED_TARGET -> RelationLimitationWireDocument.UNRESOLVED_TARGET
         RelationLimitationDocument.UNSUPPORTED_ITEM -> RelationLimitationWireDocument.UNSUPPORTED_ITEM
@@ -45,6 +49,10 @@ internal fun RelationLimitationWireDocument.toContract(): RelationLimitationDocu
         RelationLimitationWireDocument.BYTE_LIMIT_REACHED -> RelationLimitationDocument.BYTE_LIMIT_REACHED
         RelationLimitationWireDocument.WORK_LIMIT_REACHED -> RelationLimitationDocument.WORK_LIMIT_REACHED
         RelationLimitationWireDocument.TIME_LIMIT_REACHED -> RelationLimitationDocument.TIME_LIMIT_REACHED
+        RelationLimitationWireDocument.CANDIDATE_LIMIT_REACHED -> RelationLimitationDocument.CANDIDATE_LIMIT_REACHED
+        RelationLimitationWireDocument.RETENTION_LIMIT_REACHED -> RelationLimitationDocument.RETENTION_LIMIT_REACHED
+        RelationLimitationWireDocument.PARTITION_INVENTORY_UNAVAILABLE ->
+            RelationLimitationDocument.PARTITION_INVENTORY_UNAVAILABLE
         RelationLimitationWireDocument.DUMB_MODE_TRANSITION -> RelationLimitationDocument.DUMB_MODE_TRANSITION
         RelationLimitationWireDocument.UNRESOLVED_TARGET -> RelationLimitationDocument.UNRESOLVED_TARGET
         RelationLimitationWireDocument.UNSUPPORTED_ITEM -> RelationLimitationDocument.UNSUPPORTED_ITEM

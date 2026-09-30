@@ -125,6 +125,8 @@ sealed interface HostedQueryFailure {
 
     data class Platform(val cause: HostedPlatformFailureCause) : HostedQueryFailure
 
+    data class Publication(val cause: HostedPublicationFailureCause) : HostedQueryFailure
+
     data class ProjectAdmission(
         val cause: io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmissionFailure
     ) : HostedQueryFailure

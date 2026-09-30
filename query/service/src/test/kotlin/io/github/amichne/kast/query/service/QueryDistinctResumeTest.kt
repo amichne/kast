@@ -13,7 +13,11 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationProviderConsumption
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
+import io.github.amichne.kast.relation.contract.RelationProviderLocator
+import io.github.amichne.kast.relation.contract.RelationProviderState
+import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
@@ -78,7 +82,9 @@ class QueryDistinctResumeTest {
         selected: io.github.amichne.kast.symbol.contract.SymbolSelector,
         positions: MutableList<Long>,
     ): RelationOperations = RelationOperations { read ->
-        val position = read.providerCursor.nextPosition.value
+        val position =
+            (read.position as? RelationReadPosition.Resume)?.continuation?.providerState?.consumedLocatorCount?.value
+                ?: 0L
         positions += position
         val fact =
             RelationFact.create(
@@ -101,13 +107,13 @@ class QueryDistinctResumeTest {
                 )
                 .refined()
         if (position == 0L) {
+            val successor = inventory(selected).consume(RelationProviderConsumption.GraphConfirmed(fact))
             val coverage =
                 RelationIncompleteCoverage.resumable(
                         batch,
                         setOf(RelationLimitation.RESULT_LIMIT_REACHED),
-                        read.providerCursor.advance(
-                            RelationProviderItemDescriptor.parse("sample.catalog.first").refined()
-                        ),
+                        successor.providerCursor,
+                        successor,
                     )
                     .refined()
             RelationReadResult.Qualified(batch, coverage)
@@ -116,6 +122,21 @@ class QueryDistinctResumeTest {
             RelationReadResult.Complete(batch, complete.coverage)
         }
     }
+
+    private fun inventory(selected: io.github.amichne.kast.symbol.contract.SymbolSelector): RelationProviderState =
+        RelationProviderState.callees(
+            (0..1).map { index ->
+                val occurrence = RelationOccurrence.fromBoundary(selected.file, 8 + index, 9 + index).refined()
+                RelationProviderLocator.Callee.Reference(
+                    occurrence.file,
+                    occurrence.range,
+                    RelationProviderItemDescriptor.parse(
+                            if (index == 0) "sample.catalog.first" else "sample.catalog.second"
+                        )
+                        .refined(),
+                )
+            }
+        )
 
     private fun <Value, Failure> io.github.amichne.kast.kernel.Refinement<Value, Failure>.refined(): Value =
         when (this) {

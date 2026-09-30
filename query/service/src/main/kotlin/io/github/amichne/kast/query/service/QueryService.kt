@@ -3,7 +3,6 @@ package io.github.amichne.kast.query.service
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryContinuationState
-import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
@@ -12,8 +11,6 @@ import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRelationOmission
-import io.github.amichne.kast.query.contract.QueryResult
-import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolSource
@@ -59,9 +56,13 @@ class QueryService(
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
         private val joinStage = QueryJoinStage(request, state, tasks, checkpoint?.joinState)
         private val symbols = mutableListOf<QuerySymbol>()
+        private val occurrences = mutableListOf<io.github.amichne.kast.query.contract.QueryOccurrence>()
+        private val referenceObservations =
+            mutableListOf<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence>()
         private val completedFailures = mutableListOf<QueryItemFailure>()
         private val completedOmissions = mutableListOf<QueryRelationOmission>()
         private val completedWalkObservations = mutableListOf<QueryWalkObservation>()
+        private val discoveryTasks = QueryDiscoveryTasks(state, tasks)
         private var progressed = false
         private var terminal: QueryTerminalReason? = null
         private var rejection: QueryExecutionResult.Rejected? = null
@@ -84,6 +85,7 @@ class QueryService(
         private suspend fun executeNext(): Boolean {
             if (
                 symbols.size +
+                    occurrences.size +
                     joinStage.bindingRows.size +
                     completedFailures.size +
                     completedOmissions.size +
@@ -105,7 +107,10 @@ class QueryService(
                 is PipelineTask.Omission -> emit(task.value.projectedUtf8Size()) { completedOmissions += task.value }
                 is PipelineTask.WalkObservation ->
                     emit(task.value.projectedUtf8Size()) { completedWalkObservations += task.value }
-                is PipelineTask.Occurrence -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
+                is PipelineTask.Occurrence -> emit(task.value.projectedUtf8Size()) { occurrences += task.value }
+                is PipelineTask.ReferenceObservation ->
+                    emit(task.value.projectedUtf8Size()) { referenceObservations += task.value }
+                is PipelineTask.DiscoveryObservation -> discoveryTasks.observation(task, ::emit)
                 is PipelineTask.WalkRecord -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)
@@ -117,7 +122,8 @@ class QueryService(
                 is PipelineTask.FlushDistinct -> flushDistinct(task)
                 is PipelineTask.JoinEvidence -> joinStage.emitRightEvidence(task)
                 is PipelineTask.Join -> joinStage.advance(task)
-                is PipelineTask.Discover -> discovered(stages.discover(task.syntax, state), task.next)
+                is PipelineTask.Discover ->
+                    discovered(stages.discover(task.syntax, state, task.remainder), task.next, task)
                 is PipelineTask.DiscoverLocation -> discovered(stages.discoverLocation(task.target, state), task.next)
                 is PipelineTask.Revalidate -> {
                     if (!state.consumeUnit()) false
@@ -130,16 +136,17 @@ class QueryService(
                 }
             }
 
-        private fun discovered(result: DiscoveryExecution, next: ExactQueryStage): Boolean =
-            when (result) {
-                DiscoveryExecution.NotStarted -> false
-                is DiscoveryExecution.Rejected -> {
-                    rejection = result.result
-                    true
-                }
-                is DiscoveryExecution.Discovered -> {
-                    tasks.removeFirst()
-                    result.values.asReversed().forEach { tasks.addFirst(PipelineTask.Candidate(it, next)) }
+        private fun discovered(
+            result: DiscoveryExecution,
+            next: ExactQueryStage,
+            producer: PipelineTask.Discover? = null,
+        ): Boolean =
+            when (val transition = discoveryTasks.discovered(result, next, producer)) {
+                QueryDiscoveryTaskTransition.NotStarted,
+                QueryDiscoveryTaskTransition.ContractRejected -> false
+                QueryDiscoveryTaskTransition.Advanced -> true
+                is QueryDiscoveryTaskTransition.Rejected -> {
+                    rejection = transition.result
                     true
                 }
             }
@@ -169,7 +176,9 @@ class QueryService(
                 rows.map { PipelineTask.Symbol(it, stage.next) } +
                     stage.right.failures.map(PipelineTask::Failure) +
                     stage.right.omissions.map(PipelineTask::Omission) +
-                    stage.right.walkObservations.map(PipelineTask::WalkObservation)
+                    stage.right.walkObservations.map(PipelineTask::WalkObservation) +
+                    stage.right.referenceObservations.map(PipelineTask::ReferenceObservation) +
+                    stage.right.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) }
             values.asReversed().forEach(tasks::addFirst)
             return true
         }
@@ -346,30 +355,19 @@ class QueryService(
             if (state.contractViolation)
                 return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
             val result =
-                QueryResult(
-                    when (request.plan.outputSyntax()) {
-                        QueryOutputSyntax.BindingRows ->
-                            QueryRows.Bindings.of(joinStage.bindingRows, request.plan.bindingMode())
-                        else -> QueryRows.Symbols.of(symbols)
-                    },
-                    completedFailures.toList(),
-                    completedOmissions.toList(),
-                    completedWalkObservations.toList(),
-                )
-            val pageCount = symbols.size + joinStage.bindingRows.size
-            if (emittedBefore.value > Int.MAX_VALUE - pageCount)
-                return QueryExecutionResult.Rejected(QueryExecutionRejection.BUDGET_REJECTED)
-            val count = (emittedBefore.value + pageCount).queryCount()
-            if (state.completedWithoutMissingEvidence(tasks, result))
-                return QueryExecutionResult.Complete(result, QueryCoverage.Complete(count))
-            if (state.limitations.isEmpty()) state.limit(QueryLimitation.WORK_LIMIT_REACHED)
-            val coverage =
-                when (val admitted = QueryCoverage.Qualified.create(count, state.limitations)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
-                }
-            return QueryExecutionResult.Qualified(result, coverage, continuation(count))
+                QueryPageFacts(
+                        symbols,
+                        occurrences,
+                        joinStage.bindingRows,
+                        completedFailures,
+                        completedOmissions,
+                        completedWalkObservations,
+                        referenceObservations,
+                        discoveryTasks.discoveryObservations,
+                    )
+                    .result(request.plan)
+            val pageCount = symbols.size + occurrences.size + joinStage.bindingRows.size
+            return state.completePage(result, tasks, emittedBefore, pageCount, ::continuation)
         }
 
         private fun continuation(

@@ -45,9 +45,6 @@ import io.github.amichne.kast.source.contract.SourceTextIdentity
 import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
 import io.github.amichne.kast.source.contract.readScope
 import io.github.amichne.kast.symbol.contract.CandidateSelector
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.RevalidatedSymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
@@ -65,14 +62,8 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembe
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolVisibility
-import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.psi.KtCallElement
@@ -188,6 +179,7 @@ internal class LiveIntellijSourceRegionAccess(
                         request,
                         cursor,
                         execution,
+                        observation,
                     )
             ) {
                 is NativeSourceEntityProjection.Projected -> projected.page
@@ -499,7 +491,7 @@ internal enum class NativeVisibilityTarget {
     PRIMARY_CONSTRUCTOR_PROPERTY,
 }
 
-private data class NativeStructuralParent(
+internal data class NativeStructuralParent(
     val selector: SourceSelector,
     val depth: Int,
 )
@@ -511,6 +503,7 @@ private fun projectEntities(
     request: SourceReadRequest,
     cursor: IntellijSourceEntityCursor,
     execution: IntellijSourceExecution,
+    observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation,
 ): NativeSourceEntityProjection {
     if (request.entities == EntitySelection.None) {
         return NativeSourceEntityProjection.Projected(IntellijSourceEntityPage.empty())
@@ -521,6 +514,7 @@ private fun projectEntities(
     val includeCalls = EntityFilter.Calls in matching.filters
     val includeReferences = EntityFilter.References in matching.filters
     val requiresK2 = includeDeclarations || includeCalls || includeReferences
+    observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.SOURCE_ENUMERATION)
     return IntellijSourceEntityAttempt.collect(execution, matching, cursor, request.entityLimit) { attempt ->
         if (requiresK2) {
             analyze(document.psiFile) {
@@ -553,6 +547,7 @@ private fun projectEntities(
                                 else -> SourceEntityTarget.Unresolved(CompilerUnresolvedReason.AMBIGUOUS)
                             }
                         },
+                        observation = observation,
                     )
                     .enumerate()
             }
@@ -569,6 +564,7 @@ private fun projectEntities(
                     attempt,
                     { _, _ -> null },
                     { SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET) },
+                    observation,
                 )
                 .enumerate()
         }
@@ -587,29 +583,78 @@ internal class NativeSourceEntityEnumerator(
     private val attempt: IntellijSourceEntityAttempt,
     private val visibility: (KtNamedDeclaration, NativeVisibilityTarget) -> DeclarationVisibility?,
     private val target: (KtNameReferenceExpression) -> SourceEntityTarget,
+    private val observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation =
+        io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
 ) {
     private var limitation: SourceReadLimitation? = null
     private var rejection: IntellijSourceReadRejection? = null
+    private val traversal = IntellijSourceTraversal(document, regionSelector, attempt)
 
     fun enumerate(): NativeSourceEntityProjection {
+        initializeTraversal()
+        while (traversal.hasWork && !stopped()) {
+            if (!examine()) break
+            consumeTask(traversal.next())
+        }
+        val rejected = rejection
+        if (rejected != null) return NativeSourceEntityProjection.Rejected(rejected)
+        return NativeSourceEntityProjection.Projected(traversal.finish(limitation))
+    }
+
+    private fun initializeTraversal() {
         val rootParent = NativeStructuralParent(regionSelector, 0)
         val classParent = (region.element as? KtClassOrObject)?.let { rootParent }
-        if (containment == io.github.amichne.kast.source.contract.Containment.SELF) {
+        if (!traversal.resumed && containment == io.github.amichne.kast.source.contract.Containment.SELF) {
             val declaration = region.element as? KtNamedDeclaration
             val kind = declaration?.sourceDeclarationKind()
             if (declaration == null || kind == null || declaration.textRange != region.range) {
                 reject(IntellijSourceReadRejection.UNSUPPORTED_REQUEST)
-            } else if (examine()) {
-                visitDeclaration(declaration, kind, rootParent, classParent)
-            }
-        } else visitChildren(region.element, rootParent, classParent)
-        val rejected = rejection
-        if (rejected != null) return NativeSourceEntityProjection.Rejected(rejected)
-        val limited = limitation
-        val selected = attempt.finish()
-        return NativeSourceEntityProjection.Projected(
-            if (limited == null) selected else selected.withLimitation(limited)
-        )
+            } else
+                traversal.visit(
+                    declaration,
+                    rootParent,
+                    classParent,
+                    io.github.amichne.kast.source.contract.SourceEntitySiblingPolicy.SINGLE,
+                )
+        } else if (!traversal.resumed) visitChildren(region.element, rootParent, classParent)
+    }
+
+    private fun consumeTask(task: io.github.amichne.kast.source.contract.SourceEntityTraversalTask) {
+        if (task !is io.github.amichne.kast.source.contract.SourceEntityTraversalTask.ProvenEntity)
+            observation.count(
+                io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter.SOURCE_STRUCTURAL_TASKS
+            )
+        when (task) {
+            is io.github.amichne.kast.source.contract.SourceEntityTraversalTask.ProvenEntity ->
+                attempt.offer(task.entity)
+            is io.github.amichne.kast.source.contract.SourceEntityTraversalTask.Visit -> consumeVisit(task)
+            is io.github.amichne.kast.source.contract.SourceEntityTraversalTask.ValueParameter -> consumeParameter(task)
+        }
+    }
+
+    private fun consumeVisit(task: io.github.amichne.kast.source.contract.SourceEntityTraversalTask.Visit) {
+        val element = traversal.restore(task.element)
+        if (element == null) {
+            reject(IntellijSourceReadRejection.DECLARATION_MOVED_OR_CHANGED)
+            return
+        }
+        val parent = task.parent.nativeParent()
+        val classPropertyParent = task.classPropertyParent?.nativeParent()
+        if (task.siblings == io.github.amichne.kast.source.contract.SourceEntitySiblingPolicy.REMAINING) {
+            element.nextSibling?.let { traversal.visit(it, parent, classPropertyParent, task.siblings) }
+        }
+        visit(element, parent, classPropertyParent)
+    }
+
+    private fun consumeParameter(
+        task: io.github.amichne.kast.source.contract.SourceEntityTraversalTask.ValueParameter
+    ) {
+        val parameter = traversal.restore(task.element) as? KtParameter
+        if (parameter == null) {
+            reject(IntellijSourceReadRejection.DECLARATION_MOVED_OR_CHANGED)
+            return
+        }
+        visitValueParameter(parameter, task.parent.nativeParent())
     }
 
     private fun visitChildren(
@@ -617,10 +662,7 @@ internal class NativeSourceEntityEnumerator(
         parent: NativeStructuralParent,
         classPropertyParent: NativeStructuralParent?,
     ) {
-        for (child in container.children) {
-            if (stopped()) return
-            visit(child, parent, classPropertyParent)
-        }
+        traversal.children(container, parent, classPropertyParent)
     }
 
     private fun visit(
@@ -628,7 +670,6 @@ internal class NativeSourceEntityEnumerator(
         parent: NativeStructuralParent,
         classPropertyParent: NativeStructuralParent?,
     ) {
-        if (!examine()) return
         if (!element.textRange.intersects(region.range)) return
         if (!region.range.contains(element.textRange)) {
             visitChildren(element, parent, classPropertyParent)
@@ -639,8 +680,8 @@ internal class NativeSourceEntityEnumerator(
                 visitCall(element, parent, classPropertyParent)
             }
             element is KtNameReferenceExpression -> {
+                visitChildren(element, parent, classPropertyParent)
                 visitReference(element, parent)
-                if (!stopped()) visitChildren(element, parent, classPropertyParent)
             }
             element is KtLambdaExpression -> {
                 visitAnonymousCallable(element.bodyExpression, parent, classPropertyParent)
@@ -649,15 +690,14 @@ internal class NativeSourceEntityEnumerator(
                 visitAnonymousCallable(element.bodyExpression, parent, classPropertyParent)
             }
             element is KtParameter -> {
+                visitChildren(element, parent, classPropertyParent)
                 visitParameter(element, parent, classPropertyParent)
-                if (!stopped()) visitChildren(element, parent, classPropertyParent)
             }
             element is KtTypeParameter -> Unit
             element is KtDestructuringDeclaration -> {
+                visitChildren(element, parent, classPropertyParent)
                 if (includeDeclarations) {
                     limitation = SourceReadLimitation.UNSUPPORTED_ENTITY
-                } else {
-                    visitChildren(element, parent, classPropertyParent)
                 }
             }
             element is KtNamedDeclaration -> {
@@ -677,6 +717,8 @@ internal class NativeSourceEntityEnumerator(
         parent: NativeStructuralParent,
         classPropertyParent: NativeStructuralParent?,
     ) {
+        if (containment != io.github.amichne.kast.source.contract.Containment.SELF)
+            visitChildren(call, parent, classPropertyParent)
         if (includeCalls) {
             val callee = call.calleeExpression ?: return qualify(SourceReadLimitation.UNSUPPORTED_ENTITY)
             val reference = call.calleeNameReference()
@@ -716,9 +758,8 @@ internal class NativeSourceEntityEnumerator(
                     is Refinement.Refined -> created.value
                     is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
-            attempt.offer(entity)
+            offerProjected(entity)
         }
-        if (!stopped()) visitChildren(call, parent, classPropertyParent)
     }
 
     private fun visitReference(
@@ -746,7 +787,7 @@ internal class NativeSourceEntityEnumerator(
                 is Refinement.Refined -> created.value
                 is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             }
-        attempt.offer(entity)
+        offerProjected(entity)
     }
 
     private fun visitDeclaration(
@@ -763,7 +804,12 @@ internal class NativeSourceEntityEnumerator(
         val selector =
             issueEntitySelector(declaration.textRange, kind.entityKind(), name, parent.selector)
                 ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-        attempt.projectDeclaration(kind) {
+        if (containment != io.github.amichne.kast.source.contract.Containment.SELF) {
+            val childParent = NativeStructuralParent(selector, parent.depth + 1)
+            val classParent = if (declaration is KtClassOrObject) childParent else classPropertyParent
+            visitChildren(declaration, childParent, classParent)
+        }
+        attempt.projectDeclaration(kind, parent.depth) {
             val semanticVisibility =
                 visibility(declaration, NativeVisibilityTarget.DECLARATION)
                     ?: return@projectDeclaration qualify(SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE)
@@ -785,17 +831,8 @@ internal class NativeSourceEntityEnumerator(
                     is Refinement.Rejected ->
                         return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
-            attempt.offer(entity)
+            offerProjected(entity)
         }
-        if (containment == io.github.amichne.kast.source.contract.Containment.SELF) return
-        val childParent = NativeStructuralParent(selector, parent.depth + 1)
-        val classParent =
-            if (declaration is KtClassOrObject) {
-                childParent
-            } else {
-                classPropertyParent
-            }
-        visitChildren(declaration, childParent, classParent)
     }
 
     private fun visitUnnamedDeclaration(
@@ -822,7 +859,7 @@ internal class NativeSourceEntityEnumerator(
         classPropertyParent: NativeStructuralParent?,
         name: String,
     ) {
-        attempt.projectDeclaration(DeclarationKind.PROPERTY) {
+        attempt.projectDeclaration(DeclarationKind.PROPERTY, classPropertyParent?.depth ?: 0) {
             val propertyParent =
                 classPropertyParent ?: return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             val propertySelector =
@@ -858,7 +895,7 @@ internal class NativeSourceEntityEnumerator(
                     is Refinement.Rejected ->
                         return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
-            attempt.offer(property)
+            offerProjected(property)
         }
     }
 
@@ -870,9 +907,15 @@ internal class NativeSourceEntityEnumerator(
         if (!parameter.isSupportedValueParameter()) return
         val name = parameter.name ?: return qualify(SourceReadLimitation.UNSUPPORTED_ENTITY)
         if (parameter.hasValOrVar() && parameter.ownerDeclaration is KtPrimaryConstructor) {
+            if (includeParameters) traversal.parameter(parameter, parent)
             visitConstructorProperty(parameter, classPropertyParent, name)
+        } else if (includeParameters) {
+            visitValueParameter(parameter, parent)
         }
-        if (!includeParameters || stopped()) return
+    }
+
+    private fun visitValueParameter(parameter: KtParameter, parent: NativeStructuralParent) {
+        val name = parameter.name ?: return qualify(SourceReadLimitation.UNSUPPORTED_ENTITY)
         val selector =
             issueEntitySelector(
                 parameter.textRange,
@@ -891,7 +934,7 @@ internal class NativeSourceEntityEnumerator(
                 is Refinement.Refined -> created.value
                 is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             }
-        attempt.offer(entity)
+        offerProjected(entity)
     }
 
     private fun visitAnonymousCallable(
@@ -951,8 +994,14 @@ internal class NativeSourceEntityEnumerator(
         }
     }
 
-    private fun examine(): Boolean =
-        when (attempt.admitUnit()) {
+    private fun offerProjected(entity: SourceEntity) {
+        observation.count(io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter.SOURCE_ENTITIES_PROJECTED)
+        attempt.offer(entity)
+    }
+
+    private fun examine(): Boolean {
+        com.intellij.openapi.progress.ProgressManager.checkCanceled()
+        return when (attempt.admitUnit()) {
             SourceExecutionAdmission.ADMITTED -> true
             SourceExecutionAdmission.WORK_LIMIT_REACHED -> {
                 limitation = SourceReadLimitation.WORK_LIMIT_REACHED
@@ -967,6 +1016,7 @@ internal class NativeSourceEntityEnumerator(
                 false
             }
         }
+    }
 
     private fun stopped(): Boolean =
         limitation != null || rejection != null || attempt.admission == SourceEntityCollectionAdmission.STOPPED
@@ -1232,107 +1282,6 @@ private fun KtNamedDeclaration.localSourceTarget(document: LiveSourceDocument): 
             ?: return SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET)
     return SourceEntityTarget.Local(SourceSelector.issueRoot(range, SourceRegionKind.DECLARATION))
 }
-
-private fun KtNamedDeclaration.compilerEvidence(selector: SymbolSelector): CompilerGroundedSymbolEvidence? {
-    val projection =
-        when (val result = analyze(this) { symbol.sourceProjection() }) {
-            is SourceCompilerProjectionResult.Projected -> result.projection
-            SourceCompilerProjectionResult.Rejected -> return null
-        }
-    return when (
-        val evidence =
-            CompilerGroundedSymbolEvidence.fromBoundary(
-                file = selector.file,
-                rawStartInclusive = textRange.startOffset,
-                rawEndExclusive = textRange.endOffset,
-                rawName = name.orEmpty(),
-                rawQualifiedIdentity = projection.qualifiedIdentity,
-                kind = projection.kind,
-                signature = projection.signature,
-            )
-    ) {
-        is Refinement.Refined -> evidence.value
-        is Refinement.Rejected -> null
-    }
-}
-
-private data class SourceCompilerProjection(
-    val kind: CompilerSymbolKind,
-    val qualifiedIdentity: String,
-    val signature: CanonicalCompilerSignature,
-)
-
-private sealed interface SourceCompilerProjectionResult {
-    data class Projected(val projection: SourceCompilerProjection) : SourceCompilerProjectionResult
-
-    data object Rejected : SourceCompilerProjectionResult
-}
-
-private fun KaSymbol.sourceProjection(): SourceCompilerProjectionResult =
-    when (this) {
-        is KaConstructorSymbol -> {
-            val identity =
-                containingClassId?.asSingleFqName()?.asString()?.let { "$it.<init>" }
-                    ?: return SourceCompilerProjectionResult.Rejected
-            projected(CompilerSymbolKind.CONSTRUCTOR, identity, sourceFunctionSignature(identity))
-        }
-        is KaFunctionSymbol -> {
-            val identity = callableId?.asSingleFqName()?.asString() ?: return SourceCompilerProjectionResult.Rejected
-            projected(CompilerSymbolKind.FUNCTION, identity, sourceFunctionSignature(identity))
-        }
-        is KaKotlinPropertySymbol -> {
-            val identity = callableId?.asSingleFqName()?.asString() ?: return SourceCompilerProjectionResult.Rejected
-            projected(
-                CompilerSymbolKind.PROPERTY,
-                identity,
-                CanonicalCompilerSignature.property(
-                    identity,
-                    receiverParameter?.returnType?.toString(),
-                    contextReceivers.map { it.type.toString() },
-                    returnType.toString(),
-                ),
-            )
-        }
-        is KaTypeAliasSymbol -> {
-            val identity = classId?.asSingleFqName()?.asString() ?: return SourceCompilerProjectionResult.Rejected
-            projected(
-                CompilerSymbolKind.TYPE_ALIAS,
-                identity,
-                CanonicalCompilerSignature.typeAlias(identity),
-            )
-        }
-        is KaClassLikeSymbol -> {
-            val identity = classId?.asSingleFqName()?.asString() ?: return SourceCompilerProjectionResult.Rejected
-            projected(
-                CompilerSymbolKind.CLASSLIKE,
-                identity,
-                CanonicalCompilerSignature.classLike(identity),
-            )
-        }
-        else -> SourceCompilerProjectionResult.Rejected
-    }
-
-private fun KaFunctionSymbol.sourceFunctionSignature(
-    identity: String
-): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
-    CanonicalCompilerSignature.function(
-        identity,
-        receiverParameter?.returnType?.toString(),
-        contextReceivers.map { it.type.toString() },
-        valueParameters.map { it.returnType.toString() },
-        (this as? KaNamedFunctionSymbol)?.typeParameters?.size ?: 0,
-    )
-
-private fun projected(
-    kind: CompilerSymbolKind,
-    identity: String,
-    signature: Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>,
-): SourceCompilerProjectionResult =
-    when (signature) {
-        is Refinement.Refined ->
-            SourceCompilerProjectionResult.Projected(SourceCompilerProjection(kind, identity, signature.value))
-        is Refinement.Rejected -> SourceCompilerProjectionResult.Rejected
-    }
 
 private fun regionRejected(reason: IntellijSourceReadRejection): IntellijSourceRegionAccessResult.Rejected =
     IntellijSourceRegionAccessResult.Rejected(reason)

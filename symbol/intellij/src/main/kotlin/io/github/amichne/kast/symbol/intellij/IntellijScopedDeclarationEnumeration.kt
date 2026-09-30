@@ -42,7 +42,7 @@ internal fun SymbolDiscoveryRequest.requestedDeclarationKinds(): Set<CompilerSym
 
 internal fun SymbolDiscoveryRequest.usesScopedDeclarationEnumeration(): Boolean =
     when (val selected = target) {
-        is SymbolDiscoveryTarget.All -> selected.kind != SymbolNameDiscoveryKind.FILE
+        is SymbolDiscoveryTarget.All -> false
         is SymbolDiscoveryTarget.Name ->
             selected.kind != SymbolNameDiscoveryKind.FILE &&
                 selected.match == SymbolDiscoveryMatch.FUZZY &&
@@ -67,7 +67,7 @@ internal fun SymbolDiscoveryRequest.admitsContributorName(name: String): Boolean
     return family in requestedDeclarationKinds()
 }
 
-/** File-index membership precedes PSI; kind and package admission precede candidate capacity and K2. */
+/** Ranked fuzzy-name enumeration retains its global name ranking; ALL uses the detached partition producer. */
 internal fun collectScopedKotlinDeclarations(
     project: Project,
     scope: CompiledIntellijSearchScope,

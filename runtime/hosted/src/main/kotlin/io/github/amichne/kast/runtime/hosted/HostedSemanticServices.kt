@@ -10,8 +10,8 @@ import io.github.amichne.kast.relation.intellij.ProjectBoundIntellijRelationPort
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.source.contract.SourceReadContext
 import io.github.amichne.kast.source.contract.SourceReadContextPort
+import io.github.amichne.kast.source.contract.SourceReadContinuationPort
 import io.github.amichne.kast.source.contract.SourceReadRejection
-import io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations
 import io.github.amichne.kast.source.intellij.ProjectBoundIntellijSourceReadPort
 import io.github.amichne.kast.source.service.SourceReadService
 import io.github.amichne.kast.symbol.intellij.ProjectBoundIntellijSymbolPorts
@@ -162,7 +162,7 @@ internal class HostedSemanticServices(
         }
     }
 
-    fun source(continuations: IntellijSourceReadContinuations) =
+    fun source(continuations: SourceReadContinuationPort) =
         SourceReadService(
             SourceReadContextPort { expected ->
                 when (context.validation.validate(expected)) {

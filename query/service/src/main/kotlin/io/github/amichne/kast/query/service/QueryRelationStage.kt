@@ -1,8 +1,11 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryOccurrence
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.relation.contract.RelationContinuation
@@ -26,11 +29,16 @@ internal sealed interface QueryRelationStageResult {
         val symbols: List<QuerySymbol>,
         val continuation: RelationContinuation?,
         val omissions: List<QueryRelationOmission>,
+        val occurrences: List<QueryOccurrence> = emptyList(),
+        val referenceObservations: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> =
+            emptyList(),
     ) : QueryRelationStageResult
 }
 
 internal fun QueryRelationStageResult.Read.nextTasks(task: PipelineTask.Related): List<PipelineTask> =
     symbols.map { PipelineTask.Symbol(it, task.stage.next) } +
+        occurrences.map(PipelineTask::Occurrence) +
+        referenceObservations.map(PipelineTask::ReferenceObservation) +
         omissions.map(PipelineTask::Omission) +
         listOfNotNull(continuation?.let { task.copy(cursor = it) })
 
@@ -41,27 +49,9 @@ internal class QueryRelationStage(private val relations: RelationOperations) {
             state.relationBudget(state.request.budget.resources.resultLimit.value)
                 ?: return QueryRelationStageResult.NotStarted
         val child =
-            if (task.cursor == null) {
-                RelationRequest.start(
-                    task.value.selector,
-                    task.stage.meaning,
-                    childBudget,
-                    RelationSearchBoundary.WORKSPACE_EXPANSION,
-                )
-            } else {
-                when (
-                    val resumed =
-                        RelationRequest.resume(
-                            task.value.selector,
-                            task.stage.meaning,
-                            childBudget,
-                            task.cursor,
-                            RelationSearchBoundary.WORKSPACE_EXPANSION,
-                        )
-                ) {
-                    is Refinement.Refined -> resumed.value
-                    is Refinement.Rejected -> return QueryRelationStageResult.ContractRejected
-                }
+            when (val admitted = task.relationRequest(childBudget)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return QueryRelationStageResult.ContractRejected
             }
         val result = relations.read(child)
         val cursor = observeCoverage(result, task, state)
@@ -77,9 +67,24 @@ internal class QueryRelationStage(private val relations: RelationOperations) {
                 is RelationReadResult.Qualified -> result.batch.facts
                 is RelationReadResult.Rejected -> emptyList()
             }
-        val symbols = facts.map { it.toQuerySymbol(task.value.connections, state) }
+        val references =
+            when (result) {
+                is RelationReadResult.Complete -> result.batch.referenceOccurrences
+                is RelationReadResult.Qualified -> result.batch.referenceOccurrences
+                is RelationReadResult.Rejected -> emptyList()
+            }
+        val emit = task.stage.next as? ExactQueryStage.Emit
+        val independentOccurrences = emit?.output == QueryOutputSyntax.Occurrences && references.isNotEmpty()
+        val symbols =
+            if (independentOccurrences) emptyList() else facts.map { it.toQuerySymbol(task.value.connections, state) }
         state.observeTime()
-        return QueryRelationStageResult.Read(symbols, cursor, omissions)
+        return QueryRelationStageResult.Read(
+            symbols,
+            cursor,
+            omissions,
+            if (independentOccurrences) references.map(QueryOccurrence::Reference) else emptyList(),
+            if (independentOccurrences) emptyList() else references,
+        )
     }
 
     private fun preserveMeasuredPageOmissions(
@@ -127,6 +132,22 @@ internal class QueryRelationStage(private val relations: RelationOperations) {
         }
 }
 
+private fun PipelineTask.Related.relationRequest(
+    budget: io.github.amichne.kast.relation.contract.RelationBudget
+): Refinement<RelationRequest, io.github.amichne.kast.relation.contract.RelationResumeFailure> =
+    if (cursor == null)
+        Refinement.Refined(
+            RelationRequest.start(value.selector, stage.meaning, budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
+        )
+    else
+        RelationRequest.resume(
+            value.selector,
+            stage.meaning,
+            budget,
+            cursor,
+            RelationSearchBoundary.WORKSPACE_EXPANSION,
+        )
+
 /** Page limits clear after continuation; permanent omitted evidence and terminal limits stay query-visible. */
 private fun RelationReadResult.queryOmissions(
     subject: SymbolSelector,
@@ -154,11 +175,9 @@ private fun RelationReadResult.queryOmissions(
     for (reason in reasons) {
         val evidence =
             recorded[reason]
-                ?: RelationOmissionEvidence.fromObservedPage(
+                ?: RelationOmissionEvidence.unmeasured(
                     qualified.batch.request.providerCursor.provider,
                     reason,
-                    RelationOmissionMeasurement.UnmeasuredOnPage,
-                    emptyList(),
                 )
         when (val admitted = QueryRelationOmission.create(subject, meaning, evidence)) {
             is Refinement.Refined -> omissions += admitted.value
@@ -170,7 +189,7 @@ private fun RelationReadResult.queryOmissions(
 
 private fun RelationOmissionEvidence?.isPersistentOmission(reason: RelationLimitation): Boolean =
     reason !in recoverableRelationPageLimits ||
-        (this != null && (measurement is RelationOmissionMeasurement.ObservedOnPage || samples.isNotEmpty()))
+        (this != null && (measurement is RelationOmissionMeasurement.ObservedOnPage || samples.locations.isNotEmpty()))
 
 private enum class QueryRelationStageOmissionFailure {
     INCONSISTENT_COVERAGE,

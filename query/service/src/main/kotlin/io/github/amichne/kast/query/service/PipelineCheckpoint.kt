@@ -49,11 +49,23 @@ internal sealed interface PipelineTask {
 
     data class WalkObservation(val value: QueryWalkObservation) : PipelineTask
 
-    data class Occurrence(val value: QuerySymbol) : PipelineTask
+    data class Occurrence(val value: io.github.amichne.kast.query.contract.QueryOccurrence) : PipelineTask
+
+    data class ReferenceObservation(val value: io.github.amichne.kast.relation.contract.RelationReferenceOccurrence) :
+        PipelineTask
+
+    data class DiscoveryObservation(
+        val value: io.github.amichne.kast.query.contract.QueryDiscoveryObservation,
+        val origin: DiscoveryObservationOrigin = DiscoveryObservationOrigin.RETAINED_EVIDENCE,
+    ) : PipelineTask
 
     data class WalkRecord(val value: QuerySymbol) : PipelineTask
 
-    data class Discover(val syntax: QueryDiscoverySyntax, val next: ExactQueryStage) : PipelineTask
+    data class Discover(
+        val syntax: QueryDiscoverySyntax,
+        val next: ExactQueryStage,
+        val remainder: io.github.amichne.kast.symbol.contract.SymbolDiscoveryRemainder? = null,
+    ) : PipelineTask
 
     data class DiscoverLocation(val target: QueryContainingDeclaration, val next: ExactQueryStage) : PipelineTask
 
@@ -80,6 +92,11 @@ internal sealed interface PipelineTask {
         PipelineTask
 
     data class Join(val value: QuerySymbol, val stage: ExactQueryStage.Join, val cursor: QueryJoinCursor) : PipelineTask
+}
+
+internal enum class DiscoveryObservationOrigin {
+    SEQUENTIAL_EXECUTION,
+    RETAINED_EVIDENCE,
 }
 
 internal sealed interface QueryJoinCursor {
@@ -135,18 +152,20 @@ private fun PipelineTask.retainedBytes(): Long =
         is PipelineTask.Omission -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.WalkObservation -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Occurrence -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
+        is PipelineTask.ReferenceObservation -> saturatedMultiply(value.retainedBytes, RETAINED_EVIDENCE_MULTIPLIER)
+        is PipelineTask.DiscoveryObservation -> value.retainedBytes
         is PipelineTask.WalkRecord -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Symbol -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Binding -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Related ->
             saturatedAdd(
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
-                RELATION_CURSOR_BYTES,
+                saturatedAdd(RELATION_CURSOR_BYTES, cursor?.providerState?.retainedBytes ?: 0L),
             )
         is PipelineTask.Walk ->
             saturatedAdd(
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
-                TRAVERSAL_CURSOR_BYTES,
+                saturatedAdd(TRAVERSAL_CURSOR_BYTES, cursor?.checkpoint?.retainedBytes ?: 0L),
             )
         is PipelineTask.Candidate ->
             saturatedMultiply(value.candidate.projectedUtf8Size().value, RETAINED_EVIDENCE_MULTIPLIER)
@@ -169,7 +188,7 @@ private fun PipelineTask.retainedBytes(): Long =
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
                 (cursor as? QueryJoinCursor.Semi)?.accumulated?.projectedUtf8Size() ?: 0L,
             )
-        is PipelineTask.Discover,
+        is PipelineTask.Discover -> saturatedAdd(DISCOVERY_TASK_BYTES, remainder?.retainedBytes ?: 0L)
         is PipelineTask.DiscoverLocation -> DISCOVERY_TASK_BYTES
     }
 
@@ -186,7 +205,9 @@ internal fun PipelineTask.Feed.expand(): List<PipelineTask> =
             input.result.symbols.map { PipelineTask.Symbol(it, stage.next) } +
                 input.result.failures.map(PipelineTask::Failure) +
                 input.result.omissions.map(PipelineTask::Omission) +
-                input.result.walkObservations.map(PipelineTask::WalkObservation)
+                input.result.walkObservations.map(PipelineTask::WalkObservation) +
+                input.result.referenceObservations.map(PipelineTask::ReferenceObservation) +
+                input.result.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) }
     }
 
 /** A record output keeps each established occurrence as a separate retained row. */
@@ -194,7 +215,12 @@ internal fun PipelineTask.Symbol.expandOutput(output: QueryOutputSyntax): List<P
     when (output) {
         QueryOutputSyntax.Occurrences ->
             (value.arrival as? QueryArrivalEvidence.Proven)?.facts.orEmpty().map { fact ->
-                PipelineTask.Occurrence(value.copy(arrival = QueryArrivalEvidence.Proven.one(fact)))
+                PipelineTask.Occurrence(
+                    io.github.amichne.kast.query.contract.QueryOccurrence.Declaration(
+                        value.copy(arrival = QueryArrivalEvidence.Proven.one(fact)),
+                        fact,
+                    )
+                )
             }
         QueryOutputSyntax.TraversalRecords ->
             (value.walkArrival as? QueryWalkArrival.Proven)?.records.orEmpty().map { record ->
@@ -213,10 +239,13 @@ private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
             (when (val source = plan.source) {
                 is QueryRetainedResult.Symbols -> source.symbols.map { PipelineTask.Symbol(it, plan.stage) }
                 is QueryRetainedResult.Bindings -> source.bindingRows.map { PipelineTask.Binding(it, plan.stage) }
+                is QueryRetainedResult.Occurrences -> source.occurrences.map(PipelineTask::Occurrence)
             }) +
                 plan.source.failures.map(PipelineTask::Failure) +
                 plan.source.omissions.map(PipelineTask::Omission) +
-                plan.source.walkObservations.map(PipelineTask::WalkObservation)
+                plan.source.walkObservations.map(PipelineTask::WalkObservation) +
+                plan.source.referenceObservations.map(PipelineTask::ReferenceObservation) +
+                plan.source.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) }
     }
 
 private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =

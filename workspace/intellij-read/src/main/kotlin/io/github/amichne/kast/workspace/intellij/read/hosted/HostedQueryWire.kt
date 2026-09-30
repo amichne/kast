@@ -172,6 +172,7 @@ internal fun HostedQueryFailure.code(): String =
         HostedQueryFailure.CANCELLED -> "CANCELLED"
         HostedQueryFailure.BUDGET_EXCEEDED -> "BUDGET_EXCEEDED"
         is HostedQueryFailure.Platform -> "PLATFORM_FAILURE"
+        is HostedQueryFailure.Publication -> "PUBLICATION_REJECTED"
         is HostedQueryFailure.ProjectAdmission -> "PROJECT_ADMISSION_REJECTED"
         is HostedQueryFailure.ModelCapture -> "MODEL_CAPTURE_REJECTED"
         is HostedQueryFailure.ReadEpoch -> "READ_EPOCH_REJECTED"
@@ -195,6 +196,7 @@ internal fun HostedQueryFailure.detail(): JsonElement =
                     )
             }
         is HostedQueryFailure.Platform -> Json.encodeToJsonElement(CauseDetail(cause.name))
+        is HostedQueryFailure.Publication -> Json.encodeToJsonElement(PublicationFailureDetail(cause))
         is HostedQueryFailure.ModelCapture -> Json.encodeToJsonElement(cause.failures.map { it.name })
         is HostedQueryFailure.ProjectAdmission -> cause.detail()
         // These closed causes contain only repository-owned enum/object variants, never platform data.

@@ -3,6 +3,7 @@ package io.github.amichne.kast.source.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import java.util.Collections
 
 private const val MAX_SOURCE_LINE_COUNT = 1_000
 private const val MAX_SOURCE_ENTITY_LIMIT = 1_000
@@ -63,7 +64,7 @@ class DeclarationKindSelection private constructor(val values: List<DeclarationK
             if (raw.isEmpty()) {
                 Refinement.Rejected(DeclarationKindSelectionFailure.EMPTY)
             } else {
-                Refinement.Refined(DeclarationKindSelection(raw.sortedBy { it.ordinal }))
+                Refinement.Refined(DeclarationKindSelection(Collections.unmodifiableList(raw.sortedBy { it.ordinal })))
             }
     }
 
@@ -90,7 +91,7 @@ sealed interface VisibilitySelection {
             if (raw.isEmpty()) {
                 Refinement.Rejected(VisibilitySelectionFailure.EMPTY)
             } else {
-                Refinement.Refined(Exact(raw.sortedBy { it.ordinal }))
+                Refinement.Refined(Exact(Collections.unmodifiableList(raw.sortedBy { it.ordinal })))
             }
     }
 }
@@ -144,7 +145,7 @@ sealed interface EntitySelection {
             return Refinement.Refined(
                 Matching(
                     containment,
-                    filters.sortedBy(EntityFilter::canonicalKey),
+                    Collections.unmodifiableList(filters.sortedBy(EntityFilter::canonicalKey)),
                 )
             )
         }

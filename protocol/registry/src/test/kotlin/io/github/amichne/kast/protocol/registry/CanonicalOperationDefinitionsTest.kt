@@ -48,9 +48,9 @@ class CanonicalOperationDefinitionsTest {
         definitions.forEach { definition ->
             val version =
                 when (definition.operation) {
-                    CanonicalOperation.SOURCE_READ -> 5
-                    CanonicalOperation.DIAGNOSTIC_CHECK -> 4
-                    CanonicalOperation.QUERY_RUN -> 2
+                    CanonicalOperation.SOURCE_READ -> 6
+                    CanonicalOperation.DIAGNOSTIC_CHECK -> 5
+                    CanonicalOperation.QUERY_RUN -> 3
                     CanonicalOperation.CHANGE_APPLY -> 3
                     else -> 2
                 }

@@ -177,6 +177,19 @@ internal class QueryExecutionState(
         }
     }
 
+    /** A retained producer remainder discharges page bounds, while permanent omissions survive successors. */
+    fun discoveryPageLimited(qualifications: Set<SymbolDiscoveryQualification>) {
+        val permanent =
+            qualifications -
+                setOf(
+                    SymbolDiscoveryQualification.RESULT_LIMIT_REACHED,
+                    SymbolDiscoveryQualification.BYTE_LIMIT_REACHED,
+                    SymbolDiscoveryQualification.WORK_LIMIT_REACHED,
+                    SymbolDiscoveryQualification.TIME_LIMIT_REACHED,
+                )
+        if (permanent.isNotEmpty()) upstreamLimit(QueryLimitation.DISCOVERY_INCOMPLETE)
+    }
+
     /** Child coverage proves incomplete discovery; aggregate result capacity remains query-owned. */
     fun discoveryLimited(qualifications: Set<SymbolDiscoveryQualification>) {
         upstreamLimit(QueryLimitation.DISCOVERY_INCOMPLETE)
@@ -210,6 +223,9 @@ internal class QueryExecutionState(
                 RelationLimitation.BYTE_LIMIT_REACHED -> upstreamLimit(QueryLimitation.BYTE_LIMIT_REACHED)
                 RelationLimitation.WORK_LIMIT_REACHED -> upstreamLimit(QueryLimitation.WORK_LIMIT_REACHED)
                 RelationLimitation.TIME_LIMIT_REACHED -> upstreamLimit(QueryLimitation.TIME_LIMIT_REACHED)
+                RelationLimitation.CANDIDATE_LIMIT_REACHED -> upstreamLimit(QueryLimitation.WORK_LIMIT_REACHED)
+                RelationLimitation.RETENTION_LIMIT_REACHED,
+                RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE,
                 RelationLimitation.DUMB_MODE_TRANSITION,
                 RelationLimitation.UNRESOLVED_TARGET,
                 RelationLimitation.UNSUPPORTED_ITEM,
@@ -305,6 +321,7 @@ internal val recoverableRelationPageLimits =
         RelationLimitation.BYTE_LIMIT_REACHED,
         RelationLimitation.WORK_LIMIT_REACHED,
         RelationLimitation.TIME_LIMIT_REACHED,
+        RelationLimitation.CANDIDATE_LIMIT_REACHED,
     )
 
 private fun QueryWalkCoverage.isTerminallyIncomplete(): Boolean =

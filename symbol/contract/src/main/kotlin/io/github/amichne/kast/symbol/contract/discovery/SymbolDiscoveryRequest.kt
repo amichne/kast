@@ -227,6 +227,7 @@ private constructor(
     val target: SymbolDiscoveryTarget,
     val budget: SymbolDiscoveryBudget,
     val constraints: SymbolDiscoveryConstraints,
+    val remainder: SymbolDiscoveryRemainder?,
 ) {
     companion object {
         operator fun invoke(
@@ -234,7 +235,8 @@ private constructor(
             target: ConstrainedSymbolDiscoveryTarget,
             budget: SymbolDiscoveryBudget,
             constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
-        ): SymbolDiscoveryRequest = SymbolDiscoveryRequest(scope, target, budget, constraints)
+            remainder: SymbolDiscoveryRemainder? = null,
+        ): SymbolDiscoveryRequest = SymbolDiscoveryRequest(scope, target, budget, constraints, remainder)
 
         operator fun invoke(
             scope: SymbolSearchScopeRequest,
@@ -246,6 +248,7 @@ private constructor(
                 target,
                 budget,
                 SymbolDiscoveryConstraints.None,
+                null,
             )
     }
 
@@ -254,13 +257,15 @@ private constructor(
             scope == other.scope &&
             target == other.target &&
             budget == other.budget &&
-            constraints == other.constraints
+            constraints == other.constraints &&
+            remainder == other.remainder
 
     override fun hashCode(): Int {
         var result = scope.hashCode()
         result = 31 * result + target.hashCode()
         result = 31 * result + budget.hashCode()
-        return 31 * result + constraints.hashCode()
+        result = 31 * result + constraints.hashCode()
+        return 31 * result + (remainder?.hashCode() ?: 0)
     }
 
     override fun toString(): String =

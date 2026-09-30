@@ -29,6 +29,8 @@ value class SymbolDiscoveryByteCount private constructor(val value: Long) {
 @JvmInline
 value class SymbolDiscoveryWorkCount private constructor(val value: Long) {
     companion object {
+        val Zero: SymbolDiscoveryWorkCount = SymbolDiscoveryWorkCount(0L)
+
         /**
          * Proof transition: Long to Refinement<SymbolDiscoveryWorkCount, SymbolDiscoveryMeasureFailure>.
          *
@@ -48,6 +50,8 @@ value class SymbolDiscoveryWorkCount private constructor(val value: Long) {
 @JvmInline
 value class SymbolDiscoveryElapsedNanoseconds private constructor(val value: Long) {
     companion object {
+        val Zero: SymbolDiscoveryElapsedNanoseconds = SymbolDiscoveryElapsedNanoseconds(0L)
+
         /**
          * Proof transition: Long to Refinement<SymbolDiscoveryElapsedNanoseconds, SymbolDiscoveryMeasureFailure>.
          *
@@ -66,6 +70,14 @@ value class SymbolDiscoveryElapsedNanoseconds private constructor(val value: Lon
 data class SymbolDiscoveryTimings(
     val nativeQuery: SymbolDiscoveryElapsedNanoseconds,
     val projection: SymbolDiscoveryElapsedNanoseconds,
+    val inventory: SymbolDiscoveryElapsedNanoseconds = SymbolDiscoveryElapsedNanoseconds.Zero,
+    val declarationScan: SymbolDiscoveryElapsedNanoseconds = SymbolDiscoveryElapsedNanoseconds.Zero,
+)
+
+data class SymbolDiscoveryMeasurements(
+    val inventoryFiles: SymbolDiscoveryWorkCount = SymbolDiscoveryWorkCount.Zero,
+    val reacquiredFiles: SymbolDiscoveryWorkCount = SymbolDiscoveryWorkCount.Zero,
+    val examinedLeaves: SymbolDiscoveryWorkCount = SymbolDiscoveryWorkCount.Zero,
 )
 
 enum class SymbolDiscoveryBatchFailure {
@@ -86,6 +98,7 @@ private constructor(
     val encodedBytes: SymbolDiscoveryByteCount,
     val examinedWorkUnits: SymbolDiscoveryWorkCount,
     val timings: SymbolDiscoveryTimings,
+    val measurements: SymbolDiscoveryMeasurements,
 ) {
     companion object {
         /**
@@ -103,6 +116,7 @@ private constructor(
             encodedBytes: SymbolDiscoveryByteCount,
             examinedWorkUnits: SymbolDiscoveryWorkCount,
             timings: SymbolDiscoveryTimings,
+            measurements: SymbolDiscoveryMeasurements = SymbolDiscoveryMeasurements(),
         ): Refinement<SymbolDiscoveryBatch, SymbolDiscoveryBatchFailure> {
             if (candidates.any { it.lease != request.scope.lease }) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.CANDIDATE_LEASE_MISMATCH)
@@ -128,6 +142,7 @@ private constructor(
                     encodedBytes = encodedBytes,
                     examinedWorkUnits = examinedWorkUnits,
                     timings = timings,
+                    measurements = measurements,
                 )
             )
         }
@@ -178,10 +193,16 @@ class SymbolDiscoveryQualifications private constructor(val values: Set<SymbolDi
 }
 
 sealed interface SymbolDiscoveryOutcome {
-    data class Complete(val batch: SymbolDiscoveryBatch) : SymbolDiscoveryOutcome
+    val progress: SymbolDiscoveryProgress
+
+    data class Complete(val batch: SymbolDiscoveryBatch) : SymbolDiscoveryOutcome {
+        override val progress: SymbolDiscoveryProgress = SymbolDiscoveryProgress.Exhausted
+    }
 
     data class Qualified(
         val batch: SymbolDiscoveryBatch,
         val qualifications: SymbolDiscoveryQualifications,
+        override val progress: SymbolDiscoveryProgress =
+            SymbolDiscoveryProgress.Blocked(SymbolDiscoveryBlockCause.QUALIFIED_PROVIDER),
     ) : SymbolDiscoveryOutcome
 }

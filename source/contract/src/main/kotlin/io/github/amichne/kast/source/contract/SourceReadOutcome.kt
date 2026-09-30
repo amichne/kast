@@ -91,6 +91,7 @@ enum class SourceReadLimitation {
     SEMANTIC_RESOLUTION_INCOMPLETE,
     UNSUPPORTED_ENTITY,
     PROVIDER_FAILURE,
+    RETENTION_LIMIT_REACHED,
 }
 
 sealed interface SourceReadContinuationState {
@@ -122,7 +123,8 @@ private constructor(
             }
             if (
                 SourceReadLimitation.ENTITY_LIMIT_REACHED in limitations &&
-                    continuation is SourceReadContinuationState.Unavailable
+                    continuation is SourceReadContinuationState.Unavailable &&
+                    SourceReadLimitation.RETENTION_LIMIT_REACHED !in limitations
             ) {
                 return Refinement.Rejected(SourceReadQualificationFailure.CONTINUATION_REQUIRED)
             }

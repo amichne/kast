@@ -90,8 +90,26 @@ private fun PublicToolReadResultAction.lowerReadResult(): Refinement<PublicToolC
                     )
                 )
             )
-        QueryOutputDocument.Occurrences,
-        QueryOutputDocument.TraversalRecords -> Refinement.Rejected(PublicToolInputFailure.SchemaRejected)
+        QueryOutputDocument.Occurrences ->
+            Refinement.Refined(
+                PublicToolCanonical.Query(
+                    QueryRunRequest.ReadResult.occurrences(
+                        result,
+                        cursor ?: QueryResultCursor.Start,
+                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
+                    )
+                )
+            )
+        QueryOutputDocument.TraversalRecords ->
+            Refinement.Refined(
+                PublicToolCanonical.Query(
+                    QueryRunRequest.ReadResult.traversalRecords(
+                        result,
+                        cursor ?: QueryResultCursor.Start,
+                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
+                    )
+                )
+            )
         QueryOutputDocument.BindingRows ->
             Refinement.Refined(
                 PublicToolCanonical.Query(
@@ -292,34 +310,6 @@ private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInpu
         is PublicToolUnion -> Refinement.Refined(QueryStepDocument.Union(right.lowerResult()))
         is PublicToolDifference -> Refinement.Refined(QueryStepDocument.Difference(right.lowerResult()))
     }
-
-private fun PublicToolOutput.lower(): QueryOutputDocument =
-    when (this) {
-        is PublicToolSymbolsOutput -> symbolsOutput()
-        PublicToolOccurrencesOutput -> QueryOutputDocument.Occurrences
-        PublicToolTraversalRecordsOutput -> QueryOutputDocument.TraversalRecords
-        PublicToolBindingRowsOutput -> QueryOutputDocument.BindingRows
-    }
-
-private fun PublicToolReadResultOutput.lower(): QueryOutputDocument =
-    when (this) {
-        is PublicToolSymbolsOutput -> symbolsOutput()
-        PublicToolBindingRowsOutput -> QueryOutputDocument.BindingRows
-    }
-
-private fun PublicToolSymbolsOutput.symbolsOutput(): QueryOutputDocument.Symbols =
-    QueryOutputDocument.Symbols(
-        bounded(
-            fields.values.map { field ->
-                when (field) {
-                    PublicToolFields.NAME -> QuerySymbolFieldDocument.NAME
-                    PublicToolFields.LOCATION -> QuerySymbolFieldDocument.LOCATION
-                    PublicToolFields.SIGNATURE -> QuerySymbolFieldDocument.SIGNATURE
-                    PublicToolFields.SOURCE -> QuerySymbolFieldDocument.SOURCE
-                }
-            }
-        )
-    )
 
 private fun PublicToolPredicate.lower(): QueryPredicateDocument =
     when (this) {

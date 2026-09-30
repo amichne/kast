@@ -1,21 +1,15 @@
 package io.github.amichne.kast.runtime.hosted
 
-import io.github.amichne.kast.kernel.EvidenceBasis
-import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
-import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
-import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.query.contract.QueryBudget
@@ -32,7 +26,6 @@ import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.QueryCheckpointIssuance
 import io.github.amichne.kast.query.protocol.QueryCheckpointRestoration
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
-import io.github.amichne.kast.query.protocol.evidenceBasis
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -40,7 +33,7 @@ import org.junit.jupiter.api.Test
 
 class HostedContinuationOwnerRetentionTest {
     @Test
-    fun `entry bound is per store and epoch retirement clears all three stores`() = runTest {
+    fun `query progress shares one quota and epoch retirement revokes detached source output`() = runTest {
         val epochs =
             io.github.amichne.kast.workspace.contract.MovingLiveReadAuthorityFixture(
                 RelationPagingFixture.live().authority.workspaceRoot
@@ -48,22 +41,20 @@ class HostedContinuationOwnerRetentionTest {
         val authority = epochs.admit()
         val fixture = RelationPagingFixture(authority)
         val source = HostedSourcePagingFixture.create(fixture)
-        val limits = ReadLimits.resolve(environment = mapOf("KAST_READ_QUERY_CONTINUATION_ENTRIES" to "1")).value()
+        val limits = ReadLimits.resolve(environment = mapOf("KAST_READ_QUERY_CONTINUATION_ENTRIES" to "2")).value()
         val continuations = HostedQueryContinuations()
         val owner = continuations.forEpoch(authority, limits).value()
         val queryRequest = queryRequest(fixture)
-        val queryOutcome = queryOutcome(authority.evidenceBasis())
         val checkpoint = checkpoint(fixture)
         val queryState = owner.queryState.issueCheckpoint(queryRequest, checkpoint) as QueryCheckpointIssuance.Issued
-        val queryOutput = owner.issue(queryRequest, authority, queryOutcome) as HostedOutputRetention.Retained
         val sourceOutput =
-            owner.sourceOutputs.issue(source.request, authority, source.outcome) as HostedOutputRetention.Retained
+            owner.sourceState.retainAcceptedFixtureSuffix(source.request, authority, source.outcome)
+                as HostedOutputRetention.Retained
         assertInstanceOf(
             QueryCheckpointRestoration.Restored::class.java,
             owner.queryState.restoreCheckpoint(queryState.token, authority),
         )
-        assertEquals(queryOutcome, owner.restore(queryOutput.queryOutputToken(), authority))
-        assertEquals(source.outcome, owner.sourceOutputs.restore(sourceOutput.token, source.request, authority))
+        assertEquals(source.outcome, owner.sourceState.readFixtureSuffix(sourceOutput.token, source.request, authority))
 
         val nextAuthority = epochs.advance()
         val next = continuations.forEpoch(nextAuthority, limits).value()
@@ -72,16 +63,17 @@ class HostedContinuationOwnerRetentionTest {
             continuations.forEpoch(authority, limits),
         )
         org.junit.jupiter.api.Assertions.assertSame(next, continuations.forEpoch(nextAuthority, limits).value())
-        assertQueryRetired(owner, queryState.token, queryOutput.queryOutputToken())
+        assertQueryRetired(owner, queryState.token)
         assertEquals(QueryCheckpointIssuance.Unavailable, owner.queryState.issueCheckpoint(queryRequest, checkpoint))
-        assertEquals(HostedOutputRetention.Unavailable, owner.issue(queryRequest, authority, queryOutcome))
         assertEquals(
-            HostedOutputRetention.Unavailable,
-            owner.sourceOutputs.issue(source.request, authority, source.outcome),
+            HostedOutputRetention.Rejected(
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause.CLAIM_UNAVAILABLE
+            ),
+            owner.sourceState.retainAcceptedFixtureSuffix(source.request, authority, source.outcome),
         )
         assertEquals(
             OperationOutcome.Rejected(SourceReadRejection.CONTINUATION_UNAVAILABLE),
-            owner.sourceOutputs.restore(sourceOutput.token, source.request, authority),
+            owner.sourceState.readFixtureSuffix(sourceOutput.token, source.request, authority),
         )
     }
 
@@ -100,34 +92,15 @@ class HostedContinuationOwnerRetentionTest {
         )
     }
 
-    private fun queryOutcome(basis: EvidenceBasis) =
-        OperationOutcome.Complete(
-            EvidenceEnvelope(
-                CanonicalOperation.QUERY_RUN.id,
-                basis,
-                QueryRunResult(bounded(emptyList()), bounded(emptyList()), bounded(emptyList())),
-            )
-        )
-
     private fun assertQueryRetired(
         owner: HostedQueryContinuations.Active,
         queryState: QueryExecutionContinuation.Pipeline,
-        queryOutput: QueryExecutionContinuation.Output,
     ) {
         assertEquals(
             QueryCheckpointRestoration.Unavailable,
             owner.queryState.restoreCheckpoint(queryState, owner.lease),
         )
-        assertEquals(
-            OperationOutcome.Rejected(
-                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
-            ),
-            owner.restore(queryOutput, owner.lease),
-        )
     }
-
-    private fun HostedOutputRetention.Retained.queryOutputToken(): QueryExecutionContinuation.Output =
-        (QueryExecutionContinuation.Output.parse(token.value) as Refinement.Refined).value
 
     private fun queryRequest(fixture: RelationPagingFixture) =
         queryIdentityRequest(fixture.exact)

@@ -23,7 +23,7 @@ class HostedDeadlineEvidenceTest {
             val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
             val executor =
                 HostedQueryExecutor(backgroundScope, { testScheduler.currentTime * 1_000_000L }) { policy ->
-                    HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000L }, policy, receipts::add)
+                    HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000L }, policy, publish = receipts::add)
                 }
             val work = async {
                 executor.execute(executor.endpoint) { progress ->
@@ -64,7 +64,7 @@ class HostedDeadlineEvidenceTest {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val executor =
             HostedQueryExecutor(backgroundScope, { testScheduler.currentTime * 1_000_000L }) { policy ->
-                HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000L }, policy, receipts::add)
+                HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000L }, policy, publish = receipts::add)
             }
         val result =
             executor.execute(executor.endpoint, shortHostLimits()) { progress ->

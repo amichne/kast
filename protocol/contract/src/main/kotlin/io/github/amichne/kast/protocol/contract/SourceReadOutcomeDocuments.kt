@@ -22,6 +22,7 @@ enum class SourceReadLimitationDocument {
     SEMANTIC_RESOLUTION_INCOMPLETE,
     UNSUPPORTED_ENTITY,
     PROVIDER_FAILURE,
+    RETENTION_LIMIT_REACHED,
 }
 
 enum class SourceEntityCountDocumentFailure {
@@ -66,7 +67,9 @@ private constructor(
             when (val state = progress) {
                 is SourceQualifiedProgressDocument.Resumable ->
                     SourceReadContinuationStateDocument.Available(state.checkpoint.token)
-                is SourceQualifiedProgressDocument.TerminalIncomplete -> SourceReadContinuationStateDocument.Unavailable
+                is SourceQualifiedProgressDocument.TerminalIncomplete,
+                is SourceQualifiedProgressDocument.RetentionUnavailable ->
+                    SourceReadContinuationStateDocument.Unavailable
             }
 
     companion object {
@@ -83,7 +86,8 @@ private constructor(
             }
             if (
                 SourceReadLimitationDocument.ENTITY_LIMIT_REACHED in limitations &&
-                    progress is SourceQualifiedProgressDocument.TerminalIncomplete
+                    progress is SourceQualifiedProgressDocument.TerminalIncomplete &&
+                    SourceReadLimitationDocument.RETENTION_LIMIT_REACHED !in limitations
             ) {
                 return Refinement.Rejected(SourceReadQualificationFailure.CONTINUATION_REQUIRED)
             }
@@ -118,5 +122,7 @@ enum class SourceReadRejection : SourceReadCause {
     @kotlinx.serialization.SerialName("compiler-analysis-unavailable") COMPILER_ANALYSIS_UNAVAILABLE,
     @kotlinx.serialization.SerialName("contract-violation") CONTRACT_VIOLATION,
     @kotlinx.serialization.SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
+    @kotlinx.serialization.SerialName("continuation-in-use") CONTINUATION_IN_USE,
+    @kotlinx.serialization.SerialName("continuation-capacity-exceeded") CONTINUATION_CAPACITY_EXCEEDED,
     @kotlinx.serialization.SerialName("continuation-request-mismatch") CONTINUATION_REQUEST_MISMATCH,
 }

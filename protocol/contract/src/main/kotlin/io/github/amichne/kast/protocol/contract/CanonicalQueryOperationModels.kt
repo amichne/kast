@@ -226,12 +226,6 @@ sealed interface QueryRunRequest : OperationRequest {
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
     ) : QueryRunRequest {
-        init {
-            if (output !is QueryOutputDocument.Symbols && output != QueryOutputDocument.BindingRows) {
-                throw kotlinx.serialization.SerializationException("read-result output must be symbols or binding rows")
-            }
-        }
-
         companion object {
             fun symbols(
                 result: QueryResultReference,
@@ -239,6 +233,18 @@ sealed interface QueryRunRequest : OperationRequest {
                 output: QueryOutputDocument.Symbols,
                 executionBudget: ExecutionBudgetDocument? = null,
             ): ReadResult = ReadResult(result, cursor, output, executionBudget)
+
+            fun occurrences(
+                result: QueryResultReference,
+                cursor: QueryResultCursor = QueryResultCursor.Start,
+                executionBudget: ExecutionBudgetDocument? = null,
+            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.Occurrences, executionBudget)
+
+            fun traversalRecords(
+                result: QueryResultReference,
+                cursor: QueryResultCursor = QueryResultCursor.Start,
+                executionBudget: ExecutionBudgetDocument? = null,
+            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.TraversalRecords, executionBudget)
 
             fun bindingRows(
                 result: QueryResultReference,
@@ -398,12 +404,17 @@ data class QueryRunResult(
     val failures: BoundedProtocolList<QueryItemFailureDocument>,
     val omissions: BoundedProtocolList<QueryRelationOmissionDocument> = QueryRelationOmissionDocument.Empty,
     val walkObservations: BoundedProtocolList<QueryWalkObservationDocument> = QueryWalkObservationDocument.Empty,
+    val referenceObservations: BoundedProtocolList<RelationReferenceOccurrenceDocument> = EmptyReferenceObservations,
+    val discoveryObservations: BoundedProtocolList<QueryDiscoveryObservationDocument> =
+        QueryDiscoveryObservationDocument.Empty,
     val retention: QueryResultRetention = QueryResultRetention.NotRequested,
     val nextCursor: QueryResultCursor? = null,
     val executionBudget: ExecutionBudgetReport? = null,
     val referenceAcquisitions: ReadReferenceAcquisitions? = null,
     /** Detached presentation metadata; not a wire field or a new semantic result count. */
     val presentationOrigin: QueryKnownMinimum? = null,
+    /** Offset proof for a retained presentation; never serialized or inferred from a successor cursor. */
+    val presentationWindow: QueryRetainedPresentationWindow? = null,
 ) : OperationResult
 
 enum class QuerySourceRejectionReason {

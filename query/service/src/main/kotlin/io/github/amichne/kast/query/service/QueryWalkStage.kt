@@ -1,8 +1,11 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryOccurrence
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QueryWalkArrival
 import io.github.amichne.kast.query.contract.QueryWalkObservation
@@ -24,12 +27,14 @@ internal sealed interface QueryWalkStageResult {
         val symbols: List<QuerySymbol>,
         val continuation: TraversalContinuation?,
         val observation: QueryWalkObservation?,
+        val occurrences: List<QueryOccurrence> = emptyList(),
     ) : QueryWalkStageResult
 }
 
 internal fun QueryWalkStageResult.Read.nextTasks(task: PipelineTask.Walk): List<PipelineTask> =
     symbols.map { PipelineTask.Symbol(it, task.stage.next) } +
-        listOfNotNull(observation?.let(PipelineTask::WalkObservation)) +
+        occurrences.map(PipelineTask::Occurrence) +
+        observation?.evidenceUnits().orEmpty().map(PipelineTask::WalkObservation) +
         listOfNotNull(continuation?.let { task.copy(cursor = it) })
 
 /** Query owns scheduling; the traversal domain owns breadth-first expansion and its continuation. */
@@ -67,8 +72,23 @@ internal class QueryWalkStage(
             }
         val result = traversal.run(plan)
         if (!result.matchesPlan(plan)) return QueryWalkStageResult.ContractRejected
-        return result.toStageResult(task, state)
+        return result.toStageResult(task, state).forOccurrenceOutput(task)
     }
+}
+
+private fun QueryWalkStageResult.Read.forOccurrenceOutput(task: PipelineTask.Walk): QueryWalkStageResult.Read {
+    if ((task.stage.next as? ExactQueryStage.Emit)?.output != QueryOutputSyntax.Occurrences) return this
+    val references = observation?.referenceOccurrences.orEmpty().map { it.reference }
+    val declarations = symbols.flatMap { symbol ->
+        (symbol.walkArrival as? QueryWalkArrival.Proven)
+            ?.records
+            .orEmpty()
+            .filter { record ->
+                references.none { it.occurrence == record.fact.occurrence && it.target == record.fact.target }
+            }
+            .map { QueryOccurrence.Declaration(symbol, it.fact) }
+    }
+    return copy(symbols = emptyList(), occurrences = references.map(QueryOccurrence::Reference) + declarations)
 }
 
 private fun TraversalResult.matchesPlan(requested: TraversalPlan): Boolean =

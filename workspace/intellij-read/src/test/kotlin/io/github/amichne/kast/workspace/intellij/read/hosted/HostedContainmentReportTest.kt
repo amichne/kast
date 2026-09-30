@@ -87,7 +87,7 @@ class HostedContainmentReportTest {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val executor =
             HostedQueryExecutor(backgroundScope, { 0L }) { policy ->
-                HostedReadDiagnostics({ 0L }, policy, receipts::add)
+                HostedReadDiagnostics({ 0L }, policy, publish = receipts::add)
             }
         var providerCalls = 0
         val result =

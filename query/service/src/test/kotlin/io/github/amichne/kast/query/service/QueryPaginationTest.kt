@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test
 
 class QueryPaginationTest {
     @Test
-    fun `intermediate discovery bytes do not spend final output authority`() = runTest {
+    fun `discovery candidates do not spend returned bytes while producer evidence does`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             val service =
@@ -38,8 +38,18 @@ class QueryPaginationTest {
                 io.github.amichne.kast.query.contract
                     .QuerySymbol(SymbolDescription.from(selected), emptyList())
                     .projectedUtf8Size()
-            val result = service.run(request(symbolPlan(), workLimit = 8L, returnedBytes = bytes))
+            val observed =
+                assertInstanceOf(
+                        QueryExecutionResult.Complete::class.java,
+                        service.run(request(symbolPlan(), workLimit = 8L)),
+                    )
+                    .result
+                    .discoveryObservations
+                    .single()
+            val grant = bytes + observed.projectedUtf8Size()
+            val result = service.run(request(symbolPlan(), workLimit = 8L, returnedBytes = grant))
             assertEquals(1, result.symbolCount())
+            assertEquals(listOf(observed), (result as QueryExecutionResult.Complete).result.discoveryObservations)
         }
     }
 

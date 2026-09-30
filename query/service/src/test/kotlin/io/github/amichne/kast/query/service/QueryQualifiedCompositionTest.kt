@@ -13,7 +13,11 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationProviderConsumption
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
+import io.github.amichne.kast.relation.contract.RelationProviderLocator
+import io.github.amichne.kast.relation.contract.RelationProviderState
+import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
@@ -133,7 +137,13 @@ class QueryQualifiedCompositionTest {
             ),
             SourceReadOperations { error("No source expected") },
             RelationOperations { read ->
-                reads += read.subject.name.value to read.providerCursor.nextPosition.value
+                reads +=
+                    read.subject.name.value to
+                        ((read.position as? RelationReadPosition.Resume)
+                            ?.continuation
+                            ?.providerState
+                            ?.consumedLocatorCount
+                            ?.value ?: 0L)
                 recordingRead(read, selected, leaf, terminal, repeated)
             },
             unexpectedQueryTraversal(),
@@ -148,7 +158,9 @@ class QueryQualifiedCompositionTest {
         terminal: Boolean,
         repeated: Boolean,
     ): RelationReadResult {
-        val position = read.providerCursor.nextPosition.value
+        val position =
+            (read.position as? RelationReadPosition.Resume)?.continuation?.providerState?.consumedLocatorCount?.value
+                ?: 0L
         val names =
             when (read.subject.name.value) {
                 "PaymentService" -> listOf("B")
@@ -157,6 +169,9 @@ class QueryQualifiedCompositionTest {
             }
         val facts = facts(read, selected, names)
         val page = facts.drop(position.toInt()).take(read.budget.resources.resultLimit.value)
+        val inventory = (read.position as? RelationReadPosition.Resume)?.continuation?.providerState ?: inventory(facts)
+        val successor =
+            page.fold(inventory) { state, fact -> state.consume(RelationProviderConsumption.GraphConfirmed(fact)) }
         val batch =
             RelationBatch.create(
                     read,
@@ -177,11 +192,8 @@ class QueryQualifiedCompositionTest {
                     RelationCompilation.qualifiedResumable(
                             batch,
                             setOf(RelationLimitation.RESULT_LIMIT_REACHED),
-                            page.fold(read.providerCursor) { cursor, fact ->
-                                cursor.advance(
-                                    RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refined()
-                                )
-                            },
+                            successor.providerCursor,
+                            successor,
                         )
                         .refined()
                 else -> RelationCompilation.complete(batch)
@@ -192,6 +204,17 @@ class QueryQualifiedCompositionTest {
             is RelationCompilation.Rejected -> error(compilation.toString())
         }
     }
+
+    private fun inventory(facts: List<RelationFact>): RelationProviderState =
+        RelationProviderState.callees(
+            facts.map { fact ->
+                RelationProviderLocator.Callee.Reference(
+                    fact.occurrence.file,
+                    fact.occurrence.range,
+                    RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refined(),
+                )
+            }
+        )
 
     private fun facts(
         read: io.github.amichne.kast.relation.contract.RelationRequest,

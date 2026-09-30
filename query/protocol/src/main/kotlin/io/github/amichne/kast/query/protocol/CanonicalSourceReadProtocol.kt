@@ -313,6 +313,7 @@ private fun SourceReadLimitation.protocol(): SourceReadLimitationDocument =
             SourceReadLimitationDocument.SEMANTIC_RESOLUTION_INCOMPLETE
         SourceReadLimitation.UNSUPPORTED_ENTITY -> SourceReadLimitationDocument.UNSUPPORTED_ENTITY
         SourceReadLimitation.PROVIDER_FAILURE -> SourceReadLimitationDocument.PROVIDER_FAILURE
+        SourceReadLimitation.RETENTION_LIMIT_REACHED -> SourceReadLimitationDocument.RETENTION_LIMIT_REACHED
     }
 
 private fun io.github.amichne.kast.source.contract.SourceRegionKind.protocol(): SourceRegionKindDocument =

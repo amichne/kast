@@ -48,22 +48,10 @@ private fun encodeHostedSourceResponseDocument(
     val original =
         HostedResponse.Canonical.encode(CanonicalOperationWireBindings.sourceRead, semantic, limits, maximumBytes)
     if (original is HostedResponse.EncodingRejected) return original
-    val evidence: EvidenceEnvelope<SourceReadResult>
-    val limitations: List<SourceReadLimitationDocument>
-    val minimum: SourceEntityCountDocument
-    when (semantic) {
-        is OperationOutcome.Complete -> {
-            evidence = semantic.evidence
-            limitations = emptyList()
-            minimum = SourceEntityCountDocument.parse(evidence.payload.entities.values.size).proven()
-        }
-        is OperationOutcome.Qualified -> {
-            evidence = semantic.evidence
-            limitations = semantic.qualification.limitations
-            minimum = semantic.qualification.knownMinimumEntityCount
-        }
-        is OperationOutcome.Rejected -> return original
-    }
+    val prepared = semantic.fittingEvidence() ?: return original
+    val evidence = prepared.evidence
+    val limitations = prepared.limitations
+    val minimum = prepared.minimum
     val size = evidence.payload.entities.values.size
     if (original !is HostedResponse.Oversized && size <= maximumResults.value) return original
     val exhausted = buildList {
@@ -87,8 +75,35 @@ private fun encodeHostedSourceResponseDocument(
             maximumBytes,
             retain,
         )
-    return retain(semantic.sourceSuffix(count)).encodeSource { token -> fitting.encode(count, token) }
+    return when (val retained = retain(semantic.sourceSuffix(count))) {
+        is HostedOutputRetention.Retained -> fitting.encode(count, retained.token)
+        HostedOutputRetention.CapacityExceeded -> fitting.retentionUnavailable(count)
+        is HostedOutputRetention.Rejected ->
+            HostedResponse.ReadRejected(
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure.Publication(retained.cause),
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryStage.RESULT_DETACHED,
+            )
+    }
 }
+
+private data class SourceFittingEvidence(
+    val evidence: EvidenceEnvelope<SourceReadResult>,
+    val limitations: List<SourceReadLimitationDocument>,
+    val minimum: SourceEntityCountDocument,
+)
+
+private fun HostedSourceOutcome.fittingEvidence(): SourceFittingEvidence? =
+    when (this) {
+        is OperationOutcome.Complete ->
+            SourceFittingEvidence(
+                evidence,
+                emptyList(),
+                SourceEntityCountDocument.parse(evidence.payload.entities.values.size).proven(),
+            )
+        is OperationOutcome.Qualified ->
+            SourceFittingEvidence(evidence, qualification.limitations, qualification.knownMinimumEntityCount)
+        is OperationOutcome.Rejected -> null
+    }
 
 private fun HostedSourceOutcome.sourceSuffix(count: Int): HostedSourceOutcome =
     when (this) {
@@ -154,14 +169,6 @@ private fun HostedResponse.indivisibleSource(): HostedResponse =
         else -> HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
     }
 
-private fun HostedOutputRetention.encodeSource(encode: (ProtocolText) -> HostedResponse): HostedResponse =
-    when (this) {
-        is HostedOutputRetention.Retained -> encode(token)
-        HostedOutputRetention.CapacityExceeded -> HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
-        HostedOutputRetention.Unavailable -> unavailableHostedRetention()
-        HostedOutputRetention.EncodingRejected -> HostedResponse.Rejected(HostedEndpointFailure.RESPONSE_REJECTED)
-    }
-
 private class SourcePageEncoding(
     private val evidence: EvidenceEnvelope<SourceReadResult>,
     private val minimum: SourceEntityCountDocument,
@@ -171,6 +178,29 @@ private class SourcePageEncoding(
     private val maximumBytes: ReturnedByteLimit,
 ) {
     fun placeholder(count: Int) = encode(count, PLACEHOLDER)
+
+    fun retentionUnavailable(count: Int): HostedResponse =
+        HostedResponse.Canonical.encode(
+            CanonicalOperationWireBindings.sourceRead,
+            OperationOutcome.Qualified(
+                evidence.copy(
+                    payload =
+                        evidence.payload.copy(
+                            entities = BoundedProtocolList.create(evidence.payload.entities.values.take(count)).proven()
+                        )
+                ),
+                SourceReadQualification.create(
+                        minimum,
+                        (limitations + SourceReadLimitationDocument.RETENTION_LIMIT_REACHED).distinct().sortedBy {
+                            it.ordinal
+                        },
+                        SourceQualifiedProgressDocument.RetentionUnavailable(upstream),
+                    )
+                    .proven(),
+            ),
+            limits,
+            maximumBytes,
+        )
 
     fun encode(count: Int, token: ProtocolText): HostedResponse =
         HostedResponse.Canonical.encode(

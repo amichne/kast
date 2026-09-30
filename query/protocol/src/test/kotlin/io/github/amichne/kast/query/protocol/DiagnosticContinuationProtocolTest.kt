@@ -116,25 +116,40 @@ class DiagnosticContinuationProtocolTest {
     }
 
     @Test
-    fun `pending fresh publication cannot reuse a concurrently orphaned replay`() {
-        val store = DiagnosticCheckpointStore(capacity = 3)
-        val grant = RequestedExecutionBudget()
-        val pending = store.admit(query, null, request.limit, grant) as DiagnosticCheckpointAdmission.Execute
-        val concurrent = store.admit(query, null, request.limit, grant) as DiagnosticCheckpointAdmission.Execute
-        val result = DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending)
-        val old = store.publish(concurrent, result).refined().next as DiagnosticNextPage.Continue
-        val other =
-            store.admit(query, null, ProtocolCount.parse(2).refined(), grant) as DiagnosticCheckpointAdmission.Execute
-        store.publish(other, result).refined()
-        val fresh = store.publish(pending, result).refined().next as DiagnosticNextPage.Continue
-        assertInstanceOf(
-            DiagnosticCheckpointAdmission.Execute::class.java,
-            store.admit(query, fresh.token, request.limit, grant),
+    fun `concurrent acquisition is rejected and staged successors are invisible until commit`() = runTest {
+        val store = DiagnosticCheckpointStore(capacity = 4)
+        val admission =
+            store.admit(query, null, request.limit, RequestedExecutionBudget()) as DiagnosticCheckpointAdmission.Execute
+        assertEquals(
+            DiagnosticCheckpointAdmission.Rejected(DiagnosticCheckRejection.CONTINUATION_IN_USE),
+            store.admit(query, null, request.limit, RequestedExecutionBudget()),
         )
+        val staged =
+            store
+                .stageScan(
+                    admission,
+                    DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending),
+                )
+                .refined()
+        val next = (staged.next as DiagnosticNextPage.Continue).token
         assertEquals(
             DiagnosticCheckpointAdmission.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE),
-            store.admit(query, old.token, request.limit, grant),
+            store.admit(query, next, request.limit, RequestedExecutionBudget()),
         )
+        store.discard(admission.claim)
+        assertEquals(
+            DiagnosticCheckpointAdmission.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE),
+            store.admit(query, next, request.limit, RequestedExecutionBudget()),
+        )
+        var scans = 0
+        val protocol =
+            protocol(store) {
+                scans++
+                DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending)
+            }
+        val first = protocol.execute(request, lease, budget) as OperationOutcome.Qualified
+        assertEquals(first, protocol.execute(request, lease, budget))
+        assertEquals(1, scans)
     }
 
     @Test
@@ -275,7 +290,16 @@ class DiagnosticContinuationProtocolTest {
                 DiagnosticScanResult.Advancing(emptyPage, longCheckpoint, DiagnosticScanStop.AnalysisPending)
             }
         val result = protocol.execute(request.copy(path = ProtocolText.parse(path).refined()), lease, budget)
-        assertEquals(OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED), result)
+        val qualified = result as OperationOutcome.Qualified
+        assertEquals(null, qualified.qualification.continuation)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument.CAPACITY_EXCEEDED,
+            qualified.qualification.retentionFailure,
+        )
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.DiagnosticProgressStop.RETENTION_CAPACITY_EXCEEDED,
+            qualified.evidence.payload.progress?.stop,
+        )
     }
 
     private fun protocol(

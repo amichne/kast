@@ -10,12 +10,20 @@ enum class DiagnosticRecoveryAction {
     @SerialName("restart_read") RESTART_READ,
     @SerialName("correct_request") CORRECT_REQUEST,
     @SerialName("wait_for_workspace") WAIT_FOR_WORKSPACE,
+    @SerialName("wait_for_checkpoint") WAIT_FOR_CHECKPOINT,
     @SerialName("adjust_retention_policy") ADJUST_RETENTION_POLICY,
     @SerialName("report_failure") REPORT_FAILURE,
 }
 
 fun DiagnosticCheckFailure.diagnosticRecoveryAction(): DiagnosticRecoveryAction =
     when (reason()) {
+        DiagnosticCheckRejection.PUBLICATION_OWNER_RETIRED,
+        DiagnosticCheckRejection.PUBLICATION_CLAIM_UNAVAILABLE,
+        DiagnosticCheckRejection.PUBLICATION_EXPIRED,
+        DiagnosticCheckRejection.PUBLICATION_DEPENDENCY_UNAVAILABLE -> DiagnosticRecoveryAction.RESTART_READ
+        DiagnosticCheckRejection.PUBLICATION_PAGE_MISMATCH,
+        DiagnosticCheckRejection.PUBLICATION_NON_ADVANCING,
+        DiagnosticCheckRejection.PUBLICATION_INVALID_FITTED_PAGE -> DiagnosticRecoveryAction.REPORT_FAILURE
         DiagnosticCheckRejection.EXECUTION_TIME_GRANT_TOO_SMALL,
         DiagnosticCheckRejection.ENUMERATION_WORK_GRANT_TOO_SMALL,
         DiagnosticCheckRejection.ENUMERATION_TIME_GRANT_TOO_SMALL,
@@ -36,4 +44,5 @@ fun DiagnosticCheckFailure.diagnosticRecoveryAction(): DiagnosticRecoveryAction 
         DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION,
         DiagnosticCheckRejection.SCOPE_LIMIT_EXCEEDED,
         DiagnosticCheckRejection.SCOPE_UNAVAILABLE -> DiagnosticRecoveryAction.REPORT_FAILURE
+        DiagnosticCheckRejection.CONTINUATION_IN_USE -> DiagnosticRecoveryAction.WAIT_FOR_CHECKPOINT
     }

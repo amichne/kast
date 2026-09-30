@@ -45,6 +45,16 @@ internal sealed interface QueryResultItemWireDocument {
     ) : QueryResultItemWireDocument
 
     @Serializable
+    @SerialName("reference-occurrence")
+    data class ReferenceOccurrence(
+        val ref: QueryReferenceWireDocument.ExactSymbol,
+        val occurrence: RelationReferenceOccurrenceWireDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        val rowId: String? = null,
+    ) : QueryResultItemWireDocument
+
+    @Serializable
     @SerialName("traversal_record")
     data class TraversalRecord(
         val ref: QueryReferenceWireDocument.ExactSymbol,
@@ -94,6 +104,12 @@ internal fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
                 relation.toWireDocument(),
                 rowId?.value,
             )
+        is QueryResultItemDocument.ReferenceOccurrence ->
+            QueryResultItemWireDocument.ReferenceOccurrence(
+                QueryReferenceWireDocument.ExactSymbol(ref.token.value),
+                occurrence.toWireDocument(),
+                rowId?.value,
+            )
         is QueryResultItemDocument.TraversalRecord ->
             QueryResultItemWireDocument.TraversalRecord(
                 QueryReferenceWireDocument.ExactSymbol(ref.token.value),
@@ -141,6 +157,18 @@ internal fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<Qu
                 relation.toContract().flatMapConverted { fact ->
                     optionalRowId(rowId).mapConverted { id ->
                         QueryResultItemDocument.Occurrence(QueryReferenceDocument.ExactSymbol(token), fact, id)
+                    }
+                }
+            }
+        is QueryResultItemWireDocument.ReferenceOccurrence ->
+            ref.token.queryItemText().flatMapConverted { token ->
+                occurrence.toContract().flatMapConverted { occurrence ->
+                    optionalRowId(rowId).mapConverted { id ->
+                        QueryResultItemDocument.ReferenceOccurrence(
+                            QueryReferenceDocument.ExactSymbol(token),
+                            occurrence,
+                            id,
+                        )
                     }
                 }
             }

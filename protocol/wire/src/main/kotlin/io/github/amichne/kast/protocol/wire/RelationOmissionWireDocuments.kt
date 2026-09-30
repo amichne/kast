@@ -9,6 +9,8 @@ import io.github.amichne.kast.protocol.contract.RelationObservedItemsDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionMeasurementDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionSampleRetentionDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionSamplesDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
 import io.github.amichne.kast.protocol.contract.RelationRemediationDocument
 import kotlinx.serialization.SerialName
@@ -19,7 +21,7 @@ internal data class RelationOmissionWireDocument(
     val provider: RelationProviderDocument,
     val reason: RelationLimitationDocument,
     val measurement: RelationOmissionMeasurementWireDocument,
-    val samples: List<RelationOmissionLocationWireDocument>,
+    val samples: RelationOmissionSamplesWireDocument,
     val remediation: RelationRemediationDocument,
 )
 
@@ -32,6 +34,21 @@ internal sealed interface RelationOmissionMeasurementWireDocument {
     @Serializable
     @SerialName("unmeasured_on_page")
     data object UnmeasuredOnPage : RelationOmissionMeasurementWireDocument
+}
+
+@Serializable
+internal sealed interface RelationOmissionSamplesWireDocument {
+    val locations: List<RelationOmissionLocationWireDocument>
+
+    @Serializable
+    @SerialName("complete")
+    data class Complete(override val locations: List<RelationOmissionLocationWireDocument>) :
+        RelationOmissionSamplesWireDocument
+
+    @Serializable
+    @SerialName("truncated")
+    data class Truncated(override val locations: List<RelationOmissionLocationWireDocument>) :
+        RelationOmissionSamplesWireDocument
 }
 
 @Serializable
@@ -48,33 +65,20 @@ internal fun RelationOmissionDocument.toWireDocument() =
                 RelationOmissionMeasurementDocument.UnmeasuredOnPage ->
                     RelationOmissionMeasurementWireDocument.UnmeasuredOnPage
             },
-        samples = samples.values.map { RelationOmissionLocationWireDocument(it.file.value, it.range.toWireDocument()) },
+        samples = samples.toWireDocument(),
         remediation = remediation,
     )
 
 internal fun RelationOmissionWireDocument.toContract(): WireDocumentConversion<RelationOmissionDocument> =
     measurement.toContract().flatMapConverted { measure ->
-        samples
-            .convertEach { sample ->
-                ProtocolText.parse(sample.file).toWireDocumentConversion().flatMapConverted { file ->
-                    sample.range.toContract().mapConverted { RelationOmissionLocationDocument(file, it) }
+        samples.toContract().flatMapConverted { retained ->
+            RelationOmissionDocument.create(provider, reason, measure, retained)
+                .toWireDocumentConversion()
+                .flatMapConverted { admitted ->
+                    if (admitted.remediation == remediation) WireDocumentConversion.Converted(admitted)
+                    else WireDocumentConversion.Rejected
                 }
-            }
-            .flatMapConverted { locations ->
-                BoundedProtocolList.create(locations).toWireDocumentConversion().flatMapConverted { bounded ->
-                    RelationOmissionDocument.create(
-                            provider = provider,
-                            reason = reason,
-                            measurement = measure,
-                            samples = bounded,
-                        )
-                        .toWireDocumentConversion()
-                        .flatMapConverted { admitted ->
-                            if (admitted.remediation == remediation) WireDocumentConversion.Converted(admitted)
-                            else WireDocumentConversion.Rejected
-                        }
-                }
-            }
+        }
     }
 
 private fun RelationOmissionMeasurementWireDocument.toContract():
@@ -87,3 +91,29 @@ private fun RelationOmissionMeasurementWireDocument.toContract():
         RelationOmissionMeasurementWireDocument.UnmeasuredOnPage ->
             WireDocumentConversion.Converted(RelationOmissionMeasurementDocument.UnmeasuredOnPage)
     }
+
+private fun RelationOmissionSamplesDocument.toWireDocument(): RelationOmissionSamplesWireDocument {
+    val locations =
+        locations.values.map { RelationOmissionLocationWireDocument(it.file.value, it.range.toWireDocument()) }
+    return when (retention) {
+        RelationOmissionSampleRetentionDocument.COMPLETE -> RelationOmissionSamplesWireDocument.Complete(locations)
+        RelationOmissionSampleRetentionDocument.TRUNCATED -> RelationOmissionSamplesWireDocument.Truncated(locations)
+    }
+}
+
+private fun RelationOmissionSamplesWireDocument.toContract(): WireDocumentConversion<RelationOmissionSamplesDocument> =
+    locations
+        .convertEach { sample ->
+            ProtocolText.parse(sample.file).toWireDocumentConversion().flatMapConverted { file ->
+                sample.range.toContract().mapConverted { RelationOmissionLocationDocument(file, it) }
+            }
+        }
+        .flatMapConverted { locations ->
+            BoundedProtocolList.create(locations).toWireDocumentConversion().flatMapConverted { bounded ->
+                when (this) {
+                    is RelationOmissionSamplesWireDocument.Complete -> RelationOmissionSamplesDocument.complete(bounded)
+                    is RelationOmissionSamplesWireDocument.Truncated ->
+                        RelationOmissionSamplesDocument.truncated(bounded)
+                }.toWireDocumentConversion()
+            }
+        }

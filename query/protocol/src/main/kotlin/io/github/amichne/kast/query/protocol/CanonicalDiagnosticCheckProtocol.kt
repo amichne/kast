@@ -40,7 +40,6 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.query.protocol.*
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -50,48 +49,58 @@ class CanonicalDiagnosticCheckProtocol(
     private val operations: DiagnosticScanOperations,
     private val authority: QueryReferenceAuthority,
     private val checkpoints: DiagnosticCheckpointStore,
+    private val publication: DiagnosticExecutionPublication = DiagnosticExecutionPublication.Immediate,
 ) {
     suspend fun execute(
         request: DiagnosticCheckRequest,
         current: SemanticReadAuthority,
         budget: ResourceBudget,
         report: ExecutionBudgetReport? = null,
-    ): OperationOutcome<DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection> {
+    ): DiagnosticPublishedPage {
         val query =
             when (val parsed = DiagnosticScopeQuery.parse(current, request.path.value)) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(parsed.failure.protocol())
             }
         val effective =
-            budget.copy(
-                resultLimit =
-                    when (val count = ResultLimit.parse(minOf(request.limit.value, budget.resultLimit.value))) {
-                        is Refinement.Refined -> count.value
-                        is Refinement.Rejected ->
-                            return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
-                    }
-            )
-        val stored =
-            when (
-                val admitted =
-                    checkpoints.admit(
-                        query,
-                        request.continuation,
-                        request.limit,
-                        request.executionBudget?.requested() ?: RequestedExecutionBudget(),
-                    )
-            ) {
-                is DiagnosticCheckpointAdmission.Rejected -> return OperationOutcome.Rejected(admitted.reason)
-                is DiagnosticCheckpointAdmission.Replay -> admitted.page
-                is DiagnosticCheckpointAdmission.Execute -> {
-                    val result = operations.scan(admitted.request, effective)
-                    when (val published = checkpoints.publish(admitted, result)) {
-                        is Refinement.Refined -> published.value
-                        is Refinement.Rejected -> return OperationOutcome.Rejected(published.failure)
-                    }
-                }
+            when (val admitted = request.effectiveBudget(budget)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return OperationOutcome.Rejected(admitted.failure)
             }
-        return project(stored, current, report, request.path)
+        val admission = checkpoints.admitRequest(query, request)
+        val claim =
+            when (admission) {
+                is DiagnosticCheckpointAdmission.Rejected -> return OperationOutcome.Rejected(admission.reason)
+                is DiagnosticCheckpointAdmission.Execute -> admission.claim
+                is DiagnosticCheckpointAdmission.Outcome -> admission.claim
+            }
+        var transferred = false
+        try {
+            val outcome =
+                when (admission) {
+                    is DiagnosticCheckpointAdmission.Outcome -> admission.page
+                    is DiagnosticCheckpointAdmission.Execute -> {
+                        val result = operations.scan(admission.request, effective)
+                        val stored =
+                            when (val staged = checkpoints.stageScan(admission, result)) {
+                                is Refinement.Refined -> staged.value
+                                is Refinement.Rejected -> return OperationOutcome.Rejected(staged.failure)
+                            }
+                        project(stored, current, report, request.path)
+                    }
+                    is DiagnosticCheckpointAdmission.Rejected -> return OperationOutcome.Rejected(admission.reason)
+                }
+            return when (val prepared = publication.prepare(checkpoints, claim, outcome)) {
+                DiagnosticExecutionPublicationResult.COMMITTED,
+                DiagnosticExecutionPublicationResult.PREPARED -> {
+                    transferred = true
+                    outcome
+                }
+                is DiagnosticExecutionPublicationResult.Rejected -> OperationOutcome.Rejected(prepared.reason)
+            }
+        } finally {
+            if (!transferred) checkpoints.discard(claim)
+        }
     }
 
     private fun project(
@@ -116,19 +125,11 @@ class CanonicalDiagnosticCheckProtocol(
             BoundedProtocolList.create(documents).refinedOrNull()
                 ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.OUTPUT_GRANT_TOO_SMALL)
         val progress =
-            when (val projected = page.progress(stored.result, report, requestedPath)) {
+            when (val projected = page.progress(stored.result, stored.next, report, requestedPath)) {
                 is Refinement.Refined -> projected.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
             }
-        val envelope =
-            EvidenceEnvelope(
-                CanonicalOperation.DIAGNOSTIC_CHECK.id,
-                current.evidenceBasis(),
-                DiagnosticCheckResult(
-                    bounded,
-                    progress,
-                ),
-            )
+        val envelope = diagnosticEnvelope(current, DiagnosticCheckResult(bounded, progress))
         if (stored.result is DiagnosticScanResult.Complete) return OperationOutcome.Complete(envelope)
         val limitations =
             page.limitations.sortedWith(compareBy({ it.file.value }, { it.reason.ordinal })).map {
@@ -138,10 +139,14 @@ class CanonicalDiagnosticCheckProtocol(
             DiagnosticCheckQualification.create(
                     DiagnosticKnownCountDocument.parse(page.knownDiagnosticCount.value).refinedOrNull()
                         ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED),
-                    progress.stage == DiagnosticProgressStage.OUTPUT,
+                    progress.stage == DiagnosticProgressStage.OUTPUT ||
+                        stored.next == DiagnosticNextPage.RetentionUnavailable,
                     progress.analyzedFiles,
                     limitations,
                     stored.next.token(),
+                    if (stored.next == DiagnosticNextPage.RetentionUnavailable)
+                        io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument.CAPACITY_EXCEEDED
+                    else null,
                 )
                 .refinedOrNull() ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
         return OperationOutcome.Qualified(envelope, qualification)
@@ -150,6 +155,7 @@ class CanonicalDiagnosticCheckProtocol(
 
 private fun DiagnosticScanPage.progress(
     result: DiagnosticScanResult,
+    next: DiagnosticNextPage,
     report: ExecutionBudgetReport?,
     requestedPath: ProtocolText,
 ): Refinement<DiagnosticProgressDocument, DiagnosticCheckRejection> {
@@ -167,22 +173,34 @@ private fun DiagnosticScanPage.progress(
                 )
         }
     val stage =
-        when (val result = result) {
-            is DiagnosticScanResult.Advancing ->
-                when (result.stop) {
-                    is DiagnosticScanStop.Enumeration -> DiagnosticProgressStage.ENUMERATION
-                    DiagnosticScanStop.AnalysisPending -> DiagnosticProgressStage.ANALYSIS
-                    DiagnosticScanStop.OutputPending -> DiagnosticProgressStage.OUTPUT
-                }
-            else -> DiagnosticProgressStage.FINISHED
-        }
+        if (next == DiagnosticNextPage.RetentionUnavailable) DiagnosticProgressStage.FINISHED
+        else
+            when (val result = result) {
+                is DiagnosticScanResult.Advancing ->
+                    when (result.stop) {
+                        is DiagnosticScanStop.Enumeration -> DiagnosticProgressStage.ENUMERATION
+                        DiagnosticScanStop.AnalysisPending -> DiagnosticProgressStage.ANALYSIS
+                        DiagnosticScanStop.OutputPending -> DiagnosticProgressStage.OUTPUT
+                    }
+                else -> DiagnosticProgressStage.FINISHED
+            }
     val known =
         when (val parsed = DiagnosticKnownCountDocument.parse(knownDiagnosticCount.value)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> return Refinement.Rejected(DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION)
         }
     return Refinement.Refined(
-        DiagnosticProgressDocument(stage, inventory, analyzed, report, result.progressStop(), known, requestedPath)
+        DiagnosticProgressDocument(
+            stage,
+            inventory,
+            analyzed,
+            report,
+            if (next == DiagnosticNextPage.RetentionUnavailable)
+                io.github.amichne.kast.protocol.contract.DiagnosticProgressStop.RETENTION_CAPACITY_EXCEEDED
+            else result.progressStop(),
+            known,
+            requestedPath,
+        )
     )
 }
 
@@ -325,6 +343,26 @@ private fun DiagnosticScanResult.progressStop(): io.github.amichne.kast.protocol
 
 private fun DiagnosticNextPage.token(): ProtocolText? =
     when (this) {
-        DiagnosticNextPage.Terminal -> null
+        DiagnosticNextPage.Terminal,
+        DiagnosticNextPage.RetentionUnavailable -> null
         is DiagnosticNextPage.Continue -> token
     }
+
+private fun DiagnosticCheckRequest.effectiveBudget(
+    budget: ResourceBudget
+): Refinement<ResourceBudget, DiagnosticCheckRejection> =
+    when (val count = ResultLimit.parse(minOf(limit.value, budget.resultLimit.value))) {
+        is Refinement.Refined -> Refinement.Refined(budget.copy(resultLimit = count.value))
+        is Refinement.Rejected -> Refinement.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
+    }
+
+private fun diagnosticEnvelope(current: SemanticReadAuthority, result: DiagnosticCheckResult) =
+    EvidenceEnvelope(CanonicalOperation.DIAGNOSTIC_CHECK.id, current.evidenceBasis(), result)
+
+private fun DiagnosticCheckpointStore.admitRequest(query: DiagnosticScopeQuery, request: DiagnosticCheckRequest) =
+    admit(
+        query,
+        request.continuation,
+        request.limit,
+        request.executionBudget?.requested() ?: RequestedExecutionBudget(),
+    )

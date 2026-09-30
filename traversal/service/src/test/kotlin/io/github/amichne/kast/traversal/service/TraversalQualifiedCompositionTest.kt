@@ -79,7 +79,7 @@ class TraversalQualifiedCompositionTest {
             assertEquals(wide, paged)
             assertEquals(4, paged.size)
             assertEquals(4, paged.distinct().size)
-            assertEquals(listOf("a" to 0L, "b" to 0L, "b" to 1L, "b" to 2L, "d" to 0L, "c" to 0L), reads)
+            assertEquals(listOf("a" to 0L, "b" to 0L, "b" to 2L, "b" to 3L, "d" to 0L, "c" to 0L), reads)
         }
     }
 
@@ -150,10 +150,16 @@ class TraversalQualifiedCompositionTest {
         targets: List<io.github.amichne.kast.symbol.contract.SymbolSelector>,
     ): io.github.amichne.kast.relation.contract.RelationReadResult {
         val facts = facts(request, targets)
+        var state = traversalCalleeInventory(request, facts.map { it.traversalCalleeLocator() })
+        val byDescriptor = facts.associateBy { it.canonicalProjection() }
         val page =
-            facts
-                .drop(request.providerCursor.nextPosition.value.toInt())
-                .take(request.budget.resources.resultLimit.value)
+            state.prepared.take(request.budget.resources.resultLimit.value).map { locator ->
+                byDescriptor.getValue(locator.descriptor.value)
+            }
+        page.forEach { fact ->
+            state =
+                state.consume(io.github.amichne.kast.relation.contract.RelationProviderConsumption.GraphConfirmed(fact))
+        }
         val batch =
             io.github.amichne.kast.relation.contract.RelationBatch.create(
                     request,
@@ -166,19 +172,13 @@ class TraversalQualifiedCompositionTest {
                     io.github.amichne.kast.relation.contract.RelationResultCount.parse(page.size).refined(),
                 )
                 .refined()
-        return if (request.providerCursor.nextPosition.value + page.size < facts.size) {
+        return if (state.hasUnfinishedWork) {
             val compilation =
                 io.github.amichne.kast.relation.contract.RelationCompilation.qualifiedResumable(
                         batch,
                         setOf(RelationLimitation.RESULT_LIMIT_REACHED),
-                        page.fold(request.providerCursor) { cursor, fact ->
-                            cursor.advance(
-                                io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor.parse(
-                                        fact.canonicalProjection()
-                                    )
-                                    .refined()
-                            )
-                        },
+                        state.providerCursor,
+                        providerState = state,
                     )
                     .refined()
             io.github.amichne.kast.relation.contract.RelationReadResult.Qualified(

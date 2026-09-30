@@ -91,23 +91,50 @@ class HostedContainmentBudgetTest {
     fun `publication failures retain the admitted report in the actual hosted response`() = runTest {
         val report = report()
         val original = HostedSourcePagingFixture.create().outcome.withSourceBudget(report)
-        for ((bytes, retention, failure) in
-            listOf(
-                Triple(1L, HostedOutputRetention.CapacityExceeded, HostedEndpointFailure.RESULT_TOO_LARGE),
-                Triple(100_000L, HostedOutputRetention.CapacityExceeded, HostedEndpointFailure.RESULT_TOO_LARGE),
-                Triple(100_000L, HostedOutputRetention.EncodingRejected, HostedEndpointFailure.RESPONSE_REJECTED),
-            )) {
-            val response =
-                encodeHostedSourceResponse(
-                    original,
-                    ReadLimits.Default,
-                    ResultLimit.parse(1).proven(),
-                    ReturnedByteLimit.parse(bytes).proven(),
-                ) {
-                    retention
-                }
-            assertReport(response, report, failure)
-        }
+        val indivisible =
+            encodeHostedSourceResponse(
+                original,
+                ReadLimits.Default,
+                ResultLimit.parse(1).proven(),
+                ReturnedByteLimit.parse(1).proven(),
+            ) {
+                error("No suffix can fit")
+            }
+        assertReport(indivisible, report, HostedEndpointFailure.RESULT_TOO_LARGE)
+        val capacity =
+            encodeHostedSourceResponse(
+                original,
+                ReadLimits.Default,
+                ResultLimit.parse(1).proven(),
+                ReturnedByteLimit.parse(100_000).proven(),
+            ) {
+                HostedOutputRetention.CapacityExceeded
+            }
+        val qualified = (capacity as HostedResponse.Canonical<*, *, *>).semantic as OperationOutcome.Qualified
+        assertEquals(
+            report,
+            (qualified.evidence.payload as io.github.amichne.kast.protocol.contract.SourceReadResult).executionBudget,
+        )
+        val invalid =
+            encodeHostedSourceResponse(
+                original,
+                ReadLimits.Default,
+                ResultLimit.parse(1).proven(),
+                ReturnedByteLimit.parse(100_000).proven(),
+            ) {
+                HostedOutputRetention.Rejected(
+                    io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause
+                        .INVALID_FITTED_PAGE
+                )
+            }
+                as HostedResponse.ReadRejected
+        assertEquals(
+            HostedQueryFailure.Publication(
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause.INVALID_FITTED_PAGE
+            ),
+            invalid.failure,
+        )
+        assertEquals(ExecutionBudgetPresence.Present(report), invalid.executionBudget)
     }
 
     private fun assertReport(response: HostedResponse, report: ExecutionBudgetReport, failure: HostedEndpointFailure) {

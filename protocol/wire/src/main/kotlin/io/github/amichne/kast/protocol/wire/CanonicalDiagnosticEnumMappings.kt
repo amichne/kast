@@ -12,6 +12,7 @@ internal fun DiagnosticCheckQualification.toWireDocument(): DiagnosticCheckQuali
         knownDiagnosticCount = knownDiagnosticCount.value,
         resultLimitReached = resultLimitReached,
         continuation = continuation,
+        retentionFailure = retentionFailure,
         analyzedFiles = analyzedFiles.map { it.value },
         limitations =
             limitations.map { limitation ->
@@ -36,6 +37,7 @@ internal fun DiagnosticCheckQualificationWireDocument.toContract():
                         analyzedFiles = admittedFiles,
                         limitations = admittedLimitations,
                         continuation = continuation,
+                        retentionFailure = retentionFailure,
                     )
                     .toWireDocumentConversion()
             }
@@ -82,6 +84,21 @@ private fun DiagnosticLimitationReasonWireDocument.toContract(): DiagnosticLimit
 
 internal fun DiagnosticCheckRejection.toWireDocument(): DiagnosticCheckRejectionWireDocument =
     when (this) {
+        DiagnosticCheckRejection.PUBLICATION_OWNER_RETIRED ->
+            DiagnosticCheckRejectionWireDocument.PUBLICATION_OWNER_RETIRED
+        DiagnosticCheckRejection.PUBLICATION_CLAIM_UNAVAILABLE ->
+            DiagnosticCheckRejectionWireDocument.PUBLICATION_CLAIM_UNAVAILABLE
+        DiagnosticCheckRejection.PUBLICATION_EXPIRED -> DiagnosticCheckRejectionWireDocument.PUBLICATION_EXPIRED
+        DiagnosticCheckRejection.PUBLICATION_DEPENDENCY_UNAVAILABLE ->
+            DiagnosticCheckRejectionWireDocument.PUBLICATION_DEPENDENCY_UNAVAILABLE
+        DiagnosticCheckRejection.PUBLICATION_PAGE_MISMATCH ->
+            DiagnosticCheckRejectionWireDocument.PUBLICATION_PAGE_MISMATCH
+        DiagnosticCheckRejection.PUBLICATION_NON_ADVANCING ->
+            DiagnosticCheckRejectionWireDocument.PUBLICATION_NON_ADVANCING
+        DiagnosticCheckRejection.PUBLICATION_INVALID_FITTED_PAGE ->
+            DiagnosticCheckRejectionWireDocument.PUBLICATION_INVALID_FITTED_PAGE
+
+        DiagnosticCheckRejection.CONTINUATION_IN_USE -> DiagnosticCheckRejectionWireDocument.CONTINUATION_IN_USE
         DiagnosticCheckRejection.ENUMERATION_INDEX_MODE_UNSUPPORTED ->
             DiagnosticCheckRejectionWireDocument.ENUMERATION_INDEX_MODE_UNSUPPORTED
         DiagnosticCheckRejection.EXECUTION_TIME_GRANT_TOO_SMALL ->
@@ -118,6 +135,21 @@ internal fun DiagnosticCheckRejection.toWireDocument(): DiagnosticCheckRejection
 
 internal fun DiagnosticCheckRejectionWireDocument.toContract(): DiagnosticCheckRejection =
     when (this) {
+        DiagnosticCheckRejectionWireDocument.PUBLICATION_OWNER_RETIRED ->
+            DiagnosticCheckRejection.PUBLICATION_OWNER_RETIRED
+        DiagnosticCheckRejectionWireDocument.PUBLICATION_CLAIM_UNAVAILABLE ->
+            DiagnosticCheckRejection.PUBLICATION_CLAIM_UNAVAILABLE
+        DiagnosticCheckRejectionWireDocument.PUBLICATION_EXPIRED -> DiagnosticCheckRejection.PUBLICATION_EXPIRED
+        DiagnosticCheckRejectionWireDocument.PUBLICATION_DEPENDENCY_UNAVAILABLE ->
+            DiagnosticCheckRejection.PUBLICATION_DEPENDENCY_UNAVAILABLE
+        DiagnosticCheckRejectionWireDocument.PUBLICATION_PAGE_MISMATCH ->
+            DiagnosticCheckRejection.PUBLICATION_PAGE_MISMATCH
+        DiagnosticCheckRejectionWireDocument.PUBLICATION_NON_ADVANCING ->
+            DiagnosticCheckRejection.PUBLICATION_NON_ADVANCING
+        DiagnosticCheckRejectionWireDocument.PUBLICATION_INVALID_FITTED_PAGE ->
+            DiagnosticCheckRejection.PUBLICATION_INVALID_FITTED_PAGE
+
+        DiagnosticCheckRejectionWireDocument.CONTINUATION_IN_USE -> DiagnosticCheckRejection.CONTINUATION_IN_USE
         DiagnosticCheckRejectionWireDocument.ENUMERATION_INDEX_MODE_UNSUPPORTED ->
             DiagnosticCheckRejection.ENUMERATION_INDEX_MODE_UNSUPPORTED
         DiagnosticCheckRejectionWireDocument.EXECUTION_TIME_GRANT_TOO_SMALL ->

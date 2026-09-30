@@ -2,11 +2,9 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
-import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
@@ -169,55 +167,6 @@ class QueryCheckpointReplayTest {
         )
         store.clear()
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(issued.token, lease))
-    }
-
-    @Test
-    fun `checkpoint resumes each larger allowance through canonical admission with retained plan`() = runTest {
-        val store = QueryStateStore()
-        val retained = checkpoint(lease)
-        val issued = store.issueCheckpoint(request(), retained) as QueryCheckpointIssuance.Issued
-        val grants =
-            listOf(
-                budget.copy(
-                    resources = budget.resources.copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(2000).refined())
-                ),
-                budget.copy(resources = budget.resources.copy(workUnitLimit = WorkUnitLimit.parse(200).refined())),
-                budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(20).refined())),
-                budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
-            )
-        grants.forEach { grant ->
-            val requested =
-                QueryRunRequest.Resume(
-                    continuation = issued.token,
-                    executionBudget =
-                        ExecutionBudgetDocument(
-                            maxElapsedMillis = grant.resources.elapsedTimeLimit,
-                            maxWorkUnits = grant.resources.workUnitLimit,
-                            maxResults = grant.resources.resultLimit,
-                            maxReturnedBytes = ReturnedByteLimit.parse(grant.returnedBytes.value).refined(),
-                        ),
-                )
-            val protocol =
-                CanonicalQueryProtocol(
-                    QueryOperations { admitted ->
-                        assertEquals(grant, admitted.budget)
-                        assertEquals(retained, admitted.checkpoint)
-                        assertEquals(retained.plan, admitted.plan)
-                        complete()
-                    },
-                    CanonicalQueryReferences(),
-                    store,
-                )
-            assertInstanceOf(OperationOutcome.Complete::class.java, protocol.execute(requested, lease, grant))
-            assertEquals(
-                issued,
-                store.issueCheckpoint(request().copy(executionBudget = requested.executionBudget), retained),
-            )
-        }
-        assertEquals(
-            issued,
-            store.issueCheckpoint(request().copy(executionBudget = ExecutionBudgetDocument()), retained),
-        )
     }
 
     @Test

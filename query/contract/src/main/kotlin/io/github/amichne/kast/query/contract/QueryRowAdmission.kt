@@ -5,6 +5,8 @@ import io.github.amichne.kast.kernel.Refinement
 private sealed interface AdmittedRowKind {
     data object Symbol : AdmittedRowKind
 
+    data object Occurrence : AdmittedRowKind
+
     data class Binding(val mode: QueryJoinMode.Inner) : AdmittedRowKind
 }
 
@@ -23,8 +25,13 @@ internal fun admitQueryRows(
                 is Refinement.Rejected -> return admitted
             }
     }
-    val bindings = rowKind is AdmittedRowKind.Binding
-    return if (bindings == (output is QueryOutputSyntax.BindingRows)) Refinement.Refined(Unit)
+    val compatible =
+        when (rowKind) {
+            AdmittedRowKind.Occurrence -> output == QueryOutputSyntax.Occurrences
+            AdmittedRowKind.Symbol -> output != QueryOutputSyntax.BindingRows
+            is AdmittedRowKind.Binding -> output == QueryOutputSyntax.BindingRows
+        }
+    return if (compatible) Refinement.Refined(Unit)
     else Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)
 }
 
@@ -36,12 +43,14 @@ private fun QuerySourceSyntax.rowKind(): AdmittedRowKind =
         is QuerySourceSyntax.Retained ->
             when (val retained = result) {
                 is QueryRetainedResult.Symbols -> AdmittedRowKind.Symbol
+                is QueryRetainedResult.Occurrences -> AdmittedRowKind.Occurrence
                 is QueryRetainedResult.Bindings -> AdmittedRowKind.Binding(retained.mode)
             }
     }
 
 private fun AdmittedRowKind.admit(step: QueryStepSyntax): Refinement<AdmittedRowKind, QueryPlanAdmissionFailure> =
     when (this) {
+        AdmittedRowKind.Occurrence -> Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)
         AdmittedRowKind.Symbol ->
             when (step) {
                 is QueryStepSyntax.ProjectBinding -> Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)

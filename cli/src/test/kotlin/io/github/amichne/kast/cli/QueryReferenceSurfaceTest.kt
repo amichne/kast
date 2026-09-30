@@ -91,7 +91,7 @@ class QueryReferenceSurfaceTest {
         val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
         val definitions = installedServerOutputSchema(CanonicalOperation.QUERY_RUN).getValue("\$defs").jsonObject
         val variants = definitions.getValue("queryResultItem").jsonObject.getValue("anyOf").jsonArray
-        assertEquals(4, variants.size)
+        assertEquals(5, variants.size)
         for (variant in variants) {
             val properties = variant.jsonObject.getValue("properties").jsonObject
             val kind = properties.getValue("type").jsonObject.getValue("const").jsonPrimitive.content

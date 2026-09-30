@@ -5,11 +5,16 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
+import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionMeasurementDocument
+import io.github.amichne.kast.protocol.contract.RelationProviderDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalExpansionRemainderDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
@@ -61,6 +66,8 @@ class QueryWalkObservationWireTest {
                         TraversalDepthDocument.parse(2).value(),
                         listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
                         remainder,
+                        knownMinimum = QueryKnownMinimum.parse(0).value(),
+                        omissions = unmeasuredPageOmissions(),
                     )
                     .value()
             val observation =
@@ -95,6 +102,23 @@ class QueryWalkObservationWireTest {
             }
         }
     }
+
+    private fun unmeasuredPageOmissions(): BoundedProtocolList<RelationOmissionDocument> =
+        BoundedProtocolList.create(
+                listOf(
+                    RelationOmissionDocument.create(
+                            RelationProviderDocument.INTELLIJ_CALLEES_V2,
+                            RelationLimitationDocument.RESULT_LIMIT_REACHED,
+                            RelationOmissionMeasurementDocument.UnmeasuredOnPage,
+                            io.github.amichne.kast.protocol.contract.RelationOmissionSamplesDocument.complete(
+                                    BoundedProtocolList.create(emptyList<RelationOmissionLocationDocument>()).value()
+                                )
+                                .value(),
+                        )
+                        .value()
+                )
+            )
+            .value()
 
     private fun <T, F> Refinement<T, F>.value(): T = (this as Refinement.Refined).value
 }

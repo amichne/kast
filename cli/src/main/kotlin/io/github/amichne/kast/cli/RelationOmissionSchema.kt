@@ -12,7 +12,7 @@ internal fun relationOmissionSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty(
             "provider",
-            enumSchema(RelationProviderDocument.entries.map { it.name }, "Native provider and contract version."),
+            enumSchema(RelationProviderDocument.entries.map { it.name }, "Semantic provider and contract version."),
         ),
         ServerSchemaProperty(
             "reason",
@@ -22,27 +22,7 @@ internal fun relationOmissionSchema(): JsonObject =
             "measurement",
             omissionMeasurementSchema(),
         ),
-        ServerSchemaProperty(
-            "samples",
-            boundedSampleSchema(
-                objectSchema(
-                    ServerSchemaProperty("file", workspaceFileSchema()),
-                    ServerSchemaProperty(
-                        "range",
-                        objectSchema(
-                            ServerSchemaProperty(
-                                "startInclusive",
-                                integerSchema(0, description = "Observed occurrence start."),
-                            ),
-                            ServerSchemaProperty(
-                                "endExclusive",
-                                integerSchema(0, description = "Observed occurrence end."),
-                            ),
-                        ),
-                    ),
-                )
-            ),
-        ),
+        ServerSchemaProperty("samples", omissionSamplesSchema()),
         ServerSchemaProperty(
             "remediation",
             enumSchema(RelationRemediationDocument.entries.map { it.name }, "Closed suggested next action."),
@@ -51,14 +31,20 @@ internal fun relationOmissionSchema(): JsonObject =
 
 /** Schema items are a deliberately dynamic schema boundary; the array assertions remain typed. */
 @Serializable
-private data class BoundedOmissionSamplesSchema(val items: JsonObject, val type: String, val maxItems: Int)
+private data class BoundedOmissionSamplesSchema(
+    val items: JsonObject,
+    val type: String,
+    val minItems: Int,
+    val maxItems: Int,
+    val uniqueItems: Boolean,
+)
 
 private const val MAXIMUM_OMISSION_SAMPLES = 3
 
-private fun boundedSampleSchema(item: JsonObject): JsonObject =
+private fun boundedSampleSchema(item: JsonObject, minimum: Int): JsonObject =
     Json.encodeToJsonElement(
             BoundedOmissionSamplesSchema.serializer(),
-            BoundedOmissionSamplesSchema(item, "array", MAXIMUM_OMISSION_SAMPLES),
+            BoundedOmissionSamplesSchema(item, "array", minimum, MAXIMUM_OMISSION_SAMPLES, true),
         )
         .jsonObject
 
@@ -82,5 +68,37 @@ private fun omissionMeasurementSchema(): JsonObject =
                 "type",
                 constantSchema("unmeasured_on_page", "This page did not measure the missing population."),
             )
+        ),
+    )
+
+private fun omissionSamplesSchema(): JsonObject =
+    unionSchema(
+        omissionSampleVariant(
+            "complete",
+            0,
+            "All distinct located samples observed so far are retained; unlocated omissions remain possible.",
+        ),
+        omissionSampleVariant(
+            "truncated",
+            MAXIMUM_OMISSION_SAMPLES,
+            "At least one further distinct located sample was observed and discarded.",
+        ),
+    )
+
+private fun omissionSampleVariant(type: String, minimum: Int, meaning: String): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("type", constantSchema(type, meaning)),
+        ServerSchemaProperty("locations", boundedSampleSchema(omissionLocationSchema(), minimum)),
+    )
+
+private fun omissionLocationSchema(): JsonObject =
+    objectSchema(
+        ServerSchemaProperty("file", workspaceFileSchema()),
+        ServerSchemaProperty(
+            "range",
+            objectSchema(
+                ServerSchemaProperty("startInclusive", integerSchema(0, description = "Observed occurrence start.")),
+                ServerSchemaProperty("endExclusive", integerSchema(0, description = "Observed occurrence end.")),
+            ),
         ),
     )

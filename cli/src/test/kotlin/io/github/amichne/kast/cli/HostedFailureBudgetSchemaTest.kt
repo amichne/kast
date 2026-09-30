@@ -207,6 +207,7 @@ class HostedFailureBudgetSchemaTest {
             "CANCELLED",
             "BUDGET_EXCEEDED",
             "PLATFORM_FAILURE",
+            "PUBLICATION_REJECTED",
             "PROJECT_ADMISSION_REJECTED",
             "MODEL_CAPTURE_REJECTED",
             "READ_EPOCH_REJECTED",

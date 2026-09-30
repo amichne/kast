@@ -108,6 +108,30 @@ sealed interface HostedReadRecovery {
     }
 
     @Serializable @SerialName("review_failure") data object ReviewFailure : HostedReadRecovery
+
+    @Serializable
+    @SerialName("retained_state_unavailable")
+    class RetainedStateUnavailable private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = RetainedStateUnavailable()
+        }
+
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String =
+            "The retained semantic execution state is no longer usable. Start a fresh read; this result did not publish a successor."
+    }
+
+    @Serializable
+    @SerialName("reduce_retained_work")
+    class ReduceRetainedWork private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = ReduceRetainedWork()
+        }
+
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String =
+            "The host could not retain this page and its unfinished work within the declared capacity. Inspect the retention limits and reduce the retained work before starting a fresh read."
+    }
 }
 
 @Serializable
@@ -129,32 +153,10 @@ enum class HostedReadinessRemediation {
 
 internal fun HostedQueryFailure.recovery(): HostedReadRecovery =
     when (this) {
-        is HostedQueryFailure.ProjectAdmission ->
-            when (cause) {
-                ExistingProjectAdmissionFailure.GradleModelUnavailable,
-                ExistingProjectAdmissionFailure.GradleModelIncomplete -> HostedReadRecovery.GradleModel.Required
-                ExistingProjectAdmissionFailure.DumbMode -> HostedReadRecovery.Indexing.Required
-                else -> HostedReadRecovery.ReviewFailure
-            }
-        is HostedQueryFailure.ReadEpoch ->
-            when (cause) {
-                ProjectReadEpochObservationFailure.GradleModelUnavailable,
-                ProjectReadEpochObservationFailure.GradleModelIncomplete -> HostedReadRecovery.GradleModel.Required
-                ProjectReadEpochObservationFailure.DumbMode -> HostedReadRecovery.Indexing.Required
-                else -> HostedReadRecovery.ReviewFailure
-            }
-        is HostedQueryFailure.Freshness ->
-            when (val failure = cause) {
-                VfsPassiveReadAdmissionFailure.DumbMode -> HostedReadRecovery.Indexing.Required
-                VfsPassiveReadAdmissionFailure.Moved -> HostedReadRecovery.RestartRead.Required
-                is VfsPassiveReadAdmissionFailure.Unavailable ->
-                    when (failure.cause) {
-                        VfsPassiveReadUnavailableCause.GradleModelUnavailable,
-                        VfsPassiveReadUnavailableCause.GradleModelIncomplete -> HostedReadRecovery.GradleModel.Required
-                        else -> HostedReadRecovery.ReviewFailure
-                    }
-                else -> HostedReadRecovery.ReviewFailure
-            }
+        is HostedQueryFailure.Publication -> specificRecovery()
+        is HostedQueryFailure.ProjectAdmission -> specificRecovery()
+        is HostedQueryFailure.ReadEpoch -> specificRecovery()
+        is HostedQueryFailure.Freshness -> specificRecovery()
         is HostedQueryFailure.LiveAuthority ->
             when (cause) {
                 LiveSemanticReadFailure.EPOCH_MOVED -> HostedReadRecovery.RestartRead.Required
@@ -182,3 +184,44 @@ internal fun HostedQueryFailure.recovery(stage: HostedQueryStage): HostedReadRec
     if (this == HostedQueryFailure.BUDGET_EXCEEDED && stage.ordinal <= HostedQueryStage.MODEL_CAPTURE.ordinal)
         HostedReadRecovery.IncreaseHostDeadline
     else recovery()
+
+private fun HostedQueryFailure.Publication.specificRecovery(): HostedReadRecovery =
+    when (cause) {
+        HostedPublicationFailureCause.EXPIRED,
+        HostedPublicationFailureCause.DEPENDENCY_UNAVAILABLE -> HostedReadRecovery.RetainedStateUnavailable.Required
+        HostedPublicationFailureCause.CAPACITY_EXCEEDED -> HostedReadRecovery.ReduceRetainedWork.Required
+        HostedPublicationFailureCause.OWNER_RETIRED,
+        HostedPublicationFailureCause.CLAIM_UNAVAILABLE,
+        HostedPublicationFailureCause.PUBLISHED_PAGE_MISMATCH,
+        HostedPublicationFailureCause.NON_ADVANCING_SUCCESSOR,
+        HostedPublicationFailureCause.INVALID_FITTED_PAGE -> HostedReadRecovery.ReviewFailure
+    }
+
+private fun HostedQueryFailure.ProjectAdmission.specificRecovery(): HostedReadRecovery =
+    when (cause) {
+        ExistingProjectAdmissionFailure.GradleModelUnavailable,
+        ExistingProjectAdmissionFailure.GradleModelIncomplete -> HostedReadRecovery.GradleModel.Required
+        ExistingProjectAdmissionFailure.DumbMode -> HostedReadRecovery.Indexing.Required
+        else -> HostedReadRecovery.ReviewFailure
+    }
+
+private fun HostedQueryFailure.ReadEpoch.specificRecovery(): HostedReadRecovery =
+    when (cause) {
+        ProjectReadEpochObservationFailure.GradleModelUnavailable,
+        ProjectReadEpochObservationFailure.GradleModelIncomplete -> HostedReadRecovery.GradleModel.Required
+        ProjectReadEpochObservationFailure.DumbMode -> HostedReadRecovery.Indexing.Required
+        else -> HostedReadRecovery.ReviewFailure
+    }
+
+private fun HostedQueryFailure.Freshness.specificRecovery(): HostedReadRecovery =
+    when (val failure = cause) {
+        VfsPassiveReadAdmissionFailure.DumbMode -> HostedReadRecovery.Indexing.Required
+        VfsPassiveReadAdmissionFailure.Moved -> HostedReadRecovery.RestartRead.Required
+        is VfsPassiveReadAdmissionFailure.Unavailable ->
+            when (failure.cause) {
+                VfsPassiveReadUnavailableCause.GradleModelUnavailable,
+                VfsPassiveReadUnavailableCause.GradleModelIncomplete -> HostedReadRecovery.GradleModel.Required
+                else -> HostedReadRecovery.ReviewFailure
+            }
+        else -> HostedReadRecovery.ReviewFailure
+    }

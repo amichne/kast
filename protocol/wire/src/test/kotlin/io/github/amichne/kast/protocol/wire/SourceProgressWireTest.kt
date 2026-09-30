@@ -51,6 +51,44 @@ class SourceProgressWireTest {
     }
 
     @Test
+    fun `retention refusal preserves each upstream coverage proof without advertising a checkpoint`() {
+        for ((coverage, expected) in coverageStates()) {
+            val qualification =
+                SourceReadQualification.create(
+                        SourceEntityCountDocument.parse(5).proven(),
+                        listOf(
+                            SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED,
+                            SourceReadLimitationDocument.WORK_LIMIT_REACHED,
+                            SourceReadLimitationDocument.RETENTION_LIMIT_REACHED,
+                        ),
+                        SourceQualifiedProgressDocument.RetentionUnavailable(coverage),
+                    )
+                    .proven()
+            val document =
+                json.encodeToJsonElement(
+                    ExpectedSourceQualification.serializer(),
+                    ExpectedSourceQualification(
+                        5,
+                        listOf("text-byte-limit-reached", "work-limit-reached", "retention-limit-reached"),
+                        ExpectedProgress.RetentionUnavailable(expected),
+                    ),
+                )
+            assertEquals(
+                WireValueEncoding.Encoded(document),
+                CanonicalSourceReadSerializers.qualification.encode(qualification, WireValueRole.QUALIFICATION),
+            )
+            assertEquals(
+                WireDecoding.Decoded(qualification),
+                CanonicalSourceReadSerializers.qualification.decode(document, WireValueRole.QUALIFICATION),
+            )
+        }
+        assertInstanceOf(
+            WireDecoding.Rejected::class.java,
+            decode(ExpectedProgress.RetentionUnavailable(ExpectedCoverage.Complete)),
+        )
+    }
+
+    @Test
     fun `checkpoint family and identity cannot contradict the declared scope`() {
         for (checkpoint in
             listOf(
@@ -154,6 +192,10 @@ private sealed interface ExpectedProgress {
         ExpectedProgress
 
     @Serializable @SerialName("terminal_incomplete") data class Terminal(val reason: String) : ExpectedProgress
+
+    @Serializable
+    @SerialName("retention_unavailable")
+    data class RetentionUnavailable(val upstream: ExpectedCoverage) : ExpectedProgress
 }
 
 @Serializable

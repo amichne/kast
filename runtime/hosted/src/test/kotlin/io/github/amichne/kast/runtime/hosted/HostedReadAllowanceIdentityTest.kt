@@ -1,58 +1,28 @@
 package io.github.amichne.kast.runtime.hosted
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceEnvelope
-import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
-import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
-import io.github.amichne.kast.query.protocol.RelationPagingFixture
-import io.github.amichne.kast.query.protocol.evidenceBasis
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class HostedReadAllowanceIdentityTest {
-    @Test
-    fun `query output owner excludes all four allowance axes from retained identity`() = runTest {
-        val fixture = RelationPagingFixture.live()
-        val authority = fixture.authority
-        val owner = HostedQueryContinuations.Active(authority, ReadLimits.Default)
-        val request = queryIdentityRequest(fixture.exact)
-        val outcome =
-            OperationOutcome.Complete(
-                EvidenceEnvelope(
-                    CanonicalOperation.QUERY_RUN.id,
-                    authority.evidenceBasis(),
-                    QueryRunResult(bounded(emptyList()), bounded(emptyList()), bounded(emptyList())),
-                )
-            )
-        allowanceGrowth().forEach { (low, high) ->
-            val first =
-                owner.issue(request.copy(executionBudget = low), authority, outcome) as HostedOutputRetention.Retained
-            assertEquals(outcome, owner.restore(first.queryOutputToken(), authority))
-            assertEquals(outcome, owner.restore(first.queryOutputToken(), authority))
-            assertEquals(first, owner.issue(request.copy(executionBudget = high), authority, outcome))
-        }
-    }
-
     @Test
     fun `source output owner excludes all allowance axes and page limits from retained identity`() = runTest {
         val fixture = HostedSourcePagingFixture.create()
@@ -60,16 +30,19 @@ class HostedReadAllowanceIdentityTest {
         val owner = HostedQueryContinuations.Active(authority, ReadLimits.Default)
         allowanceGrowth().forEach { (low, high) ->
             val first =
-                owner.sourceOutputs.issue(fixture.request.copy(executionBudget = low), authority, fixture.outcome)
-                    as HostedOutputRetention.Retained
+                owner.sourceState.retainAcceptedFixtureSuffix(
+                    fixture.request.copy(executionBudget = low),
+                    authority,
+                    fixture.outcome,
+                ) as HostedOutputRetention.Retained
             val resumed =
                 fixture.request.copy(
                     executionBudget = high,
                     entityLimit = SourceEntityLimitDocument.parse(100).value(),
                     textByteLimit = SourceTextByteLimitDocument.parse(100_000).value(),
                 )
-            assertEquals(fixture.outcome, owner.sourceOutputs.restore(first.token, resumed, authority))
-            assertEquals(first, owner.sourceOutputs.issue(resumed, authority, fixture.outcome))
+            assertEquals(fixture.outcome, owner.sourceState.readFixtureSuffix(first.token, resumed, authority))
+            assertEquals(first, owner.sourceState.retainAcceptedFixtureSuffix(resumed, authority, fixture.outcome))
         }
     }
 }
@@ -81,9 +54,6 @@ internal fun queryIdentityRequest(exact: ProtocolText) =
         QueryOutputDocument.Symbols(bounded(emptyList())),
         QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
     )
-
-private fun HostedOutputRetention.Retained.queryOutputToken(): QueryExecutionContinuation.Output =
-    QueryExecutionContinuation.Output.parse(token.value).value()
 
 private fun allowanceGrowth() =
     listOf(

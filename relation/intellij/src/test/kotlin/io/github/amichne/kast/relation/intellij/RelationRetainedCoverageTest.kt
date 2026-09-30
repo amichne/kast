@@ -20,8 +20,11 @@ class RelationRetainedCoverageTest {
     fun `pagination retains earlier provider coverage loss after the result limit clears`() {
         val initial = fixture.request(RelationMeaning.References)
         val first = IntellijRelationCollector(initial, { 0L })
+        val retained = detachedRelationInventory(initial, listOf("unsupported", "filtered"))
+        first.retainProviderState(retained, preparedPartition = true)
         first.beginProviderItem(fixture.providerItem("unsupported"))
         first.examineIncomplete(RelationLimitation.UNSUPPORTED_ITEM)
+        first.retainProviderState(retained.consume())
         val page =
             assertInstanceOf(
                 RelationCompilation.Qualified::class.java,
@@ -49,7 +52,9 @@ class RelationRetainedCoverageTest {
                 )
                 .refined()
         val last = IntellijRelationCollector(resumed, { 0L })
-        last.beginProviderItem(fixture.providerItem("unsupported"))
+        last.beginProviderItem(fixture.providerItem("filtered"))
+        last.dismissProviderItem()
+        last.retainProviderState(continuation.providerState.consume())
         val result =
             assertInstanceOf(
                 RelationCompilation.Qualified::class.java,
@@ -64,7 +69,7 @@ class RelationRetainedCoverageTest {
     }
 
     @Test
-    fun `deadline before first committed item reports a terminal provider stall`() {
+    fun `deadline before inventory preparation cannot advertise retained native work`() {
         val request = fixture.request(RelationMeaning.Callees)
         var now = 0L
         val collector = IntellijRelationCollector(request, clockNanoseconds = { now })
@@ -80,7 +85,7 @@ class RelationRetainedCoverageTest {
             result.coverage,
         )
         assertEquals(
-            setOf("TIME_LIMIT_REACHED", "PROVIDER_STALLED"),
+            setOf("TIME_LIMIT_REACHED"),
             result.coverage.limitations.map { it.name }.toSet(),
         )
         assertTrue(result.batch.facts.isEmpty())

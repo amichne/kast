@@ -1,150 +1,6 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.charset.StandardCharsets
-
-enum class RelationMeasureFailure {
-    NEGATIVE
-}
-
-@JvmInline
-value class RelationByteCount private constructor(val value: Long) {
-    companion object {
-        /**
-         * Proof transition: `Long -> Refinement<RelationByteCount, RelationMeasureFailure>`.
-         *
-         * Establishes a non-negative canonical detached byte count. [RelationMeasureFailure] is the closed expected
-         * failure. Raw counts may be extracted only by compiler collectors, metrics, and transport.
-         */
-        fun parse(raw: Long): Refinement<RelationByteCount, RelationMeasureFailure> =
-            if (raw >= 0L) Refinement.Refined(RelationByteCount(raw))
-            else Refinement.Rejected(RelationMeasureFailure.NEGATIVE)
-    }
-}
-
-@JvmInline
-value class RelationWorkCount private constructor(val value: Long) {
-    companion object {
-        /**
-         * Proof transition: `Long -> Refinement<RelationWorkCount, RelationMeasureFailure>`.
-         *
-         * Establishes a non-negative number of native items examined. [RelationMeasureFailure] is the closed expected
-         * failure. Raw counts may be extracted only by compiler collectors, metrics, and continuation issuance.
-         */
-        fun parse(raw: Long): Refinement<RelationWorkCount, RelationMeasureFailure> =
-            if (raw >= 0L) Refinement.Refined(RelationWorkCount(raw))
-            else Refinement.Rejected(RelationMeasureFailure.NEGATIVE)
-    }
-}
-
-/** Number of exact facts retained in a detached page, distinct from semantic work. */
-@JvmInline
-value class RelationResultCount private constructor(val value: Int) {
-    companion object {
-        fun parse(raw: Int): Refinement<RelationResultCount, RelationMeasureFailure> =
-            if (raw >= 0) Refinement.Refined(RelationResultCount(raw))
-            else Refinement.Rejected(RelationMeasureFailure.NEGATIVE)
-    }
-}
-
-enum class RelationBatchFailure {
-    SUBJECT_MISMATCH,
-    MEANING_MISMATCH,
-    GENERATION_MISMATCH,
-    NON_EXACT_FACT,
-    RESULT_LIMIT_EXCEEDED,
-    BYTE_LIMIT_EXCEEDED,
-    WORK_LIMIT_EXCEEDED,
-    NON_DETERMINISTIC_ORDER,
-    ENCODED_BYTE_COUNT_MISMATCH,
-    RESULT_COUNT_MISMATCH,
-    INVALID_OMISSION_EVIDENCE,
-}
-
-@ConsistentCopyVisibility
-data class RelationBatch
-private constructor(
-    val request: RelationRequest,
-    val facts: List<RelationFact>,
-    val encodedBytes: RelationByteCount,
-    val examinedWorkUnits: RelationWorkCount,
-    val resultCount: RelationResultCount,
-    val omissions: List<RelationOmissionEvidence>,
-) {
-    fun withOmissions(values: List<RelationOmissionEvidence>): Refinement<RelationBatch, RelationBatchFailure> {
-        if (omissions.isNotEmpty() && omissions != values) {
-            return Refinement.Rejected(RelationBatchFailure.INVALID_OMISSION_EVIDENCE)
-        }
-        if (
-            values.any { it.provider != request.providerCursor.provider } ||
-                values.map { it.reason } != values.map { it.reason }.distinct().sortedBy { it.ordinal }
-        )
-            return Refinement.Rejected(RelationBatchFailure.INVALID_OMISSION_EVIDENCE)
-        return Refinement.Refined(copy(omissions = java.util.Collections.unmodifiableList(values.toList())))
-    }
-
-    companion object {
-        /**
-         * Proof transition: `(RelationRequest, List<RelationFact>, RelationByteCount, RelationWorkCount) ->
-         * Refinement<RelationBatch, RelationBatchFailure>`.
-         *
-         * Establishes exact request ownership, authority, meaning, individual edge coverage, deterministic uniqueness,
-         * and request bounds for a detached one-hop page. [RelationBatchFailure] is the closed expected failure. Raw
-         * collections and measures may enter only at a bounded compiler collector or transport decoder.
-         */
-        fun create(
-            request: RelationRequest,
-            facts: List<RelationFact>,
-            encodedBytes: RelationByteCount,
-            examinedWorkUnits: RelationWorkCount,
-            resultCount: RelationResultCount,
-        ): Refinement<RelationBatch, RelationBatchFailure> {
-            if (facts.any { it.subject !== request.subject }) {
-                return Refinement.Rejected(RelationBatchFailure.SUBJECT_MISMATCH)
-            }
-            if (facts.any { it.meaning != request.meaning }) {
-                return Refinement.Rejected(RelationBatchFailure.MEANING_MISMATCH)
-            }
-            if (facts.any { it.authority != request.subject.lease.identity }) {
-                return Refinement.Rejected(RelationBatchFailure.GENERATION_MISMATCH)
-            }
-            if (facts.any { it.coverage != RelationFactCoverage.EXACT_COMPILER_CONFIRMED }) {
-                return Refinement.Rejected(RelationBatchFailure.NON_EXACT_FACT)
-            }
-            if (facts.size > request.budget.resources.resultLimit.value) {
-                return Refinement.Rejected(RelationBatchFailure.RESULT_LIMIT_EXCEEDED)
-            }
-            if (resultCount.value != facts.size) {
-                return Refinement.Rejected(RelationBatchFailure.RESULT_COUNT_MISMATCH)
-            }
-            if (encodedBytes.value > request.budget.returnedBytes.value) {
-                return Refinement.Rejected(RelationBatchFailure.BYTE_LIMIT_EXCEEDED)
-            }
-            if (examinedWorkUnits.value > request.budget.resources.workUnitLimit.value) {
-                return Refinement.Rejected(RelationBatchFailure.WORK_LIMIT_EXCEEDED)
-            }
-            if (facts != facts.distinct().sorted()) {
-                return Refinement.Rejected(RelationBatchFailure.NON_DETERMINISTIC_ORDER)
-            }
-            val measured = facts.sumOf {
-                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-            }
-            if (measured != encodedBytes.value) {
-                return Refinement.Rejected(RelationBatchFailure.ENCODED_BYTE_COUNT_MISMATCH)
-            }
-            return Refinement.Refined(
-                RelationBatch(
-                    request,
-                    facts.toList(),
-                    encodedBytes,
-                    examinedWorkUnits,
-                    resultCount,
-                    emptyList(),
-                )
-            )
-        }
-    }
-}
 
 enum class RelationLimitation {
     RESULT_LIMIT_REACHED,
@@ -157,6 +13,9 @@ enum class RelationLimitation {
     PROVIDER_FAILURE,
     PROVIDER_INCOMPLETE,
     PROVIDER_STALLED,
+    CANDIDATE_LIMIT_REACHED,
+    RETENTION_LIMIT_REACHED,
+    PARTITION_INVENTORY_UNAVAILABLE,
 }
 
 @JvmInline value class RelationExactCount internal constructor(val value: Int)
@@ -170,6 +29,11 @@ enum class RelationIncompleteCoverageFailure {
     CURSOR_REWIND,
     CURSOR_NOT_ADVANCED,
     PROVIDER_MISMATCH,
+    PROVIDER_STATE_CURSOR_MISMATCH,
+    PROVIDER_STATE_EXHAUSTED,
+    PROVIDER_INVENTORY_MISMATCH,
+    PROVIDER_STATE_NOT_ADVANCED,
+    PROVIDER_STATE_AUTHORITY_MISMATCH,
 }
 
 /** Incomplete relation coverage, split by whether bounded provider work remains. */
@@ -204,11 +68,12 @@ sealed interface RelationIncompleteCoverage {
             batch: RelationBatch,
             limitations: Set<RelationLimitation>,
             nextProviderCursor: RelationProviderCursor,
+            providerState: RelationProviderState,
         ): Refinement<RelationIncompleteCoverage, RelationIncompleteCoverageFailure> {
             if (limitations.isEmpty()) {
                 return Refinement.Rejected(RelationIncompleteCoverageFailure.EMPTY_LIMITATIONS)
             }
-            if (nextProviderCursor.provider != batch.request.providerCursor.provider) {
+            if (!batch.request.admitsProvider(nextProviderCursor.provider)) {
                 return Refinement.Rejected(RelationIncompleteCoverageFailure.PROVIDER_MISMATCH)
             }
             if (nextProviderCursor.nextPosition.value < batch.request.providerCursor.nextPosition.value) {
@@ -217,12 +82,26 @@ sealed interface RelationIncompleteCoverage {
             if (nextProviderCursor.nextPosition.value == batch.request.providerCursor.nextPosition.value) {
                 return Refinement.Rejected(RelationIncompleteCoverageFailure.CURSOR_NOT_ADVANCED)
             }
+            if (providerState.providerCursor != nextProviderCursor) {
+                return Refinement.Rejected(RelationIncompleteCoverageFailure.PROVIDER_STATE_CURSOR_MISMATCH)
+            }
+            val retained =
+                when (val progress = admitProviderProgress(batch.request, providerState)) {
+                    is Refinement.Rejected -> return progress
+                    is Refinement.Refined -> progress.value
+                }
             val orderedLimitations = limitations.toSortedSet(compareBy { it.ordinal }).toSet()
             return Refinement.Refined(
                 Resumable(
-                    knownMinimum = RelationKnownMinimum(batch.facts.size),
+                    knownMinimum = RelationKnownMinimum(batch.semanticResultCount),
                     limitations = orderedLimitations,
-                    continuation = RelationContinuation.issue(batch.request, nextProviderCursor, orderedLimitations),
+                    continuation =
+                        RelationContinuation.issue(
+                            batch.request,
+                            nextProviderCursor,
+                            orderedLimitations,
+                            retained,
+                        ),
                 )
             )
         }
@@ -236,7 +115,7 @@ sealed interface RelationIncompleteCoverage {
             } else {
                 Refinement.Refined(
                     TerminalIncomplete(
-                        knownMinimum = RelationKnownMinimum(batch.facts.size),
+                        knownMinimum = RelationKnownMinimum(batch.semanticResultCount),
                         limitations = limitations.toSortedSet(compareBy { it.ordinal }).toSet(),
                     )
                 )
@@ -286,7 +165,7 @@ sealed interface RelationCompilation {
         fun complete(batch: RelationBatch): Complete =
             Complete(
                 batch,
-                RelationCompleteCoverage(RelationExactCount(batch.facts.size)),
+                RelationCompleteCoverage(RelationExactCount(batch.semanticResultCount)),
             )
 
         /**
@@ -301,6 +180,7 @@ sealed interface RelationCompilation {
             batch: RelationBatch,
             limitations: Set<RelationLimitation>,
             nextProviderCursor: RelationProviderCursor,
+            providerState: RelationProviderState,
         ): Refinement<Qualified, RelationIncompleteCoverageFailure> =
             when (
                 val coverage =
@@ -308,6 +188,7 @@ sealed interface RelationCompilation {
                         batch,
                         limitations,
                         nextProviderCursor,
+                        providerState,
                     )
             ) {
                 is Refinement.Refined -> Refinement.Refined(Qualified(batch, coverage.value))
@@ -376,4 +257,32 @@ fun interface RelationOperations {
      * may enter only before [RelationRequest] construction.
      */
     suspend fun read(request: RelationRequest): RelationReadResult
+}
+
+private fun admitProviderProgress(
+    request: RelationRequest,
+    providerState: RelationProviderState,
+): Refinement<RelationProviderState, RelationIncompleteCoverageFailure> {
+    val previous = (request.position as? RelationReadPosition.Resume)?.continuation?.providerState
+    if (!request.admitsProvider(providerState.provider)) {
+        return Refinement.Rejected(RelationIncompleteCoverageFailure.PROVIDER_MISMATCH)
+    }
+    if (providerState.confirmAuthority(request.subject.lease.identity) is Refinement.Rejected) {
+        return Refinement.Rejected(RelationIncompleteCoverageFailure.PROVIDER_STATE_AUTHORITY_MISMATCH)
+    }
+    val progress = if (previous == null) providerState.confirmUnfinishedWork() else providerState.advanceFrom(previous)
+    if (progress is Refinement.Rejected) {
+        return Refinement.Rejected(
+            when (progress.failure) {
+                RelationProviderProgressFailure.EXHAUSTED -> RelationIncompleteCoverageFailure.PROVIDER_STATE_EXHAUSTED
+                RelationProviderProgressFailure.INVENTORY_MISMATCH ->
+                    RelationIncompleteCoverageFailure.PROVIDER_INVENTORY_MISMATCH
+                RelationProviderProgressFailure.ORDINAL_NOT_ADVANCED ->
+                    RelationIncompleteCoverageFailure.PROVIDER_STATE_NOT_ADVANCED
+                RelationProviderProgressFailure.AUTHORITY_MISMATCH ->
+                    RelationIncompleteCoverageFailure.PROVIDER_STATE_AUTHORITY_MISMATCH
+            }
+        )
+    }
+    return Refinement.Refined(providerState)
 }

@@ -17,7 +17,6 @@ import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
-import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
@@ -206,21 +205,13 @@ internal class TraversalTestFixture {
         val relationRequest = request.relationRequest()
         val facts = targets.map { target -> fact(relationRequest, endpoint(relationRequest.subject, target)) }.sorted()
         val batch = batch(relationRequest, facts)
-        val consumedFactsCursor =
-            facts.fold(relationRequest.providerCursor) { cursor, fact ->
-                cursor.advance(RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refined())
-            }
-        val nextCursor =
-            if (facts.isEmpty()) {
-                consumedFactsCursor.advance(RelationProviderItemDescriptor.parse("filtered-provider-item").refined())
-            } else {
-                consumedFactsCursor
-            }
+        val state = traversalPendingCalleeState(relationRequest, facts)
         val qualified =
             RelationCompilation.qualifiedResumable(
                     batch,
                     setOf(limitation),
-                    nextCursor,
+                    state.providerCursor,
+                    providerState = state,
                 )
                 .refined()
         return OneHopRelationRead.Completed(
@@ -261,13 +252,13 @@ internal class TraversalTestFixture {
 
     fun qualifiedRelationResult(request: RelationRequest): RelationReadResult.Qualified {
         val batch = batch(request, emptyList())
+        val state = traversalPendingCalleeState(request, emptyList())
         val qualified =
             RelationCompilation.qualifiedResumable(
                     batch,
                     setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-                    request.providerCursor.advance(
-                        RelationProviderItemDescriptor.parse("filtered-provider-item").refined()
-                    ),
+                    state.providerCursor,
+                    providerState = state,
                 )
                 .refined()
         return RelationReadResult.Qualified(batch, qualified.coverage)

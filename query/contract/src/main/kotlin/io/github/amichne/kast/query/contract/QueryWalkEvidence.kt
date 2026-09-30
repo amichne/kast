@@ -1,7 +1,9 @@
 package io.github.amichne.kast.query.contract
 
+import io.github.amichne.kast.relation.contract.RelationKnownMinimum
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationOmissionEvidence
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalExpansionRemainder
@@ -74,6 +76,8 @@ data class QueryWalkPartialExpansion
 private constructor(
     val entry: TraversalFrontierEntry,
     val limitations: List<RelationLimitation>,
+    val knownMinimum: RelationKnownMinimum,
+    val omissions: List<RelationOmissionEvidence>,
     val remainder: TraversalExpansionRemainder,
 ) {
     companion object {
@@ -81,6 +85,8 @@ private constructor(
             QueryWalkPartialExpansion(
                 expansion.entry,
                 expansion.limitations.immutableOrderedBy { it.ordinal },
+                expansion.knownMinimum,
+                expansion.omissions,
                 expansion.remainder,
             )
     }
@@ -98,7 +104,21 @@ private constructor(
     val expandedFrontier: TraversalFrontierCount,
     val partialExpansions: List<QueryWalkPartialExpansion>,
     val coverage: QueryWalkCoverage,
+    val inheritedOmissions: List<QueryWalkPartialExpansion>,
+    val referenceOccurrences: List<io.github.amichne.kast.traversal.contract.TraversalReferenceObservation>,
 ) {
+    /** Partition independent proof payloads before output accounting; their shared progress is a witness, not a sum. */
+    fun evidenceUnits(): List<QueryWalkObservation> {
+        if (partialExpansions.size + inheritedOmissions.size + referenceOccurrences.size <= 1) return listOf(this)
+        val structural =
+            copy(partialExpansions = emptyList(), inheritedOmissions = emptyList(), referenceOccurrences = emptyList())
+        val units =
+            partialExpansions.map { structural.copy(partialExpansions = listOf(it)) } +
+                inheritedOmissions.map { structural.copy(inheritedOmissions = listOf(it)) } +
+                referenceOccurrences.map { structural.copy(referenceOccurrences = listOf(it)) }
+        return java.util.Collections.unmodifiableList(units)
+    }
+
     companion object {
         fun from(result: TraversalResult.Complete): QueryWalkObservation =
             observation(result.page, QueryWalkCoverage.Complete)
@@ -117,6 +137,11 @@ private constructor(
                 partialExpansions =
                     java.util.Collections.unmodifiableList(page.partialExpansions.map(QueryWalkPartialExpansion::from)),
                 coverage = coverage,
+                inheritedOmissions =
+                    java.util.Collections.unmodifiableList(
+                        page.inheritedOmissions.map(QueryWalkPartialExpansion::from)
+                    ),
+                referenceOccurrences = page.referenceOccurrences,
             )
     }
 }

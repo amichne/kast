@@ -14,6 +14,7 @@ import io.github.amichne.kast.symbol.contract.SymbolCompilerRejection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryProgress
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
@@ -47,6 +48,8 @@ class SymbolDiscoveryService(
         }
 
     private suspend fun discoverObserved(request: SymbolDiscoveryRequest): SymbolDiscoveryResult {
+        if (request.remainder?.matches(request) == false)
+            return SymbolDiscoveryResult.Rejected(SymbolDiscoveryRejection.COMPILER_CONTRACT_VIOLATION)
         when (authorities.validate(request.scope.lease)) {
             SemanticReadValidation.CURRENT -> Unit
             SemanticReadValidation.UNAVAILABLE ->
@@ -91,8 +94,17 @@ class SymbolDiscoveryService(
                 is SymbolDiscoveryOutcome.Complete -> outcome.batch
                 is SymbolDiscoveryOutcome.Qualified -> outcome.batch
             }
+        val progressHolds =
+            when (val progress = outcome.progress) {
+                SymbolDiscoveryProgress.Exhausted,
+                is SymbolDiscoveryProgress.Blocked -> true
+                is SymbolDiscoveryProgress.Resumable ->
+                    progress.remainder.matches(request) &&
+                        (request.remainder?.let(progress.remainder::advancesFrom) ?: true)
+            }
         val contractHolds =
-            batch.lease == request.scope.lease &&
+            progressHolds &&
+                batch.lease == request.scope.lease &&
                 batch.scope == request.scope.scope &&
                 batch.constraints == request.constraints &&
                 batch.examinedWorkUnits.value <= request.budget.resources.workUnitLimit.value &&

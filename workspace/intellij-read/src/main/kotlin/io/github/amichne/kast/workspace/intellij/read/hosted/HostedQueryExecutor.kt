@@ -104,19 +104,24 @@ internal class HostedQueryExecutor(
                 )
             } finally {
                 // Cancellation of the caller must not release admission while its analysis still runs.
+                progress.observation.phase(
+                    io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.CANCELLATION_DRAINAGE
+                )
                 withContext(NonCancellable) { operation.cancelAndJoin() }
             }
-        val final =
+        val completed =
             when (val completion = lifetime.complete(permit)) {
                 HostedQueryCompletion.Published -> result
                 is HostedQueryCompletion.Rejected ->
                     HostedExecution.Rejected(completion.failure, progress.stage, progress.executionBudget)
             }
+        val evaluation = (completed as? HostedExecution.Completed)?.let { outcome(it.value) }
+        val final = progress.publishAccepted(completed, evaluation)
         // Even a service cancelled before the coroutine starts emits a terminal receipt.
         diagnostic?.finish(
             when (final) {
                 is HostedExecution.Rejected -> HostedDiagnosticOutcome.Rejected(final.failure)
-                is HostedExecution.Completed -> outcome(final.value)
+                is HostedExecution.Completed -> requireNotNull(evaluation)
             }
         )
         return final
@@ -131,6 +136,31 @@ internal class HostedQueryExecutor(
         job.cancelAndJoin()
     }
 }
+
+/** Publication runs only after native drainage and lifetime admission have both completed. */
+private fun <Value> HostedQueryProgress.publishAccepted(
+    completed: HostedExecution<Value>,
+    evaluation: HostedDiagnosticOutcome?,
+): HostedExecution<Value> =
+    when (completed) {
+        is HostedExecution.Rejected -> {
+            publicationEffects.discard()
+            completed
+        }
+        is HostedExecution.Completed -> {
+            if (
+                evaluation is HostedDiagnosticOutcome.Rejected ||
+                    evaluation == HostedDiagnosticOutcome.Evaluated(HostedEvaluationOutcome.REJECTED)
+            ) {
+                publicationEffects.discard()
+                completed
+            } else
+                when (val published = publicationEffects.commit()) {
+                    is Refinement.Refined -> completed
+                    is Refinement.Rejected -> HostedExecution.Rejected(published.failure, stage, executionBudget)
+                }
+        }
+    }
 
 internal val HOSTED_QUERY_BUDGET_MILLIS = ReadLimits.Default[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()
 
@@ -153,6 +183,7 @@ internal class HostedQueryProgress(
     private val completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
 ) {
     private val deadline = HostedReadDeadline(limits, clock, executionBudget, publication)
+    val publicationEffects = HostedReadPublicationOwner()
 
     @Volatile
     var executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent
@@ -193,6 +224,7 @@ internal class HostedQueryProgress(
     @Synchronized
     fun restartAfterMovedRead() {
         check(stage == HostedQueryStage.MODEL_CAPTURE || stage == HostedQueryStage.CONTENT_REVALIDATION)
+        publicationEffects.restart()
         stage = HostedQueryStage.REQUEST_ADMISSION
     }
 

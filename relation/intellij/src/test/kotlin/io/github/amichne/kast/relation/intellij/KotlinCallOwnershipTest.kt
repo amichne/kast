@@ -31,6 +31,42 @@ import org.junit.jupiter.api.io.TempDir
 /** PSI-only lexical policy proof. K1 supplies the parser; this does not claim K2 resolution. */
 class KotlinCallOwnershipTest {
     @Test
+    fun `nested imports and aliases have file context without a lexical declaration`(@TempDir home: Path) =
+        withParser(home) { factory ->
+            val file =
+                factory.createFile(
+                    """
+                    @file:Suppress("fixture")
+                    package usage
+                    import model.Outer.Nested
+                    import model.Outer.Nested as Renamed
+                    class Consumer(val value: Renamed)
+                    """
+                        .trimIndent()
+                )
+            val annotation =
+                (file.fileAnnotationList!!.annotationEntries.single().typeReference!!.typeElement
+                        as org.jetbrains.kotlin.psi.KtUserType)
+                    .referenceExpression!!
+            assertEquals(
+                io.github.amichne.kast.relation.contract.RelationReferenceContext.FILE_ANNOTATION,
+                annotation.referenceContext(),
+            )
+            val imports = file.importDirectives
+            assertEquals(
+                listOf(
+                    io.github.amichne.kast.relation.contract.RelationReferenceContext.IMPORT,
+                    io.github.amichne.kast.relation.contract.RelationReferenceContext.ALIASED_IMPORT,
+                ),
+                imports.map { it.importedReference!!.referenceContext() },
+            )
+            imports.forEach {
+                assertEquals(ContainingDeclaration.Unsupported, it.importedReference!!.nearestDeclaration())
+            }
+            assertEquals(1, file.declarations.size)
+        }
+
+    @Test
     fun `definition wrappers normalize to the exact Kotlin origin while Java remains supported`(@TempDir home: Path) =
         withParser(home) { factory ->
             val origin =

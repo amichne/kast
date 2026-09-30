@@ -14,11 +14,17 @@ import kotlinx.serialization.json.JsonElement
 internal class HostedReadDiagnostics(
     private val clock: () -> Long,
     private val limits: ReadLimits = ReadLimits.Default,
+    private val publishPhase: (HostedNativePhaseEntry) -> Unit = {},
     private val publish: (HostedReadDiagnosticReceipt) -> Unit,
 ) : IntellijReadObservation {
     private val started = clock()
+    private val readId = UUID.randomUUID()
+    private val phaseDurations = linkedMapOf<IntellijReadPhase, Long>()
+    private var nativePhase: HostedNativePhaseState = HostedNativePhaseState.NotEntered
+    private var phaseStarted = 0L
     private val stages = linkedMapOf<HostedQueryStage, Long>()
     private val counters = linkedMapOf<Pair<IntellijReadCounter, IntellijReadContributor>, Long>()
+    private val gauges = linkedMapOf<IntellijReadGauge, IntellijReadGaugeValue>()
     private val terminations = linkedSetOf<Pair<IntellijReadTermination, IntellijReadContributor>>()
     private val unexpectedFailures = linkedSetOf<IntellijReadUnexpectedFailure>()
     private var semanticBudget: HostedSemanticBudgetObservation = HostedSemanticBudgetObservation.NotAdmitted
@@ -41,12 +47,34 @@ internal class HostedReadDiagnostics(
     }
 
     @Synchronized
+    override fun phase(value: IntellijReadPhase) {
+        if (finished) return
+        val elapsed = elapsed()
+        val previous = nativePhase as? HostedNativePhaseState.Entered
+        previous?.let {
+            phaseDurations[it.phase] = (phaseDurations[it.phase] ?: 0L) + (elapsed - phaseStarted).coerceAtLeast(0L)
+        }
+        nativePhase = HostedNativePhaseState.Entered(value)
+        phaseStarted = elapsed
+        // First entry is a bounded durable signal even if an arbitrary native call never drains.
+        if (value !in phaseDurations) {
+            phaseDurations[value] = 0L
+            publishPhase(HostedNativePhaseEntry(readId.toString(), value, elapsed))
+        }
+    }
+
+    @Synchronized
     override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
         require(amount >= 0)
         if (finished) return
         val key = counter to contributor
         counters[key] =
             ((counters[key] ?: 0L) + amount).coerceAtMost(limits[ReadLimitParameter.DIAGNOSTIC_COUNT].value.toLong())
+    }
+
+    @Synchronized
+    override fun measure(gauge: IntellijReadGauge, value: IntellijReadGaugeValue) {
+        if (!finished) gauges[gauge] = gauge.merge(gauges[gauge], value)
     }
 
     @Synchronized
@@ -68,12 +96,15 @@ internal class HostedReadDiagnostics(
     @Synchronized
     fun finish(outcome: HostedDiagnosticOutcome) {
         if (finished) return
-        finished = true
         val duration = elapsed()
+        (nativePhase as? HostedNativePhaseState.Entered)?.let {
+            phaseDurations[it.phase] = (phaseDurations[it.phase] ?: 0L) + (duration - phaseStarted).coerceAtLeast(0L)
+        }
+        finished = true
         val ordered = stages.toList()
         publish(
             HostedReadDiagnosticReceipt(
-                UUID.randomUUID(),
+                readId,
                 correlation,
                 duration,
                 ordered.mapIndexed { index, (stage, start) ->
@@ -93,6 +124,9 @@ internal class HostedReadDiagnostics(
                 outcome,
                 unexpectedFailures.toList(),
                 limits,
+                nativePhase,
+                phaseDurations.map { HostedNativePhaseDuration(it.key, it.value) },
+                gauges.map { HostedNativeGauge(it.key, it.value) },
             )
         )
     }
@@ -102,6 +136,18 @@ internal class HostedReadDiagnostics(
     internal companion object {
         const val MAX_COUNT = 1_000_000_000L
     }
+}
+
+@Serializable
+internal data class HostedNativePhaseEntry(val readId: String, val phase: IntellijReadPhase, val enteredNanos: Long)
+
+@Serializable internal data class HostedNativePhaseDuration(val phase: IntellijReadPhase, val durationNanos: Long)
+
+@Serializable
+internal sealed interface HostedNativePhaseState {
+    @Serializable @SerialName("not-entered") data object NotEntered : HostedNativePhaseState
+
+    @Serializable @SerialName("entered") data class Entered(val phase: IntellijReadPhase) : HostedNativePhaseState
 }
 
 @Serializable
@@ -117,6 +163,8 @@ internal data class HostedNativeCount(
     val contributor: IntellijReadContributor,
     val count: Long,
 )
+
+@Serializable internal data class HostedNativeGauge(val gauge: IntellijReadGauge, val value: IntellijReadGaugeValue)
 
 @Serializable
 internal data class HostedNativeTermination(
@@ -162,6 +210,9 @@ internal data class HostedReadDiagnosticReceipt(
     val outcome: HostedDiagnosticOutcome,
     val unexpectedFailures: List<IntellijReadUnexpectedFailure>,
     val limits: ReadLimits,
+    val nativePhase: HostedNativePhaseState = HostedNativePhaseState.NotEntered,
+    val nativePhaseDurations: List<HostedNativePhaseDuration> = emptyList(),
+    val gauges: List<HostedNativeGauge> = emptyList(),
 )
 
 /** A completed read transaction and its evaluator's semantic classification are distinct facts. */
@@ -174,14 +225,22 @@ enum class HostedEvaluationOutcome {
 
 /** Default evidence at the hosted native boundary; one bounded record after drainage. */
 internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): HostedReadDiagnostics =
-    HostedReadDiagnostics(System::nanoTime, limits) { receipt ->
-        Logger.getInstance(HostedReadDiagnostics::class.java).info("kast_semantic_read " + receipt.encode())
-    }
+    HostedReadDiagnostics(
+        System::nanoTime,
+        limits,
+        publish = { receipt ->
+            Logger.getInstance(HostedReadDiagnostics::class.java).info("kast_semantic_read " + receipt.encode())
+        },
+        publishPhase = { phase ->
+            Logger.getInstance(HostedReadDiagnostics::class.java)
+                .info("kast_semantic_phase " + diagnosticOutcomeJson.encodeToString(phase))
+        },
+    )
 
 internal fun HostedReadDiagnosticReceipt.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedReadDiagnosticDocument(
-            schemaVersion = 4,
+            schemaVersion = 5,
             limits =
                 limits.values.map {
                     HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
@@ -204,7 +263,10 @@ internal fun HostedReadDiagnosticReceipt.encode(): String =
                     is HostedSemanticEntry.Entered -> HostedEntryDocument.Entered(value.remainingDeadlineNanos)
                 },
             semanticBudget = semanticBudget,
+            nativePhase = nativePhase,
+            nativePhaseDurations = nativePhaseDurations,
             counters = counters,
+            gauges = gauges,
             terminations = terminations,
             outcome =
                 when (val value = outcome) {
@@ -235,9 +297,12 @@ private data class HostedReadDiagnosticDocument(
     val correlation: HostedCorrelationDocument,
     val durationNanos: Long,
     val stages: List<HostedReadStageDuration>,
+    val nativePhase: HostedNativePhaseState,
+    val nativePhaseDurations: List<HostedNativePhaseDuration>,
     val semanticEntry: HostedEntryDocument,
     val semanticBudget: HostedSemanticBudgetObservation,
     val counters: List<HostedNativeCount>,
+    val gauges: List<HostedNativeGauge>,
     val terminations: List<HostedNativeTermination>,
     val outcome: HostedDiagnosticOutcomeDocument,
     val unexpectedFailures: List<HostedUnexpectedFailureDocument>,

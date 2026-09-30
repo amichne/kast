@@ -4,7 +4,7 @@ title: Source failure origin
 description: Source reads distinguish invalid fields, rejected references, and failed internal obligations without disclosing input bytes.
 resource: file://protocol/contract
 tags: [source, failure, protocol]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-29T00:00:00Z
 code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReadReferenceAdmission.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceExecutionBudgetIngress.kt
@@ -20,6 +20,11 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalReadRejectedDocument.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SourceFailureMatrixTest.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPublicationFailureCause.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
 ---
 
 # Source failure origin
@@ -61,6 +66,16 @@ retain separate result and qualification obligations. Source enumeration retains
 may carry optional refreshed-handle metadata; expanded and compact projections
 preserve it. Reacquisition failures retain their exact reason, including work
 and time exhaustion, and do not become generic stale-source errors.
+
+Source retention capacity is distinct from an unavailable owner or invalid
+publication. Native cursor retention refusal preserves proven entities with
+`RETENTION_LIMIT_REACHED`. A fitted prefix whose output suffix cannot be retained
+keeps its facts, known minimum and original upstream coverage in the closed
+`retention_unavailable` progress variant, and advertises no token. Indivisible
+output still has a finite byte-grant outcome. Final publication failures retain
+exact owner-retired, claim-unavailable, expired, dependency-unavailable, page-
+mismatch, non-advancing, invalid-page and capacity causes in the host envelope.
+They do not become a generic stale request or a successful semantic page.
 
 This contract does not establish the cause of any unobserved enterprise failure.
 Installed and released-byte qualification remains separate from unit and schema

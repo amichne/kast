@@ -19,11 +19,14 @@ import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
+import io.github.amichne.kast.relation.contract.RelationProviderLocator
+import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
@@ -75,9 +78,17 @@ class HostedPlanningEvidenceTest {
         val request = RelationRequest.start(fixture.selector, RelationMeaning.References, fixture.budget)
         val batch = batch(request)
         val limitations = setOf(RelationLimitation.TIME_LIMIT_REACHED, RelationLimitation.PROVIDER_INCOMPLETE)
-        val cursor =
-            request.providerCursor.advance(RelationProviderItemDescriptor.parse("bounded-provider-item").proven())
-        val resumed = RelationCompilation.qualifiedResumable(batch, limitations, cursor).proven()
+        val state =
+            RelationProviderState.references(
+                listOf(
+                    RelationProviderLocator.Reference(
+                        request.subject.file,
+                        ExactDeclarationTextRange.parse(1, 2).proven(),
+                        RelationProviderItemDescriptor.parse("bounded-provider-item").proven(),
+                    )
+                )
+            )
+        val resumed = RelationCompilation.qualifiedResumable(batch, limitations, state.providerCursor, state).proven()
         val result = RelationReadResult.Qualified(batch, resumed.coverage).planningEvidence().failure()
         assertEquals(
             HostedPlanningEvidenceFailure.RelationIncomplete(

@@ -27,7 +27,6 @@ import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
-import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
@@ -135,12 +134,9 @@ internal class AddDeclarationPlanFixture(
     fun qualifiedRelation(): RelationReadResult {
         val batch = relationBatch(RelationMeaning.References)
         val qualified =
-            RelationCompilation.qualifiedResumable(
+            RelationCompilation.qualifiedTerminal(
                     batch,
                     setOf(RelationLimitation.PROVIDER_INCOMPLETE),
-                    batch.request.providerCursor.advance(
-                        RelationProviderItemDescriptor.parse("filtered-provider-item").refined()
-                    ),
                 )
                 .refined()
         return RelationReadResult.Qualified(qualified.batch, qualified.coverage)
