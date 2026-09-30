@@ -29,6 +29,40 @@ For example, “Kast found these callers, but the walk stopped with unfinished w
 
 A zero-row qualified answer is not proof that a declaration or relationship is absent. Before making an absence claim, check complete coverage of the requested scope, item failures, and omissions. Diagnostics cover the reported IDEA analysis scope; they do not certify a whole-project build.
 
+## Follow progress, not row count
+
+A bounded answer can preserve work that has not yet produced a row. Read the semantic status and required qualification progress together; do not decide that an investigation is finished because this page is empty.
+
+```mermaid
+%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
+flowchart TB
+  accTitle: Completion, resumable work, and terminal limits are different outcomes
+  accDescr: A complete result establishes coverage of its declared universe. A qualified result either carries a usable continuation or a terminal limitation. A rejected request requires its reported recovery action. Row count alone determines none of these states.
+  A("Read status and coverage") --> S{"Semantic outcome"}
+  S -->|Complete| C("Declared universe covered")
+  S -->|Qualified| Q{"Reported progress"}
+  S -->|Rejected| F("Follow the recovery action")
+  Q -->|Resumable| R("Resume the issued continuation")
+  Q -->|Terminal| T("Keep facts and report the limit")
+  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
+  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
+  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
+  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
+  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
+  class C evidence;
+  class Q,T limited;
+  class R authority;
+  class F rejected;
+```
+
+When qualification reports resumable execution, use its issued continuation with `RESUME`. This restores saved work; it is not a new `RUN` with reconstructed steps. A terminal qualification keeps its precise reason and any established facts but does not promise a usable successor. Follow the reported recovery guidance instead of fabricating a token or retrying indefinitely.
+
+`READ_RESULT` is different. It pages immutable stored rows with a presentation cursor and does not advance semantic providers. It supports retained symbols, occurrences, traversal records, and binding rows with the matching output type. Draining those pages cannot remove the producer's omissions or turn qualified evidence into complete coverage.
+
+Current progressive Kotlin-source declaration discovery retains unopened partitions and the active source position. Reference output can retain file-scoped imports and aliases without inventing an enclosing declaration. Discovery work counts, emitted rows, and provider coverage are different quantities; a small row count says nothing by itself about how much input was examined.
+
+Replaying an already-published continuation returns the same semantic page and successor without repeating its scan. Concurrent use of unfinished execution can report `continuation-in-use`. Expired, evicted, or stale state requires explicit recovery; a token is not a permanent snapshot.
+
 ## Carry the correct handle forward
 
 | Handle | Next use |

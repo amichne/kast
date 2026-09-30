@@ -36,7 +36,7 @@ icon: "book-open"
     {"request":{"type":"READ_RESULT","result":"<issued result reference>"}}
     ```
 
-    Present stored symbol rows without evaluating the query again. For stored pairs, supply `output: {"type":"BINDING_ROWS"}`. A presentation cursor is not an execution continuation.
+    Present stored rows without evaluating the query again. Omitted output reads retained symbols. Use `output: {"type":"OCCURRENCES"}`, `output: {"type":"TRAVERSAL_RECORDS"}`, or `output: {"type":"BINDING_ROWS"}` for the matching retained row type. A mismatched output rejects. A presentation cursor is not an execution continuation.
   </Tab>
 </Tabs>
 
@@ -53,6 +53,8 @@ Replace token placeholders with issued values. They are teaching labels, not val
 | `RESULT` | You want to reuse retained rows, optionally selecting their issued row IDs. |
 
 Discovery accepts a directory or package scope. Without a scope override, it searches the workspace recursively in source sets `main` and `test`. Source scope restricts discovery, not the destinations of later relationship steps.
+
+The progressive `ALL_DECLARATIONS` source covers supported Kotlin classes, functions, properties, and type aliases, including eligible nested declarations. Its declared universe is Kotlin source, not every possible declaration in every language or library. Direct library-inclusive enumeration is unsupported; Kast must not substitute source-only coverage and call it complete. Use the actual result's declared scope, restrictions, progress, and blocked causes to interpret the answer.
 
 ## Apply only the steps you need
 
