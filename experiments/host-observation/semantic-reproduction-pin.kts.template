@@ -49,9 +49,11 @@ run {
         "io.github.amichne.kast.workspace.intellij.read.DetachedModelLimits",
         "io.github.amichne.kast.workspace.intellij.read.LiveNamedGradleSourceScopeCapture",
         "io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorKt",
+        "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDiagnostics",
         "io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt",
         "io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt",
-        "io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch"
+        "io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch",
+        "io.github.amichne.kast.relation.contract.RelationReferenceOccurrence"
     ).associateWith { name ->
         val resource = loader.getResource(name.replace('.', '/') + ".class")!!
         mapOf("url" to resource.toString(), "sha256" to java.security.MessageDigest.getInstance("SHA-256")

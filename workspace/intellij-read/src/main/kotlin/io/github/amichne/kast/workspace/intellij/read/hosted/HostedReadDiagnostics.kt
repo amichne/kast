@@ -29,6 +29,10 @@ internal class HostedReadDiagnostics(
         // Explicit zeros prove page observation capability even when a workload never enters that provider.
         counters[IntellijReadCounter.NATIVE_DISCOVERY_PAGES to IntellijReadContributor.NONE] = 0L
         counters[IntellijReadCounter.NATIVE_RELATION_PAGES to IntellijReadContributor.NONE] = 0L
+        // Both alternatives must remain observable when comparing locator retention across reads.
+        counters[IntellijReadCounter.REVALIDATION_LOCATORS_RETAINED to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.REVALIDATION_LOCATORS_REJECTED to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.EPOCH_READ_PREEMPTIONS to IntellijReadContributor.NONE] = 0L
     }
 
     private val gauges = linkedMapOf<IntellijReadGauge, IntellijReadGaugeValue>()

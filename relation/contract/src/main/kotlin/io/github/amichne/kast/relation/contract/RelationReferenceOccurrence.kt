@@ -1,7 +1,11 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.detachedIdentityBytes
 import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
@@ -82,8 +86,27 @@ private constructor(
     val retainedBytes: Long
         get() = REFERENCE_STRUCTURE_BYTES + UTF16_UNIT_BYTES * detachedTextUnits
 
-    /** Worst-case JSON escaping plus the bounded fixed fields of two symbol documents and occurrence metadata. */
-    fun projectedUtf8Size(): Long = REFERENCE_DOCUMENT_BYTES + JSON_ESCAPE_UNIT_BYTES * detachedTextUnits
+    /**
+     * Bounds one full occurrence row, including inline selectors. The target selector occurs twice (row reference and
+     * target document), each owner selector once, and the occurrence range selector once. Compact handles fit within
+     * this inline bound. Response-envelope and separately emitted observation charges belong to their own owners.
+     */
+    fun projectedUtf8Size(): Long =
+        REFERENCE_DOCUMENT_BYTES +
+            canonicalProjection().projectedJsonTextBytes() +
+            2L * target.projectedSelectorTextBytes().base64Bytes() +
+            target.projectedDocumentTextBytes() +
+            (target.lease.workspaceRoot.value.projectedJsonTextBytes() +
+                    authority.revisionKey.value.projectedJsonTextBytes() +
+                    occurrence.file.stableValue.projectedJsonTextBytes())
+                .base64Bytes() +
+            when (val owner = ownership) {
+                is RelationReferenceOwnership.DeclarationOwned ->
+                    owner.declaration.projectedSelectorTextBytes().base64Bytes() +
+                        owner.declaration.projectedDocumentTextBytes()
+                is RelationReferenceOwnership.FileScoped,
+                is RelationReferenceOwnership.Unavailable -> 0L
+            }
 
     override fun compareTo(other: RelationReferenceOccurrence): Int =
         canonicalProjection().compareTo(other.canonicalProjection())
@@ -171,6 +194,83 @@ internal fun RelationEndpoint.detachedTextUnits(): Long =
         scope.detachedIdentityBytes() +
         constraints.fingerprintFields().sumOf { it.length.toLong() + CONSTRAINT_FIELD_BYTES }
 
+/** Every retained endpoint identity field remains in the selector bound, including hidden read authority. */
+private fun RelationEndpoint.projectedSelectorTextBytes(): Long =
+    listOf(
+            lease.workspaceRoot.value,
+            lease.identity.revisionKey.value,
+            file.stableValue,
+            name.value,
+            qualifiedIdentity.projectedText(),
+            signature.canonicalEncoding().value,
+            fingerprint.value,
+            compilerIdentity.value,
+        )
+        .sumOf { it.projectedJsonTextBytes() } +
+        scope.projectedTextBytes() +
+        constraints.fingerprintFields().sumOf { it.projectedJsonTextBytes() + CONSTRAINT_FIELD_BYTES }
+
+/** Qualified identity also occurs in the structured signature; both appearances are charged. */
+private fun RelationEndpoint.projectedDocumentTextBytes(): Long =
+    file.stableValue.projectedJsonTextBytes() +
+        name.value.projectedJsonTextBytes() +
+        qualifiedIdentity.projectedText().projectedJsonTextBytes() +
+        compilerIdentity.value.projectedJsonTextBytes() +
+        signature.projectedDocumentTextBytes()
+
+private fun CanonicalCompilerSignature.projectedDocumentTextBytes(): Long =
+    qualifiedIdentity.value.projectedJsonTextBytes() +
+        when (this) {
+            is CanonicalCompilerSignature.Function ->
+                receiver.projectedTextBytes() +
+                    contextReceivers.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES } +
+                    valueParameters.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES }
+            is CanonicalCompilerSignature.Property ->
+                receiver.projectedTextBytes() +
+                    contextReceivers.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES } +
+                    returnType.value.projectedJsonTextBytes()
+            is CanonicalCompilerSignature.TypeAlias,
+            is CanonicalCompilerSignature.ClassLike -> 0L
+        }
+
+private fun CanonicalCompilerReceiver.projectedTextBytes(): Long =
+    when (this) {
+        CanonicalCompilerReceiver.Absent -> 0L
+        is CanonicalCompilerReceiver.Present -> type.value.projectedJsonTextBytes()
+    }
+
+private fun ExactDeclarationQualifiedIdentity.projectedText(): String =
+    when (this) {
+        is ExactDeclarationQualifiedIdentity.Available -> value
+        ExactDeclarationQualifiedIdentity.Unavailable -> ""
+    }
+
+private fun SymbolSearchScope.projectedTextBytes(): Long =
+    when (this) {
+        is SymbolSearchScope.ExactFile -> file.value.projectedJsonTextBytes()
+        is SymbolSearchScope.Module -> module.value.projectedJsonTextBytes()
+        is SymbolSearchScope.GradleProject ->
+            project.buildRoot.value.projectedJsonTextBytes() + project.projectPath.value.projectedJsonTextBytes()
+        is SymbolSearchScope.SourceSet ->
+            project.buildRoot.value.projectedJsonTextBytes() +
+                project.projectPath.value.projectedJsonTextBytes() +
+                sourceSet.value.projectedJsonTextBytes()
+        is SymbolSearchScope.Workspace -> 0L
+    }
+
+/** Base64url needs at most four bytes per three JSON payload bytes, including the last incomplete group. */
+private fun Long.base64Bytes(): Long =
+    BASE64_ENCODED_GROUP_BYTES * ((this + BASE64_INPUT_GROUP_BYTES - 1L) / BASE64_INPUT_GROUP_BYTES)
+
+/** Non-ASCII and control units retain the six-byte bound, including UTF-16 surrogate pairs. */
+private fun String.projectedJsonTextBytes(): Long = sumOf { character ->
+    when {
+        character == '"' || character == '\\' -> 2L
+        character in ' '..'~' -> 1L
+        else -> JSON_ESCAPE_UNIT_BYTES
+    }
+}
+
 private fun io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.detachedTextUnits(): Long =
     when (this) {
         is io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available -> value.length.toLong()
@@ -225,7 +325,11 @@ private fun RelationRequest.admitOwnership(
 }
 
 private const val REFERENCE_STRUCTURE_BYTES = 1_024L
-private const val REFERENCE_DOCUMENT_BYTES = 2_048L
+/** Row fields, enum labels, scalar numbers, token framing and base64-expanded fixed selector JSON fields. */
+private const val REFERENCE_DOCUMENT_BYTES = 4_096L
 private const val UTF16_UNIT_BYTES = 2L
 private const val JSON_ESCAPE_UNIT_BYTES = 6L
 private const val CONSTRAINT_FIELD_BYTES = 24L
+private const val JSON_LIST_ITEM_BYTES = 3L
+private const val BASE64_INPUT_GROUP_BYTES = 3L
+private const val BASE64_ENCODED_GROUP_BYTES = 4L

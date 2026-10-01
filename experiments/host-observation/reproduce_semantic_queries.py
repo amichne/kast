@@ -40,7 +40,7 @@ def digest(path):
 
 def inventory(directory):
     return {p.relative_to(directory).as_posix(): digest(p) for p in sorted(directory.rglob("*"))
-            if p.is_file() and not any(x in p.relative_to(directory).parts for x in ("build", ".gradle", ".idea", ".kotlin"))}
+            if p.is_file() and not any(x in p.relative_to(directory).parts for x in ("build", ".gradle", ".idea", ".kotlin", ".git"))}
 
 
 def fresh(path):
@@ -644,27 +644,151 @@ class ReplayComparisonReport:
 COMPARISON_BUDGET = dict(maxElapsedMs=2000, maxWorkUnits=100000, maxResults=20, maxReturnedBytes=49152)
 MEASUREMENT_KEYS = {'publicCalls', 'encodedBytes', 'firstUsableNanos', 'totalNanos',
                     'counters', 'nativePages', 'nativePhaseDurations', 'stageDurations'}
+LOCATOR_RETAINED_COUNTER = 'REVALIDATION_LOCATORS_RETAINED/NONE'
+LOCATOR_REJECTED_COUNTER = 'REVALIDATION_LOCATORS_REJECTED/NONE'
+LOCATOR_OUTCOME_COUNTERS = {LOCATOR_RETAINED_COUNTER, LOCATOR_REJECTED_COUNTER}
 
 
-def comparison_requests():
+class WorkloadProfile(str, Enum):
+    RELIABILITY_FIXTURE = 'RELIABILITY_FIXTURE'
+    KAST_SOURCE = 'KAST_SOURCE'
+
+
+KAST_PACKAGE = 'io.github.amichne.kast.query.contract'
+KAST_DIRECTORY = 'query/contract/src/main/kotlin'
+KAST_SCOPED_DIRECTORY = 'kernel/src/main/kotlin'
+
+
+def comparison_requests(profile=WorkloadProfile.RELIABILITY_FIXTURE):
+    if not isinstance(profile, WorkloadProfile): raise ValueError('UNSUPPORTED_WORKLOAD_PROFILE')
     selected = dict(type='DIRECTORY', relativeDirectoryPath='logging/src/main/kotlin',
                     includeSubdirectories=True, sourceSetNames=['main'])
+    if profile == WorkloadProfile.KAST_SOURCE:
+        selected['relativeDirectoryPath'] = KAST_DIRECTORY
     def request(source, steps, output):
         return dict(verbose=True, request=dict(type='RUN', source=source, steps=steps, output=output,
-                                               executionBudget=dict(COMPARISON_BUDGET)))
-    exact = dict(type='SEARCH_DECLARATIONS', declarationName='FixtureLogger', nameMatch='EXACT',
+                                               executionBudget=comparison_budget(profile)))
+    production = profile == WorkloadProfile.KAST_SOURCE
+    exact = dict(type='SEARCH_DECLARATIONS', declarationName='QueryPlanSyntax' if production else 'FixtureLogger', nameMatch='EXACT',
                  declarationKinds=['CLASS'], scope=selected)
-    dense = dict(type='SEARCH_DECLARATIONS', declarationName='DenseReferenceTarget', nameMatch='EXACT',
+    dense = dict(type='SEARCH_DECLARATIONS', declarationName='QueryStepSyntax' if production else 'DenseReferenceTarget', nameMatch='EXACT',
                  declarationKinds=['CLASS'], scope=selected)
+    all_scope = {**selected, 'relativeDirectoryPath': KAST_SCOPED_DIRECTORY} if production else selected
     return {
         'exact-source': request(exact, [], dict(type='SYMBOLS', fields=[*FIELDS, 'SOURCE'])),
         'dense-references': request(dense, [dict(type='EXPAND_RELATION', relation='REFERENCES')],
                                     dict(type='OCCURRENCES')),
-        'scoped-all': request(dict(type='ALL_DECLARATIONS', declarationKinds=['FUNCTION'], scope=selected),
+        'scoped-all': request(dict(type='ALL_DECLARATIONS', declarationKinds=['FUNCTION'], scope=all_scope),
                               [dict(type='WHERE', predicate=dict(type='VISIBILITY', values=['PUBLIC']))],
                               dict(type='SYMBOLS', fields=FIELDS)),
     }
 
+
+def comparison_budget(profile):
+    if not isinstance(profile, WorkloadProfile): raise ValueError('UNSUPPORTED_WORKLOAD_PROFILE')
+    return {**COMPARISON_BUDGET, 'maxElapsedMs': 10000} if profile == WorkloadProfile.KAST_SOURCE else dict(COMPARISON_BUDGET)
+
+def workload_profile(requests):
+    for profile in WorkloadProfile:
+        if requests == comparison_requests(profile): return profile
+    raise ValueError('UNSUPPORTED_WORKLOAD_PROFILE')
+
+
+def exact_identity(profile):
+    if not isinstance(profile, WorkloadProfile): raise ValueError('UNSUPPORTED_WORKLOAD_PROFILE')
+    return KAST_PACKAGE + '.QueryPlanSyntax' if profile == WorkloadProfile.KAST_SOURCE else 'repro.logging.FixtureLogger'
+
+
+def exact_source_file(profile):
+    if not isinstance(profile, WorkloadProfile): raise ValueError('UNSUPPORTED_WORKLOAD_PROFILE')
+    return (KAST_DIRECTORY + '/io/github/amichne/kast/query/contract/QueryPlan.kt'
+            if profile == WorkloadProfile.KAST_SOURCE else 'logging/src/main/kotlin/repro/logging/FixtureLogger.kt')
+
+
+def archive_inventory(path):
+    import tarfile
+    result = {}
+    with tarfile.open(path, 'r:') as archive:
+        for member in archive:
+            name = Path(member.name)
+            if name.is_absolute() or '..' in name.parts or member.issym() or member.islnk():
+                raise ValueError('SOURCE_ARCHIVE_ENTRY_REJECTED')
+            if member.isfile() and not any(x in name.parts for x in ('build', '.gradle', '.idea', '.kotlin', '.git')):
+                if member.name in result: raise ValueError('SOURCE_ARCHIVE_DUPLICATE_ENTRY')
+                with archive.extractfile(member) as stream:
+                    result[member.name] = hashlib.file_digest(stream, 'sha256').hexdigest()
+    return result
+
+
+def admit_kast_source_fixture(fixture):
+    if set(fixture) != {'root', 'hashes', 'type', 'sourceArchive'} or fixture['type'] != 'REPRESENTATIVE':
+        raise ValueError('REPRESENTATIVE_SOURCE_EVIDENCE_UNAVAILABLE')
+    archive = fixture['sourceArchive']
+    if (not isinstance(archive, dict) or set(archive) != {'path', 'sha256', 'commit', 'repository'} or
+            archive['repository'] != 'amichne/kast' or not isinstance(archive['commit'], str) or
+            len(archive['commit']) != 40 or any(c not in '0123456789abcdef' for c in archive['commit'])):
+        raise ValueError('INVALID_SOURCE_ARCHIVE_IDENTITY')
+    path = Path(archive['path'])
+    if path.stat().st_size > 100 * 1024 * 1024: raise ValueError('SOURCE_ARCHIVE_LIMIT_REACHED')
+    process = subprocess.run(['git', 'archive', '--format=tar', archive['commit']], cwd=REPO, capture_output=True)
+    if process.returncode != 0 or hashlib.sha256(process.stdout).hexdigest() != archive['sha256']:
+        raise ValueError('SOURCE_COMMIT_ARCHIVE_MISMATCH')
+    if (digest(path) != archive['sha256'] or archive_inventory(path) != fixture['hashes'] or
+            inventory(Path(fixture['root'])) != fixture['hashes']):
+        raise ValueError('SOURCE_ARCHIVE_CONTENT_MISMATCH')
+    if not all(name in fixture['hashes'] for name in (exact_source_file(WorkloadProfile.KAST_SOURCE),
+            KAST_DIRECTORY + '/io/github/amichne/kast/query/contract/QuerySteps.kt', 'settings.gradle.kts')):
+        raise ValueError('KAST_SOURCE_PROFILE_UNAVAILABLE')
+
+
+def kast_source_evidence(workload, semantic):
+    """Compiler exhaustive coverage and exact cross-artifact equality establish the full answer.
+
+    Independently selected production declarations/sites are sufficiency witnesses, not a
+    compiler-free enumeration oracle. They never replace the full retained semantic answer.
+    """
+    unavailable, items = [], semantic['items']
+    if semantic['terminal']['failures'] or semantic['terminal']['omissions']:
+        unavailable.append('PRODUCTION_EVIDENCE_INCOMPLETE')
+    identities = [i.get('signature', {}).get('qualifiedIdentity') for i in items]
+    if workload == 'exact-source':
+        if (identities != [exact_identity(WorkloadProfile.KAST_SOURCE)] or
+                not items[0].get('source', {}).get('text')):
+            unavailable.append('REQUESTED_DECLARATION_OR_SOURCE_UNPROVEN')
+    elif workload == 'scoped-all':
+        witnesses = {'io.github.amichne.kast.kernel.NamedRoot.Companion.parse',
+                     'io.github.amichne.kast.kernel.OperationId.Companion.parse',
+                     'io.github.amichne.kast.kernel.CapabilityId.Companion.parse'}
+        if len(items) <= COMPARISON_BUDGET['maxResults'] or not witnesses <= set(identities):
+            unavailable.append('PRODUCTION_DECLARATION_WITNESSES_MISSING')
+        for item in items:
+            if (item.get('kind') != 'function' or not item.get('location', {}).get('file') or
+                    not item['location']['file'].endswith('.kt')):
+                unavailable.append('PRODUCTION_DECLARATION_IDENTITY_UNPROVEN')
+    elif workload == 'dense-references':
+        if len(items) <= COMPARISON_BUDGET['maxResults']:
+            unavailable.append('PRODUCTION_REFERENCE_DENSITY_UNPROVEN')
+        witnessed = False
+        for item in items:
+            occurrence = item.get('occurrence', {})
+            site = occurrence.get('occurrence', {})
+            target = occurrence.get('target', {})
+            compiler = target.get('compilerEvidence', {})
+            bounds = site.get('range', {})
+            if (not compiler.get('signature') or not compiler.get('identity') or
+                    type(bounds.get('startInclusive')) is not int or type(bounds.get('endExclusive')) is not int or
+                    not 0 <= bounds['startInclusive'] < bounds['endExclusive']):
+                unavailable.append('COMPILER_OCCURRENCE_EVIDENCE_UNPROVEN')
+            if (item.get('type') != 'reference-occurrence' or
+                    target.get('qualifiedIdentity') != KAST_PACKAGE + '.QueryStepSyntax' or
+                    occurrence.get('coverage') != 'exact-compiler-confirmed' or
+                    occurrence.get('provenance') != 'k2-authored-source'):
+                unavailable.append('COMPILER_OCCURRENCE_EVIDENCE_UNPROVEN')
+            # The production plan carries QueryStepSyntax as its steps type in QueryPlan.kt.
+            if site.get('file', '').endswith('/query/contract/QueryPlan.kt') and occurrence.get('context', '').upper() == 'TYPE':
+                witnessed = True
+        if not witnessed: unavailable.append('PRODUCTION_REFERENCE_WITNESS_MISSING')
+    return unavailable
 
 def continuation(response):
     progress = response.get('qualification', {}).get('progress', {})
@@ -716,7 +840,11 @@ def stable_semantics(responses):
                         handles[value[key]] = identity
             # A candidate occurrence handle is proven by its own exact file/range.
             if 'candidateSelector' in value and 'file' in value and 'range' in value:
-                handles[value['candidateSelector']] = dict(file=value['file'], range=value['range'])
+                identity = dict(file=value['file'], range=value['range'])
+                token = value['candidateSelector']
+                if token in handles and handles[token] != identity:
+                    raise ValueError('HANDLE_IDENTITY_CHANGED')
+                handles[token] = identity
             # Reference-occurrence rows carry their confirmed target separately.
             if value.get('type') == 'reference-occurrence' and 'ref' in value:
                 target = value.get('occurrence', {}).get('target', {})
@@ -764,7 +892,7 @@ def stable_semantics(responses):
                 referenceObservations=references, discoveryUniverses=universes, discoveryCompletion=discovery_progress)
 
 
-def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable):
+def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable, profile=WorkloadProfile.RELIABILITY_FIXTURE):
     unavailable, responses = [], [c.response for c in calls if c.response is not None]
     semantic = None
     state = 'UNAVAILABLE'
@@ -785,6 +913,8 @@ def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable)
         except (KeyError, TypeError):
             unavailable.append('MISSING_SEMANTIC_FIELDS')
     if semantic is None: unavailable.append('SEMANTIC_EVIDENCE_UNAVAILABLE')
+    elif state == 'COMPLETE' and profile == WorkloadProfile.KAST_SOURCE:
+        unavailable.extend(kast_source_evidence(workload, semantic))
     elif state == 'COMPLETE':
         items = semantic['items']
         if workload == 'exact-source' and (len(items) != 1 or not items[0].get('source') or
@@ -820,6 +950,9 @@ def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable)
         counters, phases, stages = {}, [], []
         for call in calls:
             receipt = call.diagnostics[0]
+            observed_keys = {c['counter'] + '/' + c['contributor'] for c in receipt['counters']}
+            if profile == WorkloadProfile.KAST_SOURCE and not LOCATOR_OUTCOME_COUNTERS <= observed_keys:
+                unavailable.append('LOCATOR_OUTCOME_COUNTERS_UNAVAILABLE')
             ceiling = next((x['value'] for x in receipt.get('limits', []) if x['parameter'] == 'DIAGNOSTIC_COUNT'), None)
             for count in receipt['counters']:
                 if ceiling is not None and count['count'] >= ceiling: unavailable.append('COUNTER_SATURATED')
@@ -847,6 +980,30 @@ def incompatible_runs(baseline, candidate):
     return [key for key in keys if key not in baseline or key not in candidate or baseline[key] != candidate[key]]
 
 
+def work_counter_deltas(counters):
+    """exactIssued records exactly one outcome per completed locator-retention pipeline attempt.
+
+    Preserve both raw outcomes separately; their sum measures attempts, not unique stored locators,
+    store calls, allocation, or per-token availability. An outcome shift alone proves no work reduction.
+    """
+    observed = LOCATOR_OUTCOME_COUNTERS & counters.keys()
+    if observed and observed != LOCATOR_OUTCOME_COUNTERS: raise ValueError('LOCATOR_OUTCOME_COUNTERS_UNAVAILABLE')
+    work = {key: value for key, value in counters.items() if key not in LOCATOR_OUTCOME_COUNTERS}
+    if observed:
+        work['LOCATOR_RETENTION_ATTEMPTS/NONE'] = sum(counters[key] for key in LOCATOR_OUTCOME_COUNTERS)
+    return work
+
+
+def work_does_not_increase(counters):
+    if counters is None: return False
+    observed = LOCATOR_OUTCOME_COUNTERS & counters.keys()
+    if observed:
+        if observed != LOCATOR_OUTCOME_COUNTERS: return False
+        # Fewer successes or additional rejections cannot qualify, even with fewer other operations.
+        if counters[LOCATOR_RETAINED_COUNTER] < 0 or counters[LOCATOR_REJECTED_COUNTER] > 0: return False
+    return all(delta <= 0 for delta in work_counter_deltas(counters).values())
+
+
 def compare_trials(baseline, candidate, same_artifact):
     deltas = {}
     missing = sorted(set(baseline.unavailable + candidate.unavailable))
@@ -862,6 +1019,15 @@ def compare_trials(baseline, candidate, same_artifact):
         elif key in ('nativePhaseDurations', 'stageDurations'):
             deltas[key] = dict(baseline=a, candidate=b)
         else: deltas[key] = b - a
+    a, b = baseline.measurements['counters'], candidate.measurements['counters']
+    if a is not None and b is not None and LOCATOR_OUTCOME_COUNTERS & (a.keys() | b.keys()):
+        if LOCATOR_OUTCOME_COUNTERS <= a.keys() and LOCATOR_OUTCOME_COUNTERS <= b.keys():
+            attempts_a, attempts_b = (sum(counts[k] for k in LOCATOR_OUTCOME_COUNTERS) for counts in (a, b))
+            deltas['locatorRetentionAttempts'] = dict(baseline=attempts_a, candidate=attempts_b,
+                                                    delta=attempts_b - attempts_a)
+        else:
+            deltas['locatorRetentionAttempts'] = None
+            missing.append('LOCATOR_OUTCOME_COUNTERS_UNAVAILABLE')
     state = 'EQUIVALENT'
     if baseline.type != 'COMPLETE' or candidate.type != 'COMPLETE': state = 'INCOMPLETE'
     elif baseline.semantic is None or candidate.semantic is None: state = 'MISSING_EVIDENCE'
@@ -870,13 +1036,13 @@ def compare_trials(baseline, candidate, same_artifact):
         state = 'MISSING_EVIDENCE'
         missing.append('EFFECTIVE_BUDGETS_DIFFER')
     elif missing: state = 'MISSING_EVIDENCE'
-    differences = list((deltas.get('counters') or {}).values())
-    less_work = (state == 'EQUIVALENT' and not same_artifact and bool(differences) and
-                 any(x < 0 for x in differences) and all(x <= 0 for x in differences))
+    counters = deltas.get('counters')
+    less_work = (state == 'EQUIVALENT' and not same_artifact and work_does_not_increase(counters) and
+                 any(x < 0 for x in work_counter_deltas(counters).values()))
     return TrialComparison(ComparisonState(state), less_work, deltas, sorted(set(missing)))
 
 
-def load_trial(path):
+def load_trial(path, profile=WorkloadProfile.RELIABILITY_FIXTURE):
     """Closed local receipt parser. Public response/diagnostic fields are retained opaque contracts."""
     from dataclasses import fields
     value = json.loads(path.read_text())
@@ -909,7 +1075,7 @@ def load_trial(path):
         calls.append(ReplayCall(**call))
     parsed = ReplayTrial(**{**value, 'type': TrialState(value['type']), 'calls': calls})
     derived = finish_trial(parsed.workload, parsed.repetition, parsed.warmup, calls,
-                           parsed.measurements['totalNanos'], parsed.measurements['firstUsableNanos'])
+                           parsed.measurements['totalNanos'], parsed.measurements['firstUsableNanos'], profile)
     if parsed != derived: raise ValueError('RECEIPT_DERIVATION_MISMATCH')
     return parsed
 
@@ -928,6 +1094,17 @@ def read_observations(path, before):
                     except json.JSONDecodeError: pass  # A malformed receipt leaves correlation unavailable.
     return diagnostics, phases
 
+
+
+OBSERVATION_POLICY = dict(maxWaitMillis=250, maxAppendedBytes=2 * 1024 * 1024)
+
+
+def collect_observations(path, before, observe=read_observations, clock=time.monotonic, pause=time.sleep):
+    deadline = clock() + OBSERVATION_POLICY['maxWaitMillis'] / 1000
+    while True:
+        diagnostics, phases = observe(path, before)
+        if diagnostics or clock() >= deadline: return diagnostics, phases
+        pause(0.01)
 
 def artifact_identity(pinned):
     return dict(executable=pinned['cli']['sha256'], cliJars=sorted(pinned['cli']['jars'].values()),
@@ -1088,26 +1265,34 @@ def replay_workloads(args):
         for key in ('fixture', 'limits'):
             if current[key] != pinned[key]: raise ValueError('PIN_CHANGED:' + key)
         return current
-    for name in ('ReadDenseReferenceTarget.kt', 'ReadDenseReferences.kt', 'ReadPageBudget.kt'):
-        fixture_source = root / 'logging/src/main/kotlin/reliability' / name
-        if not fixture_source.is_file() or digest(fixture_source) != digest(FIXTURE / 'read-reliability' / name):
-            raise ValueError('COMPARISON_FIXTURE_NOT_PREPARED')
+    profile = WorkloadProfile(getattr(args, 'workload_profile', WorkloadProfile.RELIABILITY_FIXTURE))
+    fixture = {**pinned['fixture'], 'type': 'SYNTHETIC'}
+    if profile == WorkloadProfile.KAST_SOURCE:
+        archive = args.source_archive.resolve(strict=True)
+        fixture = {**pinned['fixture'], 'type': 'REPRESENTATIVE', 'sourceArchive':
+                   dict(path=str(archive), sha256=digest(archive), commit=args.source_commit, repository='amichne/kast')}
+        admit_kast_source_fixture(fixture)
+    else:
+        for name in ('ReadDenseReferenceTarget.kt', 'ReadDenseReferences.kt', 'ReadPageBudget.kt'):
+            fixture_source = root / 'logging/src/main/kotlin/reliability' / name
+            if not fixture_source.is_file() or digest(fixture_source) != digest(FIXTURE / 'read-reliability' / name):
+                raise ValueError('COMPARISON_FIXTURE_NOT_PREPARED')
     try:
         current = repin('start-pin')
     except (ValueError, RuntimeError, OSError, AssertionError):
         write(output / 'unavailable.json', asdict(TrialComparison(
             ComparisonState.MISSING_EVIDENCE, False, {k: None for k in MEASUREMENT_KEYS}, ['NATIVE_PIN_UNAVAILABLE'])))
         return 2
-    requests = comparison_requests()
+    requests = comparison_requests(profile)
     schema = json.loads((args.pin.parent / 'installed-schema.json').read_text())
     tools = schema['catalog']['tools']
     ToolSurface.admit(tools)
     query_schema = next(t['inputSchema'] for t in tools if t['name'] == 'query_symbols')
-    manifest = asdict(ReplayRun(type='SEMANTIC_REPLAY', schemaVersion=1, artifact=artifact_identity(pinned), fixture={**pinned['fixture'], 'type': 'SYNTHETIC'},
+    manifest = asdict(ReplayRun(type='SEMANTIC_REPLAY', schemaVersion=1, artifact=artifact_identity(pinned), fixture=fixture,
         environment=dict(ideaBuild=current['host']['ideaBuild'], jbr=current['host']['jbr'],
             kotlinPlugin=current['host']['kotlinPlugin'], os=platform.platform(), machine=platform.machine(),
             javaHome=current['host']['javaHome'], cliJavaHome=os.environ.get('JAVA_HOME')),
-        limits=pinned['limits'], requests=requests, warmups=args.warmups, repetitions=args.repeats,
+        limits={**pinned['limits'], 'observationCapture': OBSERVATION_POLICY}, requests=requests, warmups=args.warmups, repetitions=args.repeats,
         concurrency=1, maxCalls=args.max_calls, timeoutSeconds=args.timeout,
         cachePolicy='existing host caches; no invalidation; warmups fully drained and retained', evidenceLevel='NATIVE', trials=[],
         transport=pinned['cli'].get('transport', 'TOOL_RPC')))
@@ -1142,7 +1327,7 @@ def replay_workloads(args):
                     process = session.call(request) if session else capture([cli, 'call', 'query_symbols'], root, json.dumps(request), args.timeout)
                     completion_nanos = time.monotonic_ns() - started
                     try:
-                        diagnostics, phases = read_observations(args.idea_log, before) if before else ([], [])
+                        diagnostics, phases = collect_observations(args.idea_log, before) if before else ([], [])
                     except OSError:
                         diagnostics, phases = [], []
                     try:
@@ -1157,7 +1342,7 @@ def replay_workloads(args):
                         correlation = 'MATCHED' if bound.get('host') == basis['host'] and bound.get('epoch') == basis['epoch'] else 'MISMATCHED'
                     call = ReplayCall(request['request']['type'], request, process, response, diagnostics, phases, correlation)
                     calls.append(call)
-                    if first_usable is None and process['outcome'] == 'completed' and usable_result(workload, response):
+                    if first_usable is None and process['outcome'] == 'completed' and usable_result(workload, response, profile):
                         first_usable = completion_nanos
                     write(call_dir / 'request.json', request)
                     write(call_dir / 'process.json', process)
@@ -1165,11 +1350,11 @@ def replay_workloads(args):
                     write(call_dir / 'native-phases.json', phases)
                     if response is not None: write(call_dir / 'response.json', response)
                     # Persist after every call, including interrupted and incomplete executions.
-                    trial = finish_trial(workload, repetition, warmup, calls, completion_nanos, first_usable)
+                    trial = finish_trial(workload, repetition, warmup, calls, completion_nanos, first_usable, profile)
                     write(directory / 'trial.json', asdict(trial))
                     return call
                 drain_workload(request, invoke, args.max_calls)
-                trial = finish_trial(workload, repetition, warmup, calls, completion_nanos, first_usable)
+                trial = finish_trial(workload, repetition, warmup, calls, completion_nanos, first_usable, profile)
                 write(directory / 'trial.json', asdict(trial))
                 manifest['trials'].append(str((directory / 'trial.json').relative_to(output)))
                 write(output / 'run.json', manifest)
@@ -1188,7 +1373,7 @@ def replay_workloads(args):
         manifest['type'] = 'PIN_CHANGED'
         write(output / 'run.json', manifest)
         raise
-    return 0 if all(load_trial(output / p).type == 'COMPLETE' for p in manifest['trials']) else 2
+    return 0 if all(load_trial(output / p, profile).type == 'COMPLETE' for p in manifest['trials']) else 2
 
 
 def load_run(path):
@@ -1203,7 +1388,9 @@ def load_run(path):
                            ('maxCalls', 1, 1024), ('timeoutSeconds', 1, 300)]:
         if type(value[key]) is not int or not low <= value[key] <= high: raise ValueError('INVALID_RUN_POLICY')
     if value['evidenceLevel'] not in {'NATIVE', 'SCRIPTED'}: raise ValueError('INVALID_EVIDENCE_LEVEL')
-    if value['requests'] != comparison_requests(): raise ValueError('UNSUPPORTED_WORKLOAD_PROFILE')
+    profile = workload_profile(value['requests'])
+    if profile == WorkloadProfile.KAST_SOURCE:
+        admit_kast_source_fixture(value['fixture'])
     for key in ('artifact', 'fixture', 'environment', 'limits'):
         if not isinstance(value[key], dict) or not value[key]: raise ValueError('MISSING_RUN_EVIDENCE')
     if value['evidenceLevel'] == 'NATIVE':
@@ -1239,11 +1426,11 @@ def load_run(path):
     return asdict(ReplayRun(**value))
 
 
-def usable_result(workload, response):
+def usable_result(workload, response, profile=WorkloadProfile.RELIABILITY_FIXTURE):
     if not response or response.get('status') not in ('complete', 'qualified'): return False
     for item in response.get('items', []):
         if workload == 'exact-source':
-            if item.get('signature', {}).get('qualifiedIdentity') == 'repro.logging.FixtureLogger' and item.get('source', {}).get('text'):
+            if item.get('signature', {}).get('qualifiedIdentity') == exact_identity(profile) and item.get('source', {}).get('text'):
                 return True
         elif workload == 'scoped-all':
             if item.get('signature', {}).get('qualifiedIdentity') and item.get('location'): return True
@@ -1257,24 +1444,34 @@ def usable_result(workload, response):
 def observation_only(baseline, candidate):
     return (baseline['artifact'] == candidate['artifact'] or
             baseline['evidenceLevel'] != 'NATIVE' or candidate['evidenceLevel'] != 'NATIVE' or
-            baseline['fixture'].get('type') != 'REPRESENTATIVE' or candidate['fixture'].get('type') != 'REPRESENTATIVE')
+            baseline['fixture'].get('type') != 'REPRESENTATIVE' or candidate['fixture'].get('type') != 'REPRESENTATIVE' or
+            workload_profile(baseline['requests']) != WorkloadProfile.KAST_SOURCE or
+            workload_profile(candidate['requests']) != WorkloadProfile.KAST_SOURCE)
+
+
+def suite_reduces_work(comparisons):
+    return (bool(comparisons) and
+            all(c.type == ComparisonState.EQUIVALENT and work_does_not_increase(c.deltas.get('counters'))
+                for c in comparisons) and
+            any(c.lessWork for c in comparisons))
 
 
 def compare_admitted_replays(args):
     from dataclasses import asdict
     baseline, candidate = load_run(args.baseline), load_run(args.candidate)
     mismatch = incompatible_runs(baseline, candidate)
-    pairs = []
+    pairs, comparisons = [], []
     if not mismatch and baseline.get('type') == candidate.get('type') == 'SEMANTIC_REPLAY':
         def trials(path, manifest):
             result, warmups = {}, set()
             for p in manifest['trials']:
-                trial = load_trial(path.parent / p)
+                profile = workload_profile(manifest['requests'])
+                trial = load_trial(path.parent / p, profile)
                 if manifest['evidenceLevel'] == 'NATIVE' and trial.workload == 'exact-source' and trial.type == 'COMPLETE':
                     for call in trial.calls:
                         for item in call.response['items']:
                             source = item['source']
-                            file = Path(manifest['fixture']['root']) / 'logging/src/main/kotlin/repro/logging/FixtureLogger.kt'
+                            file = Path(manifest['fixture']['root']) / exact_source_file(profile)
                             if item['location']['file'] != str(file): raise ValueError('SOURCE_IDENTITY_MISMATCH')
                             text = file.read_text()
                             start, end = source['startLine'], source['endLine']
@@ -1290,7 +1487,7 @@ def compare_admitted_replays(args):
                     raise ValueError('REQUEST_RECEIPT_MISMATCH')
                 for previous, resumed in zip(trial.calls, trial.calls[1:]):
                     expected = dict(verbose=True, request=dict(type='RESUME', continuation=continuation(previous.response),
-                                    executionBudget=COMPARISON_BUDGET))
+                                    executionBudget=manifest['requests'][trial.workload]['request']['executionBudget']))
                     if resumed.request != expected: raise ValueError('CONTINUATION_RECEIPT_MISMATCH')
                 if trial.warmup:
                     if trial.type != 'COMPLETE': raise ValueError('WARMUP_INCOMPLETE')
@@ -1309,6 +1506,7 @@ def compare_admitted_replays(args):
         a, b = trials(args.baseline, baseline), trials(args.candidate, candidate)
         for key in sorted(a):
             comparison = compare_trials(a[key], b[key], observation_only(baseline, candidate))
+            comparisons.append(comparison)
             pairs.append(dict(workload=key[0], repetition=key[1], **asdict(comparison)))
     else: mismatch.append('RUN_NOT_ADMITTED')
     report = asdict(ReplayComparisonReport(type='INCOMPATIBLE' if mismatch else 'COMPARISON', schemaVersion=1,
@@ -1316,7 +1514,7 @@ def compare_admitted_replays(args):
                   baselineArtifact=baseline.get('artifact'), candidateArtifact=candidate.get('artifact'),
                   repeatability=baseline.get('artifact') == candidate.get('artifact'), evidenceLevel=baseline['evidenceLevel'],
                   incompatible=mismatch, trials=pairs,
-                  lessWork=bool(pairs) and all(p['lessWork'] for p in pairs)))
+                  lessWork=suite_reduces_work(comparisons)))
     write(args.output, report)
     print(args.output)
     return 0 if not mismatch and all(p['type'] == 'EQUIVALENT' for p in pairs) else 2
@@ -1374,6 +1572,9 @@ def main():
     workload.add_argument("--repeats", type=int, choices=range(1, 6), default=2)
     workload.add_argument("--max-calls", type=int, choices=range(1, 1025), default=512)
     workload.add_argument("--timeout", type=int, choices=range(1, 301), default=60)
+    workload.add_argument('--workload-profile', choices=[p.value for p in WorkloadProfile], default=WorkloadProfile.RELIABILITY_FIXTURE.value)
+    workload.add_argument('--source-archive', type=Path, help='Immutable git archive required for KAST_SOURCE')
+    workload.add_argument('--source-commit', help='Exact local Git commit corresponding to source archive')
     workload.set_defaults(run=replay_workloads)
     compare = commands.add_parser("compare", help="Compare two complete workload runs; retain rejected trials")
     compare.add_argument("--baseline", type=Path, required=True)
@@ -1383,6 +1584,9 @@ def main():
     args = parser.parse_args()
     if args.command == "setup" and (not 1 <= args.noise_modules <= 1500 or not 0 <= args.noise_names <= 100000):
         parser.error("noise-modules must be 1..1500; noise-names must be 0..100000")
+    if args.command == 'replay-workloads' and args.workload_profile == WorkloadProfile.KAST_SOURCE.value:
+        if args.source_archive is None or args.source_commit is None:
+            parser.error('KAST_SOURCE requires --source-archive and --source-commit')
     return args.run(args)
 
 

@@ -25,6 +25,8 @@ import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationReferenceContextDocument
 import io.github.amichne.kast.protocol.contract.RelationReferenceOwnershipDocument
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCount
@@ -36,17 +38,31 @@ import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.relation.contract.RelationConfirmedReferenceTarget
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.relation.contract.RelationOwnershipUnavailableCause
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationReferenceContext
 import io.github.amichne.kast.relation.contract.RelationReferenceOccurrence
 import io.github.amichne.kast.relation.contract.RelationReferenceOwnership
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class QueryRetainedOccurrencePresentationTest {
@@ -61,6 +77,33 @@ class QueryRetainedOccurrencePresentationTest {
             ),
             QueryByteLimit.parse(100_000).refined(),
         )
+
+    @Test
+    fun `reference admission bound contains every encoded row variant and repeated inline selectors`() = runTest {
+        // Detached proofs are starting facts. The production codec establishes row bytes, not native performance.
+        val admission = ReferenceAdmissionBoundFixture(fixture, budget, run())
+        val texts = listOf("ordinary".repeat(128), "quoted\"backslash\\".repeat(32), "λ漢字𠀀".repeat(100))
+        for (kind in CompilerSymbolKind.entries) {
+            for (text in texts) {
+                for (proof in admission.proofs(kind, text)) admission.assertFits(proof)
+            }
+        }
+    }
+
+    @Test
+    fun `reference admission bound contains maximal signature arrays and both read authority variants`() = runTest {
+        val admission = ReferenceAdmissionBoundFixture(fixture, budget, run())
+        // Short type atoms maximize JSON list framing relative to canonical signature framing.
+        for (authorityFixture in listOf(fixture, RelationPagingFixture.live())) {
+            for (proof in
+                admission.proofs(CompilerSymbolKind.FUNCTION, "T", 1_000, authorityFixture, exactScope = true)) {
+                admission.assertFits(proof)
+            }
+        }
+        for (proof in admission.proofs(CompilerSymbolKind.PROPERTY, "withoutReceiver", typeCount = 0)) {
+            admission.assertFits(proof)
+        }
+    }
 
     @Test
     fun `retained file scoped occurrences page and replay without semantic execution or invented owners`() = runTest {
@@ -187,5 +230,170 @@ class QueryRetainedOccurrencePresentationTest {
         when (this) {
             is Refinement.Refined -> value
             is Refinement.Rejected -> error("Fixture rejection: $failure")
+        }
+}
+
+private class ReferenceAdmissionBoundFixture(
+    private val fixture: RelationPagingFixture,
+    private val budget: QueryBudget,
+    private val request: QueryRunRequest.Run,
+) {
+    fun proofs(
+        kind: CompilerSymbolKind,
+        text: String,
+        typeCount: Int = 3,
+        authorityFixture: RelationPagingFixture = fixture,
+        exactScope: Boolean = false,
+    ): List<RelationReferenceOccurrence> {
+        val selector = selector(kind, text, typeCount, authorityFixture, exactScope)
+        val file = selector.file
+        val owner =
+            RelationEndpoint.resolve(
+                    authorityFixture.authority,
+                    selector.scope,
+                    CompilerGroundedSymbolEvidence.fromSelector(selector),
+                )
+                .refined()
+        val ownerships =
+            listOf(
+                RelationReferenceOwnership.DeclarationOwned(owner),
+                RelationReferenceOwnership.FileScoped(RelationReferenceContext.IMPORT),
+                RelationReferenceOwnership.FileScoped(RelationReferenceContext.ALIASED_IMPORT),
+                RelationReferenceOwnership.FileScoped(RelationReferenceContext.FILE_ANNOTATION),
+            ) + RelationOwnershipUnavailableCause.entries.map(RelationReferenceOwnership::Unavailable)
+        return ownerships.mapIndexed { index, ownership ->
+            val meaning = if (index % 2 == 0) RelationMeaning.References else RelationMeaning.TypeUses
+            val request = RelationRequest.start(selector, meaning, fixture.budget)
+            val confirmed =
+                RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity)
+                    .refined()
+            val context =
+                when (ownership) {
+                    is RelationReferenceOwnership.FileScoped -> ownership.context
+                    is RelationReferenceOwnership.DeclarationOwned -> RelationReferenceContext.TYPE
+                    is RelationReferenceOwnership.Unavailable -> RelationReferenceContext.CODE
+                }
+            RelationReferenceOccurrence.confirmed(
+                    request,
+                    confirmed,
+                    RelationOccurrence.fromBoundary(file, Int.MAX_VALUE - 1, Int.MAX_VALUE).refined(),
+                    context,
+                    ownership,
+                    RelationProvenance.entries[index % RelationProvenance.entries.size],
+                )
+                .refined()
+        }
+    }
+
+    private fun selector(
+        kind: CompilerSymbolKind,
+        text: String,
+        typeCount: Int,
+        authorityFixture: RelationPagingFixture,
+        exactScope: Boolean,
+    ): SymbolSelector {
+        val authority = authorityFixture.authority
+        val controls = ((1..31) + (127..159)).joinToString("") { it.toChar().toString() }
+        val file =
+            SymbolDiscoveryFileIdentity.Workspace(
+                CanonicalWorkspaceFilePath.fromCanonicalPath(
+                        authority.workspaceRoot,
+                        Path.of(authority.workspaceRoot.value).resolve("$text$controls.kt"),
+                    )
+                    .refined()
+            )
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    file,
+                    0,
+                    Int.MAX_VALUE,
+                    text.take(512),
+                    "sample.$text".take(1_024),
+                    kind,
+                    signature(kind, "sample.$text".take(1_024), typeCount),
+                )
+                .refined()
+        val scope =
+            if (exactScope)
+                SymbolSearchScope.ExactFile(
+                    file.path,
+                    authorityFixture.selector.scope.sourceKinds,
+                    authorityFixture.selector.scope.generatedSources,
+                )
+            else authorityFixture.selector.scope
+        return SymbolSelector.issue(authority, scope, evidence)
+    }
+
+    private fun signature(kind: CompilerSymbolKind, identity: String, typeCount: Int): CanonicalCompilerSignature =
+        when (kind) {
+            CompilerSymbolKind.FUNCTION,
+            CompilerSymbolKind.CONSTRUCTOR ->
+                CanonicalCompilerSignature.function(
+                    identity,
+                    identity.takeIf { typeCount > 0 },
+                    List(typeCount) { "T" },
+                    List(typeCount) { "T" },
+                    Int.MAX_VALUE,
+                )
+            CompilerSymbolKind.PROPERTY ->
+                CanonicalCompilerSignature.property(
+                    identity,
+                    identity.takeIf { typeCount > 0 },
+                    List(typeCount) { "T" },
+                    identity,
+                )
+            CompilerSymbolKind.CLASSLIKE -> CanonicalCompilerSignature.classLike(identity)
+            CompilerSymbolKind.TYPE_ALIAS -> CanonicalCompilerSignature.typeAlias(identity)
+        }.refined()
+
+    suspend fun assertFits(proof: RelationReferenceOccurrence) {
+        val execution =
+            QueryExecutionResult.Complete(
+                QueryResult(QueryRows.Occurrences.of(listOf(QueryOccurrence.Reference(proof))), emptyList()),
+                QueryCoverage.Complete(QueryCount.parse(1).refined()),
+            )
+        val retainedStore = QueryStateStore(clock = { 0L })
+        val retained = QueryRetainedResult.capture(proof.target.lease, execution).refined()
+        val issued = retainedStore.issueResult(request, retained) as QueryResultIssuance.Issued
+        val page =
+            CanonicalQueryProtocol(
+                    QueryOperations { error("Retained byte proof must not execute semantic work") },
+                    CanonicalQueryReferences(),
+                    retainedStore,
+                )
+                .execute(QueryRunRequest.ReadResult.occurrences(issued.reference), proof.target.lease, budget)
+                as OperationOutcome.Complete
+        val encoded = CanonicalOperationWireBindings.queryRun.encodeOutcome(page) as WireEncoding.Encoded
+        val row =
+            Json.parseToJsonElement(encoded.document)
+                .jsonObject
+                .getValue("body")
+                .jsonObject
+                .getValue("result")
+                .jsonObject
+                .getValue("items")
+                .jsonArray
+                .single()
+        assertEquals(1, page.evidence.payload.items.values.size)
+        assertTrue(row.jsonObject.containsKey("row_id"), "The serialized proof must include its retained row identity")
+        val rowBytes = row.toString().toByteArray(Charsets.UTF_8).size.toLong()
+        assertTrue(
+            rowBytes <= proof.projectedUtf8Size(),
+            "Encoded ${proof.target.kind} ${ownershipName(proof)} row ($rowBytes bytes) " +
+                "exceeded ${proof.projectedUtf8Size()}",
+        )
+    }
+
+    private fun ownershipName(proof: RelationReferenceOccurrence): String =
+        when (proof.ownership) {
+            is RelationReferenceOwnership.DeclarationOwned -> "declaration-owned"
+            is RelationReferenceOwnership.FileScoped -> "file-scoped"
+            is RelationReferenceOwnership.Unavailable -> "unavailable"
+        }
+
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Byte proof fixture rejection: $failure")
         }
 }
