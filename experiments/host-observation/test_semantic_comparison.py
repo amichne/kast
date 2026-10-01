@@ -168,6 +168,42 @@ class SemanticComparisonTest(unittest.TestCase):
         path.write_text(json.dumps(manifest))
         return path
 
+    def test_native_run_requires_version_and_loaded_artifact_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = self.write_run(root / 'run', 'exact:v5:issued')
+            fixture = root / 'fixture'
+            fixture.mkdir()
+            (fixture / 'source.kt').write_text('class Fixture')
+            manifest = json.loads(path.read_text())
+            manifest.update(evidenceLevel='NATIVE',
+                fixture=dict(root=str(fixture), hashes=r.inventory(fixture)),
+                environment=dict(ideaBuild='IU-262.10315.125', jbr='25.0.4', kotlinPlugin='262-IJ',
+                                 os='case-owned', machine='arm64', javaHome='/fixture/jbr', cliJavaHome=None),
+                artifact=dict(executable='a'*64, schema='b'*64, catalogExecutable='c'*64,
+                              cliJars=['d'*64], pluginJars=['e'*64], loadedClasses={'ReadOwner':'f'*64}))
+            path.write_text(json.dumps(manifest))
+            r.load_run(path)  # This case proves local metadata admission, never native semantics.
+            for omitted in ('ideaBuild', 'jbr', 'kotlinPlugin', 'javaHome'):
+                incomplete = copy.deepcopy(manifest)
+                del incomplete['environment'][omitted]
+                path.write_text(json.dumps(incomplete))
+                with self.subTest(omitted=omitted), self.assertRaises(ValueError):
+                    r.load_run(path)
+            for omitted, empty in (('cliJars', []), ('pluginJars', []), ('loadedClasses', {})):
+                incomplete = copy.deepcopy(manifest)
+                incomplete['artifact'][omitted] = empty
+                path.write_text(json.dumps(incomplete))
+                with self.subTest(omitted=omitted), self.assertRaises(ValueError):
+                    r.load_run(path)
+
+    def test_receipt_parser_retains_the_admitted_trial_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'trial.json'
+            path.write_text(json.dumps(asdict(self.workload_trial('exact-source', 'exact:v5:issued'))))
+            parsed = r.load_trial(path)
+            self.assertIs(r.TrialState.COMPLETE, parsed.type)
+
     def test_three_workload_baseline_repeatability_and_machine_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

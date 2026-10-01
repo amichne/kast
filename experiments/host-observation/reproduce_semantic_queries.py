@@ -907,7 +907,7 @@ def load_trial(path):
         if call['correlation'] not in {'MATCHED', 'UNAVAILABLE', 'AMBIGUOUS', 'MISMATCHED'}:
             raise ValueError('INVALID_CORRELATION')
         calls.append(ReplayCall(**call))
-    parsed = ReplayTrial(**{**value, 'calls': calls})
+    parsed = ReplayTrial(**{**value, 'type': TrialState(value['type']), 'calls': calls})
     derived = finish_trial(parsed.workload, parsed.repetition, parsed.warmup, calls,
                            parsed.measurements['totalNanos'], parsed.measurements['firstUsableNanos'])
     if parsed != derived: raise ValueError('RECEIPT_DERIVATION_MISMATCH')
@@ -1207,9 +1207,25 @@ def load_run(path):
     for key in ('artifact', 'fixture', 'environment', 'limits'):
         if not isinstance(value[key], dict) or not value[key]: raise ValueError('MISSING_RUN_EVIDENCE')
     if value['evidenceLevel'] == 'NATIVE':
+        environment = value['environment']
+        required_environment = {'ideaBuild', 'jbr', 'kotlinPlugin', 'os', 'machine', 'javaHome', 'cliJavaHome'}
+        if set(environment) != required_environment:
+            raise ValueError('INVALID_NATIVE_ENVIRONMENT_FIELDS')
+        for key in required_environment - {'cliJavaHome'}:
+            if not isinstance(environment[key], str) or not environment[key].strip() or len(environment[key]) > 4096:
+                raise ValueError('NATIVE_ENVIRONMENT_EVIDENCE_UNAVAILABLE')
+        cli_home = environment['cliJavaHome']
+        if cli_home is not None and (not isinstance(cli_home, str) or not cli_home.strip() or len(cli_home) > 4096):
+            raise ValueError('INVALID_CLI_JAVA_HOME')
         artifact = value['artifact']
         if set(artifact) != {'executable', 'cliJars', 'pluginJars', 'loadedClasses', 'schema', 'catalogExecutable'}:
             raise ValueError('INVALID_ARTIFACT_FIELDS')
+        for key in ('cliJars', 'pluginJars'):
+            if not isinstance(artifact[key], list) or not artifact[key]:
+                raise ValueError('NATIVE_ARTIFACT_EVIDENCE_UNAVAILABLE')
+        if (not isinstance(artifact['loadedClasses'], dict) or not artifact['loadedClasses'] or
+                any(not isinstance(name, str) or not name.strip() for name in artifact['loadedClasses'])):
+            raise ValueError('NATIVE_ARTIFACT_EVIDENCE_UNAVAILABLE')
         hashes = [artifact['executable'], artifact['schema'], artifact['catalogExecutable'], *artifact['cliJars'],
                   *artifact['pluginJars'], *artifact['loadedClasses'].values()]
         if any(not isinstance(h, str) or len(h) != 64 or any(c not in '0123456789abcdef' for c in h) for h in hashes):

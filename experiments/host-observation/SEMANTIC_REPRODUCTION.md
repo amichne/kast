@@ -160,7 +160,9 @@ away failed, canceled or incomplete trials. `COMPARISON` contains trial outcomes
 `EQUIVALENT`, `SEMANTIC_REGRESSION`, `MISSING_EVIDENCE` or `INCOMPLETE`.
 `INCOMPATIBLE` rejects changed fixtures, requests, budgets, environment,
 settings, warmth, repetitions or concurrency. `INVALID_EVIDENCE` rejects invalid
-or missing receipts. Exit 0 requires every measured pair to be equivalent with
+or missing receipts. Native manifests must retain IDE/JBR/Kotlin versions and
+nonempty CLI/plugin JAR and loaded-class hash evidence; parsed trial states retain
+the admitted `TrialState` enum. Exit 0 requires every measured pair to be equivalent with
 all required measurements; exit 2 retains nonqualifying observations.
 
 Semantic comparison preserves declaration and occurrence identity, compiler
