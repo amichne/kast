@@ -9,6 +9,7 @@ import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
@@ -116,7 +117,7 @@ internal class IntellijRelationCompilerQuery(
                             limits = limits,
                         )
                         .read(request, subject.plan(request), collector)
-                collector.finish(termination)
+                collector.finish(termination).also { observation.count(IntellijReadCounter.NATIVE_RELATION_PAGES) }
             }
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled

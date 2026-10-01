@@ -4,7 +4,7 @@ title: Semantic query
 description: Query syntax and restored references are admitted into compatible stages and evaluated under one published or live authority with bounded resource accounting.
 resource: file://query/service
 tags: [query, symbol, source, relation]
-timestamp: 2026-09-29T00:00:00Z
+timestamp: 2026-10-01T00:00:00Z
 code_sources:
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoinStage.kt
@@ -175,3 +175,8 @@ items, so output paging cannot reduce that minimum. Retained-result reads look
 up existing producer checkpoints; they never recreate an evicted or expired
 checkpoint. An unavailable producer checkpoint becomes terminal upstream
 incompleteness while detached output remains readable.
+
+Returned native discovery pages are observed after the restartable read action
+produces detached discovery evidence. Qualified pages count as returned pages;
+rejected admission and cancellation do not manufacture a page. These diagnostic
+counts are separate from public calls and semantic result cardinality.

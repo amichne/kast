@@ -11,6 +11,14 @@ class SemanticReproductionTest(unittest.TestCase):
     def setUp(self):
         self.expected = json.loads((r.FIXTURE / "expected.json").read_text())
 
+    def test_native_pin_rejection_retains_bounded_stage(self):
+        with self.assertRaisesRegex(ValueError, '^PIN_CAPTURE_REJECTED:CONFIGURATION_CAPTURE$'):
+            r.reject_native_pin(dict(type='PIN_CAPTURE_REJECTED', stage='CONFIGURATION_CAPTURE'))
+        for value in (dict(type='PIN_CAPTURE_REJECTED', stage='unknown'),
+                      dict(type='PIN_CAPTURE_REJECTED', stage='MODEL_CAPTURE', message='payload'), {}):
+            with self.assertRaisesRegex(ValueError, '^INVALID_NATIVE_PIN_REJECTION$'):
+                r.reject_native_pin(value)
+
     def test_public_routes_validate_against_each_published_schema(self):
         import jsonschema
         resources = r.REPO / "app-server/src/main/resources/io/github/amichne/kast/appserver/query"

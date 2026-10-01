@@ -17,7 +17,14 @@ class HostedRelationShapeDiagnosticsTest {
         diagnostic.count(IntellijReadCounter.RELATION_REFERENCE_SHAPES_SKIPPED, amount = 3)
         diagnostic.finish(HostedDiagnosticOutcome.Completed)
         val encoded = Json.parseToJsonElement(receipts.single().encode()) as JsonObject
-        val counters = encoded.getValue("counters") as JsonArray
+        val counters =
+            (encoded.getValue("counters") as JsonArray).filter {
+                (it as JsonObject).getValue("counter") in
+                    setOf(
+                        JsonPrimitive("RELATION_REFERENCE_SHAPES_ADMITTED"),
+                        JsonPrimitive("RELATION_REFERENCE_SHAPES_SKIPPED"),
+                    )
+            }
         assertEquals(2, counters.size)
         for ((index, expected) in
             listOf(

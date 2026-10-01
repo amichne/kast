@@ -4,7 +4,7 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns five canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-29T00:00:00Z
+timestamp: 2026-10-01T00:00:00Z
 code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
@@ -662,3 +662,11 @@ into successful evidence.
 Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Native semantic read admission does not invoke application lifecycle operations. The installed coordinator prepares the workspace before dispatch. For an existing project, application opening waits for any active import and requests one linked model reload on first attach, after tracked Gradle changes, or when the cached model is missing. Subsequent clean openings reuse the admitted model. Its socket client binds the request to the readiness-qualified project descriptor. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.
 
 Retention telemetry distinguishes the latest accounted bytes and entry count from the maximum accounted byte high-water mark. Gauges observe the existing state owner after allocation, final publication, and cancellation release; they do not sum snapshots or claim a process heap measurement.
+
+Local complete-workload comparison extends the existing semantic reproduction runner
+through installed Tool RPC. It pins artifacts and fixture content, reacquires
+handles per trial, and drains unchanged grants to terminal completion before
+comparing answer evidence. Native receipt schema 6 adds returned discovery and
+relation page counts with explicit request-local zeros; missing older counters
+remain unavailable. The [runbook](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md#compare-complete-workloads-locally)
+keeps counter, byte and overlapping phase-duration units distinct.

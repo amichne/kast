@@ -24,6 +24,13 @@ internal class HostedReadDiagnostics(
     private var phaseStarted = 0L
     private val stages = linkedMapOf<HostedQueryStage, Long>()
     private val counters = linkedMapOf<Pair<IntellijReadCounter, IntellijReadContributor>, Long>()
+
+    init {
+        // Explicit zeros prove page observation capability even when a workload never enters that provider.
+        counters[IntellijReadCounter.NATIVE_DISCOVERY_PAGES to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.NATIVE_RELATION_PAGES to IntellijReadContributor.NONE] = 0L
+    }
+
     private val gauges = linkedMapOf<IntellijReadGauge, IntellijReadGaugeValue>()
     private val terminations = linkedSetOf<Pair<IntellijReadTermination, IntellijReadContributor>>()
     private val unexpectedFailures = linkedSetOf<IntellijReadUnexpectedFailure>()
@@ -240,7 +247,7 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
 internal fun HostedReadDiagnosticReceipt.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedReadDiagnosticDocument(
-            schemaVersion = 5,
+            schemaVersion = 6,
             limits =
                 limits.values.map {
                     HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
