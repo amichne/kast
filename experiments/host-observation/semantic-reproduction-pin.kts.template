@@ -1,10 +1,17 @@
 // Read-only evidence from the original process. No query, import, refresh, or cache mutation.
+enum class NativePinStage { HOST_ADMISSION, PLUGIN_ADMISSION, PROJECT_ADMISSION, CONFIGURATION_CAPTURE, ARTIFACT_CAPTURE, MODEL_CAPTURE, PUBLICATION }
+enum class NativePinFailure { PIN_CAPTURE_REJECTED }
+data class NativePinRejection(val type: NativePinFailure = NativePinFailure.PIN_CAPTURE_REJECTED, val stage: NativePinStage)
 run {
     val inputPath = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
     val input = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(inputPath)).asJsonObject
+    var stage = NativePinStage.HOST_ADMISSION
+    try {
     check(ProcessHandle.current().pid() == input.get("hostPid").asLong)
+    stage = NativePinStage.PLUGIN_ADMISSION
     val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("io.github.amichne.kast.ide-hosted"))!!
     val loader = plugin.pluginClassLoader!!
+    stage = NativePinStage.PROJECT_ADMISSION
     val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == input.get("project").asString }
     fun constant(owner: String, name: String): Any {
         val field = loader.loadClass(owner).getDeclaredField(name)
@@ -14,6 +21,7 @@ run {
     fun getter(value: Any, name: String): Any = value.javaClass.methods.single {
         it.name.startsWith(name) && it.parameterCount == 0
     }.invoke(value)
+    stage = NativePinStage.CONFIGURATION_CAPTURE
     val serviceClass = loader.loadClass("io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService")
     val configurationGetter = serviceClass.methods.singleOrNull { it.name == "getReadConfiguration" && it.parameterCount == 0 }
     val policy = if (configurationGetter == null) null else {
@@ -32,27 +40,26 @@ run {
     val modelLimits = if (policy == null) loader.loadClass("io.github.amichne.kast.workspace.intellij.read.DetachedModelLimits").declaredFields
         .filter { it.name.startsWith("MAX_") }.associate { it.isAccessible = true; it.name to it.get(null) }
         else mapOf("MAX_MODULES" to effective.getValue("MODEL_MODULES"), "MAX_SOURCE_ROOTS_PER_MODULE" to effective.getValue("MODEL_SOURCE_ROOTS_PER_MODULE"))
-    val queryBudget = if (policy == null) constant("io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt", "hostedQueryBudget")
-        else loader.loadClass("io.github.amichne.kast.runtime.hosted.HostedSemanticBudgets").declaredConstructors.single().let { constructor ->
-            constructor.isAccessible = true
-            val budgets = constructor.newInstance(policy)
-            val method = budgets.javaClass.declaredMethods.single { it.name == "getHostedQueryBudget" }
-            method.isAccessible = true
-            method.invoke(budgets)
-        }
-    val resources = getter(queryBudget, "getResources")
+    // Current hosts admit budgets per request. Configuration proves defaults; every
+    // replay response independently retains its actual admitted execution budget.
+    val legacyBudget = if (policy == null) constant("io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt", "hostedQueryBudget") else null
+    val legacyResources = legacyBudget?.let { getter(it, "getResources") }
+    stage = NativePinStage.ARTIFACT_CAPTURE
     val classes = listOf(
         "io.github.amichne.kast.workspace.intellij.read.DetachedModelLimits",
         "io.github.amichne.kast.workspace.intellij.read.LiveNamedGradleSourceScopeCapture",
         "io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorKt",
+        "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDiagnostics",
         "io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt",
         "io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt",
-        "io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch"
+        "io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch",
+        "io.github.amichne.kast.relation.contract.RelationReferenceOccurrence"
     ).associateWith { name ->
         val resource = loader.getResource(name.replace('.', '/') + ".class")!!
         mapOf("url" to resource.toString(), "sha256" to java.security.MessageDigest.getInstance("SHA-256")
             .digest(resource.openStream().use { it.readBytes() }).joinToString("") { "%02x".format(it) })
     }
+    stage = NativePinStage.MODEL_CAPTURE
     val native = com.intellij.openapi.application.ReadAction.compute<Map<String, Any>, RuntimeException> {
         val modules = com.intellij.openapi.module.ModuleManager.getInstance(project).modules
         check(modules.size <= 5000) // Diagnostic bound, never an admission override.
@@ -96,12 +103,17 @@ run {
         "plugin" to mapOf("version" to plugin.version, "path" to plugin.pluginPath.toString(), "classResources" to classes),
         "limits" to mapOf("model" to modelLimits,
             "effectiveSettings" to settings, "outerDeadlineMillis" to (effective["HOST_QUERY_MILLIS"] ?: constant("io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorKt", "HOSTED_QUERY_BUDGET_MILLIS")),
-            "innerElapsedMillis" to getter(resources, "getElapsedTimeLimit"), "workUnits" to getter(resources, "getWorkUnitLimit"),
-            "results" to getter(resources, "getResultLimit"), "queryBytes" to getter(queryBudget, "getReturnedBytes"),
+            "innerElapsedMillis" to (effective["SEMANTIC_MILLIS"] ?: getter(legacyResources!!, "getElapsedTimeLimit")), "workUnits" to (effective["SEMANTIC_WORK"] ?: getter(legacyResources!!, "getWorkUnitLimit")),
+            "results" to (effective["SEMANTIC_RESULTS"] ?: getter(legacyResources!!, "getResultLimit")), "queryBytes" to (effective["SEMANTIC_RETURNED_BYTES"] ?: getter(legacyBudget!!, "getReturnedBytes")),
             "nativeNames" to (effective["DISCOVERY_NAMES"] ?: constant("io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt", "MAX_NATIVE_DISCOVERY_NAMES")),
             "nativeCandidates" to (effective["DISCOVERY_CANDIDATES"] ?: constant("io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt", "MAX_NATIVE_DISCOVERY_CANDIDATES"))),
         "model" to native,
         "diagnosticAvailability" to mapOf("instrumented" to (loader.getResource("io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.class") != null),
             "enabled" to (policy != null || java.lang.Boolean.getBoolean("kast.hosted.read.diagnostics"))))
+    stage = NativePinStage.PUBLICATION
     java.nio.file.Files.writeString(inputPath.parent.resolve("host.json"), com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(result))
+    } catch (failure: Throwable) {
+        // Bounded stage evidence; exception messages may contain project/source data.
+        java.nio.file.Files.writeString(inputPath.parent.resolve("pin-rejection.json"), com.google.gson.Gson().toJson(NativePinRejection(stage = stage)))
+    }
 }

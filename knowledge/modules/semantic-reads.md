@@ -4,7 +4,7 @@ title: Semantic read domains
 description: Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
 resource: file://query
 tags: [kotlin, semantic, query, compiler]
-timestamp: 2026-09-29T00:00:00Z
+timestamp: 2026-10-01T00:00:00Z
 code_sources:
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticAnalysisAttempt.kt
@@ -460,3 +460,9 @@ supported representations share a canonical provider identity; Java members
 remain eligible for the existing proof. Unsupported wrappers remain omissions,
 and platform cancellation propagates. This normalization does not deduplicate
 occurrence pipelines or replace their explicit distinct stage.
+
+Native read diagnostics retain returned discovery/relation page counters in
+addition to existing work counters and phase observations. Each hosted request
+initializes both page counters to an observed zero; only a returned native page
+increments its counter. These measurements stay outside model-facing output and
+do not equate page quantity with CPU cost or complete semantic coverage.

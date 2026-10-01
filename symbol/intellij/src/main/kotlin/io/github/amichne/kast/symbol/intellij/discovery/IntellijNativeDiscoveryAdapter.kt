@@ -12,6 +12,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
 internal sealed interface IntellijNativeDiscoveryResult {
@@ -84,6 +85,10 @@ internal class IntellijNativeDiscoveryAdapter(
                 is IntellijScopedQueryResult.Rejected -> IntellijNativeDiscoveryResult.ScopeRejected(scoped.failures)
             }
         }
+            .also { result ->
+                if (result is IntellijNativeDiscoveryResult.Discovered)
+                    observation.count(IntellijReadCounter.NATIVE_DISCOVERY_PAGES)
+            }
     }
 }
 
