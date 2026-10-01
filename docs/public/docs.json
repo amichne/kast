@@ -33,10 +33,10 @@
           {
             "group": "Setup and maintenance",
             "pages": [
-              "concepts/background-startup"
+              "concepts/background-startup",
+              "workspaces"
             ]
-          },
-          "workspaces"
+          }
         ]
       },
       {
@@ -45,6 +45,10 @@
         "pages": [
           "concepts/architecture",
           "reference/api",
+          {
+            "group": "Query reference",
+            "pages": []
+          },
           "reference/responses",
           "reference/schemas",
           {
