@@ -1,79 +1,31 @@
----
-title: "What is Kast?"
-sidebarTitle: "Overview"
-description: "Compiler-grounded Kotlin understanding for coding agents: find exact code, follow relationships, and carry evidence into action."
-icon: "scan-search"
-keywords:
-  - "Kotlin"
-  - "IntelliJ IDEA"
-  - "coding agents"
-  - "semantic query"
----
-
-Kast gives coding agents compiler-grounded understanding of Kotlin code: exact declarations, semantic relationships, explicit coverage, and evidence that can be carried into the next operation.
+Kast gives coding agents compiler-grounded understanding of Kotlin code. The agent asks the question; Kast uses the selected IntelliJ IDEA project to establish exact declarations and relationships, with explicit coverage and validity.
 
 <CardGroup cols={2}>
-  <Card title="Find and trace code" icon="search" href="/search">
-    Start with an engineering question, resolve the exact declaration, then follow callers, implementations, references, or a bounded traversal.
-  </Card>
-
   <Card title="Install and connect" icon="download" href="/start">
-    Install the matched Kast release, connect your agent, and verify the connection with a real semantic query.
+    Install Kast, connect your agent, and check the connection with a real query.
   </Card>
 
-  <Card title="Understand an answer" icon="shield-check" href="/concepts/evidence-boundaries">
-    Read exact identity, coverage, unfinished work, and validity before deciding what the result proves.
-  </Card>
-
-  <Card title="Change a known target" icon="file-pen-line" href="/change">
-    Carry an exact target into a supported source change and inspect the verification outcome.
+  <Card title="Find and trace code" icon="search" href="/search">
+    Already connected? Start with a code question and follow the evidence.
   </Card>
 </CardGroup>
 
-## The working model
+## From a question to a justified change
 
-The agent still decides what to investigate and what to do. Kast narrows the parts that do not need to remain guesses.
+**Find the right code.** Start with a declaration name and a useful scope. Inspect the returned identity, signature, and location; carry its exact reference into the next question instead of matching the name again. [Find and trace code](/search) shows the workflow.
 
-<Steps>
-  <Step title="Ask a real code question">
-    Start from the behavior, declaration, or relationship you care about. You do not need to know Kast's request schema first.
-  </Step>
-  <Step title="Resolve evidence, not just candidates">
-    Kast uses the selected IntelliJ IDEA project to establish exact declarations and semantic relationships. Names and text can help discovery; they do not become compiler proof.
-  </Step>
-  <Step title="Carry the proof forward">
-    Returned references, retained results, coverage, and limitations constrain the next operation. A later step should refine established knowledge rather than reconstruct it from prose.
-  </Step>
-</Steps>
+**Understand its relationships.** Follow callers, implementations, references, or a bounded traversal. Keep confirmed relationships separate from unvisited work. When a question spans investigations, [combine retained results](/query-pipelines) by semantic identity rather than reconstructing lists from prose.
 
-<Info>
-  A successful tool call is not automatically a complete semantic answer. Kast distinguishes complete, qualified, and rejected outcomes so an agent can keep useful facts without inventing certainty.
-</Info>
+**Change a known target.** Add a declaration or replace a supported function body using an exact target, then inspect the verification receipt. These are bounded source changes, not arbitrary multi-file refactors. See [Make a targeted change](/change).
 
-## What gets stronger as you go
+## Why the evidence matters
 
-| Depth | What you know | What becomes possible |
-| --- | --- | --- |
-| Discover | Candidate code in a declared scope | Choose the declaration worth refining |
-| Identify | Exact compiler-backed declaration identity | Reuse the issued reference instead of matching the name again |
-| Relate | Confirmed callers, implementations, references, or type uses | Explain why the code matters and what a change may affect |
-| Retain | Results plus their coverage and unfinished work | Compose investigations or resume bounded execution without discarding limits |
-| Change | An exact admitted target and supported mutation | Apply a narrow edit and inspect its verification receipt |
+**Kast is the deterministic structure around a probabilistic system.** The model still supplies judgment. Questions the compiler can answer should not remain guesses, and a later operation should preserve what an earlier one established.
 
-This progression is the core invariant: **stronger evidence should narrow the next step, not disappear between tool calls.**
+An exact result is not necessarily an exhaustive result. An empty incomplete answer does not prove absence, and an old reference does not become current because its name still matches. [What an answer proves](/concepts/evidence-boundaries) explains these boundaries; [How Kast works](/concepts/architecture) explains the mechanism.
 
-## Know the boundary
+## Supported today
 
-Kast does not replace the agent's judgment and does not claim arbitrary refactoring support. Its current source changes are declaration insertion and supported block-body replacement. A verified bounded edit or a clean diagnostic result is not proof of whole-project behavior.
+The current installation targets Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Connect Codex, Copilot, or Pi. Kast prepares the selected project when semantic work needs it and reports readiness blockers rather than returning a misleading empty answer.
 
-The current installation targets Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Kast prepares the selected project when semantic work needs it and reports readiness blockers instead of returning a misleading empty answer.
-
-<CardGroup cols={2}>
-  <Card title="How Kast works" icon="workflow" href="/concepts/architecture">
-    Follow workspace admission, compiler-grounded execution, retained evidence, and validity.
-  </Card>
-
-  <Card title="Query forms" icon="book-open" href="/reference/api">
-    Look up request shapes only when you need the exact contract.
-  </Card>
-</CardGroup>
+Check [compatibility](/reference/compatibility) before installing. The aim is dependable evidence from discovery through action; a verified bounded edit or a clean diagnostic result is not proof of whole-project behavior.
