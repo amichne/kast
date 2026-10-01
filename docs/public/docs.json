@@ -44,17 +44,23 @@
         "openapi": "reference/callables.openapi.json",
         "pages": [
           "concepts/architecture",
-          "reference/api",
           {
             "group": "Query reference",
-            "pages": []
+            "pages": [
+              "reference/api",
+              "reference/responses",
+              "reference/symbols"
+            ]
           },
-          "reference/responses",
           "reference/schemas",
           {
             "group": "Integration contracts",
             "expanded": false,
-            "pages": ["reference/mcp-catalog", "reference/rpc-catalog", "reference/symbols", "reference/compatibility"]
+            "pages": [
+              "reference/mcp-catalog",
+              "reference/rpc-catalog",
+              "reference/compatibility"
+            ]
           },
           {
             "group": "Detailed schemas",
