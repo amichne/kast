@@ -6,25 +6,19 @@ icon: "list-checks"
 
 A Kast answer is useful only when its facts and evidence boundary are read together. A successful invocation is not, by itself, proof of a complete semantic result.
 
-## Read every answer in three passes
+## Interpret coverage before making a claim
 
-<Steps>
-  <Step title="Read the semantic outcome">
-    `complete` covered the admitted scope. `qualified` returned usable evidence with an attached limitation. `rejected` established no successful semantic payload.
-  </Step>
-  <Step title="Read the facts">
-    Inspect the returned symbols, occurrences, traversal records, or binding rows. Positive facts can remain useful even when the wider result is qualified.
-  </Step>
-  <Step title="Read what remains">
-    Check limitations, item failures, omissions, and progress before making an exhaustive or negative claim. An empty qualified result does not prove absence.
-  </Step>
-</Steps>
+| Semantic outcome | What it establishes |
+| --- | --- |
+| `complete` | The operation covered its declared scope. |
+| `qualified` | Returned facts carry the stated limitations; some obligation remains incomplete. |
+| `rejected` | This request did not establish a successful semantic result. |
 
-<Info>
-  A qualified result can establish specific returned callers without establishing that every caller was found. Exhaustive claims require complete coverage of the requested universe.
-</Info>
+Read the facts together with limitations, item failures, omissions, and progress. A qualified answer can establish specific callers without establishing that every caller was found. An empty qualified answer does not prove absence.
 
-## Result shapes
+Diagnostics cover the reported IDEA analysis scope; they do not certify a whole-project build. For a source change, inspect its [receipt and recovery evidence](/change#read-the-receipt) separately: a rejected request or lost response does not prove that no write occurred.
+
+## What can come back
 
 | Result | Use it for |
 | --- | --- |

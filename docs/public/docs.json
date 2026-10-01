@@ -30,7 +30,12 @@
           "evidence-boundaries",
           "query-pipelines",
           "change",
-          "concepts/background-startup",
+          {
+            "group": "Setup and maintenance",
+            "pages": [
+              "concepts/background-startup"
+            ]
+          },
           "workspaces"
         ]
       },
