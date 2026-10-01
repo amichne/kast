@@ -251,7 +251,8 @@ that produce no page retain explicit zero counters. Completed page observations
 remain recorded when later work fails or is canceled; request-local zeros prove
 observation capability. Older missing page
 counters remain unavailable. There must be exactly one bound native receipt in
-each bounded appended log window; ambiguity, rotation, saturation or absent
+each bounded appended log window, with both page counters explicitly observed
+in every receipt; ambiguity, rotation, saturation or absent
 measurements block a work claim. Absent counters are not zeros. Phase and stage
 vectors overlap and are never summed. Wall time does not establish CPU cost.
 

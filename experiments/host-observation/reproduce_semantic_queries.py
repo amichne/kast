@@ -948,9 +948,12 @@ def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable,
     counters, phases, stages, pages = None, None, None, None
     if diagnostics_ok:
         counters, phases, stages = {}, [], []
+        page_keys = {'NATIVE_DISCOVERY_PAGES/NONE', 'NATIVE_RELATION_PAGES/NONE'}
+        pages_observed = True
         for call in calls:
             receipt = call.diagnostics[0]
             observed_keys = {c['counter'] + '/' + c['contributor'] for c in receipt['counters']}
+            pages_observed = pages_observed and page_keys <= observed_keys
             if profile == WorkloadProfile.KAST_SOURCE and not LOCATOR_OUTCOME_COUNTERS <= observed_keys:
                 unavailable.append('LOCATOR_OUTCOME_COUNTERS_UNAVAILABLE')
             ceiling = next((x['value'] for x in receipt.get('limits', []) if x['parameter'] == 'DIAGNOSTIC_COUNT'), None)
@@ -962,8 +965,7 @@ def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable,
             phases.append(receipt['nativePhaseDurations'])
             stages.append(receipt['stages'])
         # Only explicit native page counters establish page quantities; public calls never stand in for pages.
-        page_keys = ['NATIVE_DISCOVERY_PAGES/NONE', 'NATIVE_RELATION_PAGES/NONE']
-        if all(k in counters for k in page_keys): pages = {k: counters[k] for k in page_keys}
+        if pages_observed: pages = {k: counters[k] for k in sorted(page_keys)}
         else: unavailable.append('NATIVE_PAGE_COUNTERS_UNAVAILABLE')
     else: unavailable.append('NATIVE_DIAGNOSTICS_UNAVAILABLE_OR_UNCORRELATED')
     encoded = (sum(len(c.process['stdout'].encode('utf-8')) for c in calls)

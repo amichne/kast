@@ -311,9 +311,10 @@ class SemanticComparisonTest(unittest.TestCase):
             response, diagnostics, [], 'MATCHED')
         return r.finish_trial(workload, 0, False, [call], 240, 200, r.WorkloadProfile.KAST_SOURCE)
 
-    def test_production_requires_both_retention_labels_in_every_receipt(self):
+    def test_production_requires_page_and_retention_labels_in_every_receipt(self):
         original = self.production_trial('exact-source').calls[0]
-        for missing in ('REVALIDATION_LOCATORS_RETAINED', 'REVALIDATION_LOCATORS_REJECTED'):
+        for missing in ('REVALIDATION_LOCATORS_RETAINED', 'REVALIDATION_LOCATORS_REJECTED',
+                        'NATIVE_DISCOVERY_PAGES', 'NATIVE_RELATION_PAGES'):
             for call_count in (1, 2):
                 calls = [copy.deepcopy(original) for _ in range(call_count)]
                 calls[0].diagnostics[0]['counters'] = [count for count in calls[0].diagnostics[0]['counters']
