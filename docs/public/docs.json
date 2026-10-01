@@ -27,7 +27,7 @@
         "group": "Using Kast",
         "pages": [
           "search",
-          "evidence-boundaries",
+          "concepts/evidence-boundaries",
           "query-pipelines",
           "change",
           {
