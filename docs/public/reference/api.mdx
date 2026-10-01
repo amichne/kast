@@ -94,16 +94,32 @@ The progressive `ALL_DECLARATIONS` source covers supported Kotlin classes, funct
 
 An omitted output selects symbols with name and location. An explicit symbol output uses a `fields` array; `[]` requests only mandatory identity and kind.
 
-## Defaults and limits
+## Limits and execution details
 
-You can omit execution budgets. Kast applies configured defaults and ceilings; omission is not unlimited work. Budgets do not change the requested scope or output shape.
+The common path ends with the source, steps, and output above. Open these details only when the result is qualified, a continuation is involved, or you are integrating the contract directly.
 
-A qualified page can contain useful proven results and unfinished work. Follow its issued continuation until completion or a finite terminal reason; an empty page does not prove an empty universe. `ALL_DECLARATIONS` retains undiscovered source partitions and pending refinement, so a downstream filter does not make an early rejected prefix exhaustive. Oversized indivisible partitions or unavailable retention terminate with evidence.
+<AccordionGroup>
+  <Accordion title="Execution budgets">
+    You can omit execution budgets. Kast applies configured defaults and ceilings; omission is not unlimited work. Budgets do not change the requested scope or output shape.
+  </Accordion>
 
-Replaying a published continuation returns the same semantic page and successor without repeating the scan. Concurrent use of an unfinished continuation reports `continuation-in-use`; wait for the active attempt before retrying. Continuations remain bound to the original workspace state. Expiry, eviction, or a changed semantic basis require a new investigation.
+  <Accordion title="Qualified results and continuations">
+    A qualified page can contain useful proven results and unfinished work. Follow its issued continuation until completion or a finite terminal reason; an empty page does not prove an empty universe.
 
-Reference occurrences retain their confirmed target, source range, context, provenance, and ownership. An import or alias may be file-scoped without an enclosing declaration. Such an occurrence is useful evidence but cannot become a declaration or call graph endpoint. Walks preserve these non-expandable occurrences and detailed omission evidence alongside their declaration frontier.
+    `ALL_DECLARATIONS` retains undiscovered source partitions and pending refinement, so a downstream filter does not make an early rejected prefix exhaustive. Oversized indivisible partitions or unavailable retention terminate with evidence.
 
-Every public tool accepts optional root-level `verbose: true` for additional execution detail. Omission or `false` keeps the compact result. Verbosity does not change the query's meaning or erase limitations.
+    Replaying a published continuation returns the same semantic page and successor without repeating the scan. Concurrent use of unfinished execution reports `continuation-in-use`; wait for the active attempt before retrying. Expiry, eviction, or a changed semantic basis require a new investigation.
+  </Accordion>
 
-[Results](/reference/responses) explains coverage and continuation. [Schemas and samples](/reference/schemas) is the single entry point for the complete machine contracts; this guide is not a second schema authority.
+  <Accordion title="Occurrences without an enclosing declaration">
+    Reference occurrences retain their confirmed target, source range, context, provenance, and ownership. An import or alias may be file-scoped without an enclosing declaration.
+
+    Such an occurrence is useful evidence but cannot become a declaration or call graph endpoint. Walks preserve these non-expandable occurrences and omission evidence alongside their declaration frontier.
+  </Accordion>
+
+  <Accordion title="Verbose output">
+    Every public tool accepts optional root-level `verbose: true` for additional execution detail. Omission or `false` keeps the compact result. Verbosity does not change the query's meaning or erase limitations.
+  </Accordion>
+</AccordionGroup>
+
+[Results](/reference/responses) explains coverage and continuation. [Schemas and samples](/reference/schemas) remains the single entry point for complete machine contracts; this page is a lookup guide, not a second schema authority.

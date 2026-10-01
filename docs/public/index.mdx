@@ -10,74 +10,70 @@ keywords:
   - "semantic query"
 ---
 
-**Kast is the deterministic structure around a probabilistic system.**
-
-It gives coding agents compiler-grounded understanding of Kotlin code, so questions the program can answer do not have to remain guesses. The agent decides what to investigate. Kast establishes program facts through IntelliJ IDEA and carries their identity, scope, coverage, and validity into the next operation.
-
-## Fewer questions left to guess
-
-More context can help an agent choose a plausible answer. But a plausible declaration is not an exact declaration, a likely caller is not a confirmed caller, and an empty search is not necessarily evidence of absence.
-
-Kast asks a different question: **how much of this task should remain probabilistic at all?**
-
-When the compiler can establish which declaration is referenced, the agent should not infer it from a name. When a read is incomplete, the agent should not decide that the missing results probably do not exist. When retained evidence is no longer valid, the next operation should not silently treat it as current.
-
-```mermaid
-%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
-flowchart TB
-  accTitle: The agent reasons; Kast establishes program facts
-  accDescr: An agent asks a question. Kast admits the exact workspace and obtains program facts from IntelliJ IDEA. Facts return with coverage and validity so the agent can decide what to do next.
-  A("Agent asks a question") --> W("Admit the exact workspace")
-  W --> I("Establish program facts in IDEA")
-  I --> E("Return facts, coverage, and validity")
-  E --> J("Agent decides the next step")
-  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
-  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
-  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
-  class W,I authority;
-  class E evidence;
-```
-
-The model still supplies judgment. Kast supplies established facts and explicit limits, not a guarantee that every conclusion the model draws is correct.
-
-## What that makes possible
+Kast gives coding agents compiler-grounded understanding of Kotlin code: exact declarations, semantic relationships, explicit coverage, and evidence that can be carried into the next operation.
 
 <CardGroup cols={2}>
-  <Card title="Find the exact code" icon="fingerprint" href="/search">
-    Distinguish overloads and same-named declarations. Carry an issued symbol reference forward instead of resolving a name again.
+  <Card title="Find and trace code" icon="search" href="/search">
+    Start with an engineering question, resolve the exact declaration, then follow callers, implementations, references, or a bounded traversal.
   </Card>
 
-  <Card title="Follow real relationships" icon="git-branch" href="/reference/api">
-    Trace callers, implementations, and individual uses. Keep confirmed relationships separate from uncovered work.
+  <Card title="Install and connect" icon="download" href="/start">
+    Install the matched Kast release, connect your agent, and verify the connection with a real semantic query.
   </Card>
 
-  <Card title="Build on established evidence" icon="workflow" href="/query-pipelines">
-    Combine retained investigations by semantic identity, resume unfinished execution, or inspect stored rows without restarting the query.
+  <Card title="Understand an answer" icon="shield-check" href="/concepts/evidence-boundaries">
+    Read exact identity, coverage, unfinished work, and validity before deciding what the result proves.
   </Card>
 
   <Card title="Change a known target" icon="file-pen-line" href="/change">
-    Add a declaration or replace a supported function body through an exact-target operation with an explicit verification outcome.
+    Carry an exact target into a supported source change and inspect the verification outcome.
   </Card>
 </CardGroup>
 
-These are parts of one ambition: carry dependable evidence from a question toward a justified action. Knowing something should narrow the next step, not disappear when a tool call ends.
+## The working model
 
-## Know what the answer proves
+The agent still decides what to investigate and what to do. Kast narrows the parts that do not need to remain guesses.
 
-An exact positive result can remain useful even when the wider investigation is incomplete. A complete empty result supports absence only within the declared search universe. An empty page with unfinished work does not.
+<Steps>
+  <Step title="Ask a real code question">
+    Start from the behavior, declaration, or relationship you care about. You do not need to know Kast's request schema first.
+  </Step>
+  <Step title="Resolve evidence, not just candidates">
+    Kast uses the selected IntelliJ IDEA project to establish exact declarations and semantic relationships. Names and text can help discovery; they do not become compiler proof.
+  </Step>
+  <Step title="Carry the proof forward">
+    Returned references, retained results, coverage, and limitations constrain the next operation. A later step should refine established knowledge rather than reconstruct it from prose.
+  </Step>
+</Steps>
 
-Kast reports complete, qualified, or rejected semantic outcomes. Qualified results preserve their limits and distinguish usable continuation from a terminal stop. References and retained results remain bound to the authority that admits them. Read [what an answer proves](/concepts/evidence-boundaries) before treating a result as exhaustive or reusing it later.
+<Info>
+  A successful tool call is not automatically a complete semantic answer. Kast distinguishes complete, qualified, and rejected outcomes so an agent can keep useful facts without inventing certainty.
+</Info>
 
-## What Kast does not promise
+## What gets stronger as you go
 
-Kast is not another language model, a substitute for your agent's judgment, or a claim of arbitrary refactoring support. Its current source changes are declaration insertion and supported block-body replacement. Retrieved diagnostics and a verified bounded edit do not certify a whole-project build or business correctness.
+| Depth | What you know | What becomes possible |
+| --- | --- | --- |
+| Discover | Candidate code in a declared scope | Choose the declaration worth refining |
+| Identify | Exact compiler-backed declaration identity | Reuse the issued reference instead of matching the name again |
+| Relate | Confirmed callers, implementations, references, or type uses | Explain why the code matters and what a change may affect |
+| Retain | Results plus their coverage and unfinished work | Compose investigations or resume bounded execution without discarding limits |
+| Change | An exact admitted target and supported mutation | Apply a narrow edit and inspect its verification receipt |
 
-The current installation targets Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Kast prepares the selected project in the background and reports readiness blockers rather than returning a misleading empty answer. See [compatibility](/reference/compatibility) and [background preparation](/concepts/background-startup).
+This progression is the core invariant: **stronger evidence should narrow the next step, not disappear between tool calls.**
 
-## Start using Kast
+## Know the boundary
 
-[Install Kast](/start), then [connect your agent](/agent-harnesses). Start the agent in the repository or worktree you want to inspect and ask:
+Kast does not replace the agent's judgment and does not claim arbitrary refactoring support. Its current source changes are declaration insertion and supported block-body replacement. A verified bounded edit or a clean diagnostic result is not proof of whole-project behavior.
 
-> Use Kast to find the declaration relevant to this question. Show its exact identity and source location, trace the relationships that matter, and separate what is established from what remains incomplete.
+The current installation targets Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Kast prepares the selected project when semantic work needs it and reports readiness blockers instead of returning a misleading empty answer.
 
-Use [Find and trace code](/search) for concrete prompts and [Query forms](/reference/api) for the current request shapes.
+<CardGroup cols={2}>
+  <Card title="How Kast works" icon="workflow" href="/concepts/architecture">
+    Follow workspace admission, compiler-grounded execution, retained evidence, and validity.
+  </Card>
+
+  <Card title="Query forms" icon="book-open" href="/reference/api">
+    Look up request shapes only when you need the exact contract.
+  </Card>
+</CardGroup>

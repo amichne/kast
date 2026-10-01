@@ -5,131 +5,131 @@ icon: "search"
 keywords: ["query_symbols", "Kotlin", "compiler references", "relations"]
 ---
 
-Ask for a declaration, a relationship, and the scope you care about. Your agent translates that request into `query_symbols`; you do not need to write the JSON yourself.
-
-## Follow the examples in Kast's source
-
-These examples use the public [Kast repository at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Start your connected agent in that checkout to reproduce them. In another repository, replace the declaration name and directory with your own.
+Ask the engineering question in ordinary language. Your agent translates it into `query_symbols`; the useful path is **discover → identify → relate → interpret coverage**. You only need the request JSON when debugging or integrating the contract directly.
 
 <Note>
-  These examples were run through Kast against the linked source. [Download all requests and responses](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json), or read the [capture details](/reference/schemas#recorded-walkthrough). Counts and coverage describe that recorded run. Reacquire every handle in your own session.
+  The recorded examples below use the public [Kast repository at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts and coverage describe that captured run, not your current workspace. [Download the recorded requests and responses](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) when you need the exact wire examples.
 </Note>
 
-## 1. Find a declaration and inspect its source
+## Start with three moves
 
-**Ask your agent:**
+<Steps>
+  <Step title="Find the declaration">
+    Ask for the declaration, the scope that should contain it, and the evidence you want back.
 
-> Use Kast to find `QueryStepSyntax` in the production sources under `query/contract`. Show its location, signature, and source. Keep its exact reference for the next question.
+    > Use Kast to find `QueryStepSyntax` in the production sources under `query/contract`. Show its location, signature, and source. Keep its exact reference for the next question.
 
-**Tool:** `query_symbols`
+    The recorded run found one `QueryStepSyntax` in `QuerySteps.kt` with exhaustive coverage. The important output is not only the matching name: it is the issued exact reference plus the scope and coverage that make the result interpretable.
 
-```json
-{
-  "request": {
-    "type": "RUN",
-    "executionBudget": {"maxElapsedMs": 15000},
-    "source": {
-      "type": "SEARCH_DECLARATIONS",
-      "declarationName": "QueryStepSyntax",
-      "declarationKinds": ["CLASS"],
-      "scope": {
-        "type": "DIRECTORY",
-        "relativeDirectoryPath": "query/contract",
-        "sourceSetNames": ["main"]
+    <Accordion title="Show the recorded request">
+      ```json
+      {
+        "request": {
+          "type": "RUN",
+          "executionBudget": {"maxElapsedMs": 15000},
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "QueryStepSyntax",
+            "declarationKinds": ["CLASS"],
+            "scope": {
+              "type": "DIRECTORY",
+              "relativeDirectoryPath": "query/contract",
+              "sourceSetNames": ["main"]
+            }
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": ["NAME", "LOCATION", "SIGNATURE", "SOURCE"]
+          }
+        }
       }
-    },
-    "output": {
-      "type": "SYMBOLS",
-      "fields": ["NAME", "LOCATION", "SIGNATURE", "SOURCE"]
-    }
-  }
-}
-```
+      ```
+    </Accordion>
+  </Step>
+  <Step title="Follow a semantic relationship">
+    Reuse the exact reference instead of searching for the name again.
 
-**What to look for in the answer:** the declaration in `query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt`, with an issued `ref` and coverage. `CLASS` selects the supported class-like family, including this interface; it is not a claim that the declaration is a concrete class.
+    > Reuse that exact reference to find the implementations of `QueryStepSyntax`. Show each declaration once and retain the result so we can compare it with another query.
 
-The recorded response (`01-discovery`) returned one `QueryStepSyntax` with `coverage.exhaustive: true`, its signature, and a source window. The [source](https://github.com/amichne/kast/blob/56df0912e46b182bb4ad8beabd1512823100fd72/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt) includes:
+    The recorded response returned ten implementations with exhaustive coverage. Keeping the result lets the next query consume established identities directly rather than reconstructing a list from prose.
 
-```kotlin
-sealed interface QueryStepSyntax {
-    data class ProjectBinding(val name: QueryBindingName) : QueryStepSyntax
+    <Accordion title="Show the recorded request">
+      ```json
+      {
+        "request": {
+          "type": "RUN",
+          "executionBudget": {"maxElapsedMs": 15000},
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": ["<ref from step 1>"]
+          },
+          "steps": [
+            {"type": "EXPAND_RELATION", "relation": "IMPLEMENTATIONS"},
+            {"type": "DISTINCT_SYMBOLS"}
+          ],
+          "retention": "RETAIN"
+        }
+      }
+      ```
+    </Accordion>
 
-    data class Where(val predicate: QueryPredicate) : QueryStepSyntax
-```
+    <Accordion title="Show a recorded result excerpt">
+      ```text
+      QueryStepSyntax.Where
+      QueryStepSyntax.Concat
+      QueryStepSyntax.Intersect
+      QueryStepSyntax.Union
+      QueryStepSyntax.Join
+      ```
 
-The returned reference identifies the declaration. The name starts the search; it is not a replacement for that reference.
+      The excerpt is five of ten names. The full retained result preserves every issued reference and its relation evidence.
+    </Accordion>
+  </Step>
+  <Step title="Trace only as far as the question needs">
+    Use a bounded walk when one relationship hop is not enough.
 
-## 2. Follow its implementations
+    > Find `QueryPlanCompiler.exactStage` under `query/contract` in `main`, then trace its callers up to two hops. Show the hop depth and call-site evidence, and report any unvisited work.
 
-**Ask your agent:**
+    The recorded walk returned `QueryPlanCompiler.admit` calling `exactStage` at depth 1, with exact compiler-confirmed relation coverage and no continuation.
 
-> Reuse that exact reference to find the implementations of `QueryStepSyntax`. Show each declaration once and retain the result so we can compare it with another query.
+    <Accordion title="Show the recorded traversal request">
+      ```json
+      {
+        "request": {
+          "type": "RUN",
+          "executionBudget": {"maxElapsedMs": 15000},
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": ["<exact function ref>"]
+          },
+          "steps": [
+            {"type": "WALK", "relation": "CALLERS", "maximumDepth": 2}
+          ],
+          "output": {"type": "TRAVERSAL_RECORDS"}
+        }
+      }
+      ```
+    </Accordion>
+  </Step>
+</Steps>
 
-Replace the placeholder with the reference from step 1. Do not send the placeholder literally.
+## Read the answer before asking the next question
 
-```json
-{
-  "request": {
-    "type": "RUN",
-    "executionBudget": {"maxElapsedMs": 15000},
-    "source": {
-      "type": "SYMBOL_REFS",
-      "symbolRefs": ["<ref from step 1>"]
-    },
-    "steps": [
-      {"type": "EXPAND_RELATION", "relation": "IMPLEMENTATIONS"},
-      {"type": "DISTINCT_SYMBOLS"}
-    ],
-    "retention": "RETAIN"
-  }
-}
-```
+A useful Kast result has two dimensions: **facts** and **coverage**. A returned caller is established evidence even when the wider traversal is qualified. An empty qualified result is not evidence that nothing exists.
 
-**Recorded result excerpt (`02-implementations-a`, five of ten names):**
+| If you need to know… | Read next |
+| --- | --- |
+| Whether the answer is complete, qualified, or rejected | [Understand Kast outcomes](/concepts/evidence-boundaries) |
+| How to combine retained investigations | [Combine query results](/query-pipelines) |
+| The exact source, step, and output shapes | [Query forms](/reference/api) |
+| How continuations, result references, and cursors differ | [Results](/reference/responses) |
 
-```text
-QueryStepSyntax.Where
-QueryStepSyntax.Concat
-QueryStepSyntax.Intersect
-QueryStepSyntax.Union
-QueryStepSyntax.Join
-```
+## Adapt the question to your repository
 
-The recorded response contains ten implementations and reports `coverage.exhaustive: true`. The names above are an excerpt; the full response retains each issued reference and relation evidence. Keep the issued retained-result reference as **A** for [the composition walkthrough](/query-pipelines).
+Give the agent the declaration name or exact reference, the narrowest useful module or directory, and the relationship you need. Specify whether you want unique declarations, individual use sites, or a bounded trace.
 
-## 3. Trace farther, without asking for everything
+A discovery scope limits where starting symbols are found. It does **not** confine later relationship destinations to that directory. Add a destination filter when that distinction matters.
 
-**Ask your agent:**
-
-> Find `QueryPlanCompiler.exactStage` under `query/contract` in `main`, then trace its callers up to two hops. Show the hop depth and call-site evidence, and report any unvisited work.
-
-The capture first searches for the function named `exactStage` in that scope (`14-function-discovery`). Once the agent has checked its qualified identity and selected its exact reference:
-
-```json
-{
-  "request": {
-    "type": "RUN",
-    "executionBudget": {"maxElapsedMs": 15000},
-    "source": {
-      "type": "SYMBOL_REFS",
-      "symbolRefs": ["<exact function ref>"]
-    },
-    "steps": [
-      {"type": "WALK", "relation": "CALLERS", "maximumDepth": 2}
-    ],
-    "output": {"type": "TRAVERSAL_RECORDS"}
-  }
-}
-```
-
-The recorded walk (`15-caller-walk`) returned one traversal record: `QueryPlanCompiler.admit` calling `exactStage` at depth 1, with `exact-compiler-confirmed` relation coverage and `coverage.exhaustive: true`. It issued no continuation.
-
-The requested answer is a bounded caller trace, not a promise to enumerate the entire call graph. Each traversal record carries its depth and established relation fact. A continuation means there is resumable work; it is not permission to claim that the returned paths are exhaustive.
-
-## Adapt the question to your codebase
-
-Give the agent the declaration name or exact reference, the relevant module or directory, and the relationship you want. Specify whether you need unique declarations, individual use sites, or a bounded trace. Add a depth when asking for a walk.
-
-A discovery scope limits where the starting symbols are found. It does **not** confine later relation destinations to that directory. Ask for a destination filter when that distinction matters.
-
-Continue with [Combine query results](/query-pipelines) to feed multiple investigations into one query, preserve matched pairs, and transform their results.
+<Info>
+  Preserve issued references verbatim. A name, file path, or source excerpt can help a human recognize a declaration, but none of them substitutes for the exact reference Kast issued.
+</Info>

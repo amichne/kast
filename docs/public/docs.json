@@ -25,14 +25,20 @@
       },
       {
         "group": "Using Kast",
-        "pages": ["concepts/background-startup", "search", "query-pipelines", "change", "workspaces"]
+        "pages": [
+          "search",
+          "evidence-boundaries",
+          "query-pipelines",
+          "change",
+          "concepts/background-startup",
+          "workspaces"
+        ]
       },
       {
         "group": "Reference",
         "openapi": "reference/callables.openapi.json",
         "pages": [
           "concepts/architecture",
-          "concepts/evidence-boundaries",
           "reference/api",
           "reference/responses",
           "reference/schemas",

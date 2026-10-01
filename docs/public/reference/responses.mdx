@@ -4,30 +4,36 @@ description: "Understand returned facts, coverage, paired rows, and the handles 
 icon: "list-checks"
 ---
 
-Read two things in every Kast answer: **the facts returned** and **what the query covered**. A successful tool invocation does not, by itself, establish a complete semantic result.
+A Kast answer is useful only when its facts and evidence boundary are read together. A successful invocation is not, by itself, proof of a complete semantic result.
 
-## What can come back
+## Read every answer in three passes
+
+<Steps>
+  <Step title="Read the semantic outcome">
+    `complete` covered the admitted scope. `qualified` returned usable evidence with an attached limitation. `rejected` established no successful semantic payload.
+  </Step>
+  <Step title="Read the facts">
+    Inspect the returned symbols, occurrences, traversal records, or binding rows. Positive facts can remain useful even when the wider result is qualified.
+  </Step>
+  <Step title="Read what remains">
+    Check limitations, item failures, omissions, and progress before making an exhaustive or negative claim. An empty qualified result does not prove absence.
+  </Step>
+</Steps>
+
+<Info>
+  A qualified result can establish specific returned callers without establishing that every caller was found. Exhaustive claims require complete coverage of the requested universe.
+</Info>
+
+## Result shapes
 
 | Result | Use it for |
 | --- | --- |
-| Symbols | Exact declarations, their issued references, and selected name, location, signature, or source fields. |
-| Occurrences | Individual use sites and relationship facts, including repeated uses. |
-| Traversal records | Relationship evidence with hop depth from a bounded walk. |
-| Binding rows | Named symbol cells produced by an inner join. Project a cell before another symbol step. |
+| Symbols | Exact declarations, issued references, and selected name, location, signature, or source fields |
+| Occurrences | Individual use sites and relationship facts, including repeated uses |
+| Traversal records | Established relationship evidence with hop depth |
+| Binding rows | Named symbol cells produced by an inner join |
 
-See [Query forms](/reference/api) to select an output, or [the composition walkthrough](/query-pipelines) to follow a result into the next query.
-
-## Interpret coverage before making a claim
-
-| Canonical status | What the agent may say |
-| --- | --- |
-| `complete` | The operation covered its declared scope. |
-| `qualified` | These returned facts are usable with the stated limitations; some obligation remains incomplete. |
-| `rejected` | This request did not establish a successful semantic result. |
-
-For example, “Kast found these callers, but the walk stopped with unfinished work” preserves a qualified result. “These are all callers” does not.
-
-A zero-row qualified answer is not proof that a declaration or relationship is absent. Before making an absence claim, check complete coverage of the requested scope, item failures, and omissions. Diagnostics cover the reported IDEA analysis scope; they do not certify a whole-project build.
+See [Query forms](/reference/api) to choose an output or [Combine query results](/query-pipelines) to carry retained rows into another investigation.
 
 ## Follow progress, not row count
 
