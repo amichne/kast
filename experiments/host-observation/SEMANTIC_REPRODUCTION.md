@@ -178,8 +178,10 @@ Measurements keep public calls, actual UTF-8 stdout bytes (including the RPC
 envelope/newline), native pages, counter/contributor counts, first usable and
 completion nanoseconds, and per-call native phase/stage durations distinct.
 Diagnostic schema 6 explicitly observes returned discovery/relation pages,
-including qualified pages. Rejected-before-provider or canceled work emits no
-page; request-local zeros prove observation capability. Older missing page
+including qualified pages. Rejected-before-provider calls and canceled attempts
+that produce no page retain explicit zero counters. Completed page observations
+remain recorded when later work fails or is canceled; request-local zeros prove
+observation capability. Older missing page
 counters remain unavailable. There must be exactly one bound native receipt in
 each bounded appended log window; ambiguity, rotation, saturation or absent
 measurements block a work claim. Absent counters are not zeros. Phase and stage
