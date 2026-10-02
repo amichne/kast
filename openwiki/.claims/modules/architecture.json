@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9b8c66c2e8aec245c97c07b135a19080fe556872608aeccee35c135787bed3da",
+  "claims": [
+    {
+      "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
+      "statement": "The active Gradle graph includes the existing-IDE hosted runtime and retained topology modules, but does not include the retired importer, coordinator, indexer, isolated server or composition modules.",
+      "evidence": [
+        {
+          "resource": "repo://settings.gradle.kts#L21-L67",
+          "version": "repo-lines-v1:sha256:844bd7a78acaa6abfd1d40e709bbeb1cfff7b3bd71a3c632f7efaabc16600d15:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyODgzMmZhZDlmOWExZmY5NTEwOGYyMTVlYmJhZTZiNmE0ODFmNDVhMDE5NWUxZDU5ZDNjNDI1YjM2M2I1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMDMxN2JhZWIzNjU5Y2I0N2EzMWMwZjI5NTg4MzRlMzRkOWFiNDkzOTM4MzhhY2U1NzFjZWMzMTJiYzc1ODMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8fbe8cf0364241bd9c44e5851da8c409",
+      "statement": "Change and query protocol modules have the service role with explicit contract-only dependency policies; the native distribution management CLI has a narrowly scoped contract dependency and effect owners.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L43",
+          "version": "repo-lines-v1:sha256:68f5c0ebfbe34e35241837a7850d2f731d64827e8adffd3f954a3a1e8672ee05:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MzNkMGVhOWVjZjJmMzljOWE1MDQwNzM5NWVlNDExNzJmZTY4MmM5Yzg4NWEzNTA4Zjc1YmRlZTE1MWVmZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViZTNlZWQ0Y2Y0ODM3MGVlOTViMDgxMzA2N2RjNGZiNTczMTU0NDkwNWZmMWFiMmU3ZWE5ZTg5NTg3Zjg4ODkifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

@@ -42,7 +42,7 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 - `contract` - sources, plans, operations, and execution types.
 - `service` - query interpreter and support.
-- `protocol` - shared canonical read admission, reference codecs, and evidence projection; see [query protocol](../knowledge/modules/query-protocol.md).
+- `protocol` - shared canonical read admission, reference codecs, and evidence projection; see [query protocol](../openwiki/modules/query-protocol.md).
 
 ## Entry Points
 
@@ -50,6 +50,6 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - Begin with `QueryPlan`, then trace each stage through `QueryService` into symbol, source, relation, or traversal operations. A file-offset source discovers the containing named declaration and resolves it to an exact row inside the evaluator. Joins use retained symbol rows on the right, match canonical identity, and preserve both named output cells. `CanonicalQueryProtocol` restores result sources and execution checkpoints through `QueryStateStore`; presentation cursors read retained symbol, occurrence, traversal, or binding rows without replaying stages.

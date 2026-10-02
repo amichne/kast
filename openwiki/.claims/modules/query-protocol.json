@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:36556142d4e2fca64f08eb4b2e899d5bf8d36c8a6ab3cfd7f9aac161d1e70914",
+  "claims": [
+    {
+      "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
+      "statement": "Canonical query protocol separates new run, checkpoint/output continuation, and retained result presentation under the supplied semantic authority; read-result projects retained rows instead of executing a new semantic query.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L8-L45",
+          "version": "repo-lines-v1:sha256:6a2af195b9a496405b20f58619d3bcde296d3b06341eb7ec6b1a7b85dd3b0a66:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNjg4NjQzY2ViOWY4ODFhZmMwYTBhNjY0ZGIyZTFlMDRhYzk2ZWJkZGQ5MzM4OTdlZmUwOTc5ZjVjNDIxOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NGMzNGI3YzU3NzIxYzAwY2JkMjUyZWRhYjg5NTYwMDc2NDg1N2I1M2Q5ZjcwYTUwNGU5NTU4YzQ0MGQyYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyNmQ1NWIzOGNkZDllZDY1NDU3ZjE3MGQxYzU4OTNlNGUzMzk1ZjBlYzYyYzQzYmFhZTllNjQ2OWZkMDFhNTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_602394d556824c10af728f7548c7de68",
+      "statement": "Continuation acquisition has explicit in-use, unavailable, mismatch and capacity failures; publication preparation retains the claim only when the owning publication boundary prepares it, otherwise finally releases it.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L47-L107",
+          "version": "repo-lines-v1:sha256:f9ab8962ecda2296c7752e874d78a40c14b896f871d877748a3500747bda6058:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ODZlMDY0Mjg1ZDFmMWE3OGM3ZWIyNmE1ZTY5NDgxNWExMTU3YTIzZTExZjA3NmI4MGUzYzBhMDNiY2EzODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2MjhlNmE3NGZjZjI4ZDU4N2JkZDdjOGU0N2YyOTNmYjAyOTNmOWFmYmI1YTUzNTQwMDk4ZTI4NjljZWM2N2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzNmYyNDVmMDhmM2I4YTU0MGQ3NmU5Y2IxN2I2MTEzMzQ2N2VlOGY3NTkxMGMxZDNhMjQwY2U3Njk2NjIyZGIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

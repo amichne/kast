@@ -32,7 +32,7 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/change.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/change.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - Trace a mutation in phase order: contract -> plan -> apply -> verify -> recovery.
 - For IDE write behavior, inspect `intellij` only after the admitted plan and proof types are clear.

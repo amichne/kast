@@ -77,7 +77,7 @@ Use Java 25 or newer and the Python version in [`.python-version`](.python-versi
 ```
 
 The [development guide](docs/development.md) covers local installation and
-testing. The [knowledge base](knowledge/index.md) maps architecture to source.
+testing. The [OpenWiki guide](openwiki/quickstart.md) maps architecture to source.
 
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).
 Kast is under the [MIT License](LICENSE).

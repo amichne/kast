@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Utility checks for OKF source-backed knowledge bundles."""
+"""Repository citation and link checks for OpenWiki knowledge pages."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ import sys
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import unquote
+
+import yaml
 
 
 RESERVED_FILENAMES = {"index.md", "log.md"}
@@ -53,89 +55,57 @@ def markdown_files(root: Path) -> list[Path]:
     return sorted(path for path in root.rglob("*.md") if path.is_file())
 
 
-def parse_scalar(value: str) -> Any:
-    value = value.strip()
-    if not value:
-        return ""
-    if value in {"[]", "{}"}:
-        return [] if value == "[]" else {}
-    if value.startswith("[") and value.endswith("]"):
-        inner = value[1:-1].strip()
-        if not inner:
-            return []
-        return [part.strip().strip("'\"") for part in inner.split(",")]
-    if value.startswith(("'", '"')) and value.endswith(("'", '"')):
-        return value[1:-1]
-    return value
+class UniqueKeyLoader(yaml.SafeLoader):
+    """Safe YAML boundary that rejects duplicate keys instead of erasing facts."""
 
 
-def parse_list_block(lines: list[str]) -> tuple[list[Any], list[str]]:
-    items: list[Any] = []
-    issues: list[str] = []
-    current: dict[str, Any] | None = None
-    for raw in lines:
-        stripped = raw.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if stripped.startswith("- "):
-            value = stripped[2:].strip()
-            if ":" in value:
-                key, raw_value = value.split(":", 1)
-                current = {key.strip(): parse_scalar(raw_value)}
-                items.append(current)
-            else:
-                current = None
-                items.append(parse_scalar(value))
-            continue
-        if current is not None and ":" in stripped:
-            key, raw_value = stripped.split(":", 1)
-            key = key.strip()
-            if key in current:
-                issues.append(f"duplicate YAML list field: {key}")
-            else:
-                current[key] = parse_scalar(raw_value)
-            continue
-        issues.append(f"unsupported YAML list line: {stripped}")
-    return items, issues
+def unique_mapping(loader: UniqueKeyLoader, node: yaml.MappingNode) -> dict[str, Any]:
+    mapping: dict[str, Any] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=True)
+        if not isinstance(key, str):
+            raise yaml.constructor.ConstructorError(None, None, "YAML keys must be strings", key_node.start_mark)
+        if key in mapping:
+            raise yaml.constructor.ConstructorError(None, None, f"duplicate YAML field: {key}", key_node.start_mark)
+        mapping[key] = loader.construct_object(value_node, deep=True)
+    return mapping
+
+
+UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
 
 
 def parse_frontmatter_mapping(lines: list[str]) -> tuple[dict[str, Any], list[str]]:
-    mapping: dict[str, Any] = {}
-    issues: list[str] = []
-    index = 0
-    while index < len(lines):
-        line = lines[index]
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            index += 1
-            continue
-        if line[:1].isspace():
-            issues.append(f"unexpected indented YAML line: {stripped}")
-            index += 1
-            continue
-        if ":" not in line:
-            issues.append(f"unsupported YAML line: {stripped}")
-            index += 1
-            continue
-        key, raw_value = line.split(":", 1)
-        key = key.strip()
-        if raw_value.strip():
-            mapping[key] = parse_scalar(raw_value)
-            index += 1
-            continue
+    try:
+        mapping = yaml.load("\n".join(lines), Loader=UniqueKeyLoader)
+    except yaml.YAMLError as error:
+        return {}, [f"invalid YAML frontmatter: {error}"]
+    if not isinstance(mapping, dict):
+        return {}, ["YAML frontmatter must be an object"]
+    return mapping, []
 
-        block: list[str] = []
-        index += 1
-        while index < len(lines) and (lines[index].startswith(" ") or not lines[index].strip()):
-            block.append(lines[index])
-            index += 1
-        if any(item.strip().startswith("- ") for item in block):
-            value, block_issues = parse_list_block(block)
-            mapping[key] = value
-            issues.extend(block_issues)
-        else:
-            mapping[key] = ""
-    return mapping, issues
+
+def openwiki_sources(frontmatter: dict[str, Any], repo: Path) -> tuple[list[str], list[str]]:
+    """Read OpenWiki's source resources for impact without owning Claims schemas."""
+    sources = frontmatter.get("sources", [])
+    if not isinstance(sources, list):
+        return [], ["sources must be a list"]
+    paths: list[str] = []
+    issues: list[str] = []
+    for source in sources:
+        resource = source.get("resource") if isinstance(source, dict) else None
+        if not isinstance(resource, str) or not resource.startswith("repo://"):
+            issues.append("sources resource must use repo://")
+            continue
+        raw_path, separator, span = resource[7:].partition("#")
+        normalized = normalize_relative(raw_path)
+        if (normalized is None or normalized != raw_path or
+                (separator and not re.fullmatch(r"L[1-9][0-9]*-L[1-9][0-9]*", span))):
+            issues.append(f"sources resource is invalid: {resource}")
+            continue
+        paths.append(normalized)
+        if not (repo / normalized).is_file():
+            issues.append(f"sources path does not exist: {normalized}")
+    return paths, issues
 
 
 def split_frontmatter(text: str) -> tuple[dict[str, Any] | None, str, list[str]]:
@@ -288,6 +258,9 @@ def parse_page(path: Path, repo: Path, docs: Path, kotlin: dict[str, dict[str, A
             paths, source_issues = code_sources(frontmatter, repo, kotlin)
             source_paths.extend(paths)
             issues.extend(source_issues)
+            paths, source_issues = openwiki_sources(frontmatter, repo)
+            source_paths.extend(paths)
+            issues.extend(source_issues)
 
     return {
         "path": relative,
@@ -374,14 +347,14 @@ def write_output(payload: dict[str, Any], output_format: str) -> None:
     command = payload.get("command")
     if command == "check":
         print(
-            f"okf check: {payload['concepts']} concept(s), "
+            f"OpenWiki citations: {payload['concepts']} concept(s), "
             f"{payload['reservedFiles']} reserved file(s), {payload['issueCount']} issue(s)"
         )
         for issue in payload["issues"]:
             print(f"- {issue['path']}: {issue['message']}")
     elif command == "impact":
         print(
-            f"okf impact: {len(payload['changedFiles'])} changed file(s), "
+            f"OpenWiki impact: {len(payload['changedFiles'])} changed file(s), "
             f"{len(payload['impactedPages'])} impacted concept(s)"
         )
         for page in payload["impactedPages"]:

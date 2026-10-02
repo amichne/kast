@@ -363,59 +363,6 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
         "--snapshot", layout.projectDirectory.file("packaging/configuration-schema.json"))
 }
 
-val knowledgeParserClasspath = files(
-    JsonContractScanRequest::class.java.protectionDomain.codeSource.location,
-    jsonContractParser,
-)
-
-val knowledgeBaseTest = tasks.register<Exec>("knowledgeBaseTest") {
-    group = "verification"
-    description = "Exercises repository knowledge-base validation behavior."
-    inputs.files(knowledgeParserClasspath)
-    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
-    inputs.files(
-        layout.projectDirectory.file(".github/scripts/code_kb.py"),
-        layout.projectDirectory.file(".github/scripts/test_code_kb.py"),
-    )
-    commandLine("python3", layout.projectDirectory.file(".github/scripts/test_code_kb.py"))
-}
-
-val verifyKnowledgeBase = tasks.register<Exec>("verifyKnowledgeBase") {
-    group = "verification"
-    description = "Strictly validates the source-bound OKF repository knowledge base."
-    inputs.files(knowledgeParserClasspath)
-    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
-    dependsOn(knowledgeBaseTest)
-    inputs.dir(layout.projectDirectory.dir("knowledge"))
-    inputs.file(layout.projectDirectory.file(".github/scripts/code_kb.py"))
-    commandLine(
-        "python3",
-        layout.projectDirectory.file(".github/scripts/code_kb.py"),
-        "check",
-        "--repo",
-        layout.projectDirectory,
-        "--docs",
-        "knowledge",
-        "--strict",
-    )
-}
-
-tasks.register<Exec>("knowledgeImpact") {
-    group = "help"
-    description = "Reports knowledge concepts affected by current working-tree changes."
-    doNotTrackState("The report intentionally observes the live Git working tree.")
-    commandLine(
-        "python3",
-        layout.projectDirectory.file(".github/scripts/code_kb.py"),
-        "impact",
-        "--repo",
-        layout.projectDirectory,
-        "--docs",
-        "knowledge",
-        "--from-git",
-    )
-}
-
 val pythonTestEnvironment = layout.buildDirectory.dir("python-tests/env")
 val pythonTestExecutable = pythonTestEnvironment.map { it.file("bin/python3").asFile.absolutePath }
 val preparePythonTestEnvironment = tasks.register<Exec>("preparePythonTestEnvironment") {
@@ -424,6 +371,62 @@ val preparePythonTestEnvironment = tasks.register<Exec>("preparePythonTestEnviro
     inputs.file(layout.projectDirectory.file("experiments/host-observation/requirements-test.txt"))
     inputs.file(layout.projectDirectory.file("packaging/prepare-python-test-environment.py"))
     commandLine("python3", layout.projectDirectory.file("packaging/prepare-python-test-environment.py"))
+}
+
+val knowledgeParserClasspath = files(
+    JsonContractScanRequest::class.java.protectionDomain.codeSource.location,
+    jsonContractParser,
+)
+
+val knowledgeBaseTest = tasks.register<Exec>("knowledgeBaseTest") {
+    group = "verification"
+    dependsOn(preparePythonTestEnvironment)
+    description = "Exercises repository knowledge-base validation behavior."
+    inputs.files(knowledgeParserClasspath)
+    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
+    inputs.files(
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        layout.projectDirectory.file(".github/scripts/test_code_kb.py"),
+    )
+    commandLine(pythonTestExecutable.get(), layout.projectDirectory.file(".github/scripts/test_code_kb.py"))
+}
+
+val verifyKnowledgeBase = tasks.register<Exec>("verifyKnowledgeBase") {
+    group = "verification"
+    dependsOn(preparePythonTestEnvironment)
+    description = "Validates OpenWiki links, source paths, and exact declaration citations."
+    inputs.files(knowledgeParserClasspath)
+    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
+    dependsOn(knowledgeBaseTest)
+    inputs.dir(layout.projectDirectory.dir("openwiki"))
+    inputs.file(layout.projectDirectory.file(".github/scripts/code_kb.py"))
+    commandLine(
+        pythonTestExecutable.get(),
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        "check",
+        "--repo",
+        layout.projectDirectory,
+        "--docs",
+        "openwiki",
+        "--strict",
+    )
+}
+
+tasks.register<Exec>("knowledgeImpact") {
+    group = "help"
+    dependsOn(preparePythonTestEnvironment)
+    description = "Reports knowledge concepts affected by current working-tree changes."
+    doNotTrackState("The report intentionally observes the live Git working tree.")
+    commandLine(
+        pythonTestExecutable.get(),
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        "impact",
+        "--repo",
+        layout.projectDirectory,
+        "--docs",
+        "openwiki",
+        "--from-git",
+    )
 }
 
 val hostObservationTest = tasks.register<Exec>("hostObservationTest") {

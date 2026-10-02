@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f8ecefcbfdbbc991d8b805345087d40bd0cc5363071d0d38ed54885bfae866e7",
+  "claims": [
+    {
+      "id": "claim_009e763fdd49491b8ddc72813e392412",
+      "statement": "Exact symbol resolution validates authority before and after compiler refinement and rejects returned selectors that fail to retain the selected batch's identity; it never substitutes display text for compiler authority.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt#L33-L73",
+          "version": "repo-lines-v1:sha256:9788a833cd2afb847006a0b992c59e421f57901b2d2418f164bc2cbcca8e6944:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5Y2JiYzY1NDY5ZGIxY2EyODQyZWZkOTdkZjdlZTJjZTZjYzE1NzE0ODJkMDFhMThiNzkwYTEwYzdjNTEwZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3NmE4NTQzZDBmOTUwMDI4MTE4NjM5MDI3NGI5MDBjZjJmZDBiZjc1N2U0OTkxODViODA0YzRlYTE3Y2E5ZWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlMmI5ZTIxZmRjODZmYzJjMmVlNDQ3MjE4NWQ2NzY0NjdiZGQxY2JmMmUyNGI0ZGM2NDRhYjFhYmIzMzI1NDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f2753de232f644ba8fd6e02c252463bc",
+      "statement": "Source reads admit the exact anchor context, re-admit it after native extraction, and reject changed contexts or mismatched snapshot, scope and visibility before publishing detached output.",
+      "evidence": [
+        {
+          "resource": "repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt#L31-L90",
+          "version": "repo-lines-v1:sha256:529ae3ad395da555444e4c628dde846bff1a12df1b247597040c6605cff061bb:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYTdjMjA2OWY4ZDZkYThkYmUzNzMzZThjNmZjZGE1M2RmOTgzNTJiY2ZiYWI3Y2ZmNTEzODkxZmUyZDU3OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxN2MwM2UxOTk4YjliNGI1Mzc5YTdiMWM0NzA1YWFlZGYyNDU1MGNjNzU0MDY0MzVhMjE3ZTJmM2RkOTNjOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

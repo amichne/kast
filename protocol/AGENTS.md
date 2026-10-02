@@ -47,7 +47,7 @@ Defines canonical operation models, authoritative operation/tool registries, and
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/protocol.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/protocol.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For a public operation, read its contract, then registry definition, then wire serializer.
 - For tool availability or budgets, begin in `registry`; for JSON compatibility, begin in `wire`.

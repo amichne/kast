@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:d0c36733adebb711228ff202519450669eb4a57499323d2ce582694171141f4e",
+  "claims": [
+    {
+      "id": "claim_d2fd15ebc96a46f3a6d2199470e2a0cf",
+      "statement": "The host-observation experiment uses a bounded queue of 256 detached observation records and records queue overflow as coverage loss.",
+      "evidence": [
+        {
+          "resource": "repo://experiments/host-observation/observer.kts#L378-L405",
+          "version": "repo-lines-v1:sha256:7e67d7300c4c65ab72bba769e7b825496e438932be11d56aecf6058409df4a59:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2OGUzNTNmODNjMDJiNDY1OTZiYTkzM2FmNzM4ZWZmZDRkNTFlZWUxMjEwMjMwODA4OGM1Yzg1MTQzYTkyNGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1NDJkYWIwMzQ1NzdlMGFkYzNkZjkyYzU0ZDdlZWQxOTVhODNlNmIwNzAxNTMzZGViODI2YTgzZmYwMWI2MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMTFlZDI2M2MzMzRiODcxZGNlOTAzNGI2NmE4NDM0NmNkZThlZjY1ZDllNmY3ZjUzNGE2MmJhYTg3OTBjM2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhZDUxNTk3MTgzM2ZiZDQ3ZWQ1ZmJkYzE3NDJkYzU5NjhhOWU4ZjFkZjVlNGM0Y2I0NWM2N2M4YTQ5MjEwNDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_95e94b434be2433c8c4421f555f9c46a",
+      "statement": "An observer stop targets the original session owner; missing retirement acknowledgment does not authorize removing shared admission or disposing another engine's registrations.",
+      "evidence": [
+        {
+          "resource": "repo://experiments/host-observation/README.md#L43-L45",
+          "version": "repo-lines-v1:sha256:1ec5ecf71958d94248ae3c6c82e3ac9f65ddec8c4e15276259f01b5fcc6e2816:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzVhMjMwZDcyNWJmNzRhN2RmYTYyMTkxYWZmNmJiNDRmZThhN2UyZmM2NzQzOWM2OGJkNGYzZGI0Y2ZiMDA2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGU1NGQyZDhjY2ZiMjJmZWEyOGI3OWQ5ZmVkNmQ1NzU4NTk2MGU0N2M5YmQyNzg3YzhmM2U5ZWE1MTJhNjRmNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjM5ZDQ2MDkyNzBlODExYTM2YmUzZThhMmFhZmMxMDc4ZmVmNzgxNDA5MjI1NzgyMThlMDA3ZWI4MjFhYTgxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDc3ZmMwZDUxNGE3NzZmNTQyYzE0NTllYWVjOGQ4NjE4ZTJmNzBiNzQ1YTlmNDU1MTg0MmQxN2FlZjNhNzI0ZSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

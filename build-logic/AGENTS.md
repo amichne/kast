@@ -45,7 +45,7 @@ Defines reusable Gradle conventions, module roles, release assembly, generated c
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/architecture.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/architecture.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For formatting or lint failures, start with `kast.kotlin-quality.gradle.kts`, then the reported rule or file-length task. Schema-generated Kotlin remains owned by its generator.
 - For existing structural debt, see [baseline policy](../config/README.md). Checks reject new findings and growth beyond recorded file ceilings; they never regenerate allowances.

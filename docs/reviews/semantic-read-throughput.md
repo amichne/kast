@@ -1,6 +1,6 @@
 > Historical measurement: the implementation measured below serialized semantic dispatch.
 > Current dispatch permits bounded parallel reads and retains short epoch/lifetime synchronization.
-> These timings do not measure the parallel implementation; see [hosted queries](../../knowledge/flows/hosted-query.md).
+> These timings do not measure the parallel implementation; see [hosted queries](../../openwiki/flows/hosted-query.md).
 
 # Single IDEA backend read throughput
 

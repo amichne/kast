@@ -30,6 +30,6 @@ Defines bounded multi-hop traversal plans/results and executes them over relatio
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - Start with plan bounds and continuation state, then follow relation reads into `relation` and hosted request admission in `query/protocol`.
