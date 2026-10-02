@@ -145,6 +145,7 @@ code_sources:
   - path: packaging/installer_fixture.py
   - path: packaging/run-installed-product.py
   - path: packaging/test-installer-fixture.py
+  - path: packaging/test-installer-entrypoint.py
   - path: .github/scripts/release/build-assets.sh
   - path: .github/scripts/release/ci-candidate.py
   - path: .github/scripts/release/publish-release.sh
@@ -166,7 +167,7 @@ code_sources:
     symbols: [GenerateComponentReleaseTask]
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T07:38:00.108Z
+    at: 2026-10-02T08:15:19.347Z
 sources:
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
@@ -204,6 +205,8 @@ sources:
     resource: repo://packaging/installer_fixture.py
   - id: openwiki-source-8faf23d69764b95242de5e09
     resource: repo://packaging/run-installed-product.py
+  - id: openwiki-source-671eb4bdcdbb3b2f0659d4c7
+    resource: repo://packaging/test-installer-entrypoint.py
   - id: openwiki-source-27c69d628b97ee3d2536e2d1
     resource: repo://packaging/test-installer-removal.py
   - id: openwiki-source-d124e13c6fde72403a229a1e
@@ -212,7 +215,7 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-02T07:34:50.076Z" }
+generated: { by: "codex", at: "2026-10-02T08:15:19.347Z" }
 ---
 
 # Distribution and packaging
@@ -255,7 +258,7 @@ resolution ignores developer tags.
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a
 fail-closed compatibility result and precedes installation effects. Public installation enables the app-server suite and defaults the per-user login
-LaunchAgent on without a prompt. Persistent installation asks in a terminal whether to register a user-level Codex MCP entry. Explicit register and skip flags bypass that prompt; non-interactive installation defaults to registration for compatibility. Skipping registration does not inspect or mutate Codex configuration and still installs the MCP launcher. Command collisions require explicit `--force` or manual removal.
+LaunchAgent on without a prompt. Paired installation asks in a terminal whether to register a user-level Codex MCP entry. Explicit register and skip flags bypass that prompt; non-interactive paired installation defaults to registration for compatibility. Control-only and Host-only installs, and Control cold staging, skip registration without prompting. Explicit skip is accepted in either argument order; explicit registration rejects before download or installation effects because it requires a paired install. Skipping registration does not inspect or mutate Codex configuration and still installs the MCP launcher. Command collisions require explicit `--force` or manual removal.
 Checkout installation replaces the sole user installation in place. Session mode and alternate installation roots reject before build or installation effects.
 
 Single-directory schema-3 and hosted-only schema-2 installations retire their coordinator without invoking

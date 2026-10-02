@@ -44,7 +44,7 @@ code_sources:
   - path: build-policy/configuration-ingress.json
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T07:23:23.815Z
+    at: 2026-10-02T08:15:19.347Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
