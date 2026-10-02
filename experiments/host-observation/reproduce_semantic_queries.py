@@ -130,7 +130,7 @@ def pin(args):
     cli = args.cli.resolve(strict=True)
     launcher = args.idea_contents / "MacOS/idea"
     # Reuse the hosted acceptance original-process admission; no replacement worker or launch fallback.
-    rows = subprocess.check_output(["ps", "-ww", "-axo", "pid=,command="], text=True).splitlines()
+    rows = subprocess.check_output(["ps", "-ww", "-axo", "pid=,comm="], text=True).splitlines()
     pids = [int(row.split(maxsplit=1)[0]) for row in rows
             if len(row.split(maxsplit=1)) == 2 and row.split(maxsplit=1)[1] == str(launcher)]
     if len(pids) != 1:

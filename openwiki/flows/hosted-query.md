@@ -162,7 +162,7 @@ code_sources:
   - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T06:27:25.947Z
+    at: 2026-10-02T13:53:38.453Z
 sources:
   - id: openwiki-source-57bcbe3766714342dda0682a
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt
