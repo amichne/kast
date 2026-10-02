@@ -5,6 +5,8 @@ description: Workspace contracts distinguish published leases from original-owne
 resource: file://workspace
 tags: [kotlin, workspace, lifecycle, intellij]
 code_sources:
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/ProjectReadEpochDiagnostics.kt
+    symbols: [ProjectReadEpochDiagnostics, ProjectReadEpochSignal]
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
@@ -51,6 +53,14 @@ The active workspace modules are `workspace:contract` and `workspace:intellij-re
 `HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains each request before releasing its independently owned permit. Multiple reads may overlap within `HOST_CONNECTIONS`. Before epoch admission, the host may wait when IDEA preempts a sample or the sample moves. After model capture, the host acquires native read access, revalidates the expected epoch, and admits its authority in one synchronized transition. Canonical dispatch uses a single evaluation: epoch movement rejects the query rather than silently replacing its scope. A fresh request may admit the next epoch. Older requests cannot clear newer continuation or reference storage, and retirement cannot resurrect storage.
 
 A live read epoch is an optimistic consistency boundary, not a frozen copy of files or an MVCC snapshot. Its signals include PSI modification, root-filtered VFS batches, project/workspace-model and root-model changes, indexing cycles, project/Gradle root identity and import timestamps. Saved documents and committed PSI remain admission requirements; disposal or unavailable/indexing state rejects observation. A change may invalidate the workspace's queries even when their selected files were untouched. Epoch revisions are owner-local admission identities, not a count of edits.
+
+`ProjectReadEpochDiagnostics` observes that same production sample boundary and
+emits `kast_project_read_epoch` records with the host identity and finite changed
+signal labels. It retains the last successful detached sample across rejected
+observations, suppresses identical repeats, and distinguishes baseline, movement,
+rejection and unchanged recovery. No path, source text, raw counter or import
+timestamp crosses the log boundary. Diagnostic state cannot issue or renew an
+epoch; ordinary admission remains the authority.
 
 Successful publication proves that the observed epoch remained equal through final freshness validation. It does not freeze the workspace after that point: a later edit can invalidate delivered references and continuations. Query stages compose within one request's authority, model and scope; callers should rerun the original query after epoch movement. Existing explicit reference reacquisition can locate a current declaration, but it does not revive an old continuation or promise an old snapshot. Epoch movement returns the existing `restart_read` recovery guidance and retains any admitted execution budget. No epoch migration or background replay is introduced.
 

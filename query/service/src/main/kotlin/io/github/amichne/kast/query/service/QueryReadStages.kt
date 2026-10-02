@@ -102,7 +102,7 @@ internal class QueryReadStages(
         var progress: DiscoveryExecution = DiscoveryExecution.NotStarted
         for (kind in discoveryKinds(syntax)) {
             val remainingResults = state.remainingResultCapacity(selections.size) ?: return progress
-            val childBudget = state.discoveryBudget(remainingResults) ?: return progress
+            val childBudget = state.discoveryBudget(syntax.match, remainingResults) ?: return progress
             val request =
                 SymbolDiscoveryRequest(
                     scope =

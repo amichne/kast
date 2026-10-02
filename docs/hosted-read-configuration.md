@@ -96,6 +96,22 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 
 The IDE's `idea.log` receives a `kast_semantic_read` JSON record by default after each admitted request drains, including rejected requests. No diagnostic enable switch is required. Each record includes the host/epoch correlation when available, stage durations, remaining outer deadline at semantic entry, bounded counters, exact native termination reasons, the final hosted outcome, and effective limit values with their sources. Early endpoint/transport failures emit `kast_hosted` records with a stage and closed failure code.
 
+When retained results or continuations become unavailable, inspect
+`kast_project_read_epoch` records with the same `host`. A `MOVED` outcome names
+the changed signals: `PSI`, `VFS`, `WORKSPACE_MODEL`, `ROOT_MODEL`, `INDEXING`,
+`PROJECT_ROOT`, `GRADLE_ROOT`, or `IMPORT_STATE`. These are differences between
+successful native samples, not a count of admitted query epochs. `REJECTED`
+preserves the finite observation failure; `RECOVERED` means observation resumed
+with the last proven signals unchanged. Repeated unchanged samples and identical
+rejections are silent. Records contain no paths, source text or raw counters.
+After epoch movement, rerun the original query to acquire current handles.
+
+Declaration inventory records `DISCOVERY_PARTITIONS_OBSERVED` and
+`DISCOVERY_PARTITIONS_ACCEPTED`. Its termination labels distinguish an absent,
+invalid, noncanonical or wrong-kind partition, exhausted partition capacity,
+and unavailable source. These explain a public `partition-unavailable` or
+`provider-failure` without weakening its incomplete coverage.
+
 Unexpected native exceptions retain only the exception class and bounded Kast adapter class/method/line frames. Exception messages, causes, source payloads, file paths and opaque references are excluded. Counter and exception collection capacities are configurable too. A hosted `completed` outcome means execution returned; inspect the canonical response and termination reasons for semantic completeness. For example, `NAME_CAP` and `CANDIDATE_CAP` can both produce public `work-limit-reached`, while the log preserves the actual cause.
 
 `CONFIGURATION_REJECTED` precedes semantic execution. `MODULE_ADMISSION_LIMIT` occurs during model capture, before the semantic budget starts. `TIME_LIMIT`, `WORK_LIMIT`, `RESULT_LIMIT` and `BYTE_LIMIT` identify different exhausted resources. `LIBRARY_POLICY_EXCLUSION` records an intentionally excluded library target; unresolved project targets still qualify coverage.

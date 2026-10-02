@@ -317,7 +317,7 @@ internal object EpochSignalClassContract {
     private const val ROOT_RESOURCE = LOCAL + "EpochFixtureRoot.class"
     private const val RENAME_RESOURCE = LOCAL + "EpochVfsObservedEvent\$Rename.class"
     private const val PRODUCTION_WORKSPACE_LISTENER_RESOURCE =
-        LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$1.class"
+        LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$2.class"
     private const val PRODUCTION_VFS_LISTENER_RESOURCE = LOCAL + "RootFilteredProjectEpochVfsListener.class"
     private val RESOURCES =
         listOf(

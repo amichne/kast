@@ -9,6 +9,7 @@ import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryMatch
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryWalkCoverage
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -17,6 +18,7 @@ import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
@@ -127,11 +129,22 @@ internal class QueryExecutionState(
         return SymbolDiscoveryBudget(resources, SymbolDiscoveryByteLimit.parse(bytes).refined())
     }
 
+    fun discoveryBudget(match: QueryMatch, resultCapacity: Int): SymbolDiscoveryBudget? =
+        when (match) {
+            QueryMatch.All -> discoveryBudget(resultCapacity)
+            is QueryMatch.Name ->
+                when (match.policy) {
+                    SymbolDiscoveryMatch.EXACT_NAME -> indexedDiscoveryBudget()
+                    SymbolDiscoveryMatch.FUZZY -> discoveryBudget(resultCapacity)
+                }
+        }
+
     /**
-     * Reserve one exact-refinement unit per admitted owner. Indexed occurrence collection receives half the remaining
-     * work, so its candidate capacity is independent of the presentation limit and cannot consume the refinement grant.
+     * Reserve one exact-refinement unit per admitted candidate. Exact-name and indexed-word discovery receive half the
+     * remaining work, so candidate capacity is independent of the presentation limit and cannot consume the refinement
+     * grant. The existing interpreter retains admitted candidates when final output fills a page.
      */
-    fun textDiscoveryBudget(): SymbolDiscoveryBudget? {
+    fun indexedDiscoveryBudget(): SymbolDiscoveryBudget? {
         val discoveryWork = remainingWork() / 2L
         if (discoveryWork < 1L) {
             limit(QueryLimitation.WORK_LIMIT_REACHED)

@@ -71,6 +71,8 @@ Discovery accepts a directory or package scope. Without a scope override, it sea
     `EXPAND_RELATION` makes one hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`.
 
     `WALK` follows a relation to a bounded depth. Its default depth is one and its default strategy is breadth-first. A fan-out limit can leave relationships unexplored; Kast reports that limitation.
+
+    For `BREADTH_FIRST`, `maximumDepth` defines the requested graph. Results at that depth are included without expanding them. Coverage is complete when every required one-hop read below that depth is complete. Result, work, and time limits can pause execution; resume the issued continuation to finish retained work. A required one-hop read with terminal incomplete coverage keeps the walk incomplete.
   </Accordion>
   <Accordion title="Combine result sets">
     `CONCAT` accepts `input` containing exact references or retained symbol rows. It preserves row order and duplicates.

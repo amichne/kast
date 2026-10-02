@@ -17,7 +17,7 @@ internal class IntellijIncrementalDeclarationDiscovery(
     private val request: SymbolDiscoveryRequest,
     private val limits: ReadLimits,
     private val allowance: IntellijDeclarationDiscoveryAllowance,
-    private val initialPartitions: () -> List<SemanticFilePartition>,
+    private val initialPartitions: () -> IntellijDeclarationInitialInventory,
     private val observePartition: (SemanticFilePartition) -> IntellijDeclarationPartitionObservation,
     private val environment: () -> IntellijDiscoveryEnvironmentState,
     private val cancellationCheck: () -> Unit,
@@ -45,13 +45,25 @@ internal class IntellijIncrementalDeclarationDiscovery(
 
     private fun prepare(state: IntellijDeclarationDiscoveryState) {
         if (request.remainder != null || scope.population == IntellijScopePopulation.KNOWN_EMPTY) return
+        if (!state.observe()) {
+            if (state.block == null) state.block = SymbolDiscoveryBlockCause.INSUFFICIENT_EXECUTION_GRANT
+            return
+        }
         val started = allowance.now()
         observation.phase(IntellijReadPhase.DISCOVERY_INVENTORY)
-        val initial = initialPartitions()
+        val inventory = initialPartitions()
         state.inventoryNanos += state.elapsed(started)
+        val initial =
+            when (inventory) {
+                is IntellijDeclarationInitialInventory.Complete -> inventory.partitions
+                IntellijDeclarationInitialInventory.TimeLimit -> {
+                    state.qualifications += SymbolDiscoveryQualification.TIME_LIMIT_REACHED
+                    state.block = SymbolDiscoveryBlockCause.INSUFFICIENT_EXECUTION_GRANT
+                    return
+                }
+            }
         initial.forEach { state.frontier[it.orderingPath] = it }
         state.frontierBytes = initial.sumOf { it.detachedBytes() }
-        if (state.frontier.isEmpty()) state.block = SymbolDiscoveryBlockCause.PROVIDER_UNAVAILABLE
         if (!state.retentionFits()) state.block = SymbolDiscoveryBlockCause.RETENTION_LIMIT
     }
 }

@@ -207,7 +207,7 @@ Use the continuation from your own result. If progress is terminal, follow the r
   }
   ```
 
-  This recorded failure does not describe every bounded search. `ALL_DECLARATIONS` can save its position and continue discovering Kotlin declarations. Inspect your result’s progress and coverage to determine whether it can resume.
+  This historical failure does not describe every bounded search. Exact-name searches can now retain discovered candidates beyond the output row limit and refine them on later pages. Native work or byte limits can still leave discovery incomplete. `ALL_DECLARATIONS` can save its position and continue discovering Kotlin declarations. Inspect your result’s progress and coverage to determine whether it can resume.
 </Accordion>
 
 **Next:** use [Results](/reference/responses) to interpret coverage and handles, or [Make a targeted change](/change) once you have established the intended target.

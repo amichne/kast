@@ -154,6 +154,10 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
             accounting.examinedWorkUnits += batch.examinedWorkUnits.value
             accounting.elapsedMillis += read.elapsedMillis.value
             for (record in records) {
+                // Breadth-first results at the requested depth need no further expansion.
+                if (plan.strategy == TraversalStrategy.BreadthFirst && nextDepth.value == plan.budget.depth.value) {
+                    continue
+                }
                 val node =
                     when (val related = TraversalNode.related(plan, record.related)) {
                         is Refinement.Refined -> related.value

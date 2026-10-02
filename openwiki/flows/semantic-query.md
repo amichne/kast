@@ -117,6 +117,13 @@ An exact-symbol output may request `SOURCE`. At its emit stage, the service call
 
 Discovery candidates are refined to exact symbols before query output. Query-local refinement preserves repeated rows in their source order; an explicit `distinct_symbols` stage keeps the first row for each canonical identity when requested. Failed refinements remain visible as limitations. Relation and traversal child budgets are derived from remaining parent capacity.
 
+Exact-name discovery uses the same work-bounded candidate grant as indexed-word
+discovery: at most half the remaining work, with the other half reserved for exact
+refinement. Candidate capacity is independent of the output row limit. The
+existing interpreter retains discovered selections and drains them across pages
+without repeating discovery or refinement. Genuine provider qualifications
+survive the last page; fuzzy search keeps its ranked, bounded discovery policy.
+
 Unranked source-owned `ALL_DECLARATIONS` uses the versioned `KOTLIN_FILE_SOURCE_V2` ordering: lexical admitted file path, then declaration start offset. An immutable source-root/VFS partition frontier retains unopened directories and files, plus a detached offset for the active file. Each successor advances an input revision; it never rebuilds the consumed file or declaration prefix. Native objects are reacquired inside the admitted read, and exact K2 refinement remains required before emission. Four supported declaration families are classes, functions, properties, and type aliases, including nested eligible descendants of excluded containers.
 
 `SEARCH_TEXT` lowers to a typed indexed-word source with the same source-set,
@@ -136,6 +143,11 @@ interpreter without repeating discovery or retaining live PSI.
 The interpreter retains both discovery input and already discovered candidates. Downstream rejection or filtering drives the producer again until output capacity, resource exhaustion, complete discovery, or a precise blocked cause. Result capacity bounds accepted output rather than candidate discovery. An indivisible directory partition exceeding preparation or retained-byte capacity remains a finite blocked outcome. Direct library-inclusive ALL is explicitly unsupported; it cannot claim completeness over a source-only substitute. Ranked fuzzy-name discovery retains its separate bounded enumeration semantics.
 
 Discovery observations retain the declared universe, admitted scope and restrictions, input progress, actual discovery/refinement counts, phase durations, and blocked causes. Their units remain distinct from final emitted-row counts. Reference production preserves the original native search scope and retains one complete, bounded inventory of detached native provider locators; successors restore only the unconsumed ordinal. An opaque inventory that cannot fit candidate, time, or retention authority terminates with its exact blocked evidence rather than advertising an unusable continuation. Target confirmations consume semantic work, and duplicate native providers at one confirmed range reuse the retained proof. File-scoped imports and aliases remain independent compiler-confirmed occurrences. Only proven declaration-owned occurrences enter declaration graph expansion.
+
+Relation inventory checks its remaining allowance before entering native
+preparation. An already-expired request cannot start a provider search. A native
+call already in progress can still overrun a cooperative allowance; its qualified
+coverage and recorded elapsed time remain authoritative.
 
 Directory, package, declaration-kind, and named source-set restrictions are
 retained through declaration, file, and text selection, exact fingerprints, and

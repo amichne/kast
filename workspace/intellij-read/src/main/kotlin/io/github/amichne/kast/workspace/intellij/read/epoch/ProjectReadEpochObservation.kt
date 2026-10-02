@@ -180,6 +180,21 @@ private constructor(
     private val rootModelModificationCount: EpochSignalCount<RootModelSignal>,
     private val dumbModeModificationCount: EpochSignalCount<DumbModeSignal>,
 ) {
+    /** Finite causes only; identities, counters and import timestamps remain private. */
+    fun changedSignalsFrom(previous: ProjectReadEpochState): Set<ProjectReadEpochSignal> {
+        val signals = linkedSetOf<ProjectReadEpochSignal>()
+        if (projectModelRevision != previous.projectModelRevision) signals += ProjectReadEpochSignal.WORKSPACE_MODEL
+        if (projectRoot != previous.projectRoot) signals += ProjectReadEpochSignal.PROJECT_ROOT
+        if (gradleRoot != previous.gradleRoot) signals += ProjectReadEpochSignal.GRADLE_ROOT
+        if (importState != previous.importState) signals += ProjectReadEpochSignal.IMPORT_STATE
+        if (psiModificationCount != previous.psiModificationCount) signals += ProjectReadEpochSignal.PSI
+        if (rootFilteredVfsBatchCount != previous.rootFilteredVfsBatchCount) signals += ProjectReadEpochSignal.VFS
+        if (rootModelModificationCount != previous.rootModelModificationCount)
+            signals += ProjectReadEpochSignal.ROOT_MODEL
+        if (dumbModeModificationCount != previous.dumbModeModificationCount) signals += ProjectReadEpochSignal.INDEXING
+        return signals
+    }
+
     override fun equals(other: Any?): Boolean =
         other is ProjectReadEpochState &&
             projectModelRevision == other.projectModelRevision &&

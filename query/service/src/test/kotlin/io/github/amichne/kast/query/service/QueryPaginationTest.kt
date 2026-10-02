@@ -1,15 +1,24 @@
 package io.github.amichne.kast.query.service
 
+import io.github.amichne.kast.query.contract.QueryDeclarationKinds
+import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryMatch
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
+import io.github.amichne.kast.query.contract.QueryScope
+import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
+import io.github.amichne.kast.query.contract.QuerySymbolFields
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
@@ -90,32 +99,29 @@ class QueryPaginationTest {
     fun `upstream work limitation survives a resumed downstream page`() = runTest {
         QueryServiceTest().apply {
             val discovery = discoveryWithCandidate()
+            var discoveries = 0
+            var resolutions = 0
             val service =
                 service(
                     discovery =
                         SymbolDiscoveryOperations { input ->
-                            val complete =
-                                (discovery.discover(input) as SymbolDiscoveryResult.Discovered).outcome
-                                    as SymbolDiscoveryOutcome.Complete
-                            SymbolDiscoveryResult.Discovered(
-                                SymbolDiscoveryOutcome.Qualified(
-                                    complete.batch,
-                                    SymbolDiscoveryQualifications.from(
-                                            setOf(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
-                                        )
-                                        .refined(),
-                                )
-                            )
+                            assertEquals(1L, input.budget.resources.workUnitLimit.value)
+                            assertEquals(0, discoveries++, "Retained candidates must not repeat discovery")
+                            workLimitedDiscovery(discovery, input)
                         },
                     exact =
                         exactOperations {
+                            resolutions++
                             SymbolResolutionResult.Resolved(
                                 io.github.amichne.kast.symbol.contract.ResolvedSymbol(selector(it))
                             )
                         },
                 )
-            val first = request(symbolPlan(), workLimit = 1L)
+            val first = request(allDeclarationsPlan(this), workLimit = 1L)
             val page = service.run(first) as QueryExecutionResult.Qualified
+            assertEquals(0, page.symbolCount())
+            assertEquals(1, discoveries)
+            assertEquals(0, resolutions)
             val checkpoint =
                 (page.continuation as io.github.amichne.kast.query.contract.QueryContinuationState.Resumable).checkpoint
             val resumed = request(first.plan, workLimit = 8L)
@@ -123,6 +129,8 @@ class QueryPaginationTest {
                 service.run(QueryExecutionRequest.create(first.plan, first.lease, resumed.budget, checkpoint).refined())
                     as QueryExecutionResult.Qualified
             assertEquals(1, last.symbolCount())
+            assertEquals(1, discoveries)
+            assertEquals(1, resolutions)
             assertTrue(QueryLimitation.DISCOVERY_INCOMPLETE in last.coverage.limitations)
             assertTrue(QueryLimitation.WORK_LIMIT_REACHED in last.coverage.limitations)
             assertEquals(
@@ -253,4 +261,31 @@ class QueryPaginationTest {
             is io.github.amichne.kast.kernel.Refinement.Refined -> value
             is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Expected refinement")
         }
+
+    private fun allDeclarationsPlan(fixture: QueryServiceTest) =
+        fixture.admittedPlan(
+            source =
+                QuerySourceSyntax.Symbols(
+                    QueryDiscoverySyntax(
+                        QueryMatch.All,
+                        QueryScope.Unrestricted,
+                        QueryDeclarationKinds.from(setOf(CompilerSymbolKind.CLASSLIKE)).refined(),
+                    )
+                ),
+            output = QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+        )
+
+    private suspend fun workLimitedDiscovery(
+        discovery: SymbolDiscoveryOperations,
+        request: SymbolDiscoveryRequest,
+    ): SymbolDiscoveryResult {
+        val complete =
+            (discovery.discover(request) as SymbolDiscoveryResult.Discovered).outcome as SymbolDiscoveryOutcome.Complete
+        return SymbolDiscoveryResult.Discovered(
+            SymbolDiscoveryOutcome.Qualified(
+                complete.batch,
+                SymbolDiscoveryQualifications.from(setOf(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)).refined(),
+            )
+        )
+    }
 }

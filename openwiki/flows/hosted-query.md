@@ -5,6 +5,8 @@ description: An existing IDEA project owns five canonical read operations, with 
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
 code_sources:
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/ProjectReadEpochDiagnostics.kt
+    symbols: [ProjectReadEpochDiagnostics]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt
     symbols: [ExistingIdeDocuments, ExistingIdeDescriptor]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
@@ -388,6 +390,13 @@ admission; the original epoch listeners remain authoritative. Oversized diagnost
 batches emit `relevance_unknown` with reason `BATCH_LIMIT`, without path categories
 or relevance proof. The epoch listener independently advances its invalidation
 signal conservatively; a diagnostic receipt is not proof of fresh read admission.
+
+The production epoch sampler separately emits `kast_project_read_epoch` records
+under the same host identity. `MOVED` records identify the exact changed equality
+inputs, while `REJECTED` retains finite observation failure data. A later valid
+sample compares with the last valid sample even across failures. These receipts
+explain signal movement without claiming a one-to-one correspondence with query
+epoch revisions or changing retained-reference invalidation.
 
 Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. The current CLI-to-daemon route has local contract and

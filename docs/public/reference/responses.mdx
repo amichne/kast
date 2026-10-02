@@ -61,6 +61,12 @@ When progress is resumable, pass the issued continuation to `RESUME` to continue
 
 `ALL_DECLARATIONS` saves unvisited files and its position in the active file. Rows returned, input examined, and scope covered measure different things. A small row count alone does not tell you how much work the query performed.
 
+Exact-name searches collect candidates within the work and byte allowances,
+independently of the output row limit. If five candidates fit those allowances,
+a two-row limit can return them across pages of two, two, and one without repeating
+discovery. A native discovery limit can still leave the final page incomplete;
+check its coverage after draining the continuation.
+
 Replaying an already-published continuation returns the same semantic page and successor without repeating its scan. Concurrent use of unfinished execution can report `continuation-in-use`. If saved state expires, is evicted, or becomes stale, follow the reported recovery guidance.
 
 ## Carry the correct handle forward

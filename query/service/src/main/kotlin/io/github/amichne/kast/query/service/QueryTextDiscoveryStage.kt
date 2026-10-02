@@ -21,7 +21,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 internal class QueryTextDiscoveryStage(private val discovery: SymbolDiscoveryOperations) {
     /** Uses indexed word discovery while retaining one verified exemplar for each declaration owner. */
     suspend fun discover(syntax: QueryTextDiscoverySyntax, state: QueryExecutionState): DiscoveryExecution {
-        val budget = state.textDiscoveryBudget() ?: return DiscoveryExecution.NotStarted
+        val budget = state.indexedDiscoveryBudget() ?: return DiscoveryExecution.NotStarted
         val request =
             SymbolDiscoveryRequest(
                 scope =

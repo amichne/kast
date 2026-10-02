@@ -32,6 +32,52 @@ import org.junit.jupiter.api.Test
 
 class IntellijSearchScopeSourceRootPolicyTest {
     @Test
+    fun `declared roots excluded by captured IDE admission cannot become discovery partitions`() {
+        val model =
+            model(
+                boundary(sourceRoot = "/workspace/app/src/main/java"),
+                boundary(sourceRoot = "/workspace/app/src/main/kotlin"),
+            )
+        val admitted = Path.of("/workspace/app/src/main/kotlin")
+        val observed = mutableListOf<Path>()
+        val result =
+            IntellijSearchScopeCompiler(
+                    sourceRootAdmission = { path ->
+                        observed.add(path)
+                        path == admitted
+                    }
+                )
+                .compile(
+                    request(model),
+                    compiled(model),
+                    ALL_FILES,
+                    { IntellijVirtualFilePath.Unavailable },
+                    { IntellijLibraryMembership.NOT_LIBRARY },
+                ) as IntellijSearchScopeCompilation.Compiled
+        assertEquals(listOf(admitted.toString()), result.capability.sourceRoots.map { it.sourceRoot.value })
+        assertEquals(model.sourceRoots, result.capability.ownershipRoots, "unreadable roots retain ownership authority")
+        assertEquals(model.sourceRoots.map { Path.of(it.sourceRoot.value) }, observed)
+    }
+
+    @Test
+    fun `complete model with no IDE admitted roots proves an empty source universe`() {
+        val model = model(boundary())
+        val result =
+            IntellijSearchScopeCompiler(sourceRootAdmission = { false })
+                .compile(
+                    request(model),
+                    compiled(model),
+                    ALL_FILES,
+                    { IntellijVirtualFilePath.classify(Path.of("/workspace/app/src/main/kotlin/Main.kt")) },
+                    { IntellijLibraryMembership.NOT_LIBRARY },
+                ) as IntellijSearchScopeCompilation.Compiled
+        assertTrue(result.capability.sourceRoots.isEmpty())
+        assertEquals(IntellijScopePopulation.KNOWN_EMPTY, result.capability.population)
+        assertEquals(false, result.capability.nativeScope.contains(LightVirtualFile("Main.kt")))
+        assertEquals(model.sourceRoots, result.capability.ownershipRoots)
+    }
+
+    @Test
     fun `known absent source-set intersection is empty while policy excluded and unavailable models reject`() {
         val model = model(boundary())
         val absent =
