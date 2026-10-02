@@ -3,6 +3,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -15,6 +16,26 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.zip.ZipFile
 
+enum class IdeaLibraryFamily {
+    PLATFORM,
+    KOTLIN,
+    JAVA,
+    GRADLE;
+
+    internal fun includes(entryName: String): Boolean {
+        if (!entryName.endsWith(".jar")) return false
+        val segments = entryName.split('/')
+        val pluginIndex = segments.indexOf("plugins")
+        val pluginLibrary = pluginIndex >= 0 && pluginIndex + 3 < segments.size && segments[pluginIndex + 2] == "lib"
+        return when (this) {
+            PLATFORM -> pluginIndex < 0 && "lib" in segments
+            KOTLIN -> pluginLibrary && segments[pluginIndex + 1] == "Kotlin"
+            JAVA -> pluginLibrary && segments[pluginIndex + 1] == "java"
+            GRADLE -> pluginLibrary && segments[pluginIndex + 1].startsWith("gradle")
+        }
+    }
+}
+
 @CacheableTask
 abstract class ExtractIdeaDistributionTask : DefaultTask() {
     @get:InputFiles
@@ -24,11 +45,16 @@ abstract class ExtractIdeaDistributionTask : DefaultTask() {
     @get:Input
     abstract val ideaVersion: Property<String>
 
+    @get:Input
+    abstract val libraryFamilies: SetProperty<IdeaLibraryFamily>
+
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
 
     @TaskAction
     fun extract() {
+        val selectedFamilies = libraryFamilies.get()
+        require(selectedFamilies.isNotEmpty()) { "IDEA extraction requires at least one library family" }
         val archiveFile = archives.singleFile
         val outputRoot = outputDirectory.get().asFile.toPath()
         val parent = outputRoot.parent
@@ -45,10 +71,7 @@ abstract class ExtractIdeaDistributionTask : DefaultTask() {
                         throw GradleException("Zip-slip attempt detected while extracting ${entry.name} from $archiveFile.")
                     }
 
-                    if (entry.isDirectory) {
-                        Files.createDirectories(target)
-                        continue
-                    }
+                    if (entry.isDirectory || selectedFamilies.none { family -> family.includes(entry.name) }) continue
 
                     target.parent?.let(Files::createDirectories)
                     archive.getInputStream(entry).use { input ->
