@@ -44,6 +44,12 @@ sealed interface QueryMatchDocument {
         @ProtocolStringConstraint(maximumLength = 256) val text: ProtocolText,
         val matching: SymbolDiscoveryMatchDocument,
     ) : QueryMatchDocument
+
+    @Serializable
+    @SerialName("TEXT_WORD")
+    data class TextWord(
+        @ProtocolStringConstraint(pattern = "^[A-Za-z_][A-Za-z0-9_]*$", maximumLength = 256) val word: ProtocolText
+    ) : QueryMatchDocument
 }
 
 @Serializable
@@ -92,6 +98,17 @@ sealed interface QueryReferenceDocument {
 
 @Serializable
 sealed interface QueryFromDocument {
+    /** Case-sensitive indexed whole-word discovery projected to exact containing declarations. */
+    @Serializable
+    @SerialName("TEXT_WORD")
+    data class TextWord(
+        @ProtocolStringConstraint(pattern = "^[A-Za-z_][A-Za-z0-9_]*$", maximumLength = 256) val word: ProtocolText,
+        val scope: QueryScopeDocument,
+        @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
+        @ProtocolAllowedValues("class", "function", "property", "type-alias")
+        val declarationKinds: BoundedProtocolList<QueryDeclarationKindDocument>,
+    ) : QueryFromDocument
+
     /** The nearest named declaration containing a UTF-16 offset in a workspace-relative file. */
     @Serializable
     @SerialName("location")
@@ -276,7 +293,16 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
     val sourceIsCanonical =
         when (val source = from) {
             is QueryFromDocument.Location -> source.file.value.isCanonicalQueryFile()
-            is QueryFromDocument.Symbols -> source.discovery.isCanonical()
+            is QueryFromDocument.Symbols ->
+                source.match !is QueryMatchDocument.TextWord && source.discovery.isCanonical()
+            is QueryFromDocument.TextWord ->
+                source.word.isIndexedQueryWord() &&
+                    QueryDiscoveryDocument(
+                            QueryMatchDocument.TextWord(source.word),
+                            source.scope,
+                            source.declarationKinds,
+                        )
+                        .isCanonical()
             is QueryFromDocument.References -> source.values.values.isNotEmpty()
             is QueryFromDocument.Result -> source.rowIds?.values?.isUnique() ?: true
         }
@@ -290,7 +316,7 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
     }
 }
 
-private fun String.isCanonicalQueryFile(): Boolean =
+internal fun String.isCanonicalQueryFile(): Boolean =
     isNotBlank() &&
         !startsWith('/') &&
         !contains('\\') &&
@@ -301,8 +327,7 @@ private fun String.isCanonicalQueryFile(): Boolean =
 private fun QueryDiscoveryDocument.isCanonical(): Boolean {
     if (!scope.sourceSets.values.isUniqueNonEmpty() || !declarationKinds.values.isUniqueNonEmpty()) return false
     if (QueryDeclarationKindDocument.CONSTRUCTOR in declarationKinds.values) return false
-    val name = match as? QueryMatchDocument.Name
-    if (name != null && name.text.value.length > 256) return false
+    if (!match.hasCanonicalMatch()) return false
     val packageName = scope.packageName?.name?.value
     if (packageName != null && !QUERY_PACKAGE_NAME.matches(packageName)) return false
     val directory = scope.directory?.path?.value
@@ -317,6 +342,13 @@ private fun QueryDiscoveryDocument.isCanonical(): Boolean {
     }
     return true
 }
+
+private fun QueryMatchDocument.hasCanonicalMatch(): Boolean =
+    when (this) {
+        QueryMatchDocument.All -> true
+        is QueryMatchDocument.Name -> text.value.length <= 256
+        is QueryMatchDocument.TextWord -> word.isIndexedQueryWord()
+    }
 
 private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
     when (this) {

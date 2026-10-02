@@ -17,6 +17,9 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [InvocationFence.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt) - active admission and durable replay settlement; `FileInvocationRecords` owns sharded storage and legacy migration.
 
 - [InstalledWorkspacePreparation.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt) - shared installed preparation owner and native-bound semantic demand.
+- [HostedServicesObservation.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServicesObservation.kt) - live hosted-contract admission and finite observations for Control upgrade preflight.
+- [HostedServiceAdmissionScan.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt) - owned project-endpoint selection, absent-owner exclusion and exact live identity checks.
+- [ExistingIdeDocuments.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt) - strict raw descriptor validation and retained process-owner proof.
 - [McpWorkspaceOperationClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt) - session-owned preparation of an exact Gradle root for the Codex MCP process.
 - [KastSingleChangeInvocation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt) - one broker call that plans, signs the exact host challenge, applies, and attempts recovery.
 - [WorkspaceRecoverySettlement.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceRecoverySettlement.kt) - typed proof that a cancelled change recovered before the workspace lane settles.
@@ -40,7 +43,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [CodexToolTerminalReply.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolTerminalReply.kt) - single-document finite broker failure and cancellation replies.
 - [README.md](README.md) - architecture, lifecycle, status, and public integration behavior.
 - [docs/compatibility.md](docs/compatibility.md) - tested compatibility evidence and open release gates.
-- [../knowledge/contracts/public-tools.md](../knowledge/contracts/public-tools.md) - externally visible tool and query semantics.
+- [../openwiki/contracts/public-tools.md](../openwiki/contracts/public-tools.md) - externally visible tool and query semantics.
 - [src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt](src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt) - Codex-facing executable entry.
 - [src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt) - installed coordinator assembly.
 - [src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt) - passive coordinator status and retired-worker rejection.
@@ -67,8 +70,8 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For transport/session faults, read `README.md`, then `core`, `host`, and protocol tests.
 - For coordinator readiness, start with `CoordinatorControl`, `CoordinatorStatus`, and `InstalledCoordinatorClient`. Status admits exactly zero isolated workers.
-- For public tool shape, begin with [public tool contracts](../knowledge/contracts/public-tools.md), then `query/PublicToolContract.kt` and the schema generator. For Codex projection, follow `protocol/codex`.
+- For public tool shape, begin with [public tool contracts](../openwiki/contracts/public-tools.md), then `query/PublicToolContract.kt` and the schema generator. For Codex projection, follow `protocol/codex`.

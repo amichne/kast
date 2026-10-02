@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.QueryBindingCellDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
+import io.github.amichne.kast.protocol.wire.QueryTextMatchWireDocument
 import io.github.amichne.kast.protocol.wire.RelationReferenceOccurrenceWireDocument
 import io.github.amichne.kast.protocol.wire.SymbolKindWireDocument
 import io.github.amichne.kast.protocol.wire.toWireDocument
@@ -30,6 +31,9 @@ internal sealed interface QueryResultItemCliDocument {
         @SerialName("row_id")
         @ProtocolStringConstraint(pattern = QueryResultRowReference.SERIALIZED_PATTERN)
         val rowId: String? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val matches: List<QueryTextMatchWireDocument>? = null,
     ) : QueryResultItemCliDocument
 
     @Serializable
@@ -142,6 +146,7 @@ private fun QueryResultItemDocument.ExactSymbol.toExactCliDocument(): QueryResul
             )
         },
         rowId?.value,
+        matches?.values?.map { it.toWireDocument() },
     )
 
 private fun QueryBindingCellDocument.toCliDocument(): QueryBindingCellCliDocument =

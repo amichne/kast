@@ -40,6 +40,13 @@ internal fun preflightPublicExecutable(root: Path, environment: Map<String, Stri
             ?: throw ManagementRejected("path-preflight", "destination parent is unavailable")
     if (!Files.isDirectory(ancestor, LinkOption.NOFOLLOW_LINKS) || !Files.isWritable(ancestor))
         throw ManagementRejected("path-preflight", "destination is unwritable")
+    val physicalAncestor =
+        try {
+            ancestor.toRealPath()
+        } catch (_: java.io.IOException) {
+            throw ManagementRejected("path-preflight", "destination parent is unavailable")
+        }
+    if (physicalAncestor != ancestor) throw ManagementRejected("path-preflight", "destination parent must be physical")
     if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
         val owned =
             existing != null &&
@@ -154,27 +161,52 @@ internal enum class ManagementRootFailure(val reason: String) {
     INVALID_PATH("installation root is invalid"),
     RELATIVE_PATH("installation root must be absolute"),
     UNNORMALIZED_PATH("installation root must be normalized"),
+    ALTERNATE_INSTALLATION("installation root must be HOME/.local/share/kast"),
 }
 
 internal sealed interface ManagementRootResolution {
     class Selected private constructor(val root: Path) : ManagementRootResolution {
         companion object {
-            fun admit(raw: String): ManagementRootResolution {
-                if (raw.isEmpty()) return Rejected(ManagementRootFailure.EMPTY_PATH)
-                val root =
-                    try {
-                        Path.of(raw)
-                    } catch (_: IllegalArgumentException) {
-                        return Rejected(ManagementRootFailure.INVALID_PATH)
+            fun admit(homeRaw: String, explicitRoot: String?): ManagementRootResolution {
+                val home =
+                    when (val admitted = ManagementPathAdmission.admit(homeRaw)) {
+                        is ManagementPathAdmission.Rejected -> return Rejected(admitted.failure)
+                        is ManagementPathAdmission.Admitted -> admitted.path
                     }
-                return when {
-                    !root.isAbsolute -> Rejected(ManagementRootFailure.RELATIVE_PATH)
-                    root.normalize() != root -> Rejected(ManagementRootFailure.UNNORMALIZED_PATH)
-                    else -> Selected(root)
+                val canonical = home.resolve(".local/share/kast")
+                if (explicitRoot == null) return Selected(canonical)
+                return when (val admitted = ManagementPathAdmission.admit(explicitRoot)) {
+                    is ManagementPathAdmission.Rejected -> Rejected(admitted.failure)
+                    is ManagementPathAdmission.Admitted ->
+                        if (admitted.path == canonical) Selected(canonical)
+                        else Rejected(ManagementRootFailure.ALTERNATE_INSTALLATION)
                 }
             }
         }
     }
 
     data class Rejected(val failure: ManagementRootFailure) : ManagementRootResolution
+}
+
+private sealed interface ManagementPathAdmission {
+    data class Admitted(val path: Path) : ManagementPathAdmission
+
+    data class Rejected(val failure: ManagementRootFailure) : ManagementPathAdmission
+
+    companion object {
+        fun admit(raw: String): ManagementPathAdmission {
+            if (raw.isEmpty()) return Rejected(ManagementRootFailure.EMPTY_PATH)
+            val path =
+                try {
+                    Path.of(raw)
+                } catch (_: IllegalArgumentException) {
+                    return Rejected(ManagementRootFailure.INVALID_PATH)
+                }
+            return when {
+                !path.isAbsolute -> Rejected(ManagementRootFailure.RELATIVE_PATH)
+                path.normalize() != path -> Rejected(ManagementRootFailure.UNNORMALIZED_PATH)
+                else -> Admitted(path)
+            }
+        }
+    }
 }

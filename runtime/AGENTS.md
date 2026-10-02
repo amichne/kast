@@ -30,6 +30,8 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 - [HostedReferenceStore.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt) - project-owned bounded compact reference lookup.
 
 - [HostedEndpointService.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt) - project endpoint ownership.
+- [HostedCompatibilityMetadata.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt) - packaged Host version and provided contract exposed through live describe.
+- [hosted/native/README.md](hosted/native/README.md) - real mixed-version installation and ordinary IntelliJ lifecycle qualification.
 - [HostedSemanticServices.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt) - request-scoped semantic service composition.
 - [HostedCanonicalQuery.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) - bounded canonical read dispatch.
 - [HostedReadBudgetAdmission.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt) - necessary response-byte admission before semantic dispatch.
@@ -44,6 +46,6 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 
 ## Navigation Hints
 
-- Start with [runtime hosts](../knowledge/modules/runtime-hosts.md) and [hosted queries](../knowledge/flows/hosted-query.md).
+- Start with [runtime hosts](../openwiki/modules/runtime-hosts.md) and [hosted queries](../openwiki/flows/hosted-query.md).
 - Follow canonical dispatch into `query/protocol`; follow change planning into `change/protocol` and the phase owners.
 - The isolated composition, server, and telemetry modules are retired. IDEA owns project import and indexing.

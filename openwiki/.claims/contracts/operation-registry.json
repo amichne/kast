@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:697f5074616333b6cef70899b5673cc861b87dfa5843b1f49907e50b655f825f",
+  "claims": [
+    {
+      "id": "claim_85134a35f1554e6487a2db55a91e1ba3",
+      "statement": "Registry construction requires exactly one fully typed definition per canonical operation and rejects duplicate operation IDs, shared schema identities, unknown IDs, untyped metadata and missing operations.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt#L34-L84",
+          "version": "repo-lines-v1:sha256:d113710121f4090721942b7f2c07410eb0707ccfe60db24d8098575df8f2fdeb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMzMwMjdiYzIwYjViY2M0YjEzOTBiNjM2YjJhY2E4YjA4NTNiZjUwMjA0YjAyMDlhMTdiOGY0ODQwN2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1MzRjZWIwYzdmYTRjOTNkNDRjZjhiM2IzMGFjZDNmNTI0NzY1NzM2OGIyODIzN2Y1NDJmMTgwMDA1MzhmOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_930a7e2e405d4df69f71ba2cf135d463",
+      "statement": "The wire table separately rejects duplicate serializer bindings, duplicate schema bindings and missing canonical bindings before constructing its immutable ordered table.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt#L11-L48",
+          "version": "repo-lines-v1:sha256:d337895a1a6b7c1ac7017c81387c89ca74dfdbf349a1fc066a68a16aad357e29:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMzMwMjdiYzIwYjViY2M0YjEzOTBiNjM2YjJhY2E4YjA4NTNiZjUwMjA0YjAyMDlhMTdiOGY0ODQwN2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM2YjEyNTc2NWM3MTQ3MTYyOTRjN2UyZTdkZjQ5ZjJhNTNiODY2OGE3Y2IwNWNlNmZlZTM4OTEzNGRmODk2ODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

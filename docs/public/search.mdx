@@ -11,6 +11,46 @@ keywords:
 
 Ask for a declaration, a relationship, and the scope you care about. Your agent translates the question into `query_symbols`; you do not need to write the JSON yourself. Use [Query forms](/reference/api) when you need the exact request contract.
 
+## Start from remembered text
+
+Ask your agent: “Find the functions containing `launchd` under `app-server`, then
+trace the callers of the relevant function.” The first query can use indexed
+word discovery:
+
+```json
+{
+  "request": {
+    "type": "RUN",
+    "source": {
+      "type": "SEARCH_TEXT",
+      "word": "launchd",
+      "declarationKinds": ["FUNCTION"],
+      "scope": {
+        "type": "DIRECTORY",
+        "relativeDirectoryPath": "app-server",
+        "sourceSetNames": ["main"]
+      }
+    },
+    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION"]},
+    "executionBudget": {"maxResults": 10}
+  }
+}
+```
+
+Each returned `ref` identifies an exact containing declaration. Its `matches`
+explain why it was selected, with a UTF-16 occurrence range, a bounded line
+excerpt, and a one-based line number. One exemplar is returned per owner. Reuse
+the `ref` for source or callers; lexical matches do not establish semantic relations.
+
+This mode accepts one case-sensitive ASCII word, including underscores and digits
+after the first character. Phrases, qualified literals such as
+`AppServerAction.Disable`, and regexes are rejected. For that literal, search
+`Disable` under the known directory and inspect the match context. Hits without
+a supported nearest declaration owner qualify coverage. Limits preserve
+incomplete coverage, and an execution continuation exists only for retained work.
+This request illustrates the accepted contract; the recorded walkthrough below
+predates text discovery.
+
 These examples were recorded against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts and coverage describe that run, not your current workspace. In your repository, substitute your declaration and directory, and acquire fresh references. [Capture details and full responses](/reference/schemas#recorded-walkthrough).
 
 ## 1. Find a declaration and inspect its source

@@ -104,6 +104,12 @@ sealed interface AdmittedQueryPlan {
         val stage: ExactQueryStage,
     ) : AdmittedQueryPlan
 
+    data class Text
+    internal constructor(
+        val source: QueryTextDiscoverySyntax,
+        val stage: ExactQueryStage,
+    ) : AdmittedQueryPlan
+
     data class ExactReferences
     internal constructor(
         val source: QueryExactReferences,
@@ -127,10 +133,15 @@ sealed interface QueryPlanAdmission {
 object QueryPlanCompiler {
     fun admit(syntax: QueryPlanSyntax): QueryPlanAdmission {
         val source = syntax.source
-        if (
-            source is QuerySourceSyntax.Symbols &&
-                CompilerSymbolKind.CONSTRUCTOR in source.discovery.declarationKinds.values
-        ) {
+        val declarationKinds =
+            when (source) {
+                is QuerySourceSyntax.Symbols -> source.discovery.declarationKinds.values
+                is QuerySourceSyntax.Text -> source.discovery.declarationKinds.values
+                is QuerySourceSyntax.Location,
+                is QuerySourceSyntax.ExactReferences,
+                is QuerySourceSyntax.Retained -> emptyList()
+            }
+        if (CompilerSymbolKind.CONSTRUCTOR in declarationKinds) {
             return QueryPlanAdmission.Rejected(
                 QueryPlanAdmissionFailure.UnsupportedDeclarationKind(CompilerSymbolKind.CONSTRUCTOR)
             )
@@ -143,6 +154,7 @@ object QueryPlanCompiler {
         val plan =
             when (source) {
                 is QuerySourceSyntax.Symbols -> AdmittedQueryPlan.Symbols(source.discovery, stage)
+                is QuerySourceSyntax.Text -> AdmittedQueryPlan.Text(source.discovery, stage)
                 is QuerySourceSyntax.Location -> AdmittedQueryPlan.Location(source.target, stage)
                 is QuerySourceSyntax.ExactReferences -> AdmittedQueryPlan.ExactReferences(source.references, stage)
                 is QuerySourceSyntax.Retained -> AdmittedQueryPlan.Retained(source.result, stage)
@@ -180,6 +192,7 @@ object QueryPlanCompiler {
 internal fun AdmittedQueryPlan.composedInputLeases(): List<SemanticReadAuthority> =
     when (this) {
         is AdmittedQueryPlan.Symbols -> stage.composedInputLeases()
+        is AdmittedQueryPlan.Text -> stage.composedInputLeases()
         is AdmittedQueryPlan.Location -> stage.composedInputLeases()
         is AdmittedQueryPlan.ExactReferences -> stage.composedInputLeases()
         is AdmittedQueryPlan.Retained -> stage.composedInputLeases()

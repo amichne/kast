@@ -31,6 +31,6 @@ Models diagnostic queries and outcomes, orchestrates collection, and adapts Inte
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - Start with the contract, then `DiagnosticService`; inspect IntelliJ code only for compiler or scope-resolution behavior.

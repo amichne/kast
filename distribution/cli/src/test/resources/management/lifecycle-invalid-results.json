@@ -1,0 +1,30 @@
+[
+  {
+    "operation": "STOP",
+    "installation": "/installation"
+  },
+  {
+    "type": "STOPPED",
+    "operation": "STOP",
+    "installation": "/installation",
+    "failure": "CHILD_REJECTED"
+  },
+  {
+    "type": "REINSTALLED",
+    "operation": "STOP",
+    "installation": "/installation",
+    "version": "1.2.3"
+  },
+  {
+    "type": "REJECTED",
+    "operation": "STOP",
+    "stage": "HOST",
+    "failure": "UNKNOWN"
+  },
+  {
+    "type": "REINSTALLED",
+    "operation": "REINSTALL",
+    "installation": "/installation",
+    "version": "latest"
+  }
+]

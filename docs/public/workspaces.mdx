@@ -1,6 +1,6 @@
 ---
 title: "Manage Kast"
-description: "Inspect, upgrade, connect, disconnect, or uninstall the owned installation."
+description: "Inspect, stop, reinstall, upgrade, connect, disconnect, or uninstall the owned installation."
 icon: "folder-open"
 ---
 
@@ -23,6 +23,42 @@ kast upgrade
 ```
 
 Upgrade stops Kast-owned services and interrupts existing calls and sessions. Restart IDEA and your connected harnesses to load the matched release. Existing sessions are not resumed across this stop-the-world upgrade.
+
+## Stop and reinstall
+
+Close the selected IDEA and affected harness connections, then run:
+
+```shell
+kast stop --json
+kast reinstall --json
+```
+
+`stop` fences new calls and automatic restart, disables the coordinator, and waits up to 30 seconds for recorded direct calls and MCP sessions to retire. It preserves the payload, saved configuration, and registrations. Use `kast stop --force --json` when you need to forcibly retire recorded tool processes. `stop --force` checks each PID's start time, main class, and installed library digests before signaling it.
+
+Kast leaves the shared IDEA process under your control. If it is running, the command returns `REJECTED` with `HOST_RESTART_REQUIRED`. Quit the selected IDEA and repeat the command. A shutdown rejection keeps the fence and prevents reinstall from replacing the payload.
+
+`reinstall` repeats verified shutdown, installs the exact recorded version through the existing installer, activates the coordinator, and restores recorded integrations. It returns `REINSTALLED` only after those steps succeed. Failed activation restores the fence, retires any partially started coordinator, and returns `REINSTALLATION_PENDING` with the installed version and failed stage. Inspect `kast status --json` before retrying a recovery failure. Reload affected harnesses after success; calls and writes are never replayed.
+
+With `--json`, stdout contains one result with a required `type`: `STOPPED`, `REINSTALLED`, `REJECTED`, or `REINSTALLATION_PENDING`. Stage observations go to stderr. Rejected and pending results exit with code 1. The result schema ships at `installation/share/kast/schema/management-lifecycle.schema.json`.
+
+Older payloads without the lifecycle fence capability reject before effects. Upgrade through the published installer before using these commands.
+
+## Force reset
+
+```shell
+kast uninstall --force --json
+kast reinstall --force --json
+```
+
+Each command bypasses old payload and receipt ownership checks and removes the entire selected Kast directory, including saved configuration, arbitrary files, and registration history. Symlinks are unlinked without following their targets. Filesystem roots, HOME, and its ancestors are rejected as deletion targets.
+
+Reset acquires a stable lock and writes a startup fence beside the directory. It records a recovery location before atomically moving the old directory aside, unloads the installation's launchd jobs, removes its exact login entries, and forcibly retires scoped Kast daemons and tool processes within a bounded deadline. Each signaled process must retain its observed identity. Shared IDEA and Gradle processes remain under your control. Erasure requires verified retirement; a rejected retirement retains the old contents and returns their `recoveryPath`.
+
+Force reinstall runs the embedded installer to stage the latest stable release without starting its daemon. The exterior journal stays present during activation. Only `ACTIVATING` intent with a live exclusive reset lock admits daemon startup; tools remain fenced until readiness is verified. It verifies the replacement payload before activation and returns `RESET_REINSTALLED` only after readiness proves the new version and service `generation`. The result includes the new `command` path, `<kast-directory>/bin/kast`. Use that command to register integrations again, restart IDEA to load the plugin, then reload the affected harness. Existing harness registrations outside the selected directory remain; reset removes only the installation's exact exterior login entries.
+
+Failed staging or activation restores the fence and retires any partially started Kast services. If recovery also fails, `RESET_RECOVERY_REQUIRED` retains both causes. Read `stage`, `failure`, and any `recoveryPath` before retrying. Interrupted cleanup retains its recovery location in the exterior fence. The lock remains beside the selected root to serialize later resets. Filesystem permissions, downloads, or OS refusal can prevent completion; erased data has no rollback.
+
+JSON results use `REMOVED`, `RESET_REINSTALLED`, `RESET_REINSTALLATION_PENDING`, `RESET_RETAINED`, `RESET_RECOVERY_REQUIRED`, or `RESET_REJECTED`. Unsuccessful results exit with code 1. Stage observations go to stderr. The canonical lifecycle schema covers both verified shutdown and destructive reset results. Force reinstallation requires a release containing the reset fence capability; incompatible releases reject before activation.
 
 ## Change agents
 

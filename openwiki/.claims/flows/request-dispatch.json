@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:afc22afe039808648411ae5036100a8cabfa62160b6d0643f22146627c23289b",
+  "claims": [
+    {
+      "id": "claim_07361b0d848e4ee7895255b78a26d60b",
+      "statement": "A hosted read transaction evaluates between two freshness checks, admits its semantic allowance before evaluation and validates completion before returning detached output.",
+      "evidence": [
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt#L5-L35",
+          "version": "repo-lines-v1:sha256:9f6366b32591cb16aabb5f08e9ed2fd73ca3f301af5859a5cccfd959fe6c1bf3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzYjkxNGMwMjdhMTk5MDYxOGIwODAxNmYyOGRjM2Q2NjVmYmRlZGMzNTMzYmJmYmU5NTUxMmY5YTExMGQ0MjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlZGIxODE5NjkzMmZjNDM1ZGM5OWFjODczNmQzZjQzYjhiZGViN2IxZjc0OGRhMDBmNzAzZGJkODE4ZGMwZDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a1ac9a76c9ba4c7ba7c2b7dc4223e5da",
+      "statement": "Invocation admission occurs before IDEA effects; project-close requires an exact matching ProjectClose grant, while unrelated approvals are rejected for other operations.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt#L11-L53",
+          "version": "repo-lines-v1:sha256:b0f06e2344dafff8b983616530a4263fa9d2f3919236ea344363e8b9d91daeb1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NjMxM2E4ZTBkMjUzYjk2YmM1ZDgzNzQzZWM3Mjc2OGRkOTRlN2I1MWFlODI3YTYwMzJkMDUzZDA4Yjg3Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwZGNkMGE4YzdjNWJmMzExZmI0OWJkZGY2ZGMwMDdhM2U0MmUyZjAzMTUyNDU0ZmU5M2VhNDg5NTYzZjQ2MmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3OTRkMDJhODEyMTk0NGQxNzZkMjY1ZTliYjljYzU5ZjZhYjg5MGJjYWRmOGFlZmRlYmRiYmI0ZjJlYTg0NDQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_46f1a5334b664757b02d6100aa3a9b97",
+      "statement": "Hosted dispatch reuses the live describe exchange and rejects missing or mismatched complete compatibility evidence before operation execution, retaining finite provider failures.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/ProviderFailureCode.kt",
+          "version": "repo-file-v1:sha256:980f3b4b034d06367713576a511a6a372a8085edc610d1397ca53854ebadd805"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
+          "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
+        }
+      ]
+    },
+    {
+      "id": "claim_3f97914272f64e71886530b1d812e29e",
+      "statement": "The project socket client retains successfully loaded packaged Control compatibility requirements for its lifetime, retries rejected loads, and still obtains and admits fresh live describe evidence for every operation.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
+          "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
+        },
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
+          "version": "repo-file-v1:sha256:1bc674ddac85e827aee47a29008f03f1914327512fa7e65a74ac1f496a41da02"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T14:11:27.469Z"
+  }
+}

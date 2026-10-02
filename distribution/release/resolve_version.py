@@ -16,6 +16,15 @@ SEMVER = re.compile(r"^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$")
 REPOSITORY = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
+class Component(str, Enum):
+    CONTROL = "control"
+    HOST = "host"
+
+    @property
+    def tag_prefix(self) -> str:
+        return f"{self.value}-v"
+
+
 class Bump(str, Enum):
     MAJOR = "major"
     MINOR = "minor"
@@ -48,7 +57,7 @@ class Version:
         return f"{self.major}.{self.minor}.{self.patch}"
 
 
-def published_versions(releases: list[dict]) -> list[Version]:
+def published_versions(releases: list[dict], component: Component | None = None) -> list[Version]:
     versions: list[Version] = []
     for release in releases:
         if release.get("draft") is True or release.get("prerelease") is True:
@@ -56,14 +65,18 @@ def published_versions(releases: list[dict]) -> list[Version]:
         tag = release.get("tag_name")
         if not isinstance(tag, str):
             continue
+        if component is not None:
+            if not tag.startswith(component.tag_prefix):
+                continue
+            tag = "v" + tag[len(component.tag_prefix):]
         version = Version.parse_tag(tag)
         if version is not None:
             versions.append(version)
     return versions
 
 
-def next_version(releases: list[dict], bump: Bump) -> Version:
-    current = max(published_versions(releases), default=Version(0, 0, 0))
+def next_version(releases: list[dict], bump: Bump, component: Component | None = None) -> Version:
+    current = max(published_versions(releases, component), default=Version(0, 0, 0))
     return current.bump(bump)
 
 
@@ -97,13 +110,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository", required=True)
     parser.add_argument("--bump", required=True, choices=[item.value for item in Bump])
+    parser.add_argument("--component", choices=[item.value for item in Component])
     args = parser.parse_args()
 
     if REPOSITORY.fullmatch(args.repository) is None:
         raise SystemExit("invalid repository")
 
     try:
-        emit(next_version(observe_releases(args.repository), Bump(args.bump)))
+        emit(next_version(observe_releases(args.repository), Bump(args.bump),
+                          Component(args.component) if args.component else None))
     except (RuntimeError, OSError, ValueError, json.JSONDecodeError, subprocess.TimeoutExpired) as failure:
         raise SystemExit(str(failure)) from None
 

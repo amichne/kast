@@ -67,6 +67,13 @@ internal constructor(
     val definition: OperationDefinition<Request, Result, *, Qualification, Rejection>,
     private val serializers: GeneratedOperationSerializers<Request, Result, Qualification, Rejection>,
 ) {
+    internal val contractDescriptors: List<kotlinx.serialization.descriptors.SerialDescriptor>
+        get() =
+            serializers.request.descriptors +
+                serializers.result.descriptors +
+                serializers.qualification.descriptors +
+                serializers.rejection.descriptors
+
     val operation: CanonicalOperation
         get() = definition.operation
 

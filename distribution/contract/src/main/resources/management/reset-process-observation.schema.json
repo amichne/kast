@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/reset-process-observation.schema.json",
+  "title": "Kast bounded process retirement observation",
+  "description": "Structured stage evidence for a selected process incarnation. An observation is evidence of its reported effect, not installation readiness or complete daemon retirement.",
+  "type": "object",
+  "required": [
+    "pid",
+    "stage",
+    "outcome",
+    "type"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "pid": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "examples": [
+        123
+      ]
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "REVALIDATE",
+        "CHILDREN",
+        "SIGNAL",
+        "WAIT",
+        "VERIFY"
+      ],
+      "examples": [
+        "REVALIDATE",
+        "VERIFY"
+      ]
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "RETIRED",
+        "INCARNATION_CHANGED",
+        "OBSERVATION_REJECTED",
+        "IDENTITY_REJECTED",
+        "SIGNAL_REJECTED",
+        "DEADLINE_EXCEEDED",
+        "WAIT_REJECTED",
+        "INTERRUPTED",
+        "IDENTITY_VERIFIED"
+      ],
+      "examples": [
+        "IDENTITY_VERIFIED",
+        "RETIRED",
+        "INCARNATION_CHANGED"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "PROCESS_RETIREMENT"
+      ],
+      "examples": [
+        "PROCESS_RETIREMENT"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "pid": 123,
+      "stage": "VERIFY",
+      "outcome": "RETIRED",
+      "type": "PROCESS_RETIREMENT"
+    },
+    {
+      "pid": 123,
+      "stage": "REVALIDATE",
+      "outcome": "INCARNATION_CHANGED",
+      "type": "PROCESS_RETIREMENT"
+    },
+    {
+      "pid": 123,
+      "stage": "REVALIDATE",
+      "outcome": "OBSERVATION_REJECTED",
+      "type": "PROCESS_RETIREMENT"
+    },
+    {
+      "pid": 123,
+      "stage": "REVALIDATE",
+      "outcome": "IDENTITY_REJECTED",
+      "type": "PROCESS_RETIREMENT"
+    },
+    {
+      "pid": 123,
+      "stage": "SIGNAL",
+      "outcome": "SIGNAL_REJECTED",
+      "type": "PROCESS_RETIREMENT"
+    },
+    {
+      "pid": 123,
+      "stage": "WAIT",
+      "outcome": "DEADLINE_EXCEEDED",
+      "type": "PROCESS_RETIREMENT"
+    },
+    {
+      "pid": 123,
+      "stage": "WAIT",
+      "outcome": "WAIT_REJECTED",
+      "type": "PROCESS_RETIREMENT"
+    },
+    {
+      "pid": 123,
+      "stage": "WAIT",
+      "outcome": "INTERRUPTED",
+      "type": "PROCESS_RETIREMENT"
+    },
+    {
+      "pid": 123,
+      "stage": "REVALIDATE",
+      "outcome": "IDENTITY_VERIFIED",
+      "type": "PROCESS_RETIREMENT"
+    }
+  ]
+}

@@ -6,19 +6,25 @@ import org.junit.jupiter.api.Test
 
 class ManagementRootTest {
     @Test
-    fun `explicit install root selects the same custom installation as the installer`() {
+    fun `explicit root binds the sole user installation`() {
         val selected =
             resolveManagementRoot(
                 mapOf(
                     "HOME" to "/home/kast",
-                    "XDG_DATA_HOME" to "/default/data",
-                    "KAST_INSTALL_ROOT" to "/custom/kast",
+                    "XDG_DATA_HOME" to "/other/data",
+                    "KAST_INSTALL_ROOT" to "/home/kast/.local/share/kast",
                 )
             )
                 as ManagementRootResolution.Selected
-        assertEquals(Path.of("/custom/kast"), selected.root)
-        val internal = ManagementRootResolution.Selected.admit("/custom/kast") as ManagementRootResolution.Selected
-        assertEquals(selected.root, internal.root)
+        assertEquals(Path.of("/home/kast/.local/share/kast"), selected.root)
+    }
+
+    @Test
+    fun `alternate explicit root rejects rather than selecting another installation`() {
+        assertEquals(
+            ManagementRootResolution.Rejected(ManagementRootFailure.ALTERNATE_INSTALLATION),
+            resolveManagementRoot(mapOf("HOME" to "/home/kast", "KAST_INSTALL_ROOT" to "/custom/kast")),
+        )
     }
 
     @Test
@@ -46,12 +52,24 @@ class ManagementRootTest {
     }
 
     @Test
-    fun `absent explicit root retains XDG and home default selection`() {
+    fun `XDG changes cannot select a second installation`() {
         val xdg =
             resolveManagementRoot(mapOf("HOME" to "/home/kast", "XDG_DATA_HOME" to "/xdg/data"))
                 as ManagementRootResolution.Selected
-        assertEquals(Path.of("/xdg/data/kast"), xdg.root)
+        assertEquals(Path.of("/home/kast/.local/share/kast"), xdg.root)
         val home = resolveManagementRoot(mapOf("HOME" to "/home/kast")) as ManagementRootResolution.Selected
         assertEquals(Path.of("/home/kast/.local/share/kast"), home.root)
+    }
+
+    @Test
+    fun `HOME must be admitted before deriving installation identity`() {
+        assertEquals(
+            ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE),
+            resolveManagementRoot(mapOf("KAST_INSTALL_ROOT" to "/custom/kast")),
+        )
+        assertEquals(
+            ManagementRootResolution.Rejected(ManagementRootFailure.UNNORMALIZED_PATH),
+            resolveManagementRoot(mapOf("HOME" to "/home/user/../kast")),
+        )
     }
 }

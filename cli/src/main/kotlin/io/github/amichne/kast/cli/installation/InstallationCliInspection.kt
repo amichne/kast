@@ -10,6 +10,7 @@ import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.distribution.managed.ControlLimitExceeded
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 internal sealed interface InstallationHandling {
@@ -22,41 +23,86 @@ internal sealed interface InstallationHandling {
 internal object InstallationCliInspection {
     fun inspect(arguments: List<String>, environment: Map<String, String>): InstallationHandling {
         if (arguments.firstOrNull() != "installation") return InstallationHandling.Unrelated
-        if (arguments in listOf(listOf("installation", "--help"), listOf("installation", "-h"))) {
-            val help =
-                io.github.amichne.kast.cli.CliTextDocument.admit(
-                    "kast installation install [--force]: install the verified release from install.sh. " +
-                        "Use install.sh --force to reset and reclaim the selected installation; " +
-                        "--dry-run previews changes. " +
-                        "Installed lifecycle commands: inspect, recover-read-only, reset, remove [--dry-run] [--json]."
-                )
-            return when (help) {
-                is io.github.amichne.kast.cli.CliTextDocumentAdmission.Admitted ->
-                    InstallationHandling.Handled(CliExit.Complete(help.document))
-                is io.github.amichne.kast.cli.CliTextDocumentAdmission.Rejected ->
-                    rejected(InstallationFailure.REQUEST_REJECTED, CliBoundaryExitStatus.USAGE)
+        if (arguments in listOf(listOf("installation", "--help"), listOf("installation", "-h"))) return help()
+        val command =
+            when (val admitted = admitCommand(arguments)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return rejected(admitted.failure, CliBoundaryExitStatus.USAGE)
             }
-        }
-
-        val force = arguments == listOf("installation", "install", "--force")
-        if (!force && arguments != listOf("installation", "install")) {
-            return rejected(InstallationFailure.REQUEST_REJECTED, CliBoundaryExitStatus.USAGE)
-        }
+        val input =
+            if (command is ControlInstallationCommand.Install && command.force == InstallationSwitch.ENABLED)
+                environment + (InstallationEnvironment.FORCE.key to "1")
+            else environment
         val request =
-            when (
-                val parsed =
-                    InstallationRequest.parse(
-                        if (force) environment + (InstallationEnvironment.FORCE.key to "1") else environment
-                    )
-            ) {
+            when (val parsed = InstallationRequest.parse(input)) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return requestRejected(parsed.failure)
             }
-        return project(InstallationWorkflow.execute(request))
+        if (
+            command is ControlInstallationCommand.Install &&
+                command.activationPolicy == InstallationActivationPolicy.STAGE_ONLY &&
+                request.controlOnly == InstallationSwitch.ENABLED
+        )
+            return requestRejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.CONTROL_ONLY))
+        return project(
+            when (command) {
+                is ControlInstallationCommand.Install ->
+                    InstallationWorkflow.execute(request, activationPolicy = command.activationPolicy)
+                is ControlInstallationCommand.Recover -> InstallationWorkflow.recoverControl(request, command.failure)
+            }
+        )
+    }
+
+    private fun admitCommand(arguments: List<String>): Refinement<ControlInstallationCommand, InstallationFailure> =
+        when (arguments) {
+            listOf("installation", "install") ->
+                Refinement.Refined(ControlInstallationCommand.Install(InstallationSwitch.DISABLED))
+            listOf("installation", "install", "--force") ->
+                Refinement.Refined(ControlInstallationCommand.Install(InstallationSwitch.ENABLED))
+            listOf("installation", "install", "--stage-only") ->
+                Refinement.Refined(
+                    ControlInstallationCommand.Install(
+                        InstallationSwitch.DISABLED,
+                        InstallationActivationPolicy.STAGE_ONLY,
+                    )
+                )
+            listOf("installation", "install", "--force", "--stage-only"),
+            listOf("installation", "install", "--stage-only", "--force") ->
+                Refinement.Refined(
+                    ControlInstallationCommand.Install(
+                        InstallationSwitch.ENABLED,
+                        InstallationActivationPolicy.STAGE_ONLY,
+                    )
+                )
+            listOf("installation", "recover-control", "publication") ->
+                Refinement.Refined(ControlInstallationCommand.Recover(InstallationFailure.CONTROL_PUBLICATION_REJECTED))
+            listOf("installation", "recover-control", "finalization") ->
+                Refinement.Refined(
+                    ControlInstallationCommand.Recover(InstallationFailure.CONTROL_FINALIZATION_REJECTED)
+                )
+            else -> Refinement.Rejected(InstallationFailure.REQUEST_REJECTED)
+        }
+
+    private fun help(): InstallationHandling {
+        val document =
+            CliTextDocument.admit(
+                "kast installation install [--force] [--stage-only]: install the verified release from install.sh. " +
+                    "Use install.sh --force to reset and reclaim the selected installation; " +
+                    "--dry-run previews changes. " +
+                    "Installed lifecycle commands: inspect, recover-read-only, reset, remove [--dry-run] [--json]."
+            )
+        return when (document) {
+            is CliTextDocumentAdmission.Admitted -> InstallationHandling.Handled(CliExit.Complete(document.document))
+            is CliTextDocumentAdmission.Rejected ->
+                rejected(InstallationFailure.REQUEST_REJECTED, CliBoundaryExitStatus.USAGE)
+        }
     }
 
     internal fun project(outcome: InstallationOutcome): InstallationHandling =
         when (outcome) {
+            is InstallationOutcome.RolledBack -> recoveryReport(ControlRecoveryDocument.RolledBack(outcome.failure))
+            is InstallationOutcome.RecoveryRequired ->
+                recoveryReport(ControlRecoveryDocument.RecoveryRequired(outcome.failure, outcome.recoveryFailure))
             is InstallationOutcome.Complete ->
                 InstallationHandling.Handled(CliExit.Complete(reportFactory.create(outcome.report)))
             is InstallationOutcome.Rejected -> rejected(outcome.failure, CliBoundaryExitStatus.BOOTSTRAP, outcome.limit)
@@ -77,6 +123,14 @@ internal object InstallationCliInspection {
             is InstallationOutcome.TrustRejected ->
                 InstallationHandling.Handled(installationTrustRejection(outcome.failure))
         }
+
+    private fun recoveryReport(document: ControlRecoveryDocument): InstallationHandling =
+        InstallationHandling.Handled(
+            CliExit.BoundaryRejected(
+                CliBoundaryExitStatus.BOOTSTRAP,
+                recoveryFactory.create(document),
+            )
+        )
 
     private fun requestRejected(failure: InstallationRequestFailure): InstallationHandling {
         val field =
@@ -148,3 +202,26 @@ private fun InstalledUpgradeRejection.reason(): String =
 private val reportFactory = CanonicalJsonDocument.generated(InstallationReport.serializer())
 private val rejectionFactory = CanonicalJsonDocument.generated(InstallationRejectionDocument.serializer())
 private val pendingFactory = CanonicalJsonDocument.generated(InstallationUpgradePendingDocument.serializer())
+
+@Serializable
+private sealed interface ControlRecoveryDocument {
+    @Serializable
+    @SerialName("ROLLED_BACK")
+    data class RolledBack(val failure: InstallationFailure) : ControlRecoveryDocument
+
+    @Serializable
+    @SerialName("RECOVERY_REQUIRED")
+    data class RecoveryRequired(val failure: InstallationFailure, val recoveryFailure: InstallationFailure) :
+        ControlRecoveryDocument
+}
+
+private val recoveryFactory = CanonicalJsonDocument.generated(ControlRecoveryDocument.serializer())
+
+private sealed interface ControlInstallationCommand {
+    data class Install(
+        val force: InstallationSwitch,
+        val activationPolicy: InstallationActivationPolicy = InstallationActivationPolicy.ACTIVATE,
+    ) : ControlInstallationCommand
+
+    data class Recover(val failure: InstallationFailure) : ControlInstallationCommand
+}

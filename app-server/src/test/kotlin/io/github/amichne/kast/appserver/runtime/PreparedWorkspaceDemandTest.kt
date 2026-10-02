@@ -51,6 +51,12 @@ class PreparedWorkspaceDemandTest {
                         "/idea",
                         "IU-262.1",
                         listOf(IdeProjectDescription(target, IdeProjectOwnership.MANAGED, 1)),
+                        io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
+                            "262.1.1",
+                            "262.1.1-IJ",
+                            "0.49.0",
+                            io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
+                        ),
                     )
                 },
                 { prepared, operation ->
@@ -210,5 +216,11 @@ class PreparedWorkspaceDemandTest {
             "/idea",
             "IU-262.1",
             listOf(IdeProjectDescription(value, IdeProjectOwnership.MANAGED, 1)),
+            io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
+                "262.1.1",
+                "262.1.1-IJ",
+                "0.49.0",
+                io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
+            ),
         )
 }

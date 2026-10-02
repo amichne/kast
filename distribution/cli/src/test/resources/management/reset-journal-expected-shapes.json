@@ -1,0 +1,35 @@
+[
+  {
+    "installationRoot": "/kast",
+    "storage": {
+      "type": "FENCED"
+    },
+    "type": "RESET_IN_PROGRESS",
+    "schemaVersion": 1
+  },
+  {
+    "installationRoot": "/kast",
+    "storage": {
+      "type": "RETAINED",
+      "directory": "/.kast-retiring-example"
+    },
+    "type": "RESET_IN_PROGRESS",
+    "schemaVersion": 1
+  },
+  {
+    "installationRoot": "/kast",
+    "storage": {
+      "type": "ERASED"
+    },
+    "type": "RESET_IN_PROGRESS",
+    "schemaVersion": 1
+  },
+  {
+    "installationRoot": "/kast",
+    "storage": {
+      "type": "ACTIVATING"
+    },
+    "type": "RESET_IN_PROGRESS",
+    "schemaVersion": 1
+  }
+]

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ac9e2f3c2295fad5dcb6eb57f3b35db04a9a5649530166db7be3450f6c9cbe59",
+  "claims": [
+    {
+      "id": "claim_33df4f539870445aaef2d593695dca1b",
+      "statement": "Registry construction admits exactly one fully typed definition for every canonical operation with unique operation and schema identities, rejecting missing, duplicate, unknown, or untyped entries.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt#L34-L84",
+          "version": "repo-lines-v1:sha256:d113710121f4090721942b7f2c07410eb0707ccfe60db24d8098575df8f2fdeb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMzMwMjdiYzIwYjViY2M0YjEzOTBiNjM2YjJhY2E4YjA4NTNiZjUwMjA0YjAyMDlhMTdiOGY0ODQwN2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1MzRjZWIwYzdmYTRjOTNkNDRjZjhiM2IzMGFjZDNmNTI0NzY1NzM2OGIyODIzN2Y1NDJmMTgwMDA1MzhmOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_901306c4708a482fac7cf713a3a6b39c",
+      "statement": "The generated wire table requires one serializer binding per canonical operation and unique schema identities; it rejects incomplete or duplicate tables and does not replace the registry's public operation authority.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt#L6-L48",
+          "version": "repo-lines-v1:sha256:11cbc543a357fefebab8b0022a32f28c94fbe327e51f9f8da945a461a2e0692a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5YjlkNmYzMDA1M2IwNGRjMGRmZTI1MDNhODViZjY2ZDQwNDgwMjdhNzIzMmE0OWRkZDE3OWVmYmEzYmQ1ZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1YTkyNDkwNjRhNzRhYmM5ZDg5M2JkYzhjNTdlOWM2NmYyYTIxNjIxNDEwYTgwNzI4YjkwYWIyYTE1YWVlM2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d1fa7e91b62a4c4d9aa181a37bb9c631",
+      "statement": "Hosted compatibility requires exact protocol, operation registry, wire schema and capability equality; its digest covers actual hosted schemas and serializer descriptors, excluding release provenance and control-only descriptions.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt",
+          "version": "repo-file-v1:sha256:be060e68efb493a79dc4bb905720b3e010f03a0c0ad6e41735dd9452114148e9"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
+          "version": "repo-file-v1:sha256:849388668e0a801507b2121d4e7500ae417e97bccaa267ad1e33c51e7da3891c"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T03:24:34.910Z"
+  }
+}

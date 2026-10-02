@@ -11,6 +11,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeQualifiedClassName
 import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
+import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.admitLiveEvidence
 import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.*
@@ -26,7 +27,8 @@ class ExistingIdeCliTest {
     @TempDir lateinit var temporary: Path
     private val root = canonicalRootFixture(Path.of("/workspace"))
     private val host = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")
-    private val descriptor = ExistingIdeDescriptor(123, host)
+    private val descriptor =
+        ExistingIdeDescriptor((HostedEndpointOwnerPid.parse("123") as Refinement.Refined).value, host)
 
     @Test
     fun `query response evidence must belong to the admitted live host and root`() {

@@ -87,7 +87,8 @@
         "operations",
         "indexAuthority",
         "host",
-        "querySchema"
+        "querySchema",
+        "compatibility"
       ],
       "properties": {
         "type": {
@@ -117,6 +118,9 @@
         },
         "readiness": {
           "$ref": "#/$defs/readiness"
+        },
+        "compatibility": {
+          "$ref": "#/$defs/hostedCompatibility"
         }
       }
     },
@@ -2093,6 +2097,83 @@
             "INVALID_FITTED_PAGE",
             "CAPACITY_EXCEEDED"
           ]
+        }
+      }
+    },
+    "hostedContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "runtimeProtocolIdentity",
+        "operationRegistryDigest",
+        "wireSchemaDigest",
+        "capabilities"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "HOSTED_CONTRACT"
+        },
+        "runtimeProtocolIdentity": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$",
+          "maxLength": 128
+        },
+        "operationRegistryDigest": {
+          "$ref": "#/$defs/contractDigest"
+        },
+        "wireSchemaDigest": {
+          "$ref": "#/$defs/contractDigest"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "workspace.lifecycle",
+              "query.run",
+              "source.read",
+              "diagnostic.check",
+              "change.plan",
+              "change.apply",
+              "change.recover"
+            ]
+          },
+          "uniqueItems": true,
+          "minItems": 1,
+          "maxItems": 7
+        }
+      }
+    },
+    "contractDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "hostedCompatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideBuild",
+        "kotlinPluginBuild",
+        "hostedPluginVersion",
+        "hostedContract"
+      ],
+      "properties": {
+        "ideBuild": {
+          "type": "string",
+          "pattern": "^[0-9]{3}\\.[0-9]+\\.[0-9]+$"
+        },
+        "kotlinPluginBuild": {
+          "type": "string",
+          "pattern": "^[0-9]{3}\\.[0-9]+\\.[0-9]+-IJ$"
+        },
+        "hostedPluginVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9]+-g[0-9a-f]{7,40})?$"
+        },
+        "hostedContract": {
+          "$ref": "#/$defs/hostedContract"
         }
       }
     }

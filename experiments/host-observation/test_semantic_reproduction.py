@@ -2,7 +2,9 @@
 from dataclasses import replace
 import json
 from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
 import reproduce_semantic_queries as r
 
@@ -10,6 +12,40 @@ import reproduce_semantic_queries as r
 class SemanticReproductionTest(unittest.TestCase):
     def setUp(self):
         self.expected = json.loads((r.FIXTURE / "expected.json").read_text())
+
+    def test_native_pin_rejection_retains_bounded_stage(self):
+        with self.assertRaisesRegex(ValueError, '^PIN_CAPTURE_REJECTED:CONFIGURATION_CAPTURE$'):
+            r.reject_native_pin(dict(type='PIN_CAPTURE_REJECTED', stage='CONFIGURATION_CAPTURE'))
+        for value in (dict(type='PIN_CAPTURE_REJECTED', stage='unknown'),
+                      dict(type='PIN_CAPTURE_REJECTED', stage='MODEL_CAPTURE', message='payload'), {}):
+            with self.assertRaisesRegex(ValueError, '^INVALID_NATIVE_PIN_REJECTION$'):
+                r.reject_native_pin(value)
+
+    def test_native_pin_selects_one_exact_executable_without_command_arguments(self):
+        from argparse import Namespace
+        launcher = Path('/Applications/IntelliJ IDEA.app/Contents/MacOS/idea')
+        for rows, expected in (
+            (f'123 {launcher}\n456 {launcher}-other\n', 'PIN_CAPTURE_REJECTED:PROJECT_ADMISSION'),
+            ('', 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+            (f'123 {launcher}\n456 {launcher}\n', 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+            (f'123 {launcher}-other\n', 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+        ):
+            with self.subTest(rows=rows), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                args = Namespace(output=root / 'pin', cli=Path(r.__file__), fixture=root,
+                                 idea_contents=launcher.parent.parent)
+                def reject_project(command, cwd):
+                    self.assertEqual([launcher, 'ideScript', args.output / 'pin.kts'], command)
+                    self.assertEqual(123, json.loads((args.output / 'input.json').read_text())['hostPid'])
+                    r.write(args.output / 'pin-rejection.json',
+                            dict(type='PIN_CAPTURE_REJECTED', stage='PROJECT_ADMISSION'))
+                    return dict(exitCode=0)
+                with patch.object(r.subprocess, 'check_output', return_value=rows) as processes, \
+                     patch.object(r, 'capture', side_effect=reject_project) as script:
+                    with self.assertRaisesRegex(ValueError, '^' + expected + '$'):
+                        r.pin(args)
+                    processes.assert_called_once_with(['ps', '-ww', '-axo', 'pid=,comm='], text=True)
+                    self.assertEqual(1 if expected.startswith('PIN_CAPTURE_REJECTED') else 0, script.call_count)
 
     def test_public_routes_validate_against_each_published_schema(self):
         import jsonschema

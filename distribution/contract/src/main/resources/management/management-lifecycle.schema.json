@@ -1,0 +1,584 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/management-lifecycle.schema.json",
+  "title": "Kast installation lifecycle result",
+  "$defs": {
+    "stage": {
+      "type": "string",
+      "enum": [
+        "ADMISSION",
+        "FENCE",
+        "COORDINATOR",
+        "REQUESTS",
+        "HOST",
+        "INSTALLATION",
+        "REGISTRATIONS",
+        "ACTIVATION"
+      ]
+    },
+    "failure": {
+      "type": "string",
+      "enum": [
+        "OWNERSHIP_UNPROVEN",
+        "FENCE_REJECTED",
+        "CHILD_REJECTED",
+        "CHILD_DEADLINE_EXCEEDED",
+        "REQUEST_OWNERSHIP_UNPROVEN",
+        "REQUESTS_DID_NOT_RETIRE",
+        "HOST_OBSERVATION_REJECTED",
+        "HOST_RESTART_REQUIRED",
+        "INSTALLATION_REJECTED",
+        "REGISTRATION_REPAIR_REQUIRED",
+        "FILESYSTEM_REJECTED"
+      ]
+    },
+    "installation": {
+      "type": "string",
+      "pattern": "^/",
+      "maxLength": 8192,
+      "minLength": 2,
+      "examples": [
+        "/Users/example/.local/share/kast/installation"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "maxLength": 64,
+      "examples": [
+        "0.50.0"
+      ]
+    },
+    "resetStage": {
+      "type": "string",
+      "enum": [
+        "ADMISSION",
+        "FENCE",
+        "DAEMONS",
+        "CLEANUP",
+        "INSTALLATION",
+        "ACTIVATION",
+        "RECOVERY",
+        "FINAL_VERIFICATION"
+      ],
+      "examples": [
+        "DAEMONS",
+        "FINAL_VERIFICATION"
+      ]
+    },
+    "resetFailure": {
+      "type": "string",
+      "enum": [
+        "ROOT_REJECTED",
+        "RESET_BUSY",
+        "FENCE_REJECTED",
+        "LAUNCH_JOB_REJECTED",
+        "PROCESS_OBSERVATION_REJECTED",
+        "PROCESS_RETIREMENT_REJECTED",
+        "ACTIVATION_REJECTED",
+        "READINESS_REJECTED",
+        "FILESYSTEM_REJECTED",
+        "INSTALLER_UNAVAILABLE",
+        "INSTALLER_REJECTED",
+        "INSTALLER_DEADLINE_EXCEEDED",
+        "INSTALLATION_UNVERIFIED"
+      ],
+      "examples": [
+        "PROCESS_RETIREMENT_REJECTED",
+        "READINESS_REJECTED"
+      ]
+    },
+    "resetOperation": {
+      "type": "string",
+      "enum": [
+        "UNINSTALL_FORCE",
+        "REINSTALL_FORCE"
+      ],
+      "examples": [
+        "REINSTALL_FORCE"
+      ]
+    },
+    "generation": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "minLength": 36,
+      "maxLength": 36,
+      "description": "The freshly activated service incarnation, admitted from verified readiness.",
+      "examples": [
+        "12345678-1234-1234-1234-123456789abc"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "installation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "STOPPED"
+          ]
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "STOP",
+            "STOP_FORCE",
+            "REINSTALL"
+          ]
+        },
+        "installation": {
+          "$ref": "#/$defs/installation"
+        }
+      },
+      "examples": [
+        {
+          "type": "STOPPED",
+          "operation": "STOP",
+          "installation": "/Users/example/.local/share/kast/installation"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "installation",
+        "version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "REINSTALLED"
+          ]
+        },
+        "operation": {
+          "const": "REINSTALL"
+        },
+        "installation": {
+          "$ref": "#/$defs/installation"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        }
+      },
+      "examples": [
+        {
+          "type": "REINSTALLED",
+          "operation": "REINSTALL",
+          "installation": "/Users/example/.local/share/kast/installation",
+          "version": "0.50.0"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "stage",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "REJECTED"
+          ]
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "STOP",
+            "STOP_FORCE",
+            "REINSTALL"
+          ]
+        },
+        "stage": {
+          "$ref": "#/$defs/stage"
+        },
+        "failure": {
+          "$ref": "#/$defs/failure"
+        }
+      },
+      "examples": [
+        {
+          "type": "REJECTED",
+          "operation": "STOP_FORCE",
+          "stage": "HOST",
+          "failure": "HOST_RESTART_REQUIRED"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "version",
+        "stage",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "REINSTALLATION_PENDING"
+          ]
+        },
+        "operation": {
+          "const": "REINSTALL"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "stage": {
+          "$ref": "#/$defs/stage"
+        },
+        "failure": {
+          "$ref": "#/$defs/failure"
+        }
+      },
+      "examples": [
+        {
+          "type": "REINSTALLATION_PENDING",
+          "operation": "REINSTALL",
+          "version": "0.50.0",
+          "stage": "ACTIVATION",
+          "failure": "CHILD_REJECTED"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "root"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "REMOVED"
+          ]
+        },
+        "operation": {
+          "const": "UNINSTALL_FORCE"
+        },
+        "root": {
+          "$ref": "#/$defs/installation"
+        }
+      },
+      "examples": [
+        {
+          "type": "REMOVED",
+          "operation": "UNINSTALL_FORCE",
+          "root": "/Users/example/.local/share/kast"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "installation",
+        "version",
+        "command",
+        "generation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RESET_REINSTALLED"
+          ]
+        },
+        "operation": {
+          "const": "REINSTALL_FORCE"
+        },
+        "installation": {
+          "$ref": "#/$defs/installation"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "command": {
+          "$ref": "#/$defs/installation"
+        },
+        "generation": {
+          "$ref": "#/$defs/generation"
+        }
+      },
+      "examples": [
+        {
+          "type": "RESET_REINSTALLED",
+          "operation": "REINSTALL_FORCE",
+          "installation": "/Users/example/.local/share/kast/installation",
+          "version": "0.50.0",
+          "command": "/Users/example/.local/share/kast/bin/kast",
+          "generation": "12345678-1234-1234-1234-123456789abc"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "installation",
+        "version",
+        "command",
+        "stage",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RESET_REINSTALLATION_PENDING"
+          ]
+        },
+        "operation": {
+          "const": "REINSTALL_FORCE"
+        },
+        "installation": {
+          "$ref": "#/$defs/installation"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "command": {
+          "$ref": "#/$defs/installation"
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "ACTIVATION"
+          ]
+        },
+        "failure": {
+          "$ref": "#/$defs/resetFailure"
+        }
+      },
+      "examples": [
+        {
+          "type": "RESET_REINSTALLATION_PENDING",
+          "operation": "REINSTALL_FORCE",
+          "installation": "/Users/example/.local/share/kast/installation",
+          "version": "0.50.0",
+          "command": "/Users/example/.local/share/kast/bin/kast",
+          "stage": "ACTIVATION",
+          "failure": "READINESS_REJECTED"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "stage",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RESET_REJECTED"
+          ]
+        },
+        "operation": {
+          "$ref": "#/$defs/resetOperation"
+        },
+        "stage": {
+          "$ref": "#/$defs/resetStage"
+        },
+        "failure": {
+          "$ref": "#/$defs/resetFailure"
+        }
+      },
+      "examples": [
+        {
+          "type": "RESET_REJECTED",
+          "operation": "UNINSTALL_FORCE",
+          "stage": "CLEANUP",
+          "failure": "FILESYSTEM_REJECTED"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "stage",
+        "failure",
+        "recoveryPath"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RESET_RETAINED"
+          ]
+        },
+        "operation": {
+          "$ref": "#/$defs/resetOperation"
+        },
+        "stage": {
+          "$ref": "#/$defs/resetStage"
+        },
+        "failure": {
+          "$ref": "#/$defs/resetFailure"
+        },
+        "recoveryPath": {
+          "$ref": "#/$defs/installation"
+        }
+      },
+      "examples": [
+        {
+          "type": "RESET_RETAINED",
+          "operation": "UNINSTALL_FORCE",
+          "stage": "DAEMONS",
+          "failure": "LAUNCH_JOB_REJECTED",
+          "recoveryPath": "/Users/example/.local/share/.kast-retiring-example/payload"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "stage",
+        "failure",
+        "recoveryFailure",
+        "root"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RESET_RECOVERY_REQUIRED"
+          ]
+        },
+        "operation": {
+          "$ref": "#/$defs/resetOperation"
+        },
+        "stage": {
+          "$ref": "#/$defs/resetStage"
+        },
+        "failure": {
+          "$ref": "#/$defs/resetFailure"
+        },
+        "recoveryFailure": {
+          "$ref": "#/$defs/resetFailure"
+        },
+        "root": {
+          "$ref": "#/$defs/installation"
+        }
+      },
+      "examples": [
+        {
+          "type": "RESET_RECOVERY_REQUIRED",
+          "operation": "REINSTALL_FORCE",
+          "stage": "ACTIVATION",
+          "failure": "READINESS_REJECTED",
+          "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
+          "root": "/Users/example/.local/share/kast"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "type": "STOPPED",
+      "operation": "STOP",
+      "installation": "/Users/example/.local/share/kast/installation"
+    },
+    {
+      "type": "REINSTALLED",
+      "operation": "REINSTALL",
+      "installation": "/Users/example/.local/share/kast/installation",
+      "version": "0.50.0"
+    },
+    {
+      "type": "REJECTED",
+      "operation": "STOP_FORCE",
+      "stage": "HOST",
+      "failure": "HOST_RESTART_REQUIRED"
+    },
+    {
+      "type": "REINSTALLATION_PENDING",
+      "operation": "REINSTALL",
+      "version": "0.50.0",
+      "stage": "ACTIVATION",
+      "failure": "CHILD_REJECTED"
+    },
+    {
+      "type": "REMOVED",
+      "operation": "UNINSTALL_FORCE",
+      "root": "/Users/example/.local/share/kast"
+    },
+    {
+      "type": "RESET_REINSTALLED",
+      "operation": "REINSTALL_FORCE",
+      "installation": "/Users/example/.local/share/kast/installation",
+      "version": "0.50.0",
+      "command": "/Users/example/.local/share/kast/bin/kast",
+      "generation": "12345678-1234-1234-1234-123456789abc"
+    },
+    {
+      "type": "RESET_REJECTED",
+      "operation": "UNINSTALL_FORCE",
+      "stage": "CLEANUP",
+      "failure": "FILESYSTEM_REJECTED"
+    },
+    {
+      "type": "RESET_REINSTALLATION_PENDING",
+      "operation": "REINSTALL_FORCE",
+      "installation": "/Users/example/.local/share/kast/installation",
+      "version": "0.50.0",
+      "command": "/Users/example/.local/share/kast/bin/kast",
+      "stage": "ACTIVATION",
+      "failure": "READINESS_REJECTED"
+    },
+    {
+      "type": "RESET_RETAINED",
+      "operation": "UNINSTALL_FORCE",
+      "stage": "DAEMONS",
+      "failure": "LAUNCH_JOB_REJECTED",
+      "recoveryPath": "/Users/example/.local/share/.kast-retiring-example/payload"
+    },
+    {
+      "type": "RESET_RECOVERY_REQUIRED",
+      "operation": "REINSTALL_FORCE",
+      "stage": "ACTIVATION",
+      "failure": "READINESS_REJECTED",
+      "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
+      "root": "/Users/example/.local/share/kast"
+    }
+  ],
+  "discriminator": {
+    "propertyName": "type"
+  }
+}

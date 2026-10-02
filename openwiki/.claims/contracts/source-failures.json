@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:61ddf0e952759432b1a5de9f235560ba848612932c8bde5f6ab2ca646183d0df",
+  "claims": [
+    {
+      "id": "claim_e37981e7ad044e14ac48fcdd4091d406",
+      "statement": "Source failures keep request rejection, reference rejection and internal contract failure as disjoint typed causes with case-specific evidence.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt#L15-L45",
+          "version": "repo-lines-v1:sha256:cedd91b46d0420e486d2ed9c945d0ffc5509da51f9d3fa56786ad95e9dc5d4e6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyNzMyMzRiNmY4ZGExZTJjODAwNDRiOGI2NmZkYjQ1YmJiOWE5ZWEzNTgwOTU5MGI3OTE1NzEwN2MxNWNjZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3YTRiODI1NWY1YjJlZjc4ZTMxOTFlZGUwZWQ5MjQ4YzQ0ZjhkODIzNDQxMWVhMjJjOTg5ODY3MzA4MjllYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5MDBmMThhN2U4NGYyZjkwZjcwNmNjMTY2NTA1YmY2Y2JmZWQzYTYxNjNhZGYzNmY3Njk5MzRmNzY5OWNjOTQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fbdd46a68d554d0d9df43d919ba620e0",
+      "statement": "Source ingress validates anchors, regions, entity selectors, text controls, limits, paging and execution budgets before constructing the generated typed request; expected validation failure returns Refinement.Rejected.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestIngress.kt#L16-L65",
+          "version": "repo-lines-v1:sha256:bc9d573d1265237b9c73308f8c42097e13356626e436b77586a3d2fe366c589b:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZmJjOTFmNDNjNmY4Nzc3ODgyNzJjYmYxZTlmOWFhYjMxYTUzYmQ5NWVhOTBhYmNjNThkMjZiYmMxYzgxMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4OGIxNWYzZWVkMWM4NGZmYjlhMTNhZjI3OGQ4MDg1OWI0YjVkOGNkYjkyNTk1YTVmYWU0N2RkN2I0MzcyMWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5Zjg1NDYyYzJhMWI4NGM2MzkyNGMwNGJjNDBiMzY5ZTU3YTc1OGIzMGU5MzVmODhmOGNkNDNiZTM4MmI1MzEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

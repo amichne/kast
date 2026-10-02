@@ -41,7 +41,7 @@ class LifecycleProjectionTest {
                 .getSchema(tool.outputSchema.toString())
         val results =
             listOf(
-                IdeLifecycleResult.Inspected("host", "/idea", "IU-262.99.1", emptyList()),
+                inspected(),
                 IdeLifecycleResult.Pending("request", IdeLifecycleStage.ADMISSION, "host"),
                 IdeLifecycleResult.Opened(target),
                 IdeLifecycleResult.Presented(target),
@@ -61,19 +61,62 @@ class LifecycleProjectionTest {
             assertEquals(setOf("type", "reason"), diagnostic.keys)
             assertEquals(failure.name, diagnostic["reason"]!!.jsonPrimitive.content)
         }
-        val inspection = json.encodeToJsonElement<IdeLifecycleResult>(results.first()).jsonObject
+    }
+
+    @Test
+    fun `inspection retains required live compatibility evidence and platform fields`() {
+        val inspection = json.encodeToJsonElement<IdeLifecycleResult>(inspected()).jsonObject
         assertEquals(
-            setOf("type", "host", "home", "build", "projects", "protocol", "background", "capabilities"),
+            setOf(
+                "type",
+                "host",
+                "home",
+                "build",
+                "projects",
+                "compatibility",
+                "protocol",
+                "background",
+                "capabilities",
+            ),
             inspection.keys,
         )
         assertEquals("inspected", inspection["type"]!!.jsonPrimitive.content)
         assertEquals(1, inspection["protocol"]!!.jsonPrimitive.int)
         assertEquals("best_effort", inspection["background"]!!.jsonPrimitive.content)
+        val compatibility = inspection.getValue("compatibility").jsonObject
+        assertEquals("0.49.0", compatibility.getValue("hostedPluginVersion").jsonPrimitive.content)
+        assertEquals(
+            "HOSTED_CONTRACT",
+            compatibility.getValue("hostedContract").jsonObject.getValue("type").jsonPrimitive.content,
+        )
+    }
 
-        val configured = json.encodeToJsonElement<IdeLifecycleResult>(results[5]).jsonObject
+    @Test
+    fun `configured lifecycle result retains the exact target and rule shape`() {
+        val configured =
+            json
+                .encodeToJsonElement<IdeLifecycleResult>(
+                    IdeLifecycleResult.Configured(target, WorkspaceRefreshRule.Off)
+                )
+                .jsonObject
         assertEquals(setOf("type", "target", "rule"), configured.keys)
         assertEquals("configured", configured.getValue("type").jsonPrimitive.content)
     }
+
+    private fun inspected() =
+        IdeLifecycleResult.Inspected(
+            host = "host",
+            home = "/idea",
+            build = "IU-262.99.1",
+            projects = emptyList(),
+            compatibility =
+                io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
+                    ideBuild = "262.1.1",
+                    kotlinPluginBuild = "262.1.1-IJ",
+                    hostedPluginVersion = "0.49.0",
+                    hostedContract = io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
+                ),
+        )
 
     @Test
     fun `hosted lifecycle request requires exact target and rejects manual sync variants`() {

@@ -1,7 +1,7 @@
 # Agent marketplaces
 
 Kast keeps repository instructions and navigation in `AGENTS.md` files and
-source-bound concepts in `knowledge/`. Reusable tooling comes from marketplaces;
+source-bound concepts and Claims in `openwiki/`. Reusable tooling comes from marketplaces;
 installed plugin payloads and runtime caches are not repository authority.
 
 ## Configured sources
@@ -22,13 +22,16 @@ into this repository. Additional runtime-provided catalogs remain available.
 
 ## Expected plugins
 
-- `code-knowledge-base@slopsentral`: source-bound Open Knowledge Format concepts,
-  impact checks, repository signatures, and navigation through the marketplace's
-  `local-repository-navigation` skill and `codebase-navigator` agent.
+- OpenWiki Codex integration: the user-installed `openwiki` skill and MCP server
+  own wiki search/read and the resumable page/Claim lifecycle. `openwiki/` replaces
+  the previous `knowledge/` concept bundle. The repository keeps its exact symbol
+  and source-impact checks through the existing Gradle knowledge tasks.
+- `code-knowledge-base@slopsentral`: retained repository signatures and scoped
+  `AGENTS.md` navigation; use OpenWiki for concept generation and upkeep.
 - `engineering-baseline@slopsentral`: proof-preserving engineering rules,
   repository onboarding, and turn-level instruction refresh hooks.
 
-Both plugins are enabled in the current setup. Navigation migration is authored
+Installed plugin state belongs to the active runtime. Navigation migration is authored
 in Slopsentral's `source/agents/codebase-navigator` and
 `source/skills/local-repository-navigation`; runtime copies receive it through
 normal marketplace publication and refresh. Do not patch installed caches.
@@ -49,7 +52,7 @@ repository or global ignore rules separately. It never stages or commits files.
 
 ## Refresh and validation
 
-Refresh configured marketplaces and update the two expected plugins through the
+Refresh configured marketplaces and update installed plugins through the
 runtime marketplace manager. Re-run navigation setup when its scripts change.
 For source development, edit Slopsentral's canonical source, run its source graph
 validator and navigation tests, then publish through its harness projection flow.
@@ -65,3 +68,10 @@ local marker only when all reviews succeed. After changing cited source, run:
 Confirm new agent files appear in `git status --short`, stage them with their
 source changes, and run `git diff --cached --check`. No installed plugin or cache
 payload belongs in that diff.
+
+OpenWiki privacy and model settings belong in the private user environment, not
+in Git. For the supported subscription flow use `OPENWIKI_PROVIDER=openai-chatgpt`
+and the OpenWiki browser login. The configured native model is `gpt-6-luna`. Keep
+`OPENWIKI_TELEMETRY_DISABLED=1`, `DO_NOT_TRACK=1`, `LANGCHAIN_TRACING_V2=false` and
+`LANGSMITH_TRACING=false`. Codex-hosted page authoring uses the current Codex chat
+model; the native OpenWiki CLI uses its own model setting.

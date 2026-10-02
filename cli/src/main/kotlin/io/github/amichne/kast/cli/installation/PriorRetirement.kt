@@ -46,14 +46,14 @@ private constructor(
                 PriorRetirement(
                     control,
                     prior.resolve("bin/kast"),
-                    recorded?.values
+                    (recorded?.values
                         ?: priorServiceRetirementEnvironment(
                             prior = prior,
                             home = request.home.value,
                             codexHome = request.codexHome.value,
                             path = System.getenv("PATH") ?: "/usr/bin:/bin",
                             configuration = configuration,
-                        ),
+                        )) + ("KAST_OPTS" to request.jvmUserHomeOption.value),
                 )
             )
         }

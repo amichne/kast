@@ -15,6 +15,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
+import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.admitOutcome
 import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.appserver.query.PublicToolContract
@@ -22,6 +23,7 @@ import io.github.amichne.kast.cli.*
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.kernel.*
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.wire.*
 import io.github.amichne.kast.protocol.wire.presentation.HostedRequestEffect
@@ -68,7 +70,11 @@ class ExistingIdeSemanticReadTest {
     }
 
     private val root = canonicalRootFixture(Path.of("/workspace"))
-    private val descriptor = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
+    private val descriptor =
+        ExistingIdeDescriptor(
+            (HostedEndpointOwnerPid.parse("123") as Refinement.Refined).value,
+            UUID.fromString("00000000-0000-0000-0000-000000000001"),
+        )
     private val live =
         EvidenceBasis.Live(
             LiveReadEvidence.create(
@@ -234,7 +240,10 @@ class ExistingIdeSemanticReadTest {
                 operation.admitOutcome(
                     encode(live),
                     root,
-                    ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000002")),
+                    ExistingIdeDescriptor(
+                        (HostedEndpointOwnerPid.parse("123") as Refinement.Refined).value,
+                        UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                    ),
                 ),
                 operation.name,
             )

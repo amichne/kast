@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:60a084d514b6df09dc70853cfcdae9f9322ef872128a0576b1942a6623674a4f",
+  "claims": [
+    {
+      "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
+      "statement": "Hosted listener concurrency is bounded by configured connection permits, released in finally; excess connections receive one bounded capacity rejection without queuing semantic work.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L17-L70",
+          "version": "repo-lines-v1:sha256:836fdffe866ba18d800f6a75e109078930fa5f3c17fd22fb3f99ca6ec356b9de:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNDlmMjgxOTgyNDZkOGY4M2E1YTQzNDkyNDkxZTJlMDg4OTU1MTlhMTgwMDgzOGQ0OGExMTAwYjc0YjI3ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhNjgyZmMwYmQ0ZTExNTQxODk0ZGIxMWU4NTI2Mjg3ODRjNDk2ODI4ZjkyZDYyY2M0ZDVjMzVkNDZkMTI4N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZjgyNmMxMGQxYjk3OTNkZWY3ZDI4ZjE3ZjIxMjFiOGU3MmQxZThiMzMzZjMwMTMyNjgzZTgyMzRjYjM3MGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6cdabdcba20646f9afdd1d4aae6bb4b2",
+      "statement": "Peer disconnection or extra input terminates hosted dispatch with explicit IO_UNAVAILABLE or INVALID_REQUEST rejection instead of a semantic success.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L73-L97",
+          "version": "repo-lines-v1:sha256:f05988e2d1ab20f52ef48014bbc7d27b7a077bec3dd56e99f4dd609c22368c67:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MjNiYzFjMzY2ZGJmYjJiZjhiZjJmMmNjNzdlNDQzMGJkMmM3Y2NjZDI2MTliZTRjNmJkYTdjYThhMWRiYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlZGM0MzY3ODU0MjFjYjc2MmVkYjMwNmVmZWVmOTZmMDM3OTY1Y2JiMDRmZmRmOWMzM2MxMzVlMjJjZmMzZWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fc7456fb11a24421b049cbdaab9b0301",
+      "statement": "Automatic startup remains fenced by detachment, shutdown, lifecycle transition or reset markers, and observation failures reject; reset startup is admitted only for an exact installation-bound ACTIVATING record plus a currently held exclusive reset lease.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt#L11-L43",
+          "version": "repo-lines-v1:sha256:f7e3058ab81570f083f218d6891a380d185486c662de2b2b094496dddc78c196:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5OTA3ZGU0M2NlZjg5ZTUwNTc1NjJkZGNiY2RkYjkyMzg5ZTIyNTIxYzFiN2I2NjhlNWUwNGU1MjVlNDRmODYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2NzAxMDVkOTM3YWRiMzgzNWM2YzY0MTczZWE2Nzg1NGMyODNmMDI0M2NhMzM2MDI1YWMyYmJlY2NhZjYwMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt#L16-L57",
+          "version": "repo-lines-v1:sha256:801f9fd706de7600c7c4eb6bad87d6d9ba3bd8bbb05ea221d9bde5fbba4574dd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzYzJiMTc2MmQxMDViNTY1YzAzZGI4ZWQzNzFmM2IxYjBiMWE3YzE1ZTQxYzRjODExMTkwMWVhZGMyMTRiZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3MjFjMzIyMDNlZjJlOWY4YWYwZWMzNTczMDk3ZmYwZDI3ODFkNzg5M2JmNDI1NjA2ZjE2ZGI0ZjE2NWI2ZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_67be8cb0c81940eb80cb5cb3c842eb4d",
+      "statement": "Installed direct tool admission rejects shutdown/reset markers and unproven absence while reset owner startup may establish readiness behind the tool fence; focused tests distinguish held and released activation locks and reject foreign, malformed and oversized records.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt#L33-L102",
+          "version": "repo-lines-v1:sha256:7c6e36e9d116f0a8d5bbc085ffe7917d9fad41a28227c68ef9d1fde96fc99675:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZjA5ZWIwYzU3NDRmYjk3MzMxYjk4ZmYzZmJmMDVhNjAyYmEzZjdmNjdlNWRhNWJlOTA5NTAzM2Y2MjU4MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0Y2I3MWJlZjY0MDkzODdjODYwMGRjMTY5NDFlNGM4YWZkOWZmYzA4MmVmNTMwNDQwMDgyYTFjMGQyODdlYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt#L9-L30",
+          "version": "repo-lines-v1:sha256:2e07a10630c0953a3261defd23e480c564ab59ab3d3309d02905e9c85de0b7b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlY2FkYzM0NzE5YThmZjIzODQ0MTc3OWM3ODQ5MDBlZjI4OGFjYTRmOTFjNmNhNDEyNWU0NDkyMWQ0MjdmMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRjNjc4Njk3NTBhYWUzOGZiZTM3MmM1NGMxOGQ4ZTc4YjgxZWMzZmVmNmQ1N2IzZWQwMDY5ZjU2M2Y5ZjIwMGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c1a7ea6a7b35409d94230918bc720a48",
+      "statement": "The live Host reports its own packaged plugin version, actual running IntelliJ and Kotlin builds, and complete provided HostedContract through the existing describe and lifecycle inspection exchanges.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt",
+          "version": "repo-file-v1:sha256:f63dec3e8c5e3bae745d95ddec455aca01e45fa10bb0022b051b904a5cc3a654"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
+          "version": "repo-file-v1:sha256:55d67af8a893df804f4c58dab76d5df83b320d96c7c3c3ffdb2969f17bc26474"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
+          "version": "repo-file-v1:sha256:9350377ffa5066250efbfeae97beb936f4a570442a51518e896ae625ac0c27cc"
+        }
+      ]
+    },
+    {
+      "id": "claim_978b7abd205b4bf5ab7a540a18e3e51b",
+      "statement": "Control status retains installed and running versions separately and projects each observed Host identity, loaded version and compatibility; missing live evidence remains unavailable.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt",
+          "version": "repo-file-v1:sha256:704c6fae450e2b83c1ba216a4139c9e5658833b9e02d47d394d4ceda313fb0bd"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
+          "version": "repo-file-v1:sha256:f5d150cef45346c61ca4f8443a6cadf6953db485f0d1818bdc0c4a03102e7879"
+        }
+      ]
+    },
+    {
+      "id": "claim_7240873a9ba74d7aa5c9f8f3881dd50f",
+      "statement": "Passive Host status selects freshly admitted exact physical settings roots from the current workspace registry, independently of daemon-client query history, and performs bounded live exchanges without preparing or enrolling workspaces or rebinding moved roots to ancestors.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
+          "version": "repo-file-v1:sha256:5819901694fb399530247f72388bc0c9620e17bfc15b0ff9a1e3ed7dc0f605fd"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt",
+          "version": "repo-file-v1:sha256:6b77dafa468d7499d88ad674ecaf8298ff28edf088d7565816ab95c9ab842d5f"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L63-L81",
+          "version": "repo-lines-v1:sha256:04bc291eddf6cce084a9e62f8d64f4d0414623329d356c290eb45551709b808b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlMWI5OTVhZjI2YzA2ZjhhZmY1MmIwZThjMjBlZTc5ZmM1NzVhZmQ3MGQ3MjU2Njk0ZjNlMzcxMDYyNjRkMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNiMDNiYTMzNGMzODQ3NWEwYjY0ZTk3NjIwYTU5NDZmNWFiZjk0MWJiYjZkYzQzYjQ2NWZiZDJmOWQzNTFiODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5NTQxYWFkNjRiZjg3YTE4Mjg4YTNlMTRkZGE4NzdkZjM1MzZlMmUzZjk1ZTI2N2QzOTg1NjBhM2U3ODFlYmQifQ"
+        },
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt",
+          "version": "repo-file-v1:sha256:199fe343c71919e466c4a3720cf4324d7c18ce11cfbf16e9e7a466b33d7c21bc"
+        }
+      ]
+    },
+    {
+      "id": "claim_53356e08417a4fceac13833f15d66a6c",
+      "statement": "Rejected workspace roots retain their known path as unavailable; rejected registry observations use the separate REGISTRY_UNAVAILABLE variant with a registry path and closed failure rather than inventing host or workspace identity.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt",
+          "version": "repo-file-v1:sha256:6b77dafa468d7499d88ad674ecaf8298ff28edf088d7565816ab95c9ab842d5f"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
+          "version": "repo-file-v1:sha256:f5d150cef45346c61ca4f8443a6cadf6953db485f0d1818bdc0c4a03102e7879"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt",
+          "version": "repo-file-v1:sha256:5d0857b16b4b24b9c465e1222928dc54fc993281f5f9d68c1d4d82c3cc164012"
+        }
+      ]
+    },
+    {
+      "id": "claim_bb39fbb3ced9452d8930ebff7643fd1f",
+      "statement": "Control preflight filters project endpoint families before capacity accounting, excludes only proven absent recorded owners before current descriptor/root admission, and requires full current descriptor, exact root/socket and live matching owner/Host identity for every surviving host; unknown liveness rejects.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L176-L220",
+          "version": "repo-lines-v1:sha256:1e5a78d5cc8c565a7debf8168452f78b03b96c7b75784c0cb2afec7fcc907feb:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMjNhMjRiMWFiNWRkOGU5NGQ3MDQyYjY4OTA5Y2U0NTllNWFkMTZmM2Y0Zjk3ZmMyMGNmYzY3YWIxNTI5MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5ZTg3NzRjYmFjOWFhN2UxNzQ3ZDI5NWIxMWZkNTA2NDczMmRkMDE2ZWYxNWUwMWU2ZWE0NWU4YWYyNTczYmMifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L20-L146",
+          "version": "repo-lines-v1:sha256:91f853df99eb945f157358258eee6436f40462542629e4084862fac78d2388fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlYjEyZjUwZmFlZDY1YjAyZDVkZmRjMjY1NTI4MTAyZWQ4ZmVmYTU5NzU1MGExOTJiOGQ3MGM2NTQ4YTU4MDhkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0NzM0MGYyMGU0ZTgyZTMxMjgwOGNmNTZiZTVmZTZjMjYyYTk1YTYwY2RkMDE2MDYzOGFjNzA2ZTc0NmJlODlkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5OWZhZjJlODg3OWJmNDk2YTFhZGVkYmI3OTIzMjMzZjFhNDA0MjIyMDVkMGU3N2QwMjI5YjE1ZDI0MDNiYjI4In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_61855346687e4d94b5064bc9d1dc67e2",
+      "statement": "The recorded owner envelope is a Control-local structural schema and is excluded from the hosted-contract digest inputs.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json",
+          "version": "repo-file-v1:sha256:e7ce90080742a98d1b91113dc4f7ba3ddb43a97d901d3f0593c429b7bd90ac88"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
+          "version": "repo-file-v1:sha256:849388668e0a801507b2121d4e7500ae417e97bccaa267ad1e33c51e7da3891c"
+        }
+      ]
+    },
+    {
+      "id": "claim_e42340129e8945e2994a1a7b3429ab86",
+      "statement": "Hosted preflight scan evidence retains closed stage/outcome/failure tuples, emits each tuple at most once per scan, and excludes paths, process identities and payloads.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt",
+          "version": "repo-file-v1:sha256:9fdf4094f4e77651c1101a0db2042f80fde7ab0d1b0c90edd8184d92992a8576"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T13:53:38.453Z"
+  }
+}

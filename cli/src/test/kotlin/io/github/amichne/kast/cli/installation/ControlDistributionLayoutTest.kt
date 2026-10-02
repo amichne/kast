@@ -17,8 +17,8 @@ class ControlDistributionLayoutTest {
             executeFixtureInstallation(
                 releaseRequest(
                     root,
-                    root.resolve("installation"),
-                    root.resolve("commands"),
+                    root.resolve("home/.local/share/kast"),
+                    root.resolve("home/.local/bin"),
                     Files.createDirectory(root.resolve("home")),
                     Files.createDirectory(root.resolve("codex-home")),
                     "1.2.3",
@@ -37,8 +37,8 @@ class ControlDistributionLayoutTest {
             executeFixtureInstallation(
                 releaseRequest(
                     root,
-                    root.resolve("installation"),
-                    root.resolve("commands"),
+                    root.resolve("home/.local/share/kast"),
+                    root.resolve("home/.local/bin"),
                     Files.createDirectory(root.resolve("home")),
                     Files.createDirectory(root.resolve("codex-home")),
                     "1.2.3",
@@ -59,8 +59,8 @@ class ControlDistributionLayoutTest {
         val request =
             releaseRequest(
                 root,
-                root.resolve("installation"),
-                root.resolve("commands"),
+                root.resolve("home/.local/share/kast"),
+                root.resolve("home/.local/bin"),
                 Files.createDirectory(root.resolve("home")),
                 Files.createDirectory(root.resolve("codex-home")),
                 "1.2.3",
@@ -74,8 +74,8 @@ class ControlDistributionLayoutTest {
     @Test
     fun `upgrade uses the new lifecycle authority to admit an older installation`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val installation = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         val home = Files.createDirectory(root.resolve("home"))
         val codexHome = Files.createDirectory(home.resolve(".codex"))
 

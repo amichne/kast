@@ -150,6 +150,9 @@ class QueryDenseReferenceRetentionTest {
     @Test
     fun `dense reference inventory and pending observations fit default checkpoint and drain exactly once`() = runTest {
         val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(request()))
+        // Ordinary ASCII proof text must not spend the six-byte JSON escape bound for every code unit.
+        // This is evaluator admission evidence only; native work is measured by the replay suite.
+        assertTrue(referenceStarts(first).size >= 4, "The 32 KiB grant must admit at least four full occurrence proofs")
         val continuation = assertInstanceOf(QueryContinuationState.Resumable::class.java, first.continuation)
         assertTrue(continuation.checkpoint.retainedBytes < QueryByteLimit.DefaultCheckpoint.value)
         val starts = referenceStarts(first)

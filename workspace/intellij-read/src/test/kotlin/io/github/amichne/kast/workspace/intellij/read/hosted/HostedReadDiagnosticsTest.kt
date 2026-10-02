@@ -77,7 +77,7 @@ class HostedReadDiagnosticsTest {
                 val document =
                     kotlinx.serialization.json.Json.parseToJsonElement(receipts.single().encode())
                         as kotlinx.serialization.json.JsonObject
-                assertEquals(kotlinx.serialization.json.JsonPrimitive(5), document.getValue("schemaVersion"))
+                assertEquals(kotlinx.serialization.json.JsonPrimitive(6), document.getValue("schemaVersion"))
                 val outcome = document.getValue("outcome") as kotlinx.serialization.json.JsonObject
                 assertEquals(setOf("type", "outcome"), outcome.keys)
                 assertEquals(kotlinx.serialization.json.JsonPrimitive("evaluated"), outcome.getValue("type"))
@@ -202,7 +202,7 @@ class HostedReadDiagnosticsTest {
             ),
             receipts.single().outcome,
         )
-        assertEquals(259, receipts.single().counters.single().count)
+        assertEquals(259, receipts.single().counters.single { it.counter == IntellijReadCounter.IDEA_MODULES }.count)
         executor.retire()
         executor.drain()
     }
@@ -301,7 +301,10 @@ class HostedReadDiagnosticsTest {
         observation.finish(HostedDiagnosticOutcome.Completed)
         observation.count(IntellijReadCounter.NAMES_VISITED)
         observation.finish(HostedDiagnosticOutcome.Rejected(HostedQueryFailure.CANCELLED))
-        assertEquals(HostedReadDiagnostics.MAX_COUNT, receipts.single().counters.single().count)
+        assertEquals(
+            HostedReadDiagnostics.MAX_COUNT,
+            receipts.single().counters.single { it.counter == IntellijReadCounter.NAMES_VISITED }.count,
+        )
         assertEquals(
             listOf(HostedNativeTermination(IntellijReadTermination.NAME_CAP, IntellijReadContributor.KOTLIN_CLASS)),
             receipts.single().terminations,

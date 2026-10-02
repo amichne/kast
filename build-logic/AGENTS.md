@@ -25,6 +25,8 @@ Defines reusable Gradle conventions, module roles, release assembly, generated c
 - [src/main/kotlin/conventions/JsonContractVerification.kt](src/main/kotlin/conventions/JsonContractVerification.kt) - JSON syntax guard registration and root verification-gate dependencies.
 - [src/main/kotlin/conventions/VerifyJsonContractsTask.kt](src/main/kotlin/conventions/VerifyJsonContractsTask.kt) - typed scan request and isolated parser process boundary.
 - [src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt](src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt) - control-product inventory and private executable verification.
+- [src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt](src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt) - Control metadata and its required hosted contract, without a Host archive input.
+- [src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt](src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt) - separately owned Control and Host release records and checksums.
 
 - [src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt](src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt) - isolated Kotlin PSI documentation extraction.
 - [src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt](src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt) - bounded installed knowledge generation from verified module ownership and scoped guides.
@@ -45,7 +47,7 @@ Defines reusable Gradle conventions, module roles, release assembly, generated c
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/architecture.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/architecture.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For formatting or lint failures, start with `kast.kotlin-quality.gradle.kts`, then the reported rule or file-length task. Schema-generated Kotlin remains owned by its generator.
 - For existing structural debt, see [baseline policy](../config/README.md). Checks reject new findings and growth beyond recorded file ceilings; they never regenerate allowances.

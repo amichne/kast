@@ -2,9 +2,11 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QuerySetOperator
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolSource
+import io.github.amichne.kast.query.contract.QueryTextMatchFailure
 import io.github.amichne.kast.query.contract.merge
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import io.github.amichne.kast.symbol.contract.SymbolDescription
@@ -12,7 +14,20 @@ import io.github.amichne.kast.symbol.contract.SymbolDescription
 internal enum class QueryIdentityRowFailure {
     CONFLICTING_DESCRIPTION,
     CONFLICTING_SOURCE,
+    TEXT_MATCH_LIMIT_EXCEEDED,
 }
+
+internal fun QueryIdentityRowFailure.executionRejection(): QueryExecutionRejection =
+    when (this) {
+        QueryIdentityRowFailure.CONFLICTING_DESCRIPTION,
+        QueryIdentityRowFailure.CONFLICTING_SOURCE -> QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION
+        QueryIdentityRowFailure.TEXT_MATCH_LIMIT_EXCEEDED -> QueryExecutionRejection.TEXT_MATCH_LIMIT_EXCEEDED
+    }
+
+private fun QueryTextMatchFailure.identityFailure(): QueryIdentityRowFailure =
+    when (this) {
+        QueryTextMatchFailure.ITEM_LIMIT_EXCEEDED -> QueryIdentityRowFailure.TEXT_MATCH_LIMIT_EXCEEDED
+    }
 
 /** Request-local grouping of proven rows; the query evaluator still owns task order and budgets. */
 internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSymbolId, QuerySymbol>>) {
@@ -23,7 +38,19 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
         stage: ExactQueryStage.Distinct,
         incoming: QuerySymbol,
     ): Refinement<Unit, QueryIdentityRowFailure> {
-        rows.getOrPut(stage) { linkedMapOf() }.putIfAbsent(CanonicalSymbolId.from(incoming.selector), incoming)
+        val distinctRows = rows.getOrPut(stage) { linkedMapOf() }
+        val id = CanonicalSymbolId.from(incoming.selector)
+        val first = distinctRows.putIfAbsent(id, incoming) ?: return Refinement.Refined(Unit)
+        val matches =
+            when (val merged = first.textMatches.merge(incoming.textMatches)) {
+                is Refinement.Refined -> merged.value
+                is Refinement.Rejected -> return Refinement.Rejected(merged.failure.identityFailure())
+            }
+        if (!matches.belongsTo(first.selector)) {
+            return Refinement.Rejected(QueryIdentityRowFailure.CONFLICTING_DESCRIPTION)
+        }
+        // Relation arrival remains first-row evidence; independent lexical proof is cumulative.
+        distinctRows[id] = first.copy(textMatches = matches)
         return Refinement.Refined(Unit)
     }
 
@@ -116,12 +143,18 @@ internal fun mergeRows(
             first.source is QuerySymbolSource.Rejected && second.source is QuerySymbolSource.Returned -> second.source
             else -> return Refinement.Rejected(QueryIdentityRowFailure.CONFLICTING_SOURCE)
         }
+    val matches =
+        when (val merged = first.textMatches.merge(second.textMatches)) {
+            is Refinement.Refined -> merged.value
+            is Refinement.Rejected -> return Refinement.Rejected(merged.failure.identityFailure())
+        }
     return Refinement.Refined(
         first.copy(
             connections = (first.connections + second.connections).distinct().sorted(),
             source = source,
             arrival = first.arrival.merge(second.arrival),
             walkArrival = first.walkArrival.merge(second.walkArrival),
+            textMatches = matches,
         )
     )
 }

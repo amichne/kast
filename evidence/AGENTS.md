@@ -28,5 +28,5 @@ Retains mutation plans, receipts, and recovery evidence in workspace-bound SQLit
 
 ## Navigation Hints
 
-- Start with [durable change evidence](../knowledge/modules/topology-evidence.md).
+- Start with [durable change evidence](../openwiki/modules/topology-evidence.md).
 - Establish authority and identity rules before inspecting SQL rows. Existing incompatible databases must fail closed without replacement.

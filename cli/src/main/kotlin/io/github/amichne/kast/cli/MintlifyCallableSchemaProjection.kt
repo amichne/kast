@@ -64,7 +64,10 @@ private fun JsonObject.documentationTitle(): String? {
     val properties = this["properties"] as? JsonObject
     val tag =
         listOf("status", "type", "kind").firstNotNullOfOrNull { key ->
-            ((properties?.get(key) as? JsonObject)?.get("const") as? JsonPrimitive)?.content
+            (properties?.get(key) as? JsonObject)?.let { tag ->
+                ((tag["const"] as? JsonPrimitive) ?: (tag["enum"] as? JsonArray)?.singleOrNull() as? JsonPrimitive)
+                    ?.content
+            }
         } ?: return null
     val required = this["required"] as? JsonArray
     // Mintlify resolves tab labels through an object lookup; the bare constructor key resolves to its prototype.

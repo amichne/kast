@@ -85,10 +85,15 @@ class KastPublicQueryProviderTest {
     @Test
     fun `qualification rejects drifted schema and old catalog`(@TempDir root: Path) = runBlocking {
         val schema = capability()
+        val json = Json { encodeDefaults = true }
+        val current = json.decodeFromString<KastCapabilityBoundary>(schema)
+        assertEquals(18, current.serverProjection.schemaVersion)
+        val oldCatalog =
+            json.encodeToString(current.copy(serverProjection = current.serverProjection.copy(schemaVersion = 17)))
         val invalid =
             listOf(
                 capability(driftSchema = true),
-                schema.replace("\"schemaVersion\":17", "\"schemaVersion\":10"),
+                oldCatalog,
             )
         invalid.forEach { input ->
             val executor = RecordingExecutor(input)

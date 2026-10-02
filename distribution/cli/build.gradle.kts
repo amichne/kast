@@ -13,7 +13,9 @@ application {
 
 dependencies {
     implementation(project(":distribution:contract"))
+    implementation(project(":distribution:managed"))
     implementation(libs.clikt.core)
+    testImplementation(libs.json.schema.validator)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
@@ -49,6 +51,15 @@ graalvmNative {
             sharedLibrary.set(false)
             fallback.set(false)
             buildArgs.add("--no-fallback")
+            buildArgs.add("-H:IncludeResources=management/bootstrap-install.sh")
         }
+    }
+}
+
+// Recovery never executes an unqualified script from the installation being erased.
+tasks.named<ProcessResources>("processResources") {
+    from(rootProject.layout.projectDirectory.file("install.sh")) {
+        into("management")
+        rename { "bootstrap-install.sh" }
     }
 }

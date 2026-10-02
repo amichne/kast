@@ -1,0 +1,56 @@
+[
+  {
+    "pid": 123,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "REVALIDATE",
+    "outcome": "INCARNATION_CHANGED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "REVALIDATE",
+    "outcome": "OBSERVATION_REJECTED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "REVALIDATE",
+    "outcome": "IDENTITY_REJECTED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "SIGNAL",
+    "outcome": "SIGNAL_REJECTED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "WAIT",
+    "outcome": "DEADLINE_EXCEEDED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "WAIT",
+    "outcome": "WAIT_REJECTED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "WAIT",
+    "outcome": "INTERRUPTED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "REVALIDATE",
+    "outcome": "IDENTITY_VERIFIED",
+    "type": "PROCESS_RETIREMENT"
+  }
+]

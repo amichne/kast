@@ -62,6 +62,8 @@ class RetiredRuntimeConfigurationTest {
             "KAST_INSTALL_RUNTIME_SHA256",
             "KAST_RUNTIME_BASE_URL",
             "KAST_LOCAL_RUNTIME_ARCHIVE",
+            "KAST_LOCAL_JAVA_EXECUTABLE",
+            "KAST_LOCAL_JAVA_HOME",
             "KAST_SEMANTIC_RUNTIME_ARCHIVE",
         )
 }

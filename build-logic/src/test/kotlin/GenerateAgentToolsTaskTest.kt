@@ -36,6 +36,11 @@ class GenerateAgentToolsTaskTest {
         }
         assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(".mcp.json")),
             Files.readAllBytes(plugin.resolve(".mcp.json")))
+        val mcp = Json.parseToJsonElement(Files.readString(plugin.resolve(".mcp.json"))).jsonObject
+        assertEquals(listOf("-c", "exec \"\${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-mcp-complete\""),
+            mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject.getValue("args").jsonArray.map {
+                it.jsonPrimitive.content
+            })
     }
 
     @Test

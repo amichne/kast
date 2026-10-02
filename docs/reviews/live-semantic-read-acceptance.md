@@ -214,5 +214,5 @@ Remaining limits are explicit: broad discovery can be qualified, traversal can
 stop at its depth bound, live specialist discovery excludes generated sources
 and libraries, and full Codex WebSocket parity is unqualified. Published writes
 and topology/publication flows retain their separate authority and execution paths. The earlier class/supertype demonstration
-history remains in the [hosted-query knowledge page](../../knowledge/flows/hosted-query.md);
+history remains in the [hosted-query knowledge page](../../openwiki/flows/hosted-query.md);
 it is not used as evidence for the canonical results recorded here.

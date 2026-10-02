@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:1b6327809954cae16ca0c1b41c4628aab862707283442a9300a82654cd9827f2",
+  "claims": [
+    {
+      "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
+      "statement": "The authored tools.schema.json generates Kotlin DTOs, per-tool admission and strict Responses schemas, examples and App Server registrations; check mode rejects any stale generated artifact.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/generate-public-query.py#L423-L461",
+          "version": "repo-lines-v1:sha256:94373d8b7b4e73d1639969c94e24a12d62e722e0a8f9a0f572aa9df8cc095e6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMDFhMmQ5YjhlZmRkODg2MTQ1Zjk4ZTg0Nzg0Mzc0OWY5ZWEyN2U5Mzg0NmIwNDg2Mjk5MDUzYmQ4YmIxNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNDRkZTQ0ZDdiMzUzYzFmZDRkMjljMTRhMDQwMmUwMDJlYTgzNTNlZGM1ZjdhZjM0NzUxZDY3NTJjNDE4ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZjEzMjY1NjFlMjFiNDdjZDdmYWFiNzc3MzJlMDU2NjljYzJjY2YxNDlkYzNmZjI0YjUzZDhiYTM2YTVlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxMzVjYzI2Zjk3ZGMxY2RkNmM3NGVlZThhZjI0NTI3YzVhODYzMzVlZmU1Y2RiODA4N2Y0NDQyNzBhNzBkMmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_707d103225b242ab94a4dd46eada1979",
+      "statement": "AdmittedPublicTool retains public identity, canonical request and decoded syntax together, checks the schema digest, rejects serialization failures and constructs admission only after successful typed lowering.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt#L39-L98",
+          "version": "repo-lines-v1:sha256:1af91caa834acf717e98b3ddcccff3c1b09b99514ace5b096f4b47bb2b216419:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0YjhjYTJiZTBmOTIwMmU3NTEyNjY5MTU5MmZiMDNkZmUwYWZiNmY5NTk5ODA1ZGEyZjFmODdlZDljZjFkNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY4MzEwNGFjY2Q5ZDUxZDc5YTIyZTg0YzcxNzM2YTcxNTZjNDJlM2FjZmQzZmY4ZDZkMzI0MmJlZDMzYjNhMGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1735b1614b0444219dbc2e7ba35dcdff",
+      "statement": "Complete right-hand retained membership requires complete coverage with no item failures, relation omissions or producer progress; incomplete membership cannot prove absence for difference or anti join.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt#L19-L38",
+          "version": "repo-lines-v1:sha256:77da2a6e4ee618dc3ff39477217e08cb182aed61b93e3ff17f37bc9ce898101c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwZDEwMTAyM2NiMDNmMjFlNWQ1MTczOGYxYzNhZTY1ODI3MDgzMTQwZGQ5NzFjM2RlN2Y3MTU0ZmI4MmI2NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA2YjIyZDEwYzliY2UxMDA0N2QzZDNjYjBkY2UwZDYzYjNjNThlMmFmYjIzNTU1NTQ0YWEyZDllZWE0ODE2NzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQzNzdlOWY4MzY1YjNiNmE3NjIyNWNlYTgyNzNhNjQ3OGI3YzI1YWM2NTJlYWZhOWJlMjc3MzcwMjIxYTE3MGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7a210c03226443869cf129d1b6f6666a",
+      "statement": "Retained query results preserve their original semantic authority, row type, item failures, relation omissions, walk observations, coverage and producer progress in detached immutable collections.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt#L41-L70",
+          "version": "repo-lines-v1:sha256:395b456fafbfc39267b77bab6677e81011b61d2e20ac7dd1a333fe7f64103ae8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiYjAwMjQ0NzQzMjJjNDRkMWE2M2EyYjI4YWIzYjRhY2FkNWM2NDNhNGVkZDJlYWIxZTgzYjNkOTE1NTlkZTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxNTkyNDEwODE3OWM0MDg1MjUyYmU1NDU0Yjg2NzExMGMxZWMzOWVkMjYwN2Y0ZTI1NDExMDU1ZWNkMTA0M2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlZDY4OTM0YThlOWE3NzY5NGQ4YjJlNjhlYWViNGRiM2FhNTAwNmE5ZjdlYWQzNzBkOTViYTFiMTM2ZmMzZGMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

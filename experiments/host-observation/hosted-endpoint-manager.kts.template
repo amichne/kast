@@ -22,9 +22,13 @@ run {
                 checkNotNull(descriptor)
                 check(dynamicClass.getMethod("checkCanLoadWithoutRestart", descriptorClass).invoke(dynamic, descriptor) == true)
                 application.invokeAndWait { check(dynamicClass.getMethod("loadPlugin", descriptorClass).invoke(dynamic, descriptor) == true) }
+                stage = "LIFECYCLE_START"
+                val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(id)!!
+                // Dynamic loading does not replay the application-started listener.
+                // The installed public RPC requires this existing application owner.
+                application.getService(plugin.pluginClassLoader!!.loadClass("io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleApplication"))
                 stage = "ENDPOINT_START"
                 val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == input.get("root").asString }
-                val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(id)!!
                 project.getService(plugin.pluginClassLoader!!.loadClass("io.github.amichne.kast.runtime.hosted.HostedEndpointService"))
             }
             "unload" -> {

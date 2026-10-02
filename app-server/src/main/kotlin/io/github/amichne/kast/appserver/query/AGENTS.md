@@ -1,6 +1,6 @@
 # Public query boundary
 
-Follow the root Engineering Dictum and `knowledge/contracts/public-tools.md`.
+Follow the root Engineering Dictum and `openwiki/contracts/public-tools.md`.
 The authored schema owns parameter metadata and defaults; generated files are not
 editable authorities. Run `:app-server:verifyPublicQueryGeneration` after schema
 changes, and focused PublicTool contract/schema tests after admission changes.

@@ -28,7 +28,7 @@ Provides the smallest shared domain vocabulary for typed outcomes, evidence, val
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/kernel.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/kernel.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - Read this module when a cross-domain outcome, proof, identity, or budget is unclear.
 - Keep domain-specific meaning in its owning contract rather than expanding the kernel by convenience.

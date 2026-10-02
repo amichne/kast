@@ -5,6 +5,9 @@ import io.github.amichne.kast.kernel.ReadLimits
 
 /** Bounded vocabulary at the native effect boundary. No names, paths, references, or PSI. */
 enum class IntellijReadCounter {
+    /** Detached native discovery/relation page returns, including qualified pages; never public call counts. */
+    NATIVE_DISCOVERY_PAGES,
+    NATIVE_RELATION_PAGES,
     IMPORTED_PROJECTS,
     IDEA_MODULES,
     SELECTED_GRADLE_MODULES,

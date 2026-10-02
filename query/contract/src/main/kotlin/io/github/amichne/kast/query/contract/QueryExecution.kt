@@ -69,6 +69,7 @@ private constructor(
                     is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { it.lease }
                     is AdmittedQueryPlan.Retained -> listOf(plan.source.lease)
                     is AdmittedQueryPlan.Symbols,
+                    is AdmittedQueryPlan.Text,
                     is AdmittedQueryPlan.Location -> emptyList()
                 }
             if (checkpoint != null && (checkpoint.plan != plan || checkpoint.lease != lease)) {
@@ -90,10 +91,12 @@ data class QuerySymbol(
     val source: QuerySymbolSource = QuerySymbolSource.Pending,
     val arrival: QueryArrivalEvidence = QueryArrivalEvidence.None,
     val walkArrival: QueryWalkArrival = QueryWalkArrival.None,
+    val textMatches: QueryTextMatches = QueryTextMatches.Empty,
 ) {
     init {
         require(arrival !is QueryArrivalEvidence.Proven || arrival.facts.all(connections::contains))
         require(walkArrival !is QueryWalkArrival.Proven || walkArrival.records.all { it.fact in connections })
+        require(textMatches.belongsTo(description.selector))
     }
 
     val selector: SymbolSelector
@@ -234,6 +237,7 @@ enum class QueryExecutionRejection {
     DISCOVERY_REJECTED,
     REFERENCE_STALE,
     BUDGET_REJECTED,
+    TEXT_MATCH_LIMIT_EXCEEDED,
     INTERNAL_CONTRACT_VIOLATION,
 }
 

@@ -66,3 +66,226 @@ Run the focused deterministic checks with:
 ```
 
 The fake-clock deadline test proves ordering and owner recovery only. Native receipts establish actual discovery and K2 behavior. This runner is opt-in; it adds no routine native CI matrix.
+
+## Compare complete workloads locally
+
+The `replay-workloads` and `compare` modes extend this runner's pins, process
+captures, source fixtures and native receipts. They use the installed public
+Tool RPC path, without a model or API call. The older `replay` mode remains
+available for its historical matrix.
+
+The default `RELIABILITY_FIXTURE` profile is a synthetic control and cannot
+establish an efficiency improvement. `--workload-profile KAST_SOURCE` selects
+production source: exact `QueryPlanSyntax` with source, `QueryStepSyntax`
+references across the workspace, and public kernel functions through scoped
+`ALL_DECLARATIONS`. Full compiler evidence and exhaustive terminal coverage are
+required, alongside independently selected declaration/site witnesses. The
+witnesses are sufficiency checks; they do not replace comparison of every row,
+qualification, omission, failure, source range and scope.
+
+Use one immutable `git archive --format=tar` of a full local commit for both
+artifacts. Extract it into an owned directory, prepare its build conventions,
+then import it through the existing IDE workflow. The runner verifies the
+retained archive against that Git object and every fixture file. Git metadata,
+IDE metadata and generated `build`, `.gradle` and `.kotlin` files are excluded
+from source inventory. No source file can change between captures or comparison.
+For this machine's clean snapshot, preparing `build-logic:compileKotlin` with
+`--no-build-cache --rerun-tasks` repaired incomplete Kotlin DSL accessors before
+IDE import; setup is outside workload timing.
+
+With the immutable source imported and the selected artifact pinned, the
+production reproduction command is:
+
+```sh
+build/python-tests/env/bin/python3 experiments/host-observation/reproduce_semantic_queries.py replay-workloads \
+  --workload-profile KAST_SOURCE \
+  --source-archive /private/tmp/kast-source.tar --source-commit FULL_COMMIT_SHA \
+  --fixture /private/tmp/kast-source \
+  --cli /absolute/path/to/installation/bin/kast-mcp-complete \
+  --pin /private/tmp/baseline-pin/pin.json \
+  --idea-contents '/absolute/path/to/IntelliJ IDEA.app/Contents' \
+  --idea-log /absolute/path/to/idea.log \
+  --warmups 1 --repeats 2 --output /private/tmp/baseline-run
+```
+
+This profile declares 10000 ms / 100000 work units / 20 results / 49152 bytes
+before execution, unchanged for every RUN and RESUME on both artifacts. The
+synthetic profile keeps its original 2000 ms grant. Two-second production probes
+that hit reference inventory limits remain incomplete evidence; no grant is
+increased within a trial. Warmup failures remain in raw runs and prevent their
+comparison admission. Existing host caches are retained; this is not a cold
+cache experiment.
+
+The log capture allows at most 250 ms for an asynchronously appended native
+receipt, under the existing 2 MiB append bound. Its policy is recorded in run
+limits and must match. It never retries a query. Missing or ambiguous receipts
+remain unavailable. Public arrival timestamps are captured before log collection;
+total elapsed time includes inter-call harness overhead. Native phase/stage
+vectors provide separate observations and must not be added together.
+
+Prepare with the existing `setup` command plus `--comparison-workloads`. This
+copies the existing dense-reference target, 1001-reference source and 64-function
+page source into the fixture's imported logging module. It leaves the historical
+setup unchanged when the flag is absent. Import explicitly, finish indexing,
+and keep the same fixture directory and content for both artifacts. Keep other
+clients idle while observing the host. Do not delete caches between runs.
+
+Install/select each artifact explicitly using the existing installation workflow.
+Pin its `kast-mcp-complete` executable with `pin --public-mcp`, the same
+fixture, and `--idea-contents`. Keep pins and raw receipts private. A pin records
+executable/JAR hashes, loaded plugin class hashes, IDEA/JBR/Kotlin versions,
+model/settings/limits and source hashes; a version string alone is insufficient.
+The installed sibling Tool RPC supplies the catalog without opening a workspace;
+its executable hash is pinned too. Replay also requires identical input schemas
+from the actual MCP `tools/list` response. Source
+checkout correspondence remains unproven without an independent build receipt.
+
+With an imported fixture and its current pin, this is the reproduction command:
+
+```sh
+python3 experiments/host-observation/reproduce_semantic_queries.py replay-workloads \
+  --fixture /private/tmp/kast-semantic-fixture \
+  --cli /absolute/path/to/installation/bin/kast-mcp-complete \
+  --pin /private/tmp/baseline-pin/pin.json \
+  --idea-contents '/absolute/path/to/IntelliJ IDEA.app/Contents' \
+  --idea-log /absolute/path/to/idea.log \
+  --warmups 1 --repeats 2 --output /private/tmp/baseline-run
+```
+
+It runs exact `FixtureLogger` with source, dense `REFERENCES` occurrences, and
+scoped `ALL_DECLARATIONS` with public-function filtering. The authored oracle is
+one exact declaration with source, 1001 exact occurrences (including the import),
+and 74 public functions, including the 64 existing page functions. Every trial
+starts a fresh search. Only that trial's successor checkpoint is used to resume.
+The fixed grant is 2000 ms, 100000 work units, 20 results and 49152 returned bytes
+per public call, at concurrency one. Requests are validated against the pinned
+installed catalog. Replay stops at terminal completion, a rejection, an
+increase-grant requirement, epoch movement, a repeated checkpoint or 512 calls.
+It never changes a grant to force completion. A canceled process or harness
+timeout stops the whole replay because native drainage is unproven.
+
+Each workload has one fully retained warmup and two measured repetitions by
+default. Setup, pinning and import time are excluded. First usable result means
+arrival of a nonempty row with the requested source or compiler evidence; it is
+separate from sufficient evidence for the complete answer. Completion time runs
+from the initial public call through receipt of the terminal reply, including
+public dispatch and continuation orchestration. The persistent MCP process and
+its initialize/catalog control calls occur before the workload clock; their
+exact wire receipts and stderr are retained separately. The manifest records
+`MCP_SESSION` or `TOOL_RPC`, and different transports are incompatible. Recording
+between calls contributes
+to this local runner's completion latency. Post-terminal recording is excluded.
+
+Use one persistent installed MCP session for the entire run. Its existing owner
+prepares the workspace once; each trial still begins with a fresh public RUN.
+One-shot `pin --public-rpc` is retained, but its repeated workspace preparation
+can exhaust the IDE's 256 lifecycle operations before this dense workload drains.
+No capacity override, enlarged query grant, or backend fix is applied. The harness
+call cap is 512 because the fixed byte grant can fit only three dense occurrences
+per public reply, requiring 334 calls. Public calls and native provider pages are
+separate measurements.
+
+For temporary native instrumentation, use the existing `hostedPlugin` build and
+`manage_hosted_endpoint.py` load/unload workflow. Complete setup/import and all
+active reads before changing plugins. Dynamic load starts the existing application
+lifecycle owner before the project endpoint; it does not replay IDEA's startup
+listener. Preserve the installed plugin path/hashes and restore it after capture.
+Pass an explicit `-Pversion=VERSION` when building a candidate, select that
+exact output archive, and match its packaged changed-class hash to the compiled
+class before loading. Pin the loaded class again; a similarly named older archive
+is not correspondence proof. Native pin failures retain a bounded `PIN_CAPTURE_REJECTED` stage receipt rather
+than relying on a silent script failure.
+Keep artifact assembly and focused test builds sequential: they share compiler
+outputs. For a controlled pair, build both with the same flags and verify the
+unpacked JAR inventories; this optimization changes only the relation contract
+JAR. A full serial assembly with `--no-build-cache --rerun-tasks` repairs partial
+outputs before capture. Never replace a loaded artifact in place.
+
+Record another run of the same baseline before changing artifacts. Then install,
+pin and replay the candidate with identical content and policy. Compare any two
+run manifests with:
+
+```sh
+python3 experiments/host-observation/reproduce_semantic_queries.py compare \
+  --baseline /private/tmp/baseline-run/run.json \
+  --candidate /private/tmp/candidate-run/run.json \
+  --output /private/tmp/comparison.json
+```
+
+`comparison.json` retains each repetition independently; it does not average
+away failed, canceled or incomplete trials. `COMPARISON` contains trial outcomes
+`EQUIVALENT`, `SEMANTIC_REGRESSION`, `MISSING_EVIDENCE` or `INCOMPLETE`.
+`INCOMPATIBLE` rejects changed fixtures, requests, budgets, environment,
+settings, warmth, repetitions or concurrency. `INVALID_EVIDENCE` rejects invalid
+or missing receipts. Native manifests must retain IDE/JBR/Kotlin versions and
+nonempty CLI/plugin JAR and loaded-class hash evidence; parsed trial states retain
+the admitted `TrialState` enum. Exit 0 requires every measured pair to be equivalent with
+all required measurements; exit 2 retains nonqualifying observations.
+
+A suite can report `lessWork` when at least one measured trial reduces work and
+every measured pair has equivalent sufficient evidence with no work increase
+or worse observed locator outcomes.
+Unchanged workloads need not improve. Distinct native artifacts and the admitted
+production source profile are required; self-comparison and synthetic controls
+always keep `lessWork: false`.
+
+Semantic comparison preserves declaration and occurrence identity, compiler
+signatures/digests, source text/ranges, ownership, provenance, coverage,
+qualifications, failures, omissions, scope/universe and ordering. It normalizes
+opaque symbol/candidate handles only to their companion semantic identity, and
+host/epoch only after proving the workload stayed on one basis. It never decodes
+or replays captured tokens. Paths are not normalized. Resumable prefix
+qualifications remain in raw receipts; after a successful full drain the terminal
+qualification owns completion. Discovery quantities/durations are measurements,
+not part of declaration identity. A terminal incomplete answer cannot qualify
+for a work claim. Different row order is conservatively rejected.
+
+Measurements keep public calls, actual UTF-8 stdout bytes (including the RPC
+envelope/newline), native pages, counter/contributor counts, first usable and
+completion nanoseconds, and per-call native phase/stage durations distinct.
+Diagnostic schema 6 explicitly observes returned discovery/relation pages,
+including qualified pages, and locator retention/rejection and epoch preemptions.
+Unused counters in this set retain explicit zero observations; other absent
+counters remain unavailable. Rejected-before-provider calls and canceled attempts
+that produce no page retain explicit zero counters. Completed page observations
+remain recorded when later work fails or is canceled; request-local zeros prove
+observation capability. Older missing page
+counters remain unavailable. There must be exactly one bound native receipt in
+each bounded appended log window, with both page counters explicitly observed
+in every receipt; ambiguity, rotation, saturation or absent
+measurements block a work claim. Absent counters are not zeros. Phase and stage
+vectors overlap and are never summed. Wall time does not establish CPU cost.
+
+`HostedSemanticServices.exactIssued` records exactly one retained or rejected
+outcome after each completed locator-retention pipeline attempt. Both raw outcome
+counts remain in `deltas.counters`; their sum is separately reported as
+`deltas.locatorRetentionAttempts` with baseline, candidate and delta quantities.
+Every production receipt must explicitly contain both labels, including zero.
+The work comparison uses completed attempts and all other counters; it also
+requires no increase in rejected outcomes and no decrease in retained outcomes.
+Changing outcome proportions alone cannot establish less work. Retained outcomes
+can include existing tokens, so these quantities do not establish unique stored
+locators, allocation cost, store calls or future per-token revalidation availability.
+
+`lessWork` requires equivalent sufficient evidence, every required measurement,
+and a componentwise nonincreasing observed work vector with at least one
+strict decrease. A smaller response or lower elapsed time alone cannot set it.
+Identical artifact hashes always produce repeatability evidence with
+`lessWork: false`. Scripted receipts and the explicitly marked synthetic source
+fixture also keep `lessWork: false`; their counter differences remain visible.
+An improvement claim requires a representative native workload with the same
+comparison contract. The subsequent reference-row bound optimization is qualified
+separately in the baseline report; synthetic and self-comparisons cannot qualify it.
+
+Focused checks:
+
+```sh
+build/python-tests/env/bin/python3 -m unittest discover \
+  -s experiments/host-observation -p test_semantic_comparison.py
+./gradlew hostObservationTest verifyJsonContracts verifyKastArchitecture \
+  knowledgeImpact verifyKnowledgeBase \
+  :workspace:intellij-read:check :symbol:intellij:check :relation:intellij:check
+```
+
+The [baseline report](../../docs/reviews/semantic-replay-comparison.md) distinguishes
+scripted comparator checks from completed installed native repeatability.

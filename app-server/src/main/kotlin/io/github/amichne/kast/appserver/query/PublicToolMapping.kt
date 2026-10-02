@@ -151,8 +151,9 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
                 (declarationKinds ?: PublicToolDefaults.declarationKinds).values,
                 PublicToolParameter.SOURCE_DECLARATION_NAME,
             )
+        is PublicToolTextSource -> lowerTextSource()
         is PublicToolAllSource ->
-            when (val scope = (scope ?: PublicToolDefaults.scope).lower()) {
+            when (val scope = (scope ?: PublicToolDefaults.scope).lowerDiscoveryScope()) {
                 is Refinement.Rejected -> scope
                 is Refinement.Refined ->
                     Refinement.Refined(
@@ -160,7 +161,9 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
                             QueryMatchDocument.All,
                             scope.value,
                             bounded(
-                                (declarationKinds ?: PublicToolDefaults.declarationKinds).values.map { it.lower() }
+                                (declarationKinds ?: PublicToolDefaults.declarationKinds).values.map {
+                                    it.lowerDiscoveryKind()
+                                }
                             ),
                         )
                     )
@@ -219,7 +222,7 @@ private fun searchSource(
             is Refinement.Refined -> result.value
         }
     val admittedScope =
-        when (val result = scope.lower()) {
+        when (val result = scope.lowerDiscoveryScope()) {
             is Refinement.Rejected -> return result
             is Refinement.Refined -> result.value
         }
@@ -233,48 +236,10 @@ private fun searchSource(
                 },
             ),
             admittedScope,
-            bounded(kinds.map { it.lower() }),
+            bounded(kinds.map { it.lowerDiscoveryKind() }),
         )
     )
 }
-
-private fun PublicToolScope.lower(): Refinement<QueryScopeDocument, PublicToolInputFailure> =
-    when (this) {
-        is PublicToolDirectoryScope ->
-            when (val path = WorkspaceRelativePath.parse(relativeDirectoryPath.value)) {
-                is Refinement.Rejected ->
-                    rejected(PublicToolParameter.DIRECTORY, PublicToolRule.WORKSPACE_RELATIVE_PATH)
-                is Refinement.Refined ->
-                    Refinement.Refined(
-                        QueryScopeDocument(
-                            sourceSetNames ?: PublicToolDefaults.sourceSets,
-                            QueryDirectoryScopeDocument(
-                                proven(ProtocolText.parse(path.value.value)),
-                                containment(includeSubdirectories ?: PublicToolDefaults.includeSubdirectories),
-                            ),
-                            null,
-                        )
-                    )
-            }
-        is PublicToolPackageScope ->
-            when (val name = PublicQueryPackageName.parse(packageName.value)) {
-                is Refinement.Rejected -> rejected(PublicToolParameter.PACKAGE, PublicToolRule.PACKAGE_NAME)
-                is Refinement.Refined ->
-                    Refinement.Refined(
-                        QueryScopeDocument(
-                            sourceSetNames ?: PublicToolDefaults.sourceSets,
-                            null,
-                            QueryPackageScopeDocument(
-                                proven(ProtocolText.parse(name.value.value)),
-                                containment(includeSubpackages ?: PublicToolDefaults.includeSubpackages),
-                            ),
-                        )
-                    )
-            }
-    }
-
-private fun containment(recursive: Boolean): QueryContainmentDocument =
-    if (recursive) QueryContainmentDocument.DESCENDANTS else QueryContainmentDocument.DIRECT
 
 private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, PublicToolInputFailure> {
     val result = mutableListOf<QueryStepDocument>()
@@ -358,14 +323,6 @@ private fun PublicToolJoinMode.lower(): QueryJoinModeDocument =
         is PublicToolInnerJoinMode -> QueryJoinModeDocument.Inner(leftName, rightName)
         PublicToolSemiJoinMode -> QueryJoinModeDocument.Semi
         PublicToolAntiJoinMode -> QueryJoinModeDocument.Anti
-    }
-
-private fun PublicToolDeclarationKinds.lower(): QueryDeclarationKindDocument =
-    when (this) {
-        PublicToolDeclarationKinds.CLASS -> QueryDeclarationKindDocument.CLASS
-        PublicToolDeclarationKinds.FUNCTION -> QueryDeclarationKindDocument.FUNCTION
-        PublicToolDeclarationKinds.PROPERTY -> QueryDeclarationKindDocument.PROPERTY
-        PublicToolDeclarationKinds.TYPE_ALIAS -> QueryDeclarationKindDocument.TYPE_ALIAS
     }
 
 private fun PublicToolRelation.lower(): RelationKindDocument =

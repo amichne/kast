@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.direct.directToolDocument
@@ -145,7 +146,7 @@ class KastToolRpcBridgeTest {
             )
         val bridge = KastToolRpcBridge(session)
         val catalog = assertInstanceOf(ToolRpcReply.Catalog::class.java, bridge.catalog()).catalog
-        assertEquals(4, catalog.schemaVersion)
+        assertEquals(5, catalog.schemaVersion)
         assertEquals(listOf("add_declaration", "health_check", "query_symbols"), catalog.tools.map { it.name })
         assertEquals(
             listOf(ToolRpcToolEffect.WRITE, ToolRpcToolEffect.READ, ToolRpcToolEffect.READ),
@@ -159,6 +160,24 @@ class KastToolRpcBridgeTest {
         val changeRequest = publicExample(PublicToolIdentity.ADD_DECLARATION, "exactTarget")
         assertInstanceOf(ToolRpcReply.RejectedDocument::class.java, bridge.call("add_declaration", changeRequest))
         assertEquals(2, preparationCount)
+    }
+
+    @Test
+    fun `shutdown fencing rejects RPC before workspace discovery preparation or semantic dispatch`() {
+        val read = installedHostedBootstrap().tools.single { it.name == "query_symbols" }
+        val session =
+            KastDirectToolSession(
+                catalog = listOf(read.directToolDocument()),
+                root = { error("shutdown must precede workspace discovery") },
+                start = { error("shutdown must precede preparation") },
+                invokePublic = { error("shutdown must precede semantic dispatch") },
+                admission = { InstalledToolAdmission.STOPPED },
+            )
+        assertEquals(
+            ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED),
+            KastToolRpcBridge(session)
+                .call("query_symbols", publicExample(PublicToolIdentity.QUERY_SYMBOLS, "runByName")),
+        )
     }
 
     private fun publicExample(identity: PublicToolIdentity, name: String): String =
@@ -211,7 +230,7 @@ class KastToolRpcBridgeTest {
             assertEquals(expectedType, encoded.getValue("type").jsonPrimitive.content)
             if (reply is ToolRpcReply.Catalog) {
                 val catalog = encoded.getValue("catalog").jsonObject
-                assertEquals("4", catalog.getValue("schemaVersion").jsonPrimitive.content)
+                assertEquals("5", catalog.getValue("schemaVersion").jsonPrimitive.content)
                 assertEquals(0, catalog.getValue("tools").jsonArray.size)
             } else if (reply is ToolRpcReply.Rejected) {
                 assertEquals("OUT_OF_SCOPE", encoded.getValue("failure").jsonPrimitive.content)

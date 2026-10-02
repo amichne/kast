@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:72bbe8dea3a95c4f1f8615cf51b46c0fdd69577e0b0d0e993de244c1eba4f60c",
+  "claims": [
+    {
+      "id": "claim_617d808ca9bd40aa93993e0dde9bab19",
+      "statement": "AddDeclaration planning is pure and issues detached proof after admission; it creates neither a write capability nor a published lease from live admission.",
+      "evidence": [
+        {
+          "resource": "repo://change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt#L14-L36",
+          "version": "repo-lines-v1:sha256:7954e30ed4123cf4a711015ff3ef058e401d8ce12eb88198454e3062ab3f4a9a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYmRhODZkOGQwNTgzMTEzYjhkNzg0Zjk5NjlhNTZmNjhkNDBjYzgxNzI3MTdmYWE4N2FhYzI3ZWQ4MjIxZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwYjUwMDIxZmYyODhkNTZlNmQxZmYwYjUxYzVkZGIxYmJjOWUzNTFiZDMxNDYyZmViMWI0YTFjYjRiNjYwMTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ddee1967f8e04f0b8af26d096032cf2f",
+      "statement": "Live mutation preparation first verifies current basis, exact approval, source preimage, writable access and deterministic postimage, then claims the permanent application attempt and persists recovery before issuing write authority.",
+      "evidence": [
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L113-L153",
+          "version": "repo-lines-v1:sha256:8519a52b48e59b98af3840b2b9d876f7d91acd57c04c3b593df0d8754a13afbf:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1YjdhMDk3ZDYyM2ZhNGZjYWQ5YzQyYzg5ODkyYjI5ZjcxZjRmYjYyN2FjNGU5M2Q0YjcxMDgwMTg1YjY3MjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZTJjYTMyYmYxMjFmMGNhZDIxNGI5NDVjMjA0ZDVhZGFjMzQ3OTQwNjcyOGUxYzRmMzhlNzIxMjFjYjg3YmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjM2UwNWJlNGQ3ZTIxMTJkY2E3ZDE2OGIzZjBhODg3OTc3OTE1Y2FiZDgzYzZhM2RlZTJhYzhiZjliMmMxODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkMzliMGJmYTc0OGE2ZmMwMGM4YjAwYzdlNTBlZDhkMjZhMGE3OTUwMjVkMGQxMjhjYjU5M2E3ODVhOGQzNWIifQ"
+        },
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L69-L104",
+          "version": "repo-lines-v1:sha256:0339c9f5cb2789273a702b85ca9c7e68305fbf3f5f5704747bc67d08a9168b7e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1ZmUzZjA1NjYxZjdlOTM4NzllM2QzYzk3OWI3MWU3ZjU0OTRmMWExMDExM2FjOTFhOWQyZDEyOTEyNDViNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5ZmJmZjhkYWRmOWU3ZGFmZDE1MDhkZTFhZDZhOWIwM2Q3NWFhZmU0ZDk2ZWIwZmEwMzg1MTY1MjVmYzQ1NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxOThjYzBkYzVlNDRhOWVhYzIxOWE4MTI2ZjJmNjZhZDE1YzdmMDI5MjQ2MjFjMjQ4ZmIwOGI1ODg0NTM3YWEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

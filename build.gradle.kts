@@ -3,6 +3,8 @@ import conventions.jsoncontracts.JsonContractScanRequest
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
+import support.tasks.GenerateComponentReleaseTask
+import support.tasks.ReleaseComponent
 import support.tasks.GenerateControlMetadataTask
 import support.tasks.GenerateAgentToolsTask
 import support.tasks.VerifyControlDistributionTask
@@ -51,12 +53,20 @@ version = providers.gradleProperty("version")
     .orElse(gitDescribeVersion)
     .get()
 
+// Shared libraries retain the source version: a control rebuild cannot rename host dependencies.
+val controlVersion = providers.gradleProperty("controlVersion").orElse(provider { version.toString() })
+val hostedPluginVersion = providers.gradleProperty("hostedPluginVersion").orElse(provider { version.toString() })
+extra["controlVersion"] = controlVersion.get()
+extra["hostedPluginVersion"] = hostedPluginVersion.get()
 subprojects {
     group = rootProject.group
-    version = rootProject.version
+    version = when (path) {
+        ":cli", ":app-server", ":distribution:cli" -> controlVersion.get()
+        ":runtime:hosted" -> hostedPluginVersion.get()
+        else -> rootProject.version
+    }
 }
 
-val installedProductDirectory = layout.buildDirectory.dir("installed-product")
 evaluationDependsOn(":runtime:hosted")
 val hostedPluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
 
@@ -72,14 +82,14 @@ val generatedConfigurationCatalogue = project(":cli").layout.buildDirectory.file
 )
 val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("generateKastControlMetadata") {
     group = "distribution"
-    description = "Generates the existing-IDE plugin manifest and public schemas."
-    dependsOn(":runtime:hosted:hostedPlugin", ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue", ":cli:generateProviderCatalog")
-    pluginArchive.set(hostedPluginArchive)
+    description = "Generates the control required hosted contract and public schemas."
+    dependsOn(":protocol:wire:generateHostedContract", ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue", ":cli:generateProviderCatalog")
+    hostedContractFile.set(project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json"))
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
     operationRegistryFile.set(generatedOperationRegistry)
     configurationCatalogueFile.set(generatedConfigurationCatalogue)
     providerCatalogueFile.set(project(":cli").layout.buildDirectory.file("generated/provider/provider-catalog.json"))
-    productVersion.set(project.version.toString())
+    productVersion.set(controlVersion)
     ideaBuild.set(libs.versions.ide.host.build)
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
     outputDirectory.set(generatedControlMetadata)
@@ -96,7 +106,7 @@ val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKas
     canonicalQueryExamplesFile.set(layout.projectDirectory.file(
         "app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.examples.json",
     ))
-    productVersion.set(project.version.toString())
+    productVersion.set(controlVersion)
     outputDirectory.set(agentToolsDirectory)
 }
 val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
@@ -120,10 +130,13 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from("install.sh") {
         into("share/kast")
     }
+    from("distribution/cli/lifecycle-fence-v1") { into("share/kast") }
+    from("distribution/cli/reset-fence-v1") { into("share/kast") }
+    from("distribution/contract/src/main/resources/management/management-lifecycle.schema.json") { into("share/kast/schema") }
     from("distribution/cli/one-shot-observation-v1") {
         into("share/kast")
     }
-    from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py")) { into("share/kast") }
+    from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py", "packaging/host-installation.py")) { into("share/kast") }
 }
 
 val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
@@ -132,7 +145,7 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     dependsOn(stageKastControlProduct)
     from(controlProductDirectory)
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    archiveFileName.set("kast-control-v${project.version}-macos-aarch64.tar.gz")
+    archiveFileName.set("kast-control-v${controlVersion.get()}-macos-aarch64.tar.gz")
     compression = Compression.GZIP
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
@@ -163,6 +176,44 @@ val verifyKastControlDistLayout = tasks.register<VerifyControlDistributionTask>(
     maximumInstalledBytes.set(128L * 1024L * 1024L)
 }
 
+val contractFile = project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json")
+val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {
+    commandLine("git", "rev-parse", "HEAD")
+    workingDir(rootDir)
+}.standardOutput.asText.map(String::trim))
+tasks.register<GenerateComponentReleaseTask>("generateControlReleaseRecord") {
+    dependsOn(assembleKastControlDist, "assembleKastSkill", "assembleKastAgentPlugin", "assembleKastMarketplace", ":protocol:wire:generateHostedContract")
+    component.set(ReleaseComponent.CONTROL)
+    releaseVersion.set(controlVersion)
+    sourceRevision.set(releaseSourceRevision)
+    archive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
+    hostedContractFile.set(contractFile)
+    companionArtifacts.from(
+        tasks.named<Zip>("assembleKastSkill").flatMap(Zip::getArchiveFile),
+        tasks.named<Zip>("assembleKastAgentPlugin").flatMap(Zip::getArchiveFile),
+        tasks.named<Zip>("assembleKastMarketplace").flatMap(Zip::getArchiveFile),
+    )
+    outputDirectory.set(layout.buildDirectory.dir("generated/control-release"))
+}
+tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
+    dependsOn(":runtime:hosted:hostedPlugin", ":protocol:wire:generateHostedContract")
+    component.set(ReleaseComponent.HOST)
+    companionArtifacts.from(layout.projectDirectory.file("packaging/host-installation.py"))
+    releaseVersion.set(hostedPluginVersion)
+    sourceRevision.set(releaseSourceRevision)
+    archive.set(hostedPluginArchive)
+    hostedContractFile.set(contractFile)
+    val metadataBaseDirectory = layout.projectDirectory.asFile
+    ideaReleaseLine.set(providers.gradleProperty("hostedIdeaHome").map { home ->
+        val metadataPath = java.io.File(home, "Resources/product-info.json")
+        val metadataFile = if (metadataPath.isAbsolute) metadataPath else java.io.File(metadataBaseDirectory, metadataPath.path)
+        val metadata = groovy.json.JsonSlurper().parse(metadataFile) as Map<*, *>
+        (metadata["buildNumber"] as String).substringBefore('.')
+    }.orElse(libs.versions.ide.host.build.map { it.substringBefore('.') }))
+    outputDirectory.set(layout.buildDirectory.dir("generated/host-release"))
+}
+
+
 apply(from = "distribution/release/plugin-release.gradle.kts")
 
 tasks.register("verifyDistributionContent") {
@@ -171,24 +222,19 @@ tasks.register("verifyDistributionContent") {
     dependsOn(verifyKastControlDistLayout, ":runtime:hosted:hostedPlugin", ":app-server:verifyReleaseRuntimeAdmission")
 }
 
-val stageInstalledProduct = tasks.register<Sync>("stageInstalledProduct") {
-    group = "distribution"
-    description = "Stages the control-only installed Kotlin product."
-    dependsOn(stageKastControlProduct)
-    into(installedProductDirectory)
-    from(controlProductDirectory)
-}
-
+val canonicalLocalInstallPrefix = providers.environmentVariable("HOME")
+    .map { userHome ->
+        require(userHome.isNotBlank() && java.io.File(userHome).isAbsolute) { "HOME must name an absolute user directory" }
+        file(userHome).toPath().toAbsolutePath().normalize().resolve(".local").toFile()
+    }
 val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
     .map { configuredPrefix ->
         require(configuredPrefix.isNotBlank()) { "kastLocalPrefix must name a non-blank installation prefix" }
-        file(configuredPrefix).toPath().toAbsolutePath().normalize().toFile()
+        val prefix = file(configuredPrefix).toPath().toAbsolutePath().normalize().toFile()
+        require(prefix == canonicalLocalInstallPrefix.get()) { "kastLocalPrefix must equal HOME/.local; alternate installations are unsupported" }
+        prefix
     }
-    .orElse(
-        providers.systemProperty("user.home")
-            .map { userHome -> file(userHome).resolve(".local") },
-    )
-val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
+    .orElse(canonicalLocalInstallPrefix)
 val localJavaHome = providers.systemProperty("java.home").map { configuredHome ->
     file(configuredHome).toPath().toRealPath().toFile()
 }
@@ -200,41 +246,41 @@ val localHostedIdeaBuild = providers.gradleProperty("hostedIdeaHome").map { home
 }.orElse(libs.versions.ide.host.build)
 val localHostedPluginArchive = localHostedIdeaBuild.map { build ->
     val releaseLine = build.substringBefore('.')
-    layout.projectDirectory.file("runtime/hosted/build/distributions/kast-ide-hosted-v${project.version}-idea-$releaseLine.zip")
+    layout.projectDirectory.file("runtime/hosted/build/distributions/kast-ide-hosted-v${hostedPluginVersion.get()}-idea-$releaseLine.zip")
 }
 
 tasks.register<Exec>("installLocal") {
     group = "distribution"
-    description = "Installs the Kast product (-Pversion=x.y.z) under ~/.local or -PkastLocalPrefix."
+    description = "Installs a control/host pair (-PcontrolVersion, -PhostedPluginVersion) in the sole HOME/.local/share/kast installation."
     doNotTrackState("The installed prefix contains live service sockets and is mutated by the installer.")
-    dependsOn(stageKastControlProduct, ":runtime:hosted:hostedPlugin")
+    dependsOn(stageKastControlProduct, ":runtime:hosted:hostedPlugin", "generateHostReleaseRecord")
     inputs.dir(controlProductDirectory)
     inputs.file(localHostedPluginArchive)
     inputs.files("packaging/install-local.sh", "install.sh")
     inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
-    inputs.property("localJavaHome", localJavaHome.map { it.absolutePath })
-    inputs.property("localJavaExecutable", localJavaExecutable.map { it.absolutePath })
     environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
     environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE", localHostedPluginArchive.get().asFile.absolutePath)
+    environment("KAST_LOCAL_HOST_RELEASE_RECORD", layout.buildDirectory.file("generated/host-release/kast-host-release-v${hostedPluginVersion.get()}.json").get().asFile.absolutePath)
     providers.gradleProperty("hostedIdeaHome").orNull?.let { environment("KAST_INSTALL_IDEA_HOME", it) }
-    environment("KAST_LOCAL_JAVA_HOME", localJavaHome.get().absolutePath)
-    environment("KAST_LOCAL_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     commandLine("bash", layout.projectDirectory.file("packaging/install-local.sh"))
 }
 
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
-    description = "Verifies assembled artifact identity, launcher admission, and one session installation."
-    dependsOn(stageInstalledProduct, assembleKastControlDist)
-    inputs.dir(installedProductDirectory)
+    description = "Verifies assembled artifact identity, launcher admission, and canonical persistent staging in an owned HOME."
+    dependsOn(stageKastControlProduct, assembleKastControlDist, "generateHostReleaseRecord")
+    inputs.dir(controlProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(hostedPluginArchive)
+    val hostRecord = layout.buildDirectory.file("generated/host-release/kast-host-release-v${hostedPluginVersion.get()}.json")
+    inputs.file(hostRecord)
     inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py")
     outputs.upToDateWhen { false }
-    environment("KAST_INSTALLED_PRODUCT", installedProductDirectory.get().asFile.absolutePath)
+    environment("KAST_INSTALLED_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
     environment("KAST_HOSTED_PLUGIN_ARCHIVE", hostedPluginArchive.get().asFile.absolutePath)
+    environment("KAST_HOST_RELEASE_RECORD", hostRecord.get().asFile.absolutePath)
     environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     commandLine("python3", layout.projectDirectory.file("packaging/run-installed-product.py"))
 }
@@ -363,59 +409,6 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
         "--snapshot", layout.projectDirectory.file("packaging/configuration-schema.json"))
 }
 
-val knowledgeParserClasspath = files(
-    JsonContractScanRequest::class.java.protectionDomain.codeSource.location,
-    jsonContractParser,
-)
-
-val knowledgeBaseTest = tasks.register<Exec>("knowledgeBaseTest") {
-    group = "verification"
-    description = "Exercises repository knowledge-base validation behavior."
-    inputs.files(knowledgeParserClasspath)
-    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
-    inputs.files(
-        layout.projectDirectory.file(".github/scripts/code_kb.py"),
-        layout.projectDirectory.file(".github/scripts/test_code_kb.py"),
-    )
-    commandLine("python3", layout.projectDirectory.file(".github/scripts/test_code_kb.py"))
-}
-
-val verifyKnowledgeBase = tasks.register<Exec>("verifyKnowledgeBase") {
-    group = "verification"
-    description = "Strictly validates the source-bound OKF repository knowledge base."
-    inputs.files(knowledgeParserClasspath)
-    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
-    dependsOn(knowledgeBaseTest)
-    inputs.dir(layout.projectDirectory.dir("knowledge"))
-    inputs.file(layout.projectDirectory.file(".github/scripts/code_kb.py"))
-    commandLine(
-        "python3",
-        layout.projectDirectory.file(".github/scripts/code_kb.py"),
-        "check",
-        "--repo",
-        layout.projectDirectory,
-        "--docs",
-        "knowledge",
-        "--strict",
-    )
-}
-
-tasks.register<Exec>("knowledgeImpact") {
-    group = "help"
-    description = "Reports knowledge concepts affected by current working-tree changes."
-    doNotTrackState("The report intentionally observes the live Git working tree.")
-    commandLine(
-        "python3",
-        layout.projectDirectory.file(".github/scripts/code_kb.py"),
-        "impact",
-        "--repo",
-        layout.projectDirectory,
-        "--docs",
-        "knowledge",
-        "--from-git",
-    )
-}
-
 val pythonTestEnvironment = layout.buildDirectory.dir("python-tests/env")
 val pythonTestExecutable = pythonTestEnvironment.map { it.file("bin/python3").asFile.absolutePath }
 val preparePythonTestEnvironment = tasks.register<Exec>("preparePythonTestEnvironment") {
@@ -426,6 +419,62 @@ val preparePythonTestEnvironment = tasks.register<Exec>("preparePythonTestEnviro
     commandLine("python3", layout.projectDirectory.file("packaging/prepare-python-test-environment.py"))
 }
 
+val knowledgeParserClasspath = files(
+    JsonContractScanRequest::class.java.protectionDomain.codeSource.location,
+    jsonContractParser,
+)
+
+val knowledgeBaseTest = tasks.register<Exec>("knowledgeBaseTest") {
+    group = "verification"
+    dependsOn(preparePythonTestEnvironment)
+    description = "Exercises repository knowledge-base validation behavior."
+    inputs.files(knowledgeParserClasspath)
+    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
+    inputs.files(
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        layout.projectDirectory.file(".github/scripts/test_code_kb.py"),
+    )
+    commandLine(pythonTestExecutable.get(), layout.projectDirectory.file(".github/scripts/test_code_kb.py"))
+}
+
+val verifyKnowledgeBase = tasks.register<Exec>("verifyKnowledgeBase") {
+    group = "verification"
+    dependsOn(preparePythonTestEnvironment)
+    description = "Validates OpenWiki links, source paths, and exact declaration citations."
+    inputs.files(knowledgeParserClasspath)
+    environment("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
+    dependsOn(knowledgeBaseTest)
+    inputs.dir(layout.projectDirectory.dir("openwiki"))
+    inputs.file(layout.projectDirectory.file(".github/scripts/code_kb.py"))
+    commandLine(
+        pythonTestExecutable.get(),
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        "check",
+        "--repo",
+        layout.projectDirectory,
+        "--docs",
+        "openwiki",
+        "--strict",
+    )
+}
+
+tasks.register<Exec>("knowledgeImpact") {
+    group = "help"
+    dependsOn(preparePythonTestEnvironment)
+    description = "Reports knowledge concepts affected by current working-tree changes."
+    doNotTrackState("The report intentionally observes the live Git working tree.")
+    commandLine(
+        pythonTestExecutable.get(),
+        layout.projectDirectory.file(".github/scripts/code_kb.py"),
+        "impact",
+        "--repo",
+        layout.projectDirectory,
+        "--docs",
+        "openwiki",
+        "--from-git",
+    )
+}
+
 val hostObservationTest = tasks.register<Exec>("hostObservationTest") {
     dependsOn(preparePythonTestEnvironment)
     group = "verification"
@@ -434,4 +483,15 @@ val hostObservationTest = tasks.register<Exec>("hostObservationTest") {
     commandLine(pythonTestExecutable.get(), "-m", "unittest", "discover", "-s", "experiments/host-observation", "-p", "test_*.py")
 }
 
-tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest) }
+val componentReleaseTest = tasks.register<Exec>("componentReleaseTest") {
+    dependsOn(preparePythonTestEnvironment)
+    group = "verification"
+    description = "Proves strict component release contracts, inventory ownership, and byte admission."
+    inputs.files("distribution/release/component_release.py", "distribution/release/test_component_release.py",
+        "distribution/release/component-release.schema.json", "distribution/release/resolve_version.py",
+        "distribution/release/test_resolve_version.py",
+        "protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json")
+    commandLine(pythonTestExecutable.get(), "-m", "unittest", "discover", "-s", "distribution/release", "-p", "test_component_release.py")
+}
+
+tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest, componentReleaseTest) }

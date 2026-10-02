@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceWindowDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.contract.QueryTextMatchDocument
 import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
@@ -154,6 +155,14 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
                 is SourceProjection.Projected -> projected.source
                 SourceProjection.Rejected -> return null
             }
+        val matches =
+            when (val projected = projectTextMatches(symbol)) {
+                is QueryProjection.Projected ->
+                    (BoundedProtocolList.create(projected.values).refinedForQueryOrNull() ?: return null).takeIf {
+                        it.values.isNotEmpty()
+                    }
+                QueryProjection.Rejected -> return null
+            }
         return QueryResultItemDocument.ExactSymbol(
             ref = QueryReferenceDocument.ExactSymbol(token),
             kind = document.kind,
@@ -173,8 +182,18 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
                     )
                     .refinedForQueryOrNull() ?: return null,
             source = source,
+            matches = matches,
         )
     }
+
+    private fun projectTextMatches(symbol: QuerySymbol): QueryProjection<QueryTextMatchDocument> =
+        symbol.textMatches.values.mapProjected {
+            when (val match = it.protocolDocument()) {
+                is QueryTextMatchProjection.Projected -> match.document
+                QueryTextMatchProjection.ScalarContractViolation,
+                is QueryTextMatchProjection.EvidenceContractViolation -> null
+            }
+        }
 
     private fun projectSource(output: QueryOutputDocument.Symbols, source: QuerySymbolSource): SourceProjection {
         if (QuerySymbolFieldDocument.SOURCE !in output.fields.values) return SourceProjection.Projected(null)

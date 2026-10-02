@@ -14,7 +14,7 @@ internal const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 internal const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 internal const val MAXIMUM_PROTOCOL_COUNT = 1_000
 
-internal const val SERVER_PROJECTION_SCHEMA_VERSION = 17
+internal const val SERVER_PROJECTION_SCHEMA_VERSION = 18
 private const val CLI_INVOCATIONS_SCHEMA_VERSION = 4
 
 /** A hosted tool either has an executable CLI route or is hosted-only. */

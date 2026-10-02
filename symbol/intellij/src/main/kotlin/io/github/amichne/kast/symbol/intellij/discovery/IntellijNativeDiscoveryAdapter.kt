@@ -12,6 +12,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
 internal sealed interface IntellijNativeDiscoveryResult {
@@ -63,14 +64,16 @@ internal class IntellijNativeDiscoveryAdapter(
                                         limits = limits,
                                     )
                                     .discoverNative(project, compiledScope, request, allowance)
+                            is SymbolDiscoveryTarget.TextDeclarations,
                             is SymbolDiscoveryTarget.Location,
                             is SymbolDiscoveryTarget.Text ->
                                 IntellijSupplementalDiscoveryQuery(
                                         project = project,
                                         limits = limits,
+                                        observation = observation,
                                         environmentState = { project.discoveryEnvironmentState() },
                                     )
-                                    .discover(compiledScope, request)
+                                    .discover(compiledScope, request, allowance)
                         }
                     }
             ) {
@@ -84,6 +87,10 @@ internal class IntellijNativeDiscoveryAdapter(
                 is IntellijScopedQueryResult.Rejected -> IntellijNativeDiscoveryResult.ScopeRejected(scoped.failures)
             }
         }
+            .also { result ->
+                if (result is IntellijNativeDiscoveryResult.Discovered)
+                    observation.count(IntellijReadCounter.NATIVE_DISCOVERY_PAGES)
+            }
     }
 }
 
@@ -111,6 +118,7 @@ internal fun SymbolDiscoveryTarget.discoveryKind(): SymbolNameDiscoveryKind =
     when (this) {
         is SymbolDiscoveryTarget.All -> kind
         is SymbolDiscoveryTarget.Name -> kind
+        is SymbolDiscoveryTarget.TextDeclarations,
         is SymbolDiscoveryTarget.Location,
         is SymbolDiscoveryTarget.Text -> error("Supplemental discovery targets do not use Choose-by-Name contributors")
     }

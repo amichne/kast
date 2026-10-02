@@ -502,7 +502,11 @@ def workspaces(installation):
         if not isinstance(raw, str):
             raise Rejected(Failure.REGISTRY_REJECTED)
         root = Path(raw)
-        if not root.is_absolute() or not root.is_dir() or root.resolve() != root or root in admitted:
+        # Hosted installations never execute workspace processes. Deleted historical
+        # roots are not process authority and must not prevent retiring the coordinator.
+        legacy = installation.manifest['schemaVersion'] == 1
+        if (not root.is_absolute() or root.resolve() != root or root in admitted
+                or (legacy and not root.is_dir())):
             raise Rejected(Failure.REGISTRY_REJECTED)
         admitted.append(root)
     return admitted
@@ -895,10 +899,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--installation', required=True)
     parser.add_argument('operation', choices=('inspect', 'recover-read-only', 'reset', 'remove', 'prune'))
+    parser.add_argument('--control-only', action='store_true', help='Remove only the owned control installation.')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--json', action='store_true')
     arguments = parser.parse_args()
     try:
+        if arguments.control_only and arguments.operation != 'remove':
+            raise Rejected(Failure.MANIFEST_REJECTED)
         installation = Installation.admit(arguments.installation)
         if arguments.operation == 'inspect':
             report = execute(installation, arguments.operation, arguments.dry_run)

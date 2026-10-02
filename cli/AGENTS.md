@@ -30,7 +30,10 @@ legacy command graph retained for migration, and hosted output projections.
 - [src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt](src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt) - command topology.
 - [src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt) - retired public command graph retained as internal migration code.
 - [src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt) - saved configuration boundary.
-- [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - installation workflow, including committed daemon upgrade resumption.
+- [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - Control-owned installation and live host admission, including committed daemon upgrade resumption.
+- [InstallationRequest.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt) - Control payload and installation request, without a Host archive requirement.
+- [ControlInstallationInput.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt) - sole HOME installation and executable path admission.
+- [ControlInstallationRecovery.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt) - Control-only restoration and verified recovery outcomes.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt) - prior daemon update admission before service retirement.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt) - admitted private or legacy prior command and environment retained across sealing and retirement.
 
@@ -61,7 +64,7 @@ legacy command graph retained for migration, and hosted output projections.
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
 - For output compatibility, start in `projection` and follow to `protocol/wire`.

@@ -86,6 +86,7 @@ enum class SymbolDiscoveryBatchFailure {
     BYTE_LIMIT_EXCEEDED,
     NON_DETERMINISTIC_ORDER,
     ENCODED_BYTE_COUNT_MISMATCH,
+    TEXT_MATCH_TARGET_MISMATCH,
 }
 
 @ConsistentCopyVisibility
@@ -118,6 +119,12 @@ private constructor(
             timings: SymbolDiscoveryTimings,
             measurements: SymbolDiscoveryMeasurements = SymbolDiscoveryMeasurements(),
         ): Refinement<SymbolDiscoveryBatch, SymbolDiscoveryBatchFailure> {
+            val target = request.target
+            if (
+                target is SymbolDiscoveryTarget.TextDeclarations && candidates.any { it.textMatch?.word != target.word }
+            ) {
+                return Refinement.Rejected(SymbolDiscoveryBatchFailure.TEXT_MATCH_TARGET_MISMATCH)
+            }
             if (candidates.any { it.lease != request.scope.lease }) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.CANDIDATE_LEASE_MISMATCH)
             }
@@ -127,7 +134,10 @@ private constructor(
             if (encodedBytes.value > request.budget.returnedBytes.value) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.BYTE_LIMIT_EXCEEDED)
             }
-            if (candidates != candidates.distinct().sortedWith(request.candidateOrder())) {
+            if (
+                candidates.distinctBy(SymbolDiscoveryCandidate::identity).size != candidates.size ||
+                    candidates != candidates.sortedWith(request.candidateOrder())
+            ) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.NON_DETERMINISTIC_ORDER)
             }
             if (candidates.sumOf { it.projectedUtf8Size().value } != encodedBytes.value) {

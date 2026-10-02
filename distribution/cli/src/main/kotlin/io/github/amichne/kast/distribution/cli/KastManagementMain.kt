@@ -44,11 +44,10 @@ fun main(arguments: Array<String>) {
 @Suppress("ThrowsCount")
 private fun internalInstall(arguments: List<String>, environment: Map<String, String>) {
     if (arguments.size != 2) throw ManagementRejected("installer-protocol", "invalid request")
-    val rootRaw =
-        environment["KAST_INSTALL_ROOT"]
-            ?: throw ManagementRejected("installer-protocol", "installation root unavailable")
+    if ("KAST_INSTALL_ROOT" !in environment)
+        throw ManagementRejected("installer-protocol", "installation root unavailable")
     val root =
-        when (val resolved = ManagementRootResolution.Selected.admit(rootRaw)) {
+        when (val resolved = resolveManagementRoot(environment)) {
             is ManagementRootResolution.Selected -> resolved.root
             is ManagementRootResolution.Rejected ->
                 throw ManagementRejected("installer-protocol", resolved.failure.reason)
@@ -82,6 +81,8 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
         ManagementRoot()
             .subcommands(
                 StatusCommand(),
+                StopCommand(),
+                ReinstallCommand(),
                 ConnectCommand(),
                 DisconnectCommand(),
                 PluginCommand(),
@@ -125,6 +126,32 @@ private class StatusCommand : ManagementNode("status") {
     override fun help(context: Context) = "Inspect installation receipts and passive runtime observations."
 
     override fun selection() = ManagementCommand.Status(json)
+}
+
+private class StopCommand : ManagementNode("stop") {
+    private val json by option("--json", help = "Print the typed lifecycle outcome.").flag()
+    private val force by option("--force", help = "Terminate exactly owned tool processes instead of waiting.").flag()
+
+    override fun help(context: Context) = "Disable automatic restart and verify shutdown; preserve the installation."
+
+    override fun selection() =
+        ManagementCommand.Lifecycle(if (force) LifecycleOperation.STOP_FORCE else LifecycleOperation.STOP, json)
+}
+
+private class ReinstallCommand : ManagementNode("reinstall") {
+    private val json by option("--json", help = "Print the typed lifecycle outcome.").flag()
+    private val force by
+        option(
+                "--force",
+                help = "Retire scoped daemons, erase Kast without prior ownership checks, then install fresh.",
+            )
+            .flag()
+
+    override fun help(context: Context) = "Reinstall the selected release, or reset to the latest release with --force."
+
+    override fun selection() =
+        if (force) ManagementCommand.Reset(ForceResetOperation.REINSTALL, json)
+        else ManagementCommand.Lifecycle(LifecycleOperation.REINSTALL, json)
 }
 
 private class ConnectCommand : ManagementNode("connect") {
@@ -188,31 +215,33 @@ private class PluginCommand : ManagementNode("plugin") {
 }
 
 private class UpgradeCommand : ManagementNode("upgrade") {
+    private val controlOnly by
+        option("--control-only", help = "Upgrade control and reuse the admitted running IntelliJ host.").flag()
+
     override fun help(context: Context) = "Install the latest verified release on the selected channel."
 
-    override fun selection() = ManagementCommand.Upgrade
+    override fun selection() = ManagementCommand.Upgrade(controlOnly)
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {
+    private val force by
+        option("--force", help = "Retire scoped daemons and erase Kast without prior ownership checks.").flag()
+    private val json by option("--json", help = "Print the typed force reset outcome; requires --force.").flag()
+
     override fun help(context: Context) = "Remove this installation and its owned registrations."
 
-    override fun selection() = ManagementCommand.Uninstall
+    override fun selection(): ManagementCommand {
+        if (json && !force) throw CliktError("--json requires --force for uninstall")
+        return if (force) ManagementCommand.Reset(ForceResetOperation.UNINSTALL, json) else ManagementCommand.Uninstall
+    }
 }
 
 internal data class ManagementRejected(val stage: String, val reason: String) : RuntimeException()
 
-/** An explicit root is authoritative; invalid input never selects the default installation. */
+/** Each user has one installation; an explicit root can only bind that same installation. */
 internal fun resolveManagementRoot(environment: Map<String, String>): ManagementRootResolution {
-    val explicit = environment["KAST_INSTALL_ROOT"]
-    val raw =
-        if (explicit != null) explicit
-        else {
-            val home =
-                environment["HOME"] ?: return ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE)
-            val dataHome = environment["XDG_DATA_HOME"].takeUnless { it.isNullOrEmpty() } ?: "$home/.local/share"
-            "$dataHome/kast"
-        }
-    return ManagementRootResolution.Selected.admit(raw)
+    val home = environment["HOME"] ?: return ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE)
+    return ManagementRootResolution.Selected.admit(home, environment["KAST_INSTALL_ROOT"])
 }
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
@@ -225,28 +254,7 @@ private fun perform(command: ManagementCommand) {
             is ManagementRootResolution.Rejected -> throw ManagementRejected("environment", resolved.failure.reason)
         }
     when (command) {
-        is ManagementCommand.Status -> {
-            val commandPath =
-                ProcessHandle.current()
-                    .info()
-                    .command()
-                    .map { Path.of(it).toAbsolutePath().normalize().toString() }
-                    .orElse("unavailable")
-            val status = readStatus(root, commandPath)
-            if (command.json) println(status.asJson())
-            else {
-                println("Command: ${status.commandPath}")
-                println("Installation: ${status.resolvedInstallationPath.value ?: "unavailable"}")
-                println("Installed: ${status.installedVersion.value ?: "unavailable"}")
-                println("Loaded: ${status.loadedVersion.value ?: "unavailable"}")
-                val integrations =
-                    status.registrations.value?.joinToString { it.connection.publicName } ?: "unavailable"
-                println("Recorded integrations: $integrations")
-                println("Active workspaces: ${status.activeWorkspaces.value?.joinToString() ?: "unavailable"}")
-                println("Live connections: ${status.liveConnections.value ?: "unavailable"}")
-                println("One-shot requests in flight: ${status.oneShotRequestsInFlight.value ?: "unavailable"}")
-            }
-        }
+        is ManagementCommand.Status -> printManagementStatus(root, command.json)
         is ManagementCommand.Connect -> {
             if (command.connection == null) println("Supported integrations: codex mcp, codex app-server, copilot, pi")
             else {
@@ -287,9 +295,64 @@ private fun perform(command: ManagementCommand) {
                 }
             }
         }
-        ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home))
+        is ManagementCommand.Lifecycle -> {
+            val outcome = executeInstallationLifecycle(root, Path.of(home), environment, command.operation)
+            if (command.json) println(outcome.asJson())
+            else
+                when (outcome) {
+                    is LifecycleOutcome.Stopped ->
+                        println("Kast shutdown verified; automatic restart and new tool calls are disabled")
+                    is LifecycleOutcome.Reinstalled ->
+                        println("Reinstalled Kast ${outcome.version}; reconnect affected harnesses")
+                    is LifecycleOutcome.Rejected ->
+                        System.err.println(
+                            "kast: ${outcome.stage}: ${outcome.failure}; ${lifecycleRecovery(outcome.failure)}"
+                        )
+                    is LifecycleOutcome.Pending ->
+                        System.err.println(
+                            "kast: installed ${outcome.version}; ${outcome.stage}: ${outcome.failure}; " +
+                                lifecycleRecovery(outcome.failure)
+                        )
+                }
+            if (outcome is LifecycleOutcome.Rejected || outcome is LifecycleOutcome.Pending) exitProcess(1)
+        }
+        is ManagementCommand.Reset -> {
+            val outcome = forceResetInstallation(root, Path.of(home), environment, command.operation)
+            when (presentForceReset(outcome, command.json)) {
+                ForceResetExit.COMPLETE -> Unit
+                ForceResetExit.INCOMPLETE -> exitProcess(1)
+            }
+        }
+        is ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home), command.controlOnly)
         ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home))
         ManagementCommand.Version -> println(MANAGEMENT_VERSION)
         ManagementCommand.Help -> Unit
     }
+}
+
+private fun lifecycleRecovery(failure: LifecycleFailure): String =
+    when (failure) {
+        LifecycleFailure.HOST_RESTART_REQUIRED -> "quit the selected IntelliJ IDEA, then repeat this command"
+        LifecycleFailure.REGISTRATION_REPAIR_REQUIRED -> "repair the recorded harness registration with kast connect"
+        LifecycleFailure.OWNERSHIP_UNPROVEN,
+        LifecycleFailure.FENCE_REJECTED,
+        LifecycleFailure.CHILD_REJECTED,
+        LifecycleFailure.CHILD_DEADLINE_EXCEEDED,
+        LifecycleFailure.REQUEST_OWNERSHIP_UNPROVEN,
+        LifecycleFailure.REQUESTS_DID_NOT_RETIRE,
+        LifecycleFailure.HOST_OBSERVATION_REJECTED,
+        LifecycleFailure.INSTALLATION_REJECTED,
+        LifecycleFailure.FILESYSTEM_REJECTED ->
+            "inspect kast status --json; shutdown fencing and recovery evidence are retained"
+    }
+
+private fun printManagementStatus(root: Path, json: Boolean) {
+    val commandPath =
+        ProcessHandle.current()
+            .info()
+            .command()
+            .map { Path.of(it).toAbsolutePath().normalize().toString() }
+            .orElse("unavailable")
+    val status = readStatus(root, commandPath)
+    println(if (json) status.asJson() else status.asText())
 }

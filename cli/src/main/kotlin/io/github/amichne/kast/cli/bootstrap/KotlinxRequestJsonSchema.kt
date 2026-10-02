@@ -23,12 +23,10 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.json.putJsonObject
 
 /** Generates the hosted request schema from the same serializer that admits the request. */
 internal fun generatedRequestSchema(serializer: KSerializer<*>): JsonObject =
@@ -55,7 +53,8 @@ internal fun generatedHostedRequestSchema(serializer: KSerializer<*>, variants: 
             val allowed = variants.intents.map { it.identity }.toSet()
             val selected = choices.filter { choice ->
                 val fields = (choice as? JsonObject)?.get("properties") as? JsonObject
-                val tag = (fields?.get("kind") as? JsonObject)?.get("const") as? JsonPrimitive
+                val tag =
+                    ((fields?.get("kind") as? JsonObject)?.get("enum") as? JsonArray)?.singleOrNull() as? JsonPrimitive
                 tag?.content in allowed
             }
             check(selected.size == allowed.size) { "Every hosted intent must resolve to one generated variant" }
@@ -209,6 +208,16 @@ private data class GeneratedObjectSchemaDocument(
 
 @Serializable private data class GeneratedUnionSchemaDocument(val oneOf: List<JsonElement>)
 
+@Serializable
+private data class GeneratedSealedUnionSchemaDocument(
+    val anyOf: List<JsonElement>,
+    val discriminator: GeneratedSchemaDiscriminatorDocument,
+)
+
+@Serializable private data class GeneratedSchemaDiscriminatorDocument(val propertyName: String)
+
+@Serializable private data class GeneratedEnumDiscriminatorDocument(val enum: List<String>, val type: String = "string")
+
 private val OBJECT_SCHEMA_JSON = Json { encodeDefaults = true }
 
 private fun SerialDescriptor.objectSchema(): JsonObject =
@@ -229,43 +238,39 @@ private fun SerialDescriptor.objectSchema(): JsonObject =
 private fun SerialDescriptor.sealedSchema(): JsonObject {
     val discriminator = annotations.filterIsInstance<JsonClassDiscriminator>().lastOrNull()?.discriminator ?: "type"
     val variants = getElementDescriptor(1)
-    return buildJsonObject {
-        putJsonArray("anyOf") {
-            repeat(variants.elementsCount) { index ->
-                val tag = variants.getElementName(index).substringAfterLast('.')
-                add(
-                    variants
-                        .getElementDescriptor(index)
-                        .toJsonSchema(emptyList(), includeNullability = false)
-                        .withDiscriminator(discriminator, tag)
-                )
-            }
-        }
-    }
+    return OBJECT_SCHEMA_JSON.encodeToJsonElement(
+            GeneratedSealedUnionSchemaDocument.serializer(),
+            GeneratedSealedUnionSchemaDocument(
+                anyOf =
+                    (0 until variants.elementsCount).map { index ->
+                        val tag = variants.getElementName(index).substringAfterLast('.')
+                        variants
+                            .getElementDescriptor(index)
+                            .toJsonSchema(emptyList(), includeNullability = false)
+                            .withDiscriminator(discriminator, tag)
+                    },
+                discriminator = GeneratedSchemaDiscriminatorDocument(discriminator),
+            ),
+        )
+        .jsonObject
 }
 
 private fun JsonObject.withDiscriminator(name: String, value: String): JsonObject {
     val properties = this["properties"] as? JsonObject ?: error("A sealed request variant must serialize as an object")
     val required = this["required"] as? JsonArray ?: error("A sealed request variant must declare required fields")
-    return buildJsonObject {
-        put("type", "object")
-        put("additionalProperties", false)
-        putJsonObject("properties") {
-            put(
-                name,
-                buildJsonObject {
-                    put("type", "string")
-                    put("const", value)
-                },
-            )
-            properties.forEach(::put)
-        }
-        put(
-            "required",
-            buildJsonArray {
-                add(JsonPrimitive(name))
-                required.forEach(::add)
-            },
+    return OBJECT_SCHEMA_JSON.encodeToJsonElement(
+            GeneratedObjectSchemaDocument.serializer(),
+            GeneratedObjectSchemaDocument(
+                properties =
+                    mapOf(
+                        name to
+                            OBJECT_SCHEMA_JSON.encodeToJsonElement(
+                                GeneratedEnumDiscriminatorDocument.serializer(),
+                                GeneratedEnumDiscriminatorDocument(listOf(value)),
+                            )
+                    ) + properties,
+                required = listOf(name) + required.map { (it as JsonPrimitive).content },
+            ),
         )
-    }
+        .jsonObject
 }

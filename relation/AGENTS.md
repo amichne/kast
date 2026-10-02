@@ -31,6 +31,6 @@ Defines semantic relationship requests and facts, coordinates relation reads, an
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - Start with relation kind and scope in the contract, then service; open IntelliJ providers for compiler-specific resolution.

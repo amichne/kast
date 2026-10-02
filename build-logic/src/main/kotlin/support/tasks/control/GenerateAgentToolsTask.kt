@@ -50,7 +50,7 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
             "Kast plugin must compose the canonical skill and MCP entry"
         }
         check(mcp.mcpServers.kast.command == "/bin/bash" && mcp.mcpServers.kast.args == listOf(
-            "-c", "exec \"\${KAST_INSTALL_ROOT:-\${XDG_DATA_HOME:-\$HOME/.local/share}/kast}/installation/bin/kast-mcp-complete\"",
+            "-c", "exec \"\${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-mcp-complete\"",
         )) { "Kast plugin must use the installed repository-bound MCP launcher" }
         check(marketplace.name == "kast" && marketplace.plugins.size == 1) { "expected one Kast marketplace entry" }
         val entry = marketplace.plugins.single()

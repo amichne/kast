@@ -14,6 +14,47 @@ VALIDATOR = Path(__file__).with_name("code_kb.py")
 
 
 class KnowledgeBaseValidatorTest(unittest.TestCase):
+    def test_openwiki_metadata_preserves_symbol_checks_and_source_impact(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary)
+            knowledge = repository / "knowledge"
+            knowledge.mkdir()
+            (knowledge / "index.md").write_text('# Index\n', encoding="utf-8")
+            (repository / "source.py").write_text("class Present: pass\n", encoding="utf-8")
+            (repository / "owner.py").write_text("def owner(): pass\n", encoding="utf-8")
+            (knowledge / "concept.md").write_text(
+                "---\ntype: Test Concept\ntitle: Concept\n"
+                "tags:\n  - python\n"
+                "generated: { by: codex, at: '2026-10-01T00:00:00Z' }\n"
+                "verified:\n  - by: openwiki/0.6.1\n    at: '2026-10-01T00:00:00Z'\n"
+                "sources:\n  - id: owner\n    resource: repo://owner.py\n"
+                "code_sources:\n  - path: source.py\n    symbols:\n      - Present\n"
+                "---\n# Concept\n", encoding="utf-8",
+            )
+            result = self.check_bundle(repository)
+            self.assertEqual(0, result.returncode, result.stdout)
+            impact = subprocess.run(
+                [sys.executable, str(VALIDATOR), "impact", "--repo", str(repository),
+                 "--docs", "knowledge", "--changed-file", "owner.py"],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False,
+            )
+            self.assertEqual(0, impact.returncode, impact.stdout)
+            self.assertIn("knowledge/concept.md: owner.py", impact.stdout)
+
+    def test_duplicate_frontmatter_cannot_replace_source_bindings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary)
+            knowledge = repository / "knowledge"
+            knowledge.mkdir()
+            (knowledge / "index.md").write_text("# Index\n", encoding="utf-8")
+            (knowledge / "concept.md").write_text(
+                "---\ntype: Concept\ncode_sources:\n  - path: missing.py\n"
+                "code_sources: []\n---\n# Concept\n", encoding="utf-8",
+            )
+            result = self.check_bundle(repository)
+            self.assertNotEqual(0, result.returncode, result.stdout)
+            self.assertIn("duplicate YAML", result.stdout)
+
     def check_bundle(self, repository: Path) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(VALIDATOR), "check", "--repo", str(repository), "--docs", "knowledge", "--strict"],
@@ -101,7 +142,7 @@ class KnowledgeBaseValidatorTest(unittest.TestCase):
             )
             result = self.check_bundle(repository)
             self.assertNotEqual(0, result.returncode, result.stdout)
-            self.assertIn("duplicate YAML list field: symbols", result.stdout)
+            self.assertIn("duplicate YAML field: symbols", result.stdout)
 
     def test_all_pages_are_checked_and_invalid_kotlin_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

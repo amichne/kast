@@ -44,8 +44,8 @@ class InstallationUpgradeSafetyTest {
     @Test
     fun `pending daemon update preserves the selected service and command`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val installation = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         val home = Files.createDirectory(root.resolve("home"))
         val codexHome = Files.createDirectory(root.resolve("codex"))
         assertInstanceOf(
@@ -81,8 +81,8 @@ class InstallationUpgradeSafetyTest {
     fun `rejected prior admission or retirement preserves the selected release`(@TempDir temporary: Path) {
         for (brokenRetirement in listOf(false, true)) {
             val root = Files.createDirectory(temporary.resolve("case-$brokenRetirement")).toRealPath()
-            val installation = root.resolve("installation")
-            val commands = root.resolve("commands")
+            val installation = root.resolve("home/.local/share/kast")
+            val commands = root.resolve("home/.local/bin")
             val home = Files.createDirectory(root.resolve("home"))
             val codexHome = Files.createDirectory(home.resolve(".codex"))
             assertInstanceOf(
@@ -125,12 +125,12 @@ class InstallationUpgradeSafetyTest {
     @Test
     fun `reinstall rejects corrupt same version payload and recovery metadata`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
+        val installation = root.resolve("home/.local/share/kast")
         val request =
             releaseRequest(
                 root,
                 installation,
-                root.resolve("commands"),
+                root.resolve("home/.local/bin"),
                 Files.createDirectory(root.resolve("home")),
                 Files.createDirectory(root.resolve("codex")),
                 "1.2.3",
@@ -160,8 +160,8 @@ class InstallationUpgradeSafetyTest {
     @Test
     fun `corrupt active recovery rejects before candidate staging or prior retirement`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val installation = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         val home = Files.createDirectory(root.resolve("home"))
         val codexHome = Files.createDirectory(root.resolve("codex"))
         assertInstanceOf(

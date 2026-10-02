@@ -8,6 +8,12 @@ import kotlinx.serialization.json.Json
 
 @Serializable
 internal enum class InstallationChildStage {
+    HOST_PREFLIGHT,
+    HOST_RECONNECT,
+    CONTROL_RECOVERY,
+    CONTROL_PUBLICATION_RECOVERY,
+    CONTROL_RECOVERY_RETIREMENT,
+    RECOVERY_HOST_ADMISSION,
     PRIOR_ADMISSION,
     PRIOR_RETIREMENT,
     PRIOR_REPLACEMENT,

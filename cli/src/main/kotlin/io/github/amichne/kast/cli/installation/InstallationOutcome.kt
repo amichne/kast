@@ -9,6 +9,14 @@ import io.github.amichne.kast.distribution.managed.InstallationSnapshotFailure
 import io.github.amichne.kast.kernel.NonEmptyFailures
 
 internal enum class InstallationFailure {
+    CONTROL_PUBLICATION_REJECTED,
+    CONTROL_PUBLICATION_RECOVERY_REJECTED,
+    CONTROL_FINALIZATION_REJECTED,
+    HOST_ADMISSION_REJECTED,
+    CONTROL_START_REJECTED,
+    HOST_RECONNECT_REJECTED,
+    CONTROL_RECOVERY_REJECTED,
+    RECOVERY_HOST_ADMISSION_REJECTED,
     REQUEST_REJECTED,
     CONTROL_REJECTED,
     CONTROL_LAYOUT_REJECTED,
@@ -56,6 +64,12 @@ internal enum class InstallationFailure {
 }
 
 internal sealed interface InstallationOutcome {
+    sealed interface Recovery : InstallationOutcome
+
+    data class RolledBack(val failure: InstallationFailure) : Recovery
+
+    data class RecoveryRequired(val failure: InstallationFailure, val recoveryFailure: InstallationFailure) : Recovery
+
     data class Complete(val report: InstallationReport) : InstallationOutcome
 
     data class TrustRejected(val failure: io.github.amichne.kast.cli.ide.BrokerTrustFailure) : InstallationOutcome
