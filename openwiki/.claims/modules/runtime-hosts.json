@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1ec2e80758e81d2f51cfb6358291b38058ce9af9ab82ee47589d4dda01ff4f16",
+  "pageVersion": "sha256:e042fac56045d613e68f89673ee3a19bbba2dac9744ffde266ee5188b0af884a",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -21,10 +21,38 @@
           "version": "repo-lines-v1:sha256:f05988e2d1ab20f52ef48014bbc7d27b7a077bec3dd56e99f4dd609c22368c67:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MjNiYzFjMzY2ZGJmYjJiZjhiZjJmMmNjNzdlNDQzMGJkMmM3Y2NjZDI2MTliZTRjNmJkYTdjYThhMWRiYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlZGM0MzY3ODU0MjFjYjc2MmVkYjMwNmVmZWVmOTZmMDM3OTY1Y2JiMDRmZmRmOWMzM2MxMzVlMjJjZmMzZWMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_fc7456fb11a24421b049cbdaab9b0301",
+      "statement": "Automatic startup remains fenced by detachment, shutdown, lifecycle transition or reset markers, and observation failures reject; reset startup is admitted only for an exact installation-bound ACTIVATING record plus a currently held exclusive reset lease.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt#L11-L43",
+          "version": "repo-lines-v1:sha256:f7e3058ab81570f083f218d6891a380d185486c662de2b2b094496dddc78c196:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5OTA3ZGU0M2NlZjg5ZTUwNTc1NjJkZGNiY2RkYjkyMzg5ZTIyNTIxYzFiN2I2NjhlNWUwNGU1MjVlNDRmODYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2NzAxMDVkOTM3YWRiMzgzNWM2YzY0MTczZWE2Nzg1NGMyODNmMDI0M2NhMzM2MDI1YWMyYmJlY2NhZjYwMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt#L16-L57",
+          "version": "repo-lines-v1:sha256:801f9fd706de7600c7c4eb6bad87d6d9ba3bd8bbb05ea221d9bde5fbba4574dd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzYzJiMTc2MmQxMDViNTY1YzAzZGI4ZWQzNzFmM2IxYjBiMWE3YzE1ZTQxYzRjODExMTkwMWVhZGMyMTRiZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3MjFjMzIyMDNlZjJlOWY4YWYwZWMzNTczMDk3ZmYwZDI3ODFkNzg5M2JmNDI1NjA2ZjE2ZGI0ZjE2NWI2ZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_67be8cb0c81940eb80cb5cb3c842eb4d",
+      "statement": "Installed direct tool admission rejects shutdown/reset markers and unproven absence while reset owner startup may establish readiness behind the tool fence; focused tests distinguish held and released activation locks and reject foreign, malformed and oversized records.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt#L33-L102",
+          "version": "repo-lines-v1:sha256:7c6e36e9d116f0a8d5bbc085ffe7917d9fad41a28227c68ef9d1fde96fc99675:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZjA5ZWIwYzU3NDRmYjk3MzMxYjk4ZmYzZmJmMDVhNjAyYmEzZjdmNjdlNWRhNWJlOTA5NTAzM2Y2MjU4MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0Y2I3MWJlZjY0MDkzODdjODYwMGRjMTY5NDFlNGM4YWZkOWZmYzA4MmVmNTMwNDQwMDgyYTFjMGQyODdlYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt#L9-L30",
+          "version": "repo-lines-v1:sha256:2e07a10630c0953a3261defd23e480c564ab59ab3d3309d02905e9c85de0b7b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlY2FkYzM0NzE5YThmZjIzODQ0MTc3OWM3ODQ5MDBlZjI4OGFjYTRmOTFjNmNhNDEyNWU0NDkyMWQ0MjdmMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRjNjc4Njk3NTBhYWUzOGZiZTM3MmM1NGMxOGQ4ZTc4YjgxZWMzZmVmNmQ1N2IzZWQwMDY5ZjU2M2Y5ZjIwMGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-10-02T02:25:07.005Z"
   }
 }

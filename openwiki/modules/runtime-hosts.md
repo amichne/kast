@@ -5,6 +5,13 @@ description: The existing IDEA plugin owns semantic execution; CLI and App Serve
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
+    symbols: [InstallationLifecycleFence, InstallationLifecycleStartAdmission]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
+    symbols: [ResetActivationAdmission, ResetActivationLease]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+    symbols: [InstalledToolAdmission, observeInstalledToolAdmission]
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/SessionRequests.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeAdmission.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt
@@ -114,13 +121,21 @@ code_sources:
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
+  - id: openwiki-source-8d38b171e35bb98b83dfbe58
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
+  - id: openwiki-source-8ece5abae2f9aab84f07b127
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
+  - id: openwiki-source-d719877f4ac62761c9b248b1
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
+  - id: openwiki-source-c58b3f38ca46d44dd30a8771
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
   - id: openwiki-source-5efa910d729623be2b070bc2
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-02T02:25:07.005Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T02:25:07.005Z
 ---
 
 # Runtime and process hosts
@@ -134,6 +149,8 @@ The plugin archive contains the semantic contracts, services, IntelliJ adapters 
 `HostedResponse` retains the original complete, qualified or rejected outcome alongside its encoded document. Encoding and response-size failures retain the original semantic result. The endpoint observer reports semantic classification rather than treating every written frame as completion. [Hosted queries](../flows/hosted-query.md) describes lifetime and cancellation.
 
 The hosted provider admits public intent tools and supported changes through the existing IDEA plugin. A missing host rejects. The private installed `kast` executable retains product-version inspection for release identity; former semantic CLI routes reject.
+
+Installation lifecycle admission fences automatic coordinator startup while detachment, shutdown, transition or reset markers remain. Unknown observation rejects. A reset marker permits startup only for an exact installation-bound `ACTIVATING` record and a currently held exclusive reset lease; malformed, foreign, oversized or unlocked records remain fenced. Installed direct tools separately reject shutdown or reset markers, including unproven absence, before workspace discovery or dispatch. This allows the reset owner to establish daemon readiness while tool calls remain stopped until it lifts the exterior fence. The focused `InstallationLifecycleFenceTest` covers absent installation state, held versus released activation locks, and malformed, foreign and oversized records. See [distribution lifecycle](distribution.md) for retirement, cold staging and readiness obligations.
 
 App Server owns persistent sessions, the invocation journal, project-close controller approval, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; internal change challenges use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 

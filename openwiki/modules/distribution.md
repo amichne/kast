@@ -149,15 +149,25 @@ code_sources:
   - path: .github/workflows/docs.yml
   - path: .github/workflows/release.yml
   - path: .github/workflows/developer-release.yml
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
+  - id: openwiki-source-6f0b647814adafaaa5d5c5f2
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt
+  - id: openwiki-source-95d32ff923f76d4a11784db6
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceReinstallation.kt
+  - id: openwiki-source-25e4768efcedd38972e98f0d
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt
+  - id: openwiki-source-4a775e59f7cd3b1cc2d7cc10
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
   - id: openwiki-source-927dce901b5dbac4a4d84f48
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
+  - id: openwiki-source-9aad56755086fa068397b99d
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ReadyReset.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
 generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T02:25:07.005Z
 ---
 
 # Distribution and packaging

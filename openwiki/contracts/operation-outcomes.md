@@ -21,10 +21,11 @@ code_sources:
   - path: README.md
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
+  - id: openwiki-source-c58b3f38ca46d44dd30a8771
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+  - id: openwiki-source-1d161f3eb7933044519fd33a
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - id: openwiki-source-d69d2f9483e3ef07d3d7af62
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
   - id: openwiki-source-1368a6d1e2827cd0501cec50
@@ -32,6 +33,9 @@ sources:
   - id: openwiki-source-ddbecea6a66f516818cd6c13
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
 generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T02:25:07.005Z
 ---
 
 # Operation outcomes

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9b8c66c2e8aec245c97c07b135a19080fe556872608aeccee35c135787bed3da",
+  "pageVersion": "sha256:f2edb4614a0cedbfeb26a9e393c442337efc60286e41889a855e4aff668d0e1c",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -14,17 +14,17 @@
     },
     {
       "id": "claim_8fbe8cf0364241bd9c44e5851da8c409",
-      "statement": "Change and query protocol modules have the service role with explicit contract-only dependency policies; the native distribution management CLI has a narrowly scoped contract dependency and effect owners.",
+      "statement": "Change and query protocol modules retain service roles with contract-only dependency policies; the native distribution management CLI depends on distribution contracts and managed adapters, with process control and explicitly scoped lifecycle/reset filesystem effect owners.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L43",
-          "version": "repo-lines-v1:sha256:68f5c0ebfbe34e35241837a7850d2f731d64827e8adffd3f954a3a1e8672ee05:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MzNkMGVhOWVjZjJmMzljOWE1MDQwNzM5NWVlNDExNzJmZTY4MmM5Yzg4NWEzNTA4Zjc1YmRlZTE1MWVmZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViZTNlZWQ0Y2Y0ODM3MGVlOTViMDgxMzA2N2RjNGZiNTczMTU0NDkwNWZmMWFiMmU3ZWE5ZTg5NTg3Zjg4ODkifQ"
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L51",
+          "version": "repo-lines-v1:sha256:619ee7d5da13c2b29dc49d1410ca467ed35424bba8ed355566ad69bbfaba3eb3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MzNkMGVhOWVjZjJmMzljOWE1MDQwNzM5NWVlNDExNzJmZTY4MmM5Yzg4NWEzNTA4Zjc1YmRlZTE1MWVmZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViZTNlZWQ0Y2Y0ODM3MGVlOTViMDgxMzA2N2RjNGZiNTczMTU0NDkwNWZmMWFiMmU3ZWE5ZTg5NTg3Zjg4ODkifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-10-02T02:25:07.005Z"
   }
 }

@@ -39,10 +39,12 @@ code_sources:
   - path: build-policy/configuration-ingress.json
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
+    at: 2026-10-02T02:25:07.005Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
+  - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - id: openwiki-source-fd4148a6ba46f590f554b6b6
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - id: openwiki-source-40ab5c6f8a11b724c001ed82
