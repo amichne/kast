@@ -1,42 +1,42 @@
 ---
 title: "What an answer proves"
-description: "Keep exact identity, declared coverage, unfinished work, and evidence validity distinct."
+description: "Understand what a result confirms, what remains unknown, and when a reference can be reused."
 icon: "shield-check"
 ---
 
-A result is useful only within the workspace authority, source state, and request scope that produced it. Kast carries those boundaries with the facts so that the next step can preserve them rather than guess.
+A result describes the workspace, source state, and scope that Kast checked. Read those limits before using it to answer a broader question or making a source change.
 
 ## Exact facts are not the same as exhaustive coverage
 
 | Result | What it supports |
 | --- | --- |
-| Exact symbol with complete coverage | The declaration was established and the requested search universe was covered. |
-| Exact symbol with qualified coverage | The returned declaration is established; additional matches or obligations may remain. |
-| Empty with complete coverage | No matching result exists within the declared, supported search universe. |
+| Exact symbol with complete coverage | Kast confirmed the declaration and covered the requested search scope. |
+| Exact symbol with qualified coverage | Kast confirmed the declaration, but more matches or unfinished checks may remain. |
+| Empty with complete coverage | No matching result exists within the declared, supported search scope. |
 | Empty with qualified coverage | Absence remains unproven, even when this page has no rows. |
 | Rejected or unavailable | No successful semantic result was established by this request. Resolve the reported failure. |
 
-A complete Kotlin-source search is not a claim about every language, library, or possible runtime behavior. Scope, provider support, omissions, and item failures matter to the claim you can make.
+A complete Kotlin-source search covers the stated source scope. It does not establish facts about other languages, libraries, or runtime behavior. Read any restrictions, omissions, and item failures alongside the result.
 
-## Incomplete does not always mean the same next step
+## Decide whether to continue
 
-A qualified result keeps useful facts and explains what is unfinished. Its progress says whether an issued continuation can resume execution or whether the operation has stopped with a terminal reason. Do not invent a continuation from the presence of a result limit, and do not infer completion from its absence.
+A qualified result keeps confirmed facts and explains what remains unfinished. If progress is resumable, use its issued continuation. If progress is terminal, read the reason it stopped. A result limit alone does not mean a continuation exists, and a missing continuation does not mean coverage is complete.
 
-An advancing empty page may have consumed input that did not satisfy a later filter. Follow its reported progress. Conversely, reading every retained presentation page does not discharge missing semantic evidence. See [how to follow progress](/reference/responses#follow-progress-not-row-count).
+An empty page may mean Kast examined input that did not pass a filter. Follow the reported progress to check for more work. Reading every page of saved rows only retrieves existing results; it cannot complete unfinished query work. See [how to follow progress](/reference/responses#follow-progress-not-row-count).
 
-Composition preserves these limitations. `DIFFERENCE` and an `ANTI` join require complete right-hand membership before they can establish nonmembership; incomplete right-hand input is not evidence of absence.
+Combining results preserves their limitations. `DIFFERENCE` and an `ANTI` join remove symbols found in the right-hand input. That input must have complete coverage before Kast can conclude that a symbol is absent from it.
 
 ## Can I reuse this result later?
 
-A later read is another admission against the current workspace authority and retained-state owner.
+When you reuse a retained result or continuation, Kast checks its workspace, owning IDEA instance, read state, and lifetime.
 
 ```mermaid
 %%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
 flowchart TB
-  accTitle: Retained evidence is restored only under its admitted basis
-  accDescr: Kast checks the owning workspace, lifetime, and read basis of a retained result or continuation. Valid available state restores the original evidence. Stale or unavailable state requires an explicit fresh investigation.
-  A("Retained result or continuation") --> B("Check owner, lifetime, and basis")
-  B --> C{"State still admissible?"}
+  accTitle: Kast checks retained state before reuse
+  accDescr: Kast checks the workspace, owning IDEA instance, read state, and lifetime of a retained result or continuation. Valid saved state restores the original facts and limits. Stale or unavailable state requires a fresh query.
+  A("Retained result or continuation") --> B("Check workspace, IDEA state, and lifetime")
+  B --> C{"Saved state still valid?"}
   C -->|Yes| D("Restore original facts and limits")
   C -->|No| E("Reject stale or unavailable state")
   E --> F("Start a fresh investigation")
@@ -49,20 +49,20 @@ flowchart TB
   class E rejected;
 ```
 
-Retained rows or unfinished execution are restored only under the same admitted basis while their bounded state remains available. A changed IDE read epoch, expired or evicted entry, or different owner produces an explicit rejection or unavailable state. An unchanged name or path cannot establish continuity.
+Saved rows and unfinished work can be reused only while that state remains valid and available. A changed IDEA read epoch, expired or evicted entry, or different owner causes a rejection or unavailable result. A matching name or path cannot make the old result valid again.
 
-A fresh exact-symbol read is different: it may perform bounded reacquisition and compiler revalidation. That is a new check, not permission to treat an old reference as permanently valid. Retained results and continuations do not transparently migrate to a new basis.
+A fresh read of an exact symbol may reacquire it and check its identity through the compiler. This is a new validation. Retained results and continuations cannot move to a different read state this way.
 
 ## Keep the right evidence intact
 
 An exact symbol `ref`, a retained-result reference, an execution continuation, a result cursor, and a row ID have different meanings. Pass each unchanged to the operation that accepts it. Do not rebuild tokens, compare their spelling as semantic identity, or substitute a remembered source location.
 
-Selecting retained rows preserves their evidence, but a subset does not prove coverage of excluded rows. File-scoped reference occurrences, such as imports and aliases, remain use-site facts; they do not acquire a fabricated enclosing declaration or become call-graph endpoints.
+Selecting saved rows preserves their evidence, but says nothing about rows you excluded. Reference occurrences such as imports and aliases can belong to a file without an enclosing declaration. Kast keeps those use sites in the result without treating them as declarations that a call graph can expand.
 
-## A bounded verification is not a universal guarantee
+## Check the scope of verification
 
-Kast's source changes retain an exact target and report their verification outcome. A failed or incomplete verification must not become a verified success. The [change guide](/change) describes the supported targets and recovery states.
+Kast identifies the exact target of a source change and reports whether verification succeeded. If verification fails or remains incomplete, follow the reported recovery guidance. The [change guide](/change) describes supported targets and recovery states.
 
-Retrieved IDEA diagnostics and a verified bounded edit do not assert that the entire Gradle project builds or that the change satisfies business requirements.
+Run the build and tests your project requires. IDEA diagnostics and verification of one edit cover their reported scope; they do not establish whole-project behavior.
 
 Canonical semantic reads distinguish complete, qualified, and rejected. Direct MCP returns the operation document itself in `result.structuredContent`, without a generic `partial` wrapper or an additional semantic `data` layer. Invocation failures use the MCP wrapper and may have no admitted structured document. Tool RPC has separate reply variants. Use [Results](/reference/responses) to locate and interpret the operation document inside its transport.

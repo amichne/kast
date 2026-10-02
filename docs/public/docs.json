@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Deterministic structure for probabilistic coding agents: compiler-grounded Kotlin facts, explicit evidence boundaries, and controlled source changes.",
+  "description": "Connect your coding agent to IntelliJ IDEA to find Kotlin declarations, trace relationships, and make targeted source changes.",
   "colors": {"primary": "#3154C7", "light": "#8FA7FF", "dark": "#27439F"},
   "fonts": {"family": "SUSE"},
   "logo": "/images/kast-mark.svg",

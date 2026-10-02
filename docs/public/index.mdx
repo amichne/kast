@@ -1,7 +1,7 @@
 ---
 title: "What is Kast?"
 sidebarTitle: "Overview"
-description: "Compiler-grounded Kotlin understanding for coding agents: find exact code, follow relationships, and carry evidence into action."
+description: "Find Kotlin declarations, trace relationships, and make targeted changes through your coding agent."
 icon: "scan-search"
 keywords:
   - "Kotlin"
@@ -10,7 +10,7 @@ keywords:
   - "semantic query"
 ---
 
-Kast gives coding agents compiler-grounded understanding of Kotlin code. The agent asks the question; Kast uses the selected IntelliJ IDEA project to establish exact declarations and relationships, with explicit coverage and validity.
+Kast connects your coding agent to IntelliJ IDEA’s Kotlin analysis. Ask it to find a declaration, trace its callers, inspect source, or make a targeted change. Each result identifies what Kast found and whether the query covered the scope you requested.
 
 <CardGroup cols={2}>
   <Card title="Install and connect" icon="download" href="/start">
@@ -18,26 +18,26 @@ Kast gives coding agents compiler-grounded understanding of Kotlin code. The age
   </Card>
 
   <Card title="Find and trace code" icon="search" href="/search">
-    Already connected? Start with a code question and follow the evidence.
+    Find a declaration, then follow its callers or implementations.
   </Card>
 </CardGroup>
 
-## From a question to a justified change
+## From search to source changes
 
-**Find the right code.** Start with a declaration name and a useful scope. Inspect the returned identity, signature, and location; carry its exact reference into the next question instead of matching the name again. [Find and trace code](/search) shows the workflow.
+**Find a declaration.** Start with a name or a word you remember from the source, and narrow the search to a module or directory. Check the returned signature and location, then reuse its exact reference in your next query. See [Find and trace code](/search).
 
-**Understand its relationships.** Follow callers, implementations, references, or a bounded traversal. Keep confirmed relationships separate from unvisited work. When a question spans investigations, [combine retained results](/query-pipelines) by semantic identity rather than reconstructing lists from prose.
+**Trace relationships.** Find callers, implementations, or references, and follow them to a chosen depth. Kast reports any work left unfinished. You can also [combine retained results](/query-pipelines) to compare declarations found by separate queries.
 
-**Change a known target.** Add a declaration or replace a supported function body using an exact target, then inspect the verification receipt. These are bounded source changes, not arbitrary multi-file refactors. See [Make a targeted change](/change).
+**Make a targeted change.** Add a declaration to an existing Kotlin file or replace a supported function body. Kast uses an exact reference to identify the target and returns a receipt with the verification outcome. See [the change guide](/change) for supported targets and recovery.
 
 ## Why the evidence matters
 
-**Kast is the deterministic structure around a probabilistic system.** The model still supplies judgment. Questions the compiler can answer should not remain guesses, and a later operation should preserve what an earlier one established.
+Finding one confirmed caller does not mean every caller was found. An empty, incomplete result does not prove that a declaration is absent. Kast reports these limits so your agent can distinguish a useful finding from a finished search.
 
-An exact result is not necessarily an exhaustive result. An empty incomplete answer does not prove absence, and an old reference does not become current because its name still matches. [What an answer proves](/concepts/evidence-boundaries) explains these boundaries; [How Kast works](/concepts/architecture) explains the mechanism.
+References also depend on the workspace and source state that produced them. Kast checks whether they can still be used. Read [What an answer proves](/concepts/evidence-boundaries) for coverage and reuse, or [How Kast works](/concepts/architecture) for the request flow.
 
-## Supported today
+## Supported environment
 
-The current installation targets Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Connect Codex, Copilot, or Pi. Kast prepares the selected project when semantic work needs it and reports readiness blockers rather than returning a misleading empty answer.
+Kast supports Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Connect Codex, Copilot, or Pi. Kast prepares the selected IDEA project when a query needs it and reports any setup blocker.
 
-Check [compatibility](/reference/compatibility) before installing. The aim is dependable evidence from discovery through action; a verified bounded edit or a clean diagnostic result is not proof of whole-project behavior.
+Check [compatibility](/reference/compatibility) before installing. After a source change, run the build and tests your project requires; Kast’s edit verification and IDEA diagnostics cover their reported scope.

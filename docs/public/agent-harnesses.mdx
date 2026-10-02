@@ -4,13 +4,13 @@ description: "Choose Codex, Copilot, or Pi, then verify the connection with a re
 icon: "plug"
 ---
 
-[Install Kast](/start) first, then choose your agent. Connect one integration, restart the agent, and verify it with the query below. Registration alone does not prove live tool readiness.
+[Install Kast](/start) first, then choose your agent. Connect the integration, restart your agent, and run the query below to check that the tools work.
 
 ## Choose your agent
 
 <Tabs>
   <Tab title="Codex">
-    Install the bundled plugin to receive the MCP tools, query skill, and examples together:
+    Install the bundled plugin to get the MCP tools, query skill, and examples together. If you already registered Kast directly with `kast connect codex mcp`, run `kast disconnect codex` first so Codex has only one Kast MCP connection.
 
     ```shell
     kast plugin codex
@@ -18,7 +18,7 @@ icon: "plug"
     codex
     ```
 
-    Restart Codex after installation and select the intended repository or worktree. Use one Kast MCP connection per client. Remove an existing direct registration with `kast disconnect codex` before choosing the plugin.
+    Restart Codex after installation and select the repository or worktree you want to inspect.
 
     <Accordion title="Direct MCP without the bundled plugin">
       Choose this instead of the plugin when you only need the direct MCP registration:
@@ -33,7 +33,7 @@ icon: "plug"
     </Accordion>
 
     <Accordion title="App Server transport">
-      Choose this path for Kast's App Server launcher rather than a direct MCP connection:
+      Use this path with a client that runs Kast’s App Server launcher:
 
       ```shell
       kast connect codex app-server
@@ -74,13 +74,13 @@ Ask your agent:
 
 > Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. If Kast is not ready or cannot prove a result, report the blocker rather than substituting a text search.
 
-Success means an actual Kast query returns a declaration and its evidence. A registration in `kast status`, or tool names in a catalog, is not the same check.
+The connection works when a Kast query returns a declaration with its location and coverage. `kast status` shows registration information; this query checks that the agent can use the tools.
 
 **Next:** [Find and trace code](/search). If tools are missing, a version disagrees, or the first query cannot prepare IDEA, use [Troubleshooting](/troubleshooting).
 
 ## A connection already exists
 
-Reconnecting the same payload is safe. Kast preserves a conflicting registration by default; inspect the reported conflict before replacing it.
+If the registered integration already matches, Kast leaves it in place. If Kast reports a conflict, inspect the existing registration before replacing it.
 
 <Accordion title="Explicitly replace a conflicting registration">
   `--force` replaces only that harness's Kast slot. Use the command for the integration you selected, not every command below.
@@ -99,25 +99,25 @@ Reconnecting the same payload is safe. Kast preserves a conflicting registration
 
 <AccordionGroup>
   <Accordion title="Disconnect an integration">
-    For a registration made with `kast connect`, use the harness you connected:
+    For a registration made with `kast connect`, name the agent you connected:
 
     ```shell
     kast disconnect copilot
     ```
 
-    `kast disconnect codex` removes its owned App Server launcher and MCP registration when recorded. Restart the affected harness so it stops using its loaded integration.
+    `kast disconnect codex` removes its owned App Server launcher and MCP registration when recorded. Restart the affected agent so it stops using the loaded integration.
 
     The bundled Codex plugin is owned by Codex instead. Remove it with `codex plugin remove kast@kast`.
   </Accordion>
 
   <Accordion title="Reload integrations after a Kast upgrade">
-    After `kast upgrade`, restart IDEA and your connected harnesses so they load the matched payload and rediscover its catalog. For the bundled Codex plugin, rerun `kast plugin codex` to install the matching skill.
+    After `kast upgrade`, restart IDEA and your connected agents so they load the matched payload and rediscover its catalog. For the bundled Codex plugin, rerun `kast plugin codex` to install the matching skill.
   </Accordion>
 </AccordionGroup>
 
 ## Install the skill independently
 
-Use this only when a Kast transport is already connected and you need to install the skill or marketplace separately.
+If you already connected Kast, you can install the skill or marketplace separately.
 
 <AccordionGroup>
   <Accordion title="Install a release skill or marketplace archive">

@@ -1,16 +1,16 @@
 ---
 title: "Combine query results"
-description: "Combine retained investigations by exact identity. Keep prompts and outcomes visible, with request details available per step."
+description: "Reuse query results to find shared declarations, combine sets, or follow one side of a join."
 icon: "workflow"
 ---
 
-Use retained results when a question builds on earlier investigations. Kast can consume the established rows directly instead of asking the agent to reconstruct a list of symbols from prose.
+Retain a query result when you want to use it in another query. Kast returns a reference to the saved rows, which you can use to combine sets of declarations or find symbols shared by two results.
 
 This walkthrough continues [Find and trace code](/search) against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts and outcomes describe that historical recording, not a fresh run. [Full requests, responses, and capture details](/reference/schemas#recorded-walkthrough) remain available.
 
-**A**, **B**, and **C** below are teaching labels for issued retained-result references. Pass your own references unchanged. Builds or edits can advance the workspace's semantic basis and make retained inputs unavailable.
+**A**, **B**, and **C** label the retained-result references in this walkthrough. Replace them with references from your own session and pass those values unchanged. Builds or edits can change IDEA’s read state and invalidate retained results.
 
-## Keep two independently useful results
+## Retain a second query result
 
 The previous walkthrough retained **A**, the implementations of `QueryStepSyntax`. Produce **B**, declarations named `Concat` in the same production module:
 
@@ -99,11 +99,11 @@ The recorded intersection (`05-intersection`) returns only `QueryStepSyntax.Conc
 
 ## Keep the matched pair, then select a side and continue
 
-Use an inner join when you need both inputs' established rows, not only the matched symbol. Project a named symbol cell before applying another symbol relationship.
+An inner join keeps both rows for each matching symbol, preserving the evidence from each input. Give each side a name, then select that name with `PROJECT_BINDING` before following another relationship.
 
 > Join A to B by symbol identity. Name the left cell `step` and the right cell `candidate`, and retain the paired rows. Then select `step` from those rows and find its reference occurrences.
 
-The recorded join (`06-join-c`) retains one pair as **C**, with exhaustive coverage. Both cells identify `QueryStepSyntax.Concat`; `step` preserves the implementation occurrence and `candidate` the discovered symbol. The opaque reference strings differ. The join compares canonical symbol identity, not token strings.
+The recorded join (`06-join-c`) retains one pair as **C**, with exhaustive coverage. Both cells identify `QueryStepSyntax.Concat`; `step` preserves the implementation occurrence and `candidate` the discovered symbol. The two references have different strings but identify the same declaration. Kast compares their compiler identity when joining the rows.
 
 <Accordion title="Requests: retain pairs as C, then follow one side">
   First retain the pairs:
@@ -157,7 +157,7 @@ Kast does not expose a general-purpose `MAP` operator or arbitrary-field join. `
 
 > If this query reports resumable work, resume its issued continuation. Do not rerun its completed steps. To inspect retained rows without advancing execution, read the retained result instead.
 
-`RESUME` advances stored unfinished execution. `READ_RESULT` presents immutable retained rows; its result cursor does not resume semantic execution. Reading every retained page cannot erase the producing query's limitations.
+`RESUME` continues unfinished query work. `READ_RESULT` reads saved rows without running more of the query. Its result cursor selects the next page of stored rows. Reading every page leaves the original coverage limits unchanged.
 
 <Accordion title="Requests: resume execution or read retained rows">
   Resume only with the execution continuation issued by the result:
@@ -185,7 +185,7 @@ Kast does not expose a general-purpose `MAP` operator or arbitrary-field join. `
 
 The recording bounds a `SYMBOL_REFS` query to one result (`12-bounded-symbols`). It returns one row, a qualified outcome, `result-limit-reached`, and resumable progress. Resuming without the one-result allowance returns the remaining row with complete coverage (`13-resume`), without repeating the first row.
 
-Use the continuation from your own result, not the historical token. A terminal qualification does not promise a successor. Stale or unavailable state requires an explicit recovery decision, not indefinite retries.
+Use the continuation from your own result. If progress is terminal, follow the reported reason; do not infer a continuation from the row count or result limit. If retained state is stale or unavailable, follow the recovery guidance.
 
 ### Reject an incomplete absence check
 
@@ -207,7 +207,7 @@ Use the continuation from your own result, not the historical token. A terminal 
   }
   ```
 
-  Do not use this old terminal-discovery example to predict a current `ALL_DECLARATIONS` result. Supported progressive Kotlin-source reads can retain undiscovered input. Inspect the actual result's progress and coverage.
+  This recorded failure does not describe every bounded search. `ALL_DECLARATIONS` can save its position and continue discovering Kotlin declarations. Inspect your result’s progress and coverage to determine whether it can resume.
 </Accordion>
 
 **Next:** use [Results](/reference/responses) to interpret coverage and handles, or [Make a targeted change](/change) once you have established the intended target.

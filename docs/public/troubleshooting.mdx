@@ -4,8 +4,8 @@ description: "Act on the reported installation, readiness, or semantic failure."
 icon: "life-buoy"
 ---
 
-Use the failure returned by Kast. An empty partial or rejected query is not
-evidence that the symbol is absent.
+Start with the failure or limitation Kast reports. An empty qualified or
+rejected query does not prove that a symbol is absent.
 
 | Symptom | First check |
 | --- | --- |
@@ -13,7 +13,7 @@ evidence that the symbol is absent.
 | Installer reports no matching plugin | Check the IDEA release line in [compatibility](/reference/compatibility). |
 | Project trust, import, or indexing blocker | Resolve the reported IDEA state, then repeat the read. |
 | Wrong workspace | Start the client from the intended Gradle repository or worktree. |
-| Partial query | Keep returned facts and limitations; narrow scope before retrying. |
+| Qualified query | Keep returned facts and limitations. Resume if progress is resumable; otherwise follow the reported terminal reason. |
 | Stale `ref` | Search again and use the newly returned reference unchanged. |
 | Uncertain change | Keep the plan and recovery evidence; see [change](/change). |
 
