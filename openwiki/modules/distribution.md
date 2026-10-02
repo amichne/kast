@@ -165,7 +165,7 @@ code_sources:
     symbols: [GenerateComponentReleaseTask]
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T06:45:58.039Z
+    at: 2026-10-02T07:23:23.815Z
 sources:
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt

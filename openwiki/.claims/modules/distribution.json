@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dbf439afebaa03e6b638d363acd6193385b1adde047aadde6113ba9b3876449a",
+  "pageVersion": "sha256:e63c49e7d4c96ca8f4ed60fdecdf4487d8bfc8da2af0b88d12f42f221e57f45d",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -100,11 +100,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt",
-          "version": "repo-file-v1:sha256:9ca7e7ce2b1f6438b8ec9ee0e96437b83e29cd31b07311c7eee35fb3992f8dca"
+          "version": "repo-file-v1:sha256:25e7407842832f2d1b4502db826de7ca180f590cf53292e88b830fd47b85cbac"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:5040b9e97d50af7cfd97c358f5de77725ca7f5b3b9cc856a7ccaa85030f18f0c"
+          "version": "repo-file-v1:sha256:95091e11c7945f7f8e89c0d82568b1fa0bbd96c08b4946aa82478c28481f013d"
         }
       ]
     },
@@ -114,7 +114,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:5040b9e97d50af7cfd97c358f5de77725ca7f5b3b9cc856a7ccaa85030f18f0c"
+          "version": "repo-file-v1:sha256:95091e11c7945f7f8e89c0d82568b1fa0bbd96c08b4946aa82478c28481f013d"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
@@ -149,7 +149,7 @@
       "statement": "The existing installation and reset effect owners reject symlinked ancestors before directory creation or root detachment; public executable publication separately rejects aliased destination parents before writing.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L951-L969",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L950-L968",
           "version": "repo-lines-v1:sha256:5fb91fbe67679114dbc2cc07a1ee59663734a36dfdd618581ceb11c3be3fc11f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODMzMTE3ODE4OTMzYWMxNTA4MThkZjMxZTQ3ZWZjYmE2ZGE2ZjNjMDNkYmIzOTExZmQ2NmYzYjYxZTk0OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMTRmYTBlZjIyMmY5OGZhZDg4ODAxMDcwOWE0NzgxOGVjMTVmMTVmNDkxMjFiZGI1NzI1OWI0YzBkNjNiNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzOTJmZTM3MTljNzFiNzdkZGU2YzAzMDFmYTNlYmNiNTVjYjNlZTExYzBhNWEyY2E3NTc1ZWUxNzkzMTQ5OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMjBmYzYxMTc3N2M4OWRkYjlmZmJhMDE5ODk1YmI3NzVjMmVhMTg4ZmJkNzhmYjUwYzFjOGZiNThlMzFjNjYifQ"
         },
         {
@@ -247,6 +247,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T06:45:58.039Z"
+    "at": "2026-10-02T07:23:23.815Z"
   }
 }

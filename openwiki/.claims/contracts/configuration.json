@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7697bc6c1fd06de6b8f24ced5178c61c70ab163294d8daf2229b980f70c6c163",
+  "pageVersion": "sha256:7de55cee9dd76bf80b6bacea044c9afa6305ed35122bfbeb298826fe9ac9174d",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -62,7 +62,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:5040b9e97d50af7cfd97c358f5de77725ca7f5b3b9cc856a7ccaa85030f18f0c"
+          "version": "repo-file-v1:sha256:95091e11c7945f7f8e89c0d82568b1fa0bbd96c08b4946aa82478c28481f013d"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
@@ -107,6 +107,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T04:13:44.061Z"
+    "at": "2026-10-02T07:23:23.815Z"
   }
 }
