@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.HostedCompatibilityRequirements
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
@@ -17,12 +18,43 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 
 /** Read-only descriptor admission and one exact-socket exchange. No runtime startup dependency. */
-class ExistingIdeSocketClient(
+class ExistingIdeSocketClient
+internal constructor(
     private val home: Path,
-    private val limits: ReadLimits = ReadLimits.Default,
-    private val exchangeMillis: Long = limits[ReadLimitParameter.CLIENT_EXCHANGE_MILLIS].value.toLong(),
+    private val limits: ReadLimits,
+    private val exchangeMillis: Long,
+    private val policyLoader: () -> Refinement<HostedCompatibilityRequirements, ExistingIdeFailure>,
 ) : ExistingIdeClient {
+    constructor(
+        home: Path,
+        limits: ReadLimits = ReadLimits.Default,
+        exchangeMillis: Long = limits[ReadLimitParameter.CLIENT_EXCHANGE_MILLIS].value.toLong(),
+    ) : this(home, limits, exchangeMillis, ::requiredHostedCompatibilityPolicy)
+
     private val observations = java.util.concurrent.ConcurrentHashMap<CanonicalRoot, HostedServiceObservation>()
+    private val policyLock = Any()
+    private var requiredPolicy: RequiredPolicy = RequiredPolicy.Unloaded
+
+    private sealed interface RequiredPolicy {
+        data object Unloaded : RequiredPolicy
+
+        data class Loaded(val requirements: HostedCompatibilityRequirements) : RequiredPolicy
+    }
+
+    private fun requiredHostedPolicy(): Refinement<HostedCompatibilityRequirements, ExistingIdeFailure> =
+        synchronized(policyLock) {
+            when (val policy = requiredPolicy) {
+                RequiredPolicy.Unloaded ->
+                    when (val loaded = policyLoader()) {
+                        is Refinement.Refined -> {
+                            requiredPolicy = RequiredPolicy.Loaded(loaded.value)
+                            loaded
+                        }
+                        is Refinement.Rejected -> loaded
+                    }
+                is RequiredPolicy.Loaded -> Refinement.Refined(policy.requirements)
+            }
+        }
 
     internal fun latestObservation(root: CanonicalRoot): HostedServiceObservation =
         observations[root] ?: HostedServiceObservation.Unavailable(root, ExistingIdeFailure.HOST_UNAVAILABLE)
@@ -102,7 +134,7 @@ class ExistingIdeSocketClient(
                 is Refinement.Rejected -> return ExistingIdeExchange.Rejected(parsed.failure)
             }
         val policy =
-            when (val defined = requiredHostedCompatibilityPolicy()) {
+            when (val defined = requiredHostedPolicy()) {
                 is Refinement.Refined -> defined.value
                 is Refinement.Rejected -> return ExistingIdeExchange.Rejected(defined.failure)
             }

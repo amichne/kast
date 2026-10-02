@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.InstalledCoordinatorConfiguration
 import io.github.amichne.kast.appserver.InstalledWorkspacePreparation
 import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.wire.CanonicalHostedContract
@@ -36,6 +37,93 @@ class HostedCompatibilityExchangeTest {
     private val json = Json { encodeDefaults = true }
     private val compatibility =
         HostedCompatibilityDocument("262.1.1", "262.1.1-IJ", "0.49.0", CanonicalHostedContract.document)
+
+    @Test
+    fun `three same client operations load required policy once but each admits a fresh describe`() {
+        var loads = 0
+        exchange(
+            script =
+                ExchangeScript(
+                    expected = List(3) { listOf("DESCRIBE", "CLASS_LOOKUP") }.flatten(),
+                    describeMetadata = List(3) { compatibility },
+                ),
+            clientFactory = { home ->
+                ExistingIdeSocketClient(home, ReadLimits.Default, 2_000) {
+                    loads += 1
+                    check(loads <= 3) { "unexpected required policy load" }
+                    requiredHostedCompatibilityPolicy()
+                }
+            },
+        ) { client, root ->
+            repeat(3) {
+                assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
+            }
+            assertEquals(1, loads)
+        }
+    }
+
+    @Test
+    fun `changed live contract rejects before dispatch after an earlier admitted operation`() {
+        val changed =
+            compatibility.copy(
+                hostedContract = compatibility.hostedContract.copy(wireSchemaDigest = "sha256:" + "0".repeat(64))
+            )
+        exchange(
+            script =
+                ExchangeScript(
+                    expected = listOf("DESCRIBE", "CLASS_LOOKUP", "DESCRIBE"),
+                    describeMetadata = listOf(compatibility, changed),
+                )
+        ) { client, root ->
+            assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
+            assertEquals(
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED),
+                client.query(root, classes()),
+            )
+            val observed =
+                assertInstanceOf(HostedServiceObservation.Incompatible::class.java, client.latestObservation(root))
+            val mismatch =
+                assertInstanceOf(
+                    io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.Mismatch::class.java,
+                    observed.compatibilityFailure,
+                )
+            assertEquals(
+                io.github.amichne.kast.protocol.contract.IdeHostCompatibilityField.WIRE_SCHEMA_DIGEST,
+                mismatch.mismatch.field,
+            )
+        }
+    }
+
+    @Test
+    fun `rejected required policy load retries successfully on the next request`() {
+        var loads = 0
+        exchange(
+            script =
+                ExchangeScript(
+                    expected = listOf("DESCRIBE", "DESCRIBE", "CLASS_LOOKUP", "DESCRIBE", "CLASS_LOOKUP"),
+                    describeMetadata = List(3) { compatibility },
+                ),
+            clientFactory = { home ->
+                ExistingIdeSocketClient(home, ReadLimits.Default, 2_000) {
+                    loads += 1
+                    when (loads) {
+                        1 -> Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
+                        2,
+                        3 -> requiredHostedCompatibilityPolicy()
+                        else -> error("unexpected required policy load")
+                    }
+                }
+            },
+        ) { client, root ->
+            assertEquals(
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE),
+                client.query(root, classes()),
+            )
+            assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
+            assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
+            assertEquals(2, loads)
+        }
+    }
 
     @Test
     fun `absent recorded process with a removed project cannot block live host admission`() {
@@ -233,6 +321,29 @@ class HostedCompatibilityExchangeTest {
         omitEvidence: Boolean = false,
         replaceSocketBeforeDescribeReply: Boolean = false,
         assert: (ExistingIdeSocketClient, CanonicalRoot) -> Unit,
+    ) =
+        exchange(
+            script =
+                ExchangeScript(
+                    expected = expected,
+                    describeMetadata = expected.filter { it == "DESCRIBE" }.map { metadata },
+                    omitEvidence = omitEvidence,
+                    replaceSocketBeforeDescribeReply = replaceSocketBeforeDescribeReply,
+                ),
+            assert = assert,
+        )
+
+    private data class ExchangeScript(
+        val expected: List<String>,
+        val describeMetadata: List<HostedCompatibilityDocument>,
+        val omitEvidence: Boolean = false,
+        val replaceSocketBeforeDescribeReply: Boolean = false,
+    )
+
+    private fun exchange(
+        script: ExchangeScript,
+        clientFactory: (Path) -> ExistingIdeSocketClient = { ExistingIdeSocketClient(it, exchangeMillis = 2_000) },
+        assert: (ExistingIdeSocketClient, CanonicalRoot) -> Unit,
     ) {
         val home = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "khx-")
         val executor = Executors.newSingleThreadExecutor()
@@ -243,22 +354,23 @@ class HostedCompatibilityExchangeTest {
             val peer =
                 peerFixture(
                     home = home,
-                    metadata = metadata,
-                    omitEvidence = omitEvidence,
-                    replaceSocket = replaceSocketBeforeDescribeReply,
+                    metadata = ArrayDeque(script.describeMetadata),
+                    omitEvidence = script.omitEvidence,
+                    replaceSocket = script.replaceSocketBeforeDescribeReply,
                     successors = successors,
                 )
             ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
                 server.bind(UnixDomainSocketAddress.of(peer.socket))
                 val worker =
                     executor.submit<List<String>> {
-                        expected.map { operation ->
+                        script.expected.map { operation ->
                             server.accept().use { channel -> peer.respond(channel, operation) }
                         }
                     }
 
-                assert(ExistingIdeSocketClient(home, exchangeMillis = 2_000), root)
-                assertEquals(expected, worker.get(5, TimeUnit.SECONDS))
+                assert(clientFactory(home), root)
+                assertEquals(script.expected, worker.get(5, TimeUnit.SECONDS))
+                assertEquals(emptyList<HostedCompatibilityDocument>(), peer.metadata.toList())
                 successors.forEach { assertNull(it.accept(), "unadmitted successor received a connection") }
             }
         } finally {
@@ -270,7 +382,7 @@ class HostedCompatibilityExchangeTest {
 
     private fun peerFixture(
         home: Path,
-        metadata: HostedCompatibilityDocument,
+        metadata: ArrayDeque<HostedCompatibilityDocument>,
         omitEvidence: Boolean,
         replaceSocket: Boolean,
         successors: MutableList<ServerSocketChannel>,
@@ -295,7 +407,7 @@ class HostedCompatibilityExchangeTest {
     }
 
     private inner class PeerFixture(
-        val metadata: HostedCompatibilityDocument,
+        val metadata: ArrayDeque<HostedCompatibilityDocument>,
         val omitEvidence: Boolean,
         val replaceSocket: Boolean,
         val socket: Path,
@@ -323,25 +435,26 @@ class HostedCompatibilityExchangeTest {
             return received
         }
 
-        private fun document(operation: String): String =
-            when {
-                operation != "DESCRIBE" -> json.encodeToString(Rejection.serializer(), Rejection())
-                omitEvidence ->
-                    json.encodeToString(
-                        LegacyHost.serializer(),
-                        LegacyHost(descriptor.root, descriptor.host, descriptor.hostPid),
-                    )
-                else ->
-                    json.encodeToString(
-                        Host.serializer(),
-                        Host(
-                            root = descriptor.root,
-                            host = descriptor.host,
-                            hostPid = descriptor.hostPid,
-                            compatibility = metadata,
-                        ),
-                    )
+        private fun document(operation: String): String {
+            if (operation != "DESCRIBE") return json.encodeToString(Rejection.serializer(), Rejection())
+            val description = metadata.removeFirst()
+            return if (omitEvidence) {
+                json.encodeToString(
+                    LegacyHost.serializer(),
+                    LegacyHost(descriptor.root, descriptor.host, descriptor.hostPid),
+                )
+            } else {
+                json.encodeToString(
+                    Host.serializer(),
+                    Host(
+                        root = descriptor.root,
+                        host = descriptor.host,
+                        hostPid = descriptor.hostPid,
+                        compatibility = description,
+                    ),
+                )
             }
+        }
     }
 
     @Serializable

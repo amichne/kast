@@ -63,9 +63,6 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T05:15:45.560Z
 sources:
   - id: openwiki-source-55c5b1c6b24fca5ce9444ac5
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/ProviderFailureCode.kt
@@ -73,9 +70,14 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-e8970cbf92e81dc4000b50e4
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
+  - id: openwiki-source-4409dd5c2a071a9540abe837
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedCompatibilityExchangeTest.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+generated: { by: "codex", at: "2026-10-02T13:53:38.453Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T13:57:17.310Z
 ---
 
 # Request dispatch
@@ -254,3 +256,7 @@ host's complete hosted contract before sending an operation. Host release versio
 remain implementation provenance. A control-only installation checks the candidate's
 policy before retiring control and repeats admission after candidate activation;
 these checks do not replace connection-time admission.
+
+The project socket client retains successfully loaded packaged Control requirements
+for its own lifetime. Failed loads remain retryable. Every exchange still obtains
+and admits a fresh live describe before dispatching the requested operation.
