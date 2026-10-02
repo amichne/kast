@@ -34,6 +34,8 @@ internal sealed interface ReinstallationVersionAdmission {
 internal sealed interface InstallationSelection {
     data object Latest : InstallationSelection
 
+    data object ControlOnly : InstallationSelection
+
     data class Exact(val version: ReinstallationVersion) : InstallationSelection
 }
 

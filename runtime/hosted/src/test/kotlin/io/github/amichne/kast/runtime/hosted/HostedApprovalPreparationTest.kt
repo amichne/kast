@@ -1,7 +1,11 @@
 package io.github.amichne.kast.runtime.hosted
 
+import com.networknt.schema.InputFormat
+import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.change.apply.LiveChangeEffect
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -13,11 +17,20 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedApprovalPreparationTest {
+    private val schema =
+        SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+            .getSchema(checkNotNull(javaClass.getResource("/ide-hosted/hosted-approval.schema.json")).readText())
     private val fixture = HostedApprovalFixture()
     private val root = fixture.plan.basis.observation.reference.workspaceRoot
 
     @Test
     fun `strict request retains exact effect and canonical plan identity`() {
+        val document =
+            Json.encodeToString(
+                PreparationFixture.serializer(),
+                PreparationFixture(LiveChangeEffect.CHANGE_APPLY, "plan:${fixture.plan.planId.value}"),
+            )
+        assertTrue(schema.validate(document, InputFormat.JSON).isEmpty(), document)
         val decoded =
             decodeHostedApprovalPreparation(
                     root,
@@ -84,6 +97,7 @@ class HostedApprovalPreparationTest {
                         .document
                 )
                 .jsonObject
+        assertTrue(schema.validate(response.toString(), InputFormat.JSON).isEmpty(), response.toString())
         assertEquals(setOf("version", "operation", "root", "host", "planId", "challenge", "preview"), response.keys)
         assertEquals(JsonPrimitive(fixture.plan.planId.value), response["planId"])
         assertEquals(JsonPrimitive(root.value), response["root"])
@@ -93,3 +107,5 @@ class HostedApprovalPreparationTest {
         assertTrue(preview.getValue("diff").jsonPrimitive.content.contains("fun added() = 1"))
     }
 }
+
+@Serializable private data class PreparationFixture(val operation: LiveChangeEffect, val planIdentity: String)

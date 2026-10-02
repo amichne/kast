@@ -247,6 +247,10 @@ private constructor(
     val wireSchemaDigest: WireSchemaDigest,
     val capabilities: IdeHostCapabilitySet,
 ) {
+    val hostedContract: HostedContract =
+        HostedContract(runtimeProtocolIdentity, operationRegistryDigest, wireSchemaDigest, capabilities)
+    val provenance: HostProvenance = HostProvenance(kastPluginVersion)
+
     /**
      * Proof transition: `AdmittedIdeHostCompatibility + AdmittedIdeHostCompatibility ->
      * IdeHostCompatibilityComparison`.
@@ -267,37 +271,19 @@ private constructor(
                         kotlinPluginBuild,
                     )
                 )
-            kastPluginVersion != expected.kastPluginVersion ->
-                mismatch(
-                    IdeHostCompatibilityMismatch.KastPluginVersion(
-                        expected.kastPluginVersion,
-                        kastPluginVersion,
-                    )
-                )
-            runtimeProtocolIdentity != expected.runtimeProtocolIdentity ->
-                mismatch(
-                    IdeHostCompatibilityMismatch.RuntimeProtocol(
-                        expected.runtimeProtocolIdentity,
-                        runtimeProtocolIdentity,
-                    )
-                )
-            operationRegistryDigest != expected.operationRegistryDigest ->
-                mismatch(
-                    IdeHostCompatibilityMismatch.OperationRegistry(
-                        expected.operationRegistryDigest,
-                        operationRegistryDigest,
-                    )
-                )
-            wireSchemaDigest != expected.wireSchemaDigest ->
-                mismatch(
-                    IdeHostCompatibilityMismatch.WireSchema(
-                        expected.wireSchemaDigest,
-                        wireSchemaDigest,
-                    )
-                )
-            capabilities != expected.capabilities ->
-                mismatch(IdeHostCompatibilityMismatch.Capabilities(expected.capabilities, capabilities))
-            else -> IdeHostCompatibilityComparison.Compatible
+            else ->
+                when (val admission = HostedCompatibilityPolicy.admit(expected.hostedContract, hostedContract)) {
+                    is Refinement.Refined -> IdeHostCompatibilityComparison.Compatible
+                    is Refinement.Rejected ->
+                        when (val failure = admission.failure) {
+                            is IdeHostCompatibilityFailure.Mismatch -> mismatch(failure.mismatch)
+                            is IdeHostCompatibilityFailure.Malformed,
+                            is IdeHostCompatibilityFailure.UnknownCapability,
+                            is IdeHostCompatibilityFailure.UnsupportedCapability,
+                            is IdeHostCompatibilityFailure.DuplicateCapability ->
+                                error("Refined hosted contracts cannot fail parsing")
+                        }
+                }
         }
 
     companion object {
@@ -383,9 +369,9 @@ class IdeHostCompatibilityPolicy private constructor(val supportedCompatibility:
      * Proof transition: `IdeHostCompatibilityCandidate -> IdeHostCompatibilityAdmission`.
      *
      * Admits IDEA and Kotlin builds in the baseline's release lines, retaining their exact observed identities in
-     * [AdmittedIdeHostCompatibility]. Product, protocol, digest, and capability equality remains exact. Syntax,
-     * capability, and field mismatch failures remain closed [IdeHostCompatibilityFailure] data. Raw extraction is
-     * permitted only at the endpoint or generated-report boundary.
+     * [AdmittedIdeHostCompatibility]. Plugin version is provenance. Protocol, digest, and capability equality remains
+     * exact. Syntax, capability, and field mismatch failures remain closed [IdeHostCompatibilityFailure] data. Raw
+     * extraction is permitted only at the endpoint or generated-report boundary.
      */
     fun admit(candidate: IdeHostCompatibilityCandidate): IdeHostCompatibilityAdmission =
         when (val parsed = AdmittedIdeHostCompatibility.parse(candidate)) {

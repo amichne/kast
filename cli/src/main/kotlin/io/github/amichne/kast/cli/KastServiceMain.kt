@@ -27,7 +27,25 @@ import kotlinx.serialization.json.JsonObject
 object KastServiceMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
-        if (arguments.firstOrNull() == "install") {
+        if (arguments.toList() == listOf("host-admission")) {
+            when (
+                val observed =
+                    io.github.amichne.kast.appserver.ide.observeRunningHostedServices(
+                        Path.of(System.getProperty("user.home"))
+                    )
+            ) {
+                is io.github.amichne.kast.appserver.ide.HostedServicesObservation.Admitted -> exitProcess(0)
+                is io.github.amichne.kast.appserver.ide.HostedServicesObservation.Rejected -> {
+                    System.err.println(
+                        serviceControlJson.encodeToString<ServiceControlFailureDocument>(
+                            ServiceControlFailureDocument.Host(observed.failure)
+                        )
+                    )
+                    exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
+                }
+            }
+        }
+        if (arguments.firstOrNull() in setOf("install", "recover-control")) {
             val installation = InstallationCliInspection.inspect(listOf("installation") + arguments, System.getenv())
             val exit = (installation as InstallationHandling.Handled).exit
             when (exit) {
@@ -188,6 +206,11 @@ internal fun executeWorkspaceRegistration(manager: AppServerManager, workspace: 
 
 @Serializable
 internal sealed interface ServiceControlFailureDocument {
+    @Serializable
+    @SerialName("HOST_ADMISSION_REJECTED")
+    data class Host(val failure: io.github.amichne.kast.appserver.ide.ExistingIdeFailure) :
+        ServiceControlFailureDocument
+
     @Serializable @SerialName("arguments") data object Arguments : ServiceControlFailureDocument
 
     @Serializable

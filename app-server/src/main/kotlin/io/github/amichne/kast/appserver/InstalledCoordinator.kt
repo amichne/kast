@@ -228,6 +228,7 @@ private constructor(
                             sessions = frontend,
                             preparations = preparation.operations,
                             demand = preparation.demand,
+                            hostedServices = preparation::hostedServices,
                         )
                 ) {
                     is Refinement.Refined -> admission.value

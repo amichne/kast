@@ -8,8 +8,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -292,10 +290,10 @@ private fun releaseFixture(
     val control = Files.createDirectories(fixture.resolve("control-$version"))
     val metadata = Files.createDirectories(control.resolve("share/kast"))
     writeControlFiles(control, metadata, controlFileCount, lifecycleInspectionExit)
-    val runtime = writePluginFixture(fixture, metadata, version)
+    writeControlMetadata(metadata, version)
     val controlArchive = Files.writeString(fixture.resolve("control-$version.tar.gz"), "control-$version")
     val idea = writeIdeaFixture(fixture)
-    return ReleaseFixture(control, controlArchive, runtime, digest(runtime), idea.first, idea.second)
+    return ReleaseFixture(control, controlArchive, idea.first, idea.second)
 }
 
 private fun writeControlFiles(
@@ -340,30 +338,26 @@ private fun writeControlFiles(
     repeat(controlFileCount - 5) { index -> Files.writeString(knowledge.resolve("$index.json"), emptyDocument) }
 }
 
-private fun writePluginFixture(fixture: Path, metadata: Path, version: String): Path {
-    val runtime = fixture.resolve("kast-ide-hosted-$version.zip")
-    ZipOutputStream(Files.newOutputStream(runtime)).use { archive ->
-        archive.putNextEntry(ZipEntry("kast-ide-hosted/lib/kast-ide-hosted.jar"))
-        archive.write("fixture".toByteArray())
-        archive.closeEntry()
-    }
-    val runtimeDigest = digest(runtime)
+private fun writeControlMetadata(metadata: Path, version: String) {
     Files.writeString(
         metadata.resolve("ide-host.json"),
         Json.encodeToString(
-            PluginFixture(
-                1,
-                version,
-                "existing_ide",
-                "261.1",
-                "261.1-IJ",
-                runtime.fileName.toString(),
-                "sha256:$runtimeDigest",
-                Files.size(runtime),
+            ControlMetadataFixture(
+                schemaVersion = 2,
+                productVersion = version,
+                execution = "existing_ide",
+                ideaBuild = "261.1",
+                kotlinPluginBuild = "261.1-IJ",
+                requiredHostedContract =
+                    io.github.amichne.kast.protocol.contract.HostedContractDocument(
+                        runtimeProtocolIdentity = "kast.ide-hosted.runtime.v2",
+                        operationRegistryDigest = "sha256:" + "a".repeat(64),
+                        wireSchemaDigest = "sha256:" + "b".repeat(64),
+                        capabilities = listOf("query.run"),
+                    ),
             )
         ),
     )
-    return runtime
 }
 
 private fun writeIdeaFixture(fixture: Path): Pair<Path, Path> {
@@ -394,8 +388,6 @@ private fun installationEnvironment(
         InstallationEnvironment.CONTROL_ROOT.key to product.controlRoot.toString(),
         InstallationEnvironment.CONTROL_ARCHIVE.key to product.controlArchive.toString(),
         InstallationEnvironment.CONTROL_SHA256.key to digest(product.controlArchive),
-        InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE.key to product.pluginArchive.toString(),
-        InstallationEnvironment.HOSTED_PLUGIN_SHA256.key to product.pluginDigest,
         InstallationEnvironment.VERSION.key to version,
         InstallationEnvironment.IDEA_HOME.key to product.ideaHome.toString(),
         InstallationEnvironment.JAVA_HOME.key to product.javaHome.toString(),
@@ -411,8 +403,6 @@ private fun installationEnvironment(
 private data class ReleaseFixture(
     val controlRoot: Path,
     val controlArchive: Path,
-    val pluginArchive: Path,
-    val pluginDigest: String,
     val ideaHome: Path,
     val javaHome: Path,
 )
@@ -433,15 +423,13 @@ private fun digest(input: java.io.InputStream): String = input.use {
 @Serializable private data object EmptyDocumentFixture
 
 @Serializable
-private data class PluginFixture(
+private data class ControlMetadataFixture(
     val schemaVersion: Int,
     val productVersion: String,
     val execution: String,
     val ideaBuild: String,
     val kotlinPluginBuild: String,
-    val fileName: String,
-    val sha256: String,
-    val bytes: Long,
+    val requiredHostedContract: io.github.amichne.kast.protocol.contract.HostedContractDocument,
 )
 
 @Serializable internal data class RegistryFixture(val schemaVersion: Int, val revision: Int, val roots: List<String>)

@@ -16,9 +16,14 @@ checkout=$(pwd -P)
 
 # Admit development options before invoking Gradle or creating state.
 options=()
+component=pair
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --control-only|--host-only)
+      [[ "$component" == pair && "$mode" == persistent ]] || fail "component installation requires one component and persistent mode"
+      if [[ "$1" == --control-only ]]; then component=control; else component=host; fi
+      options+=("$1"); shift; continue ;;
     --force) options+=(--force); shift; continue ;;
     --register-codex-mcp|--skip-codex-mcp)
       [[ $mode == persistent ]] || fail "$1 requires a persistent installation"
@@ -59,15 +64,30 @@ trap 'exit 143' TERM
 version="0.$(date -u +%Y%m%d).$(date -u +%H%M%S | sed 's/^0*//;s/^$/0/')"
 base_url="https://github.com/amichne/kast/releases/download"
 printf 'kast-install: building checkout %s (%s)\n' "$checkout" "$version" >&2
-"$checkout/gradlew" --console=plain \
-  "-Pversion=$version" "-PhostedIdeaHome=$idea_home" assembleKastControlDist :runtime:hosted:hostedPlugin >&2
-for name in "kast-control-v$version-macos-aarch64.tar.gz"; do
+build_options=("-PhostedIdeaHome=$idea_home")
+build_tasks=()
+case "$component" in
+  control) build_options+=("-PcontrolVersion=$version"); build_tasks+=(assembleKastControlDist) ;;
+  host) build_options+=("-PhostedPluginVersion=$version"); build_tasks+=(generateHostReleaseRecord) ;;
+  pair) build_options+=("-PcontrolVersion=$version" "-PhostedPluginVersion=$version"); build_tasks+=(assembleKastControlDist generateHostReleaseRecord) ;;
+esac
+"$checkout/gradlew" --console=plain "${build_options[@]}" "${build_tasks[@]}" >&2
+if [[ "$component" != host ]]; then
+  name="kast-control-v$version-macos-aarch64.tar.gz"
   cp "$checkout/build/distributions/$name" "$scratch/$name"
   (cd "$scratch" && shasum -a 256 "$name" > "$name.sha256")
-done
-plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
-cp "$checkout/runtime/hosted/build/distributions/$plugin_name" "$scratch/$plugin_name"
-(cd "$scratch" && shasum -a 256 "$plugin_name" > "$plugin_name.sha256")
+fi
+if [[ "$component" != control ]]; then
+  plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
+  cp "$checkout/runtime/hosted/build/distributions/$plugin_name" "$scratch/$plugin_name"
+  cp "$checkout/packaging/host-installation.py" "$scratch/host-installation.py"
+  for name in "$plugin_name" host-installation.py; do
+    (cd "$scratch" && shasum -a 256 "$name" > "$name.sha256")
+  done
+  record_name="kast-host-release-v$version.json"
+  cp "$checkout/build/generated/host-release/$record_name" "$scratch/$record_name"
+  cp "$checkout/build/generated/host-release/$record_name.sha256" "$scratch/$record_name.sha256"
+fi
 
 if [[ $mode == session ]]; then
   session_root=$(mktemp -d "${TMPDIR:-/tmp}/kast-session.XXXXXX")
@@ -78,7 +98,7 @@ if [[ $mode == session ]]; then
   export XDG_CONFIG_HOME="$session_root/config"
 fi
 
-KAST_INSTALL_PROFILE="$mode" KAST_VERSION="$version" KAST_RELEASE_BASE_URL="$base_url" \
+KAST_INSTALL_PROFILE="$mode" KAST_VERSION="$version" KAST_HOST_VERSION="$version" KAST_RELEASE_BASE_URL="$base_url" \
 KAST_INSTALL_ASSETS_DIRECTORY="$scratch" \
   bash "$installer" ${options[@]+"${options[@]}"} >&2
 

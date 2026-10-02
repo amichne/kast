@@ -1,4 +1,5 @@
 """Recovery uses only private fixtures; no real installations or processes."""
+from dataclasses import asdict, dataclass
 from pathlib import Path
 import json
 import hashlib
@@ -14,6 +15,24 @@ import unittest
 
 SCRIPT = Path(__file__).with_name('installation-recovery.py')
 
+@dataclass(frozen=True)
+class PayloadFileFixture:
+    path: str
+    sha256: str
+    mode: int
+
+@dataclass(frozen=True)
+class ControlManifestFixture:
+    installationRoot: str
+    stateRoot: str
+    configuration: str
+    workspaceRegistry: str
+    payloadFiles: tuple[PayloadFileFixture, ...]
+    schemaVersion: int = 3
+    semanticVersion: str = '1.2.3'
+    payloadIdentity: str = 'sha256:' + 'a' * 64
+    externalAnchors: tuple = ()
+
 class RecoveryTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='kast-recovery-')
@@ -27,6 +46,7 @@ class RecoveryTest(unittest.TestCase):
         self.environment = dict(os.environ, HOME=str(self.home))
 
     def run_recovery(self, operation, *args):
+        if operation == 'detach': args = ('--control-only',) + args
         result = subprocess.run([sys.executable, str(SCRIPT), operation, '--installation', str(self.root), *map(str, args)],
                                 env=self.environment, capture_output=True, text=True, timeout=10)
         self.assertTrue(result.stdout, result.stderr)
@@ -72,6 +92,31 @@ class RecoveryTest(unittest.TestCase):
         sys.modules[spec.name] = module
         spec.loader.exec_module(module)
         return module, bundle, agent, login
+
+    def test_control_seal_and_detach_leave_independently_owned_host_untouched(self):
+        spec = importlib.util.spec_from_file_location('control_recovery_under_test', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        root = self.home / 'control/installation'
+        root.mkdir(parents=True)
+        plugins = self.home / 'idea/plugins/kast-ide-hosted'
+        plugins.mkdir(parents=True)
+        marker = plugins / 'host.jar'
+        marker.write_text('P1')
+        identity = module.Identity.observe(plugins)
+        report = module.prepare(root, self.bin)
+        self.assertEqual(module.Status.PREPARED, report.status)
+        with patch.object(module, 'migrate_plugin_chain', side_effect=AssertionError('control cannot migrate host')):
+            sealed = module.seal_upgrade(root)
+        self.assertEqual(module.Status.SEALED, sealed.status)
+        with patch.object(module, 'retire_and_preserve', return_value=[]) as retire, patch.object(module, 'detach_login', return_value=[]) as login:
+            detached = module.detach(root, False)
+        retire.assert_called_once()
+        login.assert_called_once()
+        self.assertEqual(module.Status.CLEAN, detached.status)
+        self.assertEqual(identity, module.Identity.observe(plugins))
+        self.assertEqual('P1', marker.read_text())
 
     def test_offline_recovery_detaches_only_exact_direct_service_login(self):
         module, bundle, agent, raw = self.direct_login()
@@ -161,7 +206,7 @@ class RecoveryTest(unittest.TestCase):
         report = self.prepare()
         bundle = Path(report['recoveryExecutable'])
         self.assertTrue(bundle.is_file())
-        result = subprocess.run([sys.executable, str(bundle), 'detach', '--installation', str(self.root)],
+        result = subprocess.run([sys.executable, str(bundle), 'detach', '--control-only', '--installation', str(self.root)],
                                 env=self.environment, capture_output=True, text=True, timeout=10)
         self.assertEqual('DetachedWithUnresolvedState', json.loads(result.stdout)['status'])
         self.assertFalse((self.outer / 'current').is_symlink())
@@ -217,7 +262,7 @@ class RecoveryTest(unittest.TestCase):
         module.activate_plugin(self.root, staged, plugins)
         self.assertEqual('new plugin', (plugins / 'kast-ide-hosted/new').read_text())
         self.assertEqual('working baseline', next((plugins.parent / '.kast-plugin-recovery').glob('.kast-ide-hosted.baseline-*/old')).read_text())
-        code, report = self.run_recovery('detach')
+        code, report = self.run_recovery('detach-legacy-pair')
         self.assertNotEqual(0, code)
         self.assertIn('IDE_RESTART_REQUIRED', report['unresolved'])
         self.assertFalse((plugins / 'kast-ide-hosted').exists())
@@ -285,7 +330,7 @@ class RecoveryTest(unittest.TestCase):
         self.assertEqual(before, module.Identity.observe(Path(receipt.plugin.backup)))
         self.assertEqual(b'prior active plugin', (Path(receipt.plugin.backup) / 'bytes').read_bytes())
         self.assertEqual(retained.stat().st_dev, plugins.stat().st_dev)
-        code, report = self.run_recovery('detach')
+        code, report = self.run_recovery('detach-legacy-pair')
         self.assertIn('IDE_RESTART_REQUIRED', report['unresolved'])
         self.assertEqual([], list(plugins.iterdir()))
         self.assertEqual(b'next plugin', (Path(receipt.plugin.quarantine) / 'bytes').read_bytes())
@@ -369,13 +414,13 @@ class RecoveryTest(unittest.TestCase):
     def test_legacy_detach_relocates_backup_and_quarantine_outside_discovery(self):
         module = self.recovery_module()
         plugins, _ = self.plugin_fixture(module, legacy=True)
-        code, report = self.run_recovery('detach')
+        code, report = self.run_recovery('detach-legacy-pair')
         self.assertEqual('DetachedWithUnresolvedState', report['status'])
         self.assertEqual([], list(plugins.iterdir()))
         receipt = module.load(self.outer / 'recovery' / self.root.name / 'receipt.json')
         self.assertEqual(b'older retained plugin', (Path(receipt.plugin.backup) / 'bytes').read_bytes())
         self.assertEqual(b'prior active plugin', (Path(receipt.plugin.quarantine) / 'bytes').read_bytes())
-        self.assertEqual((code, report), self.run_recovery('detach'))
+        self.assertEqual((code, report), self.run_recovery('detach-legacy-pair'))
 
     def test_legacy_pending_candidate_activates_from_retained_storage(self):
         module = self.recovery_module()
@@ -407,12 +452,94 @@ class RecoveryTest(unittest.TestCase):
         identity = module.Identity.observe(active)
         active.rename(Path(receipt.plugin.quarantine))
         module.save(bundle / 'receipt.json', module.replace_stage(receipt, module.Status.UNRESOLVED))
-        code, report = self.run_recovery('detach')
+        code, report = self.run_recovery('detach-legacy-pair')
         self.assertEqual('DetachedWithUnresolvedState', report['status'])
         self.assertEqual([], list(plugins.iterdir()))
         migrated = module.load(bundle / 'receipt.json')
         self.assertEqual(identity, module.Identity.observe(Path(migrated.plugin.quarantine)))
         self.assertEqual(b'prior active plugin', (Path(migrated.plugin.quarantine) / 'bytes').read_bytes())
+
+    def test_control_detach_preserves_populated_historical_host_receipt(self):
+        module = self.recovery_module()
+        plugins, _ = self.plugin_fixture(module, legacy=True)
+        active = plugins / 'kast-ide-hosted'
+        before = module.Identity.observe(active)
+        bundle = self.outer / 'recovery' / self.root.name
+        historical = module.load(bundle / 'receipt.json').plugin
+        backup = Path(historical.backup)
+        backup_identity = module.Identity.observe(backup)
+        code, report = self.run_recovery('detach')
+        self.assertEqual('DetachedWithUnresolvedState', report['status'])
+        self.assertEqual(before, module.Identity.observe(active))
+        self.assertEqual(b'prior active plugin', (active / 'bytes').read_bytes())
+        self.assertEqual(backup_identity, module.Identity.observe(backup))
+        self.assertEqual(b'older retained plugin', (backup / 'bytes').read_bytes())
+        self.assertEqual(historical, module.load(bundle / 'receipt.json').plugin)
+        self.assertNotIn('IDE_RESTART_REQUIRED', report['unresolved'])
+
+    def test_public_control_removal_preserves_populated_historical_host_receipt(self):
+        module = self.recovery_module()
+        root = self.home / 'data/kast/installation'
+        (root / 'bin').mkdir(parents=True)
+        script = root / 'share/kast/installation-lifecycle.py'
+        script.parent.mkdir(parents=True)
+        shutil.copyfile(SCRIPT.with_name('installation-lifecycle.py'), script)
+        executable = root / 'bin/kast-complete'
+        executable.write_text("#!/bin/sh\n[ \"$*\" = 'app-server disable' ] || exit 95\n")
+        executable.chmod(0o700)
+        manifest = ControlManifestFixture(str(root), str(root / 'state'), str(root / 'config/environment'),
+            str(root / 'config/workspaces.json'), (PayloadFileFixture('bin/kast-complete',
+            'sha256:' + hashlib.sha256(executable.read_bytes()).hexdigest(), 448),
+            PayloadFileFixture('share/kast/installation-lifecycle.py',
+            'sha256:' + hashlib.sha256(script.read_bytes()).hexdigest(), script.stat().st_mode & 0o777)))
+        (root / 'installation.json').write_text(json.dumps(asdict(manifest)))
+        module.prepare(root, self.bin)
+        plugins = self.home / 'idea-profile/plugins'
+        active = plugins / 'kast-ide-hosted'
+        active.mkdir(parents=True)
+        marker = active / 'host.jar'
+        marker.write_bytes(b'P1')
+        identity = module.Identity.observe(active)
+        bundle = root.parent / 'recovery/installation'
+        receipt = module.load(bundle / 'receipt.json')
+        token = 'c' * 32
+        historical = module.Plugin(str(active), str(plugins / ('.kast-ide-hosted.install-' + token)),
+            identity, str(plugins / ('.kast-ide-hosted.baseline-' + token)), None,
+            str(plugins / ('.kast-ide-hosted.detached-' + token)))
+        module.save(bundle / 'receipt.json', module.replace(receipt, plugin=historical,
+            pluginRoot=str(plugins), stage=module.Status.ACTIVE))
+        result = subprocess.run(['/bin/bash', str(SCRIPT.parent.parent / 'install.sh'), 'uninstall',
+            '--managed-registrations'], env=dict(self.environment, XDG_DATA_HOME=str(self.home / 'data'),
+            NO_COLOR='1'), capture_output=True, text=True, timeout=10)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(root.exists())
+        self.assertEqual(identity, module.Identity.observe(active))
+        self.assertEqual(b'P1', marker.read_bytes())
+        self.assertEqual(historical, module.load(bundle / 'receipt.json').plugin)
+
+    def test_unmarked_control_detach_rejects_before_any_effect(self):
+        self.prepare()
+        result = subprocess.run([sys.executable, str(SCRIPT), 'detach', '--installation', str(self.root)],
+            env=self.environment, capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual('RECEIPT_REJECTED', json.loads(result.stdout)['unresolved'][0])
+        self.assertFalse((self.root / '.recovery-detached').exists())
+        self.assertTrue((self.outer / 'current').is_symlink())
+
+    def test_historical_helper_rejects_control_flag_before_effects(self):
+        self.prepare()
+        historical = self.home / 'historical-recovery.py'
+        historical.write_text("import argparse\nparser = argparse.ArgumentParser()\n"
+            "parser.add_argument('operation', choices=('detach',))\n"
+            "parser.add_argument('--installation', required=True)\nparser.parse_args()\n"
+            "raise AssertionError('old helper must reject before its effect boundary')\n")
+        result = subprocess.run([sys.executable, str(historical), 'detach', '--control-only',
+                                 '--installation', str(self.root)], env=self.environment,
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(2, result.returncode)
+        self.assertIn('unrecognized arguments: --control-only', result.stderr)
+        self.assertFalse((self.root / '.recovery-detached').exists())
+        self.assertTrue((self.outer / 'current').is_symlink())
 
     def test_unknown_receipt_fields_fail_closed(self):
         self.prepare()

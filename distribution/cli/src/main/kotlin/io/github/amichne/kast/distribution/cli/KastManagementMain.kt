@@ -216,9 +216,12 @@ private class PluginCommand : ManagementNode("plugin") {
 }
 
 private class UpgradeCommand : ManagementNode("upgrade") {
+    private val controlOnly by
+        option("--control-only", help = "Upgrade control and reuse the admitted running IntelliJ host.").flag()
+
     override fun help(context: Context) = "Install the latest verified release on the selected channel."
 
-    override fun selection() = ManagementCommand.Upgrade
+    override fun selection() = ManagementCommand.Upgrade(controlOnly)
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {
@@ -260,28 +263,7 @@ private fun perform(command: ManagementCommand) {
             is ManagementRootResolution.Rejected -> throw ManagementRejected("environment", resolved.failure.reason)
         }
     when (command) {
-        is ManagementCommand.Status -> {
-            val commandPath =
-                ProcessHandle.current()
-                    .info()
-                    .command()
-                    .map { Path.of(it).toAbsolutePath().normalize().toString() }
-                    .orElse("unavailable")
-            val status = readStatus(root, commandPath)
-            if (command.json) println(status.asJson())
-            else {
-                println("Command: ${status.commandPath}")
-                println("Installation: ${status.resolvedInstallationPath.value ?: "unavailable"}")
-                println("Installed: ${status.installedVersion.value ?: "unavailable"}")
-                println("Loaded: ${status.loadedVersion.value ?: "unavailable"}")
-                val integrations =
-                    status.registrations.value?.joinToString { it.connection.publicName } ?: "unavailable"
-                println("Recorded integrations: $integrations")
-                println("Active workspaces: ${status.activeWorkspaces.value?.joinToString() ?: "unavailable"}")
-                println("Live connections: ${status.liveConnections.value ?: "unavailable"}")
-                println("One-shot requests in flight: ${status.oneShotRequestsInFlight.value ?: "unavailable"}")
-            }
-        }
+        is ManagementCommand.Status -> printManagementStatus(root, command.json)
         is ManagementCommand.Connect -> {
             if (command.connection == null) println("Supported integrations: codex mcp, codex app-server, copilot, pi")
             else {
@@ -350,7 +332,7 @@ private fun perform(command: ManagementCommand) {
                 ForceResetExit.INCOMPLETE -> exitProcess(1)
             }
         }
-        ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home))
+        is ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home), command.controlOnly)
         ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home))
         ManagementCommand.Version -> println(MANAGEMENT_VERSION)
         ManagementCommand.Help -> Unit
@@ -372,3 +354,14 @@ private fun lifecycleRecovery(failure: LifecycleFailure): String =
         LifecycleFailure.FILESYSTEM_REJECTED ->
             "inspect kast status --json; shutdown fencing and recovery evidence are retained"
     }
+
+private fun printManagementStatus(root: Path, json: Boolean) {
+    val commandPath =
+        ProcessHandle.current()
+            .info()
+            .command()
+            .map { Path.of(it).toAbsolutePath().normalize().toString() }
+            .orElse("unavailable")
+    val status = readStatus(root, commandPath)
+    println(if (json) status.asJson() else status.asText())
+}

@@ -103,7 +103,9 @@ def readable(value):
 def details(document):
     # Select display fields only; never interpret this projection as domain admission.
     result = []
-    for key in ('stage', 'outcome', 'reason', 'failure', 'field', 'exitCode'):
+    if document.get('type') in ('REJECTED', 'ROLLED_BACK', 'RECOVERY_REQUIRED'):
+        result.append(document['type'])
+    for key in ('stage', 'outcome', 'reason', 'failure', 'recoveryFailure', 'field', 'exitCode'):
         value = document.get(key)
         if isinstance(value, dict):
             value = ' '.join(filter(None, (readable(value.get('type')), readable(value.get('exitCode')))))
@@ -176,11 +178,14 @@ usage() {
 Bootstrap Kast for the current user.
 
 Usage:
-  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
+  install.sh [--control-only | --host-only] [--host-version <major.minor.patch>] [--idea-home <absolute-path>]
+             [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
              [--register-codex-mcp | --skip-codex-mcp] [--install-root <absolute-path>] [--stage-only] [--verbose]
   install.sh --help
 
-The default command installs the latest release into:
+The default command selects a control release and a host release with an equal hosted contract.
+Use --control-only to reuse a compatible running IntelliJ host, or --host-only to install only its plugin.
+Installation uses:
   ${XDG_DATA_HOME:-$HOME/.local/share}/kast
 
 It publishes the native management command at `$XDG_CONFIG_HOME/kast` when
@@ -188,7 +193,7 @@ It publishes the native management command at `$XDG_CONFIG_HOME/kast` when
 directory is not on PATH, installation succeeds and prints the absolute path
 and directory to add. No shell profile is edited.
 `--install-root` selects an explicit absolute installation directory.
-`--stage-only` commits a compatible payload without starting its daemon; the lifecycle owner activates it later.
+`--stage-only` stages only control without starting its daemon or changing host files; the lifecycle owner activates it later.
 When `--idea-home` is omitted, installation checks `/Applications`,
 `~/Applications`, and the JetBrains Toolbox app directory for a compatible IDEA.
 
@@ -292,16 +297,19 @@ discover_idea_home() {
 }
 
 resolve_latest_version() {
-  local effective tag
-  effective="$(curl --fail --location --silent --show-error \
+  local component="${1:-control}"
+  curl --fail --location --silent --show-error --max-filesize 4194304 \
     --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
-    --output /dev/null --write-out '%{url_effective}' \
-    "https://github.com/$REPOSITORY/releases/latest")"
-  tag="${effective%/}"
-  tag="${tag##*/}"
-  tag="${tag#v}"
-  validate_version "$tag"
-  printf '%s\n' "$tag"
+    "https://api.github.com/repos/$REPOSITORY/releases?per_page=100" | python3 -c '
+import json, re, sys
+component = sys.argv[1]
+for release in json.load(sys.stdin):
+    match = re.fullmatch(component + r"-v([0-9]+\.[0-9]+\.[0-9]+)", release.get("tag_name", ""))
+    if match and not release.get("draft") and not release.get("prerelease"):
+        print(match.group(1)); break
+else:
+    sys.exit("kast-install: selected component has no observed stable release")
+' "$component"
 }
 
 resolve_developer_latest() {
@@ -431,87 +439,13 @@ print(f"{version}\t{build}\t{directory}")
 PYTHON
 }
 
-extract_hosted_plugin() {
-  local archive="$1"
-  local destination="$2"
-  local version="$3"
-  local build="$4"
-  python3 - "$archive" "$destination" "$version" "$build" <<'PYTHON'
-import os
-from pathlib import Path, PurePosixPath
-import shutil
-import stat
-import sys
-import xml.etree.ElementTree as etree
-import zipfile
-
-archive, destination = Path(sys.argv[1]), Path(sys.argv[2])
-version, build = sys.argv[3], sys.argv[4]
-destination.mkdir(mode=0o700)
-with zipfile.ZipFile(archive) as source:
-    members = source.infolist()
-    if not members or len(members) > 4096 or sum(member.file_size for member in members) > 128 * 1024 * 1024:
-        raise SystemExit("kast-install: hosted plugin archive layout rejected")
-    for member in members:
-        path = PurePosixPath(member.filename)
-        mode = member.external_attr >> 16
-        if (path.is_absolute() or not path.parts or path.parts[0] != "kast-ide-hosted"
-                or any(part in ("", ".", "..") for part in path.parts)
-                or stat.S_ISLNK(mode)):
-            raise SystemExit("kast-install: hosted plugin archive path rejected")
-        if member.is_dir():
-            continue
-        target = destination.joinpath(*path.parts)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-        with source.open(member) as opened, os.fdopen(descriptor, "wb") as output:
-            shutil.copyfileobj(opened, output)
-
-plugin = destination / "kast-ide-hosted"
-library = plugin / "lib"
-if not library.is_dir():
-    raise SystemExit("kast-install: hosted plugin has no library directory")
-descriptors = []
-for jar in library.iterdir():
-    if not jar.is_file() or jar.is_symlink() or jar.suffix != ".jar":
-        continue
-    try:
-        with zipfile.ZipFile(jar) as candidate:
-            descriptors.append(candidate.read("META-INF/plugin.xml"))
-    except KeyError:
-        pass
-if len(descriptors) != 1:
-    raise SystemExit("kast-install: hosted plugin descriptor identity is ambiguous")
-root = etree.fromstring(descriptors[0])
-identity = root.findtext("id")
-plugin_version = root.findtext("version")
-compatibility = root.find("idea-version")
-since = None if compatibility is None else compatibility.get("since-build")
-until = None if compatibility is None else compatibility.get("until-build")
-if identity != "io.github.amichne.kast.ide-hosted":
-    raise SystemExit("kast-install: hosted plugin identity is invalid")
-if plugin_version != version:
-    raise SystemExit("kast-install: hosted plugin version is mismatched")
-release_line = build.split(".", 1)[0]
-if since != release_line or until != release_line + ".*":
-    raise SystemExit("kast-install: hosted plugin IDEA release line is mismatched")
-PYTHON
-}
-
-activate_hosted_plugin() {
-  local staged="$1"
-  local plugin_root="$2"
-  local selected
-  local -a options=()
-  [[ "$force" == 0 ]] || options+=(--force)
-  selected="$(cd "$install_root/installation" && pwd -P)"
-  run_installer_step "IDEA plugin activation" "" python3 "$control_root/share/kast/installation-recovery.py" activate-plugin \
-    --installation "$selected" --staged-plugin "$staged" --plugin-root "$plugin_root" ${options[@]+"${options[@]}"}
-}
 
 action=install
 managed_registrations=0
 version="${KAST_VERSION:-}"
+host_version="${KAST_HOST_VERSION:-}"
+component=pair
+control_only=0
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 requested_install_root=""
 mode=apply
@@ -536,6 +470,17 @@ while [[ $# -gt 0 ]]; do
       [[ "$action" == install ]] || fail "--stage-only is valid only for installation"
       stage_only=1
       shift
+      ;;
+    --control-only|--host-only)
+      [[ "$action" == install && "$component" == pair ]] || fail "select one component installation"
+      if [[ "$1" == --control-only ]]; then component=control; control_only=1; else component=host; fi
+      codex_mcp_choice=skip
+      shift
+      ;;
+    --host-version)
+      [[ $# -ge 2 ]] || fail "--host-version requires a value"
+      host_version="${2#v}"
+      shift 2
       ;;
     --force)
       [[ "$action" == install ]] || fail "--force is valid only for installation"
@@ -590,9 +535,22 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$component" == host && -n "$host_version" ]]; then
+  [[ -z "$version" || "$version" == "$host_version" ]] || fail "host version selections disagree"
+  version="$host_version"
+fi
+[[ "$component" != control || -z "$host_version" ]] || fail "--control-only does not select a host release"
+[[ "$control_only" == 0 || "$force" == 0 ]] || fail "--control-only cannot reset the installation"
+[[ "$stage_only" == 0 || "$component" == pair ]] || fail "--stage-only cannot be combined with a component upgrade"
+[[ "$developer_latest" == 0 || "$component" == pair ]] || fail "developer builds require an explicit tested pair"
 [[ "$developer_latest" == 0 || -z "$version" ]] || fail "--developer-latest cannot be combined with --version or KAST_VERSION"
 [[ "$developer_latest" == 0 || -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
   fail "--developer-latest cannot be combined with local assets"
+if [[ "$stage_only" == 1 ]]; then
+  # Cold reset staging owns only control; its lifecycle owner activates the candidate later.
+  component=control
+  host_version=""
+fi
 
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
 # Local artifacts are an explicit developer entry point; public release installs use standard paths.
@@ -620,7 +578,7 @@ if [[ "$action" == uninstall ]]; then
   lifecycle="$selected/share/kast/installation-lifecycle.py"
   [[ -f "$lifecycle" && ! -L "$lifecycle" ]] || fail "selected installation has no lifecycle control"
   if [[ "$mode" == plan ]]; then
-    run_installer_step "Installation removal plan" "" python3 "$lifecycle" --installation "$selected" remove --dry-run --json
+    run_installer_step "Installation removal plan" "" python3 "$lifecycle" --installation "$selected" remove --control-only --dry-run --json
     success "planned removal of Kast at $selected; use --verbose for the structured plan"
     exit 0
   else
@@ -630,7 +588,7 @@ if [[ "$action" == uninstall ]]; then
       cp "$registration" "$unregister_copy"
       trap 'rm -f -- "$unregister_copy"' EXIT
     fi
-    run_installer_step "Installation removal" "" python3 "$lifecycle" --installation "$selected" remove --json
+    run_installer_step "Installation removal" "" python3 "$lifecycle" --installation "$selected" remove --control-only --json
     if [[ -n "${unregister_copy:-}" ]] && command -v codex >/dev/null 2>&1; then
       python3 "$unregister_copy" uninstall "$install_root"
     fi
@@ -699,16 +657,23 @@ if [[ "$developer_latest" == 1 ]]; then
 elif [[ -z "$version" || "$version" == latest ]]; then
   [[ -z "${KAST_RELEASE_BASE_URL:-}" ]] || fail "KAST_RELEASE_BASE_URL requires KAST_VERSION"
   [[ -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] || fail "local assets require KAST_VERSION"
-  version="$(resolve_latest_version)"
+  version="$(resolve_latest_version "$([[ "$component" == host ]] && printf host || printf control)")"
 else
   validate_version "$version"
 fi
 
-release="${release:-v$version}"
+release="${release:-$([[ "$component" == host ]] && printf host || printf control)-v$version}"
+if [[ "$component" == host ]]; then host_version="$version"; fi
+if [[ "$component" != control && -z "$host_version" ]]; then
+  if [[ "$developer_latest" == 1 || -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]]; then host_version="$version"
+  else host_version="$(resolve_latest_version host)"; fi
+fi
+if [[ "$component" != control ]]; then validate_version "$host_version"; fi
+base_release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
 release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
 release_url="${release_url%/}/$release"
 control_name="kast-control-v$version-macos-aarch64.tar.gz"
-plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
+plugin_name="kast-ide-hosted-v${host_version:-unused}-idea-${idea_build%%.*}.zip"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"
 installation_complete=0
@@ -724,7 +689,10 @@ cleanup() {
       --installation "$selected"; then
       ui_line error 31 'kast-install: upgrade recovery could not be finalized; replacement recovery was retained'
       status=1
-    elif ! run_installer_step "Prior installation review" "" python3 "$control_root/share/kast/prune-prior-installations.py" \
+      if [[ "$control_only" == 1 ]]; then
+        run_installer_step "Control recovery after finalization failure" "" "$control_root/share/kast/libexec/kast-service" recover-control finalization || true
+      fi
+    elif [[ "$component" != control ]] && ! run_installer_step "Prior installation review" "" python3 "$control_root/share/kast/prune-prior-installations.py" \
       --installation "$selected"; then
       ui_line error 31 'kast-install: prior installation review could not be completed'
       status=1
@@ -732,8 +700,16 @@ cleanup() {
   fi
   if ! rm -rf -- "$temporary_root"; then status=1; fi
   if [[ "$status" == 0 && "$installation_complete" == 1 ]]; then
-    success "installed Kast $version and the plugin for IntelliJ IDEA $idea_version (build $idea_build)"
-    info "Restart IntelliJ IDEA, then start a fresh Codex session in a Gradle repository."
+    if [[ "$stage_only" == 1 ]]; then
+      success "staged Kast Control $version"
+      info "The verified lifecycle owner will activate control."
+    elif [[ "$component" == control ]]; then
+      success "activated Kast Control $version with admitted running IntelliJ hosts"
+      info "Start fresh control sessions. IntelliJ was reused."
+    else
+      success "installed Kast Control $version and Kast Host $host_version"
+      info "Restart IntelliJ IDEA, then start a fresh agent session."
+    fi
   fi
   exit "$status"
 }
@@ -741,19 +717,48 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-note "downloading Kast $version and its IDEA ${idea_build%%.*} plugin"
-for name in "$control_name" "$control_name.sha256"; do fetch_asset "$name" "$temporary_root/$name"; done
-idea_mismatch="not installing Kast: release $version has no matching IDEA ${idea_build%%.*} plugin for IntelliJ IDEA $idea_version (build $idea_build)"
-fetch_asset "$plugin_name" "$temporary_root/$plugin_name" "$idea_mismatch"
-fetch_asset "$plugin_name.sha256" "$temporary_root/$plugin_name.sha256" "$idea_mismatch"
-note "verifying downloaded checksums and plugin compatibility"
-control_digest="$(verify_checksum "$temporary_root/$control_name" "$temporary_root/$control_name.sha256" "$control_name")"
-plugin_digest="$(verify_checksum "$temporary_root/$plugin_name" "$temporary_root/$plugin_name.sha256" "$plugin_name")"
-plugin_stage="$temporary_root/hosted-plugin"
-extract_hosted_plugin "$temporary_root/$plugin_name" "$plugin_stage" "$version" "$idea_build"
+if [[ "$component" != host ]]; then
+  note "downloading Kast Control $version"
+  for name in "$control_name" "$control_name.sha256"; do fetch_asset "$name" "$temporary_root/$name"; done
+  control_digest="$(verify_checksum "$temporary_root/$control_name" "$temporary_root/$control_name.sha256" "$control_name")"
+fi
+if [[ "$component" != control ]]; then
+  control_release_url="$release_url"
+  if [[ "$developer_latest" == 0 ]]; then release_url="${base_release_url%/}/host-v$host_version"; fi
+  note "downloading Kast Host $host_version for IDEA ${idea_build%%.*}"
+  idea_mismatch="not installing Kast Host: release $host_version has no matching IDEA ${idea_build%%.*} plugin for IntelliJ IDEA $idea_version (build $idea_build)"
+  fetch_asset "$plugin_name" "$temporary_root/$plugin_name" "$idea_mismatch"
+  fetch_asset "$plugin_name.sha256" "$temporary_root/$plugin_name.sha256" "$idea_mismatch"
+  plugin_digest="$(verify_checksum "$temporary_root/$plugin_name" "$temporary_root/$plugin_name.sha256" "$plugin_name")"
+  host_record_name="kast-host-release-v$host_version.json"
+  fetch_asset "$host_record_name" "$temporary_root/$host_record_name"
+  fetch_asset "$host_record_name.sha256" "$temporary_root/$host_record_name.sha256"
+  verify_checksum "$temporary_root/$host_record_name" "$temporary_root/$host_record_name.sha256" "$host_record_name" >/dev/null
+  if [[ "$component" == host ]]; then
+    fetch_asset host-installation.py "$temporary_root/host-installation.py"
+    fetch_asset host-installation.py.sha256 "$temporary_root/host-installation.py.sha256"
+    verify_checksum "$temporary_root/host-installation.py" "$temporary_root/host-installation.py.sha256" host-installation.py >/dev/null
+    host_options=()
+    [[ "$mode" == apply ]] || host_options+=(--dry-run)
+    python3 "$temporary_root/host-installation.py" --archive "$temporary_root/$plugin_name" --sha256 "$plugin_digest" \
+      --version "$host_version" --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
+      --release-record "$temporary_root/$host_record_name" ${host_options[@]+"${host_options[@]}"}
+    if [[ "$mode" == plan ]]; then success "planned Kast Host $host_version installation at $idea_plugin_root/kast-ide-hosted"
+    else success "installed Kast Host $host_version; restart IntelliJ IDEA to load it"; fi
+    exit 0
+  fi
+  release_url="$control_release_url"
+fi
 control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
 [[ -x "$control_root/share/kast/libexec/kast-service" ]] || fail "control archive has no executable installer"
+if [[ "$component" == pair ]]; then
+  [[ -f "$control_root/share/kast/host-installation.py" ]] || fail "control convenience installer has no host installation helper"
+  run_installer_step "IDEA host payload preflight" "" python3 "$control_root/share/kast/host-installation.py" \
+    --archive "$temporary_root/$plugin_name" --sha256 "$plugin_digest" --version "$host_version" \
+    --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
+    --release-record "$temporary_root/$host_record_name" --required-control "$control_root/share/kast/ide-host.json" --dry-run
+fi
 if [[ "$profile" == persistent ]]; then
   management_executable="$control_root/share/kast/libexec/kast-management"
   [[ -x "$management_executable" ]] || fail "control archive has no native management executable"
@@ -777,8 +782,7 @@ note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') the a
 export KAST_INSTALL_CONTROL_ROOT="$control_root"
 export KAST_INSTALL_CONTROL_ARCHIVE="$temporary_root/$control_name"
 export KAST_INSTALL_CONTROL_SHA256="$control_digest"
-export KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE="$temporary_root/$plugin_name"
-export KAST_INSTALL_HOSTED_PLUGIN_SHA256="$plugin_digest"
+export KAST_INSTALL_CONTROL_ONLY="$control_only"
 export KAST_INSTALL_VERSION="$version"
 export KAST_INSTALL_IDEA_HOME="$idea_home"
 export KAST_INSTALL_JAVA_HOME="$java_home"
@@ -808,14 +812,24 @@ else
     "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
 fi
 if [[ "$mode" == plan ]]; then
-  success "verified hosted plugin $plugin_digest for IntelliJ IDEA $idea_version (build $idea_build)"
-  info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."
+  [[ "$component" == control ]] || success "verified hosted plugin $plugin_digest for IntelliJ IDEA $idea_version (build $idea_build)"
+  if [[ "$component" == control ]]; then info "Kast Control installation is planned at $install_root."
+  else info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."; fi
 else
-  activate_hosted_plugin "$plugin_stage" "$idea_plugin_root"
+  if [[ "$component" != control ]]; then
+    run_installer_step "IDEA host installation" "" python3 "$control_root/share/kast/host-installation.py" \
+      --archive "$temporary_root/$plugin_name" --sha256 "$plugin_digest" --version "$host_version" \
+      --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
+      --release-record "$temporary_root/$host_record_name" --required-control "$control_root/share/kast/ide-host.json"
+  fi
   if [[ "$profile" == persistent ]]; then
     export KAST_MANAGEMENT_CHANNEL="$([[ "$developer_latest" == 1 ]] && printf developer || printf stable)"
-    installed_management="$("$management_executable" --internal-install commit)" ||
-      fail "native executable activation failed; installed payload remains available for recovery"
+    if ! installed_management="$("$management_executable" --internal-install commit)"; then
+      if [[ "$control_only" == 1 ]]; then
+        run_installer_step "Control recovery after publication failure" "" "$control_root/share/kast/libexec/kast-service" recover-control publication || true
+      fi
+      fail "native executable activation failed; inspect the reported control recovery outcome"
+    fi
     [[ "$installed_management" == "$management_destination" ]] ||
       fail "native executable destination changed during installation"
   fi

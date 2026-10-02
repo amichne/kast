@@ -8,6 +8,37 @@ import org.junit.jupiter.api.Test
 
 class InstallationRequestTest {
     @Test
+    fun `home proof retains quoted JVM identity and rejects control characters`() {
+        val home = "/fixture/home with \"quote\" and \\slash"
+        val request = InstallationRequest.parse(validEnvironment() + ("HOME" to home)) as Refinement.Refined
+        assertEquals(
+            "-Duser.home=\"/fixture/home with \\\"quote\\\" and \\\\slash\"",
+            request.value.jvmUserHomeOption.value,
+        )
+        for (character in listOf('\n', '\r', '\u0000')) {
+            assertEquals(
+                Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.HOME)),
+                InstallationRequest.parse(validEnvironment() + ("HOME" to ("/fixture/home" + character))),
+            )
+        }
+    }
+
+    @Test
+    fun `control-only reset and session combinations reject at request boundary`() {
+        for (unsupported in listOf(mapOf("KAST_INSTALL_FORCE" to "1"), mapOf("KAST_INSTALL_PROFILE" to "session"))) {
+            assertEquals(
+                Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.CONTROL_ONLY)),
+                InstallationRequest.parse(validEnvironment() + mapOf("KAST_INSTALL_CONTROL_ONLY" to "1") + unsupported),
+            )
+        }
+    }
+
+    @Test
+    fun `control request requires no host artifact or digest`() {
+        org.junit.jupiter.api.Assertions.assertTrue(InstallationRequest.parse(validEnvironment()) is Refinement.Refined)
+    }
+
+    @Test
     fun `force command reaches verified payload admission while unknown options reject`() {
         val forced =
             InstallationCliInspection.inspect(listOf("installation", "install", "--force"), validEnvironment())
@@ -130,8 +161,6 @@ class InstallationRequestTest {
             InstallationEnvironment.CONTROL_ROOT.key to "/fixture/control",
             InstallationEnvironment.CONTROL_ARCHIVE.key to "/fixture/control.tar.gz",
             InstallationEnvironment.CONTROL_SHA256.key to "a".repeat(64),
-            InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE.key to "/fixture/runtime.zip",
-            InstallationEnvironment.HOSTED_PLUGIN_SHA256.key to "b".repeat(64),
             InstallationEnvironment.VERSION.key to "1.2.3",
             InstallationEnvironment.IDEA_HOME.key to "/fixture/idea",
             InstallationEnvironment.JAVA_HOME.key to "/fixture/idea/jbr/Contents/Home",

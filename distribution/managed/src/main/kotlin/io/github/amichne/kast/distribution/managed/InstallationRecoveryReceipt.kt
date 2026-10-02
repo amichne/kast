@@ -65,15 +65,13 @@ sealed interface InstallationRecoveryAdmission {
     data object Rejected : InstallationRecoveryAdmission
 }
 
-/** Retains the plugin baseline only after its installation and receipt identity were admitted. */
+/** Retains the admitted control bundle; historical host evidence remains in the prior bundle. */
 class InstallationRecoveryBaseline
 private constructor(
     val installation: Path,
     val bundle: Path,
-    private val plugin: RecoveryPlugin?,
-    private val pluginRoot: String?,
 ) {
-    internal fun prepare(root: Path): InstallationRecoveryPreparation = prepareRecovery(root, plugin, pluginRoot)
+    internal fun prepare(root: Path): InstallationRecoveryPreparation = prepareRecovery(root, null, null)
 
     companion object {
         internal fun admit(root: Path): InstallationRecoveryAdmission =
@@ -104,8 +102,6 @@ private constructor(
                         InstallationRecoveryBaseline(
                             installation = slot.root,
                             bundle = slot.bundle,
-                            plugin = receipt.plugin,
-                            pluginRoot = receipt.pluginRoot,
                         )
                     )
                 RecoveryTransfer.REJECTED -> InstallationRecoveryAdmission.Rejected

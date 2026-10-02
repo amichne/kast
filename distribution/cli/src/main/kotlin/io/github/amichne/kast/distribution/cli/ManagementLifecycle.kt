@@ -113,14 +113,7 @@ internal fun installLatest(
 ): InstallerReport {
     val script = installedPrivateInstaller(root)
     if (selection is InstallationSelection.Exact) requireOwnedInstaller(root)
-    val options =
-        when (selection) {
-            is InstallationSelection.Exact ->
-                listOf("--version", selection.version.value, "--force", "--skip-codex-mcp")
-            InstallationSelection.Latest ->
-                if (prior.channel == ReleaseChannel.DEVELOPER) listOf("--developer-latest", "--skip-codex-mcp")
-                else listOf("--skip-codex-mcp")
-        }
+    val options = installerArguments(selection, prior.channel)
     val reportPath =
         try {
             Files.createTempFile(root, ".management-result-", ".json")
@@ -141,12 +134,32 @@ internal fun installLatest(
             "installer failed with exit $code; installed version: ${status.installedVersion.value ?: "unavailable"}",
         )
     }
-    return when (val admitted = admitInstallerReport(rawReport, root, prior.executable)) {
+    val admitted = admitInstallerReport(rawReport, root, prior.executable, installerReportIntent(selection))
+    return when (admitted) {
         is InstallerReportAdmission.Admitted -> admitted.report
         InstallerReportAdmission.Rejected ->
             throw ManagementRejected("upgrade-report", "installed state is unverified after installer success")
     }
 }
+
+internal fun installerArguments(selection: InstallationSelection, channel: ReleaseChannel): List<String> =
+    when (selection) {
+        is InstallationSelection.Exact ->
+            listOf("--version", selection.version.value, "--force", "--skip-codex-mcp", "--stage-only")
+        InstallationSelection.Latest -> latestInstallerOptions(channel)
+        InstallationSelection.ControlOnly -> latestInstallerOptions(channel) + "--control-only"
+    }
+
+private fun installerReportIntent(selection: InstallationSelection): InstallerReportIntent =
+    when (selection) {
+        is InstallationSelection.Exact -> InstallerReportIntent.STAGING
+        InstallationSelection.Latest,
+        InstallationSelection.ControlOnly -> InstallerReportIntent.ACTIVATION
+    }
+
+private fun latestInstallerOptions(channel: ReleaseChannel): List<String> =
+    if (channel == ReleaseChannel.DEVELOPER) listOf("--developer-latest", "--skip-codex-mcp")
+    else listOf("--skip-codex-mcp")
 
 internal sealed interface InstallerReportAdmission {
     data class Admitted(val report: InstallerReport) : InstallerReportAdmission
@@ -195,9 +208,10 @@ private fun reportMatchesSelectedInstallation(
                 intent == InstallerReportIntent.ACTIVATION && report.activation.type == ActivationType.PENDING
         }
 
-internal fun upgradeInstallation(root: Path, home: Path) {
+internal fun upgradeInstallation(root: Path, home: Path, controlOnly: Boolean = false) {
     val prior = requireOwnedExecutable(root)
-    val report = withRegistrationLock(root) { installLatest(root, prior) }
+    val selection = if (controlOnly) InstallationSelection.ControlOnly else InstallationSelection.Latest
+    val report = withRegistrationLock(root) { installLatest(root, prior, selection) }
     val failures = mutableListOf<HarnessConnection>()
     prior.registrations.forEach { registration ->
         try {
@@ -212,7 +226,7 @@ internal fun upgradeInstallation(root: Path, home: Path) {
             "integration-activation",
             "installed ${status.installedVersion.value ?: "unavailable"}; " +
                 "registrations require repair: ${failures.joinToString { it.publicName }}; " +
-                "restart IntelliJ IDEA and the affected harnesses after repair",
+                registrationRepairAdvice(controlOnly),
         )
     }
     if (report.status == InstallStatus.INSTALLED_ACTIVATION_PENDING)
@@ -220,21 +234,31 @@ internal fun upgradeInstallation(root: Path, home: Path) {
             "service-activation",
             "installed ${report.semanticVersion}; service activation pending: " +
                 "${report.activation.reason ?: "unavailable"}; sessions were interrupted; " +
-                "restart IntelliJ IDEA and connected harnesses after service recovery",
+                serviceRecoveryAdvice(controlOnly),
         )
     val status = readStatus(root, prior.executable)
     println("Installed Kast ${status.installedVersion.value ?: "unavailable"}")
     println(
-        "Existing calls and sessions were interrupted. " +
-            "Restart IntelliJ IDEA and connected harnesses to load the new payload."
+        if (controlOnly) "Control sessions were interrupted. Running IntelliJ hosts were admitted and reused."
+        else
+            "Existing calls and sessions were interrupted. " +
+                "Restart IntelliJ IDEA and connected harnesses to load the new payload."
     )
 }
+
+private fun registrationRepairAdvice(controlOnly: Boolean): String =
+    if (controlOnly) "restart the affected harnesses after repair"
+    else "restart IntelliJ IDEA and the affected harnesses after repair"
+
+private fun serviceRecoveryAdvice(controlOnly: Boolean): String =
+    if (controlOnly) "restart connected harnesses after service recovery"
+    else "restart IntelliJ IDEA and connected harnesses after service recovery"
 
 @Suppress("ThrowsCount")
 internal fun uninstallInstallation(root: Path, home: Path) {
     val receipt = requireOwnedExecutable(root)
     val script = installedPrivateInstaller(root)
-    // The private installer owns the safe service and plugin shutdown boundary.
+    // The private installer owns verified control retirement and managed control removal.
     val code =
         withRegistrationLock(root) { executePrivateInstaller(script, listOf("uninstall", "--managed-registrations")) }
     if (code != 0) {

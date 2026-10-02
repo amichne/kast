@@ -38,6 +38,26 @@ object ExistingIdeDocuments {
             .build()
     private val registry = SchemaRegistry.withDialect(schemaDialect)
 
+    internal fun compatibility(
+        raw: String
+    ): Refinement<io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument, ExistingIdeFailure> =
+        when (val admitted = read(raw.toByteArray(), "hosted-endpoint.schema.json")) {
+            is Refinement.Rejected -> admitted
+            is Refinement.Refined ->
+                try {
+                    if (admitted.value.path("type").asString() != "KAST_IDE_HOST")
+                        Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+                    else
+                        Refinement.Refined(
+                            Json.decodeFromString<io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument>(
+                                admitted.value.path("compatibility").toString()
+                            )
+                        )
+                } catch (_: kotlinx.serialization.SerializationException) {
+                    Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+                }
+        }
+
     private fun read(raw: ByteArray, schema: String): Refinement<tools.jackson.databind.JsonNode, ExistingIdeFailure> {
         return try {
             val resource =
