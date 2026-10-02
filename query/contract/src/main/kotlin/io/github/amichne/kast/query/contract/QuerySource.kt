@@ -9,6 +9,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWord
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 
 /** Closed discovery meaning. Enumeration never overloads blank text as a wildcard. */
@@ -59,6 +60,13 @@ data class QueryDiscoverySyntax(
     val declarationKinds: QueryDeclarationKinds,
 )
 
+/** Indexed whole-word matches projected to their exact containing declarations. */
+data class QueryTextDiscoverySyntax(
+    val word: SymbolDiscoveryWord,
+    val scope: QueryScope,
+    val declarationKinds: QueryDeclarationKinds,
+)
+
 /** Non-empty exact references whose generation authority cannot be reconstructed from text. */
 class QueryExactReferences private constructor(val values: List<SymbolSelector>) {
     companion object {
@@ -83,6 +91,8 @@ data class QueryContainingDeclaration(val file: CanonicalWorkspaceFilePath, val 
 
 sealed interface QuerySourceSyntax {
     data class Symbols(val discovery: QueryDiscoverySyntax) : QuerySourceSyntax
+
+    data class Text(val discovery: QueryTextDiscoverySyntax) : QuerySourceSyntax
 
     data class Location(val target: QueryContainingDeclaration) : QuerySourceSyntax
 

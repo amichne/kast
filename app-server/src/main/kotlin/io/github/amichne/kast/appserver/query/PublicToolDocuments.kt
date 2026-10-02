@@ -123,38 +123,6 @@ internal sealed interface PublicToolAction
 internal sealed interface PublicToolRetainedInput
 
 @Serializable
-@SerialName("DIRECTORY")
-internal data class PublicToolDirectoryScope(
-    val relativeDirectoryPath: ProtocolText,
-    val includeSubdirectories: Boolean? = null,
-    val sourceSetNames: BoundedProtocolList<ProtocolText>? = null,
-) : PublicToolScope
-
-@Serializable
-@SerialName("PACKAGE")
-internal data class PublicToolPackageScope(
-    val packageName: ProtocolText,
-    val includeSubpackages: Boolean? = null,
-    val sourceSetNames: BoundedProtocolList<ProtocolText>? = null,
-) : PublicToolScope
-
-@Serializable
-@SerialName("SEARCH_DECLARATIONS")
-internal data class PublicToolSearchSource(
-    val declarationName: ProtocolText,
-    val nameMatch: PublicToolNameMatch? = null,
-    val declarationKinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
-    val scope: PublicToolScope? = null,
-) : PublicToolSource
-
-@Serializable
-@SerialName("ALL_DECLARATIONS")
-internal data class PublicToolAllSource(
-    val declarationKinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
-    val scope: PublicToolScope? = null,
-) : PublicToolSource
-
-@Serializable
 @SerialName("SYMBOL_REFS")
 internal data class PublicToolReferenceSource(
     val symbolRefs: BoundedProtocolList<ProtocolText>,
@@ -318,13 +286,6 @@ internal data class PublicToolJoin(
 @Serializable
 @SerialName("BINDING_ROWS")
 internal data object PublicToolBindingRowsOutput : PublicToolOutput, PublicToolReadResultOutput
-
-@Serializable
-@SerialName("AT_LOCATION")
-internal data class PublicToolLocationSource(
-    val file: ProtocolText,
-    val offset: Int,
-) : PublicToolSource
 
 @Serializable
 internal data class PublicToolQuerySymbols(

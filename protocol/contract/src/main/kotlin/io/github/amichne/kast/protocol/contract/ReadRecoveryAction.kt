@@ -69,8 +69,8 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
                 QueryExecutionRejectionDocument.REQUEST_REJECTED,
                 QueryExecutionRejectionDocument.BUDGET_REJECTED -> ReadRecoveryAction.CORRECT_REQUEST
                 QueryExecutionRejectionDocument.CONTINUATION_IN_USE -> ReadRecoveryAction.WAIT_FOR_CHECKPOINT
-                QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED ->
-                    ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
+                QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED,
+                QueryExecutionRejectionDocument.TEXT_MATCH_LIMIT_EXCEEDED -> ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
                 QueryExecutionRejectionDocument.REFERENCE_STALE -> ReadRecoveryAction.REACQUIRE_AUTHORITY
                 QueryExecutionRejectionDocument.DISCOVERY_REJECTED,
                 QueryExecutionRejectionDocument.PUBLISHED_PAGE_MISMATCH,

@@ -22,6 +22,7 @@ enum class SymbolDiscoveryCandidateFailure {
     DECLARATION_CANDIDATE_MISSING_OFFSET,
     TEXT_CANDIDATE_MISSING_RANGE,
     INVALID_TEXT_RANGE,
+    TEXT_MATCH_OWNER_MISMATCH,
 }
 
 @JvmInline
@@ -180,6 +181,52 @@ sealed interface SymbolDiscoveryCandidateLocation {
         override val file: SymbolDiscoveryFileIdentity,
         val range: SymbolDiscoverySourceRange,
     ) : SymbolDiscoveryCandidateLocation
+
+    companion object {
+        internal fun fromBoundary(
+            kind: SymbolDiscoveryKind,
+            file: SymbolDiscoveryFileIdentity,
+            rawOffset: Int?,
+            rawEndOffset: Int?,
+        ): Refinement<SymbolDiscoveryCandidateLocation, SymbolDiscoveryCandidateFailure> {
+            return when (kind) {
+                SymbolDiscoveryKind.FILE -> {
+                    if (rawOffset != null) {
+                        return Refinement.Rejected(
+                            SymbolDiscoveryCandidateFailure.FILE_CANDIDATE_HAS_DECLARATION_OFFSET
+                        )
+                    }
+                    Refinement.Refined(SymbolDiscoveryCandidateLocation.File(file))
+                }
+                SymbolDiscoveryKind.CLASS,
+                SymbolDiscoveryKind.SYMBOL -> {
+                    val offset =
+                        rawOffset
+                            ?: return Refinement.Rejected(
+                                SymbolDiscoveryCandidateFailure.DECLARATION_CANDIDATE_MISSING_OFFSET
+                            )
+                    when (val parsed = SymbolDiscoverySourceOffset.parse(offset)) {
+                        is Refinement.Refined ->
+                            Refinement.Refined(SymbolDiscoveryCandidateLocation.Declaration(file, parsed.value))
+                        is Refinement.Rejected -> return parsed
+                    }
+                }
+                SymbolDiscoveryKind.TEXT -> {
+                    val start =
+                        rawOffset
+                            ?: return Refinement.Rejected(SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE)
+                    val end =
+                        rawEndOffset
+                            ?: return Refinement.Rejected(SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE)
+                    when (val parsed = SymbolDiscoverySourceRange.parse(start, end)) {
+                        is Refinement.Refined ->
+                            Refinement.Refined(SymbolDiscoveryCandidateLocation.Text(file, parsed.value))
+                        is Refinement.Rejected -> return parsed
+                    }
+                }
+            }
+        }
+    }
 }
 
 @ConsistentCopyVisibility
@@ -189,8 +236,19 @@ private constructor(
     val kind: SymbolDiscoveryKind,
     val name: SymbolDiscoveryCandidateName,
     val location: SymbolDiscoveryCandidateLocation,
+    val textMatch: SymbolTextMatch?,
 ) : Comparable<SymbolDiscoveryCandidate> {
     override fun compareTo(other: SymbolDiscoveryCandidate): Int = DISCOVERY_CANDIDATE_ORDER.compare(this, other)
+
+    val identity: SymbolDiscoveryCandidateIdentity = SymbolDiscoveryCandidateIdentity.from(this)
+
+    /** Relevance evidence cannot create another identity for the same detached discovery candidate. */
+    fun sameIdentityAs(other: SymbolDiscoveryCandidate): Boolean = identity == other.identity
+
+    /** Adds lexical relevance only after its owner, file and authority agree with this admitted candidate. */
+    fun withTextMatch(match: SymbolTextMatch): Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure> =
+        if (match.belongsTo(lease, location)) Refinement.Refined(copy(textMatch = match))
+        else Refinement.Rejected(SymbolDiscoveryCandidateFailure.TEXT_MATCH_OWNER_MISMATCH)
 
     /**
      * Proof transition: SymbolDiscoveryCandidate to SymbolDiscoveryByteCount.
@@ -230,6 +288,22 @@ private constructor(
                 append(candidateLocation.range.endExclusive.value)
             }
         }
+        textMatch?.let { match ->
+            append('\u0000')
+            append(match.word.value)
+            append('\u0000')
+            append(match.range.startInclusive.value)
+            append('\u0000')
+            append(match.range.endExclusive.value)
+            append('\u0000')
+            append(match.declarationRange.endExclusive.value)
+            append('\u0000')
+            append(match.contextRange.startInclusive.value)
+            append('\u0000')
+            append(match.line)
+            append('\u0000')
+            append(match.context)
+        }
     }
 
     companion object {
@@ -250,6 +324,7 @@ private constructor(
             virtualFileUrl: String,
             rawOffset: Int?,
             rawEndOffset: Int? = null,
+            textMatch: SymbolTextMatch? = null,
         ): Refinement<SymbolDiscoveryCandidate, SymbolDiscoveryCandidateFailure> {
             val name =
                 when (val parsed = SymbolDiscoveryCandidateName.parse(rawName)) {
@@ -269,45 +344,12 @@ private constructor(
                     is Refinement.Rejected -> return parsed
                 }
             val location =
-                when (kind) {
-                    SymbolDiscoveryKind.FILE -> {
-                        if (rawOffset != null) {
-                            return Refinement.Rejected(
-                                SymbolDiscoveryCandidateFailure.FILE_CANDIDATE_HAS_DECLARATION_OFFSET
-                            )
-                        }
-                        SymbolDiscoveryCandidateLocation.File(file)
-                    }
-                    SymbolDiscoveryKind.CLASS,
-                    SymbolDiscoveryKind.SYMBOL -> {
-                        val offset =
-                            rawOffset
-                                ?: return Refinement.Rejected(
-                                    SymbolDiscoveryCandidateFailure.DECLARATION_CANDIDATE_MISSING_OFFSET
-                                )
-                        when (val parsed = SymbolDiscoverySourceOffset.parse(offset)) {
-                            is Refinement.Refined -> SymbolDiscoveryCandidateLocation.Declaration(file, parsed.value)
-                            is Refinement.Rejected -> return parsed
-                        }
-                    }
-                    SymbolDiscoveryKind.TEXT -> {
-                        val start =
-                            rawOffset
-                                ?: return Refinement.Rejected(
-                                    SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE
-                                )
-                        val end =
-                            rawEndOffset
-                                ?: return Refinement.Rejected(
-                                    SymbolDiscoveryCandidateFailure.TEXT_CANDIDATE_MISSING_RANGE
-                                )
-                        when (val parsed = SymbolDiscoverySourceRange.parse(start, end)) {
-                            is Refinement.Refined -> SymbolDiscoveryCandidateLocation.Text(file, parsed.value)
-                            is Refinement.Rejected -> return parsed
-                        }
-                    }
+                when (val parsed = SymbolDiscoveryCandidateLocation.fromBoundary(kind, file, rawOffset, rawEndOffset)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return parsed
                 }
-            return Refinement.Refined(SymbolDiscoveryCandidate(lease, kind, name, location))
+            val candidate = SymbolDiscoveryCandidate(lease, kind, name, location, null)
+            return if (textMatch == null) Refinement.Refined(candidate) else candidate.withTextMatch(textMatch)
         }
 
         private val DISCOVERY_CANDIDATE_ORDER =

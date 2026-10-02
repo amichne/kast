@@ -6,6 +6,7 @@ import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWord
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -72,6 +73,48 @@ class QueryPlanCompilerTest {
                 QueryPlanAdmissionFailure.UnsupportedDeclarationKind(CompilerSymbolKind.CONSTRUCTOR)
             ),
             QueryPlanCompiler.admit(syntax),
+        )
+    }
+
+    @Test
+    fun `text discovery admits the existing exact relation pipeline`() {
+        val source =
+            QueryTextDiscoverySyntax(
+                SymbolDiscoveryWord.parse("launchd").refined(),
+                QueryScope.Unrestricted,
+                QueryDeclarationKinds.from(setOf(CompilerSymbolKind.FUNCTION)).refined(),
+            )
+        val admitted =
+            assertInstanceOf(
+                QueryPlanAdmission.Admitted::class.java,
+                QueryPlanCompiler.admit(
+                    QueryPlanSyntax(
+                        QuerySourceSyntax.Text(source),
+                        listOf(QueryStepSyntax.Related(RelationMeaning.Callers)),
+                        QueryOutputSyntax.Symbols(symbolFields()),
+                    )
+                ),
+            )
+        val plan = assertInstanceOf(AdmittedQueryPlan.Text::class.java, admitted.plan)
+        assertEquals(source, plan.source)
+        assertEquals(RelationMeaning.Callers, (plan.stage as ExactQueryStage.Related).meaning)
+    }
+
+    @Test
+    fun `text discovery rejects constructors before execution`() {
+        val source =
+            QueryTextDiscoverySyntax(
+                SymbolDiscoveryWord.parse("launchd").refined(),
+                QueryScope.Unrestricted,
+                QueryDeclarationKinds.from(setOf(CompilerSymbolKind.CONSTRUCTOR)).refined(),
+            )
+        assertEquals(
+            QueryPlanAdmission.Rejected(
+                QueryPlanAdmissionFailure.UnsupportedDeclarationKind(CompilerSymbolKind.CONSTRUCTOR)
+            ),
+            QueryPlanCompiler.admit(
+                QueryPlanSyntax(QuerySourceSyntax.Text(source), emptyList(), QueryOutputSyntax.Symbols(symbolFields()))
+            ),
         )
     }
 

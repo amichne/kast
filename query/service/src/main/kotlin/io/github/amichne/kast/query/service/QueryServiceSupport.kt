@@ -4,11 +4,13 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryBindingRow
 import io.github.amichne.kast.query.contract.QueryCount
+import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySymbol
+import io.github.amichne.kast.query.contract.QueryTextDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryWalkArrival
 import io.github.amichne.kast.query.contract.QueryWalkObservation
 import io.github.amichne.kast.relation.contract.RelationEndpoint
@@ -55,8 +57,15 @@ internal fun constraints(
     discoveryKind: SymbolNameDiscoveryKind,
 ): SymbolDiscoveryConstraints {
     check(discoveryKind != SymbolNameDiscoveryKind.FILE)
-    val admittedKinds = SymbolDiscoveryDeclarationKinds.from(syntax.declarationKinds.values.toSet()).refined()
-    return when (val scope = syntax.scope) {
+    return constraints(syntax.scope, syntax.declarationKinds)
+}
+
+internal fun constraints(syntax: QueryTextDiscoverySyntax): SymbolDiscoveryConstraints =
+    constraints(syntax.scope, syntax.declarationKinds)
+
+private fun constraints(scope: QueryScope, kinds: QueryDeclarationKinds): SymbolDiscoveryConstraints {
+    val admittedKinds = SymbolDiscoveryDeclarationKinds.from(kinds.values.toSet()).refined()
+    return when (scope) {
         QueryScope.Unrestricted ->
             SymbolDiscoveryConstraints(directory = null, packageName = null, declarationKinds = admittedKinds)
         is QueryScope.Restricted ->
@@ -157,6 +166,7 @@ internal fun QuerySymbol.projectedUtf8Size(): Long =
                     projected.value.text.utf8Size() + SOURCE_WINDOW_PROJECTION_OVERHEAD_BYTES
                 else -> 0L
             },
+            textMatches.projectedUtf8Size(),
         ) +
             connections.map { it.canonicalProjection().utf8Size() } +
             (walkArrival as? QueryWalkArrival.Proven)?.records.orEmpty().map { it.canonicalProjection().utf8Size() }

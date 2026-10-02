@@ -25,6 +25,40 @@ class PublicQueryGenerationTest(unittest.TestCase):
         for relative in ("copilot/extension.mjs", "pi/extension.ts"):
             self.assertIn("const PUBLIC_TOOL_CONTRACT_VERSION = 37;", generated[ROOT / relative])
 
+    def test_word_discovery_is_a_closed_scoped_source(self):
+        source = self.authority["$defs"]["TextSource"]
+        self.assertEqual(["SEARCH_TEXT"], source["properties"]["type"]["enum"])
+        self.assertEqual(["type", "word"], source["required"])
+        self.assertFalse(source["additionalProperties"])
+        self.assertEqual("^[A-Za-z_][A-Za-z0-9_]*$", source["properties"]["word"]["pattern"])
+        self.assertEqual(256, source["properties"]["word"]["maxLength"])
+        self.assertEqual("#/$defs/Scope", source["properties"]["scope"]["$ref"])
+        references = [branch.get("$ref") for branch in self.authority["$defs"]["Source"]["anyOf"]]
+        self.assertIn("#/$defs/TextSource", references)
+
+    def test_generated_description_lines_bound_escaped_literal_width(self):
+        description = '"\\' * 100
+        self.authority["tools"][0]["description"] = description
+        self.authority["supportTools"][0]["description"] = description
+        generated = generator.render_tools(self.authority)
+        literals = generator.kotlin_description_literals(description).split(' +\n            ')
+        self.assertEqual(description, ''.join(json.loads(literal) for literal in literals))
+        for identity in ("PublicToolIdentity", "SupportToolIdentity"):
+            source = generated[ROOT / f"protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/{identity}.kt"]
+            with self.subTest(identity=identity):
+                self.assertTrue(all(len(line) <= 120 for line in source.splitlines()), source)
+
+    def test_generated_discovery_documents_retain_one_owner(self):
+        generated = generator.render_tools(self.authority)
+        discovery = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt"]
+        ingress = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt"]
+        for name in ("DirectoryScope", "PackageScope", "LocationSource", "SearchSource", "TextSource", "AllSource"):
+            declaration = f"internal data class PublicTool{name}("
+            self.assertEqual(1, discovery.count(declaration))
+            self.assertNotIn(declaration, ingress)
+        self.assertLessEqual(len(discovery.splitlines()), 400)
+        self.assertLessEqual(len(ingress.splitlines()), 400)
+
     def test_missing_and_invalid_control_defaults_reject(self):
         for replacement in (None, 0, 1001):
             with self.subTest(replacement=replacement):

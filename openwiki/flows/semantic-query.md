@@ -5,6 +5,14 @@ description: Query syntax and restored references are admitted into compatible s
 resource: file://query/service
 tags: [query, symbol, source, relation]
 code_sources:
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryTextMatches.kt
+    symbols: [QueryTextMatches]
+  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryReadStages.kt
+    symbols: [QueryReadStages]
+  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTextDiscoveryStage.kt
+    symbols: [QueryTextDiscoveryStage]
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryTextMatchProjection.kt
+    symbols: [protocolDocument]
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoinStage.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
@@ -110,6 +118,20 @@ An exact-symbol output may request `SOURCE`. At its emit stage, the service call
 Discovery candidates are refined to exact symbols before query output. Query-local refinement preserves repeated rows in their source order; an explicit `distinct_symbols` stage keeps the first row for each canonical identity when requested. Failed refinements remain visible as limitations. Relation and traversal child budgets are derived from remaining parent capacity.
 
 Unranked source-owned `ALL_DECLARATIONS` uses the versioned `KOTLIN_FILE_SOURCE_V2` ordering: lexical admitted file path, then declaration start offset. An immutable source-root/VFS partition frontier retains unopened directories and files, plus a detached offset for the active file. Each successor advances an input revision; it never rebuilds the consumed file or declaration prefix. Native objects are reacquired inside the admitted read, and exact K2 refinement remains required before emission. Four supported declaration families are classes, functions, properties, and type aliases, including nested eligible descendants of excluded containers.
+
+`SEARCH_TEXT` lowers to a typed indexed-word source with the same source-set,
+directory, package and kind restrictions. It grants discovery at most half the
+remaining work, reserving authority to refine each admitted owner candidate.
+Candidate capacity follows that discovery grant rather than returned-row capacity,
+so downstream filters can admit a later owner within the same work budget. Native
+text discovery deduplicates containing owners and retains one verified exemplar
+per owner. The normal exact-refinement stage binds the exemplar's authority,
+file and declaration range to its exact selector before attaching it to a row.
+Source projection, checkpoints, retained rows and identity composition preserve
+lexical evidence and charge its bytes. Relation expansion does not attach that
+evidence to a different destination owner. Native stops are terminal incomplete
+discovery; already detached candidates can still be resumed through the existing
+interpreter without repeating discovery or retaining live PSI.
 
 The interpreter retains both discovery input and already discovered candidates. Downstream rejection or filtering drives the producer again until output capacity, resource exhaustion, complete discovery, or a precise blocked cause. Result capacity bounds accepted output rather than candidate discovery. An indivisible directory partition exceeding preparation or retained-byte capacity remains a finite blocked outcome. Direct library-inclusive ALL is explicitly unsupported; it cannot claim completeness over a source-only substitute. Ranked fuzzy-name discovery retains its separate bounded enumeration semantics.
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "serverProjection": {
-    "schemaVersion": 17,
+    "schemaVersion": 18,
     "namespace": "kast",
     "hostedBootstrap": {
       "schemaVersion": 3,

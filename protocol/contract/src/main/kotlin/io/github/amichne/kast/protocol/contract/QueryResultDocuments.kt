@@ -30,6 +30,7 @@ sealed interface QueryResultItemDocument {
         val symbolId: SymbolIdDocument,
         val source: QuerySourceWindowDocument? = null,
         override val rowId: QueryResultRowReference? = null,
+        val matches: BoundedProtocolList<QueryTextMatchDocument>? = null,
     ) : QueryResultItemDocument
 
     data class Occurrence(

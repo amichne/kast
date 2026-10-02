@@ -23,6 +23,7 @@ sealed interface PublicToolInputFailure {
 @Serializable
 enum class PublicToolParameter(val path: String) {
     SOURCE_DECLARATION_NAME("source.declarationName"),
+    SOURCE_WORD("source.word"),
     LOCATION_FILE("source.file"),
     DIRECTORY("scope.relativeDirectoryPath"),
     PACKAGE("scope.packageName"),
@@ -32,6 +33,9 @@ enum class PublicToolParameter(val path: String) {
 @Serializable
 enum class PublicToolRule(val correction: String) {
     SIMPLE_NAME("Supply an unqualified declaration name; put its package in scope.packageName."),
+    INDEXED_WORD(
+        "Supply one ASCII identifier word of at most 256 characters; matching is case-sensitive and whole-word."
+    ),
     WORKSPACE_RELATIVE_PATH("Use a canonical workspace-relative path, or '.' for the root."),
     PACKAGE_NAME("Supply a Kotlin package name such as com.example.orders."),
 }

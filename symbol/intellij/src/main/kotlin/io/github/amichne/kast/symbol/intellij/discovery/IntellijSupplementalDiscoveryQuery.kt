@@ -11,13 +11,12 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.util.PsiUtilCore
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
@@ -27,6 +26,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.nio.file.Path
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -36,6 +36,7 @@ internal class IntellijSupplementalDiscoveryQuery(
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val clock: IntellijDiscoveryNanoClock = SystemIntellijDiscoveryNanoClock,
     private val limits: ReadLimits = ReadLimits.Default,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
     /**
      * Proof transition: `CompiledIntellijSearchScope + SymbolDiscoveryRequest -> IntellijNativeDiscoveryExecution`.
@@ -47,6 +48,7 @@ internal class IntellijSupplementalDiscoveryQuery(
     fun discover(
         compiledScope: CompiledIntellijSearchScope,
         request: SymbolDiscoveryRequest,
+        allowance: IntellijDeclarationDiscoveryAllowance = IntellijDeclarationDiscoveryAllowance(request),
     ): IntellijNativeDiscoveryExecution {
         val collector = SupplementalCollector(request, environmentState, clock)
         when (val target = request.target) {
@@ -64,6 +66,8 @@ internal class IntellijSupplementalDiscoveryQuery(
                     collector.accept(declaration.candidate(request))
                 }
             }
+            is SymbolDiscoveryTarget.TextDeclarations ->
+                return discoverTextDeclarations(compiledScope, request, allowance, target)
             is SymbolDiscoveryTarget.Text -> {
                 collectTextDiscoveryOccurrences(
                     workLimit = request.budget.resources.workUnitLimit,
@@ -87,6 +91,28 @@ internal class IntellijSupplementalDiscoveryQuery(
         return collector.finish()
     }
 
+    private fun discoverTextDeclarations(
+        scope: CompiledIntellijSearchScope,
+        request: SymbolDiscoveryRequest,
+        allowance: IntellijDeclarationDiscoveryAllowance,
+        target: SymbolDiscoveryTarget.TextDeclarations,
+    ): IntellijNativeDiscoveryExecution =
+        IntellijTextDeclarationDiscoveryQuery(environmentState, clock, limits, observation).discover(
+            scope,
+            request,
+            allowance,
+        ) { accept ->
+            PsiSearchHelper.getInstance(project)
+                .processElementsWithWord(
+                    { element, offset -> accept(element, offset) },
+                    scope.nativeScope,
+                    target.word.value,
+                    UsageSearchContext.ANY,
+                    true,
+                    false,
+                )
+        }
+
     private fun Project.findPsiFile(
         workspaceRoot: String,
         relativePath: String,
@@ -99,54 +125,20 @@ internal class IntellijSupplementalDiscoveryQuery(
     }
 }
 
-private data class PendingTextOccurrence(val element: PsiElement, val offsetInElement: Int)
-
-/** Native callbacks capture bounded references only; PSI projection follows complete collection. */
-internal fun collectTextDiscoveryOccurrences(
-    workLimit: WorkUnitLimit,
-    observe: () -> Boolean,
-    qualify: (SymbolDiscoveryQualification) -> Unit,
-    process: ((PsiElement, Int) -> Boolean) -> Boolean,
-    project: (PsiElement, Int) -> Boolean,
-    limits: ReadLimits = ReadLimits.Default,
-) {
-    val pending = ArrayList<PendingTextOccurrence>()
-    val nativeLimit = minOf(workLimit.value, limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong())
-    var stopped = false
-    val exhausted = process { element, offset ->
-        when {
-            !observe() -> {
-                stopped = true
-                false
-            }
-            pending.size.toLong() >= nativeLimit -> {
-                stopped = true
-                qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
-                false
-            }
-            else -> {
-                pending += PendingTextOccurrence(element, offset)
-                true
-            }
-        }
-    }
-    if (!exhausted && !stopped) qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
-    for (occurrence in pending) {
-        if (!observe() || !project(occurrence.element, occurrence.offsetInElement)) break
-    }
-}
-
-private class SupplementalCollector(
+internal class SupplementalCollector(
     private val request: SymbolDiscoveryRequest,
     private val environmentState: () -> IntellijDiscoveryEnvironmentState,
     private val clock: IntellijDiscoveryNanoClock,
+    private val nativeWork: Boolean = false,
 ) {
     private val startedAt = clock.now()
     private val candidates = linkedSetOf<SymbolDiscoveryCandidate>()
+    private val ownerIdentities = hashSetOf<SymbolDiscoveryCandidateIdentity>()
     private val qualifications = linkedSetOf<SymbolDiscoveryQualification>()
     private var encodedBytes = 0L
     private var workUnits = 0L
     private var halted = false
+    private var textTimings: SymbolDiscoveryTimings? = null
 
     fun accept(candidate: Refinement<SymbolDiscoveryCandidate, *>): Boolean =
         when (candidate) {
@@ -178,15 +170,17 @@ private class SupplementalCollector(
         )
     }
 
+    fun containsOwner(candidate: SymbolDiscoveryCandidate): Boolean = candidate.identity in ownerIdentities
+
     private fun accept(candidate: SymbolDiscoveryCandidate): Boolean {
         if (!observe()) return false
-        if (candidate in candidates) return true
-        if (workUnits >= request.budget.resources.workUnitLimit.value) {
+        if (containsOwner(candidate)) return true
+        if (!nativeWork && workUnits >= request.budget.resources.workUnitLimit.value) {
             qualifications += SymbolDiscoveryQualification.WORK_LIMIT_REACHED
             halted = true
             return false
         }
-        workUnits += 1L
+        if (!nativeWork) workUnits += 1L
         if (candidates.size >= request.budget.resources.resultLimit.value) {
             qualifications += SymbolDiscoveryQualification.RESULT_LIMIT_REACHED
             halted = true
@@ -199,6 +193,7 @@ private class SupplementalCollector(
             return false
         }
         candidates += candidate
+        ownerIdentities += candidate.identity
         encodedBytes += candidateBytes
         return true
     }
@@ -224,6 +219,19 @@ private class SupplementalCollector(
         return !halted
     }
 
+    fun recordTextTimings(nativeNanoseconds: Long, projectionNanoseconds: Long) {
+        textTimings =
+            SymbolDiscoveryTimings(
+                nativeNanoseconds.coerceAtLeast(0).elapsedCount(),
+                projectionNanoseconds.coerceAtLeast(0).elapsedCount(),
+            )
+    }
+
+    fun recordNativeWork(count: Long) {
+        check(nativeWork && count >= 0)
+        workUnits = count
+    }
+
     fun qualify(qualification: SymbolDiscoveryQualification) {
         qualifications += qualification
     }
@@ -243,10 +251,16 @@ private class SupplementalCollector(
                         ordered,
                         encodedBytes.byteCount(),
                         workUnits.workCount(),
-                        SymbolDiscoveryTimings(
-                            (clock.now() - startedAt).coerceAtLeast(0L).elapsedCount(),
-                            0L.elapsedCount(),
-                        ),
+                        textTimings
+                            ?: SymbolDiscoveryTimings(
+                                (clock.now() - startedAt).coerceAtLeast(0L).elapsedCount(),
+                                0L.elapsedCount(),
+                            ),
+                        if (nativeWork)
+                            io.github.amichne.kast.symbol.contract.SymbolDiscoveryMeasurements(
+                                examinedLeaves = workUnits.workCount()
+                            )
+                        else io.github.amichne.kast.symbol.contract.SymbolDiscoveryMeasurements(),
                     )
             ) {
                 is Refinement.Refined -> created.value

@@ -85,6 +85,13 @@ private fun SymbolDiscoveryTarget.defaultDeclarationKinds(): Set<CompilerSymbolK
         when (this) {
             is SymbolDiscoveryTarget.All -> this.kind
             is SymbolDiscoveryTarget.Name -> this.kind
+            is SymbolDiscoveryTarget.TextDeclarations ->
+                return setOf(
+                    CompilerSymbolKind.CLASSLIKE,
+                    CompilerSymbolKind.FUNCTION,
+                    CompilerSymbolKind.PROPERTY,
+                    CompilerSymbolKind.TYPE_ALIAS,
+                )
             is SymbolDiscoveryTarget.Location,
             is SymbolDiscoveryTarget.Text -> return null
         }
@@ -112,6 +119,8 @@ private fun SymbolDiscoveryTarget.matchDocument(): QueryMatchDocument? {
                     SymbolDiscoveryMatch.EXACT_NAME -> SymbolDiscoveryMatchDocument.EXACT_NAME
                 },
             )
+        is SymbolDiscoveryTarget.TextDeclarations ->
+            QueryMatchDocument.TextWord(ProtocolText.parse(word.value).valueOrNull() ?: return null)
         is SymbolDiscoveryTarget.Location,
         is SymbolDiscoveryTarget.Text -> null
     }

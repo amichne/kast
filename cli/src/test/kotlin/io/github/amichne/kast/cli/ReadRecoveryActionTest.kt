@@ -78,6 +78,11 @@ class ReadRecoveryActionTest {
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
                 .recoveryAction(),
         )
+        assertEquals(
+            ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE,
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.TEXT_MATCH_LIMIT_EXCEEDED)
+                .recoveryAction(),
+        )
     }
 
     @Test

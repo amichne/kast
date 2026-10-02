@@ -38,6 +38,7 @@ internal fun admitQueryRows(
 private fun QuerySourceSyntax.rowKind(): AdmittedRowKind =
     when (this) {
         is QuerySourceSyntax.Symbols,
+        is QuerySourceSyntax.Text,
         is QuerySourceSyntax.Location,
         is QuerySourceSyntax.ExactReferences -> AdmittedRowKind.Symbol
         is QuerySourceSyntax.Retained ->

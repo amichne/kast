@@ -137,6 +137,7 @@ internal object IntellijPsiDiscoveryCandidateProjector : IntellijDiscoveryCandid
             when (val target = request.target) {
                 is SymbolDiscoveryTarget.All -> target.resultKind
                 is SymbolDiscoveryTarget.Name -> target.resultKind
+                is SymbolDiscoveryTarget.TextDeclarations,
                 is SymbolDiscoveryTarget.Location,
                 is SymbolDiscoveryTarget.Text ->
                     return Refinement.Rejected(SymbolDiscoveryCandidateFailure.TARGET_KIND_MISMATCH)

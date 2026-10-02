@@ -44,6 +44,27 @@ smallest known directory and kinds. Compare returned signatures and locations
 to identify the intended declaration. Fuzzy discovery does not authorize an
 exact-target operation until Kast returns the selected exact `ref`.
 
+## Find containing declarations from remembered text
+
+Question: “Where is `launchd` involved under `app-server`?”
+
+Use `scopedTextWord`. `SEARCH_TEXT` accepts one case-sensitive ASCII word,
+such as `launchd` or `Disable`, and applies the same directory, package,
+source-set and declaration-kind constraints as name discovery. It returns exact
+refs for supported containing declarations, with a bounded exemplar in `matches`.
+The match range uses zero-based UTF-16 offsets; `line` is one-based and `context`
+may be a clipped part of that line. Matches explain lexical relevance and do not
+establish a reference or call relationship. Reuse the returned `ref` for source,
+callers or other semantic operations.
+
+Phrases, qualified literals such as `AppServerAction.Disable`, and regexes are
+rejected. Search the single word `Disable` in the narrowest known scope, then
+inspect its context. Imports, file-level comments and unsupported nearest owners
+produce qualification rather than invented declaration refs. Each owner is
+refined once and carries one exemplar from this search; it does not enumerate
+every text occurrence. A stopped indexed search has terminal incomplete coverage;
+only detached work retained by the interpreter can issue an execution continuation.
+
 ## 4. Identify the declaration containing a position
 
 Question: “Which named declaration owns this code location?”

@@ -146,6 +146,9 @@ object CanonicalAgentToolDefinitions {
                 Use kast.query_symbols for declaration-name search, enumeration, returned exact
                 references, and ordered pipelines. Restrict declaration kinds and scope before
                 expensive work; exact matching is default and fuzzy requires explicit opt-in.
+                SEARCH_TEXT accepts one case-sensitive whole word and returns exact containing
+                declaration references with bounded lexical match evidence. AT_LOCATION also
+                selects the containing declaration; reference resolution is a separate operation.
                 Use query_symbols with SOURCE output for bounded source context,
                 occurrence output for relation facts and its walk step for
                 multi-step reachability. Use kast.check_diagnostics

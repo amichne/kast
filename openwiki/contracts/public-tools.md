@@ -5,6 +5,10 @@ description: Public query, diagnostics, and bounded source changes lower into ca
 resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
 tags: [tools, query, protocol, agents]
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryTextMatchDocument.kt
+    symbols: [QueryTextMatchDocument]
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryTextMatches.kt
+    symbols: [QueryTextMatches]
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/WorkspaceLifecycleRequest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
@@ -22,6 +26,8 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
     symbols: [DaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryMapping.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryStepModels.kt
@@ -66,7 +72,7 @@ generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
 
 The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Nullable DTO fields lower null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.
 
-`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits declaration discovery, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, or binding rows according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
+`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits declaration discovery, scoped indexed-word discovery into containing declarations, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, or binding rows according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
@@ -80,7 +86,23 @@ Run can request `retention: "RETAIN"`. The produced semantic rows, failures, cov
 
 MCP `tools/list` and tool RPC `catalog` advertise the same generated input schema. Copilot registers the generated strict query union without merging alternatives into optional property bags. `CopilotInputSchemaCompatibilityTest` checks variant disjointness in the generated provider schema.
 
-The installed projection derives its advertised hosted tools from the shared definitions. App Server qualifies the packaged hosted catalog directly; the CLI command projection omits `workspace_lifecycle` and both hosted mutations, `add_declaration` and `replace_body`. Private admitted requests retain presentation and schema identities, excluding cross-tool substitution. Old persisted catalogs reject the versioned cutover grammar. Declaration discovery and containing-declaration location discovery resolve to exact rows inside query. File and text discovery have no public route. `add_declaration` and `replace_body` compose private planning, application, verification and recovery into one call. Body replacement admits one exact existing non-inline named function with a block body, preserves its signature and surrounding source, and rejects expression bodies, contracts, and unsupported targets.
+The installed projection derives its advertised hosted tools from the shared definitions. App Server qualifies the packaged hosted catalog directly; the CLI command projection omits `workspace_lifecycle` and both hosted mutations, `add_declaration` and `replace_body`. Private admitted requests retain presentation and schema identities, excluding cross-tool substitution. Old persisted catalogs reject the versioned cutover grammar. Declaration discovery, containing-declaration location discovery, and scoped indexed-word discovery resolve to exact rows inside query. File discovery has no public route. `add_declaration` and `replace_body` compose private planning, application, verification and recovery into one call. Body replacement admits one exact existing non-inline named function with a block body, preserves its signature and surrounding source, and rejects expression bodies, contracts, and unsupported targets.
+
+`SEARCH_TEXT` admits one case-sensitive ASCII `word` bounded to 256 characters,
+with the existing discovery scope and supported declaration kinds. Each supported
+nearest containing owner enters the existing exact-refinement stage. Each
+owner carries one verified lexical exemplar in `matches`, with `INDEXED_WORD`
+type, canonical file, UTF-16 range, a context excerpt bounded to 512 characters,
+context range, and one-based line. These matches preserve relevance separately
+from compiler-confirmed `OCCURRENCES`. Unsupported nearest owners qualify
+coverage. Phrases, qualified literals and regexes fail admission. Retained and
+composed symbol rows preserve their owner-bound exemplars; relation destinations
+do not inherit the starting owner's lexical evidence.
+
+One exact row can retain at most 1000 distinct match exemplars through
+composition. A merge beyond that capacity rejects with
+`TEXT_MATCH_LIMIT_EXCEEDED`; it preserves the existing evidence and never turns
+overflow into an internal serialization failure.
 
 The rejection corpus, typed accepted-action fixtures, typed binding projection admission and path rejection, CLI wire parity and production provider routing are deterministic proofs. They cover retired step spellings, malformed predicate fields and literals, incompatible set operands, and malformed or duplicate row IDs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 

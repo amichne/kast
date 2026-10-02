@@ -11,6 +11,7 @@ import io.github.amichne.kast.protocol.contract.QueryExactLocationDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
+import io.github.amichne.kast.protocol.contract.QueryTextMatchDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,6 +33,9 @@ internal sealed interface QueryResultItemWireDocument {
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
         val rowId: String? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val matches: List<QueryTextMatchWireDocument>? = null,
     ) : QueryResultItemWireDocument
 
     @Serializable
@@ -136,6 +140,7 @@ private fun QueryResultItemDocument.ExactSymbol.toExactWire(): QueryResultItemWi
             )
         },
         rowId?.value,
+        matches?.values?.map { it.toWireDocument() },
     )
 
 private fun QueryBindingCellDocument.toWire(): QueryBindingCellWireDocument =
@@ -206,22 +211,30 @@ private fun QueryResultItemWireDocument.ExactSymbol.toExactContract():
                     connections.convertEach(RelationFactWireDocument::toContract).flatMapConverted { facts ->
                         facts.queryItemBounded().flatMapConverted { boundedFacts ->
                             source.toContract().flatMapConverted { projectedSource ->
-                                optionalRowId(rowId).flatMapConverted { projectedRowId ->
-                                    io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(symbolId)
-                                        .toWireDocumentConversion()
-                                        .mapConverted { identity ->
-                                            QueryResultItemDocument.ExactSymbol(
-                                                QueryReferenceDocument.ExactSymbol(token),
-                                                kind.toContract(),
-                                                projectedName,
-                                                projectedLocation,
-                                                projectedSignature,
-                                                boundedFacts,
-                                                identity,
-                                                projectedSource,
-                                                projectedRowId,
-                                            )
-                                        }
+                                optionalMatches(matches).flatMapConverted { projectedMatches ->
+                                    optionalRowId(rowId).flatMapConverted { projectedRowId ->
+                                        io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(symbolId)
+                                            .toWireDocumentConversion()
+                                            .flatMapConverted { identity ->
+                                                if (!matchesBelongTo(projectedLocation, projectedMatches)) {
+                                                    WireDocumentConversion.Rejected
+                                                } else
+                                                    WireDocumentConversion.Converted(
+                                                        QueryResultItemDocument.ExactSymbol(
+                                                            QueryReferenceDocument.ExactSymbol(token),
+                                                            kind.toContract(),
+                                                            projectedName,
+                                                            projectedLocation,
+                                                            projectedSignature,
+                                                            boundedFacts,
+                                                            identity,
+                                                            projectedSource,
+                                                            projectedRowId,
+                                                            projectedMatches,
+                                                        )
+                                                    )
+                                            }
+                                    }
                                 }
                             }
                         }
@@ -229,6 +242,19 @@ private fun QueryResultItemWireDocument.ExactSymbol.toExactContract():
                 }
             }
         }
+    }
+
+private fun matchesBelongTo(
+    location: QueryExactLocationDocument?,
+    matches: BoundedProtocolList<QueryTextMatchDocument>?,
+): Boolean = location == null || matches?.values?.all { it.isWithin(location) } != false
+
+private fun QueryTextMatchDocument.isWithin(location: QueryExactLocationDocument): Boolean =
+    when (this) {
+        is QueryTextMatchDocument.IndexedWord ->
+            file == location.file &&
+                range.startInclusive.value >= location.range.startInclusive.value &&
+                range.endExclusive.value <= location.range.endExclusive.value
     }
 
 private fun QueryExactLocationWireDocument?.toContract(): WireDocumentConversion<QueryExactLocationDocument?> =
@@ -242,6 +268,12 @@ private fun QueryExactLocationWireDocument?.toContract(): WireDocumentConversion
 
 private fun optionalText(value: String?): WireDocumentConversion<ProtocolText?> =
     value?.queryItemText()?.mapConverted { it } ?: WireDocumentConversion.Converted(null)
+
+private fun optionalMatches(
+    value: List<QueryTextMatchWireDocument>?
+): WireDocumentConversion<BoundedProtocolList<io.github.amichne.kast.protocol.contract.QueryTextMatchDocument>?> =
+    if (value == null) WireDocumentConversion.Converted(null)
+    else value.convertEach(QueryTextMatchWireDocument::toContract).flatMapConverted { it.queryItemBounded() }
 
 private fun optionalRowId(value: String?): WireDocumentConversion<QueryResultRowReference?> =
     value?.let { QueryResultRowReference.parse(it).toWireDocumentConversion() }

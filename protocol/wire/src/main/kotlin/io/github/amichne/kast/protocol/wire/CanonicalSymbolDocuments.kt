@@ -113,7 +113,13 @@ internal sealed interface CompilerReceiverWireDocument {
     @Serializable @SerialName("present") data class Present(val compilerType: String) : CompilerReceiverWireDocument
 }
 
-@Serializable internal data class SourceRangeWireDocument(val startInclusive: Int, val endExclusive: Int)
+@Serializable
+internal data class SourceRangeWireDocument(
+    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
+    val startInclusive: Int,
+    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 1, maximum = 2147483647)
+    val endExclusive: Int,
+)
 
 @Serializable
 internal enum class SymbolCategoryWireDocument {

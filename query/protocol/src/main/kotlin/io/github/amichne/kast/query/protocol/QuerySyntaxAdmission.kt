@@ -17,6 +17,7 @@ import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.query.contract.QueryBindingName
@@ -32,6 +33,7 @@ import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
+import io.github.amichne.kast.query.contract.QueryTextDiscoverySyntax
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
@@ -41,6 +43,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWord
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -103,6 +106,9 @@ private fun QueryFromDocument.admitSource(
             }
         is QueryFromDocument.Symbols ->
             discovery.syntax()?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Symbols(it)) }
+                ?: QueryReferenceSourceAdmission.RequestRejected
+        is QueryFromDocument.TextWord ->
+            syntax()?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Text(it)) }
                 ?: QueryReferenceSourceAdmission.RequestRejected
         is QueryFromDocument.References -> values.values.admitExactReferences(lease, authority)
         is QueryFromDocument.Result ->
@@ -231,25 +237,7 @@ private fun ProtocolText.belongsToOtherReferenceFamily(): Boolean =
 private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
     val kinds = declarationKinds.values.uniqueValues()?.mapTo(linkedSetOf()) { it.compilerKind() } ?: return null
     val admittedKinds = QueryDeclarationKinds.from(kinds).refinedOrNull() ?: return null
-    val sets =
-        scope.sourceSets.values.uniqueValues()?.mapTo(linkedSetOf()) {
-            WorkspaceSourceSetName.parse(it.value).refinedOrNull() ?: return null
-        } ?: return null
-    val admittedSets = SymbolDiscoverySourceSets.Exact.from(sets).refinedOrNull() ?: return null
-    val directory =
-        scope.directory?.let {
-            SymbolDiscoveryDirectoryConstraint(
-                SymbolDiscoveryDirectory.parse(it.path.value).refinedOrNull() ?: return null,
-                SymbolDiscoveryContainment.valueOf(it.containment.name),
-            )
-        }
-    val packageName =
-        scope.packageName?.let {
-            SymbolDiscoveryPackageConstraint(
-                SymbolDiscoveryPackage.parse(it.name.value).refinedOrNull() ?: return null,
-                SymbolDiscoveryContainment.valueOf(it.containment.name),
-            )
-        }
+    val admittedScope = scope.syntax() ?: return null
     val queryMatch =
         when (val value = match) {
             QueryMatchDocument.All -> QueryMatch.All
@@ -258,12 +246,37 @@ private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
                     SymbolDiscoveryPattern.parse(value.text.value).refinedOrNull() ?: return null,
                     SymbolDiscoveryMatch.valueOf(value.matching.name),
                 )
+            is QueryMatchDocument.TextWord -> return null
         }
-    return QueryDiscoverySyntax(
-        queryMatch,
-        QueryScope.Restricted(admittedSets, directory, packageName),
-        admittedKinds,
-    )
+    return QueryDiscoverySyntax(queryMatch, admittedScope, admittedKinds)
+}
+
+private fun QueryFromDocument.TextWord.syntax(): QueryTextDiscoverySyntax? {
+    val admittedWord = SymbolDiscoveryWord.parse(word.value).refinedOrNull() ?: return null
+    val kinds = declarationKinds.values.uniqueValues()?.mapTo(linkedSetOf()) { it.compilerKind() } ?: return null
+    val admittedKinds = QueryDeclarationKinds.from(kinds).refinedOrNull() ?: return null
+    return QueryTextDiscoverySyntax(admittedWord, scope.syntax() ?: return null, admittedKinds)
+}
+
+private fun QueryScopeDocument.syntax(): QueryScope.Restricted? {
+    val sets =
+        sourceSets.values.uniqueValues()?.mapTo(linkedSetOf()) {
+            WorkspaceSourceSetName.parse(it.value).refinedOrNull() ?: return null
+        } ?: return null
+    val admittedSets = SymbolDiscoverySourceSets.Exact.from(sets).refinedOrNull() ?: return null
+    val directory = directory?.let {
+        SymbolDiscoveryDirectoryConstraint(
+            SymbolDiscoveryDirectory.parse(it.path.value).refinedOrNull() ?: return null,
+            SymbolDiscoveryContainment.valueOf(it.containment.name),
+        )
+    }
+    val packageName = packageName?.let {
+        SymbolDiscoveryPackageConstraint(
+            SymbolDiscoveryPackage.parse(it.name.value).refinedOrNull() ?: return null,
+            SymbolDiscoveryContainment.valueOf(it.containment.name),
+        )
+    }
+    return QueryScope.Restricted(admittedSets, directory, packageName)
 }
 
 private fun QueryDeclarationKindDocument.compilerKind(): CompilerSymbolKind =

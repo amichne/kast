@@ -38,6 +38,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -286,14 +287,17 @@ class KastProviderTest {
     @Test
     fun `projection rejects missing or weakened canonical execution budgets`(@TempDir temporary: Path) = runBlocking {
         val executable = executable(temporary.resolve("kast"))
+        val schema = capabilitySchema()
+        val current = Json.decodeFromString<KastCapabilityBoundary>(schema)
+        assertEquals(18, current.serverProjection.schemaVersion)
+        val oldCatalog =
+            Json.encodeToString(current.copy(serverProjection = current.serverProjection.copy(schemaVersion = 17)))
         for ((schema, failure) in
             listOf(
-                capabilitySchema().replace("\"schemaVersion\":17", "\"schemaVersion\":8") to
+                oldCatalog to KastQualificationFailure.SCHEMA_INCOMPATIBLE,
+                schema.replace("\"operationMillis\":60000", "\"operationMillis\":30000") to
                     KastQualificationFailure.SCHEMA_INCOMPATIBLE,
-                capabilitySchema().replace("\"operationMillis\":60000", "\"operationMillis\":30000") to
-                    KastQualificationFailure.SCHEMA_INCOMPATIBLE,
-                capabilitySchema()
-                    .replace("\"executionBudget\":{\"readinessMillis\":1020000,\"operationMillis\":60000},", "") to
+                schema.replace("\"executionBudget\":{\"readinessMillis\":1020000,\"operationMillis\":60000},", "") to
                     KastQualificationFailure.SCHEMA_INVALID,
             )) {
             val options = KastProviderOptions(catalogSource = RecordingCatalogSource(schema))

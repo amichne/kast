@@ -83,6 +83,16 @@ sealed interface SymbolDiscoveryTarget {
     /** Finite result-kind admission owned by the semantic target. */
     fun admits(candidate: SymbolDiscoveryKind): Boolean
 
+    fun admits(candidate: SymbolDiscoveryCandidate): Boolean =
+        admits(candidate.kind) &&
+            when (this) {
+                is TextDeclarations -> candidate.textMatch?.word == word
+                is All,
+                is Name,
+                is Location,
+                is Text -> true
+            }
+
     data class Name(
         val kind: SymbolNameDiscoveryKind,
         val pattern: SymbolDiscoveryPattern,
@@ -114,6 +124,11 @@ sealed interface SymbolDiscoveryTarget {
         val file: CanonicalWorkspaceFilePath,
         val offset: SymbolDiscoverySourceOffset,
     ) : SupplementalSymbolDiscoveryTarget {
+        override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate.isDeclaration()
+    }
+
+    /** Case-sensitive indexed word matches projected into their nearest supported declaration. */
+    data class TextDeclarations(val word: SymbolDiscoveryWord) : ConstrainedSymbolDiscoveryTarget {
         override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate.isDeclaration()
     }
 

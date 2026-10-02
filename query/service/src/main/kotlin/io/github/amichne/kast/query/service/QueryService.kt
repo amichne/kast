@@ -121,10 +121,15 @@ class QueryService(
                 is PipelineTask.FlushSet -> flushSet(task)
                 is PipelineTask.FlushDistinct -> flushDistinct(task)
                 is PipelineTask.JoinEvidence -> joinStage.emitRightEvidence(task)
-                is PipelineTask.Join -> joinStage.advance(task)
+                is PipelineTask.Join ->
+                    when (val result = joinStage.advance(task)) {
+                        is Refinement.Refined -> result.value
+                        is Refinement.Rejected -> identityRejected(result.failure)
+                    }
                 is PipelineTask.Discover ->
                     discovered(stages.discover(task.syntax, state, task.remainder), task.next, task)
                 is PipelineTask.DiscoverLocation -> discovered(stages.discoverLocation(task.target, state), task.next)
+                is PipelineTask.DiscoverText -> discovered(stages.discoverText(task.syntax, state), task.next)
                 is PipelineTask.Revalidate -> {
                     if (!state.consumeUnit()) false
                     else {
@@ -166,10 +171,7 @@ class QueryService(
             val rows =
                 when (val merged = identityRows.flushSet(stage)) {
                     is Refinement.Refined -> merged.value
-                    is Refinement.Rejected -> {
-                        state.contractViolation = true
-                        return false
-                    }
+                    is Refinement.Rejected -> return identityRejected(merged.failure)
                 }
             tasks.removeFirst()
             val values =
@@ -191,12 +193,9 @@ class QueryService(
         }
 
         private fun set(task: PipelineTask.Symbol, stage: ExactQueryStage.Set): Boolean {
-            when (identityRows.acceptSet(stage, task.value)) {
+            when (val accepted = identityRows.acceptSet(stage, task.value)) {
                 is Refinement.Refined -> Unit
-                is Refinement.Rejected -> {
-                    state.contractViolation = true
-                    return false
-                }
+                is Refinement.Rejected -> return identityRejected(accepted.failure)
             }
             tasks.removeFirst()
             return true
@@ -204,6 +203,11 @@ class QueryService(
 
         private fun contractViolation(): Boolean {
             state.contractViolation = true
+            return false
+        }
+
+        private fun identityRejected(failure: QueryIdentityRowFailure): Boolean {
+            rejection = QueryExecutionResult.Rejected(failure.executionRejection())
             return false
         }
 
@@ -219,7 +223,7 @@ class QueryService(
 
         private suspend fun candidate(task: PipelineTask.Candidate): Boolean {
             if (!state.consumeUnit()) return false
-            val values = stages.refine(task.value, discoverySyntax(request.plan), state)
+            val values = stages.refine(task.value, discoveryDeclarationKinds(request.plan), state)
             tasks.removeFirst()
             values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, task.stage)) }
             return true
@@ -230,12 +234,9 @@ class QueryService(
                 is ExactQueryStage.ProjectBinding -> contractViolation()
                 is ExactQueryStage.Emit -> emitSymbol(task, stage)
                 is ExactQueryStage.Distinct -> {
-                    when (identityRows.acceptDistinct(stage, task.value)) {
+                    when (val accepted = identityRows.acceptDistinct(stage, task.value)) {
                         is Refinement.Refined -> Unit
-                        is Refinement.Rejected -> {
-                            state.contractViolation = true
-                            return false
-                        }
+                        is Refinement.Rejected -> return identityRejected(accepted.failure)
                     }
                     tasks.removeFirst()
                     true

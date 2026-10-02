@@ -386,7 +386,9 @@ private fun queryTypedResultItemSchema(kind: String): JsonObject =
                 .jsonObject
                 .getValue("type")
                 .jsonObject
-                .getValue("const")
+                .getValue("enum")
+                .jsonArray
+                .single()
                 .jsonPrimitive
                 .content == kind
         }
@@ -425,6 +427,11 @@ private fun queryExactSymbolItemSchema(): JsonObject =
         ),
         ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
         ServerSchemaProperty("source", querySourceWindowSchema(), required = false),
+        ServerSchemaProperty(
+            "matches",
+            queryTypedResultItemSchema("exact-symbol").getValue("properties").jsonObject.getValue("matches").jsonObject,
+            required = false,
+        ),
         ServerSchemaProperty(
             "row_id",
             patternTextSchema(

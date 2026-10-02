@@ -94,7 +94,9 @@ class QueryReferenceSurfaceTest {
         assertEquals(5, variants.size)
         for (variant in variants) {
             val properties = variant.jsonObject.getValue("properties").jsonObject
-            val kind = properties.getValue("type").jsonObject.getValue("const").jsonPrimitive.content
+            val discriminator = properties.getValue("type").jsonObject
+            val kind =
+                (discriminator["const"] ?: discriminator.getValue("enum").jsonArray.single()).jsonPrimitive.content
             val rowSchema = registry.getSchema(properties.getValue("row_id").toString())
             assertTrue(rowSchema.validate(encoded, InputFormat.JSON).isEmpty(), kind)
             assertTrue(rowSchema.validate(malformed, InputFormat.JSON).isNotEmpty(), kind)

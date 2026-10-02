@@ -89,6 +89,15 @@ code_sources:
   - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijSearchScopeSourceRootPolicyTest.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijDiscoveryPackageAdmission.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijSupplementalDiscoveryQuery.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextDeclarationDiscoveryQuery.kt
+    symbols: [IntellijTextDeclarationDiscoveryQuery]
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextOccurrenceCollector.kt
+    symbols: [collectTextDiscoveryOccurrences]
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextDeclarationProjector.kt
+    symbols: [IntellijTextDeclarationProjector]
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedWordContext.kt
+  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolTextMatch.kt
+    symbols: [SymbolDiscoveryWord, SymbolTextMatch]
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPackageAdmission.kt
@@ -158,6 +167,17 @@ closed admitted, outside-scope, and unsupported outcomes. Discovery, exact
 restoration, relation subjects, and relation targets retain this check. Text and
 legacy symbol-relation callbacks collect bounded references before projection;
 collection exhaustion remains qualified rather than complete.
+
+Scoped indexed-word discovery uses the same `PsiSearchHelper` occurrence path
+and compiled scope. Callback capture is bounded and thread-safe; scope and kind
+admission precede capture capacity, while package PSI admission follows callbacks.
+Projection verifies the word against the current document, identifies the nearest
+supported declaration owner, and deduplicates detached owner candidates before
+exact refinement. Imports, file-level comments and unsupported nearest owners
+retain incomplete-coverage evidence instead of acquiring an outer owner. A
+bounded line exemplar is independent of relation facts. Existing counters and
+native/projection timings measure admitted capture and projection work; they do
+not measure actual AST loads or establish an elapsed-time improvement.
 
 The retained library-inclusive fuzzy and filename contributor paths supply a cached `IdFilter.getProjectIdFilter` before
 contributors enumerate keys. The closed scope library policy selects project

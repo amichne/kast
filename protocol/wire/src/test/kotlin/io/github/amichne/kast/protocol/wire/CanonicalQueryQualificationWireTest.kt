@@ -131,6 +131,7 @@ class CanonicalQueryQualificationWireTest {
         mapOf(
             QueryExecutionRejectionDocument.RESULT_ROW_UNAVAILABLE to "result-row-unavailable",
             QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE to "result-field-unavailable",
+            QueryExecutionRejectionDocument.TEXT_MATCH_LIMIT_EXCEEDED to "text-match-limit-exceeded",
             QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE to "right-input-incomplete",
             QueryExecutionRejectionDocument.UNKNOWN_BINDING_NAME to "unknown-binding-name",
             QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH to "output-kind-mismatch",

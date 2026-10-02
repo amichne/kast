@@ -845,7 +845,7 @@
         },
         "source": {
           "$ref": "#/$defs/Source",
-          "description": "Starting declaration search, containing named declaration at file offset, exact-symbol references, or one retained result."
+          "description": "Starting exact or explicit fuzzy declaration search, indexed whole-word text projected to exact containing declarations, containing named declaration at a file offset, exact-symbol references, or one retained result."
         },
         "steps": {
           "type": [
@@ -1157,6 +1157,9 @@
           "$ref": "#/$defs/SearchSource"
         },
         {
+          "$ref": "#/$defs/TextSource"
+        },
+        {
           "$ref": "#/$defs/AllSource"
         },
         {
@@ -1236,6 +1239,61 @@
           "$ref": "#/$defs/ResultSource"
         }
       ]
+    },
+    "TextSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "SEARCH_TEXT"
+          ],
+          "default": "SEARCH_TEXT"
+        },
+        "word": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "description": "One ASCII identifier word, matched case-sensitively as a whole word by the index. No phrases, qualified literals, substrings, alternation, or regex."
+        },
+        "declarationKinds": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "CLASS",
+              "FUNCTION",
+              "PROPERTY",
+              "TYPE_ALIAS"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included.",
+          "uniqueItems": true
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Scope",
+              "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "word"
+      ],
+      "additionalProperties": false,
+      "description": "Find exact supported declarations containing indexed whole-word matches. Match evidence explains lexical relevance; returned refs retain exact compiler identity. File-level or unsupported hits produce an explicit projection limitation. Scope restricts discovery, not later relation destinations. A stopped indexed scan is terminal and has no continuation."
     }
   }
 }

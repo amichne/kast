@@ -62,6 +62,7 @@ private constructor(
                     is SymbolDiscoveryTarget.All -> 0L
                     is SymbolDiscoveryTarget.Location -> 2L * selected.file.value.length
                     is SymbolDiscoveryTarget.Text -> 2L * selected.pattern.value.length
+                    is SymbolDiscoveryTarget.TextDeclarations -> 2L * selected.word.value.length
                 }
             val scopeBytes =
                 when (val selected = scope) {
