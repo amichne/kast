@@ -29,6 +29,7 @@ val extractSymbolIdeaDistribution =
     tasks.register<ExtractIdeaDistributionTask>("extractSymbolIdeaDistribution") {
         archives.from(symbolIdeaDistribution)
         ideaVersion.set(ideaPlatformBuild)
+        libraryFamilies.set(setOf(IdeaLibraryFamily.PLATFORM, IdeaLibraryFamily.KOTLIN, IdeaLibraryFamily.JAVA))
         outputDirectory.set(extractedIdeaDistributionDirectory)
     }
 

@@ -42,6 +42,14 @@ val extractWorkspaceReadIdeaDistribution =
     tasks.register<ExtractIdeaDistributionTask>("extractWorkspaceReadIdeaDistribution") {
         archives.from(workspaceReadIdeaDistribution)
         ideaVersion.set(ideHostBuild)
+        libraryFamilies.set(
+            setOf(
+                IdeaLibraryFamily.PLATFORM,
+                IdeaLibraryFamily.KOTLIN,
+                IdeaLibraryFamily.JAVA,
+                IdeaLibraryFamily.GRADLE,
+            )
+        )
         outputDirectory.set(extractedIdeaDistributionDirectory)
     }
 
