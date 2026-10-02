@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e63c49e7d4c96ca8f4ed60fdecdf4487d8bfc8da2af0b88d12f42f221e57f45d",
+  "pageVersion": "sha256:a5f0761f8900bd2b8b7f4a533db8e5efd23219b095f5c351558c55101b1221b6",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -86,7 +86,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:8845107cf45774af8a7d2ed4218996361fdc3dfb77a2f0b47b3e73beee2ed9aa"
+          "version": "repo-file-v1:sha256:e26dfef0cdc1b419a8e393613990fce90d571292f910c05fe6b4b059fe5f996a"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -164,11 +164,19 @@
     },
     {
       "id": "claim_82ac8f4c351843108b7ed80fd36307b3",
-      "statement": "Assembled-product acceptance verifies independent artifact identities and canonical Control cold staging with an exact management publication receipt, installed/not-requested activation and no Host files; it does not establish live-host behavior.",
+      "statement": "Assembled-product acceptance copies the production Control staging tree directly into an owned fixture before launcher or installer effects, then verifies independent artifact identities and canonical Control cold staging with an exact management publication receipt, installed/not-requested activation and no Host files; it does not establish live-host behavior.",
       "evidence": [
         {
-          "resource": "repo://packaging/run-installed-product.py#L127-L167",
-          "version": "repo-lines-v1:sha256:f82dc3a1c927546347f1e5dd7e20114cc27ee3289db13a33af644e9d0d1f8e3d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMGQ3Y2NlOWVmMWNkNWI5YTNmYjViNzhmMjJkM2JhNTAzNTU2OTU5NThlZWZjNTY0NjdhYTE4YjNlMWQwNDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ZDRlMDVmZDhlYmZiYzdiNmM3NGQzYzU4NjczMWM0ZWM1MTA2NDQzYzE0OWJhMmNkMGQ4MjE5NTU5MDUzNWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE1ZGRiMWI2OGRlY2Q4MGU3MmY2YzMzM2I0NmZhNmY2Yjc0ZjAzYWJkYjljMTAzZDlmNmJkMDM5MjdiMzVlOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMzODQ5MWJkMDNlNjA5NjBhMmNmZTk2MDY0YjEzMTVjMWJiMjI1YTU3MzNhNTBhOGNmZDMxMWQxZTY1MzhhY2UifQ"
+          "resource": "repo://build.gradle.kts#L274-L296",
+          "version": "repo-lines-v1:sha256:93adbd1533de012849035a0875e4505b6ea917facdbf8add909b0661745ab2e1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNWI1MjU5ODlhYmEzZTYxMjE2ZWNkOWZlMzBhNmRkNzZjZDI0NWQ5YjE5ODcxM2U3ZDUwOGZlZTgwNjk3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5ZTRjNGFmNDg3YTc5ODgxZTE0ODM5MDU4ZGZkYmJlNGRhNmE2NmY0YzE1NWQwNDhhZjY0NWMyZjc4ZmQxMDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzOTIxNDZjMjFkN2EzOGZjNjNkNWM4Y2RlODFhMmVjYTc2MGQxNmE4Y2Q5MDg2OWYyODc3ZDFkZTBlNjM3YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiZWFmMWZmZjhmZmRhMzQ4ZTFkMmQyMDU0MmU3N2RmODAzZGRmNzhkYWYzYmZiNjVhMGI5Yjg4YjAyNGE0YWEifQ"
+        },
+        {
+          "resource": "repo://packaging/installer_fixture.py#L85-L99",
+          "version": "repo-lines-v1:sha256:7e86aedd26c53ecba987753a954392466851733fe7cde2a816193f9f5a144dd5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlMzdlY2UzMDFkODkyOWE3NjcyNTllOTMyNDMxODg1OTVjN2VmM2ZhYmZkYjRkODA4YWM5NGYzZGZkOWQxYWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2ZGViYmI2OWI4Yzk0OTVmZmEyNjMzMWU3YWIyNTA0YjA0M2I5YzRkN2NkMDk3OTlkZTMxMWM0ZGU4ODAxYjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlYjM3NGVkMmUyZGVhMWQyYjNkMTkwOTZiNWY2MWViYmUzMzU0NTAwN2JiM2I0NmI4Yzg0N2QxOGU1ZmE2Y2YifQ"
+        },
+        {
+          "resource": "repo://packaging/run-installed-product.py#L127-L182",
+          "version": "repo-lines-v1:sha256:deea6ac05c6f2838c7550bf5dfacb36fb55dd95b4b997a8d6d33ef9ec16311ca:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMGQ3Y2NlOWVmMWNkNWI5YTNmYjViNzhmMjJkM2JhNTAzNTU2OTU5NThlZWZjNTY0NjdhYTE4YjNlMWQwNDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0NWM4NzM4N2Y3NWE5Yjg0MDRjYTExNjQ4NjJhYzdmZmIxYjNjMTgwZmQxNGY0ZTQ4NWQ0OTQ4YjZmZWMzMzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE1ZGRiMWI2OGRlY2Q4MGU3MmY2YzMzM2I0NmZhNmY2Yjc0ZjAzYWJkYjljMTAzZDlmNmJkMDM5MjdiMzVlOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNDEzNDBjYzIzOWExNTljZTliNjAyMmU5ZjYzMjI4MzJlMmVhZDc2Y2FlOWU0NzU0ZDIxMGViOGZiNmQ1ZTgifQ"
         }
       ]
     },
@@ -247,6 +255,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T07:23:23.815Z"
+    "at": "2026-10-02T07:38:00.108Z"
   }
 }

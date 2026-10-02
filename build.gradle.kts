@@ -67,7 +67,6 @@ subprojects {
     }
 }
 
-val installedProductDirectory = layout.buildDirectory.dir("installed-product")
 evaluationDependsOn(":runtime:hosted")
 val hostedPluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
 
@@ -223,14 +222,6 @@ tasks.register("verifyDistributionContent") {
     dependsOn(verifyKastControlDistLayout, ":runtime:hosted:hostedPlugin", ":app-server:verifyReleaseRuntimeAdmission")
 }
 
-val stageInstalledProduct = tasks.register<Sync>("stageInstalledProduct") {
-    group = "distribution"
-    description = "Stages the control-only installed Kotlin product."
-    dependsOn(stageKastControlProduct)
-    into(installedProductDirectory)
-    from(controlProductDirectory)
-}
-
 val canonicalLocalInstallPrefix = providers.environmentVariable("HOME")
     .map { userHome ->
         require(userHome.isNotBlank() && java.io.File(userHome).isAbsolute) { "HOME must name an absolute user directory" }
@@ -283,15 +274,15 @@ tasks.register<Exec>("installLocal") {
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
     description = "Verifies assembled artifact identity, launcher admission, and canonical persistent staging in an owned HOME."
-    dependsOn(stageInstalledProduct, assembleKastControlDist, "generateHostReleaseRecord")
-    inputs.dir(installedProductDirectory)
+    dependsOn(stageKastControlProduct, assembleKastControlDist, "generateHostReleaseRecord")
+    inputs.dir(controlProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(hostedPluginArchive)
     val hostRecord = layout.buildDirectory.file("generated/host-release/kast-host-release-v${hostedPluginVersion.get()}.json")
     inputs.file(hostRecord)
     inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py")
     outputs.upToDateWhen { false }
-    environment("KAST_INSTALLED_PRODUCT", installedProductDirectory.get().asFile.absolutePath)
+    environment("KAST_INSTALLED_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
     environment("KAST_HOSTED_PLUGIN_ARCHIVE", hostedPluginArchive.get().asFile.absolutePath)
     environment("KAST_HOST_RELEASE_RECORD", hostRecord.get().asFile.absolutePath)

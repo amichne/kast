@@ -144,6 +144,7 @@ code_sources:
   - path: .agents/plugins/marketplace.json
   - path: packaging/installer_fixture.py
   - path: packaging/run-installed-product.py
+  - path: packaging/test-installer-fixture.py
   - path: .github/scripts/release/build-assets.sh
   - path: .github/scripts/release/ci-candidate.py
   - path: .github/scripts/release/publish-release.sh
@@ -165,7 +166,7 @@ code_sources:
     symbols: [GenerateComponentReleaseTask]
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T07:23:23.815Z
+    at: 2026-10-02T07:38:00.108Z
 sources:
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
@@ -199,6 +200,8 @@ sources:
     resource: repo://install.sh
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
+  - id: openwiki-source-4c9f1a2f0eff9672edf6ca2f
+    resource: repo://packaging/installer_fixture.py
   - id: openwiki-source-8faf23d69764b95242de5e09
     resource: repo://packaging/run-installed-product.py
   - id: openwiki-source-27c69d628b97ee3d2536e2d1
@@ -209,7 +212,7 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-02T06:45:58.039Z" }
+generated: { by: "codex", at: "2026-10-02T07:34:50.076Z" }
 ---
 
 # Distribution and packaging
@@ -226,7 +229,7 @@ The `distribution:cli` module builds the native public `kast` management executa
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
-Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. The hosted-plugin ZIP is named for its own version and the IDEA release line (`idea-262.zip`). The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, required launchers including the native management command, and Control cold staging in the canonical layout beneath an owned fixture HOME. It verifies an installed/not-requested report, the exact publication receipt and absence of Host files; it establishes no loaded-host admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. The hosted-plugin ZIP is named for its own version and the IDEA release line (`idea-262.zip`). The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check copies the production Control staging tree directly into an owned fixture before invoking launchers or the installer. It verifies independent artifact identities, required launchers including the native management command, and Control cold staging in the canonical layout beneath that fixture HOME. It verifies an installed/not-requested report, the exact publication receipt and absence of Host files; it establishes no loaded-host admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
 Native lifecycle commands fence admission at `<install-root>/shutdown.json`, outside the replaceable payload. Direct tools and coordinator startup honor the fence. Stop disables the owned coordinator and drains recorded tool processes within one 30-second retirement budget; stop with `--force` additionally signals only admitted exact process incarnations with qualified installed classpaths. The selected IDEA executable is re-derived from its saved launch receipt; a running user-owned host rejects with `HOST_RESTART_REQUIRED`. No replacement proceeds on an unverified shutdown. Reinstall cold-stages only the exact installed Control version, admits an installed/not-requested staging report, then bootstraps through the existing fenced lifecycle and restores recorded registrations. No Host artifact is required. A failed bootstrap restores the fence, retires any partially started coordinator, and returns a typed installation-pending result. JSON results follow the shipped closed lifecycle schema; stage observations use finite discriminated variants on stderr. Older payloads without the manifest-qualified lifecycle capability reject before effects. Hosted-only lifecycle manifests may retain deleted historical workspace paths because no workspace-specific process is retired; schema-1 isolated installations still require existing roots.
 
@@ -375,14 +378,6 @@ and connection capacity, and native source continuation byte/TTL limits.
 `:cli:generateConfigurationCatalogue` owns the snapshot;
 `verifyConfigurationIngress` checks its exact agreement with the Kotlin owners.
 The [configuration contract](../contracts/configuration.md) records the defaults.
-
-The routine assembled-product check installs the control archive and contract-compatible independently versioned
-hosted plugin in an owned temporary root. It verifies archive layout, version
-and plugin identity, required launchers, and one fail-closed public command.
-Provider catalog policy stays in its Kotlin owner tests. Semantic query results, IDEA behavior, and Codex
-attachment are outside this packaging boundary; their production rules have
-owner-local Kotlin tests. The retired Python native acceptance matrix supplies
-no current runtime qualification.
 
 Workspace registry retention emits a bounded `kast_installation_registry`
 observation with its exact outcome. A corrupt prior registry fails prior lifecycle
