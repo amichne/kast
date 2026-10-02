@@ -165,9 +165,6 @@ code_sources:
   - path: .github/workflows/release-component.yml
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
     symbols: [GenerateComponentReleaseTask]
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T12:58:12.674Z
 sources:
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
@@ -216,6 +213,9 @@ sources:
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
 generated: { by: "codex", at: "2026-10-02T08:15:19.347Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T13:22:01.032Z
 ---
 
 # Distribution and packaging
