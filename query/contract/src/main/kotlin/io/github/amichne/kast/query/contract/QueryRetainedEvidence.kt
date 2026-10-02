@@ -26,6 +26,7 @@ internal fun QueryCoverage.copyCoverage(): QueryCoverage =
 
 internal fun QuerySymbol.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     selector.lease != lease ||
+        textMatches.values.any { it.lease != lease } ||
         connections.any { fact ->
             fact.authority != lease.identity ||
                 fact.subject.lease != lease ||
@@ -102,6 +103,7 @@ internal fun retainedStorageBytes(
         .saturatedAdd(coverage.toString().utf8UpperBound())
         .saturatedAdd(lease.toString().utf8UpperBound())
         .saturatedAdd(sourceText)
+        .saturatedAdd(rows.fold(0L) { size, row -> size.saturatedAdd(row.textMatches.projectedUtf8Size()) })
         .saturatedAdd(relationEvidence)
         .saturatedAdd(references.sumOf { it.retainedBytes })
         .saturatedAdd(discoveries.sumOf { it.retainedBytes })

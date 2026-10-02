@@ -28,6 +28,55 @@ class CanonicalQueryProtocolTest {
         )
 
     @Test
+    fun `text source preserves word scope and kinds and rejects unsupported text before effects`() = runTest {
+        var calls = 0
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { execution ->
+                    calls += 1
+                    val source = (execution.plan as AdmittedQueryPlan.Text).source
+                    assertEquals("launchd", source.word.value)
+                    assertEquals(listOf(CompilerSymbolKind.FUNCTION), source.declarationKinds.values)
+                    val scope = source.scope as QueryScope.Restricted
+                    assertEquals("app-server", scope.directory!!.directory.value)
+                    assertEquals(
+                        setOf("main"),
+                        (scope.sourceSets as SymbolDiscoverySourceSets.Exact).values.map { it.value }.toSet(),
+                    )
+                    QueryExecutionResult.Complete(
+                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+                        QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                    )
+                },
+                CanonicalQueryReferences(),
+            )
+        val source =
+            QueryFromDocument.TextWord(
+                text("launchd"),
+                QueryScopeDocument(
+                    bounded(listOf(text("main"))),
+                    QueryDirectoryScopeDocument(text("app-server"), QueryContainmentDocument.DESCENDANTS),
+                    null,
+                ),
+                bounded(listOf(QueryDeclarationKindDocument.FUNCTION)),
+            )
+        assertTrue(protocol.execute(request().copy(from = source), lease, budget) is OperationOutcome.Complete)
+        for (invalid in listOf("AppServerAction.Disable", "restart lifecycle", "launchd|restart", " launchd")) {
+            assertTrue(
+                protocol.execute(request().copy(from = source.copy(word = text(invalid))), lease, budget)
+                    is OperationOutcome.Rejected
+            )
+        }
+        val duplicates =
+            source.copy(
+                declarationKinds =
+                    bounded(listOf(QueryDeclarationKindDocument.FUNCTION, QueryDeclarationKindDocument.FUNCTION))
+            )
+        assertTrue(protocol.execute(request().copy(from = duplicates), lease, budget) is OperationOutcome.Rejected)
+        assertEquals(1, calls)
+    }
+
+    @Test
     fun `location source is admitted as one exact-file query intent`() = runTest {
         var observed = false
         val protocol =

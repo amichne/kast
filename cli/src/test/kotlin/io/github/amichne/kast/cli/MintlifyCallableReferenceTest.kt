@@ -141,7 +141,9 @@ class MintlifyCallableReferenceTest {
                         .jsonObject
                         .getValue("type")
                         .jsonObject
-                        .getValue("const")
+                        .getValue("enum")
+                        .jsonArray
+                        .single()
                         .jsonPrimitive
                         .content
                 }
@@ -174,7 +176,9 @@ class MintlifyCallableReferenceTest {
                 .jsonObject
                 .getValue("type")
                 .jsonObject
-                .getValue("const")
+                .getValue("enum")
+                .jsonArray
+                .single()
                 .jsonPrimitive
                 .content == "catalog"
         }

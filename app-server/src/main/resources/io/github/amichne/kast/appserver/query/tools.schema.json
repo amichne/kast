@@ -799,7 +799,7 @@
         },
         "source": {
           "$ref": "#/$defs/Source",
-          "description": "Starting declaration search, containing named declaration at file offset, exact-symbol references, or one retained result."
+          "description": "Starting exact or explicit fuzzy declaration search, indexed whole-word text projected to exact containing declarations, containing named declaration at a file offset, exact-symbol references, or one retained result."
         },
         "steps": {
           "type": [
@@ -1071,6 +1071,9 @@
           "$ref": "#/$defs/SearchSource"
         },
         {
+          "$ref": "#/$defs/TextSource"
+        },
+        {
           "$ref": "#/$defs/AllSource"
         },
         {
@@ -1082,7 +1085,10 @@
         {
           "$ref": "#/$defs/ResultSource"
         }
-      ]
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
     },
     "Step": {
       "anyOf": [
@@ -1150,12 +1156,80 @@
           "$ref": "#/$defs/ResultSource"
         }
       ]
+    },
+    "TextSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "SEARCH_TEXT"
+          ],
+          "default": "SEARCH_TEXT",
+          "examples": [
+            "SEARCH_TEXT"
+          ]
+        },
+        "word": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "description": "One ASCII identifier word, matched case-sensitively as a whole word by the index. No phrases, qualified literals, substrings, alternation, or regex.",
+          "examples": [
+            "launchd",
+            "bootstrap"
+          ]
+        },
+        "declarationKinds": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "CLASS",
+              "FUNCTION",
+              "PROPERTY",
+              "TYPE_ALIAS"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included.",
+          "uniqueItems": true
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope",
+          "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+        }
+      },
+      "required": [
+        "type",
+        "word"
+      ],
+      "additionalProperties": false,
+      "description": "Find exact supported declarations containing indexed whole-word matches. Match evidence explains lexical relevance; returned refs retain exact compiler identity. File-level or unsupported hits produce an explicit projection limitation. Scope restricts discovery, not later relation destinations. A stopped indexed scan is terminal and has no continuation.",
+      "examples": [
+        {
+          "type": "SEARCH_TEXT",
+          "word": "launchd",
+          "scope": {
+            "type": "DIRECTORY",
+            "relativeDirectoryPath": "app-server"
+          },
+          "declarationKinds": [
+            "FUNCTION"
+          ]
+        }
+      ]
     }
   },
   "tools": [
     {
       "name": "query_symbols",
-      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct. Discovery observations preserve the declared universe, phase counts, coverage and unfinished input. Reference occurrence rows retain compiler target identity and explicit declaration-owned, file-scoped or unavailable ownership. A published execution page replays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner publishes or drains.",
+      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For remembered words, use source {\"type\":\"SEARCH_TEXT\",\"word\":\"launchd\",\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"app-server\"}} to receive exact containing-declaration refs and bounded lexical matches. This word mode is case-sensitive and excludes regex and qualified literals. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct. Discovery observations preserve the declared universe, phase counts, coverage and unfinished input. Reference occurrence rows retain compiler target identity and explicit declaration-owned, file-scoped or unavailable ownership. A published execution page replays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner publishes or drains.",
       "deferLoading": false,
       "schema": {
         "type": "object",
@@ -1579,6 +1653,60 @@
               }
             }
           }
+        },
+        "knownAppServerClass": {
+          "summary": "Use direct exact declaration discovery for a known class name.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "InstalledAppServerManager",
+                "declarationKinds": [
+                  "CLASS"
+                ],
+                "scope": {
+                  "type": "DIRECTORY",
+                  "relativeDirectoryPath": "app-server"
+                }
+              },
+              "executionBudget": {
+                "maxResults": 10
+              }
+            }
+          }
+        },
+        "scopedTextWord": {
+          "summary": "Find functions containing the indexed word launchd under app-server; inspect or traverse each exact returned ref.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_TEXT",
+                "word": "launchd",
+                "scope": {
+                  "type": "DIRECTORY",
+                  "relativeDirectoryPath": "app-server",
+                  "sourceSetNames": [
+                    "main"
+                  ]
+                },
+                "declarationKinds": [
+                  "FUNCTION"
+                ]
+              },
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 10
+              }
+            }
+          }
         }
       },
       "invalidExamples": {
@@ -1631,6 +1759,91 @@
               }
             },
             "verbose": 1
+          }
+        },
+        "wordPhrase": {
+          "summary": "Reject unsupported or malformed indexed word discovery.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_TEXT",
+                "word": "restart lifecycle"
+              }
+            }
+          }
+        },
+        "wordLiteral": {
+          "summary": "Reject unsupported or malformed indexed word discovery.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_TEXT",
+                "word": "AppServerAction.Disable"
+              }
+            }
+          }
+        },
+        "wordRegex": {
+          "summary": "Reject unsupported or malformed indexed word discovery.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_TEXT",
+                "word": "launchd|bootstrap"
+              }
+            }
+          }
+        },
+        "wordUnknownMode": {
+          "summary": "Reject unsupported or malformed indexed word discovery.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_TEXT",
+                "word": "launchd",
+                "matching": "FUZZY"
+              }
+            }
+          }
+        },
+        "wordMissing": {
+          "summary": "Reject unsupported or malformed indexed word discovery.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_TEXT"
+              }
+            }
+          }
+        },
+        "wordTooLong": {
+          "summary": "Reject unsupported or malformed indexed word discovery.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_TEXT",
+                "word": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          }
+        },
+        "wordEmptyKinds": {
+          "summary": "Reject unsupported or malformed indexed word discovery.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_TEXT",
+                "word": "launchd",
+                "declarationKinds": []
+              }
+            }
           }
         }
       },
@@ -1905,5 +2118,5 @@
       ]
     }
   ],
-  "contractVersion": 4
+  "contractVersion": 5
 }

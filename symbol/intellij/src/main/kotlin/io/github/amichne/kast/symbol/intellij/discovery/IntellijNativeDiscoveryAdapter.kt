@@ -64,14 +64,16 @@ internal class IntellijNativeDiscoveryAdapter(
                                         limits = limits,
                                     )
                                     .discoverNative(project, compiledScope, request, allowance)
+                            is SymbolDiscoveryTarget.TextDeclarations,
                             is SymbolDiscoveryTarget.Location,
                             is SymbolDiscoveryTarget.Text ->
                                 IntellijSupplementalDiscoveryQuery(
                                         project = project,
                                         limits = limits,
+                                        observation = observation,
                                         environmentState = { project.discoveryEnvironmentState() },
                                     )
-                                    .discover(compiledScope, request)
+                                    .discover(compiledScope, request, allowance)
                         }
                     }
             ) {
@@ -116,6 +118,7 @@ internal fun SymbolDiscoveryTarget.discoveryKind(): SymbolNameDiscoveryKind =
     when (this) {
         is SymbolDiscoveryTarget.All -> kind
         is SymbolDiscoveryTarget.Name -> kind
+        is SymbolDiscoveryTarget.TextDeclarations,
         is SymbolDiscoveryTarget.Location,
         is SymbolDiscoveryTarget.Text -> error("Supplemental discovery targets do not use Choose-by-Name contributors")
     }

@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryContainingDeclaration
+import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QueryExecutionResult
@@ -12,6 +13,8 @@ import io.github.amichne.kast.query.contract.QueryPredicate
 import io.github.amichne.kast.query.contract.QuerySourceFailure
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolSource
+import io.github.amichne.kast.query.contract.QueryTextDiscoverySyntax
+import io.github.amichne.kast.query.contract.QueryTextMatches
 import io.github.amichne.kast.source.contract.SourceDeclarationVisibility
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.source.contract.SourceReadResult
@@ -40,6 +43,8 @@ internal class QueryReadStages(
     private val exact: SymbolExactOperations,
     private val source: SourceReadOperations,
 ) {
+    private val textDiscovery = QueryTextDiscoveryStage(discovery)
+
     /** The native target selects the containing named declaration; exact resolution stays inside the query. */
     suspend fun discoverLocation(target: QueryContainingDeclaration, state: QueryExecutionState): DiscoveryExecution {
         val remainingResults = state.remainingResultCapacity(0) ?: return DiscoveryExecution.NotStarted
@@ -154,26 +159,30 @@ internal class QueryReadStages(
         return progress
     }
 
-    private fun observeDiscoveryLimitations(outcome: SymbolDiscoveryOutcome, state: QueryExecutionState) {
-        if (outcome is SymbolDiscoveryOutcome.Qualified) {
-            when (outcome.progress) {
-                is SymbolDiscoveryProgress.Resumable -> state.discoveryPageLimited(outcome.qualifications.values)
-                SymbolDiscoveryProgress.Exhausted,
-                is SymbolDiscoveryProgress.Blocked -> state.discoveryLimited(outcome.qualifications.values)
-            }
-        }
-    }
+    suspend fun discoverText(syntax: QueryTextDiscoverySyntax, state: QueryExecutionState): DiscoveryExecution =
+        textDiscovery.discover(syntax, state)
 
     suspend fun refine(
         candidate: SymbolDiscoverySelection,
-        discovery: QueryDiscoverySyntax?,
+        declarationKinds: QueryDeclarationKinds?,
         state: QueryExecutionState,
     ): List<QuerySymbol> = buildList {
         when (val result = exact.resolve(SymbolResolutionRequest(candidate))) {
             is SymbolResolutionResult.Resolved -> {
                 val selector = result.symbol.selector
-                if (discovery == null || selector.kind in discovery.declarationKinds.values) {
-                    add(QuerySymbol(SymbolDescription.from(selector), emptyList()))
+                val textMatches =
+                    candidate.candidate.textMatch?.let(QueryTextMatches::singleton) ?: QueryTextMatches.Empty
+                if (!textMatches.belongsTo(selector)) {
+                    state.failure(
+                        QueryItemFailure.Refinement(
+                            candidate,
+                            io.github.amichne.kast.symbol.contract.SymbolExactRejection.COMPILER_CONTRACT_VIOLATION,
+                        )
+                    )
+                    state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
+                    state.contractViolation = true
+                } else if (declarationKinds == null || selector.kind in declarationKinds.values) {
+                    add(QuerySymbol(SymbolDescription.from(selector), emptyList(), textMatches = textMatches))
                 }
             }
             is SymbolResolutionResult.Rejected -> {

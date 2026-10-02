@@ -40,6 +40,12 @@ verified:
 
 # Operation outcomes
 
+Text discovery uses existing exact-symbol query outcomes. Composition rejects
+more than 1000 distinct lexical match exemplars for one owner with the finite
+`TEXT_MATCH_LIMIT_EXCEEDED` execution reason. Wire and installed projections
+retain that reason and its `ADJUST_BUDGET_OR_SCOPE` recovery action; they do not
+turn it into an unknown or internal failure.
+
 `OperationOutcome` is exhaustive:
 
 - `Complete` carries an evidence envelope with no limitation.

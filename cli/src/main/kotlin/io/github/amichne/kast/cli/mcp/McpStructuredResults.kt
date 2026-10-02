@@ -85,14 +85,17 @@ internal object McpStructuredResults {
 private data class McpObjectUnionSchema(
     val type: String,
     val anyOf: List<kotlinx.serialization.json.JsonElement>,
+    val discriminator: McpSchemaDiscriminator? = null,
     @SerialName("\$defs") val definitions: JsonObject? = null,
 )
 
+@Serializable private data class McpSchemaDiscriminator(val propertyName: String)
+
 private val resultSchemaJson = Json { explicitNulls = false }
 
-/** The branch schemas are owned by their typed operation documents. */
+/** Branch schemas and definitions remain dynamic JSON Schema; discriminator metadata has one closed typed shape. */
 internal fun rootedResultSchema(schema: JsonObject): JsonObject {
-    require(schema.keys.all { it == "anyOf" || it == "\$defs" || it == "type" }) {
+    require(schema.keys.all { it == "anyOf" || it == "\$defs" || it == "type" || it == "discriminator" }) {
         "Unsupported semantic result schema root"
     }
     require(schema["type"] == null || schema["type"] == JsonPrimitive("object")) {
@@ -104,6 +107,10 @@ internal fun rootedResultSchema(schema: JsonObject): JsonObject {
             McpObjectUnionSchema(
                 type = "object",
                 anyOf = variants,
+                discriminator =
+                    schema["discriminator"]?.let {
+                        resultSchemaJson.decodeFromJsonElement(McpSchemaDiscriminator.serializer(), it)
+                    },
                 definitions = schema["\$defs"] as? JsonObject,
             )
         )

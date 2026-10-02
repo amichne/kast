@@ -5,6 +5,9 @@ description: Shared semantic-read admission and projection bind canonical reques
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
 code_sources:
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryTextMatchProjection.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryTextMatches.kt
+    symbols: [QueryTextMatches]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ReacquiringQueryReferences.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/ReadAcquisitionAccounting.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/CurrentDeclarationReacquisition.kt
@@ -86,6 +89,14 @@ generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
 ---
 
 # Query protocol
+
+Scoped `SEARCH_TEXT` lowers to the canonical `TEXT_WORD` source. Exact symbol
+rows carry bounded `INDEXED_WORD` match context beside their reusable refs.
+Projection retains the canonical file identity and UTF-16 occurrence range;
+match evidence does not admit `OCCURRENCES` output. Retained-result presentation
+preserves these matches without invoking semantic providers. Identity-based
+distinct and union keep the first row's relation arrival and merge its lexical
+exemplars from later rows with the same exact identity.
 
 `query:protocol` owns reusable admission and projection for query, symbol, source,
 and diagnostic reads. Its dependencies are domain contracts

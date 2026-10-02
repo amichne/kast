@@ -59,7 +59,7 @@ class InstalledServerProjectionTest {
                 .jsonArray
                 .map(JsonElement::jsonObject)
 
-        assertEquals(17, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(18, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals(
             4,
             projection.getValue("cliInvocations").jsonObject.getValue("schemaVersion").jsonPrimitive.content.toInt(),
@@ -163,7 +163,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
         assertEquals(5, tools.size)
-        assertEquals(17, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(18, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations.toSet(),
