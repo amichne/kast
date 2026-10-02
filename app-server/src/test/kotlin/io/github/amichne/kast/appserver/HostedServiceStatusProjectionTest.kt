@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.HostedServiceObservation
 import io.github.amichne.kast.distribution.contract.HostedCompatibilityStatusFailure
 import io.github.amichne.kast.distribution.contract.HostedCompatibilityStatusField
@@ -32,7 +33,11 @@ class HostedServiceStatusProjectionTest {
         )
     private val policy = (IdeHostCompatibilityPolicy.define(baseline) as Refinement.Refined).value
     private val root = CanonicalRoot(Path.of("/workspace"))
-    private val descriptor = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
+    private val descriptor =
+        ExistingIdeDescriptor(
+            (HostedEndpointOwnerPid.parse("123") as Refinement.Refined).value,
+            UUID.fromString("00000000-0000-0000-0000-000000000001"),
+        )
 
     @Test
     fun `compatible host retains loaded plugin provenance rather than control release version`() {

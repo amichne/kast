@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b7e820c6842eef4225bce9ca8633c9e741815c57237f1b2ced9fef655b279b48",
+  "pageVersion": "sha256:16a26c5fa85c534ea06a79ec25952e93fe3fee5efe084fbd40e3f96c885d4848",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -121,10 +121,48 @@
           "version": "repo-file-v1:sha256:5d0857b16b4b24b9c465e1222928dc54fc993281f5f9d68c1d4d82c3cc164012"
         }
       ]
+    },
+    {
+      "id": "claim_bb39fbb3ced9452d8930ebff7643fd1f",
+      "statement": "Control preflight filters project endpoint families before capacity accounting, excludes only proven absent recorded owners before current descriptor/root admission, and requires full current descriptor, exact root/socket and live matching owner/Host identity for every surviving host; unknown liveness rejects.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L176-L220",
+          "version": "repo-lines-v1:sha256:1e5a78d5cc8c565a7debf8168452f78b03b96c7b75784c0cb2afec7fcc907feb:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMjNhMjRiMWFiNWRkOGU5NGQ3MDQyYjY4OTA5Y2U0NTllNWFkMTZmM2Y0Zjk3ZmMyMGNmYzY3YWIxNTI5MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5ZTg3NzRjYmFjOWFhN2UxNzQ3ZDI5NWIxMWZkNTA2NDczMmRkMDE2ZWYxNWUwMWU2ZWE0NWU4YWYyNTczYmMifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L20-L146",
+          "version": "repo-lines-v1:sha256:91f853df99eb945f157358258eee6436f40462542629e4084862fac78d2388fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlYjEyZjUwZmFlZDY1YjAyZDVkZmRjMjY1NTI4MTAyZWQ4ZmVmYTU5NzU1MGExOTJiOGQ3MGM2NTQ4YTU4MDhkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0NzM0MGYyMGU0ZTgyZTMxMjgwOGNmNTZiZTVmZTZjMjYyYTk1YTYwY2RkMDE2MDYzOGFjNzA2ZTc0NmJlODlkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5OWZhZjJlODg3OWJmNDk2YTFhZGVkYmI3OTIzMjMzZjFhNDA0MjIyMDVkMGU3N2QwMjI5YjE1ZDI0MDNiYjI4In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_61855346687e4d94b5064bc9d1dc67e2",
+      "statement": "The recorded owner envelope is a Control-local structural schema and is excluded from the hosted-contract digest inputs.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json",
+          "version": "repo-file-v1:sha256:e7ce90080742a98d1b91113dc4f7ba3ddb43a97d901d3f0593c429b7bd90ac88"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
+          "version": "repo-file-v1:sha256:849388668e0a801507b2121d4e7500ae417e97bccaa267ad1e33c51e7da3891c"
+        }
+      ]
+    },
+    {
+      "id": "claim_e42340129e8945e2994a1a7b3429ab86",
+      "statement": "Hosted preflight scan evidence retains closed stage/outcome/failure tuples, emits each tuple at most once per scan, and excludes paths, process identities and payloads.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt",
+          "version": "repo-file-v1:sha256:9fdf4094f4e77651c1101a0db2042f80fde7ab0d1b0c90edd8184d92992a8576"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T05:15:45.560Z"
+    "at": "2026-10-02T06:27:25.947Z"
   }
 }

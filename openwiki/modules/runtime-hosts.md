@@ -5,6 +5,13 @@ description: The existing IDEA plugin owns semantic execution; CLI and App Serve
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
+    symbols: [observeHostedEntries]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
+    symbols: [RecordedHostedEndpointOwner, DeclaredHostedEndpoint]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt
+    symbols: [HostedAdmissionEvidence, BoundedHostedAdmissionObserver]
+  - path: app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
     symbols: [InstallationLifecycleFence, InstallationLifecycleStartAdmission]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
@@ -136,12 +143,16 @@ code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T05:15:45.560Z
+    at: 2026-10-02T06:27:25.947Z
 sources:
   - id: openwiki-source-4497996830a7e09fc6368cb3
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt
   - id: openwiki-source-7c05e12b47d08ef75636350e
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
+  - id: openwiki-source-e0ba61e5e6f650bc7c5673a6
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt
+  - id: openwiki-source-cce89281ffa7a590648e9d33
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
   - id: openwiki-source-8d38b171e35bb98b83dfbe58
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
   - id: openwiki-source-88f09847a1cc4b4d806ffe37
@@ -150,6 +161,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
   - id: openwiki-source-8ece5abae2f9aab84f07b127
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
+  - id: openwiki-source-6b063183ca57510a100a1579
+    resource: repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
   - id: openwiki-source-d719877f4ac62761c9b248b1
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
   - id: openwiki-source-3adda3013ad0805c51b3ac26
@@ -160,6 +173,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
   - id: openwiki-source-a0efdefba63982f6209d2b1d
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
+  - id: openwiki-source-1905c35a82810ccf74696707
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
   - id: openwiki-source-95d1815c680b1c389e562577
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt
   - id: openwiki-source-5efa910d729623be2b070bc2
@@ -168,7 +183,7 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
-generated: { by: "codex", at: "2026-10-02T05:15:45.560Z" }
+generated: { by: "codex", at: "2026-10-02T06:27:25.947Z" }
 ---
 
 # Runtime and process hosts
@@ -402,3 +417,17 @@ closed failure; it invents no host or workspace identity. Compatible, incompatib
 and unavailable remain distinct per observed host, and missing live evidence
 never becomes compatibility proof. The passive exchange retains its existing
 750 ms total and 500 ms per-host bounds.
+
+Control upgrade preflight filters the existing endpoint directory to the project
+family before decoding or charging live-host capacity. It validates the owned
+regular descriptor with a Control-local owner envelope and excludes only proven
+absent processes, before requiring a current contract or an existing physical
+root. Unknown liveness rejects. Every live survivor passes the complete current
+descriptor, exact physical root and socket, and the existing live describe
+exchange with matching owner and Host identity. Legacy records for exited owners
+therefore cannot obstruct admission, while unsupported live hosts still reject.
+The owner envelope is outside the hosted-contract digest inputs.
+
+Preflight scan diagnostics contain closed stage and outcome variants with finite
+failures. Each distinct tuple is emitted at most once per scan, keeping evidence
+bounded without including paths, process identities or payloads.

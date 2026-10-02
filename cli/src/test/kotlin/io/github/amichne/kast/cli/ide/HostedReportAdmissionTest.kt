@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
+import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.hostedSchemaBudgetGrant
 import io.github.amichne.kast.kernel.Refinement
@@ -28,7 +29,11 @@ class HostedReportAdmissionTest {
         val json = Json { encodeDefaults = true }
         val raw = json.encodeToString(ReportedFailure.serializer(), ReportedFailure(report))
         val root = canonicalRootFixture(Path.of("/workspace"))
-        val descriptor = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
+        val descriptor =
+            ExistingIdeDescriptor(
+                (HostedEndpointOwnerPid.parse("123") as Refinement.Refined).value,
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+            )
         for (kind in
             listOf(
                 ExistingIdeReadOperation.QUERY_RUN,

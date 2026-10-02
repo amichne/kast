@@ -12,9 +12,10 @@ qualification requires separate runtime evidence.
 
 ## Key Files
 
-- [install-checkout.sh](install-checkout.sh) and [install-local.sh](install-local.sh) - checkout and staged-product shell adapters.
+- [install-checkout.sh](install-checkout.sh) and [install-local.sh](install-local.sh) - checkout and staged-product adapters for the sole persistent installation.
 - [installation-lifecycle.py](installation-lifecycle.py) - selected installation removal and prior retirement when the normal runtime is unavailable.
-- [installation-recovery.py](installation-recovery.py) - plugin activation, offline recovery receipts, and upgrade sealing.
+- [installation-recovery.py](installation-recovery.py) - Control-only recovery and upgrade sealing, with explicit historical paired-receipt maintenance.
+- [host-installation.py](host-installation.py) and [test-host-installation.py](test-host-installation.py) - independent Host plugin installation and effect-ownership proof.
 - [prune-prior-installations.py](prune-prior-installations.py) - protected historical cleanup and explicit uncertain-entry review.
 - [codex-mcp-registration.py](codex-mcp-registration.py) - collision-safe optional Codex MCP registration.
 - [configuration_ingress.py](configuration_ingress.py) and [configuration-schema.json](configuration-schema.json) - checked configuration ingress and snapshot.

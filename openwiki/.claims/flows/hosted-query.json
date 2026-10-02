@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:60259d831dba6c4a48118b3254c85d3c1f1534bc009547e337c043bd33eceb43",
+  "pageVersion": "sha256:5306cd4d7aeddf010b3f0c2a81e24c9d35369410742d63956e87a3d89a07e0ea",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -45,10 +45,24 @@
           "version": "repo-file-v1:sha256:be060e68efb493a79dc4bb905720b3e010f03a0c0ad6e41735dd9452114148e9"
         }
       ]
+    },
+    {
+      "id": "claim_bad660807d1c4fc3a7be88cc85fe4b6a",
+      "statement": "Raw endpoint decoding rejects duplicate fields and trailing documents and retains a positive typed process owner through full current descriptor validation and exact root/socket binding; owner-envelope parsing alone never admits hosted compatibility.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L20-L110",
+          "version": "repo-lines-v1:sha256:1cf7f1902ed013f9b4018f5736a943744651f876f0353bdfaf1b0499d4b0d2c2:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMzZmODlmY2VkOTkzZDc3NTUyNDQ0ZDg3MWRjYjVhNjk3NTEzZjM1OWNjMDRlMTIzMzVjYTVmMzFlZDQ4NjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiMDc0ZjNlNGMwOTdjOTRhMmFkZjk0MTNjMzUxZDU0MTNjNDMxMDk5MGViMDczYjY4YzcyOTllOGM0OTkwMzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5MzgxNmQ1ZTkwYTU3ZTZmMDQ1NzIxNzQxZTI5MTVjZmMzMGNjMjRjMTQ2ZjY3YjUwOTRiODM0M2U3YmQ3M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlNDQ4OWYyYTMxZTljMTBmNzQ1NTdiODMwODJkZjllZTRhMTFhN2UzOGU5ODZkNmQxOTBjNDM5NjM5N2RhM2QifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L6-L94",
+          "version": "repo-lines-v1:sha256:12541db011e05be32444f688dc40a6d88f74abd5e6132f62908ebcc64d955c4c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlZDFiMzYwMzI4NDk5OTY0NTczZjUxYTdmOThmOGQ0MjNlODBkOTNkZjA5N2M3ZTI1OTcwM2FmZmUyMGM3YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2M2MxNjMzOWY2ZTA4OWM5Y2E1YjM5NDg3Mjk4ZTk0MTc3NmE5NmU1OGE2YjBkYzRhODkyMTM4OTgyYjNmOGIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T05:15:45.560Z"
+    "at": "2026-10-02T06:27:25.947Z"
   }
 }

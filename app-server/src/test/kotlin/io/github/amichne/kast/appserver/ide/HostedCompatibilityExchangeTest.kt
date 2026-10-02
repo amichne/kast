@@ -38,6 +38,70 @@ class HostedCompatibilityExchangeTest {
         HostedCompatibilityDocument("262.1.1", "262.1.1-IJ", "0.49.0", CanonicalHostedContract.document)
 
     @Test
+    fun `absent recorded process with a removed project cannot block live host admission`() {
+        exchange(listOf("DESCRIBE"), compatibility) { _, root ->
+            val retired = ProcessBuilder("/bin/sh", "-c", "exit 0").start()
+            assertEquals(0, retired.waitFor())
+            assertEquals(false, ProcessHandle.of(retired.pid()).map { it.isAlive }.orElse(false))
+            val missing = root.path.resolve("removed")
+            val directory = Files.createDirectory(root.path.resolve(".kast/ide-hosted/" + "0".repeat(32)))
+            Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
+            Files.writeString(
+                directory.resolve("endpoint.json"),
+                json.encodeToString(
+                    Descriptor.serializer(),
+                    Descriptor(missing.toString(), directory.resolve("host.sock").toString(), hostPid = retired.pid()),
+                ),
+            )
+            val admitted =
+                assertInstanceOf(
+                    HostedServicesObservation.Admitted::class.java,
+                    observeRunningHostedServices(root.path),
+                )
+            assertEquals(listOf(root), admitted.hosts.map { it.root })
+        }
+    }
+
+    @Test
+    fun `unrelated endpoint family cannot consume eligible project capacity or reach parsing`() {
+        exchange(listOf("DESCRIBE"), compatibility) { _, root ->
+            val base = root.path.resolve(".kast/ide-hosted")
+            val application = Files.createDirectory(base.resolve("application"))
+            // Deliberately malformed bytes prove that the unrelated family never reaches project decoding.
+            Files.writeString(application.resolve("endpoint.json"), "not a project descriptor")
+            repeat(70) { Files.createDirectory(base.resolve("unrelated-$it")) }
+            val admitted =
+                assertInstanceOf(
+                    HostedServicesObservation.Admitted::class.java,
+                    observeRunningHostedServices(root.path),
+                )
+            assertEquals(listOf(root), admitted.hosts.map { it.root })
+        }
+    }
+
+    @Test
+    fun `live owner with incompatible contract preserves rejection at live admission`() {
+        val changed =
+            compatibility.copy(
+                hostedContract = compatibility.hostedContract.copy(wireSchemaDigest = "sha256:" + "0".repeat(64))
+            )
+        exchange(listOf("DESCRIBE"), changed) { _, root ->
+            val events = ArrayList<HostedAdmissionEvidence>()
+            assertEquals(
+                HostedServicesObservation.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED),
+                observeRunningHostedServices(root.path, ProcessHostedEndpointOwnerProbe, events::add),
+            )
+            assertEquals(
+                HostedAdmissionEvidence.Rejected(
+                    HostedAdmissionStage.LIVE_ADMISSION,
+                    ExistingIdeFailure.COMPATIBILITY_REJECTED,
+                ),
+                events.last(),
+            )
+        }
+    }
+
+    @Test
     fun `registered host status admits live evidence after an independent one shot client query`() {
         exchange(listOf("DESCRIBE", "DESCRIBE"), compatibility) { oneShot, root ->
             assertInstanceOf(ExistingIdeExchange.Received::class.java, oneShot.query(root, ExistingIdeOperation.Status))

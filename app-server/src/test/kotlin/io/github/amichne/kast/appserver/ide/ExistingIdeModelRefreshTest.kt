@@ -19,7 +19,10 @@ class ExistingIdeModelRefreshTest {
                 Json { encodeDefaults = true }.encodeToString(ModelRefreshRejection()).toByteArray(),
                 root,
                 ExistingIdeOperation.Classes(name),
-                ExistingIdeDescriptor(1, UUID.fromString("00000000-0000-0000-0000-000000000001")),
+                ExistingIdeDescriptor(
+                    (HostedEndpointOwnerPid.parse("1") as Refinement.Refined).value,
+                    UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                ),
             )
         assertEquals(HostedPresemanticRecovery.ModelReload, (response as ExistingIdeExchange.HostRejected).recovery)
     }
