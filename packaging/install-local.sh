@@ -17,7 +17,10 @@ plugin_archive="${KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE:-}"
 java_executable="${KAST_LOCAL_JAVA_EXECUTABLE:-}"
 java_home="${KAST_LOCAL_JAVA_HOME:-}"
 
-[[ -n "${install_prefix}" ]] || fail "KAST_LOCAL_PREFIX is required"
+[[ -n "${HOME:-}" ]] || fail "HOME is required"
+[[ -z "$install_prefix" || "$install_prefix" == "$HOME/.local" ]] || fail "KAST_LOCAL_PREFIX must be the sole user prefix at HOME/.local"
+install_prefix="$HOME/.local"
+[[ "${KAST_LOCAL_PROFILE:-persistent}" == persistent ]] || fail "session installations are retired; use persistent"
 [[ -n "${control_product}" ]] || fail "KAST_LOCAL_CONTROL_PRODUCT is required"
 component="${KAST_LOCAL_COMPONENT:-pair}"
 case "$component" in pair|control) ;; *) fail "KAST_LOCAL_COMPONENT must be pair or control" ;; esac
@@ -102,5 +105,5 @@ KAST_RELEASE_BASE_URL="https://github.com/amichne/kast/releases/download" \
 KAST_INSTALL_ASSETS_DIRECTORY="$assets" \
 KAST_INSTALL_ROOT="$install_prefix/share/kast" \
 KAST_BIN_DIR="$install_prefix/bin" \
-KAST_INSTALL_PROFILE="${KAST_LOCAL_PROFILE:-$([[ "$component" == control ]] && printf persistent || printf session)}" \
+KAST_INSTALL_PROFILE="persistent" \
   bash "$installer" ${installer_options[@]+"${installer_options[@]}"}

@@ -87,10 +87,35 @@ internal enum class InstallationSwitch {
     ENABLED,
 }
 
-/** Persistent installs own a login service; private development sessions defer service activation. */
+/** The sole per-user installation owns a login service. */
 internal enum class InstallationProfile {
-    PERSISTENT,
-    SESSION,
+    PERSISTENT
+}
+
+@JvmInline
+internal value class UserInstallationRoot private constructor(val value: Path) {
+    companion object {
+        fun admit(
+            home: InstallationPath,
+            root: InstallationPath,
+        ): Refinement<UserInstallationRoot, InstallationRequestFailure> =
+            if (root.value == home.value.resolve(".local/share/kast"))
+                Refinement.Refined(UserInstallationRoot(root.value))
+            else Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.INSTALL_ROOT))
+    }
+}
+
+@JvmInline
+internal value class UserInstallationBin private constructor(val value: Path) {
+    companion object {
+        fun admit(
+            home: InstallationPath,
+            directory: InstallationPath,
+        ): Refinement<UserInstallationBin, InstallationRequestFailure> =
+            if (directory.value == home.value.resolve(".local/bin"))
+                Refinement.Refined(UserInstallationBin(directory.value))
+            else Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.BIN_DIRECTORY))
+    }
 }
 
 internal sealed interface InstallationRequestFailure {
@@ -118,8 +143,8 @@ private constructor(
     val version: SemanticVersion,
     val ideaHome: InstallationPath,
     val javaHome: InstallationPath,
-    val installRoot: InstallationPath,
-    val binDirectory: InstallationPath,
+    val installRoot: UserInstallationRoot,
+    val binDirectory: UserInstallationBin,
     val home: InstallationPath,
     val jvmUserHomeOption: BrokerJvmUserHomeOption,
     val codexHome: InstallationPath,

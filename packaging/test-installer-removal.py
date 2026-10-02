@@ -84,26 +84,28 @@ class InstallerRemovalTest(unittest.TestCase):
         self.assertIn('manifest', result.stderr)
         self.assertTrue(self.product.exists())
 
-    def test_explicit_root_dispatches_only_its_lifecycle_and_preserves_default(self):
-        selected_root = self.root / 'selected-control'
-        self.outer.rename(selected_root)
-        selected = selected_root / 'installation'
-        self.outer.mkdir(parents=True)
-        protected = self.outer / 'installation/share/kast/installation-lifecycle.py'
-        protected.parent.mkdir(parents=True)
-        protected.write_text('raise SystemExit("default installation must remain untouched")\n')
-        before = (protected.stat().st_dev, protected.stat().st_ino, protected.read_bytes())
-        result = self.uninstall('--install-root', str(selected_root), '--verbose')
+    def test_explicit_root_binds_only_the_sole_user_lifecycle(self):
+        alternate = self.root / 'alternate-control'
+        alternate.mkdir()
+        marker = alternate / 'protected'
+        marker.write_text('preserve')
+        before = (marker.stat().st_dev, marker.stat().st_ino, marker.read_bytes())
+        result = self.uninstall('--install-root', str(self.outer), '--verbose')
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(result.stdout.strip(), json.dumps([
-            '--installation', str(selected), 'remove', '--control-only', '--json']))
-        self.assertEqual(before, (protected.stat().st_dev, protected.stat().st_ino, protected.read_bytes()))
+            '--installation', str(self.product), 'remove', '--control-only', '--json']))
+        self.assertEqual(before, (marker.stat().st_dev, marker.stat().st_ino, marker.read_bytes()))
+        rejected = self.uninstall('--install-root', str(alternate), '--verbose')
+        self.assertNotEqual(0, rejected.returncode)
+        self.assertIn('sole per-user installation', rejected.stderr)
+        self.assertEqual('', rejected.stdout)
+        self.assertEqual(before, (marker.stat().st_dev, marker.stat().st_ino, marker.read_bytes()))
 
     def test_explicit_removal_root_rejects_invalid_paths_before_dispatch(self):
         alias = self.root / 'installation-alias'
         alias.symlink_to(self.outer, target_is_directory=True)
-        for selected, failure in (('relative', 'absolute path'), (str(alias), 'no Kast installation'),
-                                  (str(self.outer / '..' / 'kast'), 'canonical')):
+        for selected, failure in (('relative', 'sole per-user installation'), (str(alias), 'sole per-user installation'),
+                                  (str(self.outer / '..' / 'kast'), 'sole per-user installation')):
             with self.subTest(selected=selected):
                 result = self.uninstall('--install-root', selected, '--verbose')
                 self.assertNotEqual(0, result.returncode)

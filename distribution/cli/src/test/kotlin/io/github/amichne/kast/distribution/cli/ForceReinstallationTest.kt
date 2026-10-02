@@ -59,8 +59,8 @@ class ForceReinstallationTest {
 
     @Test
     fun `child failures and unverified exit zero cannot become a staged payload`() {
-        val home = Files.createDirectories(temporary.resolve("home"))
-        val root = temporary.resolve("kast")
+        val home = Files.createDirectories(temporary.toRealPath().resolve("home"))
+        val root = temporary.toRealPath().resolve("kast")
         ErasedResetFixture.create(root, home).use { fixture ->
             listOf(
                     LifecycleChildObservation.Exited(5) to ForceResetFailure.INSTALLER_REJECTED,

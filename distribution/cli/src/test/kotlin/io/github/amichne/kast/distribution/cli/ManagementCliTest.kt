@@ -190,8 +190,8 @@ class ManagementCliTest {
 
     @Test
     fun `path preflight rejects foreign executable before installation effects`() {
-        val root = temporary.resolve("kast")
-        val home = temporary.resolve("home")
+        val root = temporary.toRealPath().resolve("kast")
+        val home = temporary.toRealPath().resolve("home")
         Files.createDirectories(root)
         val bin = home.resolve(".local/bin")
         Files.createDirectories(bin)
@@ -206,9 +206,9 @@ class ManagementCliTest {
 
     @Test
     fun `native publication records selected path and retains it on upgrade`() {
-        val root = temporary.resolve("install")
-        val home = temporary.resolve("home")
-        val configured = temporary.resolve("config")
+        val root = temporary.toRealPath().resolve("install")
+        val home = temporary.toRealPath().resolve("home")
+        val configured = temporary.toRealPath().resolve("config")
         val bundled = root.resolve("installation/share/kast/libexec/kast-management")
         Files.createDirectories(bundled.parent)
         Files.createDirectories(home)

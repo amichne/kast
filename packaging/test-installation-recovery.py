@@ -479,7 +479,7 @@ class RecoveryTest(unittest.TestCase):
 
     def test_public_control_removal_preserves_populated_historical_host_receipt(self):
         module = self.recovery_module()
-        root = self.home / 'data/kast/installation'
+        root = self.home / '.local/share/kast/installation'
         (root / 'bin').mkdir(parents=True)
         script = root / 'share/kast/installation-lifecycle.py'
         script.parent.mkdir(parents=True)

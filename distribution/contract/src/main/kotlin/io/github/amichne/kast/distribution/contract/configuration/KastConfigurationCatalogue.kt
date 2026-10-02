@@ -85,6 +85,7 @@ enum class ConfigurationParameter(
         "KAST_INSTALL_ROOT",
         ConfigurationSyntax.ABSOLUTE_PATH,
         ConfigurationScope.INSTALLATION,
+        mutability = ConfigurationMutability.DERIVED,
         children = setOf(ConfigurationChild.BROKER),
     ),
     CONFIGURATION_FILE(
@@ -200,7 +201,12 @@ enum class ConfigurationParameter(
         ":cli",
         mutability = ConfigurationMutability.DERIVED,
     ),
-    BIN_DIR("KAST_BIN_DIR", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.INSTALLATION),
+    BIN_DIR(
+        "KAST_BIN_DIR",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.INSTALLATION,
+        mutability = ConfigurationMutability.DERIVED,
+    ),
     VERSION("KAST_VERSION", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION),
     HOST_VERSION("KAST_HOST_VERSION", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION),
     INSTALL_CONTROL_ONLY(

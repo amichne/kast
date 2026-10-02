@@ -16,6 +16,20 @@ class ForceInstallationResetTest {
     private fun home(): Path = Files.createDirectories(temporary.toRealPath().resolve("home"))
 
     @Test
+    fun `a parent alias cannot redirect reset to another installation`() {
+        val home = home()
+        val protected = Files.createDirectories(temporary.toRealPath().resolve("protected/share/kast"))
+        Files.writeString(protected.resolve("keep"), "protected")
+        Files.createSymbolicLink(home.resolve(".local"), protected.parent.parent)
+
+        assertEquals(
+            ForceResetRootAdmission.Rejected,
+            ForceResetRoot.admit(home.resolve(".local/share/kast"), home),
+        )
+        assertEquals("protected", Files.readString(protected.resolve("keep")))
+    }
+
+    @Test
     fun `force uninstall erases all unproven files without executing installed scripts`() {
         val root = Files.createDirectories(temporary.toRealPath().resolve("kast"))
         val protected = temporary.toRealPath().resolve("keep")

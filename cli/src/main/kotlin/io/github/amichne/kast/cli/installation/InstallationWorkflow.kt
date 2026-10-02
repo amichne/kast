@@ -355,10 +355,7 @@ internal object InstallationWorkflow {
             }
         }
         val activation =
-            if (
-                plan.request.profile == InstallationProfile.PERSISTENT &&
-                    activationPolicy == InstallationActivationPolicy.ACTIVATE
-            )
+            if (activationPolicy == InstallationActivationPolicy.ACTIVATE)
                 InstallationActivation.fromChild(enableAppServer(plan))
             else InstallationActivation.NotRequested
         if (plan.request.controlOnly == InstallationSwitch.ENABLED) {
@@ -951,17 +948,21 @@ private fun verifyControlLayout(root: Path): ControlInventoryAdmission {
     return ControlPayloadInventory.admit(root)
 }
 
-private fun prepareOwnedDirectory(path: Path): Boolean =
-    try {
-        if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
-            physicalDirectory(path)
-        } else {
+private fun prepareOwnedDirectory(path: Path): Boolean {
+    return try {
+        var ancestor = path
+        while (!Files.exists(ancestor, LinkOption.NOFOLLOW_LINKS)) {
+            ancestor = ancestor.parent ?: return false
+        }
+        if (!physicalDirectory(ancestor)) false
+        else {
             Files.createDirectories(path)
             physicalDirectory(path)
         }
     } catch (_: IOException) {
         false
     }
+}
 
 private fun payloadFiles(root: Path): List<PayloadFile> {
     val inventory =

@@ -4,14 +4,17 @@ set -euo pipefail
 IFS=$'\n\t'
 
 fail() { printf 'kast-install: %s\n' "$*" >&2; exit 1; }
-quote() { printf "'"; printf '%s' "$1" | sed "s/'/'\"'\"'/g"; printf "'"; }
 installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
 mode=${1:-}
-case "$mode" in session|persistent) shift ;; *) fail 'usage: packaging/install-checkout.sh session|persistent --idea-home <path> [--force] [--register-codex-mcp|--skip-codex-mcp]'  ;; esac
+case "$mode" in persistent) shift ;; session) fail 'session installations are retired; use persistent to replace the sole user installation' ;; *) fail 'usage: packaging/install-checkout.sh persistent --idea-home <path> [--force] [--register-codex-mcp|--skip-codex-mcp]' ;; esac
+[[ -n "${HOME:-}" ]] || fail 'HOME is required'
+[[ -z "${KAST_INSTALL_ROOT+x}" || "$KAST_INSTALL_ROOT" == "$HOME/.local/share/kast" ]] || fail 'KAST_INSTALL_ROOT must bind the sole per-user installation'
+[[ -z "${KAST_BIN_DIR+x}" || "$KAST_BIN_DIR" == "$HOME/.local/bin" ]] || fail 'KAST_BIN_DIR must bind the sole per-user binary directory'
+export KAST_INSTALL_ROOT="$HOME/.local/share/kast" KAST_BIN_DIR="$HOME/.local/bin"
 checkout=$(pwd -P)
 [[ -x "$checkout/gradlew" && -f "$checkout/packaging/install-local.sh" && -f "$checkout/build.gradle.kts" ]] ||
   fail 'run packaging/install-checkout.sh from the root of a Kast checkout'
-[[ -z ${KAST_SESSION_ROOT:-} || $mode != persistent ]] ||
+[[ -z ${KAST_SESSION_ROOT:-} ]] ||
   fail 'run persistent installation from a shell without an active Kast session'
 
 # Admit development options before invoking Gradle or creating state.
@@ -21,12 +24,11 @@ idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --control-only|--host-only)
-      [[ "$component" == pair && "$mode" == persistent ]] || fail "component installation requires one component and persistent mode"
+      [[ "$component" == pair ]] || fail "select one component installation"
       if [[ "$1" == --control-only ]]; then component=control; else component=host; fi
       options+=("$1"); shift; continue ;;
     --force) options+=(--force); shift; continue ;;
     --register-codex-mcp|--skip-codex-mcp)
-      [[ $mode == persistent ]] || fail "$1 requires a persistent installation"
       options+=("$1"); shift; continue ;;
     --idea-home) idea_home="${2:-}" ;;
     *) fail "unsupported checkout installation option: $1" ;;
@@ -47,13 +49,9 @@ print(value)
 PYTHON
 )
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/kast-checkout.XXXXXX")
-session_root=""
 cleanup() {
   local status=$?
   rm -rf -- "$scratch"
-  if [[ $status -ne 0 && -n $session_root ]]; then
-    printf 'kast-install: failed session installation retained at %s\n' "$session_root" >&2
-  fi
   exit "$status"
 }
 trap cleanup EXIT
@@ -89,31 +87,6 @@ if [[ "$component" != control ]]; then
   cp "$checkout/build/generated/host-release/$record_name.sha256" "$scratch/$record_name.sha256"
 fi
 
-if [[ $mode == session ]]; then
-  session_root=$(mktemp -d "${TMPDIR:-/tmp}/kast-session.XXXXXX")
-  session_root=$(CDPATH='' cd -- "$session_root" && pwd -P)
-  # Ignore inherited persistent settings; the launcher captures its own config.
-  export KAST_INSTALL_ROOT="$session_root/install" KAST_BIN_DIR="$session_root/bin"
-  unset KAST_RUNTIME_DIRECTORY
-  export XDG_CONFIG_HOME="$session_root/config"
-fi
-
 KAST_INSTALL_PROFILE="$mode" KAST_VERSION="$version" KAST_HOST_VERSION="$version" KAST_RELEASE_BASE_URL="$base_url" \
 KAST_INSTALL_ASSETS_DIRECTORY="$scratch" \
   bash "$installer" ${options[@]+"${options[@]}"} >&2
-
-if [[ $mode == session ]]; then
-  physical_release=$(CDPATH='' cd -- "$KAST_INSTALL_ROOT/installation" && pwd -P)
-  [[ ! -L "$KAST_INSTALL_ROOT/installation" && "$physical_release" == "$KAST_INSTALL_ROOT/installation" ]] || { echo 'kast-install: session installation ownership rejected' >&2; exit 1; }
-  export KAST_RUNTIME_DIRECTORY="$physical_release/state/run"
-  activation="$session_root/activate.sh"
-  {
-    printf '# Source in Bash or Zsh. Session files remain available until explicitly removed.\n'
-    for key in KAST_INSTALL_ROOT KAST_BIN_DIR KAST_RUNTIME_DIRECTORY; do
-      printf 'export %s=%s\n' "$key" "$(quote "${!key}")"
-    done
-    printf 'export KAST_SESSION_ROOT=%s\n' "$(quote "$session_root")"
-  } > "$activation"
-  printf 'kast-install: source %s to activate; persistent services are disabled\n' "$activation" >&2
-  printf '%s\n' "$activation"
-fi

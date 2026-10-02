@@ -17,22 +17,22 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstallationActivationTest {
     @Test
-    fun `persistent and session activation have distinct installed outcomes`(@TempDir temporary: Path) {
-        for (profile in listOf("session", "persistent")) {
-            val root = Files.createDirectory(temporary.resolve(profile)).toRealPath()
-            val installation = root.resolve("installation")
+    fun `activation policy preserves the sole persistent installation`(@TempDir temporary: Path) {
+        for (policy in InstallationActivationPolicy.entries) {
+            val root = Files.createDirectory(temporary.resolve(policy.name)).toRealPath()
+            val installation = root.resolve("home/.local/share/kast")
             val home = Files.createDirectory(root.resolve("home"))
             val request =
                 releaseRequest(
                     root,
                     installation,
-                    root.resolve("commands"),
+                    root.resolve("home/.local/bin"),
                     home,
                     Files.createDirectory(root.resolve("codex-home")),
                     "1.2.3",
                     environmentOverrides =
                         mapOf(
-                            "KAST_INSTALL_PROFILE" to profile,
+                            "KAST_INSTALL_PROFILE" to "persistent",
                             "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control",
                         ),
                 )
@@ -40,11 +40,12 @@ class InstallationActivationTest {
             Files.createDirectories(service.parent)
             Files.writeString(service, "#!/bin/sh\nexit 0\n")
             service.toFile().setExecutable(true)
-            val result = executeFixtureInstallation(request)
+            val result = executeFixtureInstallation(request, policy)
             val report = assertInstanceOf(InstallationOutcome.Complete::class.java, result).report
             assertEquals(InstallationReportStatus.INSTALLED, report.status)
             assertEquals(
-                if (profile == "persistent") InstallationActivation.Ready else InstallationActivation.NotRequested,
+                if (policy == InstallationActivationPolicy.ACTIVATE) InstallationActivation.Ready
+                else InstallationActivation.NotRequested,
                 report.activation,
             )
             assertTrue(
@@ -88,12 +89,12 @@ class InstallationActivationTest {
     ) {
         val root = temporary.toRealPath()
         val home = Files.createDirectory(root.resolve("home"))
-        val install = root.resolve("installation")
+        val install = root.resolve("home/.local/share/kast")
         val request =
             releaseRequest(
                 root,
                 install,
-                root.resolve("commands"),
+                root.resolve("home/.local/bin"),
                 home,
                 Files.createDirectory(root.resolve("codex-home")),
                 "1.2.3",
@@ -114,7 +115,7 @@ class InstallationActivationTest {
                 .trimIndent() + "\n",
         )
         service.toFile().setExecutable(true)
-        val result = executeFixtureInstallation(request)
+        val result = executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE)
         val complete = assertInstanceOf(InstallationOutcome.Complete::class.java, result)
         verifyPendingReport(complete.report)
         val selected = install.resolve("installation").toRealPath()

@@ -70,8 +70,8 @@ query_symbols`:
 
 ```shell
 cd /absolute/path/to/kotlin-repository
-"${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation/bin/kast-tool-rpc-complete" catalog
-"${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation/bin/kast-tool-rpc-complete" call query_symbols < query.json
+"${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" catalog
+"${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" call query_symbols < query.json
 ```
 
 `query.json` must contain one complete argument document adapted from the

@@ -43,7 +43,7 @@ class LocalInstallationTest(unittest.TestCase):
             host_record = root / 'host-release.json'
             host_record.write_text('release fixture')
             (product / 'share/kast/host-installation.py').write_text('host helper fixture')
-            prefix = root / 'prefix'
+            prefix = root / '.local'
             markers = []
             for name in ('local', 'control', 'runtime'):
                 marker = prefix / 'share/kast' / name / 'unproven-owner'
@@ -65,7 +65,7 @@ class LocalInstallationTest(unittest.TestCase):
             self.assertEqual('1.2.3', contract['KAST_VERSION'])
             self.assertEqual(str(prefix / 'share/kast'), contract['KAST_INSTALL_ROOT'])
             self.assertEqual(str(prefix / 'bin'), contract['KAST_BIN_DIR'])
-            self.assertEqual('session', contract['KAST_INSTALL_PROFILE'])
+            self.assertEqual('persistent', contract['KAST_INSTALL_PROFILE'])
             self.assertTrue(Path(contract['KAST_INSTALL_ASSETS_DIRECTORY']).name.startswith('kast-local-assets.'))
 
 

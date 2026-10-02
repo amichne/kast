@@ -5,6 +5,11 @@ description: Every external configuration input has declared ownership, parsing,
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
 code_sources:
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
+  - path: install.sh
+  - path: packaging/install-checkout.sh
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - path: distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
@@ -39,12 +44,18 @@ code_sources:
   - path: build-policy/configuration-ingress.json
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T03:37:43.185Z
+    at: 2026-10-02T04:13:44.061Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
+  - id: openwiki-source-b5958cf441728188e2493589
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
+  - id: openwiki-source-211f90f77f217ad3273b0d4f
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - id: openwiki-source-7cd4eb997a7878eca6390142
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - id: openwiki-source-fd4148a6ba46f590f554b6b6
@@ -53,7 +64,11 @@ sources:
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - id: openwiki-source-40ab5c6f8a11b724c001ed82
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
-generated: { by: "codex", at: "2026-10-02T03:37:43.185Z" }
+  - id: openwiki-source-03ffc32a0ca502ab67c54b25
+    resource: repo://install.sh
+  - id: openwiki-source-4070dc53852de69cdff3bd47
+    resource: repo://packaging/install-checkout.sh
+generated: { by: "codex", at: "2026-10-02T04:13:44.061Z" }
 ---
 
 # Installation configuration
@@ -136,10 +151,17 @@ than migrating their values: `KAST_ENABLE_APP_SERVER`, `KAST_APP_SERVER_TOOLS`,
 `KAST_WORKER_AGGREGATE_MIB`, `KAST_WORKER_NATIVE_MIB`, `KAST_WORKER_GRADLE_MIB`,
 `KAST_RUNTIME_ARCHIVE`, `KAST_RUNTIME_STORE`, and `KAST_CACHE_ROOT`.
 
-Installation uses one derived `KAST_INSTALL_PROFILE`: persistent activates the
-coordinator and login service; session defers activation while retaining the same
-complete payload. The public installer always selects persistent. The checkout
-entrypoint derives the profile from its required session or persistent argument.
+Kast has one installation at `$HOME/.local/share/kast/installation`.
+Control and Host have independent artifact and effect ownership within that
+installation. Installation and management ingress reject alternate root bindings;
+`XDG_DATA_HOME` does not select another installation. The root and installer bin
+paths retain their HOME-derived proofs in typed request values.
+
+The derived `KAST_INSTALL_PROFILE` accepts only persistent. Session installation
+is retired, and checkout session requests reject before Gradle or installation
+effects. `KAST_INSTALL_ROOT` and `KAST_BIN_DIR` are derived bindings, not saved
+user settings. Explicit cold staging defers Control activation through the
+existing lifecycle owner; it does not create another installation.
 
 The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session; it adds no saved configuration setting. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. Its process command adds no saved configuration setting or Codex App Server request.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, repair, or trust enrollment to the existing owners.
@@ -148,4 +170,4 @@ Component selection belongs to installation ingress: `KAST_INSTALL_CONTROL_ONLY`
 
 Exact-version reinstall cold-stages only Control with `--stage-only`, then the existing fenced lifecycle owner activates it. Staging requires no Host artifact and cannot be combined with the bounded `--control-only` upgrade, whose activation and live host checks are mandatory.
 
-The native private-installer boundary removes inherited Host-version and installation selectors, retains ordinary process inputs, and supplies its owned report destination. After admitting installation ownership, install and uninstall explicitly forward that selected root; a foreign ambient root cannot redirect those effects to the default installation.
+The native private-installer boundary removes inherited Host-version and installation selectors, retains ordinary process inputs, and supplies its owned report destination. After admitting installation ownership, install and uninstall explicitly forward that selected root; a foreign ambient root cannot redirect those effects. The recorded public command destination remains a separate publication receipt fact and never selects another installation.

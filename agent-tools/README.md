@@ -12,7 +12,7 @@ kast plugin codex
 
 Start a new Codex session from your repository, then invoke the `kast` skill.
 The plugin loads the managed `kast-mcp-complete` launcher from
-`${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation/bin`.
+`$HOME/.local/share/kast/installation/bin`.
 
 To install the source marketplace from this checkout, run from the repository
 root:

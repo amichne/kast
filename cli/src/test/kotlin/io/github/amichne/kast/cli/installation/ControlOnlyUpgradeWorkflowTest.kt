@@ -19,7 +19,11 @@ class ControlOnlyUpgradeWorkflowTest {
         fixture.prior()
         val identity = observeInstallationFilesystemIdentity(fixture.selected)
         val request = fixture.candidate(preflight = 1)
-        val outcome = assertInstanceOf(InstallationOutcome.Rejected::class.java, executeFixtureInstallation(request))
+        val outcome =
+            assertInstanceOf(
+                InstallationOutcome.Rejected::class.java,
+                executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
+            )
         assertEquals(InstallationFailure.HOST_ADMISSION_REJECTED, outcome.failure)
         assertEquals(identity, observeInstallationFilesystemIdentity(fixture.selected))
         assertEquals(listOf("C2 host-admission"), fixture.effects())
@@ -36,7 +40,11 @@ class ControlOnlyUpgradeWorkflowTest {
         Files.writeString(configuration, Files.readString(configuration).replace("KAST_DEBUG=0", "KAST_DEBUG=1"))
         val priorConfiguration = Files.readString(configuration)
         val request = fixture.candidate()
-        val outcome = assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
+        val outcome =
+            assertInstanceOf(
+                InstallationOutcome.Complete::class.java,
+                executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
+            )
         assertEquals(InstallationActivation.Ready, outcome.report.activation)
         assertEquals("1.2.4", outcome.report.semanticVersion)
         assertEquals(listOf("C2 host-admission", "C1 disable", "C2 enable", "C2 host-admission"), fixture.effects())
@@ -53,7 +61,11 @@ class ControlOnlyUpgradeWorkflowTest {
         fixture.prior()
         val identity = observeInstallationFilesystemIdentity(fixture.selected)
         val request = fixture.candidate(reconnect = 1)
-        val outcome = assertInstanceOf(InstallationOutcome.RolledBack::class.java, executeFixtureInstallation(request))
+        val outcome =
+            assertInstanceOf(
+                InstallationOutcome.RolledBack::class.java,
+                executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
+            )
         assertEquals(InstallationFailure.HOST_RECONNECT_REJECTED, outcome.failure)
         assertEquals(identity, observeInstallationFilesystemIdentity(fixture.selected))
         assertEquals(
@@ -78,7 +90,10 @@ class ControlOnlyUpgradeWorkflowTest {
         fixture.prior(recovery = 1)
         val request = fixture.candidate(reconnect = 1)
         val outcome =
-            assertInstanceOf(InstallationOutcome.RecoveryRequired::class.java, executeFixtureInstallation(request))
+            assertInstanceOf(
+                InstallationOutcome.RecoveryRequired::class.java,
+                executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
+            )
         assertEquals(InstallationFailure.HOST_RECONNECT_REJECTED, outcome.failure)
         assertEquals(InstallationFailure.CONTROL_RECOVERY_REJECTED, outcome.recoveryFailure)
         assertTrue(Files.exists(fixture.install.resolve("recovery/replacement/rejected-control")))
@@ -94,7 +109,10 @@ class ControlOnlyUpgradeWorkflowTest {
         val fixture = Fixture(temporary)
         fixture.prior()
         val request = fixture.candidate()
-        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
+        )
         val outcome =
             assertInstanceOf(
                 InstallationOutcome.RolledBack::class.java,
@@ -123,7 +141,10 @@ class ControlOnlyUpgradeWorkflowTest {
         val fixture = Fixture(temporary)
         fixture.prior(publicRecovery = 1)
         val request = fixture.candidate()
-        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
+        )
         val outcome =
             assertInstanceOf(
                 InstallationOutcome.RecoveryRequired::class.java,
@@ -140,7 +161,10 @@ class ControlOnlyUpgradeWorkflowTest {
         val fixture = Fixture(temporary)
         fixture.prior()
         val request = fixture.candidate()
-        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
+        )
         val plan = VerifiedInstallationPlan(request, request.controlDigest, fixture.selected)
         val outcome =
             assertInstanceOf(
@@ -186,9 +210,9 @@ class ControlOnlyUpgradeWorkflowTest {
         val root = temporary.toRealPath()
         val home = Files.createDirectory(root.resolve("home"))
         val codex = Files.createDirectory(root.resolve("codex"))
-        val install = root.resolve("managed")
+        val install = home.resolve(".local/share/kast")
         val selected = install.resolve("installation")
-        val commands = root.resolve("commands")
+        val commands = root.resolve("home/.local/bin")
         val plugin = Files.createDirectories(home.resolve("idea/plugins/kast-ide-hosted"))
         val hostFile = Files.writeString(plugin.resolve("host.jar"), "P1")
         val hostIdentity = observeInstallationFilesystemIdentity(plugin)

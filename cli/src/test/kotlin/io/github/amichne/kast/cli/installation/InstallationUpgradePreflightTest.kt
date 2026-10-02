@@ -14,8 +14,8 @@ class InstallationUpgradePreflightTest {
     fun `rejected candidate executable leaves prior commands and service untouched`(@TempDir temporary: Path) {
         val root = Files.createDirectory(temporary.resolve("candidate")).toRealPath()
         val home = Files.createDirectory(root.resolve("home"))
-        val install = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val install = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         val codex = Files.createDirectory(root.resolve("codex-home"))
         val first = releaseRequest(root, install, commands, home, codex, "1.2.3")
         Files.writeString(

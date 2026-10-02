@@ -1,4 +1,4 @@
-"""Check one assembled artifact and install it in an owned session."""
+"""Check assembled artifacts and stage the sole installation in an owned HOME."""
 from dataclasses import asdict, dataclass
 import hashlib
 import io
@@ -125,29 +125,39 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
     java.chmod(0o755)
 
     environment = dict(fixture.environment)
-    installation = fixture.root / "installed"
+    installation = Path(environment["HOME"]) / ".local/share/kast"
     environment.update({
         "KAST_VERSION": pair.control_version,
         "KAST_HOST_VERSION": pair.host_version,
         "KAST_INSTALL_ASSETS_DIRECTORY": str(assets),
-        "KAST_INSTALL_ROOT": str(installation),
-        "KAST_BIN_DIR": str(fixture.root / "bin"),
-        "KAST_INSTALL_PROFILE": "session",
+        "KAST_INSTALL_PROFILE": "persistent",
         "NO_COLOR": "1",
     })
     result = subprocess.run(
         [str(fixture.tools["bash"]), str(Path(__file__).resolve().parent.parent / "install.sh"),
-         "--idea-home", str(idea), "--verbose"],
+         "--idea-home", str(idea), "--stage-only", "--skip-codex-mcp", "--verbose"],
         env=environment, cwd=fixture.root / "workspace", capture_output=True, text=True, timeout=120,
     )
     reports = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+    receipt_file = installation / "management.json"
+    require(receipt_file.is_file() and not receipt_file.is_symlink(), "management receipt absent:\n" + result.stderr[-4096:])
+    receipt = json.loads(receipt_file.read_text())
+    publication = Path(environment["XDG_CONFIG_HOME"]) / "kast"
     require(result.returncode == 0 and (installation / "installation").is_dir()
             and not (installation / "installation").is_symlink()
             and not (installation / "current").exists()
             and not (installation / "versions").exists()
             and not (installation / "recovery/replacement").exists()
+            and publication.is_file() and not publication.is_symlink()
+            and receipt.get("schemaVersion") == 2
+            and receipt.get("installationRoot") == str(installation)
+            and receipt.get("executable") == str(publication)
+            and receipt.get("executableSha256") == hashlib.sha256(publication.read_bytes()).hexdigest()
+            and not (Path(environment["HOME"]) / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted").exists()
             and any(report.get("operation") == "installation.install"
                     and report.get("semanticVersion") == pair.control_version
+                    and report.get("installation") == str(installation / "installation")
+                    and report.get("activation") == {"type": "not-requested"}
                     and report.get("status") == "installed" for report in reports),
             "assembled installer rejected release:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
 
@@ -169,7 +179,7 @@ def main() -> None:
         verify_launcher(fixture, product, pair)
         verify_assembled_installer(fixture, pair, product)
         fixture.mark_passed()
-    print("installed-product: artifact identity, launcher, and session installer passed")
+    print("installed-product: artifact identity, launcher, and canonical persistent staging passed")
 
 
 if __name__ == "__main__":

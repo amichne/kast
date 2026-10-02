@@ -63,7 +63,7 @@ control-only upgrades can reuse it.
 
 Use `kast upgrade` to install both components on the selected channel.
 The upgrade interrupts existing calls and sessions. Kast keeps one ordinary
-installation at `${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation`.
+installation at `$HOME/.local/share/kast/installation`.
 It replaces that directory after admitting and stopping the previous payload;
 a successful upgrade removes its temporary recovery copy. Installation does
 not create selector links or selectable historical versions.

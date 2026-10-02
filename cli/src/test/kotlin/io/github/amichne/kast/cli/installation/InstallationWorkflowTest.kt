@@ -50,14 +50,14 @@ class InstallationWorkflowTest {
     @Test
     fun `fresh installation materializes every saved default in its environment file`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
+        val installation = root.resolve("home/.local/share/kast")
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
             executeFixtureInstallation(
                 releaseRequest(
                     root,
                     installation,
-                    root.resolve("commands"),
+                    root.resolve("home/.local/bin"),
                     Files.createDirectory(root.resolve("home")),
                     Files.createDirectory(root.resolve("codex-home")),
                     "1.2.3",
@@ -145,13 +145,13 @@ class InstallationWorkflowTest {
     @Test
     fun `force reinstall resets same version state and preserves unrelated files`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
+        val installation = root.resolve("home/.local/share/kast")
         val environment =
             installationEnvironment(
                 releaseFixture(root, "1.2.3", 5, 0),
                 "1.2.3",
                 installation,
-                root.resolve("commands"),
+                root.resolve("home/.local/bin"),
                 Files.createDirectory(root.resolve("home")),
                 Files.createDirectory(root.resolve("codex")),
                 InstallationMode.APPLY,
@@ -176,7 +176,7 @@ class InstallationWorkflowTest {
         assertTrue(Files.notExists(stale))
         assertTrue(Files.notExists(selected.resolve("config/workspaces.json")))
         assertEquals("keep", Files.readString(unrelated))
-        assertTrue(Files.notExists(root.resolve("commands/kast")))
+        assertTrue(Files.notExists(root.resolve("home/.local/bin/kast")))
         assertTrue(Files.notExists(selected.resolve(".recovery-detached")))
     }
 
@@ -221,9 +221,9 @@ class InstallationWorkflowTest {
     @Test
     fun `unrelated commands survive installation without force`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = Files.createDirectory(root.resolve("commands"))
+        val installation = root.resolve("home/.local/share/kast")
         val home = Files.createDirectory(root.resolve("home"))
+        val commands = Files.createDirectories(home.resolve(".local/bin"))
         val codexHome = Files.createDirectory(home.resolve(".codex"))
         val foreign = Files.writeString(commands.resolve("kast"), "unmanaged")
 
@@ -237,7 +237,10 @@ class InstallationWorkflowTest {
 }
 
 /** Fixture-owned installations have no launchd job or published daemon state. */
-internal fun executeFixtureInstallation(request: InstallationRequest): InstallationOutcome =
+internal fun executeFixtureInstallation(
+    request: InstallationRequest,
+    activationPolicy: InstallationActivationPolicy = InstallationActivationPolicy.STAGE_ONLY,
+): InstallationOutcome =
     InstallationWorkflow.execute(
         request,
         PriorDaemonUpgradeGateway { retirement, _, _ ->
@@ -246,6 +249,7 @@ internal fun executeFixtureInstallation(request: InstallationRequest): Installat
             check(Files.notExists(prior.resolve("state/broker/service-readiness.json")))
             io.github.amichne.kast.appserver.InstalledUpgradePreparation.NoDaemon
         },
+        activationPolicy,
     )
 
 internal fun releaseRequest(
@@ -395,7 +399,7 @@ private fun installationEnvironment(
         InstallationEnvironment.BIN_DIRECTORY.key to commands.toString(),
         InstallationEnvironment.HOME.key to home.toString(),
         InstallationEnvironment.CODEX_HOME.key to codexHome.toString(),
-        InstallationEnvironment.PROFILE.key to "session",
+        InstallationEnvironment.PROFILE.key to "persistent",
         InstallationEnvironment.MODE.key to mode.name.lowercase(),
         InstallationEnvironment.FORCE.key to if (replaceCommandCollisions) "1" else "0",
     )

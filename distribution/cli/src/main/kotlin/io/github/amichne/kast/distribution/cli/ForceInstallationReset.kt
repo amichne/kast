@@ -32,7 +32,7 @@ internal class ForceResetRoot private constructor(val path: Path) {
                 // An ancestor symlink cannot turn a selected child into HOME or an ancestor of HOME.
                 val ancestor = generateSequence(root.parent) { it.parent }.first { Files.exists(it, NOFOLLOW_LINKS) }
                 val physical = ancestor.toRealPath().resolve(ancestor.relativize(root))
-                if (home.toRealPath().startsWith(physical)) ForceResetRootAdmission.Rejected
+                if (physical != root || home.toRealPath().startsWith(physical)) ForceResetRootAdmission.Rejected
                 else ForceResetRootAdmission.Selected(ForceResetRoot(physical))
             } catch (_: IOException) {
                 ForceResetRootAdmission.Rejected

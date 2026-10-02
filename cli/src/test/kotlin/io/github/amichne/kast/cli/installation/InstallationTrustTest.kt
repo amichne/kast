@@ -17,8 +17,8 @@ class InstallationTrustTest {
         val root = temporary.toRealPath()
         val home = Files.createDirectory(root.resolve("home"))
         val codex = Files.createDirectory(root.resolve("codex"))
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val installation = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
             executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.3")),
@@ -45,8 +45,8 @@ class InstallationTrustTest {
             executeFixtureInstallation(
                 releaseRequest(
                     root,
-                    root.resolve("installation"),
-                    root.resolve("commands"),
+                    root.resolve("home/.local/share/kast"),
+                    root.resolve("home/.local/bin"),
                     home,
                     Files.createDirectory(root.resolve("codex")),
                     "1.2.3",
@@ -64,8 +64,8 @@ class InstallationTrustTest {
         val request =
             releaseRequest(
                 root,
-                root.resolve("installation"),
-                root.resolve("commands"),
+                root.resolve("home/.local/share/kast"),
+                root.resolve("home/.local/bin"),
                 home,
                 Files.createDirectory(root.resolve("codex")),
                 "1.2.3",

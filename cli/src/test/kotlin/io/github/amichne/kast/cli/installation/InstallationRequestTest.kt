@@ -10,7 +10,15 @@ class InstallationRequestTest {
     @Test
     fun `home proof retains quoted JVM identity and rejects control characters`() {
         val home = "/fixture/home with \"quote\" and \\slash"
-        val request = InstallationRequest.parse(validEnvironment() + ("HOME" to home)) as Refinement.Refined
+        val request =
+            InstallationRequest.parse(
+                validEnvironment() +
+                    mapOf(
+                        "HOME" to home,
+                        "KAST_INSTALL_ROOT" to "$home/.local/share/kast",
+                        "KAST_BIN_DIR" to "$home/.local/bin",
+                    )
+            ) as Refinement.Refined
         assertEquals(
             "-Duser.home=\"/fixture/home with \\\"quote\\\" and \\\\slash\"",
             request.value.jvmUserHomeOption.value,
@@ -24,13 +32,13 @@ class InstallationRequestTest {
     }
 
     @Test
-    fun `control-only reset and session combinations reject at request boundary`() {
-        for (unsupported in listOf(mapOf("KAST_INSTALL_FORCE" to "1"), mapOf("KAST_INSTALL_PROFILE" to "session"))) {
-            assertEquals(
-                Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.CONTROL_ONLY)),
-                InstallationRequest.parse(validEnvironment() + mapOf("KAST_INSTALL_CONTROL_ONLY" to "1") + unsupported),
-            )
-        }
+    fun `control-only reset rejects at request boundary`() {
+        assertEquals(
+            Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.CONTROL_ONLY)),
+            InstallationRequest.parse(
+                validEnvironment() + mapOf("KAST_INSTALL_CONTROL_ONLY" to "1", "KAST_INSTALL_FORCE" to "1")
+            ),
+        )
     }
 
     @Test
@@ -99,21 +107,24 @@ class InstallationRequestTest {
     }
 
     @Test
-    fun `installation profile selects persistent service or private session`() {
+    fun `only the persistent user installation is admitted`() {
         assertEquals(
             InstallationProfile.PERSISTENT,
             (InstallationRequest.parse(validEnvironment()) as Refinement.Refined).value.profile,
         )
+        for (profile in listOf("session", "partial")) {
+            assertEquals(
+                Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.PROFILE)),
+                InstallationRequest.parse(validEnvironment() + ("KAST_INSTALL_PROFILE" to profile)),
+            )
+        }
         assertEquals(
-            InstallationProfile.SESSION,
-            (InstallationRequest.parse(validEnvironment() + ("KAST_INSTALL_PROFILE" to "session"))
-                    as Refinement.Refined)
-                .value
-                .profile,
+            Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.INSTALL_ROOT)),
+            InstallationRequest.parse(validEnvironment() + ("KAST_INSTALL_ROOT" to "/fixture/other-install")),
         )
         assertEquals(
-            Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.PROFILE)),
-            InstallationRequest.parse(validEnvironment() + ("KAST_INSTALL_PROFILE" to "partial")),
+            Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.BIN_DIRECTORY)),
+            InstallationRequest.parse(validEnvironment() + ("KAST_BIN_DIR" to "/fixture/other-bin")),
         )
     }
 
@@ -127,7 +138,7 @@ class InstallationRequestTest {
                 is Refinement.Rejected -> error("unexpected rejection: ${result.failure}")
             }
         assertEquals(SemanticVersion(1, 2, 3), request.version)
-        assertEquals(Path.of("/fixture/install"), request.installRoot.value)
+        assertEquals(Path.of("/fixture/home/.local/share/kast"), request.installRoot.value)
         assertEquals(InstallationMode.APPLY, request.mode)
     }
 
@@ -164,8 +175,8 @@ class InstallationRequestTest {
             InstallationEnvironment.VERSION.key to "1.2.3",
             InstallationEnvironment.IDEA_HOME.key to "/fixture/idea",
             InstallationEnvironment.JAVA_HOME.key to "/fixture/idea/jbr/Contents/Home",
-            InstallationEnvironment.INSTALL_ROOT.key to "/fixture/install",
-            InstallationEnvironment.BIN_DIRECTORY.key to "/fixture/bin",
+            InstallationEnvironment.INSTALL_ROOT.key to "/fixture/home/.local/share/kast",
+            InstallationEnvironment.BIN_DIRECTORY.key to "/fixture/home/.local/bin",
             InstallationEnvironment.HOME.key to "/fixture/home",
             InstallationEnvironment.CODEX_HOME.key to "/fixture/codex",
             InstallationEnvironment.MODE.key to "apply",

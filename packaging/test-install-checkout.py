@@ -165,50 +165,32 @@ fi
             text=True,
         )
 
-    def test_session_isolated_and_activation_idempotent(self):
-        self.env.update(KAST_RUNTIME_DIRECTORY="/persistent/run")
+    def test_session_is_rejected_before_build_or_state_creation(self):
         result = self.run_install("session")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        activation = Path(result.stdout.strip())
-        self.assertTrue(activation.is_file())
-        self.assertEqual((self.root / "calls").read_text(), "build\ninstall\n")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("session installations are retired", result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertFalse((self.root / "calls").exists())
         self.assertFalse((self.root / ".local").exists())
-        for shell in ("bash", "zsh"):
-            if not shutil.which(shell):
-                continue
-            code = '''source "$1"
-first=$PATH
-source "$1"
-[[ $PATH == "$first" ]] || exit 2
-physical=$(cd "$KAST_INSTALL_ROOT/installation" && pwd -P)
-[[ $KAST_RUNTIME_DIRECTORY == "$physical/state/run" && -z ${KAST_CACHE_ROOT:-} && -z ${KAST_RUNTIME_STORE:-} ]] || exit 3
-[[ $PATH != *"$KAST_BIN_DIR"* ]] || exit 4
-'''
-            checked = subprocess.run(
-                [shell, "-c", code, "activation-test", str(activation)],
-                env=self.env,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(checked.returncode, 0, checked.stderr)
+
+    def test_alternate_root_and_bin_reject_before_build_or_state_creation(self):
+        for key in ('KAST_INSTALL_ROOT', 'KAST_BIN_DIR'):
+            with self.subTest(key=key):
+                self.env[key] = str(self.root / 'alternate')
+                result = self.run_install('persistent')
+                self.env.pop(key)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn('sole per-user', result.stderr)
+                self.assertFalse((self.root / 'calls').exists())
+                self.assertFalse((self.root / 'alternate').exists())
 
     def test_development_entrypoint_accepts_the_documented_app_bundle(self):
-        result = self.run_install("session", "--idea-home", str(self.idea.parent))
+        result = self.run_install("persistent", "--idea-home", str(self.idea.parent))
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue(Path(result.stdout.strip()).is_file())
+        self.assertEqual("", result.stdout)
 
-    def test_session_canonicalizes_a_symlinked_temporary_root(self):
-        temporary_alias = self.root / "tmp-alias"
-        temporary_alias.symlink_to(self.fixture.root / "tmp", target_is_directory=True)
-        self.env["TMPDIR"] = str(temporary_alias)
-        result = self.run_install("session")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        activation = Path(result.stdout.strip())
-        self.assertEqual(activation, activation.resolve())
-        self.assertTrue(activation.is_file())
-
-    def test_persistent_uses_environment_selected_bin_and_refresh(self):
-        self.env["KAST_BIN_DIR"] = str(self.root / "custom bin")
+    def test_persistent_binds_the_sole_user_bin_and_refresh(self):
+        self.env["KAST_BIN_DIR"] = str(self.root / ".local/bin")
         result = self.run_install("persistent")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "")
@@ -238,14 +220,14 @@ physical=$(cd "$KAST_INSTALL_ROOT/installation" && pwd -P)
 
     def test_build_failure_never_installs_or_emits_activation(self):
         self.write_script(self.checkout / "gradlew", "#!/usr/bin/env bash\nexit 17\n")
-        result = self.run_install("session")
+        result = self.run_install("persistent")
         self.assertEqual(result.returncode, 17)
         self.assertEqual(result.stdout, "")
         self.assertFalse((self.root / "calls").exists())
 
     def test_install_failure_never_activates_or_starts_services(self):
         self.write_script(self.installer, "#!/usr/bin/env bash\nexit 19\n")
-        for mode in ("session", "persistent"):
+        for mode in ("persistent",):
             result = self.run_install(mode)
             self.assertEqual(result.returncode, 19)
             self.assertEqual(result.stdout, "")
@@ -357,8 +339,8 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         self.env.update(
             KAST_VERSION=self.version,
             KAST_INSTALL_ASSETS_DIRECTORY=str(self.assets),
-            KAST_INSTALL_ROOT=str(self.root / "install"),
-            KAST_BIN_DIR=str(self.root / "bin"),
+            KAST_INSTALL_ROOT=str(self.root / ".local/share/kast"),
+            KAST_BIN_DIR=str(self.root / ".local/bin"),
         )
 
     def write_plugin(self, until_build, since_build="262"):
@@ -472,7 +454,7 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         result = self.run_installer("--skip-codex-mcp")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse((self.root / "mcp-calls").exists())
-        self.assertTrue((self.root / "install/installation/bin/kast-mcp-complete").is_file())
+        self.assertTrue((self.root / ".local/share/kast/installation/bin/kast-mcp-complete").is_file())
 
     def test_interactive_decline_skips_codex_mcp_registration(self):
         result = self.run_interactive_installer("n\n")

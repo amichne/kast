@@ -38,9 +38,7 @@ internal data class VerifiedInstallationPlan(
                     when (activation) {
                         InstallationActivation.Ready -> listOf("enable-app-server")
                         is InstallationActivation.Pending -> listOf("defer-app-server-activation")
-                        InstallationActivation.Planned ->
-                            if (request.profile == InstallationProfile.PERSISTENT) listOf("enable-app-server")
-                            else emptyList()
+                        InstallationActivation.Planned -> listOf("enable-app-server")
                         InstallationActivation.NotRequested -> emptyList()
                     },
         )

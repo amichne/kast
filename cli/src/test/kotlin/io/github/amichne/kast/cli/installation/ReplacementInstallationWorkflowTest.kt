@@ -19,8 +19,8 @@ class ReplacementInstallationWorkflowTest {
     @Test
     fun `upgrade retains the admitted workspace registry`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val installation = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         val home = Files.createDirectory(root.resolve("home"))
         val codexHome = Files.createDirectory(home.resolve(".codex"))
         val firstWorkspace = Files.createDirectory(root.resolve("first-workspace"))
@@ -48,8 +48,8 @@ class ReplacementInstallationWorkflowTest {
     @Test
     fun `upgrade rejects a corrupt prior registry and preserves selection`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val installation = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         val home = Files.createDirectory(root.resolve("home"))
         val codex = Files.createDirectory(root.resolve("codex"))
         assertInstanceOf(
@@ -73,12 +73,12 @@ class ReplacementInstallationWorkflowTest {
     @Test
     fun `missing payload cannot overwrite retained recovery or management evidence`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
+        val installation = root.resolve("home/.local/share/kast")
         val request =
             releaseRequest(
                 root,
                 installation,
-                root.resolve("commands"),
+                root.resolve("home/.local/bin"),
                 Files.createDirectory(root.resolve("home")),
                 Files.createDirectory(root.resolve("codex")),
                 "1.2.3",
@@ -111,8 +111,8 @@ class ReplacementInstallationWorkflowTest {
     @Test
     fun `upgrade preserves an absent workspace registry`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val installation = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         val home = Files.createDirectory(root.resolve("home"))
         val codexHome = Files.createDirectory(root.resolve("codex"))
         assertFixtureComplete(
@@ -134,8 +134,8 @@ class ReplacementInstallationWorkflowTest {
         @TempDir temporary: Path
     ) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = root.resolve("commands")
+        val installation = root.resolve("home/.local/share/kast")
+        val commands = root.resolve("home/.local/bin")
         val home = Files.createDirectory(root.resolve("home"))
         val codexHome = Files.createDirectory(root.resolve("codex"))
         assertFixtureComplete(
@@ -203,9 +203,9 @@ class ReplacementInstallationWorkflowTest {
         @TempDir temporary: Path
     ) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = Files.createDirectory(root.resolve("commands"))
+        val installation = root.resolve("home/.local/share/kast")
         val home = Files.createDirectory(root.resolve("home"))
+        val commands = Files.createDirectories(home.resolve(".local/bin"))
         val codexHome = Files.createDirectory(root.resolve("codex"))
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
@@ -286,9 +286,9 @@ class ReplacementInstallationWorkflowTest {
     @Test
     fun `upgrade keeps one physical rollback baseline until outer activation seals`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val commands = Files.createDirectory(root.resolve("commands"))
+        val installation = root.resolve("home/.local/share/kast")
         val home = Files.createDirectory(root.resolve("home"))
+        val commands = Files.createDirectories(home.resolve(".local/bin"))
         val codexHome = Files.createDirectory(home.resolve(".codex"))
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,

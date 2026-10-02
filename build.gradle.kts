@@ -228,15 +228,19 @@ val stageInstalledProduct = tasks.register<Sync>("stageInstalledProduct") {
     from(controlProductDirectory)
 }
 
+val canonicalLocalInstallPrefix = providers.environmentVariable("HOME")
+    .map { userHome ->
+        require(userHome.isNotBlank() && java.io.File(userHome).isAbsolute) { "HOME must name an absolute user directory" }
+        file(userHome).toPath().toAbsolutePath().normalize().resolve(".local").toFile()
+    }
 val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
     .map { configuredPrefix ->
         require(configuredPrefix.isNotBlank()) { "kastLocalPrefix must name a non-blank installation prefix" }
-        file(configuredPrefix).toPath().toAbsolutePath().normalize().toFile()
+        val prefix = file(configuredPrefix).toPath().toAbsolutePath().normalize().toFile()
+        require(prefix == canonicalLocalInstallPrefix.get()) { "kastLocalPrefix must equal HOME/.local; alternate installations are unsupported" }
+        prefix
     }
-    .orElse(
-        providers.systemProperty("user.home")
-            .map { userHome -> file(userHome).resolve(".local") },
-    )
+    .orElse(canonicalLocalInstallPrefix)
 val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
 val localJavaHome = providers.systemProperty("java.home").map { configuredHome ->
     file(configuredHome).toPath().toRealPath().toFile()
@@ -254,7 +258,7 @@ val localHostedPluginArchive = localHostedIdeaBuild.map { build ->
 
 tasks.register<Exec>("installLocal") {
     group = "distribution"
-    description = "Installs a control/host pair (-PcontrolVersion, -PhostedPluginVersion) under ~/.local or -PkastLocalPrefix."
+    description = "Installs a control/host pair (-PcontrolVersion, -PhostedPluginVersion) in the sole HOME/.local/share/kast installation."
     doNotTrackState("The installed prefix contains live service sockets and is mutated by the installer.")
     dependsOn(stageKastControlProduct, ":runtime:hosted:hostedPlugin", "generateHostReleaseRecord")
     inputs.dir(controlProductDirectory)
@@ -275,7 +279,7 @@ tasks.register<Exec>("installLocal") {
 
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
-    description = "Verifies assembled artifact identity, launcher admission, and one session installation."
+    description = "Verifies assembled artifact identity, launcher admission, and canonical persistent staging in an owned HOME."
     dependsOn(stageInstalledProduct, assembleKastControlDist, "generateHostReleaseRecord")
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))

@@ -68,7 +68,7 @@ class HostReleaseFixture:
 
 class InstallerEntrypointTest(unittest.TestCase):
     def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False):
-        root = Path(directory)
+        root = Path(directory).resolve()
         home = root / "home"
         idea = root / "IntelliJ IDEA.app/Contents"
         assets = root / "assets"
@@ -141,7 +141,7 @@ esac
         environment = {
             "HOME": str(home), "PATH": str(bin_directory) + os.pathsep + TOOL_PATH, "NO_COLOR": "1",
             "KAST_VERSION": version, "KAST_INSTALL_ASSETS_DIRECTORY": str(assets),
-            "KAST_INSTALL_ROOT": str(root / "install"), "KAST_BIN_DIR": str(bin_directory),
+            "KAST_INSTALL_ROOT": str(home / ".local/share/kast"), "KAST_BIN_DIR": str(home / ".local/bin"),
         }
         return idea, assets, environment
 
@@ -189,8 +189,8 @@ else:
 
     def upgrade_fixture(self, directory, *, cold_staging=False):
         idea, assets, environment = self.installer_fixture(directory, version='1.2.4')
-        root = Path(directory)
-        install = root / 'install'
+        root = Path(directory).resolve()
+        install = Path(environment['KAST_INSTALL_ROOT'])
         prior = install / 'installation'
         prior.mkdir(parents=True)
         log = root / 'upgrade.log'
@@ -558,7 +558,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(b"foreign command\n", foreign.read_bytes())
 
-    def test_explicit_install_root_selects_the_plan_without_changing_the_old_root(self):
+    def test_alternate_install_root_is_rejected_before_effects(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-root-") as directory:
             idea, _, environment = self.installer_fixture(directory)
             selected = Path(directory) / 'selected-kast'
@@ -566,8 +566,9 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                 [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--install-root', str(selected), '--dry-run'],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
-            self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn(str(selected), result.stderr)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("sole per-user installation", result.stderr)
+            self.assertNotIn("downloading", result.stderr)
             self.assertFalse(selected.exists())
             self.assertFalse((Path(directory) / 'install').exists())
 
@@ -575,7 +576,34 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
         result = subprocess.run([str(BASH), str(INSTALLER), '--install-root', 'relative'],
                                 env={"HOME": "/tmp", "PATH": TOOL_PATH}, text=True, capture_output=True, timeout=10)
         self.assertNotEqual(0, result.returncode)
-        self.assertIn('install root must be an absolute path', result.stderr)
+        self.assertIn('sole per-user installation', result.stderr)
+
+    def test_alternate_environment_roots_bins_and_session_reject_before_effects(self):
+        with tempfile.TemporaryDirectory(prefix='kast-sole-install-') as directory:
+            idea, assets, environment = self.installer_fixture(directory)
+            for asset in assets.iterdir(): asset.unlink()
+            for key, value in (('KAST_INSTALL_ROOT', str(Path(directory) / 'alternate')),
+                               ('KAST_BIN_DIR', str(Path(directory) / 'alternate-bin')),
+                               ('KAST_INSTALL_PROFILE', 'session')):
+                with self.subTest(key=key):
+                    result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea)],
+                        cwd=ROOT, env=dict(environment, **{key: value}), text=True, capture_output=True, timeout=10)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertNotIn('downloading', result.stderr)
+                    self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_xdg_data_home_cannot_select_another_installation(self):
+        with tempfile.TemporaryDirectory(prefix='kast-sole-xdg-') as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            selected = Path(environment['KAST_INSTALL_ROOT'])
+            ignored = Path(directory) / 'alternate-data'
+            environment['XDG_DATA_HOME'] = str(ignored)
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea),
+                '--install-root', str(selected), '--dry-run'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn(str(selected), result.stderr)
+            self.assertFalse(ignored.exists())
 
     def test_unsupported_os_is_rejected_before_installation(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-os-") as directory:
@@ -707,14 +735,14 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
     def test_uninstall_uses_selected_private_lifecycle_control(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-uninstall-") as directory:
             root = Path(directory).resolve()
-            install = root / "data/kast"
+            install = root / ".local/share/kast"
             selected = install / "installation"
             control = selected / "share/kast/installation-lifecycle.py"
             control.parent.mkdir(parents=True)
             control.write_text("import json,sys\nprint(json.dumps(sys.argv[1:]))\n")
             environment = {
                 "HOME": str(root), "PATH": TOOL_PATH, "NO_COLOR": "1",
-                "XDG_DATA_HOME": str(root / "data"),
+                "XDG_DATA_HOME": str(root / "ignored-data"),
             }
             result = subprocess.run(
                 ["bash", str(INSTALLER), "uninstall", "--dry-run", "--verbose"],

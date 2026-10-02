@@ -186,14 +186,14 @@ Usage:
 
 The default command selects a control release and a host release with an equal hosted contract.
 Use --control-only to reuse a compatible running IntelliJ host, or --host-only to install only its plugin.
-Installation uses:
-  ${XDG_DATA_HOME:-$HOME/.local/share}/kast
+Installation uses the sole per-user directory:
+  $HOME/.local/share/kast
 
 It publishes the native management command at `$XDG_CONFIG_HOME/kast` when
 `XDG_CONFIG_HOME` is nonempty, otherwise at `$HOME/.local/bin/kast`. If that
 directory is not on PATH, installation succeeds and prints the absolute path
 and directory to add. No shell profile is edited.
-`--install-root` selects an explicit absolute installation directory.
+`--install-root` binds a private lifecycle call to that exact per-user directory; other roots are rejected.
 `--stage-only` stages only control without starting its daemon or changing host files; the lifecycle owner activates it later.
 When `--idea-home` is omitted, installation checks `/Applications`,
 `~/Applications`, and the JetBrains Toolbox app directory for a compatible IDEA.
@@ -212,7 +212,7 @@ public developer channel. Its exact source revision is recorded in the channel
 pointer and release SBOM. Developer builds are prereleases and change independently
 of the latest stable release.
 
-Development builds use packaging/install-checkout.sh session|persistent.
+Development builds use packaging/install-checkout.sh persistent.
 
 Installation enables the app server and its macOS login LaunchAgent by default.
 Upgrades review historical Kast entries one at a time when current ownership
@@ -556,15 +556,12 @@ fi
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
 # Local artifacts are an explicit developer entry point; public release installs use standard paths.
 profile="${KAST_INSTALL_PROFILE:-persistent}"
-case "$profile" in persistent|session) ;; *) fail 'KAST_INSTALL_PROFILE must be persistent or session' ;; esac
-[[ "$profile" == persistent || "$codex_mcp_choice" == unspecified ]] ||
-  fail "Codex MCP registration options require a persistent installation"
-if [[ -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]]; then
-  [[ "$profile" == persistent ]] || fail 'session installation requires local build artifacts; use packaging/install-checkout.sh'
-  [[ -z "${KAST_INSTALL_ROOT+x}${KAST_BIN_DIR+x}" ]] || fail 'custom installation paths require the development installer'
-fi
-install_root="${requested_install_root:-${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}}"
-bin_directory="${KAST_BIN_DIR:-$HOME/.local/bin}"
+[[ "$profile" == persistent ]] || fail 'session installations are retired; use the sole persistent user installation'
+install_root="$HOME/.local/share/kast"
+[[ -z "$requested_install_root" || "$requested_install_root" == "$install_root" ]] || fail 'install root must be the sole per-user installation at $HOME/.local/share/kast'
+[[ -z "${KAST_INSTALL_ROOT+x}" || "$KAST_INSTALL_ROOT" == "$install_root" ]] || fail 'KAST_INSTALL_ROOT must bind the sole per-user installation at $HOME/.local/share/kast'
+bin_directory="$HOME/.local/bin"
+[[ -z "${KAST_BIN_DIR+x}" || "$KAST_BIN_DIR" == "$bin_directory" ]] || fail 'KAST_BIN_DIR must bind the sole per-user binary directory at $HOME/.local/bin'
 for retired in KAST_INDEXER_MAX_HEAP KAST_WORKER_RESIDENT_LIMIT KAST_WORKER_STARTUP_LIMIT KAST_WORKER_AGGREGATE_MIB KAST_WORKER_NATIVE_MIB KAST_WORKER_GRADLE_MIB KAST_RUNTIME_ARCHIVE KAST_RUNTIME_STORE KAST_CACHE_ROOT KAST_ENABLE_APP_SERVER KAST_APP_SERVER_TOOLS KAST_ENABLE_LAUNCHD KAST_INSTALL_REFRESH_APP_SERVER KAST_INSTALL_REPLACE_COMMAND_COLLISIONS; do
   [[ -z "${!retired+x}" ]] || fail "$retired is retired; remove it from the environment before installing"
 done
@@ -638,7 +635,7 @@ idea_plugin_root="$HOME/Library/Application Support/JetBrains/$idea_data_directo
 
 if [[ "$codex_mcp_choice" == unspecified ]]; then
   codex_mcp_choice=register
-  if [[ "$mode" == apply && "$profile" == persistent && -t 0 ]]; then
+  if [[ "$mode" == apply && -t 0 ]]; then
     while true; do
       printf '  Register a user-level Kast MCP server in Codex? [Y/n] ' >&2
       IFS= read -r answer || fail "Codex MCP registration choice was not provided"
@@ -763,14 +760,12 @@ if [[ "$component" == pair ]]; then
     --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
     --release-record "$temporary_root/$host_record_name" --required-control "$control_root/share/kast/ide-host.json" --dry-run
 fi
-if [[ "$profile" == persistent ]]; then
-  management_executable="$control_root/share/kast/libexec/kast-management"
-  [[ -x "$management_executable" ]] || fail "control archive has no native management executable"
-  export KAST_INSTALL_ROOT="$install_root"
-  management_destination="$("$management_executable" --internal-install preflight)" ||
-    fail "native executable destination was rejected before service retirement"
-fi
-if [[ "$mode" == apply && "$profile" == persistent && "$codex_mcp_choice" == register ]]; then
+management_executable="$control_root/share/kast/libexec/kast-management"
+[[ -x "$management_executable" ]] || fail "control archive has no native management executable"
+export KAST_INSTALL_ROOT="$install_root"
+management_destination="$("$management_executable" --internal-install preflight)" ||
+  fail "native executable destination was rejected before service retirement"
+if [[ "$mode" == apply && "$codex_mcp_choice" == register ]]; then
   require_command codex
   registration_source="$control_root/share/kast/codex-mcp-registration.py"
   [[ -f "$registration_source" ]] || fail "control archive has no Codex MCP registration helper"
@@ -778,7 +773,7 @@ if [[ "$mode" == apply && "$profile" == persistent && "$codex_mcp_choice" == reg
 fi
 
 info "The app server provides the complete Kast suite. Persistent installations start it at login."
-if [[ "$profile" == persistent && "$codex_mcp_choice" == skip ]]; then
+if [[ "$codex_mcp_choice" == skip ]]; then
   info "Codex MCP registration is skipped; use the app server or kast connect for your harness."
 fi
 note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') the app server and private service control"
@@ -808,7 +803,7 @@ if [[ "$stage_only" == 1 ]]; then
   [[ "$(cat "$control_root/share/kast/reset-fence-v1")" == 1 ]] || fail 'reset capability is incompatible'
   installation_options+=(--stage-only)
 fi
-if [[ -n "${KAST_MANAGEMENT_REPORT_PATH:-}" && "$mode" == apply && "$profile" == persistent ]]; then
+if [[ -n "${KAST_MANAGEMENT_REPORT_PATH:-}" && "$mode" == apply ]]; then
   run_installer_step "App server and service installation" "$KAST_MANAGEMENT_REPORT_PATH" \
     "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
 else
@@ -826,18 +821,16 @@ else
       --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
       --release-record "$temporary_root/$host_record_name" --required-control "$control_root/share/kast/ide-host.json"
   fi
-  if [[ "$profile" == persistent ]]; then
-    export KAST_MANAGEMENT_CHANNEL="$([[ "$developer_latest" == 1 ]] && printf developer || printf stable)"
-    if ! installed_management="$("$management_executable" --internal-install commit)"; then
-      if [[ "$control_only" == 1 ]]; then
-        run_installer_step "Control recovery after publication failure" "" "$control_root/share/kast/libexec/kast-service" recover-control publication || true
-      fi
-      fail "native executable activation failed; inspect the reported control recovery outcome"
+  export KAST_MANAGEMENT_CHANNEL="$([[ "$developer_latest" == 1 ]] && printf developer || printf stable)"
+  if ! installed_management="$("$management_executable" --internal-install commit)"; then
+    if [[ "$control_only" == 1 ]]; then
+      run_installer_step "Control recovery after publication failure" "" "$control_root/share/kast/libexec/kast-service" recover-control publication || true
     fi
-    [[ "$installed_management" == "$management_destination" ]] ||
-      fail "native executable destination changed during installation"
+    fail "native executable activation failed; inspect the reported control recovery outcome"
   fi
-  if [[ "$profile" == persistent && "$codex_mcp_choice" == register ]]; then
+  [[ "$installed_management" == "$management_destination" ]] ||
+    fail "native executable destination changed during installation"
+  if [[ "$codex_mcp_choice" == register ]]; then
     [[ -x "$install_root/installation/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
     "$installed_management" connect codex mcp
   fi

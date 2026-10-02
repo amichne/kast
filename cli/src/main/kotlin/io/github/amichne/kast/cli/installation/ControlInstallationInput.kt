@@ -7,8 +7,8 @@ import io.github.amichne.kast.kernel.Refinement
 internal data class ControlInstallationLocations(
     val ideaHome: InstallationPath,
     val javaHome: InstallationPath,
-    val installRoot: InstallationPath,
-    val binDirectory: InstallationPath,
+    val installRoot: UserInstallationRoot,
+    val binDirectory: UserInstallationBin,
     val home: InstallationPath,
     val jvmUserHomeOption: BrokerJvmUserHomeOption,
     val codexHome: InstallationPath,
@@ -129,12 +129,22 @@ internal class ControlInstallationInput(private val environment: Map<String, Str
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
+        val userRoot =
+            when (val admitted = UserInstallationRoot.admit(owner.home, installRoot)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val userBin =
+            when (val admitted = UserInstallationBin.admit(owner.home, binDirectory)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
         return Refinement.Refined(
             ControlInstallationLocations(
                 ideaHome = ideaHome,
                 javaHome = javaHome,
-                installRoot = installRoot,
-                binDirectory = binDirectory,
+                installRoot = userRoot,
+                binDirectory = userBin,
                 home = owner.home,
                 jvmUserHomeOption = owner.jvmUserHomeOption,
                 codexHome = owner.codexHome,
@@ -159,7 +169,7 @@ internal class ControlInstallationInput(private val environment: Map<String, Str
                 is Refinement.Rejected -> return admitted
             }
         val switches =
-            when (val admitted = switches(profile)) {
+            when (val admitted = switches()) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
@@ -201,9 +211,7 @@ internal class ControlInstallationInput(private val environment: Map<String, Str
         )
     }
 
-    private fun switches(
-        profile: InstallationProfile
-    ): Refinement<ControlInstallationSwitches, InstallationRequestFailure> {
+    private fun switches(): Refinement<ControlInstallationSwitches, InstallationRequestFailure> {
         val force =
             when (val refined = switch(InstallationEnvironment.FORCE)) {
                 is Refinement.Refined -> refined.value
@@ -214,10 +222,7 @@ internal class ControlInstallationInput(private val environment: Map<String, Str
                 is Refinement.Refined -> refined.value
                 is Refinement.Rejected -> return refined
             }
-        if (
-            controlOnly == InstallationSwitch.ENABLED &&
-                (force == InstallationSwitch.ENABLED || profile != InstallationProfile.PERSISTENT)
-        )
+        if (controlOnly == InstallationSwitch.ENABLED && force == InstallationSwitch.ENABLED)
             return Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.CONTROL_ONLY))
         return Refinement.Refined(ControlInstallationSwitches(force, controlOnly))
     }
@@ -227,7 +232,6 @@ internal class ControlInstallationInput(private val environment: Map<String, Str
             when (environment[InstallationEnvironment.PROFILE.key]) {
                 null,
                 "persistent" -> InstallationProfile.PERSISTENT
-                "session" -> InstallationProfile.SESSION
                 else ->
                     return Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.PROFILE))
             }

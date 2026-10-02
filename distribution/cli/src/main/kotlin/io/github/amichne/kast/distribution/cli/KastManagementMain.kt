@@ -44,11 +44,10 @@ fun main(arguments: Array<String>) {
 @Suppress("ThrowsCount")
 private fun internalInstall(arguments: List<String>, environment: Map<String, String>) {
     if (arguments.size != 2) throw ManagementRejected("installer-protocol", "invalid request")
-    val rootRaw =
-        environment["KAST_INSTALL_ROOT"]
-            ?: throw ManagementRejected("installer-protocol", "installation root unavailable")
+    if ("KAST_INSTALL_ROOT" !in environment)
+        throw ManagementRejected("installer-protocol", "installation root unavailable")
     val root =
-        when (val resolved = ManagementRootResolution.Selected.admit(rootRaw)) {
+        when (val resolved = resolveManagementRoot(environment)) {
             is ManagementRootResolution.Selected -> resolved.root
             is ManagementRootResolution.Rejected ->
                 throw ManagementRejected("installer-protocol", resolved.failure.reason)
@@ -239,18 +238,10 @@ private class UninstallCommand : ManagementNode("uninstall") {
 
 internal data class ManagementRejected(val stage: String, val reason: String) : RuntimeException()
 
-/** An explicit root is authoritative; invalid input never selects the default installation. */
+/** Each user has one installation; an explicit root can only bind that same installation. */
 internal fun resolveManagementRoot(environment: Map<String, String>): ManagementRootResolution {
-    val explicit = environment["KAST_INSTALL_ROOT"]
-    val raw =
-        if (explicit != null) explicit
-        else {
-            val home =
-                environment["HOME"] ?: return ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE)
-            val dataHome = environment["XDG_DATA_HOME"].takeUnless { it.isNullOrEmpty() } ?: "$home/.local/share"
-            "$dataHome/kast"
-        }
-    return ManagementRootResolution.Selected.admit(raw)
+    val home = environment["HOME"] ?: return ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE)
+    return ManagementRootResolution.Selected.admit(home, environment["KAST_INSTALL_ROOT"])
 }
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")

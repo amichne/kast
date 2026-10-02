@@ -2,7 +2,8 @@
 """Opt-in native proof of independent control upgrades and host installation.
 
 Requires four component release inventories and their checksums. Runs as the current
-UID in a new private HOME and IDEA profile; never selects the daily profile.
+UID using the sole normal installation and normal IDEA profile. Backups are inert
+archives, never another installation. Requires IDEA to be closed at entry.
 No fake model, extracted plugin shortcut, hot reload, or semantic substitute is
 used. The normal installer and installed Tool RPC own every product decision.
 This is deliberately outside routine packaging and unit-test inventories.
@@ -10,13 +11,17 @@ This is deliberately outside routine packaging and unit-test inventories.
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass
+from contextlib import ExitStack
+import fcntl
+from dataclasses import asdict, dataclass, replace
 from enum import Enum
 import hashlib
 import json
 import os
 from pathlib import Path
 import platform
+import plistlib
+import pwd
 import re
 import shutil
 import socket
@@ -24,12 +29,15 @@ import stat
 import struct
 import subprocess
 import sys
+import tarfile
 import time
-from xml.sax.saxutils import quoteattr
+import uuid
 
 
 class Stage(str, Enum):
     INPUTS = 'INPUTS'
+    SNAPSHOT = 'SNAPSHOT'
+    RESTORE = 'RESTORE'
     INSTALL_C1_P1 = 'INSTALL_C1_P1'
     UNAVAILABLE_PREFLIGHT = 'UNAVAILABLE_PREFLIGHT'
     START_P1 = 'START_P1'
@@ -56,6 +64,9 @@ class Failure(str, Enum):
     CONTROL_STATUS_REJECTED = 'CONTROL_STATUS_REJECTED'
     COMMAND_TIMED_OUT = 'COMMAND_TIMED_OUT'
     CLEANUP_UNVERIFIED = 'CLEANUP_UNVERIFIED'
+    BASELINE_UNPROVEN = 'BASELINE_UNPROVEN'
+    PROTECTED_STATE_CHANGED = 'PROTECTED_STATE_CHANGED'
+    RESTORATION_UNVERIFIED = 'RESTORATION_UNVERIFIED'
 
 
 class Rejected(Exception):
@@ -170,6 +181,8 @@ class Passed:
     unavailable_preflight_preserved_control: bool
     host_install_preserved_control: bool
     cleanup_failures: tuple[Failure, ...]
+    restored_original_version: str | None = None
+    restored_control: ControlProof | None = None
 
 
 @dataclass(frozen=True)
@@ -221,11 +234,49 @@ def files(root: Path, selected: tuple[str, ...] | None = None) -> tuple[FileFact
     return tuple(sorted(facts, key=lambda fact: fact.relative_path))
 
 
+@dataclass(frozen=True)
+class Snapshot:
+    type: str
+    installation: str
+    version: str
+    control: ControlProof
+    control_files: tuple[FileFact, ...]
+    plugin_files: tuple[FileFact, ...]
+    publications: tuple[FileFact, ...]
+    protected_registrations: tuple[FileFact, ...]
+    archive_digests: tuple[tuple[str, str], ...]
+    login_anchor: tuple[FileFact, ...]
+
+
+def single_file(path: Path, base: Path | None = None) -> FileFact:
+    observed = path.lstat()
+    if (not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid()
+            or path.resolve() != path):
+        raise Rejected(Failure.OWNERSHIP_REJECTED)
+    return FileFact(str(path.relative_to(base)) if base else str(path), observed.st_dev, observed.st_ino,
+                    observed.st_uid, stat.S_IMODE(observed.st_mode), observed.st_size, digest(path))
+
+
+def content_facts(facts):
+    return tuple((fact.relative_path, fact.owner, fact.mode, fact.size, fact.sha256) for fact in facts)
+
+
+def payload_facts(facts):
+    return tuple(fact for fact in facts if not fact.relative_path.startswith('state/'))
+
+
+def static_files(root: Path) -> tuple[FileFact, ...]:
+    result = list(files(root, ('bin', 'lib', 'share', 'config')))
+    for path in sorted(root.glob('.kast-*-sha256')) + sorted(root.glob('state/broker/*/service.plist')):
+        result.append(single_file(path, root))
+    return tuple(sorted(result, key=lambda fact: fact.relative_path))
+
+
 class NativeProof:
     def __init__(self, args):
         self.args = args
         self.root = args.owned_root
-        self.home = self.root / 'home'
+        self.home = Path(pwd.getpwuid(os.getuid()).pw_dir)
         self.workspace = self.root / 'workspace'
         self.install_root = self.home / '.local/share/kast'
         self.installation = self.install_root / 'installation'
@@ -234,19 +285,20 @@ class NativeProof:
         self.idea_start: str | None = None
         self.commands = 0
         self.control_installed = False
+        self.snapshot_ready = False
+        self.original_files = ()
+        self.original_plugin = ()
         self.env = dict(os.environ)
         for key in tuple(self.env):
             if key.startswith('KAST_') or key in ('JAVA_OPTS', 'JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS',
                                                   'IDEA_VM_OPTIONS', 'CODEX_HOME', 'GRADLE_USER_HOME'):
                 del self.env[key]
-        self.env.update(HOME=str(self.home), XDG_DATA_HOME=str(self.home / '.local/share'),
-                        XDG_CONFIG_HOME=str(self.home / '.config'), CODEX_HOME=str(self.home / '.codex'),
-                        GRADLE_USER_HOME=str(self.home / '.gradle'), KAST_INSTALL_ROOT=str(self.install_root),
-                        KAST_BIN_DIR=str(self.home / '.local/bin'), KAST_INSTALL_PROFILE='persistent',
+        self.env.update(HOME=str(self.home), KAST_INSTALL_PROFILE='persistent',
                         KAST_INSTALL_ASSETS_DIRECTORY=str(args.assets),
-                        KAST_OPTS=f'-Duser.home={self.home}', JAVA_OPTS=f'-Duser.home={self.home}',
-                        JAVA_TOOL_OPTIONS=f'-Duser.home={self.home} -Djava.io.tmpdir={self.root / "tmp"}',
                         JAVA_HOME=str(args.idea_home / 'jbr/Contents/Home'), NO_COLOR='1', KAST_ASCII='1')
+        # Canonical control selection is intrinsic; retain the actual normal HOME/profile.
+        for key in ('XDG_DATA_HOME', 'XDG_CONFIG_HOME'):
+            self.env.pop(key, None)
 
     def progress(self, stage: Stage, outcome: str = 'STARTED'):
         self.stage = stage
@@ -278,16 +330,22 @@ class NativeProof:
                    '--version', version, '--skip-codex-mcp', '--verbose']
         if component:
             command.append('--' + component + '-only')
+
         if host_version:
             command.extend(('--host-version', host_version))
-        return self.command(command, expected_nonzero=expected_nonzero)
+        result = self.command(command, expected_nonzero=expected_nonzero)
+        self.verify_protected()
+        return result
 
     def setup(self):
-        for directory in (self.home, self.workspace, self.root / 'logs', self.root / 'ide/config/options',
-                          self.root / 'ide/system', self.root / 'ide/log', self.root / 'tmp'):
+        for directory in (self.workspace, self.root / 'logs'):
             directory.mkdir(parents=True, mode=0o700, exist_ok=True)
         self.metadata = json.loads((self.args.idea_home / 'Resources/product-info.json').read_text())
         self.plugins = self.home / 'Library/Application Support/JetBrains' / self.metadata['dataDirectoryName'] / 'plugins'
+        for directory in (self.home, self.install_root, self.installation, self.plugins, self.plugins / 'kast-ide-hosted'):
+            observed = directory.lstat()
+            if not stat.S_ISDIR(observed.st_mode) or observed.st_uid != os.getuid() or directory.resolve() != directory:
+                raise Rejected(Failure.OWNERSHIP_REJECTED)
         (self.workspace / 'settings.gradle.kts').write_text('rootProject.name = "mixed-version-proof"\n')
         (self.workspace / 'build.gradle.kts').write_text(
             'plugins { kotlin("jvm") version "2.4.20" }\nrepositories { mavenCentral() }\n')
@@ -309,29 +367,20 @@ class NativeProof:
             '<option name="distributionType" value="DEFAULT_WRAPPED" />'
             '<option name="gradleJvm" value="#JAVA_HOME" />'
             '</GradleProjectSettings></option></component></project>\n')
-        (self.root / 'ide/config/options/trusted-paths.xml').write_text(
-            '<application><component name="Trusted.Paths"><option name="TRUSTED_PROJECT_PATHS">'
-            '<map><entry key=' + quoteattr(str(self.workspace)) + ' value="true" /></map>'
-            '</option></component></application>\n')
-        options = (self.args.idea_home / 'bin/idea.vmoptions').read_text().splitlines()
-        options.extend(f'-Didea.{name}.path={self.root / "ide" / name}' for name in ('config', 'system', 'log'))
-        options.extend((f'-Didea.plugins.path={self.plugins}', f'-Duser.home={self.home}',
-                        f'-Djava.io.tmpdir={self.root / "tmp"}', '-Didea.initially.ask.config=never',
-                        '-Djb.consents.confirmation.enabled=false', '-Dide.experimental.ui.onboarding=false'))
-        vmoptions = self.root / 'ide/idea.vmoptions'
-        vmoptions.write_text('\n'.join(options) + '\n')
-        self.env['IDEA_VM_OPTIONS'] = str(vmoptions)
-        self.env['TMPDIR'] = str(self.root / 'tmp')
         self.endpoint = self.home / '.kast/ide-hosted' / hashlib.sha256(str(self.workspace).encode()).hexdigest()[:32]
 
     def start_idea(self):
+        self.idea_closed()
         with (self.root / 'logs/idea.stdout').open('a') as output, (self.root / 'logs/idea.stderr').open('a') as error:
             self.idea = subprocess.Popen([str(self.args.idea_home / 'MacOS/idea'), str(self.workspace)],
                                          cwd=self.workspace, env=self.env, stdout=output, stderr=error,
                                          start_new_session=True)
         self.idea_start = process_start(self.idea.pid)
         deadline = time.monotonic() + self.args.readiness_seconds
-        while not (self.endpoint / 'endpoint.json').is_file():
+        while True:
+            endpoint = self.endpoint / 'endpoint.json'
+            if endpoint.is_file() and json.loads(endpoint.read_text()).get('hostPid') == self.idea.pid:
+                break
             if self.idea.poll() is not None:
                 raise Rejected(Failure.NATIVE_PROCESS_EXITED, self.idea.returncode)
             if time.monotonic() >= deadline:
@@ -403,7 +452,7 @@ class NativeProof:
         return QueryProof(control_version, live['host'], live['epoch'], 'mixedproof.MixedVersionProof', len(rows))
 
     def status(self, control_version, expected_host=None):
-        result = self.command([self.home / '.config/kast', 'status', '--json'], reject=Failure.CONTROL_STATUS_REJECTED)
+        result = self.command([self.public_command, 'status', '--json'], reject=Failure.CONTROL_STATUS_REJECTED)
         document = json.loads(result.stdout)
         if any(document.get(field, {}).get('value') != control_version for field in ('installedVersion', 'loadedVersion')):
             raise Rejected(Failure.CONTROL_STATUS_REJECTED)
@@ -413,23 +462,255 @@ class NativeProof:
                 raise Rejected(Failure.CONTROL_STATUS_REJECTED)
 
     def control(self) -> ControlProof:
-        observed = subprocess.run(['/bin/ps', '-axo', 'pid,uid,command'], check=True, capture_output=True,
-                                  text=True, timeout=5)
-        candidates = []
-        for line in observed.stdout.splitlines():
-            fields = line.strip().split(None, 2)
-            if (len(fields) == 3 and fields[0].isdigit() and fields[1].isdigit()
-                    and str(self.installation) in fields[2] and 'io.github.amichne.kast.cli.KastDaemonMain' in fields[2]):
-                if int(fields[1]) != os.getuid():
-                    raise Rejected(Failure.OWNERSHIP_REJECTED)
-                candidates.append(int(fields[0]))
-        readiness = tuple(self.installation.glob('state/broker/*/service-readiness.json'))
-        if len(candidates) != 1 or len(readiness) != 1:
+        # Observe only the service label qualified by the installed launch receipt.
+        receipts = tuple(self.installation.glob('state/broker/*/service.plist'))
+        if len(receipts) != 1:
             raise Rejected(Failure.CONTROL_STATUS_REJECTED)
-        ready = json.loads(readiness[0].read_text())
+        launch = plistlib.loads(receipts[0].read_bytes())
+        label = launch.get('Label')
+        if not isinstance(label, str) or re.fullmatch(r'io\.github\.amichne\.kast\.broker\.[0-9a-f]{32}', label) is None:
+            raise Rejected(Failure.OWNERSHIP_REJECTED)
+        observed = subprocess.run(['/bin/launchctl', 'print', f'gui/{os.getuid()}/{label}'],
+                                  check=True, capture_output=True, text=True, timeout=5)
+        pids = re.findall(r'^\s*pid = ([0-9]+)\s*$', observed.stdout, re.MULTILINE)
+        if len(pids) != 1:
+            raise Rejected(Failure.CONTROL_STATUS_REJECTED)
+        pid = int(pids[0])
+        command = subprocess.run(['/bin/ps', '-p', str(pid), '-o', 'command='],
+                                 check=True, capture_output=True, text=True, timeout=5).stdout
+        if str(self.installation) not in command or 'io.github.amichne.kast.cli.KastDaemonMain' not in command:
+            raise Rejected(Failure.OWNERSHIP_REJECTED)
+        ready = json.loads(receipts[0].with_name('service-readiness.json').read_text())
         if ready.get('state') != 'ready' or ready.get('schemaVersion') != 3:
             raise Rejected(Failure.CONTROL_STATUS_REJECTED)
-        return ControlProof(candidates[0], process_start(candidates[0]), ready['serviceInstanceId'])
+        return ControlProof(pid, process_start(pid), ready['serviceInstanceId'])
+
+    def idea_closed(self):
+        identifier = plistlib.loads((self.args.idea_home / 'Info.plist').read_bytes())['CFBundleIdentifier']
+        if re.fullmatch(r'[A-Za-z0-9.]+', identifier) is None:
+            raise Rejected(Failure.INPUT_REJECTED)
+        result = subprocess.run(['/usr/bin/osascript', '-e', f'application id "{identifier}" is running'],
+                                capture_output=True, text=True, timeout=10, check=True)
+        if result.stdout.strip() != 'false':
+            raise Rejected(Failure.OWNERSHIP_REJECTED)
+
+    def lifecycle(self, operation):
+        return self.command([sys.executable, self.installation / 'share/kast/installation-lifecycle.py',
+                             '--installation', self.installation, operation, '--json'],
+                            reject=Failure.RESTORATION_UNVERIFIED, timeout=120)
+
+    def snapshot(self):
+        self.progress(Stage.SNAPSHOT)
+        self.idea_closed()
+        self.lifecycle('inspect')  # Production admission includes payload/configuration and runtime anchors.
+        self.original_control = self.control()
+        manifest = json.loads((self.installation / 'installation.json').read_text())
+        self.original_version = manifest['semanticVersion']
+        if self.original_version in (self.args.control_c1, self.args.control_c2):
+            raise Rejected(Failure.BASELINE_UNPROVEN)
+        self.original_anchors = manifest['externalAnchors']
+        self.original_login = tuple(single_file(Path(anchor['path'])) for anchor in self.original_anchors
+                                    if anchor['kind'] == 'login')
+        if len(self.original_login) != 1:
+            raise Rejected(Failure.BASELINE_UNPROVEN)
+        receipt_path = self.install_root / 'management.json'
+        receipt = json.loads(receipt_path.read_text())
+        if receipt['installationRoot'] != str(self.install_root):
+            raise Rejected(Failure.BASELINE_UNPROVEN)
+        self.public_command = Path(receipt['executable'])
+        self.registrations = receipt['registrations']
+        self.external = tuple(Path(item['destination']) for item in self.registrations)
+        if digest(self.public_command) != receipt['executableSha256'] or any(
+                digest(path) != item['payloadSha256'] for path, item in zip(self.external, self.registrations)):
+            raise Rejected(Failure.BASELINE_UNPROVEN)
+        self.original_registry = json.loads((self.installation / 'config/workspaces.json').read_text())
+        self.original_files = static_files(self.installation)
+        self.original_plugin = files(self.plugins / 'kast-ide-hosted')
+        self.original_plugin_mode = stat.S_IMODE((self.plugins / 'kast-ide-hosted').stat().st_mode)
+        self.registration_facts = tuple(single_file(path) for path in self.external)
+        self.external_original = tuple(single_file(path) for path in (receipt_path, self.public_command))
+        self.archive('control-original.tar', self.installation, self.original_files)
+        self.archive('plugin-original.tar', self.plugins / 'kast-ide-hosted', self.original_plugin)
+        self.archive('publication-original.tar', self.home, tuple(single_file(path, self.home) for path in
+                     (receipt_path, self.public_command)))
+        launches = tuple(self.installation.glob('state/broker/*/service.plist'))
+        arguments = plistlib.loads(launches[0].read_bytes()).get('ProgramArguments', [])
+        if arguments[:2] != ['/usr/bin/env', '-i']:
+            raise Rejected(Failure.BASELINE_UNPROVEN)
+        self.original_environment = dict(self.env)
+        for assignment in arguments[2:]:
+            if '=' not in assignment or assignment.startswith('/'):
+                break
+            key, value = assignment.split('=', 1)
+            if not re.fullmatch(r'[A-Z][A-Z0-9_]{0,127}', key):
+                raise Rejected(Failure.BASELINE_UNPROVEN)
+            if key not in ('BROKER_SERVICE_IDENTITY', 'BROKER_READINESS_FILE'):
+                self.original_environment[key] = value
+        if self.original_environment.get('HOME') != str(self.home):
+            raise Rejected(Failure.BASELINE_UNPROVEN)
+        self.original_environment['KAST_CONFIGURATION_FILE'] = str(self.installation / 'config/environment')
+        self.archive_digests = tuple((name, digest(self.root / name)) for name in
+                                    ('control-original.tar', 'plugin-original.tar', 'publication-original.tar'))
+        (self.root / 'snapshot.json').write_text(encode(Snapshot('ORIGINAL_NORMAL_INSTALLATION', str(self.installation),
+            self.original_version, self.original_control, self.original_files, self.original_plugin,
+            self.external_original, self.registration_facts, self.archive_digests, self.original_login)))
+        (self.root / 'snapshot.json').chmod(0o600)
+        self.snapshot_ready = True
+        self.verify_protected()
+
+    def archive(self, name, base, facts):
+        path = self.root / name
+        with tarfile.open(path, 'w') as archive:
+            directories = {ancestor for fact in facts for ancestor in (base / fact.relative_path).parents
+                           if ancestor != base and base in ancestor.parents}
+            for directory in sorted(directories):
+                if directory.is_symlink() or directory.stat().st_uid != os.getuid():
+                    raise Rejected(Failure.OWNERSHIP_REJECTED)
+                archive.add(directory, arcname=str(directory.relative_to(base)), recursive=False)
+            for fact in facts:
+                archive.add(base / fact.relative_path, arcname=fact.relative_path, recursive=False)
+        path.chmod(0o600)
+        if content_facts(facts) != content_facts(tuple(single_file(base / fact.relative_path, base) for fact in facts)):
+            raise Rejected(Failure.OWNERSHIP_REJECTED)
+
+    def verify_protected(self):
+        if tuple(single_file(path) for path in self.external) != self.registration_facts:
+            raise Rejected(Failure.PROTECTED_STATE_CHANGED)
+        receipt = json.loads((self.install_root / 'management.json').read_text())
+        if receipt['registrations'] != self.registrations or receipt['executable'] != str(self.public_command):
+            raise Rejected(Failure.PROTECTED_STATE_CHANGED)
+        registry = json.loads((self.installation / 'config/workspaces.json').read_text())
+        original = set(self.original_registry['roots'])
+        observed = set(registry['roots'])
+        if not original <= observed or not observed <= original | {str(self.workspace)}:
+            raise Rejected(Failure.PROTECTED_STATE_CHANGED)
+
+    def restore(self):
+        self.progress(Stage.RESTORE)
+        self.stop_idea()
+        self.idea_closed()
+        self.verify_protected()
+        current_control = payload_facts(static_files(self.installation))
+        current_plugin = files(self.plugins / 'kast-ide-hosted')
+        publications = tuple(single_file(path) for path in (self.install_root / 'management.json', self.public_command))
+        for name, expected in self.archive_digests:
+            if digest(self.root / name) != expected:
+                raise Rejected(Failure.RESTORATION_UNVERIFIED)
+        # Ordinary installed lifecycle owns retirement and runtime/alias cleanup. Never signal a control PID.
+        case_payload = json.loads((self.installation / 'installation.json').read_text())['payloadIdentity']
+        self.lifecycle('reset')
+        reset_state = self.installation / 'state'
+        state_identity = reset_state.lstat()
+        if (not stat.S_ISDIR(state_identity.st_mode) or state_identity.st_uid != os.getuid()
+                or reset_state.resolve() != reset_state or stat.S_IMODE(state_identity.st_mode) != 0o700):
+            raise Rejected(Failure.RESTORATION_UNVERIFIED)
+        entries = tuple(sorted(path.name for path in reset_state.iterdir()))
+        if entries not in ((), ('epoch.json',)):
+            raise Rejected(Failure.RESTORATION_UNVERIFIED)
+        reset_epoch = single_file(reset_state / 'epoch.json') if entries else None
+        if reset_epoch is not None:
+            epoch = json.loads((reset_state / 'epoch.json').read_text())
+            if (set(epoch) != {'schemaVersion', 'installation', 'epoch'} or epoch['schemaVersion'] != 1
+                    or epoch['installation'] != case_payload or str(uuid.UUID(epoch['epoch'])) != epoch['epoch']):
+                raise Rejected(Failure.RESTORATION_UNVERIFIED)
+        self.idea_closed()
+        with ExitStack() as locks:
+            for path, host_lock in ((self.install_root / 'activation.lock', False),
+                                    (self.install_root / 'management.lock', False),
+                                    (self.plugins.parent / '.kast-plugin-recovery/host-install.lock', True)):
+                fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+                locks.callback(os.close, fd)
+                if not stat.S_ISREG(os.fstat(fd).st_mode) or os.fstat(fd).st_uid != os.getuid():
+                    raise Rejected(Failure.OWNERSHIP_REJECTED)
+                (fcntl.flock if host_lock else fcntl.lockf)(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if (payload_facts(static_files(self.installation)) != current_control
+                    or files(self.plugins / 'kast-ide-hosted') != current_plugin
+                    or tuple(single_file(path) for path in (self.install_root / 'management.json', self.public_command)) != publications):
+                raise Rejected(Failure.PROTECTED_STATE_CHANGED)
+            self.verify_protected()
+            current_state = reset_state.lstat()
+            if ((current_state.st_dev, current_state.st_ino, current_state.st_uid) !=
+                    (state_identity.st_dev, state_identity.st_ino, state_identity.st_uid)
+                    or tuple(sorted(path.name for path in reset_state.iterdir())) != entries
+                    or reset_epoch is not None and single_file(reset_state / 'epoch.json') != reset_epoch):
+                raise Rejected(Failure.PROTECTED_STATE_CHANGED)
+            if reset_epoch is not None:
+                (reset_state / 'epoch.json').unlink()  # Discard only the exact reset-owned case epoch.
+            for name in ('bin', 'lib', 'share', 'config'):
+                shutil.rmtree(self.installation / name)
+            for path in self.installation.glob('state/broker/*/service.plist'):
+                path.unlink()
+            self.rehydrate('control-original.tar', self.installation)
+            shutil.rmtree(self.plugins / 'kast-ide-hosted')
+            (self.plugins / 'kast-ide-hosted').mkdir(mode=self.original_plugin_mode)
+            self.rehydrate('plugin-original.tar', self.plugins / 'kast-ide-hosted')
+            self.rehydrate('publication-original.tar', self.home)
+        environment = self.env
+        try:
+            self.env = self.original_environment
+            self.command([self.installation / 'share/kast/libexec/kast-service', 'enable'],
+                         reject=Failure.RESTORATION_UNVERIFIED, timeout=120)
+        finally:
+            self.env = environment
+        self.status(self.original_version)
+        self.lifecycle('inspect')  # Re-proves regenerated runtime anchors; archived runtime is never authority.
+        restored = self.control()
+        if (restored.service_generation == self.original_control.service_generation
+                or content_facts(static_files(self.installation)) != content_facts(self.original_files)
+                or content_facts(files(self.plugins / 'kast-ide-hosted')) != content_facts(self.original_plugin)
+                or content_facts(tuple(single_file(path) for path in (self.install_root / 'management.json', self.public_command))) != content_facts(self.external_original)
+                or content_facts(tuple(single_file(Path(fact.relative_path)) for fact in self.original_login)) != content_facts(self.original_login)):
+            raise Rejected(Failure.RESTORATION_UNVERIFIED)
+        self.verify_protected()
+        self.idea_closed()
+        self.restored_control = restored
+        self.progress(Stage.RESTORE, 'VERIFIED')
+
+    def rehydrate(self, name, base):
+        # Archives contain only case-admitted regular files; restore directly into the sole owner.
+        with tarfile.open(self.root / name) as archive:
+            for member in archive.getmembers():
+                relative = Path(member.name)
+                if not (member.isfile() or member.isdir()) or relative.is_absolute() or '..' in relative.parts:
+                    raise Rejected(Failure.RESTORATION_UNVERIFIED)
+                # Traverse by directory capability before any mkdir/write. Reject every alias,
+                # including an existing ancestor, without following it into unprotected user data.
+                with ExitStack() as descriptors:
+                    fd = os.open(base, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                    descriptors.callback(os.close, fd)
+                    if os.fstat(fd).st_uid != os.getuid():
+                        raise Rejected(Failure.OWNERSHIP_REJECTED)
+                    for part in relative.parts[:-1]:
+                        try:
+                            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                        except FileNotFoundError:
+                            os.mkdir(part, mode=0o700, dir_fd=fd)
+                            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                        descriptors.callback(os.close, child)
+                        if os.fstat(child).st_uid != os.getuid():
+                            raise Rejected(Failure.OWNERSHIP_REJECTED)
+                        fd = child
+                    name = relative.name
+                    if member.isdir():
+                        try:
+                            os.mkdir(name, mode=member.mode, dir_fd=fd)
+                        except FileExistsError:
+                            pass
+                        child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                        descriptors.callback(os.close, child)
+                        if os.fstat(child).st_uid != os.getuid():
+                            raise Rejected(Failure.OWNERSHIP_REJECTED)
+                        os.fchmod(child, member.mode)
+                    else:
+                        destination = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW,
+                                              member.mode, dir_fd=fd)
+                        if not stat.S_ISREG(os.fstat(destination).st_mode) or os.fstat(destination).st_uid != os.getuid():
+                            os.close(destination)
+                            raise Rejected(Failure.OWNERSHIP_REJECTED)
+                        os.ftruncate(destination, 0)
+                        with archive.extractfile(member) as source, os.fdopen(destination, 'wb') as output:
+                            shutil.copyfileobj(source, output)
+                            os.fchmod(output.fileno(), member.mode)
 
     def stop_idea(self):
         if self.idea is None or self.idea.poll() is not None:
@@ -444,9 +725,14 @@ class NativeProof:
         self.idea = None
 
     def execute(self, artifacts) -> Passed:
+        self.snapshot()
+        self.idea_closed()
+        if self.control() != self.original_control:
+            raise Rejected(Failure.OWNERSHIP_REJECTED)
         self.progress(Stage.INSTALL_C1_P1)
-        self.installer(self.args.control_c1, host_version=self.args.host_p1)
         self.control_installed = True
+        self.installer(self.args.control_c1, host_version=self.args.host_p1)
+        self.verify_protected()
         self.status(self.args.control_c1)
         control_c1 = self.control()
         prior = files(self.installation, ('bin', 'lib', 'share', 'config'))
@@ -492,28 +778,20 @@ class NativeProof:
         final_query = self.query(self.args.control_c2, final_host.host)
         if self.control() != control_c2:
             raise Rejected(Failure.HOST_INSTALL_CHANGED_CONTROL)
-        return Passed('PASSED', os.getuid(), 'PRIVATE_HOME_AND_IDEA_PROFILE_REAL_CURRENT_UID', str(self.root),
+        return Passed('PASSED', os.getuid(), 'SOLE_NORMAL_INSTALLATION_AND_IDEA_PROFILE_REAL_CURRENT_UID', str(self.root),
                       self.metadata['buildNumber'], artifacts, before, after, final_host, plugin,
                       query_c1, query_c2, final_query, control_c1, control_c2, control_after_host, True, True, ())
 
     def cleanup(self) -> tuple[Failure, ...]:
-        failures = []
-        if self.control_installed or (self.installation / 'installation.json').is_file():
-            try:
-                self.command([self.installation / 'share/kast/libexec/kast-service', 'disable'],
-                             reject=Failure.CLEANUP_UNVERIFIED, timeout=90)
-            except (Rejected, OSError):
-                failures.append(Failure.CLEANUP_UNVERIFIED)
+        if not self.control_installed:
+            return ()
+        if not self.snapshot_ready:
+            return (Failure.RESTORATION_UNVERIFIED,)
         try:
-            self.stop_idea()
-        except (Rejected, OSError, subprocess.SubprocessError):
-            failures.append(Failure.CLEANUP_UNVERIFIED)
-        if (self.home / '.gradle/daemon').is_dir():
-            try:
-                self.command([self.workspace / 'gradlew', '--stop'], reject=Failure.CLEANUP_UNVERIFIED, timeout=60)
-            except (Rejected, OSError):
-                failures.append(Failure.CLEANUP_UNVERIFIED)
-        return tuple(failures)
+            self.restore()
+            return ()
+        except (Rejected, OSError, ValueError, KeyError, subprocess.SubprocessError) as rejected:
+            return (rejected.failure if isinstance(rejected, Rejected) else Failure.RESTORATION_UNVERIFIED,)
 
 
 def receive(client: socket.socket, count: int) -> bytes:
@@ -528,8 +806,10 @@ def receive(client: socket.socket, count: int) -> bytes:
 
 def inputs(args) -> tuple[Artifact, ...]:
     if (platform.system() != 'Darwin' or platform.machine() != 'arm64' or os.getuid() == 0
+            or Path(os.environ.get('HOME', '')) != Path(pwd.getpwuid(os.getuid()).pw_dir)
             or args.owned_root.exists() or args.owned_root.is_symlink() or not args.owned_root.is_absolute()
-            or args.owned_root != args.owned_root.resolve() or not 1 <= args.readiness_seconds <= 1200):
+            or args.owned_root != args.owned_root.resolve() or not 1 <= args.readiness_seconds <= 1200
+            or args.owned_root == Path.home() or Path.home() in args.owned_root.parents and '.local' in args.owned_root.parts):
         raise Rejected(Failure.INPUT_REJECTED)
     info = json.loads((args.idea_home / 'Resources/product-info.json').read_text())
     if not info['buildNumber'].startswith('262.'):
@@ -565,9 +845,9 @@ def main() -> int:
     parser.add_argument('--repository', type=Path, default=Path(__file__).resolve().parents[3])
     parser.add_argument('--idea-home', type=Path, required=True, help='Canonical IDEA Contents directory')
     parser.add_argument('--assets', type=Path, required=True, help='Four archives, host release records/helper, and checksum sidecars')
-    parser.add_argument('--owned-root', type=Path, required=True, help='New absolute directory; logs and report are retained')
-    parser.add_argument('--control-c1', default='0.50.0')
-    parser.add_argument('--control-c2', default='0.50.1')
+    parser.add_argument('--owned-root', type=Path, required=True, help='New evidence/workspace directory only; normal installation and IDEA profile are used')
+    parser.add_argument('--control-c1', default='0.50.2')
+    parser.add_argument('--control-c2', default='0.50.3')
     parser.add_argument('--host-p1', default='0.49.0')
     parser.add_argument('--host-p2', default='0.49.1')
     parser.add_argument('--readiness-seconds', type=int, default=600)
@@ -589,9 +869,12 @@ def main() -> int:
     except (OSError, ValueError, KeyError, subprocess.SubprocessError):
         report = Failed('REJECTED', os.getuid(), str(args.owned_root), proof.stage,
                         Failure.INPUT_REJECTED, None, ())
+    failure_stage = proof.stage
     cleanup = proof.cleanup()
+    if not cleanup and isinstance(report, Passed):
+        report = replace(report, restored_original_version=proof.original_version, restored_control=proof.restored_control)
     if cleanup:
-        report = Failed('RECOVERY_REQUIRED', os.getuid(), str(args.owned_root), proof.stage,
+        report = Failed('RECOVERY_REQUIRED', os.getuid(), str(args.owned_root), failure_stage,
                         report.failure if isinstance(report, Failed) else Failure.CLEANUP_UNVERIFIED,
                         report.exit_code if isinstance(report, Failed) else None, cleanup)
     (args.owned_root / 'report.json').write_text(encode(report))
