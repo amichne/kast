@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c33222ee006eb8958718ac1316f8221eb585c22e70cdd73f3f6b651273709b1f",
+  "pageVersion": "sha256:ebc5587d4a42fb500a0bfd76d4072e5550e737a904387ece33047d4b2bf5da00",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -118,17 +118,35 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
-          "version": "repo-file-v1:sha256:eafe64a7a880b0f913dfb1bcb6f79de5b7533c84a64c6c9ce7b378fca183761f"
+          "version": "repo-file-v1:sha256:cc575d24332724147d42c3bd697f562ee108bd4387fa46c3e7d161db317f3a52"
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:b8cc5d96802f632a4c773f0516a90806c788431d2d7dd5b93ff47403ea83e060"
+          "version": "repo-file-v1:sha256:4b792fa3e9f30d9321bb1065248a7e6fbc6d50bbec4089a0c177b3df1a8f6e71"
+        }
+      ]
+    },
+    {
+      "id": "claim_aabb05e3798b4bc283779dddf552160a",
+      "statement": "Native installation dispatch explicitly forwards its admitted root, and public uninstall rejects unproven root paths before control-only lifecycle removal, preserving unrelated default installations.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
+          "version": "repo-file-v1:sha256:cc575d24332724147d42c3bd697f562ee108bd4387fa46c3e7d161db317f3a52"
+        },
+        {
+          "resource": "repo://install.sh",
+          "version": "repo-file-v1:sha256:4b792fa3e9f30d9321bb1065248a7e6fbc6d50bbec4089a0c177b3df1a8f6e71"
+        },
+        {
+          "resource": "repo://packaging/test-installer-removal.py",
+          "version": "repo-file-v1:sha256:592fa60f24fccf4a6b7a702074f2a2f26416d9cf18dc29e97dc80071c3a7e720"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T03:24:34.910Z"
+    "at": "2026-10-02T03:37:43.185Z"
   }
 }

@@ -39,7 +39,7 @@ code_sources:
   - path: build-policy/configuration-ingress.json
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T03:24:34.910Z
+    at: 2026-10-02T03:37:43.185Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
@@ -53,7 +53,7 @@ sources:
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - id: openwiki-source-40ab5c6f8a11b724c001ed82
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
-generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+generated: { by: "codex", at: "2026-10-02T03:37:43.185Z" }
 ---
 
 # Installation configuration
@@ -147,3 +147,5 @@ The private service-control entry point is also a declared raw-environment ingre
 Component selection belongs to installation ingress: `KAST_INSTALL_CONTROL_ONLY` selects a control-only upgrade and `KAST_HOST_VERSION` selects host provenance only for a paired or host installation. Local checkout routing retains `KAST_LOCAL_COMPONENT`, `KAST_LOCAL_PROFILE`, and `KAST_LOCAL_HOST_RELEASE_RECORD`. Control-only replacement retains the admitted saved configuration and workspace registration; it starts fresh control state and session ownership.
 
 Exact-version reinstall cold-stages only Control with `--stage-only`, then the existing fenced lifecycle owner activates it. Staging requires no Host artifact and cannot be combined with the bounded `--control-only` upgrade, whose activation and live host checks are mandatory.
+
+The native private-installer boundary removes inherited Host-version and installation selectors, retains ordinary process inputs, and supplies its owned report destination. After admitting installation ownership, install and uninstall explicitly forward that selected root; a foreign ambient root cannot redirect those effects to the default installation.

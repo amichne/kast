@@ -161,7 +161,7 @@ code_sources:
     symbols: [GenerateComponentReleaseTask]
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T03:24:34.910Z
+    at: 2026-10-02T03:37:43.185Z
 sources:
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
@@ -191,7 +191,9 @@ sources:
     resource: repo://install.sh
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
-generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+  - id: openwiki-source-27c69d628b97ee3d2536e2d1
+    resource: repo://packaging/test-installer-removal.py
+generated: { by: "codex", at: "2026-10-02T03:37:43.185Z" }
 ---
 
 # Distribution and packaging
@@ -407,3 +409,5 @@ configuration and does not establish that a client loaded or invoked the tools.
 Destructive `uninstall --force` and `reinstall --force` bypass old payload and receipt ownership admission while retaining canonical root scope and verified daemon retirement. An exterior fence and persistent lock survive root replacement. The fence records retained storage before the old root is moved atomically to a scoped sibling recovery directory. The runtime boundary unloads exact root-derived launchd jobs, removes exact login entries, and retires scoped Kast process incarnations within a bounded deadline. Shared IDEA and Gradle processes are excluded. Erasure accepts only a quiescent typestate; a retirement or cleanup rejection preserves the fence and reports retained storage.
 
 The closed lifecycle progresses through privately constructed fenced, quiescent, erased, staged, readiness-proven, and active types. A single-use lease rejects replayed effect transitions. The embedded installer cold-stages a fresh latest-stable payload under the selected root, requiring the manifest-qualified reset fence capability. Payload admission and a staging report establish committed bytes without claiming active readiness. Activation records `ACTIVATING` while retaining the exterior marker. Daemon startup requires that intent and the live exclusive reset lease; tools remain fenced until readiness verifies the fresh version and canonical service generation and the marker is lifted. Only then can the lifecycle produce `RESET_REINSTALLED`. Failed staging or activation restores the fence and retires partial startup. Failed compensation preserves the original and recovery failures in `RESET_RECOVERY_REQUIRED`. Interrupted retention remains discoverable through the exterior fence; the lock stays stable across resets. No old registration history survives successful erasure, external harness registrations remain, and erased data has no rollback. OS or filesystem refusal remains a finite failure. The canonical lifecycle schema includes all force reset variants.
+
+Native installer dispatch explicitly passes the already admitted installation root. Public uninstall admits an existing physically canonical outer root before invoking control-only removal; unrelated default installations remain outside those effects.

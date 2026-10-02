@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:31965a02626a423ade40517b4c9e599444998b26123400cccce189ad8ff40483",
+  "pageVersion": "sha256:c557e453650bf3f002abdae5efe233a7c343b33c84790150b6292f906eea0867",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -44,15 +44,15 @@
     },
     {
       "id": "claim_c032540f949b4a01b41497ccea64b94b",
-      "statement": "The native private installer removes inherited control installation/version/channel/report selectors, supplies its own report path, and cold-stages an exact Control release before the fenced lifecycle activates it.",
+      "statement": "The native private installer removes inherited Control and Host release, installation, channel and report selectors, supplies an owned report path, explicitly forwards the admitted installation root, and cold-stages exact Control reinstall before fenced activation.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L145-L157",
-          "version": "repo-lines-v1:sha256:8137b3e825d9fea148a1f9b91b6640be3ed6ed8eac845f28dfae3715561f4d09:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyZjE3N2NkMjgwMGE3ZTYzYTU5YTJkMDU5ZGNlYjdjNzAyZjM4M2E0NjVlZTgzYWJjMjZkZjFjY2M0NTgyYzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjYTFhZDEyMzU1ZDNkMjA3MDIwNzJhZjA5NTNiZWFmN2IwOWFhNzQ1NGY1YTE2ZTBhYjZhOTEzM2E1NmExZDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwMDQyMDY1MTI1OGI4ZGVhMzU5OWE5Y2ZlM2Y2YWEyYjI3ZjQyODFhYWFmMTYyNjI2MjlmYmYwMGRkZDdhYWIifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L149-L170",
+          "version": "repo-lines-v1:sha256:4d1ab4532918fee733ad51165549938e080084e9127dfbd4b209c0a17165fdaa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3OWVhMGUzYjkyY2UyNDI0ZTVjOTQ1MTI5ZWYyZTNmOWZlM2FmNWRiZWU1YjdiNzMwMjVhYTcwYmU5N2RiNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzZDk0NmRjOTE2NThmNjJlMjI4MGYzYWUwNzlkMjBkYTJkZTRmYmIyNGUxYjc4MzViMGFhOWZhMTY1MWJmYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjNzhjMzQzM2IxOTNhMDVlNGYzZjcwNjBiMGViZjQyZjA1YjllOWY0YjUxM2U1NmI0MmFjOGY0MzBkZWViYmIifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L68-L89",
-          "version": "repo-lines-v1:sha256:130623c2355092294cc195b1bb861a61f3cb813d3148cbd561de8d56277efe6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MDhjODkzYjcxMDNmY2IyYTYxOGYwMjRiODRmZDkyMGI0N2E5ZTZlOWNkZTFkYzhiOWQ5YWQ5ZmMyNTJiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxY2M2MzEwMmM4YmZmYWE0OTNiNjcwZGY0NjgxZDY1MDhkMTNjMjhiZjA3NGM1MDY5NGRmNDQ3NDUyNWEwNDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4MTEyZTg5NmMwZDYyYjZmMWMzOTQ4YTQ2NmE2NTcxOGVkMGQ5MzZiYmU5ZDMwMjhmOGQyNGQ4MGNiOGFkMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyM2E2MGRjMzFhNzc4N2YxMmQzNGRkYTUyYmFhZGE2Yzg1NGFhNzQ5NWY5ZTI2ZTZlYWJiMTI2ZTczM2NhZjUifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L93-L108",
+          "version": "repo-lines-v1:sha256:2d617093e303a86928d7799650c4c2e588d321737e0e82eb174f2c190e017ed5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzM2UyMTRkYWM1Nzc1MTVkZTdhZWIwZWMzNzQ4YTNjNjhlZjQ5M2I5MzhmZmIzNjBkMzQ5ZWVjNmE0MmVlNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3NjBjYWNkNjZiODA5OTE1OWVjOTBlMzcyNDMxNDMyMGU0NDU3MTI0YzBlODQwOTNmYjA1NmU2ZmMyMWI1ZjMifQ"
         }
       ]
     },
@@ -73,6 +73,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T03:24:34.910Z"
+    "at": "2026-10-02T03:37:43.185Z"
   }
 }
