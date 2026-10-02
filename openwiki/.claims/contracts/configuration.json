@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:71546bbedf7deb110614b472a8ed4ac7f79e214a52c9e03c313777f4a66b5218",
+  "pageVersion": "sha256:df56df36e3ee6cfea71d109c2befeab4ac857c0ee2c316b9618802f0054bbe2f",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -103,10 +103,20 @@
           "version": "repo-lines-v1:sha256:7284b697dc09438e56d8e7359805a13544c093cb0bcc2b5116ea5ef642659191:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzBjODFhODFjOTFmM2VmZTkwNjVjODlhNzkzODQ1Y2U2MjFjMTkzYzU3ZGM1NGEzYzc5YmRkZGFjYjMwNDMzZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQwZTcxY2RhYzEyODE0Yzk5MWY1NzNhMjhjZGMzN2RiNDY2MzYzZWM3ZjdkNzcwODAxNGNjODdiYmMzMjAwMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2Y4YWJkYWFjNjZlYTEzNjc3YTZjZjAzMjc4MzQ0NThhN2U4MDQ1ODZjNzBiNWM1ZTkwNjIyODhhZWI0MDEwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2YxODc3MDI1ZGMwZWUzNjc1NTgxYmFlZGMxYjNkODZmZDg5ZjM4ZWJiZDIyN2NlYzIzYjBlYjE3YjM3YWFjNCJ9"
         }
       ]
+    },
+    {
+      "id": "claim_d03fecc220cb478a81bd2a1f4355daa5",
+      "statement": "Checkout Control-only assembly selects only the Control artifact and clears any inherited Host version selector before public installation; Host and paired checkout assembly retain their generated Host version.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/install-checkout.sh#L67-L94",
+          "version": "repo-lines-v1:sha256:0caef1e9235ac06e22c3e08a1f1300f308bf4d6a8a7f8a4e5585a7f195271e41:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwZWZmYTRjNTljOTM0NGY0N2M3MTc4NTkxMWNlYzEwY2JhMDU5OTk3YzJmOThlMDU4YjFhYzI2ZDljYThiNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkZTk3ZWZiYTc1YTVhZGU0MzUwYmUyOGQ5NWJlNDEwMDg1ODU0Nzg5NjQ5ZTQwYjE2ZjM0YTcxNjAzODFmNzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NTMzNTQ4M2U1NTliNDdkNGU2YmRjNDVjMmViYzM0MDAyODFiZDI0YzcyNmNjMDk5ZWM2YWQ5NGJlNWY5YjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T08:15:19.347Z"
+    "at": "2026-10-02T12:09:23.229Z"
   }
 }

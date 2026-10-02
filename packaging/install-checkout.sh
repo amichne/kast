@@ -87,6 +87,8 @@ if [[ "$component" != control ]]; then
   cp "$checkout/build/generated/host-release/$record_name.sha256" "$scratch/$record_name.sha256"
 fi
 
-KAST_INSTALL_PROFILE="$mode" KAST_VERSION="$version" KAST_HOST_VERSION="$version" KAST_RELEASE_BASE_URL="$base_url" \
+host_version=""
+[[ "$component" == control ]] || host_version="$version"
+KAST_INSTALL_PROFILE="$mode" KAST_VERSION="$version" KAST_HOST_VERSION="$host_version" KAST_RELEASE_BASE_URL="$base_url" \
 KAST_INSTALL_ASSETS_DIRECTORY="$scratch" \
   bash "$installer" ${options[@]+"${options[@]}"} >&2

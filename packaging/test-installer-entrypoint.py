@@ -187,8 +187,8 @@ else:
         binary.chmod(0o755)
         return {"PATH": str(binary.parent) + os.pathsep + TOOL_PATH}
 
-    def upgrade_fixture(self, directory, *, cold_staging=False):
-        idea, assets, environment = self.installer_fixture(directory, version='1.2.4')
+    def upgrade_fixture(self, directory, *, cold_staging=False, version='1.2.4'):
+        idea, assets, environment = self.installer_fixture(directory, version=version)
         root = Path(directory).resolve()
         install = Path(environment['KAST_INSTALL_ROOT'])
         prior = install / 'installation'
@@ -197,6 +197,7 @@ else:
         environment.update(TEST_LOG=str(log), TMPDIR=str(root / 'tmp'))
         (root / 'tmp').mkdir()
         scripts = {
+            'share/kast/ide-host.json': json.dumps(asdict(ControlMetadataFixture(version))).encode(),
             'share/kast/libexec/kast-management': b'''#!/bin/sh
 set -eu
 if [ "$1" = --internal-install ]; then
@@ -275,9 +276,10 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
 ''',
         }
         if cold_staging: scripts['share/kast/reset-fence-v1'] = b'1\n'
-        control = assets / 'kast-control-v1.2.4-macos-aarch64.tar.gz'
+        control = assets / f'kast-control-v{version}-macos-aarch64.tar.gz'
         with tarfile.open(control, 'w:gz') as archive:
             for path, content in scripts.items():
+                if path == 'share/kast/libexec/kast-service': content = content.replace(b'1.2.4', version.encode())
                 item = tarfile.TarInfo(path)
                 item.mode, item.size = 0o755, len(content)
                 archive.addfile(item, io.BytesIO(content))
@@ -530,6 +532,96 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                     else:
                         self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
                         self.assertTrue((Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/plugin.jar').exists())
+
+    def test_checkout_selects_only_its_component_and_reaches_real_public_installer(self):
+        version = '0.20261002.30000'
+        for component in ('control', 'host', 'pair'):
+            with self.subTest(component=component), tempfile.TemporaryDirectory(prefix='kast-checkout-component-') as directory:
+                idea, environment, _, effect_log = self.upgrade_fixture(directory, version=version)
+                root, assets = Path(directory).resolve(), Path(environment['KAST_INSTALL_ASSETS_DIRECTORY'])
+                checkout = root / 'checkout'
+                (checkout / 'packaging').mkdir(parents=True)
+                (checkout / 'build.gradle.kts').touch()
+                (checkout / 'packaging/install-local.sh').touch()
+                adapter = checkout / 'packaging/install-checkout.sh'
+                shutil.copyfile(ROOT / 'packaging/install-checkout.sh', adapter)
+                shutil.copyfile(ROOT / 'packaging/host-installation.py', checkout / 'packaging/host-installation.py')
+                build_log, forwarding = root / 'build.log', root / 'forwarding.log'
+                control_name = f'kast-control-v{version}-macos-aarch64.tar.gz'
+                host_name = f'kast-ide-hosted-v{version}-idea-262.zip'
+                record_name = f'kast-host-release-v{version}.json'
+                expected_build = ['--console=plain', f'-PhostedIdeaHome={idea}']
+                copies = []
+                if component != 'host':
+                    expected_build.append(f'-PcontrolVersion={version}')
+                    copies.append((control_name, f'build/distributions/{control_name}'))
+                if component != 'control':
+                    expected_build.append(f'-PhostedPluginVersion={version}')
+                    copies.extend(((host_name, f'runtime/hosted/build/distributions/{host_name}'),
+                                   (record_name, f'build/generated/host-release/{record_name}'),
+                                   (record_name + '.sha256', f'build/generated/host-release/{record_name}.sha256')))
+                if component != 'host': expected_build.append('assembleKastControlDist')
+                if component != 'control': expected_build.append('generateHostReleaseRecord')
+                gradle = checkout / 'gradlew'
+                gradle.write_text(f'''#!{sys.executable}
+import json, shutil, sys
+from pathlib import Path
+log = Path({str(build_log)!r})
+assert not log.exists(), 'excess build call'
+assert sys.argv[1:] == {expected_build!r}, 'unexpected build arguments'
+log.write_text(json.dumps(sys.argv[1:]))
+for source, destination in {copies!r}:
+    target = Path(destination)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(Path({str(assets)!r}) / source, target)
+''')
+                gradle.chmod(0o755)
+                date = root / 'bin/date'
+                date.write_text('#!/bin/sh\ncase "$*" in "-u +%Y%m%d") echo 20261002 ;; "-u +%H%M%S") echo 030000 ;; *) exit 97 ;; esac\n')
+                date.chmod(0o755)
+                public_entry = checkout / 'install.sh'
+                public_entry.write_text(f'''#!/bin/sh
+test ! -e "$TEST_FORWARDING" || exit 98
+printf 'host-selector:%s:%s\\n' "${{KAST_HOST_VERSION+x}}" "${{KAST_HOST_VERSION-}}" > "$TEST_FORWARDING"
+printf 'argument:%s\\n' "$@" >> "$TEST_FORWARDING"
+for asset in "$KAST_INSTALL_ASSETS_DIRECTORY"/*; do printf 'asset:%s\\n' "${{asset##*/}}" >> "$TEST_FORWARDING"; done
+exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
+''')
+                public_entry.chmod(0o755)
+                options = [] if component == 'pair' else [f'--{component}-only']
+                options += ['--skip-codex-mcp', '--idea-home', str(idea)]
+                environment.update(KAST_HOST_VERSION='99.0.0', TEST_FORWARDING=str(forwarding),
+                                   KAST_MANAGEMENT_REPORT_PATH=str(root / 'receipt.json'))
+                protected_host = Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted'
+                if component == 'control':
+                    protected_host.mkdir(parents=True)
+                    marker = protected_host / 'host.jar'
+                    marker.write_bytes(b'P1')
+                    host_before = (protected_host.stat().st_ino, marker.read_bytes())
+                result = subprocess.run([str(BASH), str(adapter), 'persistent', *options],
+                    cwd=checkout, env=environment, capture_output=True, text=True, timeout=10)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(expected_build, json.loads(build_log.read_text()))
+                if component == 'control':
+                    self.assertFalse((checkout / 'runtime/hosted/build/distributions').exists())
+                    self.assertFalse((checkout / 'build/generated/host-release').exists())
+                forwarded = forwarding.read_text().splitlines()
+                self.assertEqual('host-selector:x:' + ('' if component == 'control' else version), forwarded[0])
+                self.assertEqual(['argument:' + option for option in options], [line for line in forwarded if line.startswith('argument:')])
+                primary = ([control_name] if component != 'host' else [])
+                if component != 'control': primary += [host_name, record_name, 'host-installation.py']
+                expected_assets = primary + [name + '.sha256' for name in primary]
+                self.assertEqual(sorted(expected_assets), sorted(line.removeprefix('asset:') for line in forwarded if line.startswith('asset:')))
+                if component == 'host':
+                    self.assertFalse(effect_log.exists())
+                    self.assertTrue((Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/plugin.jar').exists())
+                else:
+                    self.assertEqual(['service', 'seal'] if component == 'control' else ['service', 'plugin', 'seal', 'review'], effect_log.read_text().splitlines())
+                    self.assertEqual(version, json.loads((root / 'receipt.json').read_text())['semanticVersion'])
+                    with tarfile.open(assets / control_name) as archive:
+                        self.assertEqual(version, json.load(archive.extractfile('share/kast/ide-host.json'))['productVersion'])
+                    if component == 'control':
+                        self.assertEqual(host_before, (protected_host.stat().st_ino, marker.read_bytes()))
 
     def test_component_explicit_registration_rejects_in_either_order_before_effects(self):
         for component in ('--control-only', '--host-only', '--stage-only'):
