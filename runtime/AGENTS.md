@@ -44,6 +44,6 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 
 ## Navigation Hints
 
-- Start with [runtime hosts](../knowledge/modules/runtime-hosts.md) and [hosted queries](../knowledge/flows/hosted-query.md).
+- Start with [runtime hosts](../openwiki/modules/runtime-hosts.md) and [hosted queries](../openwiki/flows/hosted-query.md).
 - Follow canonical dispatch into `query/protocol`; follow change planning into `change/protocol` and the phase owners.
 - The isolated composition, server, and telemetry modules are retired. IDEA owns project import and indexing.

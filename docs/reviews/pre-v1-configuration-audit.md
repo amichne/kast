@@ -16,7 +16,7 @@ configuration admission, retired runtime setup, and their direct consumers.
 | Identical IDEA distribution/platform pins could drift independently. | Consolidated compilation/distribution selection on `idea-platform-build`. The independently selected packaged host retains `ide-host-build`. |
 | Obsolete and unused dependency declarations remained. | Removed the redundant coroutines `jdk8` dependency and unused JUnit 4 and Gradle Tooling API catalogue aliases. The selected core constraint is unchanged. Coroutines [merged Java 8 integration into core in 1.7](https://github.com/Kotlin/kotlinx.coroutines/blob/master/CHANGES.md#version-170). |
 
-Remove the eight retired assignments listed in the [configuration contract](../../knowledge/contracts/configuration.md)
+Remove the eight retired assignments listed in the [configuration contract](../../openwiki/contracts/configuration.md)
 from saved files or the calling environment. They now reject; they are not silently
 ignored or translated into unrelated IDEA settings. This is an intentional pre-v1
 configuration break.

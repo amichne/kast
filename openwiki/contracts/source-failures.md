@@ -1,0 +1,90 @@
+---
+type: Kotlin Contract
+title: Source failure origin
+description: Source reads distinguish invalid fields, rejected references, and failed internal obligations without disclosing input bytes.
+resource: file://protocol/contract
+tags: [source, failure, protocol]
+code_sources:
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReadReferenceAdmission.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceExecutionBudgetIngress.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceRequestAdmission.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestFieldReader.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestIngress.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadSimpleIngress.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReferenceFailures.kt
+  - path: source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalReadRejectedDocument.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SourceFailureMatrixTest.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPublicationFailureCause.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T02:00:02.467Z
+sources:
+  - id: openwiki-source-5b732bfe7e48127126e930e6
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt
+  - id: openwiki-source-4cbc119615e512042aa43ff5
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestIngress.kt
+generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+---
+
+# Source failure origin
+
+`SourceReadCause` retains existing finite read conditions and three disjoint
+failure objects. `AdmittedSourceReadRejection` adds the granted budget without
+replacing the cause. Compact and expanded reads use the same failure contract. Source cause and
+request-expectation objects own the `type` discriminator, including when nested
+inside a transport whose outer discriminator differs.
+
+- `request-rejected` identifies an authored field path, bounded collection
+  positions where needed, a closed rule, and applicable alternatives or bounds.
+  Supplied execution-budget controls retain their exact nested field and integer
+  bounds; absent and null optional controls retain default selection.
+- `reference-rejected` retains the reference role and the cause known by the
+  existing lookup authority. A missing retained handle is unavailable; it does
+  not prove staleness, expiry, or foreign ownership.
+- `internal-contract-failure` identifies a failed context, snapshot, scope,
+  visibility, admission, or projection obligation. Recovery is to report the
+  failure, rather than change a request without evidence of a request defect.
+
+Internal source ingress uses the typed request serializer and finite validation
+owner. It rejects malformed input before source execution. The short exact-symbol
+request refines its opaque selector before supplying canonical source defaults.
+A mixed `symbol` and `anchor` request is rejected as an unknown field, rather
+than choosing one identity silently. Query's optional `SOURCE` projection still
+uses internal extraction.
+Valid unordered declaration-kind and visibility selections are accepted and
+normalized by their existing domain owners; ordering is not a caller predicate.
+Native and retained-output continuation syntax remains distinct and supported.
+
+Diagnostics contain only finite authored labels and bounded indexes. They do not
+contain source text, parser messages, raw tokens, or stack traces. Recovery labels
+grant no implicit refresh, retry, or reacquisition effect.
+
+The source service checks its admitted context and returned snapshot before
+publication. Snapshot contradictions remain internal failures. Projection failures
+retain separate result and qualification obligations. Source enumeration retains its coverage contract. Fresh symbol-anchored reads
+may carry optional refreshed-handle metadata; expanded and compact projections
+preserve it. Reacquisition failures retain their exact reason, including work
+and time exhaustion, and do not become generic stale-source errors.
+
+Source retention capacity is distinct from an unavailable owner or invalid
+publication. Native cursor retention refusal preserves proven entities with
+`RETENTION_LIMIT_REACHED`. A fitted prefix whose output suffix cannot be retained
+keeps its facts, known minimum and original upstream coverage in the closed
+`retention_unavailable` progress variant, and advertises no token. Indivisible
+output still has a finite byte-grant outcome. Final publication failures retain
+exact owner-retired, claim-unavailable, expired, dependency-unavailable, page-
+mismatch, non-advancing, invalid-page and capacity causes in the host envelope.
+They do not become a generic stale request or a successful semantic page.
+
+This contract does not establish the cause of any unobserved enterprise failure.
+Installed and released-byte qualification remains separate from unit and schema
+verification.

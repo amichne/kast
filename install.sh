@@ -177,16 +177,18 @@ Bootstrap Kast for the current user.
 
 Usage:
   install.sh [--idea-home <absolute-path>] [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
-             [--register-codex-mcp | --skip-codex-mcp] [--verbose]
+             [--register-codex-mcp | --skip-codex-mcp] [--install-root <absolute-path>] [--stage-only] [--verbose]
   install.sh --help
 
 The default command installs the latest release into:
   ${XDG_DATA_HOME:-$HOME/.local/share}/kast
 
-and publishes the native management command at `$XDG_CONFIG_HOME/kast` when
+It publishes the native management command at `$XDG_CONFIG_HOME/kast` when
 `XDG_CONFIG_HOME` is nonempty, otherwise at `$HOME/.local/bin/kast`. If that
 directory is not on PATH, installation succeeds and prints the absolute path
 and directory to add. No shell profile is edited.
+`--install-root` selects an explicit absolute installation directory.
+`--stage-only` commits a compatible payload without starting its daemon; the lifecycle owner activates it later.
 When `--idea-home` is omitted, installation checks `/Applications`,
 `~/Applications`, and the JetBrains Toolbox app directory for a compatible IDEA.
 
@@ -511,8 +513,10 @@ action=install
 managed_registrations=0
 version="${KAST_VERSION:-}"
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
+requested_install_root=""
 mode=apply
 force=0
+stage_only=0
 developer_latest=0
 codex_mcp_choice=unspecified
 verbose=0
@@ -527,6 +531,11 @@ while [[ $# -gt 0 ]]; do
     --help|-h)
       usage
       exit 0
+      ;;
+    --stage-only)
+      [[ "$action" == install ]] || fail "--stage-only is valid only for installation"
+      stage_only=1
+      shift
       ;;
     --force)
       [[ "$action" == install ]] || fail "--force is valid only for installation"
@@ -566,6 +575,12 @@ while [[ $# -gt 0 ]]; do
       version="${2#v}"
       shift 2
       ;;
+    --install-root)
+      [[ "$action" == install && $# -ge 2 ]] || fail "--install-root is valid only for installation and requires a value"
+      requested_install_root="$2"
+      [[ -n "$requested_install_root" ]] || fail "--install-root requires a nonempty path"
+      shift 2
+      ;;
     --idea-home)
       [[ "$action" == install && $# -ge 2 ]] || fail "--idea-home is valid only for installation"
       idea_home="$2"
@@ -589,7 +604,7 @@ if [[ -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]]; then
   [[ "$profile" == persistent ]] || fail 'session installation requires local build artifacts; use packaging/install-checkout.sh'
   [[ -z "${KAST_INSTALL_ROOT+x}${KAST_BIN_DIR+x}" ]] || fail 'custom installation paths require the development installer'
 fi
-install_root="${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}"
+install_root="${requested_install_root:-${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}}"
 bin_directory="${KAST_BIN_DIR:-$HOME/.local/bin}"
 for retired in KAST_INDEXER_MAX_HEAP KAST_WORKER_RESIDENT_LIMIT KAST_WORKER_STARTUP_LIMIT KAST_WORKER_AGGREGATE_MIB KAST_WORKER_NATIVE_MIB KAST_WORKER_GRADLE_MIB KAST_RUNTIME_ARCHIVE KAST_RUNTIME_STORE KAST_CACHE_ROOT KAST_ENABLE_APP_SERVER KAST_APP_SERVER_TOOLS KAST_ENABLE_LAUNCHD KAST_INSTALL_REFRESH_APP_SERVER KAST_INSTALL_REPLACE_COMMAND_COLLISIONS; do
   [[ -z "${!retired+x}" ]] || fail "$retired is retired; remove it from the environment before installing"
@@ -779,6 +794,12 @@ export JAVA_HOME="$java_home"
 # Pass reset authority as a command option so older payloads reject it before effects.
 installation_options=()
 [[ "$force" == 0 ]] || installation_options+=(--force)
+if [[ "$stage_only" == 1 ]]; then
+  [[ -f "$control_root/share/kast/reset-fence-v1" && ! -L "$control_root/share/kast/reset-fence-v1" ]] ||
+    fail 'this release cannot stage a fenced reset; upgrade the recovery executable and select a compatible release'
+  [[ "$(cat "$control_root/share/kast/reset-fence-v1")" == 1 ]] || fail 'reset capability is incompatible'
+  installation_options+=(--stage-only)
+fi
 if [[ -n "${KAST_MANAGEMENT_REPORT_PATH:-}" && "$mode" == apply && "$profile" == persistent ]]; then
   run_installer_step "App server and service installation" "$KAST_MANAGEMENT_REPORT_PATH" \
     "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}

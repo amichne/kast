@@ -32,6 +32,6 @@ Models exact source selection, ranges, snapshots, and identity; serves reads thr
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - Establish coordinate and identity semantics in `contract` before diagnosing offsets or stale reads in the IntelliJ adapter.

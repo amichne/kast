@@ -34,7 +34,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/index.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/quickstart.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For user-visible behavior, start with the relevant public page, then verify every claim against protocol/source contracts.
 - Treat `site/` as rendered output; edit `docs/public` instead.

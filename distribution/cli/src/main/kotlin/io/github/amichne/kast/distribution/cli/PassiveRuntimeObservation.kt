@@ -29,7 +29,10 @@ private const val MAXIMUM_FRAME_BYTES = 16384
 private const val MAXIMUM_HEADER_BYTES = 8192
 private const val SOCKET_PATH_LIMIT_BYTES = 104
 private const val WEBSOCKET_ACCEPT_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-private val observationJson = Json { ignoreUnknownKeys = true }
+private val observationJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
+}
 
 @Serializable
 private data class RuntimeStatusRequest(val type: RuntimeRequestType = RuntimeRequestType.STATUS, val version: Int = 1)
@@ -78,51 +81,85 @@ private enum class ReadinessType {
 
 @Serializable
 private data class RuntimeReadiness(
-    val type: ReadinessType,
+    val state: ReadinessType,
     val schemaVersion: Int,
     val serviceInstanceId: String,
 )
 
-internal data class PassiveRuntimeObservation(
-    val loadedVersion: Observation<String>,
-    val activeWorkspaces: Observation<List<String>>,
-    val liveConnections: Observation<Int>,
-)
+@Serializable
+internal enum class RuntimeObservationFailure {
+    EPOCH_UNAVAILABLE,
+    EPOCH_REJECTED,
+    MANIFEST_UNAVAILABLE,
+    MANIFEST_REJECTED,
+    READINESS_UNAVAILABLE,
+    READINESS_REJECTED,
+    SOCKET_UNAVAILABLE,
+    EXCHANGE_UNAVAILABLE,
+    RESPONSE_REJECTED,
+    IDENTITY_MISMATCH,
+    PROJECTION_UNAVAILABLE,
+    PROJECTION_REJECTED,
+}
+
+internal sealed interface PassiveRuntimeObservation {
+    val loadedVersion: Observation<String>
+    val activeWorkspaces: Observation<List<String>>
+    val liveConnections: Observation<Int>
+
+    data class Observed(
+        val generation: RuntimeServiceGeneration,
+        override val loadedVersion: Observation<String>,
+        override val activeWorkspaces: Observation<List<String>>,
+        override val liveConnections: Observation<Int>,
+    ) : PassiveRuntimeObservation
+
+    data class Rejected(val failure: RuntimeObservationFailure) : PassiveRuntimeObservation {
+        override val loadedVersion: Observation<String>
+            get() = Observation.unavailable(failure.name)
+
+        override val activeWorkspaces: Observation<List<String>>
+            get() = Observation.unavailable(failure.name)
+
+        override val liveConnections: Observation<Int>
+            get() = Observation.unavailable(failure.name)
+    }
+}
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
-internal fun observeRuntime(installation: Path): PassiveRuntimeObservation {
-    val unavailable =
-        PassiveRuntimeObservation(
-            Observation.unavailable("runtime_unavailable"),
-            Observation.unavailable("runtime_unavailable"),
-            Observation.unavailable("runtime_unavailable"),
-        )
+internal fun observeRuntime(
+    installation: Path,
+    exchange: (Path, String) -> String? = ::boundedExchange,
+): PassiveRuntimeObservation {
     val epochRaw =
-        readBoundedFile(installation.resolve("state/epoch.json"), MAXIMUM_HEADER_BYTES.toLong()) ?: return unavailable
+        readBoundedFile(installation.resolve("state/epoch.json"), MAXIMUM_HEADER_BYTES.toLong())
+            ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EPOCH_UNAVAILABLE)
     val epoch =
         try {
             observationJson.decodeFromString<RuntimeEpoch>(epochRaw)
         } catch (_: SerializationException) {
-            return unavailable
+            return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EPOCH_REJECTED)
         }
     if (
         epoch.schemaVersion != 1 ||
             !epoch.installation.startsWith("sha256:") ||
             !validSha256(epoch.installation.removePrefix("sha256:"))
     )
-        return unavailable
-    val manifestRaw = readBoundedFile(installation.resolve("installation.json"), 67_108_864) ?: return unavailable
+        return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EPOCH_REJECTED)
+    val manifestRaw =
+        readBoundedFile(installation.resolve("installation.json"), 67_108_864)
+            ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.MANIFEST_UNAVAILABLE)
     val manifest =
         try {
             observationJson.decodeFromString<RuntimeInstallDocument>(manifestRaw)
         } catch (_: SerializationException) {
-            return unavailable
+            return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.MANIFEST_REJECTED)
         }
     if (
         manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
             manifest.installationRoot != installation.toString()
     )
-        return unavailable
+        return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.MANIFEST_REJECTED)
     val hostHash =
         MessageDigest.getInstance("SHA-256")
             .digest(manifest.codexHome.toByteArray())
@@ -132,29 +169,41 @@ internal fun observeRuntime(installation: Path): PassiveRuntimeObservation {
         readBoundedFile(
             installation.resolve("state/broker/$hostHash/service-readiness.json"),
             MAXIMUM_HEADER_BYTES.toLong(),
-        ) ?: return unavailable
+        ) ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.READINESS_UNAVAILABLE)
     val readiness =
         try {
             observationJson.decodeFromString<RuntimeReadiness>(readinessRaw)
         } catch (_: SerializationException) {
-            return unavailable
+            return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.READINESS_REJECTED)
         }
-    if (readiness.schemaVersion != 3) return unavailable
-    val socket = runtimeSocket(installation) ?: return unavailable
-    val response = boundedExchange(socket, observationJson.encodeToString(RuntimeStatusRequest())) ?: return unavailable
+    if (readiness.schemaVersion != 3)
+        return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.READINESS_REJECTED)
+    val generation =
+        when (val admission = RuntimeServiceGeneration.admit(readiness.serviceInstanceId)) {
+            is RuntimeGenerationAdmission.Admitted -> admission.generation
+            RuntimeGenerationAdmission.Rejected ->
+                return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.READINESS_REJECTED)
+        }
+    val socket =
+        runtimeSocket(installation)
+            ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.SOCKET_UNAVAILABLE)
+    val response =
+        exchange(socket, observationJson.encodeToString(RuntimeStatusRequest()))
+            ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EXCHANGE_UNAVAILABLE)
     val status =
         try {
             observationJson.decodeFromString<RuntimeStatusResponse>(response)
         } catch (_: SerializationException) {
-            return unavailable
+            return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.RESPONSE_REJECTED)
         }
     if (
         status.coordinator.installationId != epoch.installation ||
             status.coordinator.stateEpoch != epoch.epoch ||
             status.coordinator.serviceGeneration != readiness.serviceInstanceId
     )
-        return unavailable
-    val projection = status.projection ?: return unavailable
+        return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.IDENTITY_MISMATCH)
+    val projection =
+        status.projection ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.PROJECTION_UNAVAILABLE)
     if (
         projection.activeWorkspaces.size > 256 ||
             projection.activeWorkspaces.any {
@@ -165,9 +214,10 @@ internal fun observeRuntime(installation: Path): PassiveRuntimeObservation {
                 }
             }
     )
-        return unavailable
+        return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.PROJECTION_REJECTED)
     val loaded = projection.loadedVersion?.takeIf { Regex("[0-9]+\\.[0-9]+\\.[0-9]+").matches(it) }
-    return PassiveRuntimeObservation(
+    return PassiveRuntimeObservation.Observed(
+        generation,
         loaded?.let(Observation.Companion::verified) ?: Observation.unavailable("loaded_version_unavailable"),
         Observation.verified(projection.activeWorkspaces),
         projection.liveConnections?.takeIf { it >= 0 }?.let(Observation.Companion::verified)

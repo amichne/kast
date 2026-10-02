@@ -15,7 +15,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 
 ## Subdirectories
 
-- [`knowledge/`](knowledge/index.md) - checked-in, source-bound architecture, flow, contract, and glossary concepts; start broad repository orientation here.
+- [`openwiki/`](openwiki/quickstart.md) - source-bound architecture, flows, contracts and glossary; use search/read for a concrete question or quickstart when retrieval is unavailable.
 - [`kernel/`](kernel/AGENTS.md) - shared outcomes, evidence, validation, budgets, identity, and refinement types.
 - [`protocol/`](protocol/AGENTS.md) - canonical operations, registry definitions, and wire projections.
 - [`workspace/`](workspace/AGENTS.md) - live workspace admission, existing imported-model capture, and read epochs.
@@ -52,7 +52,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 
 ## Navigation Hints
 
-- For repository-wide orientation, start with `knowledge/index.md`, choose one concept, and follow its `code_sources` only when source detail is required.
+- For architecture or dependency questions, use OpenWiki search/read for relevant sections. When retrieval is unavailable, use `openwiki/quickstart.md` and follow the selected concept's source citations.
 - For domain behavior, start in the matching `*/contract`, then read `*/service`, and open `*/intellij` only for platform effects.
 - For an external request, trace `protocol/registry` -> `protocol/wire` -> `runtime/hosted` -> the owning domain service.
 - For startup or connectivity, start with `README.md`, then `cli`, `app-server`, `runtime/hosted`, and `workspace/intellij-read` in that order.
@@ -122,6 +122,23 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 
 ## Repository Knowledge
 
-- Start repository-wide orientation at `knowledge/index.md`, then follow its module, flow, contract, or glossary indexes before broad source reads.
-- Treat knowledge pages as source-bound routing and explanation. Their `code_sources` identify authority and impact; source, schemas, generated contracts, tests, and verified Gradle architecture remain stronger evidence.
-- After changing cited source, run `./gradlew knowledgeImpact`, refresh affected concepts when their claims changed, and run `./gradlew verifyKnowledgeBase`.
+- Use OpenWiki only when requested or when a concrete architecture or dependency uncertainty needs context; stop once grounded. Use `openwiki/quickstart.md` when retrieval tools are unavailable.
+- Treat OpenWiki pages as source-bound routing and explanation. Claims retain source versions; `code_sources` preserve exact declaration citations and impact. Source, schemas, generated contracts, tests and verified Gradle architecture remain stronger evidence.
+- After changing cited source, run `./gradlew knowledgeImpact`, refresh affected concepts through the OpenWiki page lifecycle when their Claims changed, and run `./gradlew verifyKnowledgeBase`.
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+This repository has a generated `openwiki/` evidence index. It is optional just-in-time context, not required startup reading.
+
+- Do not enumerate, preload, or search wikis at task start. Use retrieval when the user asks for it, when unfamiliar architecture or dependency behavior materially affects the task, or when source inspection leaves an important uncertainty. Stop once the question is grounded.
+- When those conditions apply and OpenWiki retrieval tools are available, use `openwiki_search` for just-in-time context and `openwiki_read` for the relevant complete sections. If search returns `workspace_required`, ask which listed workspace to use and retry with its ID.
+- Use `openwiki_list_workspaces` or `openwiki_list_wikis` when workspace membership itself needs to be discovered.
+- If the retrieval tools are unavailable, read `openwiki/quickstart.md` and follow its links to the relevant pages.
+- Treat source code and tests as authoritative. A brief's unknowns and review items are verification gaps, not automatic requirements.
+- Prefer the narrowest quiet validation that proves the changed behavior. Preserve complete failure output.
+
+The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
+
+<!-- OPENWIKI:END -->

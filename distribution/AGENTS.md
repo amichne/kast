@@ -27,7 +27,7 @@ Defines installation/runtime configuration contracts, the native management CLI,
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/distribution.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/distribution.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For configuration meaning, begin in `contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration`; for filesystem effects, follow admitted values into `managed`.
 - For the public executable, begin in `cli/src/main/kotlin/io/github/amichne/kast/distribution/cli`.

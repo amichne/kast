@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:1abb311934a75ee40570c2c08a5437ba5a50c373dba0227f72211d8667df59fc",
+  "claims": [
+    {
+      "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
+      "statement": "The pinned saved-configuration ingress rejects blank, non-absolute or non-normalized selectors and refuses nonregular or symlinked selected files before decoding configuration.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt#L53-L89",
+          "version": "repo-lines-v1:sha256:6be02e340501432809bc43a7a67671bf2636afd963caebc76f9ebf1c4bb9d80a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzYjgxNTE5OGQ4Y2I3MGYyZjU1MmJmZGI2YTM2ZDM0YWY2NzUxNTNlOWNlYzAyNjNkODY5MDExMDI0OTYyZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNjQ3OWNjMjMwNDQwZmQ0MWU4MjI0MjE4Njc5Njk4NTU5ZDI4OTNiZDY3YjQzODBhZmFiODExYjM4YTU1YWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0MGFmNmY2ZmQ3MTRkMTk0NmFkYTg5MzIxYjk4ZTc2ZTY0OWY1YTBiYTFhM2JjZTJiNzg0NjUzNmFmMTNkZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0NGZhYjMwMTYzYjliODg4MTg0MDFkZmNmZjgxZjcxNmQ0OWU2YjZjNTMyMDQxOTNmZTQ3NWRkMzU1YTAzN2UifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4a7dc69a2da94a9eb774371426a71ba6",
+      "statement": "Saved-configuration reads are bounded and reject a file whose identity, size or modification time changes during the read.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt#L78-L110",
+          "version": "repo-lines-v1:sha256:2274a71916a390b28fd0047d4560668bd05129ff656e72f4a777bec2c12c71c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyOGM3ODdjMzA1NGE1ZTc2MDYxZmZjNWQ5OGRjMTE2ZmE2MzdlY2YwN2QyMjE1ZGI0NzMxZDdkOWRkZDZkODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0NDRlNTY5ZmViNDc4N2ZjYTFmZmY0MjM3ZGZkZGZlOTk0ZmRlZWEyNzQ3MjRkOWI5NTMwZTk4MzNhOGM1ODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwOTI4MDVjZGQ1NTI5OTcyNDIzNzgxYjY5MDc5ZTQwNGRjNGFlYjMwMzYwNDdiYjM5ZWQ3NjA1M2RlZDNhZjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmODFmODhlYTk0N2NlZGRiNmJmYzhmYmZkNmE5NzdjYTgxY2NlOTAzZmExNmNiZjFlMDVjMTcyMjQ1ZDcwOTQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9c465d149c8742c5bfe8f25952de3761",
+      "statement": "Removed isolated-runtime inputs are rejected as UNKNOWN_KEY from environment, command-line, saved-installation and saved-workspace sources.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt#L8-L40",
+          "version": "repo-lines-v1:sha256:7287c7de04103651875880c225cdc9f641e53be2531449071df660c3cd153df5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhMzdmZTEyYTNhMGM3MTJhODY5ZmFjZjJhM2VlMGI4M2RkY2E3YTU5MDQxYTE5MDRhZGQ3YTQyMWRmN2Y3NTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiNzllNjI2NDhjNmMxOGQ2MmY3MjQzNzhiYjFiYjI3NjNkNjkwMzFiY2Q4YzNlNThmODRlNWQ4NmYzZTFkMjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6933a003490540ccac7706650d0a7394",
+      "statement": "Configuration metadata carries consuming ownership, application boundary, disclosure, admitted range and required state rather than treating every external setting as an arbitrary string.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt#L61-L124",
+          "version": "repo-lines-v1:sha256:f7933091f8853386016a694094d7ca308377165d8452a5678124a957fc9352fa:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzMTNiMGEyY2M3N2Q2N2JmMmJmN2JkM2U5NTBiZTRjMzNkZWMwNWZjNDM3ZmY4YmNkMWQzYTFlYTA0ZGU2Y2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjZDU5ZWEyYzM4YmNlN2ZkZjRhOWFhOWNhZjFmMWQ2NWQzNjY3NGQ1NTViZTBhMmQwNGYzOTdmZmFiMTRiODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c032540f949b4a01b41497ccea64b94b",
+      "statement": "The native private installer boundary removes inherited installation/version/channel/report selectors and supplies its owned activation report path; exact reinstall selects an explicitly pinned release version through the same installer owner.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L107-L122",
+          "version": "repo-lines-v1:sha256:3e19c981eff76c5b42c23a5fc60041c932bd05429cc8d5ba71998042444b5772:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNjYwM2U3ZDQ2OWNmMGIyYzlhMzhmMDc2OWQ3MzEzOTFmZDE1YWFjOTcxZDI1YWY3MTU1Mzg3ZWFjYWI2ZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiMzZjYzYzMjNiOTcwNzRhOWVhNWM2NGVmYmM2YjFiNTRlNDg2YWUxNTlhYmE0YTQ4NzcyZDJmMjdlN2FlMGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3NjBjYWNkNjZiODA5OTE1OWVjOTBlMzcyNDMxNDMyMGU0NDU3MTI0YzBlODQwOTNmYjA1NmU2ZmMyMWI1ZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0NzU1YTg1NzkzZjBmY2U1MzQ4YTdiYTNlMzc1NzcyMDU4MWUyOTM4MzFiMDgzMmZiMTg2MzUyZmZmZThmY2YifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L68-L88",
+          "version": "repo-lines-v1:sha256:4ed5f34c14b116f10d8a20b25519799c95cd6e59b57cb747be23b0073de9eb5c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MDhjODkzYjcxMDNmY2IyYTYxOGYwMjRiODRmZDkyMGI0N2E5ZTZlOWNkZTFkYzhiOWQ5YWQ5ZmMyNTJiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4NzM1YmE5ZDViN2U1NjJkYTE2MzQ2NTBkZWEzNWQyYWE1NWQ0OTc0ZGRhOTJjYThkZDg5YmMzZjc4M2Q2YTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4MTEyZTg5NmMwZDYyYjZmMWMzOTQ4YTQ2NmE2NTcxOGVkMGQ5MzZiYmU5ZDMwMjhmOGQyNGQ4MGNiOGFkMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyMjQ5NmQ1YjU2NDY3ZTczMTNkYjgzMTVmZTIzMmRkYzU3ODhkOGYwOTFhNTZiNDAyNzNiZWI0ZTQxZjI2MmIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:25:07.005Z"
+  }
+}

@@ -61,7 +61,7 @@ legacy command graph retained for migration, and hosted output projections.
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
 - For output compatibility, start in `projection` and follow to `protocol/wire`.

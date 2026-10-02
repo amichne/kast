@@ -97,6 +97,7 @@ internal object InstallationWorkflow {
     fun execute(
         request: InstallationRequest,
         upgrades: PriorDaemonUpgradeGateway = NativePriorDaemonUpgradeGateway,
+        activationPolicy: InstallationActivationPolicy = InstallationActivationPolicy.ACTIVATE,
     ): InstallationOutcome {
         val plan =
             when (val verified = verify(request)) {
@@ -107,7 +108,7 @@ internal object InstallationWorkflow {
             return InstallationOutcome.Complete(plan.report(InstallationActivation.Planned))
         }
         return try {
-            apply(plan, upgrades)
+            apply(plan, upgrades, activationPolicy)
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
             InstallationOutcome.Rejected(InstallationFailure.INTERRUPTED)
@@ -173,7 +174,11 @@ internal object InstallationWorkflow {
         )
     }
 
-    private fun apply(plan: VerifiedInstallationPlan, upgrades: PriorDaemonUpgradeGateway): InstallationOutcome {
+    private fun apply(
+        plan: VerifiedInstallationPlan,
+        upgrades: PriorDaemonUpgradeGateway,
+        activationPolicy: InstallationActivationPolicy,
+    ): InstallationOutcome {
         if (!prepareOwnedDirectory(plan.request.installRoot.value))
             return InstallationOutcome.Rejected(InstallationFailure.INSTALLATION_ROOT_REJECTED)
         val lockPath = plan.request.installRoot.value.resolve("activation.lock")
@@ -346,7 +351,10 @@ internal object InstallationWorkflow {
             }
         }
         val activation =
-            if (plan.request.profile == InstallationProfile.PERSISTENT)
+            if (
+                plan.request.profile == InstallationProfile.PERSISTENT &&
+                    activationPolicy == InstallationActivationPolicy.ACTIVATE
+            )
                 InstallationActivation.fromChild(enableAppServer(plan))
             else InstallationActivation.NotRequested
         return InstallationOutcome.Complete(plan.report(activation))

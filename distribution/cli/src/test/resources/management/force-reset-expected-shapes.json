@@ -1,0 +1,45 @@
+[
+  {
+    "type": "REMOVED",
+    "root": "/kast",
+    "operation": "UNINSTALL_FORCE"
+  },
+  {
+    "type": "RESET_REINSTALLED",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE",
+    "generation": "12345678-1234-1234-1234-123456789abc"
+  },
+  {
+    "type": "RESET_REINSTALLATION_PENDING",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE",
+    "stage": "ACTIVATION",
+    "failure": "READINESS_REJECTED"
+  },
+  {
+    "type": "RESET_RETAINED",
+    "operation": "UNINSTALL_FORCE",
+    "stage": "DAEMONS",
+    "failure": "LAUNCH_JOB_REJECTED",
+    "recoveryPath": "/.kast-retiring-example/payload"
+  },
+  {
+    "type": "RESET_RECOVERY_REQUIRED",
+    "operation": "REINSTALL_FORCE",
+    "stage": "ACTIVATION",
+    "failure": "READINESS_REJECTED",
+    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
+    "root": "/kast"
+  },
+  {
+    "type": "RESET_REJECTED",
+    "operation": "REINSTALL_FORCE",
+    "stage": "FENCE",
+    "failure": "RESET_BUSY"
+  }
+]

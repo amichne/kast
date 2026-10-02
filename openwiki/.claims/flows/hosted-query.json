@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:c54d6cf86c908a2266ef89d2bd4fb6a8a155a7354ad61e987e6b4a1e150fb315",
+  "claims": [
+    {
+      "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
+      "statement": "Hosted queries obtain a lifetime permit before starting computation and run under the configured host query deadline.",
+      "evidence": [
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L50-L75",
+          "version": "repo-lines-v1:sha256:a27b7fab4869630e576bf847e8d93a654f64610e11c0999e3eae145cd2c0e0d1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmYTQ1NTEzNzAxNGI1NDY5NjM1NzBlNTNmYzQ3Y2UwOTg0NmY2NzYyZmJmZjgzMWM0MGE5MTk0MDIwNzYzY2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4ZDE3MGVjMjg4MTFkZmM4YjU5Mzc3M2Q2ZThjNWU1MjIyNDg0YTcwMTdjNTg0MDhiNzdmNjg4OTc1ZThlZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiNDYwNjM2MjYzOWFjY2NkMmI0Mzk4M2RiYjkzN2EyYTdmMjJlMGY3NzU1NmIwMThhMTAxZWM0NTJjOTVmMDQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ce18e0f6603245b79739bbc88a84e876",
+      "statement": "The hosted executor maps timeout, read preemption and cancellation to distinct finite rejection causes instead of publishing an unvalidated semantic result.",
+      "evidence": [
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L76-L95",
+          "version": "repo-lines-v1:sha256:ba76162b32e9a23b1e34ecdffa01d20971412356001b2343098cf709be42feca:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkYjlhYzRiZmU3MzVhYTZlNmUzZmU2N2QwMTlmZjVhYjlhZWMxNzNlZjBlYzg1ODBkOTU0ZTAwMmY1YjY4YmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxMDM0ODFjNTdkMGYwZGMwZjc2Y2QyY2M4YjM2MDRjNGU4Mjk2ZGE0MTIyYWRkMTllODE3NDVkYzdlMzMxYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxYzQ3MTBlY2VmMTBkOWNhOTVjNWJlZDk1YjI3ZTQwMDMwOWMxMjVmZGY3ZWIzM2VlM2M0ZWE1NWE0OGUyYTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlZGM5NWE0M2MwMDkyMGRkNjJkNzA0ZGM2ODg5ODY2YmRkYWFlODBjZWRlODc4ODMyOGU5ZDNlMjBhYzVlNWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6ba9a5ba4dc44edeaa143390cb6443c5",
+      "statement": "Hosted epoch stores require the original live owner, reuse only the identical admitted authority and retire the previous value when the admitted authority changes.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt#L20-L55",
+          "version": "repo-lines-v1:sha256:3d60ebcb06856a6570573ff61ac77faf73b033b305d10ab85797f6021554a86c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3OTVmMTlkM2NlYTUzNjNiMDRiMTBjYjBkNGM3ZjExYTFkYzdiODA4NzYzMjE2ZDg0YjNlYmNhZDM3ZTdjNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1ZTBlYWJlY2I5NjRiODJjZWIxMWNhMzhiOWJhYjI1ZTFiMDgwZDY5YjgzMDk2NzU0NmNhNWRmYTQ4MjJlMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ4NzgwNjg4MWYxOTM3NzEyYzBiN2VmZGY5MWMzMDEzNmIyYWVhYzA5NTY2ZTE0NjE3MDgyNjllZjQ4OWUwYTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3OTRkMDJhODEyMTk0NGQxNzZkMjY1ZTliYjljYzU5ZjZhYjg5MGJjYWRmOGFlZmRlYmRiYmI0ZjJlYTg0NDQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

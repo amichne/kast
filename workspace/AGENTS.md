@@ -38,5 +38,5 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 
 ## Navigation Hints
 
-- Start with [workspace authority](../knowledge/modules/workspace.md).
+- Start with [workspace authority](../openwiki/modules/workspace.md).
 - For stale or rejected reads, trace transaction checkpoints and diagnostics before opening platform adapters.

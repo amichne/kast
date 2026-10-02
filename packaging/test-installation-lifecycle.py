@@ -351,6 +351,16 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual(0, code, result)
         self.assertEqual(['app-server disable'], self.log.read_text().splitlines())
 
+    def test_hosted_retirement_does_not_require_a_deleted_source_workspace(self):
+        self.manifest['schemaVersion'] = 2
+        self.manifest['hostedPluginSha256'] = 'sha256:' + 'b' * 64
+        (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+        (self.root / 'config/workspaces.json').write_text(json.dumps({
+            'schemaVersion': 2, 'revision': 1, 'roots': [str(self.root / 'removed-worktree')]}))
+        code, result = self.invoke('reset')
+        self.assertEqual(0, code, result)
+        self.assertEqual(['app-server disable'], self.log.read_text().splitlines())
+
     def test_hosted_installation_uses_owned_private_service_control(self):
         self.manifest['schemaVersion'] = 2
         self.manifest['hostedPluginSha256'] = 'sha256:' + 'b' * 64

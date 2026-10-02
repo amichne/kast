@@ -28,7 +28,7 @@ Retains the buildable topology implementation for upcoming graph work: complete 
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/topology-evidence.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/topology-evidence.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - SQLite snapshot storage is retained in `:evidence:topology-sqlite`; it is separate from shipped mutation persistence.
 - For stale or mismatched graphs, start with workspace identity and generation proofs, then publication.

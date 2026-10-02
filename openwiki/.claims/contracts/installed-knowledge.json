@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:a758de1bb5cd989c35178905648d1b8add18be0555e9047856509e040bbc146a",
+  "claims": [
+    {
+      "id": "claim_10de93622f2540deb257f97bdbfbc003",
+      "statement": "Installed declaration descriptors expose KOTLIN_PSI_SYNTAX evidence with Kotlin-only named-declaration coverage, no type resolution and no inherited documentation.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt#L34-L45",
+          "version": "repo-lines-v1:sha256:5ace9c074f5308635fd35486050e1ade7bb56fe78cf394511222e54e5b5931c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiNmJkMzRlM2EzMTgwYzY1MjhlZTAyMTI0OTdmMmRkZDM3MmMzNDYyOGY0OTQ1ZThjMmE2ZDc1MGUxNWQ1NjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiZmNhMzJiNjBkZTYwM2VlY2Y1NWI4YmVmMDY3ZGQ1OTliYWVkZTlkYmI5MjIxMDJmYzc0YjkxNmU3ZTAwZDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_49b9fbdcc0ad4a819734869072c004b7",
+      "statement": "The standalone Kotlin documentation extraction process rejects the complete inventory if any source is unsupported, noncanonical, unreadable or invalid.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt#L24-L76",
+          "version": "repo-lines-v1:sha256:5dd05ef0ada3779fce739d7b08607aae3e91c057c9f1f25d827e346b527d0732:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0NTczYmNkZDliYzE4YjBhYWM4NTBmZmFmMzIwZjk5ZTY3OGEyZTM1NmZlMjY3ODVkZjc2YzdlYTI0ZDViOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5ea16474b7184796b70c2dff3d0f6738",
+      "statement": "Installed knowledge resources are limited to 8 MiB and require canonical JSON identities in the manifest, modules or guides namespaces before resource effects.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt#L6-L64",
+          "version": "repo-lines-v1:sha256:14ba64d9cd7f80f22864118a94bb2988d544c8fbe8d499ff84238ffc6f222aae:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGFlOGRiZWVmODFjYjI4YzUzMTNjNzFmYmRjYjQ3ZDMzNjhiNGNjNmVkNWZlZDVhNDc3Y2Q5NDhmMDk0NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2MjM4ZjY3YmEwNjBkNTk5NTgxNzg1MTQ2MGRhNWJlMDA4N2NkODcxOTcyN2FlMmFiM2VlNDZjZGYyOWY3ZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhODdjYTY4YzQ1YzUyOWExZjVjNjc0ZmM3ODhkYmFlNTExYmFlMzIzZmJlZGUyM2NjOWMyNmRkN2M0YmVlNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-02T02:00:02.467Z"
+  }
+}

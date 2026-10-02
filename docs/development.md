@@ -2,7 +2,7 @@
 
 Use Java 25 or newer and the Python version in [`.python-version`](../.python-version).
 Read [AGENTS.md](../AGENTS.md) before making changes. The
-[knowledge base](../knowledge/index.md) maps architecture to source and tests.
+[OpenWiki guide](../openwiki/quickstart.md) maps architecture to source and tests.
 
 ## Test one behavior at a time
 
@@ -210,3 +210,25 @@ removed; use `kast ide` for status, refresh, classes, supertype, and completion.
 Version-pinned archives must match the installer contract. To stage historical
 archives that require retired setup inputs, use their matching tagged installer.
 The adjacent-patch acceptance helper supports archives with the current contract.
+
+## OpenWiki upkeep
+
+The repository's architecture concepts live in `openwiki/`. Use the OpenWiki
+Codex skill to search and read relevant sections, or follow the quickstart map
+when retrieval is unavailable. Recheck important details against source.
+
+Refresh concepts with OpenWiki's begin/plan/next-page/submit-page/finish lifecycle.
+Claims and their source versions, category indexes, provenance and run state are
+owned by OpenWiki. The existing `knowledgeImpact` and `verifyKnowledgeBase` tasks
+now read `openwiki/`: they validate links and source paths and preserve Kotlin PSI
+and Python AST declaration checks for `code_sources`. These checks prove source
+declaration presence, not compiler resolution or native execution. OpenWiki's
+Claims lifecycle separately rechecks changed evidence.
+
+The previous update log is preserved in
+[the migration history](reviews/knowledge-migration-history.md). Local native
+OpenWiki uses its private subscription login and `gpt-6-luna` setting. Pages
+written through Codex MCP use the current chat model. The optional GitHub workflow
+runs only on manual dispatch, requires its own API credential, selects Luna and
+disables telemetry and tracing. No subscription token belongs in repository
+secrets or checked-in files.

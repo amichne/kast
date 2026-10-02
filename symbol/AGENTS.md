@@ -41,7 +41,7 @@ Defines symbol discovery and exact declaration identity, provides domain service
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - Use discovery to narrow candidates, then retain an exact selector through subsequent operations.
 - For ambiguity, start in contract/service admission before reading PSI or compiler adapters.

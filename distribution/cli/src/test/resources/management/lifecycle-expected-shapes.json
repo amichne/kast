@@ -1,0 +1,27 @@
+[
+  {
+    "type": "STOPPED",
+    "operation": "STOP",
+    "installation": "/installation"
+  },
+  {
+    "type": "REINSTALLATION_PENDING",
+    "operation": "REINSTALL",
+    "version": "1.2.3",
+    "stage": "ACTIVATION",
+    "failure": "CHILD_REJECTED"
+  },
+  {
+    "type": "STARTED",
+    "operation": "STOP_FORCE",
+    "stage": "FENCE",
+    "component": "kast-lifecycle"
+  },
+  {
+    "type": "REJECTED",
+    "operation": "STOP_FORCE",
+    "stage": "FENCE",
+    "failure": "FENCE_REJECTED",
+    "component": "kast-lifecycle"
+  }
+]

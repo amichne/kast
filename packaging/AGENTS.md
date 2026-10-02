@@ -31,7 +31,7 @@ qualification requires separate runtime evidence.
 
 ## Navigation Hints
 
-- Start with [distribution knowledge](../knowledge/modules/distribution.md), then
+- Start with [distribution knowledge](../openwiki/modules/distribution.md), then
   the owning Kotlin contract or the exact installer script.
 - For lifecycle and recovery changes, prove selected-installation protection and
   finite failure outcomes in the corresponding focused Python test while these

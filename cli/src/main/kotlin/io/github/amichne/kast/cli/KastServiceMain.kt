@@ -98,6 +98,7 @@ internal sealed interface ServiceControlSelection {
 
 internal enum class ServiceControlAction(val managerAction: AppServerAction) {
     STATUS(AppServerAction.Status),
+    BOOTSTRAP(AppServerAction.Bootstrap),
     ENABLE(AppServerAction.Enable),
     DISABLE(AppServerAction.Disable),
     REPAIR(AppServerAction.Repair),
@@ -116,6 +117,7 @@ internal fun selectServiceControl(arguments: List<String>): ServiceControlSelect
         else ServiceControlSelection.Rejected
     }
     return when (arguments) {
+        listOf("bootstrap") -> ServiceControlSelection.Selected(ServiceControlAction.BOOTSTRAP)
         listOf("status") -> ServiceControlSelection.Selected(ServiceControlAction.STATUS)
         listOf("enable") -> ServiceControlSelection.Selected(ServiceControlAction.ENABLE)
         listOf("disable") -> ServiceControlSelection.Selected(ServiceControlAction.DISABLE)
