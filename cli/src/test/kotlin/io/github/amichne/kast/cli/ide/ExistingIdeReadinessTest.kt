@@ -4,7 +4,9 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
 import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.canonicalRootFixture
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -12,7 +14,11 @@ import org.junit.jupiter.api.Test
 
 class ExistingIdeReadinessTest {
     private val root = canonicalRootFixture(Path.of("/workspace"))
-    private val descriptor = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
+    private val descriptor =
+        ExistingIdeDescriptor(
+            (HostedEndpointOwnerPid.parse("123") as Refinement.Refined).value,
+            UUID.fromString("00000000-0000-0000-0000-000000000001"),
+        )
 
     @Test
     fun `status admits observed cold and ready states and rejects invented importing state`() {

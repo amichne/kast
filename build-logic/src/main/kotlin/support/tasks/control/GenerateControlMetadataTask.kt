@@ -8,24 +8,18 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
-import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
-import java.security.MessageDigest
-import java.util.HexFormat
 
 @CacheableTask
 abstract class GenerateControlMetadataTask : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
-    abstract val pluginArchive: RegularFileProperty
+    abstract val hostedContractFile: RegularFileProperty
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
@@ -58,12 +52,14 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         val output = outputDirectory.get().asFile
         output.deleteRecursively()
         output.resolve("licenses").mkdirs()
-        val archive = pluginArchive.get().asFile
+        val hostedContract = controlMetadataJson.decodeFromString(
+            HostedContractDocument.serializer(), hostedContractFile.get().asFile.readText(),
+        )
         output.resolve("ide-host.json").writeText(controlMetadataJson.encodeToString(
-            HostedPluginDocument.serializer(), HostedPluginDocument(
-                schemaVersion = 1, productVersion = productVersion.get(), execution = "existing_ide",
+            ControlMetadataDocument.serializer(), ControlMetadataDocument(
+                schemaVersion = 2, productVersion = productVersion.get(), execution = "existing_ide",
                 ideaBuild = ideaBuild.get(), kotlinPluginBuild = kotlinPluginBuild.get(),
-                fileName = archive.name, sha256 = sha256(archive.readBytes()), bytes = archive.length(),
+                requiredHostedContract = hostedContract,
             ),
         ))
         operationRegistryFile.get().asFile.copyTo(output.resolve("operation-registry.json"))
@@ -72,18 +68,33 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         output.resolve("wire-schema.json").writeBytes(CanonicalWireSchema.encodedBytes())
         licenseFile.get().asFile.copyTo(output.resolve("licenses/LICENSE"))
     }
-
-    private fun sha256(bytes: ByteArray): String = "sha256:" + HexFormat.of().formatHex(
-        MessageDigest.getInstance("SHA-256").digest(bytes),
-    )
-
 }
 
 @Serializable
-internal data class HostedPluginDocument(
+internal data class ControlMetadataDocument(
     val schemaVersion: Int, val productVersion: String, val execution: String, val ideaBuild: String,
-    val kotlinPluginBuild: String, val fileName: String, val sha256: String, val bytes: Long,
+    val kotlinPluginBuild: String, val requiredHostedContract: HostedContractDocument,
 )
+
+@Serializable
+internal enum class HostedContractType { HOSTED_CONTRACT }
+
+@Serializable
+internal data class HostedContractDocument(
+    val type: HostedContractType,
+    val runtimeProtocolIdentity: String,
+    val operationRegistryDigest: String,
+    val wireSchemaDigest: String,
+    val capabilities: List<String>,
+) {
+    init {
+        require(runtimeProtocolIdentity.isNotBlank())
+        require(operationRegistryDigest.matches(Regex("sha256:[0-9a-f]{64}")))
+        require(wireSchemaDigest.matches(Regex("sha256:[0-9a-f]{64}")))
+        require(capabilities.isNotEmpty() && capabilities.all(String::isNotBlank))
+        require(capabilities.distinct().size == capabilities.size)
+    }
+}
 
 @Serializable
 internal data class WireSchemaDocument(

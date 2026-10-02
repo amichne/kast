@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.ide
 
+import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
+import io.github.amichne.kast.protocol.wire.CanonicalHostedContract
 import java.util.UUID
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -37,6 +39,13 @@ internal object HostedDescriptorFixture {
         val querySchema: String = "kast.query.run.v3",
         val operations: List<Operation> = HostedDescriptorFixture.operations,
         val indexAuthority: String = "existing_ide_kotlin_stub_index",
+        val compatibility: HostedCompatibilityDocument =
+            HostedCompatibilityDocument(
+                "262.1.1",
+                "262.1.1-IJ",
+                "0.49.0",
+                CanonicalHostedContract.document,
+            ),
     )
 
     @Serializable

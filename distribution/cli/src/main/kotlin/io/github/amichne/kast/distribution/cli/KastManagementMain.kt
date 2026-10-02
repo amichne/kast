@@ -44,11 +44,10 @@ fun main(arguments: Array<String>) {
 @Suppress("ThrowsCount")
 private fun internalInstall(arguments: List<String>, environment: Map<String, String>) {
     if (arguments.size != 2) throw ManagementRejected("installer-protocol", "invalid request")
-    val rootRaw =
-        environment["KAST_INSTALL_ROOT"]
-            ?: throw ManagementRejected("installer-protocol", "installation root unavailable")
+    if ("KAST_INSTALL_ROOT" !in environment)
+        throw ManagementRejected("installer-protocol", "installation root unavailable")
     val root =
-        when (val resolved = ManagementRootResolution.Selected.admit(rootRaw)) {
+        when (val resolved = resolveManagementRoot(environment)) {
             is ManagementRootResolution.Selected -> resolved.root
             is ManagementRootResolution.Rejected ->
                 throw ManagementRejected("installer-protocol", resolved.failure.reason)
@@ -216,9 +215,12 @@ private class PluginCommand : ManagementNode("plugin") {
 }
 
 private class UpgradeCommand : ManagementNode("upgrade") {
+    private val controlOnly by
+        option("--control-only", help = "Upgrade control and reuse the admitted running IntelliJ host.").flag()
+
     override fun help(context: Context) = "Install the latest verified release on the selected channel."
 
-    override fun selection() = ManagementCommand.Upgrade
+    override fun selection() = ManagementCommand.Upgrade(controlOnly)
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {
@@ -236,18 +238,10 @@ private class UninstallCommand : ManagementNode("uninstall") {
 
 internal data class ManagementRejected(val stage: String, val reason: String) : RuntimeException()
 
-/** An explicit root is authoritative; invalid input never selects the default installation. */
+/** Each user has one installation; an explicit root can only bind that same installation. */
 internal fun resolveManagementRoot(environment: Map<String, String>): ManagementRootResolution {
-    val explicit = environment["KAST_INSTALL_ROOT"]
-    val raw =
-        if (explicit != null) explicit
-        else {
-            val home =
-                environment["HOME"] ?: return ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE)
-            val dataHome = environment["XDG_DATA_HOME"].takeUnless { it.isNullOrEmpty() } ?: "$home/.local/share"
-            "$dataHome/kast"
-        }
-    return ManagementRootResolution.Selected.admit(raw)
+    val home = environment["HOME"] ?: return ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE)
+    return ManagementRootResolution.Selected.admit(home, environment["KAST_INSTALL_ROOT"])
 }
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
@@ -260,28 +254,7 @@ private fun perform(command: ManagementCommand) {
             is ManagementRootResolution.Rejected -> throw ManagementRejected("environment", resolved.failure.reason)
         }
     when (command) {
-        is ManagementCommand.Status -> {
-            val commandPath =
-                ProcessHandle.current()
-                    .info()
-                    .command()
-                    .map { Path.of(it).toAbsolutePath().normalize().toString() }
-                    .orElse("unavailable")
-            val status = readStatus(root, commandPath)
-            if (command.json) println(status.asJson())
-            else {
-                println("Command: ${status.commandPath}")
-                println("Installation: ${status.resolvedInstallationPath.value ?: "unavailable"}")
-                println("Installed: ${status.installedVersion.value ?: "unavailable"}")
-                println("Loaded: ${status.loadedVersion.value ?: "unavailable"}")
-                val integrations =
-                    status.registrations.value?.joinToString { it.connection.publicName } ?: "unavailable"
-                println("Recorded integrations: $integrations")
-                println("Active workspaces: ${status.activeWorkspaces.value?.joinToString() ?: "unavailable"}")
-                println("Live connections: ${status.liveConnections.value ?: "unavailable"}")
-                println("One-shot requests in flight: ${status.oneShotRequestsInFlight.value ?: "unavailable"}")
-            }
-        }
+        is ManagementCommand.Status -> printManagementStatus(root, command.json)
         is ManagementCommand.Connect -> {
             if (command.connection == null) println("Supported integrations: codex mcp, codex app-server, copilot, pi")
             else {
@@ -350,7 +323,7 @@ private fun perform(command: ManagementCommand) {
                 ForceResetExit.INCOMPLETE -> exitProcess(1)
             }
         }
-        ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home))
+        is ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home), command.controlOnly)
         ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home))
         ManagementCommand.Version -> println(MANAGEMENT_VERSION)
         ManagementCommand.Help -> Unit
@@ -372,3 +345,14 @@ private fun lifecycleRecovery(failure: LifecycleFailure): String =
         LifecycleFailure.FILESYSTEM_REJECTED ->
             "inspect kast status --json; shutdown fencing and recovery evidence are retained"
     }
+
+private fun printManagementStatus(root: Path, json: Boolean) {
+    val commandPath =
+        ProcessHandle.current()
+            .info()
+            .command()
+            .map { Path.of(it).toAbsolutePath().normalize().toString() }
+            .orElse("unavailable")
+    val status = readStatus(root, commandPath)
+    println(if (json) status.asJson() else status.asText())
+}

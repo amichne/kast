@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.appserver.BrokerJvmUserHomeOption
 import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
 import io.github.amichne.kast.distribution.contract.configuration.RetiredConfigurationSetting
 import io.github.amichne.kast.kernel.Refinement
@@ -10,8 +11,6 @@ internal enum class InstallationEnvironment(val key: String) {
     CONTROL_ROOT("KAST_INSTALL_CONTROL_ROOT"),
     CONTROL_ARCHIVE("KAST_INSTALL_CONTROL_ARCHIVE"),
     CONTROL_SHA256("KAST_INSTALL_CONTROL_SHA256"),
-    HOSTED_PLUGIN_ARCHIVE("KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE"),
-    HOSTED_PLUGIN_SHA256("KAST_INSTALL_HOSTED_PLUGIN_SHA256"),
     VERSION("KAST_INSTALL_VERSION"),
     IDEA_HOME("KAST_INSTALL_IDEA_HOME"),
     JAVA_HOME("KAST_INSTALL_JAVA_HOME"),
@@ -23,6 +22,7 @@ internal enum class InstallationEnvironment(val key: String) {
     PROFILE("KAST_INSTALL_PROFILE"),
     MODE("KAST_INSTALL_MODE"),
     FORCE("KAST_INSTALL_FORCE"),
+    CONTROL_ONLY("KAST_INSTALL_CONTROL_ONLY"),
 }
 
 internal enum class InstallationMode {
@@ -54,6 +54,7 @@ internal constructor(
 internal value class InstallationPath private constructor(val value: Path) {
     companion object {
         fun parse(raw: String): Refinement<InstallationPath, Unit> {
+            if (raw.any { it == '\n' || it == '\r' || it == '\u0000' }) return Refinement.Rejected(Unit)
             val path =
                 try {
                     Path.of(raw)
@@ -86,10 +87,35 @@ internal enum class InstallationSwitch {
     ENABLED,
 }
 
-/** Persistent installs own a login service; private development sessions defer service activation. */
+/** The sole per-user installation owns a login service. */
 internal enum class InstallationProfile {
-    PERSISTENT,
-    SESSION,
+    PERSISTENT
+}
+
+@JvmInline
+internal value class UserInstallationRoot private constructor(val value: Path) {
+    companion object {
+        fun admit(
+            home: InstallationPath,
+            root: InstallationPath,
+        ): Refinement<UserInstallationRoot, InstallationRequestFailure> =
+            if (root.value == home.value.resolve(".local/share/kast"))
+                Refinement.Refined(UserInstallationRoot(root.value))
+            else Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.INSTALL_ROOT))
+    }
+}
+
+@JvmInline
+internal value class UserInstallationBin private constructor(val value: Path) {
+    companion object {
+        fun admit(
+            home: InstallationPath,
+            directory: InstallationPath,
+        ): Refinement<UserInstallationBin, InstallationRequestFailure> =
+            if (directory.value == home.value.resolve(".local/bin"))
+                Refinement.Refined(UserInstallationBin(directory.value))
+            else Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.BIN_DIRECTORY))
+    }
 }
 
 internal sealed interface InstallationRequestFailure {
@@ -103,25 +129,40 @@ internal sealed interface InstallationRequestFailure {
 }
 
 /** One bootstrap environment whose raw paths and scalar controls have been refined exactly once. */
-internal data class InstallationRequest
+internal data class ControlPayload(
+    val root: InstallationPath,
+    val archive: InstallationPath,
+    val digest: Sha256,
+)
+
+internal typealias InstallationRequest = ControlInstallRequest
+
+internal data class ControlInstallRequest
 private constructor(
-    val controlRoot: InstallationPath,
-    val controlArchive: InstallationPath,
-    val controlDigest: Sha256,
-    val pluginArchive: InstallationPath,
-    val pluginDigest: Sha256,
+    val payload: ControlPayload,
     val version: SemanticVersion,
     val ideaHome: InstallationPath,
     val javaHome: InstallationPath,
-    val installRoot: InstallationPath,
-    val binDirectory: InstallationPath,
+    val installRoot: UserInstallationRoot,
+    val binDirectory: UserInstallationBin,
     val home: InstallationPath,
+    val jvmUserHomeOption: BrokerJvmUserHomeOption,
     val codexHome: InstallationPath,
     val profile: InstallationProfile,
     val mode: InstallationMode,
     val publicEndpoint: BrokerPublicEndpointMode,
     val force: InstallationSwitch,
+    val controlOnly: InstallationSwitch,
 ) {
+    val controlRoot: InstallationPath
+        get() = payload.root
+
+    val controlArchive: InstallationPath
+        get() = payload.archive
+
+    val controlDigest: Sha256
+        get() = payload.digest
+
     companion object {
         fun parse(environment: Map<String, String>): Refinement<InstallationRequest, InstallationRequestFailure> {
             RetiredConfigurationSetting.entries
@@ -129,168 +170,43 @@ private constructor(
                 ?.let {
                     return Refinement.Rejected(InstallationRequestFailure.RetiredSetting(it))
                 }
-            fun raw(name: InstallationEnvironment): Refinement<String, InstallationRequestFailure> =
-                (environment[name.key] ?: if (name == InstallationEnvironment.FORCE) "0" else null)?.let(
-                    Refinement<String, InstallationRequestFailure>::Refined
-                ) ?: Refinement.Rejected(InstallationRequestFailure.Missing(name))
-
-            fun path(name: InstallationEnvironment): Refinement<InstallationPath, InstallationRequestFailure> =
-                when (val value = raw(name)) {
-                    is Refinement.Rejected -> value
-                    is Refinement.Refined ->
-                        when (val parsed = InstallationPath.parse(value.value)) {
-                            is Refinement.Refined -> parsed
-                            is Refinement.Rejected -> Refinement.Rejected(InstallationRequestFailure.InvalidPath(name))
-                        }
-                }
-
-            fun digest(name: InstallationEnvironment): Refinement<Sha256, InstallationRequestFailure> =
-                when (val value = raw(name)) {
-                    is Refinement.Rejected -> value
-                    is Refinement.Refined ->
-                        when (val parsed = Sha256.parse(value.value)) {
-                            is Refinement.Refined -> parsed
-                            is Refinement.Rejected -> Refinement.Rejected(InstallationRequestFailure.InvalidValue(name))
-                        }
-                }
-
-            fun switch(name: InstallationEnvironment): Refinement<InstallationSwitch, InstallationRequestFailure> =
-                when (val value = raw(name)) {
-                    is Refinement.Rejected -> value
-                    is Refinement.Refined ->
-                        when (value.value) {
-                            "0" -> Refinement.Refined(InstallationSwitch.DISABLED)
-                            "1" -> Refinement.Refined(InstallationSwitch.ENABLED)
-                            else -> Refinement.Rejected(InstallationRequestFailure.InvalidValue(name))
-                        }
-                }
-
-            val controlRoot =
-                when (val refined = path(InstallationEnvironment.CONTROL_ROOT)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val controlArchive =
-                when (val refined = path(InstallationEnvironment.CONTROL_ARCHIVE)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val controlDigest =
-                when (val refined = digest(InstallationEnvironment.CONTROL_SHA256)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val pluginArchive =
-                when (val refined = path(InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val pluginDigest =
-                when (val refined = digest(InstallationEnvironment.HOSTED_PLUGIN_SHA256)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val versionRaw =
-                when (val refined = raw(InstallationEnvironment.VERSION)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
+            val input = ControlInstallationInput(environment)
+            val payload =
+                when (val admitted = input.payload()) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
                 }
             val version =
-                when (val parsed = SemanticVersion.parse(versionRaw)) {
-                    is Refinement.Refined -> parsed.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(
-                            InstallationRequestFailure.InvalidValue(InstallationEnvironment.VERSION)
-                        )
-                }
-            val ideaHome =
-                when (val refined = path(InstallationEnvironment.IDEA_HOME)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val javaHome =
-                when (val refined = path(InstallationEnvironment.JAVA_HOME)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val installRoot =
-                when (val refined = path(InstallationEnvironment.INSTALL_ROOT)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val binDirectory =
-                when (val refined = path(InstallationEnvironment.BIN_DIRECTORY)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val home =
-                when (val refined = path(InstallationEnvironment.HOME)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val codexHome =
-                when (val refined = path(InstallationEnvironment.CODEX_HOME)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val endpoint =
-                when (
-                    val admitted =
-                        BrokerPublicEndpointMode.admit(environment[InstallationEnvironment.PUBLIC_ENDPOINT.key])
-                ) {
+                when (val admitted = input.version()) {
                     is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(
-                            InstallationRequestFailure.InvalidValue(InstallationEnvironment.PUBLIC_ENDPOINT)
-                        )
+                    is Refinement.Rejected -> return admitted
                 }
-            val profile =
-                when (environment[InstallationEnvironment.PROFILE.key]) {
-                    null,
-                    "persistent" -> InstallationProfile.PERSISTENT
-                    "session" -> InstallationProfile.SESSION
-                    else ->
-                        return Refinement.Rejected(
-                            InstallationRequestFailure.InvalidValue(InstallationEnvironment.PROFILE)
-                        )
+            val locations =
+                when (val admitted = input.locations()) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
                 }
-            val force =
-                when (val refined = switch(InstallationEnvironment.FORCE)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val modeRaw =
-                when (val refined = raw(InstallationEnvironment.MODE)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val mode =
-                when (modeRaw) {
-                    "plan" -> InstallationMode.PLAN
-                    "apply" -> InstallationMode.APPLY
-                    else ->
-                        return Refinement.Rejected(
-                            InstallationRequestFailure.InvalidValue(InstallationEnvironment.MODE)
-                        )
+            val options =
+                when (val admitted = input.options()) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
                 }
             return Refinement.Refined(
-                InstallationRequest(
-                    controlRoot,
-                    controlArchive,
-                    controlDigest,
-                    pluginArchive,
-                    pluginDigest,
-                    version,
-                    ideaHome,
-                    javaHome,
-                    installRoot,
-                    binDirectory,
-                    home,
-                    codexHome,
-                    profile,
-                    mode,
-                    endpoint,
-                    force,
+                ControlInstallRequest(
+                    payload = payload,
+                    version = version,
+                    ideaHome = locations.ideaHome,
+                    javaHome = locations.javaHome,
+                    installRoot = locations.installRoot,
+                    binDirectory = locations.binDirectory,
+                    home = locations.home,
+                    jvmUserHomeOption = locations.jvmUserHomeOption,
+                    codexHome = locations.codexHome,
+                    profile = options.profile,
+                    mode = options.mode,
+                    publicEndpoint = options.endpoint,
+                    force = options.force,
+                    controlOnly = options.controlOnly,
                 )
             )
         }

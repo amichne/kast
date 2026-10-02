@@ -5,6 +5,13 @@ description: The existing IDEA plugin owns semantic execution; CLI and App Serve
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
+    symbols: [observeHostedEntries]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
+    symbols: [RecordedHostedEndpointOwner, DeclaredHostedEndpoint]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt
+    symbols: [HostedAdmissionEvidence, BoundedHostedAdmissionObserver]
+  - path: app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
     symbols: [InstallationLifecycleFence, InstallationLifecycleStartAdmission]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
@@ -121,28 +128,83 @@ code_sources:
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
-sources:
-  - id: openwiki-source-8d38b171e35bb98b83dfbe58
-    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
-  - id: openwiki-source-8ece5abae2f9aab84f07b127
-    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
-  - id: openwiki-source-d719877f4ac62761c9b248b1
-    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
-  - id: openwiki-source-c58b3f38ca46d44dd30a8771
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
-  - id: openwiki-source-5efa910d729623be2b070bc2
-    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
-generated: { by: "codex", at: "2026-10-02T02:25:07.005Z" }
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+    symbols: [HostedContract, HostedCompatibilityPolicy, HostedCompatibilityRequirements, HostProvenance]
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
+    symbols: [CanonicalHostedContract]
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt
+    symbols: [HostedCompatibilityMetadata]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServicesObservation.kt
+    symbols: [HostedServicesObservation, observeRunningHostedServices]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt
+    symbols: [IdeLifecycleClient]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T02:25:07.005Z
+    at: 2026-10-02T06:27:25.947Z
+sources:
+  - id: openwiki-source-4497996830a7e09fc6368cb3
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt
+  - id: openwiki-source-7c05e12b47d08ef75636350e
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
+  - id: openwiki-source-e0ba61e5e6f650bc7c5673a6
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt
+  - id: openwiki-source-cce89281ffa7a590648e9d33
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
+  - id: openwiki-source-8d38b171e35bb98b83dfbe58
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
+  - id: openwiki-source-88f09847a1cc4b4d806ffe37
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
+  - id: openwiki-source-d0f22f03abacc7b6ee9cd104
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
+  - id: openwiki-source-8ece5abae2f9aab84f07b127
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
+  - id: openwiki-source-6b063183ca57510a100a1579
+    resource: repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
+  - id: openwiki-source-d719877f4ac62761c9b248b1
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
+  - id: openwiki-source-3adda3013ad0805c51b3ac26
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt
+  - id: openwiki-source-c58b3f38ca46d44dd30a8771
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+  - id: openwiki-source-51fd272ea7471c9e42b84369
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
+  - id: openwiki-source-a0efdefba63982f6209d2b1d
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
+  - id: openwiki-source-1905c35a82810ccf74696707
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
+  - id: openwiki-source-95d1815c680b1c389e562577
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt
+  - id: openwiki-source-5efa910d729623be2b070bc2
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - id: openwiki-source-b711ac75af08966d13a95b22
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - id: openwiki-source-7f5d36c76505fdd995af1f49
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
+generated: { by: "codex", at: "2026-10-02T06:27:25.947Z" }
 ---
 
 # Runtime and process hosts
 
 `runtime:hosted` is the sole production semantic host. Its project service uses the already open IDEA project and delegates admission, model capture, and read epochs to `workspace:intellij-read`. IDEA owns imports and incremental indexes. Kast has no isolated indexer, second workspace importer, index-copy path, or topology backend in the shipped runtime graph. The retained topology modules and their separate SQLite adapter remain buildable for upcoming work.
 
-The plugin archive contains the semantic contracts, services, IntelliJ adapters and durable change stores. Its name binds the product version and IDEA release line. Runtime admission retains exact observed IDEA/Kotlin identities while allowing the configured release-line compatibility policy. The historical [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md) states the tested baseline; a build or schema check alone does not expand that qualification.
+The plugin archive contains the semantic contracts, services, IntelliJ adapters and durable change stores. Its name binds the independent hosted-plugin version and IDEA release line. Runtime admission retains exact observed IDEA/Kotlin identities while allowing the configured release-line compatibility policy. The historical [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md) states the tested baseline; a build or schema check alone does not expand that qualification.
+
+Kast Control and Kast Host communicate through one exact `HostedContract`:
+protocol identity, operation registry digest, wire schema digest and capability set.
+Host version remains provenance and never decides compatibility. The digest covers
+the actual hosted schemas and request/response serializer graphs, including the
+application lifecycle exchange. Agent descriptions and management commands are
+outside this boundary. A breaking hosted behavior change requires a protocol
+identity change even if its serialized shape is unchanged.
+
+The existing project describe exchange and application inspect exchange supply
+required live compatibility evidence. Both clients admit that evidence before
+sending subsequent operations. Older hosts without it reject. The loaded plugin
+reads provenance and contract from its own packaged runtime; control replacement
+cannot change these files. Every later connection repeats admission.
 
 `HostedSemanticServices` composes request-scoped symbol, source, relation and diagnostic services from one admitted project/read context. Canonical queries, planning and post-write verification share this factory. It does not retain a project read across requests or supply project-opening authority.
 
@@ -339,4 +401,33 @@ in place for a later upgrade attempt. If retirement fails after commit, another
 ordinary attempt for the same candidate can resume from the active daemon's
 qualified committed request. A different candidate or daemon identity rejects.
 
-The coordinator's passive management reply projects the loaded release version, currently ready workspace roots, and observed live connection count from their runtime owners. A pending frontend leaves connection count unavailable. The native management client correlates this reply with the installation epoch and live service generation.
+The coordinator's passive management reply projects its captured running control version, currently ready workspace roots, observed live connection count, and bounded fresh compatibility observations for each known host. Each host observation retains its project root and host identity, plugin provenance and exact compatibility result; missing evidence remains unavailable. A pending frontend leaves connection count unavailable. The native management client correlates this reply with the installation epoch and live service generation.
+
+Control status distinguishes installed and running Control versions and reports
+each observed Host's identity, loaded plugin version and compatibility. It reads
+the current workspace registry and selects only its admitted exact physical
+settings roots for fresh bounded live describe/status exchanges. A one-shot Tool
+RPC query in another process does not need to populate the daemon client's query
+history. Status does not prepare or enroll workspaces, open projects or select an
+ancestor when a registered root moves or loses its settings file.
+
+A rejected registered root retains its known path with an unavailable result. A
+rejected registry instead reports REGISTRY_UNAVAILABLE with its registry path and
+closed failure; it invents no host or workspace identity. Compatible, incompatible
+and unavailable remain distinct per observed host, and missing live evidence
+never becomes compatibility proof. The passive exchange retains its existing
+750 ms total and 500 ms per-host bounds.
+
+Control upgrade preflight filters the existing endpoint directory to the project
+family before decoding or charging live-host capacity. It validates the owned
+regular descriptor with a Control-local owner envelope and excludes only proven
+absent processes, before requiring a current contract or an existing physical
+root. Unknown liveness rejects. Every live survivor passes the complete current
+descriptor, exact physical root and socket, and the existing live describe
+exchange with matching owner and Host identity. Legacy records for exited owners
+therefore cannot obstruct admission, while unsupported live hosts still reject.
+The owner envelope is outside the hosted-contract digest inputs.
+
+Preflight scan diagnostics contain closed stage and outcome variants with finite
+failures. Each distinct tuple is emitted at most once per scan, keeping evidence
+bounded without including paths, process identities or payloads.

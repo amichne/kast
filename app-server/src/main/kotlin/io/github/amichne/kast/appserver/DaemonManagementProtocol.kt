@@ -170,6 +170,7 @@ internal data class ManagementRuntimeProjection(
     val loadedVersion: String?,
     val activeWorkspaces: List<String>,
     val liveConnections: Int?,
+    val hostedServices: List<io.github.amichne.kast.distribution.contract.HostedServiceStatus> = emptyList(),
 )
 
 @Serializable

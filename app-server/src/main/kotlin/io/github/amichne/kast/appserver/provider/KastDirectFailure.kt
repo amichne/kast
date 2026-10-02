@@ -11,6 +11,7 @@ internal fun ExistingIdeFailure.providerFailure(): ProviderFailureCode =
         ExistingIdeFailure.INVALID_REQUEST -> ProviderFailureCode.IDE_INVALID_REQUEST
         ExistingIdeFailure.HOST_UNAVAILABLE -> ProviderFailureCode.IDE_HOST_UNAVAILABLE
         ExistingIdeFailure.DESCRIPTOR_REJECTED -> ProviderFailureCode.IDE_DESCRIPTOR_REJECTED
+        ExistingIdeFailure.COMPATIBILITY_REJECTED -> ProviderFailureCode.IDE_COMPATIBILITY_REJECTED
         ExistingIdeFailure.RESPONSE_REJECTED -> ProviderFailureCode.IDE_RESPONSE_REJECTED
         ExistingIdeFailure.REQUEST_TOO_LARGE -> ProviderFailureCode.IDE_REQUEST_TOO_LARGE
         ExistingIdeFailure.DEADLINE_EXCEEDED -> ProviderFailureCode.IDE_DEADLINE_EXCEEDED

@@ -43,6 +43,13 @@ class ResolveVersionTest(unittest.TestCase):
         ]
         self.assertEqual(str(resolver.next_version(releases, resolver.Bump.MINOR)), "1.5.0")
 
+    def test_components_have_independent_release_sequences(self) -> None:
+        releases = self.releases("v99.0.0", "control-v2.4.0", "host-v7.1.0", "host-v8.0.0")
+        self.assertEqual(str(resolver.next_version(releases, resolver.Bump.PATCH, resolver.Component.CONTROL)), "2.4.1")
+        self.assertEqual(str(resolver.next_version(releases, resolver.Bump.MINOR, resolver.Component.HOST)), "8.1.0")
+        self.assertEqual(str(resolver.next_version(self.releases("v99.0.0", "host-v8.0.0"),
+            resolver.Bump.PATCH, resolver.Component.CONTROL)), "0.0.1")
+
     def test_empty_catalog_has_explicit_origin(self) -> None:
         self.assertEqual(str(resolver.next_version([], resolver.Bump.PATCH)), "0.0.1")
         self.assertEqual(str(resolver.next_version([], resolver.Bump.MINOR)), "0.1.0")

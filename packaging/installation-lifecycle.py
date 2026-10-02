@@ -899,10 +899,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--installation', required=True)
     parser.add_argument('operation', choices=('inspect', 'recover-read-only', 'reset', 'remove', 'prune'))
+    parser.add_argument('--control-only', action='store_true', help='Remove only the owned control installation.')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--json', action='store_true')
     arguments = parser.parse_args()
     try:
+        if arguments.control_only and arguments.operation != 'remove':
+            raise Rejected(Failure.MANIFEST_REJECTED)
         installation = Installation.admit(arguments.installation)
         if arguments.operation == 'inspect':
             report = execute(installation, arguments.operation, arguments.dry_run)

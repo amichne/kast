@@ -14,8 +14,7 @@ type Tool = {
   inputSchema: Record<string, unknown>;
 };
 
-const dataHome = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share");
-const installRoot = process.env.KAST_INSTALL_ROOT || join(dataHome, "kast");
+const installRoot = join(homedir(), ".local", "share", "kast");
 const command = process.env.KAST_TOOL_RPC_COMMAND ||
   join(installRoot, "installation", "bin", "kast-tool-rpc-complete");
 

@@ -20,11 +20,13 @@ import tools.jackson.core.StreamReadFeature
 import tools.jackson.databind.DeserializationFeature
 import tools.jackson.databind.json.JsonMapper
 
-class ExistingIdeDescriptor constructor(val hostPid: Long, val host: java.util.UUID)
+class ExistingIdeDescriptor(val owner: HostedEndpointOwnerPid, val host: java.util.UUID) {
+    val hostPid: Long
+        get() = owner.value
+}
 
 /** Schema authority is retained before response data can become process output. */
 object ExistingIdeDocuments {
-    private const val HOSTED_PROTOCOL_VERSION = 3
     private val mapper =
         JsonMapper.builder()
             .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
@@ -38,10 +40,36 @@ object ExistingIdeDocuments {
             .build()
     private val registry = SchemaRegistry.withDialect(schemaDialect)
 
-    private fun read(raw: ByteArray, schema: String): Refinement<tools.jackson.databind.JsonNode, ExistingIdeFailure> {
+    internal fun compatibility(
+        raw: String
+    ): Refinement<io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument, ExistingIdeFailure> =
+        when (val admitted = read(raw.toByteArray(), "hosted-endpoint.schema.json")) {
+            is Refinement.Rejected -> admitted
+            is Refinement.Refined ->
+                try {
+                    if (admitted.value.path("type").asString() != "KAST_IDE_HOST")
+                        Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+                    else
+                        Refinement.Refined(
+                            Json.decodeFromString<io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument>(
+                                admitted.value.path("compatibility").toString()
+                            )
+                        )
+                } catch (_: kotlinx.serialization.SerializationException) {
+                    Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+                }
+        }
+
+    private fun read(raw: ByteArray, schema: String): Refinement<tools.jackson.databind.JsonNode, ExistingIdeFailure> =
+        readSchema(raw, "/ide-hosted/$schema")
+
+    internal fun readSchema(
+        raw: ByteArray,
+        resourcePath: String,
+    ): Refinement<tools.jackson.databind.JsonNode, ExistingIdeFailure> {
         return try {
             val resource =
-                ExistingIdeDocuments::class.java.getResourceAsStream("/ide-hosted/$schema")
+                ExistingIdeDocuments::class.java.getResourceAsStream(resourcePath)
                     ?: return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
             val schemaText = resource.bufferedReader().use { it.readText() }
             val node = mapper.readTree(raw)
@@ -66,26 +94,16 @@ object ExistingIdeDocuments {
         root: CanonicalRoot,
         socket: Path,
     ): Refinement<ExistingIdeDescriptor, ExistingIdeFailure> =
-        when (val read = read(raw, "hosted-endpoint.schema.json")) {
-            is Refinement.Rejected -> Refinement.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-            is Refinement.Refined -> {
-                val node = read.value
-                if (node.path("protocol").asInt() != HOSTED_PROTOCOL_VERSION)
-                    Refinement.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-                else if (
-                    node.path("type").asString() == "KAST_IDE_ENDPOINT" &&
-                        node.path("root").asString() == root.path.toString() &&
-                        node.path("socket").asString() == socket.toString()
-                )
-                    Refinement.Refined(
-                        ExistingIdeDescriptor(
-                            node.path("hostPid").asLong(),
-                            java.util.UUID.fromString(node.path("host").asString()),
-                        )
-                    )
-                else Refinement.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-            }
+        when (val declared = declaredEndpoint(raw)) {
+            is Refinement.Rejected -> declared
+            is Refinement.Refined -> declared.value.bind(root, socket)
         }
+
+    internal fun declaredEndpoint(raw: ByteArray): Refinement<DeclaredHostedEndpoint, ExistingIdeFailure> =
+        DeclaredHostedEndpoint.read(raw)
+
+    internal fun recordedOwner(raw: ByteArray): Refinement<RecordedHostedEndpointOwner, ExistingIdeFailure> =
+        RecordedHostedEndpointOwner.read(raw)
 
     private class ResponseContext(val root: CanonicalRoot, val descriptor: ExistingIdeDescriptor)
 

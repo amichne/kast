@@ -85,6 +85,7 @@ enum class ConfigurationParameter(
         "KAST_INSTALL_ROOT",
         ConfigurationSyntax.ABSOLUTE_PATH,
         ConfigurationScope.INSTALLATION,
+        mutability = ConfigurationMutability.DERIVED,
         children = setOf(ConfigurationChild.BROKER),
     ),
     CONFIGURATION_FILE(
@@ -200,8 +201,22 @@ enum class ConfigurationParameter(
         ":cli",
         mutability = ConfigurationMutability.DERIVED,
     ),
-    BIN_DIR("KAST_BIN_DIR", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.INSTALLATION),
+    BIN_DIR(
+        "KAST_BIN_DIR",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.INSTALLATION,
+        mutability = ConfigurationMutability.DERIVED,
+    ),
     VERSION("KAST_VERSION", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION),
+    HOST_VERSION("KAST_HOST_VERSION", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION),
+    INSTALL_CONTROL_ONLY(
+        "KAST_INSTALL_CONTROL_ONLY",
+        ConfigurationSyntax.SWITCH,
+        ConfigurationScope.INSTALLATION,
+        ":cli",
+        defaultValue = "0",
+        mutability = ConfigurationMutability.DERIVED,
+    ),
     REPOSITORY("KAST_REPOSITORY", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION),
     RELEASE_BASE_URL("KAST_RELEASE_BASE_URL", ConfigurationSyntax.OWNER_INPUT, ConfigurationScope.INSTALLATION),
     INSTALL_ASSETS_DIRECTORY(
@@ -289,6 +304,20 @@ enum class ConfigurationParameter(
         disclosure = ConfigurationDisclosure.SECRET_PRESENCE,
         mutability = ConfigurationMutability.DERIVED,
     ),
+    LOCAL_COMPONENT(
+        "KAST_LOCAL_COMPONENT",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.BUILD,
+        ":build-logic",
+        mutability = ConfigurationMutability.BUILD_SETTING,
+    ),
+    LOCAL_PROFILE(
+        "KAST_LOCAL_PROFILE",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.BUILD,
+        ":build-logic",
+        mutability = ConfigurationMutability.BUILD_SETTING,
+    ),
     LOCAL_PREFIX(
         "KAST_LOCAL_PREFIX",
         ConfigurationSyntax.ABSOLUTE_PATH,
@@ -298,6 +327,13 @@ enum class ConfigurationParameter(
     ),
     LOCAL_CONTROL_PRODUCT(
         "KAST_LOCAL_CONTROL_PRODUCT",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.BUILD,
+        ":build-logic",
+        mutability = ConfigurationMutability.BUILD_SETTING,
+    ),
+    LOCAL_HOST_RELEASE_RECORD(
+        "KAST_LOCAL_HOST_RELEASE_RECORD",
         ConfigurationSyntax.ABSOLUTE_PATH,
         ConfigurationScope.BUILD,
         ":build-logic",

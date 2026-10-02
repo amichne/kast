@@ -11,7 +11,8 @@ Defines installation/runtime configuration contracts, the native management CLI,
 
 - [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt) - configuration model.
 - [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt) - owned installation tree.
-- [release/plugin-release.gradle.kts](release/plugin-release.gradle.kts) - control distribution and IDEA plugin release wiring.
+- [release/plugin-release.gradle.kts](release/plugin-release.gradle.kts) - independent Control and Host release wiring and fresh-pair assembly.
+- [release/component_release.py](release/component_release.py) and [release/component-release.schema.json](release/component-release.schema.json) - exact-source component records, owned asset inventories and checksum admission.
 
 ## Subdirectories
 
@@ -24,6 +25,7 @@ Defines installation/runtime configuration contracts, the native management CLI,
 
 - Gradle projects: `:distribution:contract`, `:distribution:cli`, `:distribution:managed`.
 - Release tasks are applied from `release/plugin-release.gradle.kts`.
+- `assembleControlRelease` and `assembleHostRelease` package their selected component independently; `assembleRelease` composes a fresh-install pair.
 
 ## Navigation Hints
 

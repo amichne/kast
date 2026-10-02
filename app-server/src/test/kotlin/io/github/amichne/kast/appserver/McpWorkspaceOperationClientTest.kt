@@ -24,7 +24,19 @@ class McpWorkspaceOperationClientTest {
     @Test
     fun `inspection uses the session lifecycle client without semantic read`() {
         val request = WorkspaceLifecycleRequest.Inspect
-        val inspected = IdeLifecycleResult.Inspected("host", "/ide", "build", emptyList())
+        val inspected =
+            IdeLifecycleResult.Inspected(
+                "host",
+                "/ide",
+                "build",
+                emptyList(),
+                io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
+                    "262.1.1",
+                    "262.1.1-IJ",
+                    "0.49.0",
+                    io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
+                ),
+            )
         var observedClient: String? = null
         var observedRequest: WorkspaceLifecycleRequest? = null
         val lifecycle =

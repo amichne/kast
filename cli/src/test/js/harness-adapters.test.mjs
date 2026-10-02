@@ -62,8 +62,9 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
 for (const harness of ['copilot', 'pi']) {
   for (const [environment, expected] of [
     [{}, '/fixture/.local/share/kast/installation/bin/kast-tool-rpc-complete'],
-    [{XDG_DATA_HOME: '/data'}, '/data/kast/installation/bin/kast-tool-rpc-complete'],
-    [{KAST_INSTALL_ROOT: '/owned/kast'}, '/owned/kast/installation/bin/kast-tool-rpc-complete'],
+    [{XDG_DATA_HOME: '/data'}, '/fixture/.local/share/kast/installation/bin/kast-tool-rpc-complete'],
+    [{KAST_INSTALL_ROOT: '/owned/kast'}, '/fixture/.local/share/kast/installation/bin/kast-tool-rpc-complete'],
+    [{KAST_TOOL_RPC_COMMAND: '/transport/kast-tool-rpc'}, '/transport/kast-tool-rpc'],
   ]) {
     test(`${harness} selects the ordinary payload launcher from ${JSON.stringify(environment)}`, async () => {
       const loaded = await load(harness, catalog, undefined, undefined, environment);

@@ -1,5 +1,6 @@
 """Checkout and public bootstrap tests; never touch real installed services."""
 
+from dataclasses import asdict, dataclass
 import hashlib
 import io
 import json
@@ -24,6 +25,39 @@ CONTROL_LIMITS = (
     / "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt"
 )
 INSTALLATION_LIFECYCLE = CHECKOUT_INSTALLER.parent / "installation-lifecycle.py"
+
+
+@dataclass(frozen=True)
+class ContractFixture:
+    type: str = 'HOSTED_CONTRACT'
+    runtimeProtocolIdentity: str = 'kast.ide-hosted.runtime.v2'
+    operationRegistryDigest: str = 'sha256:' + 'a' * 64
+    wireSchemaDigest: str = 'sha256:' + 'b' * 64
+    capabilities: tuple[str, ...] = ('query.run',)
+
+@dataclass(frozen=True)
+class ControlMetadataFixture:
+    productVersion: str
+    schemaVersion: int = 2
+    execution: str = 'existing_ide'
+    ideaBuild: str = '262.1'
+    kotlinPluginBuild: str = '262.1-IJ'
+    requiredHostedContract: ContractFixture = ContractFixture()
+
+@dataclass(frozen=True)
+class ArtifactFixture:
+    fileName: str
+    sha256: str
+    bytes: int
+
+@dataclass(frozen=True)
+class HostReleaseFixture:
+    hostedPluginVersion: str
+    artifact: ArtifactFixture
+    supportedIntellijReleaseLine: str
+    type: str = 'HOST_RELEASE'
+    providedHostedContract: ContractFixture = ContractFixture()
+    sourceRevision: str = '1' * 40
 
 
 class ControlDistributionLimitTest(unittest.TestCase):
@@ -77,17 +111,21 @@ class CheckoutInstallTest(IsolatedInstallerTest):
         self.checkout.mkdir()
         (self.checkout / "packaging").mkdir()
         (self.checkout / "packaging/install-local.sh").touch()
+        (self.checkout / 'packaging/host-installation.py').write_text('host helper fixture')
         (self.checkout / "build.gradle.kts").touch()
         self.write_script(self.checkout / "gradlew", '''#!/usr/bin/env bash
 set -eu
 echo build >> "$TEST_LOG"
-for arg in "$@"; do case "$arg" in -Pversion=*) version=${arg#*=} ;; esac; done
+for arg in "$@"; do case "$arg" in -PcontrolVersion=*|-PhostedPluginVersion=*) version=${arg#*=} ;; esac; done
 mkdir -p build/distributions
 touch "build/distributions/kast-control-v$version-macos-aarch64.tar.gz"
 for arg in "$@"; do
-  if [[ $arg == :runtime:hosted:hostedPlugin ]]; then
+  if [[ $arg == generateHostReleaseRecord ]]; then
     mkdir -p runtime/hosted/build/distributions
     touch "runtime/hosted/build/distributions/kast-ide-hosted-v$version-idea-262.zip"
+    mkdir -p build/generated/host-release
+    touch "build/generated/host-release/kast-host-release-v$version.json"
+    touch "build/generated/host-release/kast-host-release-v$version.json.sha256"
   fi
 done
 ''')
@@ -127,50 +165,32 @@ fi
             text=True,
         )
 
-    def test_session_isolated_and_activation_idempotent(self):
-        self.env.update(KAST_RUNTIME_DIRECTORY="/persistent/run")
+    def test_session_is_rejected_before_build_or_state_creation(self):
         result = self.run_install("session")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        activation = Path(result.stdout.strip())
-        self.assertTrue(activation.is_file())
-        self.assertEqual((self.root / "calls").read_text(), "build\ninstall\n")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("session installations are retired", result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertFalse((self.root / "calls").exists())
         self.assertFalse((self.root / ".local").exists())
-        for shell in ("bash", "zsh"):
-            if not shutil.which(shell):
-                continue
-            code = '''source "$1"
-first=$PATH
-source "$1"
-[[ $PATH == "$first" ]] || exit 2
-physical=$(cd "$KAST_INSTALL_ROOT/installation" && pwd -P)
-[[ $KAST_RUNTIME_DIRECTORY == "$physical/state/run" && -z ${KAST_CACHE_ROOT:-} && -z ${KAST_RUNTIME_STORE:-} ]] || exit 3
-[[ $PATH != *"$KAST_BIN_DIR"* ]] || exit 4
-'''
-            checked = subprocess.run(
-                [shell, "-c", code, "activation-test", str(activation)],
-                env=self.env,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(checked.returncode, 0, checked.stderr)
+
+    def test_alternate_root_and_bin_reject_before_build_or_state_creation(self):
+        for key in ('KAST_INSTALL_ROOT', 'KAST_BIN_DIR'):
+            with self.subTest(key=key):
+                self.env[key] = str(self.root / 'alternate')
+                result = self.run_install('persistent')
+                self.env.pop(key)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn('sole per-user', result.stderr)
+                self.assertFalse((self.root / 'calls').exists())
+                self.assertFalse((self.root / 'alternate').exists())
 
     def test_development_entrypoint_accepts_the_documented_app_bundle(self):
-        result = self.run_install("session", "--idea-home", str(self.idea.parent))
+        result = self.run_install("persistent", "--idea-home", str(self.idea.parent))
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue(Path(result.stdout.strip()).is_file())
+        self.assertEqual("", result.stdout)
 
-    def test_session_canonicalizes_a_symlinked_temporary_root(self):
-        temporary_alias = self.root / "tmp-alias"
-        temporary_alias.symlink_to(self.fixture.root / "tmp", target_is_directory=True)
-        self.env["TMPDIR"] = str(temporary_alias)
-        result = self.run_install("session")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        activation = Path(result.stdout.strip())
-        self.assertEqual(activation, activation.resolve())
-        self.assertTrue(activation.is_file())
-
-    def test_persistent_uses_environment_selected_bin_and_refresh(self):
-        self.env["KAST_BIN_DIR"] = str(self.root / "custom bin")
+    def test_persistent_binds_the_sole_user_bin_and_refresh(self):
+        self.env["KAST_BIN_DIR"] = str(self.root / ".local/bin")
         result = self.run_install("persistent")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "")
@@ -200,14 +220,14 @@ physical=$(cd "$KAST_INSTALL_ROOT/installation" && pwd -P)
 
     def test_build_failure_never_installs_or_emits_activation(self):
         self.write_script(self.checkout / "gradlew", "#!/usr/bin/env bash\nexit 17\n")
-        result = self.run_install("session")
+        result = self.run_install("persistent")
         self.assertEqual(result.returncode, 17)
         self.assertEqual(result.stdout, "")
         self.assertFalse((self.root / "calls").exists())
 
     def test_install_failure_never_activates_or_starts_services(self):
         self.write_script(self.installer, "#!/usr/bin/env bash\nexit 19\n")
-        for mode in ("session", "persistent"):
+        for mode in ("persistent",):
             result = self.run_install(mode)
             self.assertEqual(result.returncode, 19)
             self.assertEqual(result.stdout, "")
@@ -270,8 +290,8 @@ if os.environ["KAST_INSTALL_MODE"] != 'plan':
     commands.mkdir(parents=True, exist_ok=True)
     subprocess.run([sys.executable, str(Path(os.environ['KAST_INSTALL_CONTROL_ROOT']) / 'share/kast/installation-recovery.py'),
                     'prepare', '--installation', str(installed), '--bin-directory', str(commands)], check=True)
-keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE",
-        "KAST_INSTALL_HOSTED_PLUGIN_SHA256", "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
+keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTALL_CONTROL_ONLY",
+        "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
         "KAST_INSTALL_JAVA_HOME", "KAST_INSTALL_ROOT", "KAST_BIN_DIR", "KAST_INSTALL_MODE"]
 with open(os.environ["TEST_LOG"], "w") as output:
     json.dump({key: os.environ[key] for key in keys}, output)
@@ -298,6 +318,8 @@ esac
         shutil.copyfile(Path(__file__).with_name('codex-mcp-registration.py'),
                         self.product / 'share/kast/codex-mcp-registration.py')
         shutil.copyfile(Path(__file__).with_name('installation-recovery.py'), self.product / 'share/kast/installation-recovery.py')
+        shutil.copyfile(Path(__file__).with_name('host-installation.py'), self.product / 'share/kast/host-installation.py')
+        (self.product / 'share/kast/ide-host.json').write_text(json.dumps(asdict(ControlMetadataFixture(self.version))))
         self.write_script(self.product / 'share/kast/prune-prior-installations.py', '''#!/usr/bin/env python3
 import json, os, sys
 from pathlib import Path
@@ -309,6 +331,7 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         with tarfile.open(self.control, "w:gz") as archive:
             archive.add(self.product / "bin", arcname="bin")
             archive.add(self.product / "share", arcname="share")
+        self.write_host_record(self.plugin, "262")
         for asset in (self.control, self.plugin):
             asset.with_name(asset.name + ".sha256").write_text(
                 f"{hashlib.sha256(asset.read_bytes()).hexdigest()}  {asset.name}\n",
@@ -316,8 +339,8 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         self.env.update(
             KAST_VERSION=self.version,
             KAST_INSTALL_ASSETS_DIRECTORY=str(self.assets),
-            KAST_INSTALL_ROOT=str(self.root / "install"),
-            KAST_BIN_DIR=str(self.root / "bin"),
+            KAST_INSTALL_ROOT=str(self.root / ".local/share/kast"),
+            KAST_BIN_DIR=str(self.root / ".local/bin"),
         )
 
     def write_plugin(self, until_build, since_build="262"):
@@ -332,6 +355,13 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
             archive.writestr("META-INF/plugin.xml", descriptor)
         with zipfile.ZipFile(self.plugin, "w") as archive:
             archive.writestr("kast-ide-hosted/lib/kast-ide-hosted-1.2.3.jar", plugin_jar.getvalue())
+
+    def write_host_record(self, plugin, line):
+        record = self.assets / f"kast-host-release-v{self.version}.json"
+        record.write_text(json.dumps(asdict(HostReleaseFixture(self.version,
+            ArtifactFixture(plugin.name, 'sha256:' + hashlib.sha256(plugin.read_bytes()).hexdigest(), plugin.stat().st_size), line))))
+        record.with_name(record.name + '.sha256').write_text(
+            f"{hashlib.sha256(record.read_bytes()).hexdigest()}  {record.name}\n")
 
     def run_installer(self, *args):
         return subprocess.run(
@@ -372,7 +402,9 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
             archive.add(management, arcname='share/kast/libexec/kast-management')
             recovery = self.product / 'share/kast/installation-recovery.py'
             archive.add(recovery, arcname='share/kast/installation-recovery.py')
-            for index in range(member_count - 5):
+            archive.add(self.product / 'share/kast/host-installation.py', arcname='share/kast/host-installation.py')
+            archive.add(self.product / 'share/kast/ide-host.json', arcname='share/kast/ide-host.json')
+            for index in range(member_count - 7):
                 entry = tarfile.TarInfo(f"share/kast/knowledge/declarations/{index}.json")
                 entry.mode = 0o644
                 entry.size = 2
@@ -388,7 +420,8 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         self.assertEqual(self.version, contract["KAST_INSTALL_VERSION"])
         self.assertEqual("plan", contract["KAST_INSTALL_MODE"])
         self.assertEqual(hashlib.sha256(self.control.read_bytes()).hexdigest(), contract["KAST_INSTALL_CONTROL_SHA256"])
-        self.assertEqual(hashlib.sha256(self.plugin.read_bytes()).hexdigest(), contract["KAST_INSTALL_HOSTED_PLUGIN_SHA256"])
+        self.assertNotIn("KAST_INSTALL_HOSTED_PLUGIN_SHA256", contract)
+        self.assertEqual("0", contract["KAST_INSTALL_CONTROL_ONLY"])
         self.assertEqual(str(self.idea), contract["KAST_INSTALL_IDEA_HOME"])
         self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
 
@@ -421,7 +454,7 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         result = self.run_installer("--skip-codex-mcp")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse((self.root / "mcp-calls").exists())
-        self.assertTrue((self.root / "install/installation/bin/kast-mcp-complete").is_file())
+        self.assertTrue((self.root / ".local/share/kast/installation/bin/kast-mcp-complete").is_file())
 
     def test_interactive_decline_skips_codex_mcp_registration(self):
         result = self.run_interactive_installer("n\n")
@@ -473,9 +506,10 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
                 wrong_asset.with_name(wrong_asset.name + ".sha256").write_text(
                     f"{hashlib.sha256(wrong_asset.read_bytes()).hexdigest()}  {wrong_asset.name}\n",
                 )
+                self.write_host_record(wrong_asset, line)
                 result = self.run_installer()
                 self.assertNotEqual(0, result.returncode)
-                self.assertIn("hosted plugin IDEA release line is mismatched", result.stderr)
+                self.assertIn("PAYLOAD_REJECTED", result.stderr)
                 self.assertFalse((self.root / "calls").exists())
 
     def test_programmatic_plugin_update_replaces_only_owned_directory(self):
@@ -494,9 +528,10 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         self.plugin.with_name(self.plugin.name + ".sha256").write_text(
             f"{hashlib.sha256(self.plugin.read_bytes()).hexdigest()}  {self.plugin.name}\n",
         )
+        self.write_host_record(self.plugin, "262")
         result = self.run_installer()
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("hosted plugin IDEA release line is mismatched", result.stderr)
+        self.assertIn("PAYLOAD_REJECTED", result.stderr)
         self.assertFalse((self.root / "calls").exists())
         self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
 

@@ -38,9 +38,32 @@ Installer output shows progress and readable failure reasons. Pass `--verbose`
 after the downloaded command's `--` separator to include structured diagnostic
 reports.
 
-Use `kast upgrade` to install the latest release on the selected channel.
+Kast Control and Kast Host have independent release versions. Control owns the
+management executable, coordinator, adapters and sessions. Host is the IntelliJ
+plugin and contains its own semantic runtime dependencies.
+
+Use `kast upgrade --control-only` to install the latest control release and reuse
+a running compatible host. The candidate checks the live host before stopping
+control, then checks it again after activation. An unavailable or incompatible
+host leaves the previous control in place. Failure after replacement restores
+and verifies the previous control, or reports recovery required. Control sessions
+may be interrupted; IntelliJ and its plugin files are preserved.
+
+Use the public installer with `--host-only --version <host-version>` to install
+a host release, then restart IntelliJ through its ordinary lifecycle. This leaves
+control in place. Fresh installation composes the two component installers and
+checks the selected pair's contract.
+
+`kast status` distinguishes installed control, running control and each observed
+host's loaded version and compatibility. Compatibility requires exact protocol,
+operation registry, wire schema and capability identities, plus the existing
+IntelliJ/Kotlin release-line admission. A missing live observation is unavailable.
+A baseline host with this evidence must be installed and loaded once before
+control-only upgrades can reuse it.
+
+Use `kast upgrade` to install both components on the selected channel.
 The upgrade interrupts existing calls and sessions. Kast keeps one ordinary
-installation at `${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}/installation`.
+installation at `$HOME/.local/share/kast/installation`.
 It replaces that directory after admitting and stopping the previous payload;
 a successful upgrade removes its temporary recovery copy. Installation does
 not create selector links or selectable historical versions.
@@ -129,6 +152,9 @@ Use Java 25 or newer and the Python version in [`.python-version`](.python-versi
 ```shell
 ./gradlew build
 ./gradlew assembleRelease
+# Independently package either component:
+./gradlew assembleControlRelease -PcontrolVersion=0.50.0
+./gradlew assembleHostRelease -PhostedPluginVersion=0.49.0
 ```
 
 The [development guide](docs/development.md) covers local installation and

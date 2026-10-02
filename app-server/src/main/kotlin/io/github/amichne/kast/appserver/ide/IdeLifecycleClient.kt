@@ -80,6 +80,17 @@ class IdeLifecycleClient(private val userHome: Path, private val selectedHome: P
             return blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH)
         if (!host.build.substringAfter('-').startsWith("262."))
             return blocked(IdeLifecycleFailure.UNSUPPORTED_PLATFORM_LINE)
+        val requirements =
+            when (val required = requiredHostedCompatibilityPolicy()) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> required.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                    return blocked(IdeLifecycleFailure.COMPATIBILITY_REJECTED)
+            }
+        if (
+            requirements.admit(host.compatibility)
+                is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission.Rejected
+        )
+            return blocked(IdeLifecycleFailure.COMPATIBILITY_REJECTED)
         return if (command == IdeLifecycleCommand.Inspect) host else exchange(home, command)
     }
 

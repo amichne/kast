@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -94,6 +95,7 @@ internal data class InstallationStatus(
     val activeWorkspaces: Observation<List<String>>,
     val liveConnections: Observation<Int>,
     val oneShotRequestsInFlight: Observation<Int>,
+    val hostedServices: Observation<List<HostedServiceStatus>>,
 )
 
 @Serializable
@@ -200,6 +202,7 @@ internal fun readStatus(root: Path, commandPath: String): InstallationStatus {
         liveConnections = runtime?.liveConnections ?: Observation.unavailable(noRuntimeProjection),
         oneShotRequestsInFlight =
             installation?.let(::observeOneShotRequests) ?: Observation.unavailable(noRuntimeProjection),
+        hostedServices = runtime?.hostedServices ?: Observation.unavailable(noRuntimeProjection),
     )
 }
 

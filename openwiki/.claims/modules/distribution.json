@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7b112916ef99d111a6ed0a1d5cdebf7d165b6d07ea201826ff5b800d3cb2ce22",
+  "pageVersion": "sha256:dbf439afebaa03e6b638d363acd6193385b1adde047aadde6113ba9b3876449a",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -75,10 +75,178 @@
           "version": "repo-lines-v1:sha256:000edd43f70c9ee49c69324e344ebdc8e8bd5bbbd87513f76fe4c12668672593:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZTE3MzBmNTMxMDE4YjVkNzFiZjI4ZGI4YmQ3OGJmN2FlYjk1M2MxMGFlNmUwNzkwNjI5YWExNDk4NTM2N2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_5f1c060cff6246baa129131fe5068c32",
+      "statement": "Control and Host release records, artifacts and installation inputs have independent ownership; fresh installation composes a contract-compatible pair, while Control metadata requires no Host archive.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",
+          "version": "repo-file-v1:sha256:492e2761ce831abc898b2fd87657c209109adff1b489ebec2fb27d004e64a9d4"
+        },
+        {
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:8845107cf45774af8a7d2ed4218996361fdc3dfb77a2f0b47b3e73beee2ed9aa"
+        },
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:2b9ec22815d5685d25fa9e0eea0a0666dda96204a0793ec787da7f39f6f916f0"
+        }
+      ]
+    },
+    {
+      "id": "claim_acf440b51fcb4a90a652aaca679121f1",
+      "statement": "A control-only upgrade admits the running Host before retiring Control, then verifies candidate readiness and repeats admission; failure after retirement invokes Control-only recovery preserving original and recovery failures.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt",
+          "version": "repo-file-v1:sha256:9ca7e7ce2b1f6438b8ec9ee0e96437b83e29cd31b07311c7eee35fb3992f8dca"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
+          "version": "repo-file-v1:sha256:5040b9e97d50af7cfd97c358f5de77725ca7f5b3b9cc856a7ccaa85030f18f0c"
+        }
+      ]
+    },
+    {
+      "id": "claim_b12b0cb12d684d09af1019d1b2de6893",
+      "statement": "Exact reinstall and force reset cold-stage Control without a Host artifact; their existing fenced lifecycle owns later activation, while stage-only and bounded control-only upgrade cannot be combined.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
+          "version": "repo-file-v1:sha256:5040b9e97d50af7cfd97c358f5de77725ca7f5b3b9cc856a7ccaa85030f18f0c"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
+          "version": "repo-file-v1:sha256:cc575d24332724147d42c3bd697f562ee108bd4387fa46c3e7d161db317f3a52"
+        },
+        {
+          "resource": "repo://install.sh",
+          "version": "repo-file-v1:sha256:821059e1959631c5b87c06be6561eb56c8e69d8130a48310d97bc7239270aaeb"
+        }
+      ]
+    },
+    {
+      "id": "claim_aabb05e3798b4bc283779dddf552160a",
+      "statement": "Native installation dispatch binds the sole HOME-derived installation; public uninstall rejects alternate or nonphysical roots before Control-only removal, preserving the canonical installation and Host files on rejection.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L149-L170",
+          "version": "repo-lines-v1:sha256:4d1ab4532918fee733ad51165549938e080084e9127dfbd4b209c0a17165fdaa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3OWVhMGUzYjkyY2UyNDI0ZTVjOTQ1MTI5ZWYyZTNmOWZlM2FmNWRiZWU1YjdiNzMwMjVhYTcwYmU5N2RiNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzZDk0NmRjOTE2NThmNjJlMjI4MGYzYWUwNzlkMjBkYTJkZTRmYmIyNGUxYjc4MzViMGFhOWZhMTY1MWJmYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjNzhjMzQzM2IxOTNhMDVlNGYzZjcwNjBiMGViZjQyZjA1YjllOWY0YjUxM2U1NmI0MmFjOGY0MzBkZWViYmIifQ"
+        },
+        {
+          "resource": "repo://install.sh#L557-L591",
+          "version": "repo-lines-v1:sha256:213709994eee57f24304bd2daf0e4c64d5919d4719b5fa4e52f2b194417dd57c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMmViMzUwMjFiOTY3MTI5NjM3M2EyMWNiMjg4ZGViNGY3MjViMjVmZmQ2NTliNzY4MGVlMjQ1NDFkZDRjOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0ZTc2MDQyNmE4ZTNhODYwZGQxNTBlNmMxMTc4YmFhNmJmMTgyNGM1N2ZlODI3M2IwMmI0YTVjZTQ1M2FhNzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyZTFhZGRiZGZkN2IwY2ZlOGFhYzVkNGE3MGFlOTYxMDNjY2NhZWM5YWM3ZDlkYTg5NGRkZmNmMDc0MGE3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjczNzUxMzE5YTRlNDVkNWMzZGI1YTRhOTEwODM2YzIzZGE2NzZjNTgxYzAzODBlMGE1MDZiODY1Y2VhNmVhNDUifQ"
+        },
+        {
+          "resource": "repo://packaging/test-installer-removal.py",
+          "version": "repo-file-v1:sha256:4ddc193d44f31eef36707cd43bbbbfea52409e17834fa8296c18e4a0051b1e1d"
+        }
+      ]
+    },
+    {
+      "id": "claim_cd889a0325d545bfa9bf4d60f007e9f3",
+      "statement": "The existing installation and reset effect owners reject symlinked ancestors before directory creation or root detachment; public executable publication separately rejects aliased destination parents before writing.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L951-L969",
+          "version": "repo-lines-v1:sha256:5fb91fbe67679114dbc2cc07a1ee59663734a36dfdd618581ceb11c3be3fc11f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODMzMTE3ODE4OTMzYWMxNTA4MThkZjMxZTQ3ZWZjYmE2ZGE2ZjNjMDNkYmIzOTExZmQ2NmYzYjYxZTk0OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMTRmYTBlZjIyMmY5OGZhZDg4ODAxMDcwOWE0NzgxOGVjMTVmMTVmNDkxMjFiZGI1NzI1OWI0YzBkNjNiNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzOTJmZTM3MTljNzFiNzdkZGU2YzAzMDFmYTNlYmNiNTVjYjNlZTExYzBhNWEyY2E3NTc1ZWUxNzkzMTQ5OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMjBmYzYxMTc3N2M4OWRkYjlmZmJhMDE5ODk1YmI3NzVjMmVhMTg4ZmJkNzhmYjUwYzFjOGZiNThlMzFjNjYifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt#L32-L46",
+          "version": "repo-lines-v1:sha256:dec0b8190c9cbf52b5b0f1b50a2c2ef28a73332862ac5cf860caede83c51e7c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZTMwNTkyNDcxZGI4ZWIyY2E3ZGM2YjBjMGYzNzg3ZGNhOGVkMDIwNDJiMDViMDBjNzhiZTU5MDYzMGU2YTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0OGU0OTZhMDQzZjFhYTMyNmI1MjNmOGQwOGQ4ZTg1NWJjZjM3N2ZlMDI2OGUwNDU1NTc0MWM0NjFkYjFkNzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyMWJjYTM4NTI0ZTYwYmQ1MDI5ZGViYTAyMTA0ZDg0YWIyMDA2YWFlMDBmZDFiODJhN2YxYzgzY2M1ZDMzZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3M2MxYzJkZWJjM2I1NDFhMmQzODZiZWM2ZWQzNDU4NDJmZjg2ZjIwMDc2NDk5MTJmM2ZmMzI1Yzg3MWZlN2QifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt#L36-L50",
+          "version": "repo-lines-v1:sha256:7781a8a7c1b0a5b596d81ff33ba2c3ef8f50099c4b75ce898dfb968595f3a599:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4ZTZlMmJiOGFjZWQ4NTA5ZTM5Nzk4YzRjMDJhMjhkZTFkZDYzNWU0NDQzYWUzZjM3NTBhODk2ZTkyNmQ1ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3Mzg3YzFmMTNiYTMyYmY3ZDM4NmIxMmE0NDAwMmU1NWUyYmVmYmNkYmZkN2RlMzc1OGU4OWJmYWRlZTZhYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI5ZDJmNjQxODNiZjVhY2FhMzY5YzAzZWFhNzRiNGNmODA4N2FhZjQ2MjYwOTk4ZGI0N2MwMmFiYmM1OWEwZWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_82ac8f4c351843108b7ed80fd36307b3",
+      "statement": "Assembled-product acceptance verifies independent artifact identities and canonical Control cold staging with an exact management publication receipt, installed/not-requested activation and no Host files; it does not establish live-host behavior.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/run-installed-product.py#L127-L167",
+          "version": "repo-lines-v1:sha256:f82dc3a1c927546347f1e5dd7e20114cc27ee3289db13a33af644e9d0d1f8e3d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMGQ3Y2NlOWVmMWNkNWI5YTNmYjViNzhmMjJkM2JhNTAzNTU2OTU5NThlZWZjNTY0NjdhYTE4YjNlMWQwNDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ZDRlMDVmZDhlYmZiYzdiNmM3NGQzYzU4NjczMWM0ZWM1MTA2NDQzYzE0OWJhMmNkMGQ4MjE5NTU5MDUzNWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE1ZGRiMWI2OGRlY2Q4MGU3MmY2YzMzM2I0NmZhNmY2Yjc0ZjAzYWJkYjljMTAzZDlmNmJkMDM5MjdiMzVlOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMzODQ5MWJkMDNlNjA5NjBhMmNmZTk2MDY0YjEzMTVjMWJiMjI1YTU3MzNhNTBhOGNmZDMxMWQxZTY1MzhhY2UifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ec5c6e800e0f45c096154e3a39378815",
+      "statement": "The opt-in native check uses the sole normal user installation and IDEA profile, requires real compiler queries for C1/P1, C2/P1 and C2/P2, verifies unchanged host identities through Control replacement and unchanged Control through Host installation, then requires original-byte restoration with a fresh Control generation.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/native/README.md",
+          "version": "repo-file-v1:sha256:4d755b356665c85208bebae53077666d4e03beca5c71631a1662c40b0d03a6ac"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L850-L924",
+          "version": "repo-lines-v1:sha256:92bba4369a86926022aae055322b1f0c5f317247e3b57bf941d72c7906f61701:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2NmYwY2Y1MDE3N2NhNDljNzQ4MTdkYWFmN2NmYjJmNTVmNmNkYjA3N2YwMTQ0OGRlZDk2YTg5NmQwYjY3NDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzNTU3MWUzMTk5NmQ1YzI3MjNjYTIzOWZmZDZmN2UzMWY4NGUxMDNhNTkzNjcxMTFkM2RlNDAwYWFkMTY1YTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiNGUzMzM4ZjZhMzQ3ZWI0YzJhYjg1MTRmZTRhYjAxNTQwOGE1ZGY4MDY5NjYxN2FiNDc3YTRkZmJmMjc0MzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwOGYwYjMyMjZkOTBkZmYxYTYzOTBmNjlkZTc3NzkyNjdlOGIyOGQwYTNkYWZmNWZkZjkyMDEwYWRiMmEyMzYifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L984-L1040",
+          "version": "repo-lines-v1:sha256:4076f604807ddf4f3a2d2d04456e571b6f578349dda4c58138d645639a271dff:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxOTdlOWYxM2RiMjMyMDM0MTBhYTk4ZTY4MzE2YzA5Y2U2MDM1MTA4YTVlZTg2ZjAyNzEyN2IyZjg1NDUyODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1MDEzODA5NDc5N2I0OTA5N2QyMGQ3MDA1ZWU2ZmQyMTc5MjZlZDViYzhjM2U4MGM3NTEyNzE5MWQ4NjZlOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1OGYxNWI5YmQxMmQ0MmZjNWMyODQzZjEwYTAxYzk4NGJhNjlhYjhiM2ZlZTJjNzIzMjA2MTk2MzMxYWJlMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmMTdhN2MxZTBjOTdkYWEzZDU0OGJiODJjYTU3MzVjODM4YmU2MGFlMjU1NTQ5NmQ4OGNiOGI3OTAzYTZiOTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_544980d0a0334dabb64aeaf53a5909ae",
+      "statement": "The native inventory rejects bounded entry and byte overflow before hashing the crossing input, while runtime installation identity derives from the physical root and ordered immutable payload bytes rather than the archive checksum.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L364-L390",
+          "version": "repo-lines-v1:sha256:c2c798392ce48614495fbb5a3625e5d602e7b02ba3956c25a3a7c85d4d2ac7b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMGM1MTFhZDRhODUxZjQzYmY5NTUxMjQ5MGFjZDRjMjM2NGRhZTFmMzA0MmFlMGU0ZTQyNTZkZjJiODM2YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2OTc0MTY3MWY4NmQyYjliNGEzMzJlMDhlZGNlYjJmN2Y3ZDk3ZmZjNmM2NWM1MGVkYjA3YWIyNjEyZjIwMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllMmJiOTQ3YWYwMWE5ZDMxYzEyMjU3ODM5N2IyY2VhN2I1MTZkMzFiNTFjYzY1ODk0MmM2YzU1Y2YyYTEyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwY2UzZjI0YWI0N2MyZjVhOWQzMzdmMzc3ZWQ4NTczZmE1NjU4NDA3NjQwMmYxYWYwNTRhM2RlZDYxOTQ2MmYifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L435-L451",
+          "version": "repo-lines-v1:sha256:6432c8d4cc35d8e5df6503ccbe4c266606bb7d98bfaf380d9a4a5f52ee37fd35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxZGVjYWVkOTM2YjEwMTgyZTJjNDdmNTRiYTY0MmYyYjNjYWExN2U1OGYxZDI1YmIyYTNlY2E0MDAwMzU4ZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZWE5N2VmNDdlMmJlZWZjZGMyMjhkMWVlMDE1OTVkYjJkYzBhMjg1MDMxMjY2MzhlM2ZhMGE0ZTM0ODM4MGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNDNmMjliODlhMjJkNDljMGNmYmEzYTBlY2E5OWIzN2VmZGI4NTMyZmE2OTMzMWM0ODNhNzFmODI3ZWUwMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3NmQ2NjUyNzRhYWExNjllYmM1ZWIyMTRhNDA1NDk3ZWVlYjViYzA0MTgyNjkwODM0MjJmNzI3NDQzNDFkN2UifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a4b0a4026e7b46378e1a8ee51e5a71b2",
+      "statement": "Native restoration retains a possibly unavailable legacy original loaded-version projection but requires private production readiness, matching runtime identity and epoch, and a fresh Control generation; candidate Control status requires verified versions and an admitted live host.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L669-L677",
+          "version": "repo-lines-v1:sha256:c4494bd31446ea97529ec4f043120745761183bb6bc0a59678b50f75425bc045:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjMzZTdhYjAzZGQ2ZTczNjE4ZGIxM2E1Y2U4MzAyNTMwZGQ3ZmE4MTU2ZWM2OGVhN2U2OWRhNzMxNzI4MzU5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQ5NzdhZjA2ZjNkMWEyY2UxNzVkOWNlMWIzOWI5MDhmNmY4M2NjYjg5OWVmYTcxYTcxZjEwOGYzMDU5M2Y5YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjMxMTQ2ZjE0ZWVmMDM5MmNlNDY0ZGNkYzAwZGFmNjRlYzU4MzQ0ZjY3ZDY2N2YzNTBmZDMzMjAzMjM2MmEyYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmM5YWFlMjRiN2VhYTg2NjNkYjZmZDA3ZmY0NTUxMzZiOGNkZjNjYjRmYTg0YTM5ZGU0NzAwNmZiNmIzMDhhMSJ9"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L870-L919",
+          "version": "repo-lines-v1:sha256:cef38c5a26bfb492c5b51feeb96e70cc542d74d845e39232ea18809e4db7d629:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczNjBiYmRhOTc0MTJkMWZjZDA1YWZiYWYxYzkxNTRmMmRkYmRlYWVlODViMGQxMTZjMzY0OTRlMzUyNGZjMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4OTAwYTg0NmZmNDkyYjhjY2I2Y2U2ODdkYmM0NjBjMmUwMjVlOWU3Y2UzZGZkNDFhNzI4OTliYzg3Y2FjZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzNDg0NmRhNDY2OWI1MmRkZjU0M2E2M2YyMjNhMjNmMTM1ZDRiYjI1NmY1ZGUyNDcxYTE4YjRjZTYyY2ZkNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhYTA5YWQyZmFlZmU5ODY3M2FjOWM4YjQzZmM3ZmVjYjVhYWE4YmJiZjM3ZjVhZWE4NjViZmUyMGJhY2RmNDgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f71d9abaa3904b0290de156ea949a951",
+      "statement": "Native evidence preserves each component source revision independently and permits at most three fresh semantic RUNs only for the exact typed MOVED freshness rejection at MODEL_CAPTURE or CONTENT_REVALIDATION with the declared restart_read instruction, retaining every rejection; helper tests cannot establish the live mixed-version proof.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/native/README.md",
+          "version": "repo-file-v1:sha256:4d755b356665c85208bebae53077666d4e03beca5c71631a1662c40b0d03a6ac"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L1064-L1110",
+          "version": "repo-lines-v1:sha256:74667a7b4da2de6fa5b8ce06738ff71edebe13f390e3a14e777babe0a830042b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZGFjYzQzODJlNmQxZWI5ZWJkODY3ODhhMGYxNTlhMzhhN2MwYjE2ZDA0YmY3YTlhYTc4MmZmY2U3MWFmMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3MWMzNTAzYmIzM2ExMGVjYTc1ODdiY2E0Y2Q2MjljMzhmZjBiY2Q1ODM0MDM2YjlhNzkyNTk4MjI1ZDU3NGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMDRlZGIxMmVmMmI1Yzc3MzY0ODI1NWJhOTA1YzA4YWQ5NTRlMjA3ODUzYmMxNzE1MzkzNzVhYmNiZDA1ODQifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L164-L174",
+          "version": "repo-lines-v1:sha256:a743eb997863631cdd1fa54935f6a480d7f88ee6bee644c70c56d0574204edc0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwZjE1NWViNmU5YmMwYzYxZjA3YzEyNWM2MjQ0NWEwNTMzNzZmYmQ5NjE4N2I4MGJhMjBjODdmMzgyODlmOWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmNDMyYzM2ZjJlNzY2ZTJiYzA5NWM1YjQ2NTc4NjE4NTljNTczZTc5ZjM4YzYzYTEwMTliZGFjYzU4MDkyYTQifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L625-L667",
+          "version": "repo-lines-v1:sha256:6be3d9ba98a1d559ddc67c5bfae38c81d8d2dcf712b530b31af6c2e81b61d766:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMjY4YzllYTNlNjJhYzY4ZmRjNjViNWU1MTE5NDFlNmMxNGIwZTM0MDlhMDNiNjAwNjAxZjM0MDcxNWUxZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0Y2RlMWJhYTU3YTc1MTI0OGRjYjZiOGM4OGE2MTY4YjhhZTFjMmU0ODUzOWNlM2U2OTg1NDc3NzMxNGJiODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWVjMzQwMTg3MDQyMTU2NGI1OWJkOTBjZjRhNTY4OGI4ZmM3YjYzZmE2NWFkODA2Y2NjMjE4NmVhODc5NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNzY0MzNiMzA3MTNmMDRkYjI3YjM1NTMxMTI3MGI4NDc5YWYxYjg4NWY4YmU0YTkzMmQxNTc3ZDI4OWZiYzYifQ"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L224-L229",
+          "version": "repo-lines-v1:sha256:89fd2f8d287854473a04b092919047c5ce3105760b33a0170720d4e60ded1aa7:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjExODZjYmQwZjJlMWU3MmFjMGNiN2IwMGY4MmJjOGMxOTQ4N2JiNGJmODFmYWQzMmEyNDFkNDcxNzY3MGUxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjFjODFmYTljNDEyMDM1MjhlMGE4N2ZjZTMzYjViODllYzRkYjExMWYxNDMwMGQ0NGM2NGY0MmM2OGEyMDUyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTU0MTJjNzQ5NGUwODFiZDNkODg3ZDM1ZTllMTc3MmNhMWZlYWE1ZmFkZDYxNzgxZjkwNDA5YTUzMmRmYmEyOCJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:25:07.005Z"
+    "at": "2026-10-02T06:45:58.039Z"
   }
 }

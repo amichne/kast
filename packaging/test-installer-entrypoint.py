@@ -1,3 +1,4 @@
+from dataclasses import asdict, dataclass
 #!/usr/bin/env python3
 """Public installer invocation contract; no network or machine state changes."""
 
@@ -29,9 +30,45 @@ BASH = Path(shutil.which('bash', path=os.defpath)).resolve(strict=True)
 TOOL_PATH = str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath
 
 
+@dataclass(frozen=True)
+class ContractFixture:
+    type: str = 'HOSTED_CONTRACT'
+    runtimeProtocolIdentity: str = 'kast.ide-hosted.runtime.v2'
+    operationRegistryDigest: str = 'sha256:' + 'a' * 64
+    wireSchemaDigest: str = 'sha256:' + 'b' * 64
+    capabilities: tuple[str, ...] = ('query.run',)
+
+
+@dataclass(frozen=True)
+class ControlMetadataFixture:
+    productVersion: str
+    schemaVersion: int = 2
+    execution: str = 'existing_ide'
+    ideaBuild: str = '262.1234'
+    kotlinPluginBuild: str = '262.1234-IJ'
+    requiredHostedContract: ContractFixture = ContractFixture()
+
+
+@dataclass(frozen=True)
+class ArtifactFixture:
+    fileName: str
+    sha256: str
+    bytes: int
+
+
+@dataclass(frozen=True)
+class HostReleaseFixture:
+    hostedPluginVersion: str
+    artifact: ArtifactFixture
+    supportedIntellijReleaseLine: str
+    type: str = 'HOST_RELEASE'
+    providedHostedContract: ContractFixture = ContractFixture()
+    sourceRevision: str = '1' * 40
+
+
 class InstallerEntrypointTest(unittest.TestCase):
     def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False):
-        root = Path(directory)
+        root = Path(directory).resolve()
         home = root / "home"
         idea = root / "IntelliJ IDEA.app/Contents"
         assets = root / "assets"
@@ -76,6 +113,14 @@ esac
             item = tarfile.TarInfo('share/kast/libexec/kast-management')
             item.mode, item.size = 0o755, len(management)
             archive.addfile(item, io.BytesIO(management))
+            helper = (ROOT / 'packaging/host-installation.py').read_bytes()
+            item = tarfile.TarInfo('share/kast/host-installation.py')
+            item.mode, item.size = 0o644, len(helper)
+            archive.addfile(item, io.BytesIO(helper))
+            metadata = json.dumps(asdict(ControlMetadataFixture(version))).encode()
+            item = tarfile.TarInfo('share/kast/ide-host.json')
+            item.mode, item.size = 0o644, len(metadata)
+            archive.addfile(item, io.BytesIO(metadata))
         plugin_name = f"kast-ide-hosted-v{version}-idea-{plugin_line}.zip"
         plugin = assets / plugin_name
         descriptor = (f'<idea-plugin><id>io.github.amichne.kast.ide-hosted</id><version>{version}</version>'
@@ -85,13 +130,18 @@ esac
             jar.writestr("META-INF/plugin.xml", descriptor)
         with zipfile.ZipFile(plugin, "w") as archive:
             archive.writestr("kast-ide-hosted/lib/plugin.jar", jar_buffer.getvalue())
-        for asset in (control, plugin):
+        host_record = assets / f'kast-host-release-v{version}.json'
+        host_record.write_text(json.dumps(asdict(HostReleaseFixture(version,
+            ArtifactFixture(plugin_name, 'sha256:' + hashlib.sha256(plugin.read_bytes()).hexdigest(), plugin.stat().st_size), plugin_line))))
+        host_helper = assets / 'host-installation.py'
+        shutil.copyfile(ROOT / 'packaging/host-installation.py', host_helper)
+        for asset in (control, plugin, host_helper, host_record):
             digest = hashlib.sha256(asset.read_bytes()).hexdigest()
             asset.with_name(asset.name + ".sha256").write_text(f"{digest}  {asset.name}\n")
         environment = {
             "HOME": str(home), "PATH": str(bin_directory) + os.pathsep + TOOL_PATH, "NO_COLOR": "1",
             "KAST_VERSION": version, "KAST_INSTALL_ASSETS_DIRECTORY": str(assets),
-            "KAST_INSTALL_ROOT": str(root / "install"), "KAST_BIN_DIR": str(bin_directory),
+            "KAST_INSTALL_ROOT": str(home / ".local/share/kast"), "KAST_BIN_DIR": str(home / ".local/bin"),
         }
         return idea, assets, environment
 
@@ -137,10 +187,10 @@ else:
         binary.chmod(0o755)
         return {"PATH": str(binary.parent) + os.pathsep + TOOL_PATH}
 
-    def upgrade_fixture(self, directory):
+    def upgrade_fixture(self, directory, *, cold_staging=False):
         idea, assets, environment = self.installer_fixture(directory, version='1.2.4')
-        root = Path(directory)
-        install = root / 'install'
+        root = Path(directory).resolve()
+        install = Path(environment['KAST_INSTALL_ROOT'])
         prior = install / 'installation'
         prior.mkdir(parents=True)
         log = root / 'upgrade.log'
@@ -185,6 +235,23 @@ else
   printf '%s\\n' '{"operation":"installation.install","status":"installed","activation":{"type":"ready"},"semanticVersion":"1.2.4"}'
 fi
 ''',
+            'share/kast/host-installation.py': b'''import os,sys
+assert sys.argv[1] == '--archive'
+assert sys.argv[3] == '--sha256'
+assert sys.argv[5] == '--version'
+assert sys.argv[7] == '--idea-build'
+assert sys.argv[9] == '--plugin-root'
+assert len(sys.argv) in (15, 16)
+assert sys.argv[11] == '--release-record'
+assert sys.argv[13] == '--required-control'
+if len(sys.argv) == 16:
+    assert sys.argv[15] == '--dry-run'
+    sys.exit(0)
+with open(os.environ['TEST_LOG'], 'a') as log: log.write('plugin\\n')
+code = int(os.environ.get('FAIL_PLUGIN', '0'))
+print('{"type":"REJECTED","failure":"OWNERSHIP_UNPROVEN"}' if code else '{"type":"ACTIVATED","restartRequired":true}')
+sys.exit(code)
+''',
             'share/kast/installation-recovery.py': b'''import os,sys
 operation = sys.argv[1]
 assert operation in ('activate-plugin', 'seal-upgrade')
@@ -207,6 +274,7 @@ assert sys.argv[1] in ('check', 'install')
 with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.argv[1] + '\\n')
 ''',
         }
+        if cold_staging: scripts['share/kast/reset-fence-v1'] = b'1\n'
         control = assets / 'kast-control-v1.2.4-macos-aarch64.tar.gz'
         with tarfile.open(control, 'w:gz') as archive:
             for path, content in scripts.items():
@@ -254,7 +322,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertIn('"activation":{"type":"ready"}', result.stdout)
-            self.assertIn('"status":"Active"', result.stdout)
+            self.assertIn('"type":"ACTIVATED"', result.stdout)
             self.assertIn('"status":"UpgradeFinalized"', result.stdout)
             self.assertIn('"status":"retained"', result.stdout)
             self.assertIn('"stage":"APP_SERVER_ENABLE"', result.stderr)
@@ -330,7 +398,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(['service', 'plugin'], log.read_text().splitlines())
             self.assertTrue(prior.exists())
             self.assertNotIn('{', result.stdout + result.stderr)
-            self.assertIn('PLUGIN_OWNERSHIP_UNPROVEN', result.stderr)
+            self.assertIn('OWNERSHIP_UNPROVEN', result.stderr)
             self.assertIn('exit 17', result.stderr)
 
     def test_failed_review_rejects_upgrade_without_claiming_success(self):
@@ -358,6 +426,77 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(['service', 'plugin', 'seal'], log.read_text().splitlines())
             self.assertTrue(prior.exists())
             self.assertNotIn('installed Kast 1.2.4', result.stderr)
+
+    def test_cold_control_staging_requires_no_host_release_or_artifact(self):
+        with tempfile.TemporaryDirectory(prefix='kast-control-stage-') as directory:
+            idea, assets, environment = self.installer_fixture(directory, reset_capability=True)
+            for pattern in ('kast-ide-hosted*', 'kast-host-release*', 'host-installation.py*'):
+                for asset in assets.glob(pattern): asset.unlink()
+            host = Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted'
+            host.mkdir(parents=True)
+            marker = host / 'host.jar'
+            marker.write_bytes(b'P1')
+            before = (host.stat().st_dev, host.stat().st_ino, marker.read_bytes())
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--stage-only',
+                '--force', '--skip-codex-mcp', '--dry-run', '--verbose'], cwd=ROOT, env=environment,
+                capture_output=True, text=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('options=install --force --stage-only', result.stderr)
+            self.assertNotIn('downloading Kast Host', result.stderr)
+            self.assertNotIn('IDEA host payload', result.stderr)
+            self.assertEqual(before, (host.stat().st_dev, host.stat().st_ino, marker.read_bytes()))
+
+    def test_control_staging_apply_preserves_host_and_skips_legacy_pruning(self):
+        with tempfile.TemporaryDirectory(prefix='kast-control-stage-apply-') as directory:
+            idea, environment, _, log = self.upgrade_fixture(directory, cold_staging=True)
+            assets = Path(environment['KAST_INSTALL_ASSETS_DIRECTORY'])
+            for pattern in ('kast-ide-hosted*', 'kast-host-release*', 'host-installation.py*'):
+                for asset in assets.glob(pattern): asset.unlink()
+            host = Path(environment['HOME']) / 'idea-profile/plugins/kast-ide-hosted'
+            host.mkdir(parents=True)
+            marker = host / 'host.jar'
+            marker.write_bytes(b'P1')
+            before = (host.stat().st_dev, host.stat().st_ino, marker.read_bytes())
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--stage-only',
+                '--force', '--skip-codex-mcp'], cwd=ROOT, env=environment, capture_output=True, text=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(['service', 'seal'], log.read_text().splitlines())
+            self.assertIn('staged Kast Control 1.2.4', result.stderr)
+            self.assertNotIn('admitted running IntelliJ', result.stderr)
+            self.assertEqual(before, (host.stat().st_dev, host.stat().st_ino, marker.read_bytes()))
+
+    def test_cold_staging_rejects_component_upgrade_combinations_before_effects(self):
+        with tempfile.TemporaryDirectory(prefix='kast-control-stage-conflict-') as directory:
+            idea, assets, environment = self.installer_fixture(directory, reset_capability=True)
+            for asset in assets.iterdir(): asset.unlink()
+            for component in ('--control-only', '--host-only'):
+                result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--stage-only', component],
+                    cwd=ROOT, env=environment, capture_output=True, text=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn('--stage-only cannot be combined with a component upgrade', result.stderr)
+                self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+                self.assertNotIn('downloading', result.stderr)
+
+    def test_control_only_upgrade_never_requests_host_payload_or_host_effect(self):
+        with tempfile.TemporaryDirectory(prefix="kast-control-only-shell-") as directory:
+            idea, environment, prior, log = self.upgrade_fixture(directory)
+            assets = Path(environment['KAST_INSTALL_ASSETS_DIRECTORY'])
+            for plugin in assets.glob('kast-ide-hosted*'): plugin.unlink()
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--control-only'],
+                                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(['service', 'seal'], log.read_text().splitlines())
+            self.assertNotIn('Restart IntelliJ IDEA', result.stderr)
+
+    def test_host_only_install_never_requests_or_installs_control(self):
+        with tempfile.TemporaryDirectory(prefix="kast-host-only-shell-") as directory:
+            idea, assets, environment = self.installer_fixture(directory)
+            for control in assets.glob('kast-control*'): control.unlink()
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--host-only'],
+                                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+            self.assertTrue((Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/plugin.jar').exists())
 
     def test_documented_remote_invocations_use_bash_c(self):
         for document in DOCUMENTS:
@@ -419,7 +558,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(b"foreign command\n", foreign.read_bytes())
 
-    def test_explicit_install_root_selects_the_plan_without_changing_the_old_root(self):
+    def test_alternate_install_root_is_rejected_before_effects(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-root-") as directory:
             idea, _, environment = self.installer_fixture(directory)
             selected = Path(directory) / 'selected-kast'
@@ -427,8 +566,9 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                 [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--install-root', str(selected), '--dry-run'],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
-            self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn(str(selected), result.stderr)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("sole per-user installation", result.stderr)
+            self.assertNotIn("downloading", result.stderr)
             self.assertFalse(selected.exists())
             self.assertFalse((Path(directory) / 'install').exists())
 
@@ -436,7 +576,34 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
         result = subprocess.run([str(BASH), str(INSTALLER), '--install-root', 'relative'],
                                 env={"HOME": "/tmp", "PATH": TOOL_PATH}, text=True, capture_output=True, timeout=10)
         self.assertNotEqual(0, result.returncode)
-        self.assertIn('install root must be an absolute path', result.stderr)
+        self.assertIn('sole per-user installation', result.stderr)
+
+    def test_alternate_environment_roots_bins_and_session_reject_before_effects(self):
+        with tempfile.TemporaryDirectory(prefix='kast-sole-install-') as directory:
+            idea, assets, environment = self.installer_fixture(directory)
+            for asset in assets.iterdir(): asset.unlink()
+            for key, value in (('KAST_INSTALL_ROOT', str(Path(directory) / 'alternate')),
+                               ('KAST_BIN_DIR', str(Path(directory) / 'alternate-bin')),
+                               ('KAST_INSTALL_PROFILE', 'session')):
+                with self.subTest(key=key):
+                    result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea)],
+                        cwd=ROOT, env=dict(environment, **{key: value}), text=True, capture_output=True, timeout=10)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertNotIn('downloading', result.stderr)
+                    self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_xdg_data_home_cannot_select_another_installation(self):
+        with tempfile.TemporaryDirectory(prefix='kast-sole-xdg-') as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            selected = Path(environment['KAST_INSTALL_ROOT'])
+            ignored = Path(directory) / 'alternate-data'
+            environment['XDG_DATA_HOME'] = str(ignored)
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea),
+                '--install-root', str(selected), '--dry-run'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn(str(selected), result.stderr)
+            self.assertFalse(ignored.exists())
 
     def test_unsupported_os_is_rejected_before_installation(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-os-") as directory:
@@ -493,6 +660,22 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertNotIn("Register a user-level Kast MCP server", result.stderr)
         self.assertIn("profile=persistent mode=plan force=1", result.stderr)
+
+    def test_developer_control_only_rejects_before_artifact_or_service_effects(self):
+        with tempfile.TemporaryDirectory(prefix='kast-developer-control-rejection-') as directory:
+            idea, environment, prior, log = self.upgrade_fixture(directory)
+            assets = Path(environment['KAST_INSTALL_ASSETS_DIRECTORY'])
+            for asset in assets.iterdir(): asset.unlink()
+            before = (prior.stat().st_dev, prior.stat().st_ino)
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--developer-latest', '--control-only', '--idea-home', str(idea)],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn('developer builds require an explicit tested pair', result.stderr)
+            self.assertNotIn('downloading', result.stderr)
+            self.assertFalse(log.exists())
+            self.assertEqual(before, (prior.stat().st_dev, prior.stat().st_ino))
 
     def test_developer_latest_installs_pinned_public_candidate(self):
         with tempfile.TemporaryDirectory(prefix="kast-developer-install-") as directory:
@@ -551,15 +734,15 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
 
     def test_uninstall_uses_selected_private_lifecycle_control(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-uninstall-") as directory:
-            root = Path(directory)
-            install = root / "data/kast"
+            root = Path(directory).resolve()
+            install = root / ".local/share/kast"
             selected = install / "installation"
             control = selected / "share/kast/installation-lifecycle.py"
             control.parent.mkdir(parents=True)
             control.write_text("import json,sys\nprint(json.dumps(sys.argv[1:]))\n")
             environment = {
                 "HOME": str(root), "PATH": TOOL_PATH, "NO_COLOR": "1",
-                "XDG_DATA_HOME": str(root / "data"),
+                "XDG_DATA_HOME": str(root / "ignored-data"),
             }
             result = subprocess.run(
                 ["bash", str(INSTALLER), "uninstall", "--dry-run", "--verbose"],
@@ -567,7 +750,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(
-                ["--installation", str(selected.resolve()), "remove", "--dry-run", "--json"],
+                ["--installation", str(selected.resolve()), "remove", "--control-only", "--dry-run", "--json"],
                 json.loads(result.stdout),
             )
 

@@ -22,13 +22,15 @@ code_sources:
   - path: packaging/run-installed-product.py
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
+    at: 2026-10-02T03:24:34.910Z
 sources:
   - id: openwiki-source-e7e9afae9a60cee55a46b246
     resource: repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt
+  - id: openwiki-source-6d6c58a5bfeff1b2388a6735
+    resource: repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - id: openwiki-source-b4184b3e65833677c17e8554
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
 ---
 
 # Installed knowledge
@@ -68,3 +70,5 @@ commands from the private executable.
 
 The former shell lookup examples are retired. Validate the retained generation
 contract with `./gradlew :build-logic:test :cli:check verifyJsonContracts installedProductTest`.
+
+The installed knowledge manifest uses the Control release identity. Changing `controlVersion` updates it independently of `hostedPluginVersion`; shared source module versions do not couple the packaged services.

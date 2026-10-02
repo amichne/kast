@@ -543,6 +543,13 @@ def seal_upgrade(root):
         if (not selector.is_symlink() or os.readlink(selector) != receipt.links[0].target
                 or Identity.observe(selector).owner != os.getuid()):
             raise Rejected(Failure.OWNERSHIP)
+    if receipt.plugin is None and receipt.pluginRoot is None and isinstance(receipt, Receipt):
+        if receipt.stage not in (Status.PREPARED, Status.ACTIVE, Status.FINALIZING):
+            raise Rejected(Failure.RECEIPT)
+        prepare_finalization(root)
+        finalize_replacement(root)
+        save(bundle / 'receipt.json', replace(receipt, stage=Status.ACTIVE))
+        return Report(Status.SEALED, [], str(retained_script(bundle)))
     if receipt.stage not in (Status.ACTIVE, Status.FINALIZING) or receipt.plugin is None:
         raise Rejected(Failure.RECEIPT)
     plugin = receipt.plugin
@@ -722,13 +729,14 @@ def retire_and_preserve(root, bundle):
         return [Failure.RETIREMENT]
 
 
-def detach(root, dry_run):
+def detach(root, dry_run, control_only=True):
     outer, bundle = location(root)
     receipt = load(bundle / 'receipt.json')
     validate(root, receipt)
     if dry_run:
         return Report(Status.PLANNED, [], str(retained_script(bundle)))
-    receipt = migrate_plugin_chain(root)
+    if not control_only:
+        receipt = migrate_plugin_chain(root)
     # Fence is independent of payload admission and remains until explicit reinstall.
     fence = root / '.recovery-detached'
     if not os.path.lexists(fence):
@@ -747,8 +755,11 @@ def detach(root, dry_run):
     unresolved.extend(detach_login(root, bundle))
     if isinstance(receipt, LegacyReceipt):
         detach_legacy_links(receipt, unresolved)
-    if receipt.plugin is None:
-        if receipt.pluginRoot is None or os.path.lexists(physical(Path(receipt.pluginRoot)) / 'kast-ide-hosted'):
+    if control_only:
+        # Historical plugin evidence remains provenance; control detachment has no host effects.
+        pass
+    elif receipt.plugin is None:
+        if receipt.pluginRoot is not None and os.path.lexists(physical(Path(receipt.pluginRoot)) / 'kast-ide-hosted'):
             unresolved.append(Failure.PLUGIN)
     else:
         plugin = receipt.plugin
@@ -898,22 +909,26 @@ def finalize_replacement(root):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('prepare', 'activate-plugin', 'seal-upgrade', 'detach'))
+    parser.add_argument('operation', choices=('prepare', 'activate-plugin', 'seal-upgrade', 'detach', 'detach-legacy-pair'))
     parser.add_argument('--installation', required=True, type=Path)
     parser.add_argument('--bin-directory', type=Path)
     parser.add_argument('--plugin-root', type=Path)
     parser.add_argument('--staged-plugin', type=Path)
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--control-only', action='store_true', help='Detach control while preserving all host plugin files and historical plugin evidence.')
     parser.add_argument('--force', action='store_true', help='Replace the exact Kast plugin entry without following symlinks.')
     arguments = parser.parse_args()
     try:
+        if (arguments.operation == 'detach' and not arguments.control_only
+                or arguments.control_only and arguments.operation != 'detach'):
+            raise Rejected(Failure.RECEIPT)
         if arguments.force and arguments.operation != 'activate-plugin':
             raise Rejected(Failure.RECEIPT)
         outer, bundle = location(arguments.installation)
         if arguments.dry_run:
-            if arguments.operation != 'detach':
+            if arguments.operation not in ('detach', 'detach-legacy-pair'):
                 raise Rejected(Failure.RECEIPT)
-            report = detach(arguments.installation, True)
+            report = detach(arguments.installation, True, control_only=arguments.operation == 'detach')
         else:
             descriptor = os.open(outer / 'activation.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
             try:
@@ -927,8 +942,8 @@ def main():
                     report = activate_plugin(arguments.installation, arguments.staged_plugin, arguments.plugin_root, force=arguments.force)
                 elif arguments.operation == 'seal-upgrade':
                     report = seal_upgrade(arguments.installation)
-                elif arguments.operation == 'detach':
-                    report = detach(arguments.installation, False)
+                elif arguments.operation in ('detach', 'detach-legacy-pair'):
+                    report = detach(arguments.installation, False, control_only=arguments.operation == 'detach')
                 else:
                     raise Rejected(Failure.RECEIPT)
             finally:

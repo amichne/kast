@@ -17,35 +17,69 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 
 /** Read-only descriptor admission and one exact-socket exchange. No runtime startup dependency. */
-class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLimits = ReadLimits.Default) :
-    ExistingIdeClient {
+class ExistingIdeSocketClient(
+    private val home: Path,
+    private val limits: ReadLimits = ReadLimits.Default,
+    private val exchangeMillis: Long = limits[ReadLimitParameter.CLIENT_EXCHANGE_MILLIS].value.toLong(),
+) : ExistingIdeClient {
+    private val observations = java.util.concurrent.ConcurrentHashMap<CanonicalRoot, HostedServiceObservation>()
+
+    internal fun latestObservation(root: CanonicalRoot): HostedServiceObservation =
+        observations[root] ?: HostedServiceObservation.Unavailable(root, ExistingIdeFailure.HOST_UNAVAILABLE)
+
+    /** A bounded fresh observation of known hosts; this never starts IDEA or prepares a workspace. */
+    fun observedHosts(knownRoots: List<CanonicalRoot>): List<HostedServiceObservation> {
+        val roots = knownRoots.distinct().sortedBy { it.path.toString() }
+        val deadline = System.nanoTime() + HOST_STATUS_TOTAL_NANOS
+        return roots.map { root ->
+            val remaining = (deadline - System.nanoTime()) / 1_000_000L
+            if (remaining < 1) HostedServiceObservation.Unavailable(root, ExistingIdeFailure.DEADLINE_EXCEEDED)
+            else observeHost(root, minOf(HOST_STATUS_EXCHANGE_MILLIS, remaining))
+        }
+    }
+
+    private fun observeHost(root: CanonicalRoot, exchangeMillis: Long): HostedServiceObservation =
+        when (val admitted = admitObservedHostedRoot(root.path)) {
+            is Refinement.Rejected -> HostedServiceObservation.Unavailable(root, admitted.failure)
+            is Refinement.Refined -> {
+                val client = ExistingIdeSocketClient(home, limits, exchangeMillis)
+                client.query(admitted.value, ExistingIdeOperation.Status)
+                client.latestObservation(admitted.value)
+            }
+        }
+
     override fun query(root: CanonicalRoot, operation: ExistingIdeOperation): ExistingIdeExchange =
         query(ExistingIdeTarget.Discovered(root), operation)
 
     internal fun queryPrepared(workspace: PreparedWorkspace, operation: ExistingIdeOperation): ExistingIdeExchange =
         query(ExistingIdeTarget.Prepared(workspace), operation)
 
-    private fun query(target: ExistingIdeTarget, operation: ExistingIdeOperation): ExistingIdeExchange =
-        try {
-            val root = target.root
-            val digest =
-                MessageDigest.getInstance("SHA-256")
-                    .digest(root.path.toString().toByteArray(Charsets.UTF_8))
-                    .take(16)
-                    .joinToString("") { "%02x".format(it) }
-            val directory = home.resolve(".kast/ide-hosted/$digest")
-            val socket = directory.resolve("host.sock")
-            when (val descriptor = descriptor(directory, root, socket)) {
-                is Refinement.Refined -> exchange(target, operation, descriptor.value, socket)
-                is Refinement.Rejected -> ExistingIdeExchange.Rejected(descriptor.failure)
+    private fun query(target: ExistingIdeTarget, operation: ExistingIdeOperation): ExistingIdeExchange {
+        val answer =
+            try {
+                val root = target.root
+                val digest =
+                    MessageDigest.getInstance("SHA-256")
+                        .digest(root.path.toString().toByteArray(Charsets.UTF_8))
+                        .take(16)
+                        .joinToString("") { "%02x".format(it) }
+                val directory = home.resolve(".kast/ide-hosted/$digest")
+                val socket = directory.resolve("host.sock")
+                when (val descriptor = descriptor(directory, root, socket)) {
+                    is Refinement.Refined -> exchange(target, operation, descriptor.value, socket)
+                    is Refinement.Rejected -> ExistingIdeExchange.Rejected(descriptor.failure)
+                }
+            } catch (_: java.io.IOException) {
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+            } catch (_: SecurityException) {
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
+            } catch (_: UnsupportedOperationException) {
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
             }
-        } catch (_: java.io.IOException) {
-            ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-        } catch (_: SecurityException) {
-            ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-        } catch (_: UnsupportedOperationException) {
-            ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-        }
+        if (answer is ExistingIdeExchange.Rejected && answer.failure != ExistingIdeFailure.COMPATIBILITY_REJECTED)
+            observations[target.root] = HostedServiceObservation.Unavailable(target.root, answer.failure)
+        return answer
+    }
 
     private fun exchange(
         target: ExistingIdeTarget,
@@ -55,7 +89,51 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
     ): ExistingIdeExchange {
         if (target is ExistingIdeTarget.Prepared && descriptor.host != target.workspace.project)
             return ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-        return exchange(target.root, operation, descriptor, socket)
+        val incarnation =
+            HostedSocketIncarnation(
+                Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS).fileKey()
+                    ?: return ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
+            )
+        val described = exchange(target.root, ExistingIdeOperation.Status, descriptor, socket, incarnation)
+        if (described !is ExistingIdeExchange.Received) return described
+        val metadata =
+            when (val parsed = ExistingIdeDocuments.compatibility(described.document.value)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return ExistingIdeExchange.Rejected(parsed.failure)
+            }
+        val policy =
+            when (val defined = requiredHostedCompatibilityPolicy()) {
+                is Refinement.Refined -> defined.value
+                is Refinement.Rejected -> return ExistingIdeExchange.Rejected(defined.failure)
+            }
+        when (val admission = policy.admit(metadata)) {
+            is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission.Admitted ->
+                observations[target.root] =
+                    HostedServiceObservation.Compatible(target.root, descriptor, admission.compatibility)
+            is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission.Rejected -> {
+                val version =
+                    when (
+                        val parsed =
+                            io.github.amichne.kast.protocol.contract.HostedPluginVersion.parse(
+                                metadata.hostedPluginVersion
+                            )
+                    ) {
+                        is Refinement.Refined -> parsed.value
+                        is Refinement.Rejected ->
+                            return ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+                    }
+                observations[target.root] =
+                    HostedServiceObservation.Incompatible(
+                        target.root,
+                        descriptor,
+                        admission.failure,
+                        io.github.amichne.kast.protocol.contract.HostProvenance(version),
+                    )
+                return ExistingIdeExchange.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED)
+            }
+        }
+        return if (operation == ExistingIdeOperation.Status) described
+        else exchange(target.root, operation, descriptor, socket, incarnation)
     }
 
     private fun descriptor(
@@ -90,10 +168,11 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
         operation: ExistingIdeOperation,
         descriptor: ExistingIdeDescriptor,
         socket: Path,
+        incarnation: HostedSocketIncarnation,
     ): ExistingIdeExchange {
         val attributes = Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
         val key = attributes.fileKey() ?: return ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-        if (!attributes.isOther || attributes.isSymbolicLink) {
+        if (!attributes.isOther || attributes.isSymbolicLink || key != incarnation.key) {
             return ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
         }
         val request = operation.encodeControlRequest(root)
@@ -104,9 +183,7 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
             val deadline =
                 WireIoDeadline(
                     channel,
-                    (ElapsedTimeLimitMillis.parse(limits[ReadLimitParameter.CLIENT_EXCHANGE_MILLIS].value.toLong())
-                            as Refinement.Refined)
-                        .value,
+                    (ElapsedTimeLimitMillis.parse(exchangeMillis) as Refinement.Refined).value,
                 )
             val answer =
                 try {
@@ -154,6 +231,21 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
         else ExistingIdeDocuments.response(raw = bytes, root = root, operation = operation, descriptor = descriptor)
     }
 }
+
+/** Re-prove the exact physical settings owner; neither aliases nor a nearest ancestor can replace it. */
+internal fun admitObservedHostedRoot(path: Path): Refinement<CanonicalRoot, ExistingIdeFailure> =
+    when (val discovered = FilesystemCanonicalRootDiscovery.discover(path)) {
+        is CanonicalRootDiscovery.Discovered ->
+            if (discovered.root.path == path) Refinement.Refined(discovered.root)
+            else Refinement.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED)
+        is CanonicalRootDiscovery.Rejected -> Refinement.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED)
+    }
+
+private const val HOST_STATUS_TOTAL_NANOS = 750_000_000L
+private const val HOST_STATUS_EXCHANGE_MILLIS = 500L
+
+/** The filesystem identity admitted by the live describe exchange also fences its operation connection. */
+private class HostedSocketIncarnation(val key: Any)
 
 private sealed interface ExistingIdeTarget {
     val root: CanonicalRoot

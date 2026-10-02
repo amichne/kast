@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f2edb4614a0cedbfeb26a9e393c442337efc60286e41889a855e4aff668d0e1c",
+  "pageVersion": "sha256:46fbba9ca8b6de5ede71fad208cc669251fdfb267a9c5643d74d2a026196755a",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -21,10 +21,28 @@
           "version": "repo-lines-v1:sha256:619ee7d5da13c2b29dc49d1410ca467ed35424bba8ed355566ad69bbfaba3eb3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MzNkMGVhOWVjZjJmMzljOWE1MDQwNzM5NWVlNDExNzJmZTY4MmM5Yzg4NWEzNTA4Zjc1YmRlZTE1MWVmZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViZTNlZWQ0Y2Y0ODM3MGVlOTViMDgxMzA2N2RjNGZiNTczMTU0NDkwNWZmMWFiMmU3ZWE5ZTg5NTg3Zjg4ODkifQ"
         }
       ]
+    },
+    {
+      "id": "claim_f07a20a2117e4b2fb43be348f260d2a4",
+      "statement": "Control and Host use the existing process boundary and domain modules, but package their own runtime dependencies under independent artifact and release owners; Control metadata has no host archive dependency.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt",
+          "version": "repo-file-v1:sha256:1e632524f9062db4e621c4ec81f50766e746f43fee1fb86945d58f7e5c9146c7"
+        },
+        {
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:8845107cf45774af8a7d2ed4218996361fdc3dfb77a2f0b47b3e73beee2ed9aa"
+        },
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:e27534317f56be5e0eac740a434d157021983b7cc4de6c4d02460e00ef5b566a"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:25:07.005Z"
+    "at": "2026-10-02T05:40:20.143Z"
   }
 }

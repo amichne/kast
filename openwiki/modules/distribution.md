@@ -5,6 +5,10 @@ description: Typed configuration and runtime identity contracts constrain manage
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 code_sources:
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
+    symbols: [HostedQueryProgress]
+  - path: runtime/hosted/native/README.md
+  - path: runtime/hosted/native/mixed_version_acceptance.py
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
     symbols: [PluginInstallOutcome, PluginInstallFailure, installCodexPlugin]
@@ -107,7 +111,6 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/OneShotInvocationRecord.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationReplacementReceipt.kt
     symbols: [InstallationReplacementReceipt, PreviousInstallationPayload, InstallationReplacementStage]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PendingInstallationReplacement.kt
@@ -121,7 +124,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationOutcome.kt
     symbols: [InstallationFailure, InstallationOutcome]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
-    symbols: [InstallationRequest, InstallationProfile]
+    symbols: [ControlInstallRequest, ControlPayload, InstallationProfile]
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
   - path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - path: distribution/release/resolve_version.py
@@ -149,7 +152,31 @@ code_sources:
   - path: .github/workflows/docs.yml
   - path: .github/workflows/release.yml
   - path: .github/workflows/developer-release.yml
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
+    symbols: [ControlInstallationRecovery]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/VerifiedInstallationPlan.kt
+    symbols: [VerifiedInstallationPlan]
+  - path: packaging/host-installation.py
+    symbols: [HostInstallRequest, HostedPluginPayload, install]
+  - path: distribution/release/component_release.py
+  - path: distribution/release/component-release.schema.json
+  - path: .github/workflows/release-component.yml
+  - path: build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
+    symbols: [GenerateComponentReleaseTask]
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T06:45:58.039Z
 sources:
+  - id: openwiki-source-16803a9d8df1ded50a107e29
+    resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
+  - id: openwiki-source-2a9daaac1604f238ef4c63fb
+    resource: repo://build.gradle.kts
+  - id: openwiki-source-b19700b4b7bbfa25fb4bb931
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
+  - id: openwiki-source-8f4d86f42434fcc1ce269879
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - id: openwiki-source-bae14a3ed4bc7ba21f443356
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
   - id: openwiki-source-6f0b647814adafaaa5d5c5f2
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt
   - id: openwiki-source-95d32ff923f76d4a11784db6
@@ -158,16 +185,31 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt
   - id: openwiki-source-4a775e59f7cd3b1cc2d7cc10
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
+  - id: openwiki-source-7cd4eb997a7878eca6390142
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
+  - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - id: openwiki-source-927dce901b5dbac4a4d84f48
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - id: openwiki-source-9aad56755086fa068397b99d
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ReadyReset.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:25:07.005Z
+  - id: openwiki-source-03ffc32a0ca502ab67c54b25
+    resource: repo://install.sh
+  - id: openwiki-source-6fea3b3b86300de08664c4ee
+    resource: repo://packaging/host-installation.py
+  - id: openwiki-source-8faf23d69764b95242de5e09
+    resource: repo://packaging/run-installed-product.py
+  - id: openwiki-source-27c69d628b97ee3d2536e2d1
+    resource: repo://packaging/test-installer-removal.py
+  - id: openwiki-source-d124e13c6fde72403a229a1e
+    resource: repo://runtime/hosted/native/mixed_version_acceptance.py
+  - id: openwiki-source-af72e3368d1f0c22109e4ecf
+    resource: repo://runtime/hosted/native/README.md
+  - id: openwiki-source-931b927626ea234f44ea20df
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
+generated: { by: "codex", at: "2026-10-02T06:45:58.039Z" }
 ---
 
 # Distribution and packaging
@@ -180,15 +222,15 @@ independent skill, plugin, and marketplace ZIPs; candidate admission verifies
 their checksums and SBOM archive identities alongside the control and IDEA
 archives. Query examples in the skill are generated from the public tool schema.
 
-The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows payload and IDEA plugin activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for loaded version, ready workspaces, and live connection count. One-shot tool RPC calls publish a bounded process identity record while executing; MCP sessions publish the same canonical identity contract in a separate session directory. Native status counts only one-shot records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
+The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows control activation; fresh-pair installation also performs host activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for its captured control version, ready workspaces, live connection count, and each observed host identity, plugin version and compatibility. Installed and running control versions remain separate; missing live host evidence is unavailable. One-shot tool RPC calls publish a bounded process identity record while executing; MCP sessions retain the same canonical identity in their session directory. Native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
-Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, required launchers including the native management command, and one real session installation in an owned temporary root. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. The hosted-plugin ZIP is named for its own version and the IDEA release line (`idea-262.zip`). The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, required launchers including the native management command, and Control cold staging in the canonical layout beneath an owned fixture HOME. It verifies an installed/not-requested report, the exact publication receipt and absence of Host files; it establishes no loaded-host admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
-Native lifecycle commands fence admission at `<install-root>/shutdown.json`, outside the replaceable payload. Direct tools and coordinator startup honor the fence. Stop disables the owned coordinator and drains recorded tool processes within one 30-second retirement budget; stop with `--force` additionally signals only admitted exact process incarnations with qualified installed classpaths. The selected IDEA executable is re-derived from its saved launch receipt; a running user-owned host rejects with `HOST_RESTART_REQUIRED`. No replacement proceeds on an unverified shutdown. Reinstall uses the existing installer with the exact installed version, qualifies its report against the selected installation, bootstraps the coordinator, and restores recorded registrations. A failed bootstrap restores the fence, retires any partially started coordinator, and returns a typed installation-pending result. JSON results follow the shipped closed lifecycle schema; stage observations use finite discriminated variants on stderr. Older payloads without the manifest-qualified lifecycle capability reject before effects. Hosted-only lifecycle manifests may retain deleted historical workspace paths because no workspace-specific process is retired; schema-1 isolated installations still require existing roots.
+Native lifecycle commands fence admission at `<install-root>/shutdown.json`, outside the replaceable payload. Direct tools and coordinator startup honor the fence. Stop disables the owned coordinator and drains recorded tool processes within one 30-second retirement budget; stop with `--force` additionally signals only admitted exact process incarnations with qualified installed classpaths. The selected IDEA executable is re-derived from its saved launch receipt; a running user-owned host rejects with `HOST_RESTART_REQUIRED`. No replacement proceeds on an unverified shutdown. Reinstall cold-stages only the exact installed Control version, admits an installed/not-requested staging report, then bootstraps through the existing fenced lifecycle and restores recorded registrations. No Host artifact is required. A failed bootstrap restores the fence, retires any partially started coordinator, and returns a typed installation-pending result. JSON results follow the shipped closed lifecycle schema; stage observations use finite discriminated variants on stderr. Older payloads without the manifest-qualified lifecycle capability reject before effects. Hosted-only lifecycle manifests may retain deleted historical workspace paths because no workspace-specific process is retired; schema-1 isolated installations still require existing roots.
 
-The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the ordinary payload and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection. Both adapters default to `<install-root>/installation/bin/kast-tool-rpc-complete`, honor `KAST_INSTALL_ROOT`, and preserve an explicit `KAST_TOOL_RPC_COMMAND` override.
+The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the ordinary payload and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection. Both adapters default to `$HOME/.local/share/kast/installation/bin/kast-tool-rpc-complete` and preserve an explicit `KAST_TOOL_RPC_COMMAND` transport override; ambient alternate installation selectors cannot redirect their default.
 
 Codex registration requires the explicit `mcp` or `app-server` transport. MCP owns the selected `kast` server entry in Codex configuration. App Server owns `~/.local/bin/kast-codex`, an executable launcher for the selected installation's existing `kast-codex-complete` facade; the launcher accepts interactive Codex and `app-server` stdio invocation without adding an MCP entry or redirecting ordinary Desktop sessions. Schema-2 management receipts retain the closed connection identity. Schema-1 receipt admission refines existing Codex ownership to MCP while preserving its destination and payload digest. Both recorded Codex transports are independently owned; disconnecting Codex removes its recorded routes.
 
@@ -211,7 +253,7 @@ The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a
 fail-closed compatibility result and precedes installation effects. Public installation enables the app-server suite and defaults the per-user login
 LaunchAgent on without a prompt. Persistent installation asks in a terminal whether to register a user-level Codex MCP entry. Explicit register and skip flags bypass that prompt; non-interactive installation defaults to registration for compatibility. Skipping registration does not inspect or mutate Codex configuration and still installs the MCP launcher. Command collisions require explicit `--force` or manual removal.
-Local session installation retains the complete payload and defers service activation.
+Checkout installation replaces the sole user installation in place. Session mode and alternate installation roots reject before build or installation effects.
 
 Single-directory schema-3 and hosted-only schema-2 installations retire their coordinator without invoking
 the retired isolated-workspace `stop` command. Legacy schema-1 installations
@@ -243,6 +285,22 @@ If disable fails after commit, the same candidate can resume retirement while
 the exact prior daemon remains reachable and reports its committed request.
 The upgrade result retains finite blockers and daemon rejection causes.
 
+`kast upgrade --control-only` stages and qualifies the candidate under existing
+installer ownership. The candidate's live host admission runs before prior control
+retirement. Unavailable or incompatible evidence rejects with the previous control
+left in place. Replacement retires only control processes and swaps only control
+files. Candidate activation verifies the exact reachable coordinator, then repeats
+live host admission. A failure after retirement or replacement restores and verifies
+the previous control using the existing replacement transaction. The outcome is
+rejected, activated, rolled back, or recovery required, retaining the original and
+recovery failures. IntelliJ identities and plugin files remain outside these effects.
+
+`HostInstallRequest(HostedPluginPayload)` belongs to the independent plugin installer.
+`install.sh --host-only --version <host-version>` admits host archive identity and
+atomically installs only the plugin. IntelliJ's ordinary restart loads the selected
+host; no control replacement or dynamic plugin lifecycle is introduced. Fresh
+installation composes this owner with `ControlInstallRequest(ControlPayload)`.
+
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Ordinary installation rejects a failed prior admission or retirement with a stage-specific failure and preserves the selected release. An untrusted same-version payload or recovery receipt likewise rejects without replacement. Explicit `--force` remains a separate reset operation.
 
 Prior launchd retirement completes only after observing the selected service absent. A `bootout` exit alone cannot prove retirement: the owner repeats bounded `launchctl list` observations within one ten-second deadline and preserves a finite deadline, I/O, interruption, or exit rejection. The typed `kast_installation_retirement` event retains the `OBSERVE_BEFORE`, `BOOTOUT`, and `OBSERVE_AFTER` stage with the closed result and its admitted exit code where present; it excludes command arguments, service labels, and child output. The public installer renders those facts for people and retains full records through `--verbose`.
@@ -251,11 +309,11 @@ Prior launchd retirement completes only after observing the selected service abs
 
 `ControlPayloadInventory` counts paths globally, including the three payload roots, before sorting or hashing. Installer and broker use that same admission; `verifyReleaseRuntimeAdmission` exercises the runtime identity owner on the actual staged control product. Limit diagnostics retain the resource and observed lower bound. The hosted-plugin ZIP has a separate archive budget.
 
-The product has one ordinary payload at `<install-root>/installation`; schema 3 manifests and recovery receipts bind that physical path. Installation creates no `versions` directory or `current` selector. Native management and agent plugin registration use the stable physical directory. Before replacement, the installer admits the existing payload, protected state, retirement command and recovery baseline. The existing epoch owner validates any copied epoch against the old payload; it preserves an unchanged identity and removes only the admitted copied epoch when the new payload identity changes, so coordinator startup creates a fresh epoch. Protected journals and workspace enrollment remain retained. It stages the new payload and records a typed replacement transaction under `<install-root>/recovery/replacement`, then swaps the ordinary directory under the parent activation lock. A failed swap restores the admitted payload and receipt, or retains a finite recovery-required outcome when restoration cannot be proven.
+The product has one ordinary payload at `$HOME/.local/share/kast/installation`; schema 3 manifests and recovery receipts bind that physical path. Installation creates no `versions` directory or `current` selector. Native management and agent plugin registration use the stable physical directory. Before replacement, the installer admits the existing payload, protected state, retirement command and recovery baseline. The existing epoch owner validates any copied epoch against the old payload; it preserves an unchanged identity and removes only the admitted copied epoch when the new payload identity changes, so coordinator startup creates a fresh epoch. Protected journals and workspace enrollment remain retained. Control-only upgrades retain saved configuration and workspace registration while starting fresh control state and session ownership. They do not migrate sessions or copied epochs. Installation stages the new payload and records a typed replacement transaction under `<install-root>/recovery/replacement`, then swaps the ordinary directory under the parent activation lock. A failed swap restores the admitted payload and receipt, or retains a finite recovery-required outcome when restoration cannot be proven.
 
 The replacement snapshot is temporary and remains until the shell bootstrap verifies IDEA plugin activation and completes Codex registration. Only active plugin bytes occupy `plugins/kast-ide-hosted`; a pending candidate and prior baseline stay outside plugin discovery in `.kast-plugin-recovery`. The installer finalizes the replacement only after checking the new physical installation identity and active plugin identity. It removes the admitted previous payload and transient baseline on success. Failed effects preserve recovery evidence and report an incomplete installation. Explicit legacy migration admits old manifests and selector ownership; normal runtime configuration does not follow legacy aliases. Historical unknown artifacts remain subject to the existing ownership review rather than guessed deletion.
 
-`installation-recovery.py detach` fences launches and detaches the receipted IDEA plugin. It executes retirement only after payload admission. Verified retired state is quarantined; uncertain processes and journals stay preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports explicit legacy recovery without executing an unverified installation. Python and JVM installation transitions use compatible POSIX record locks.
+`installation-recovery.py detach --control-only` fences control launches. New control receipts do not own an IDEA plugin. Historical paired receipts remain evidence and control detachment preserves their plugin files; explicit historical paired maintenance is available only as `detach-legacy-pair`; preparing the next control recovery baseline removes host ownership from the new receipt without changing plugin files. It executes retirement only after payload admission. Verified retired state is quarantined; uncertain processes and journals stay preserved and produce `DetachedWithUnresolvedState`. A legacy paired maintenance receipt with incomplete plugin ownership cannot produce a clean legacy maintenance result. The standalone `prepare` operation supports explicit legacy recovery without executing an unverified installation. Python and JVM installation transitions use compatible POSIX record locks.
 
 `install.sh --force` uses the same verified release path with explicit reset authority.
 Under the activation lock it fences and retires the selected and same-version target
@@ -284,13 +342,27 @@ Server workspace lane. Incomplete recovery leaves the lane protected.
 The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 
-The app server exposes every qualified tool in the canonical agent catalog. There is no subset-selection setting or disabled product variant. Persistent installation activates the login service; private development sessions and explicit cold staging defer activation. The private `installation install --stage-only` option selects the existing installation owner's typed `STAGE_ONLY` policy and retains an installed `not-requested` activation result. Retired overrides reject before installation effects.
+The app server exposes every qualified tool in the canonical agent catalog. There is no subset-selection setting or disabled product variant. Persistent installation activates the login service; explicit cold staging defers activation in that same installation. Cold staging selects only Control and preserves all Host files. It rejects combination with a control-only upgrade, which requires activation and live-host admission. The private `installation install --stage-only` option selects the existing installation owner's typed `STAGE_ONLY` policy and retains an installed `not-requested` activation result. Retired overrides reject before installation effects.
 
 Read [configuration](../contracts/configuration.md) for ingress and ownership rules.
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 
-`assembleRelease` ships the control tarball, matching hosted-plugin ZIP, and the skill, Codex plugin and marketplace ZIPs with checksums. `GenerateControlMetadataTask` derives `ide-host.json` from the actual plugin bytes and build identities; installation verifies the exact name, version, length and digest. No semantic-runtime manifest, isolated indexer payload or topology store is shipped. Installation manifests use schema 3 and `hostedPluginSha256`; lifecycle inspection still admits historical schema-1 and schema-2 records so old owned installations can be retired safely.
+`assembleControlRelease` uses `controlVersion` and emits only the control release
+record, artifact and checksum. `assembleHostRelease` uses `hostedPluginVersion`
+and emits only the host release record, artifact and checksum. Component releases
+resolve latest within `control-v` or `host-v`; their versions need not match.
+`ControlRelease` declares its required hosted contract. `HostRelease` declares its
+provided contract and supported IntelliJ release line. Component publication
+validates the record against archived bytes and the exact source revision.
+
+`GenerateControlMetadataTask` derives `ide-host.json` from control build identities
+and the required hosted contract, with no plugin archive input. The plugin embeds
+its own provenance and complete provided contract. `assembleRelease` remains a
+fresh-install convenience containing both artifacts and host metadata; the pair
+is admitted by contract equality. No isolated semantic payload is shipped.
+Control installation manifests have no mandatory plugin digest. Lifecycle
+inspection retains historical records so old control processes can retire safely.
 
 Release asset construction, checksums, SBOM inventory, and publication agree on all five archives.
 
@@ -304,7 +376,7 @@ and connection capacity, and native source continuation byte/TTL limits.
 `verifyConfigurationIngress` checks its exact agreement with the Kotlin owners.
 The [configuration contract](../contracts/configuration.md) records the defaults.
 
-The routine assembled-product check installs the control archive and matching
+The routine assembled-product check installs the control archive and contract-compatible independently versioned
 hosted plugin in an owned temporary root. It verifies archive layout, version
 and plugin identity, required launchers, and one fail-closed public command.
 Provider catalog policy stays in its Kotlin owner tests. Semantic query results, IDEA behavior, and Codex
@@ -353,3 +425,41 @@ configuration and does not establish that a client loaded or invoked the tools.
 Destructive `uninstall --force` and `reinstall --force` bypass old payload and receipt ownership admission while retaining canonical root scope and verified daemon retirement. An exterior fence and persistent lock survive root replacement. The fence records retained storage before the old root is moved atomically to a scoped sibling recovery directory. The runtime boundary unloads exact root-derived launchd jobs, removes exact login entries, and retires scoped Kast process incarnations within a bounded deadline. Shared IDEA and Gradle processes are excluded. Erasure accepts only a quiescent typestate; a retirement or cleanup rejection preserves the fence and reports retained storage.
 
 The closed lifecycle progresses through privately constructed fenced, quiescent, erased, staged, readiness-proven, and active types. A single-use lease rejects replayed effect transitions. The embedded installer cold-stages a fresh latest-stable payload under the selected root, requiring the manifest-qualified reset fence capability. Payload admission and a staging report establish committed bytes without claiming active readiness. Activation records `ACTIVATING` while retaining the exterior marker. Daemon startup requires that intent and the live exclusive reset lease; tools remain fenced until readiness verifies the fresh version and canonical service generation and the marker is lifted. Only then can the lifecycle produce `RESET_REINSTALLED`. Failed staging or activation restores the fence and retires partial startup. Failed compensation preserves the original and recovery failures in `RESET_RECOVERY_REQUIRED`. Interrupted retention remains discoverable through the exterior fence; the lock stays stable across resets. No old registration history survives successful erasure, external harness registrations remain, and erased data has no rollback. OS or filesystem refusal remains a finite failure. The canonical lifecycle schema includes all force reset variants.
+
+Native installer dispatch explicitly binds the sole admitted HOME-derived root.
+Public uninstall rejects an alternate root or nonphysical path before Control-only
+removal. Installation checks existing physical ancestors before creating missing
+directories, and force reset cannot resolve a parent alias into another tree.
+Public command publication retains its own receipt-bound destination and rejects
+parent aliases; that destination never selects a second installation.
+
+The opt-in [mixed-version native check](../../runtime/hosted/native/README.md)
+uses the existing normal user installation and IntelliJ profile. It requires
+three real compiler-query witnesses across C1/P1, C2/P1 and C2/P2, unchanged
+IntelliJ/Host/socket/plugin identities through the Control-only upgrade, and
+unchanged Control files and generation through Host installation. Inert archives
+retain original bytes for restoration at the same destinations. Original runtime
+PIDs, sockets, readiness and epochs are not restored as authority; the original
+Control must start with a fresh generation and verified original bytes. Static
+and routine tests do not establish that native behavior.
+
+The native inventory rejects entry or byte overflow before hashing the crossing
+input, retaining the resource, maximum and observed lower bound. Its limits match
+the existing Control distribution budget. Runtime installation identity hashes the
+physical root and ordered immutable payload paths and bytes; it is distinct from
+the downloaded archive checksum. Restoration admits the original registered
+workspace before effects and enables the restored service from that exact root.
+The legacy original native loaded-version projection may remain unavailable; the
+report retains that qualification and requires the private production coordinator,
+new epoch and fresh generation to agree with ready service evidence. Candidate
+Control status remains strict.
+
+Each component release records its own source revision and archive checksum. The
+runner also records its checksum and checkout state; components may come from
+different source revisions. A fresh semantic RUN is permitted only for the exact
+typed freshness rejection with MOVED at MODEL_CAPTURE or CONTENT_REVALIDATION
+and the observed restart_read instruction, matching the host's two declared restart
+stages. At most three independent RUNs are permitted, with every rejection retained.
+Focused helper tests prove bounded inventory, identity ordering and that recovery
+predicate using case-owned inputs. They do not establish the required live
+mixed-version result; the completed native proof remains a separate gate.

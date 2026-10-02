@@ -366,6 +366,8 @@ private data class HostedDescriptionDocument(
     val querySchema: String,
     val operations: List<String>,
     val readiness: io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument,
+    val compatibility: io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument =
+        HostedCompatibilityMetadata.document,
     val type: String = "KAST_IDE_HOST",
     val protocol: Int = HostedEndpointCapabilities.protocol,
     val indexAuthority: String = "existing_ide_kotlin_stub_index",

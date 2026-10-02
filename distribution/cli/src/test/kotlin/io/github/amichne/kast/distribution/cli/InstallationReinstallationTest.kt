@@ -25,10 +25,14 @@ class InstallationReinstallationTest {
         }
         val installer = InstallerExecutor { script, arguments, report ->
             assertEquals(fixture.installation.resolve("share/kast/install.sh"), script)
-            assertEquals(listOf("--version", "1.2.3", "--force", "--skip-codex-mcp"), arguments)
+            assertEquals(
+                listOf("--version", "1.2.3", "--force", "--skip-codex-mcp", "--stage-only", "--install-root") +
+                    fixture.root.toString(),
+                arguments,
+            )
             assertTrue(Files.isRegularFile(fixture.root.resolve(SHUTDOWN_FENCE)))
             calls += "installer"
-            Files.writeString(report, managementJson.encodeToString(FixtureInstallerReport()))
+            writeStagedReport(report)
             0
         }
         val result =
@@ -88,6 +92,53 @@ class InstallationReinstallationTest {
     }
 
     @Test
+    fun `exact reinstall rejects activation claimed by its cold staging installer`() {
+        val fixture = createLifecycleFixture(temporary)
+        val calls = mutableListOf<String>()
+        val result =
+            executeInstallationLifecycle(
+                fixture.root,
+                fixture.home,
+                emptyMap(),
+                LifecycleOperation.REINSTALL,
+                LifecycleExecution(
+                    child =
+                        LifecycleChildExecutor { command, _, _ ->
+                            assertEquals("disable", command.last())
+                            calls += command.last()
+                            LifecycleChildObservation.Exited(0)
+                        },
+                    processes = closedHostProcesses(),
+                    installer =
+                        InstallerExecutor { _, _, report ->
+                            calls += "installer"
+                            Files.writeString(
+                                report,
+                                managementJson.encodeToString(
+                                    FixtureInstallerReport(
+                                        status = "installed",
+                                        activation = FixtureActivation("ready"),
+                                    )
+                                ),
+                            )
+                            0
+                        },
+                    observe = {},
+                ),
+            )
+        assertEquals(
+            LifecycleOutcome.Rejected(
+                LifecycleOperation.REINSTALL,
+                LifecycleStage.INSTALLATION,
+                LifecycleFailure.INSTALLATION_REJECTED,
+            ),
+            result,
+        )
+        assertEquals(listOf("disable", "installer"), calls)
+        assertTrue(Files.isRegularFile(fixture.root.resolve(SHUTDOWN_FENCE)))
+    }
+
+    @Test
     fun `restaged payload without shutdown capability remains fenced and cannot activate`() {
         val fixture = createLifecycleFixture(temporary)
         val result =
@@ -106,7 +157,7 @@ class InstallationReinstallationTest {
                     installer =
                         InstallerExecutor { _, _, report ->
                             Files.delete(fixture.installation.resolve("share/kast/lifecycle-fence-v1"))
-                            Files.writeString(report, managementJson.encodeToString(FixtureInstallerReport()))
+                            writeStagedReport(report)
                             0
                         },
                     observe = {},
@@ -143,7 +194,7 @@ class InstallationReinstallationTest {
                     processes = closedHostProcesses(),
                     installer =
                         InstallerExecutor { _, _, report ->
-                            Files.writeString(report, managementJson.encodeToString(FixtureInstallerReport()))
+                            writeStagedReport(report)
                             0
                         },
                     observe = {},

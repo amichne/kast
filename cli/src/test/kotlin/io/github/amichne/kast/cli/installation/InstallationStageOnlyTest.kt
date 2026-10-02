@@ -13,6 +13,20 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstallationStageOnlyTest {
     @Test
+    fun `aliased user directory rejects before creating an alternate installation`(@TempDir temporary: Path) {
+        val request = persistentRequest(temporary)
+        val alternate = Files.createDirectory(temporary.toRealPath().resolve("alternate"))
+        Files.createSymbolicLink(request.home.value.resolve(".local"), alternate)
+        val rejected =
+            assertInstanceOf(
+                InstallationOutcome.Rejected::class.java,
+                InstallationWorkflow.execute(request, unexpectedPriorUpgrade, InstallationActivationPolicy.STAGE_ONLY),
+            )
+        assertEquals(InstallationFailure.INSTALLATION_ROOT_REJECTED, rejected.failure)
+        assertTrue(Files.notExists(alternate.resolve("share")))
+    }
+
+    @Test
     fun `persistent cold staging commits payload without starting service`(@TempDir temporary: Path) {
         val request = persistentRequest(temporary)
         val complete =
@@ -90,13 +104,55 @@ class InstallationStageOnlyTest {
         }
     }
 
+    @Test
+    fun `control-only stage option rejects before payload admission`() {
+        val handled =
+            assertInstanceOf(
+                InstallationHandling.Handled::class.java,
+                InstallationCliInspection.inspect(
+                    listOf("installation", "install", "--stage-only"),
+                    requestEnvironment() + (InstallationEnvironment.CONTROL_ONLY.key to "1"),
+                ),
+            )
+        assertEquals(
+            CliBoundaryExitStatus.USAGE,
+            assertInstanceOf(CliExit.BoundaryRejected::class.java, handled.exit).status,
+        )
+    }
+
+    @Test
+    fun `direct control-only staging rejects without creating installation`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val request =
+            releaseRequest(
+                root,
+                root.resolve("home/.local/share/kast"),
+                root.resolve("home/.local/bin"),
+                Files.createDirectory(root.resolve("home")),
+                Files.createDirectory(root.resolve("codex")),
+                "1.2.3",
+                environmentOverrides =
+                    mapOf(
+                        InstallationEnvironment.PROFILE.key to "persistent",
+                        InstallationEnvironment.CONTROL_ONLY.key to "1",
+                    ),
+            )
+        val rejected =
+            assertInstanceOf(
+                InstallationOutcome.Rejected::class.java,
+                InstallationWorkflow.execute(request, unexpectedPriorUpgrade, InstallationActivationPolicy.STAGE_ONLY),
+            )
+        assertEquals(InstallationFailure.REQUEST_REJECTED, rejected.failure)
+        assertTrue(Files.notExists(request.installRoot.value))
+    }
+
     private fun persistentRequest(temporary: Path): InstallationRequest {
         val root = temporary.toRealPath()
         val request =
             releaseRequest(
                 root,
-                root.resolve("kast"),
-                root.resolve("commands"),
+                root.resolve("home/.local/share/kast"),
+                root.resolve("home/.local/bin"),
                 Files.createDirectory(root.resolve("home")),
                 Files.createDirectory(root.resolve("codex")),
                 "1.2.3",
@@ -121,13 +177,11 @@ class InstallationStageOnlyTest {
             InstallationEnvironment.CONTROL_ROOT.key to "/fixture/control",
             InstallationEnvironment.CONTROL_ARCHIVE.key to "/fixture/control.tar.gz",
             InstallationEnvironment.CONTROL_SHA256.key to "a".repeat(64),
-            InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE.key to "/fixture/runtime.zip",
-            InstallationEnvironment.HOSTED_PLUGIN_SHA256.key to "b".repeat(64),
             InstallationEnvironment.VERSION.key to "1.2.3",
             InstallationEnvironment.IDEA_HOME.key to "/fixture/idea",
             InstallationEnvironment.JAVA_HOME.key to "/fixture/idea/jbr/Contents/Home",
-            InstallationEnvironment.INSTALL_ROOT.key to "/fixture/install",
-            InstallationEnvironment.BIN_DIRECTORY.key to "/fixture/bin",
+            InstallationEnvironment.INSTALL_ROOT.key to "/fixture/home/.local/share/kast",
+            InstallationEnvironment.BIN_DIRECTORY.key to "/fixture/home/.local/bin",
             InstallationEnvironment.HOME.key to "/fixture/home",
             InstallationEnvironment.CODEX_HOME.key to "/fixture/codex",
             InstallationEnvironment.MODE.key to "apply",

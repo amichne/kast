@@ -9,6 +9,10 @@ Defines canonical operation models, authoritative operation/tool registries, and
 
 ## Key Files
 
+- [HostedContract.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt) - strict hosted-contract identities and compatibility policy.
+- [HostedCompatibilityDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedCompatibilityDocument.kt) - live compatibility evidence and implementation provenance.
+- [CanonicalHostedContract.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt) - canonical hosted wire and operation identity derivation.
+
 - [WorkspaceRefreshDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/WorkspaceRefreshDocuments.kt) - typed explicit workspace lifecycle control documents, separate from canonical reads.
 
 - [SourceReadFailureDetails.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt) - disjoint request, reference, and internal source failure causes.
@@ -51,3 +55,4 @@ Defines canonical operation models, authoritative operation/tool registries, and
 
 - For a public operation, read its contract, then registry definition, then wire serializer.
 - For tool availability or budgets, begin in `registry`; for JSON compatibility, begin in `wire`.
+- Hosted compatibility requires exact contract equality and existing platform admission; implementation versions remain provenance.

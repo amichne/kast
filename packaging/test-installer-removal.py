@@ -74,7 +74,7 @@ class InstallerRemovalTest(unittest.TestCase):
     def test_uninstall_dispatches_only_to_selected_installation_lifecycle(self):
         result = self.uninstall('--verbose')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), json.dumps(['--installation', str(self.product), 'remove', '--json']),
+        self.assertEqual(result.stdout.strip(), json.dumps(['--installation', str(self.product), 'remove', '--control-only', '--json']),
                          'entry point must invoke bounded lifecycle removal, never broad rm')
 
     def test_manifestless_installation_is_rejected(self):
@@ -83,6 +83,35 @@ class InstallerRemovalTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('manifest', result.stderr)
         self.assertTrue(self.product.exists())
+
+    def test_explicit_root_binds_only_the_sole_user_lifecycle(self):
+        alternate = self.root / 'alternate-control'
+        alternate.mkdir()
+        marker = alternate / 'protected'
+        marker.write_text('preserve')
+        before = (marker.stat().st_dev, marker.stat().st_ino, marker.read_bytes())
+        result = self.uninstall('--install-root', str(self.outer), '--verbose')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(result.stdout.strip(), json.dumps([
+            '--installation', str(self.product), 'remove', '--control-only', '--json']))
+        self.assertEqual(before, (marker.stat().st_dev, marker.stat().st_ino, marker.read_bytes()))
+        rejected = self.uninstall('--install-root', str(alternate), '--verbose')
+        self.assertNotEqual(0, rejected.returncode)
+        self.assertIn('sole per-user installation', rejected.stderr)
+        self.assertEqual('', rejected.stdout)
+        self.assertEqual(before, (marker.stat().st_dev, marker.stat().st_ino, marker.read_bytes()))
+
+    def test_explicit_removal_root_rejects_invalid_paths_before_dispatch(self):
+        alias = self.root / 'installation-alias'
+        alias.symlink_to(self.outer, target_is_directory=True)
+        for selected, failure in (('relative', 'sole per-user installation'), (str(alias), 'sole per-user installation'),
+                                  (str(self.outer / '..' / 'kast'), 'sole per-user installation')):
+            with self.subTest(selected=selected):
+                result = self.uninstall('--install-root', selected, '--verbose')
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(failure, result.stderr)
+                self.assertEqual('', result.stdout)
+                self.assertTrue(self.product.exists())
 
 if __name__ == '__main__':
     unittest.main()

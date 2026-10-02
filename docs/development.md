@@ -149,26 +149,45 @@ dependency update, review newly generated checksums against the publisher before
 committing the metadata; keep verification enabled for builds and IDE sync.
 A successful CLI build does not establish that IDEA imported the Gradle model.
 
-Choose a local installation from the repository root:
+Install the working tree into the existing user installation from the repository root:
 
 ```shell
-# Isolated installation, active only in this Bash or Zsh session
-source "$(./packaging/install-checkout.sh session --idea-home "/Applications/IntelliJ IDEA.app")"
-
-# Persistent installation for your user account
 ./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"
 ```
 
-Both modes build the working tree, including uncommitted changes, and verify the
-matched control and IDEA plugin archives. Restart IDEA to load the plugin.
-Session mode isolates configuration and broker sockets, disables persistent
-services, and keeps temporary files under `$KAST_SESSION_ROOT`.
-It still stages the Kast plugin in the selected IDEA profile. Restore the
-persistent plugin before the next IDEA restart when leaving a session install.
+This builds the working tree, including uncommitted changes, and verifies the
+selected control and IDEA plugin archives. Restart IDEA to load a replaced host.
+Kast has one installation at `$HOME/.local/share/kast/installation`; checkout
+builds replace those components in place. Session installations and alternate
+installation roots are rejected before build or installation effects.
 
-Run persistent installation from a shell without an active Kast session. It
-honors `KAST_INSTALL_ROOT` and `KAST_BIN_DIR`, stops the previous installed App
-Server, and enables the new login service. This requires the App Server’s
+The services have independent release inputs and package tasks:
+
+```shell
+./gradlew assembleControlRelease -PcontrolVersion=0.50.0
+./gradlew assembleHostRelease -PhostedPluginVersion=0.49.0
+```
+
+A control release requires the canonical hosted contract and no host archive.
+A host release packages its own runtime dependencies. `assembleRelease` remains
+one fresh-install convenience for a selected pair. Changing a control version
+does not change the host version or hosted contract.
+
+For a loaded baseline host that provides the complete contract, use
+`kast upgrade --control-only`. It admits the live host before retiring control,
+activates the candidate and repeats admission. Plugin files and IntelliJ remain
+unchanged. Control sessions start fresh. `kast status` separates installed and
+running control from each observed host's identity, version and compatibility.
+
+Install a host independently with the public installer's `--host-only --version`
+input, then restart IntelliJ through its ordinary lifecycle. The
+[mixed-version native check](../runtime/hosted/native/README.md) uses the existing
+user installation and normal IntelliJ profile, preserving configuration and
+recording exact control, host and process identities. Routine tests alone do
+not prove IntelliJ reuse.
+
+Persistent installation stops the previous installed App Server and enables
+the new login service. This requires the App Server’s
 [Codex prerequisites](../app-server/docs/compatibility.md). Service enablement
 failure leaves the installation available and reports failure.
 
@@ -196,16 +215,18 @@ For a damaged installation, use the [recovery runbook](installation-recovery.md)
 ### Installer development inputs
 
 The public installer supports `--force`, `--dry-run`, `--version`, `--idea-home`,
-`uninstall`, and `--help`. Deprecated collision flags, custom directory flags,
-and `--local` are rejected. Use `packaging/install-checkout.sh session|persistent`
-for checkout builds. Session mode creates private paths and prints an activation
-file; persistent mode installs and activates the same complete suite.
+`--control-only`, `--host-only`, `uninstall`, and `--help`.
+Use `packaging/install-checkout.sh persistent` for checkout builds.
+All component installation and lifecycle operations select
+`$HOME/.local/share/kast`; an explicit internal root binding must equal that
+path. `XDG_DATA_HOME`, custom prefixes and session profiles cannot create
+another installation.
 
 Release fixtures supply `KAST_INSTALL_ASSETS_DIRECTORY` with verified archives.
-Only this explicit development input permits `KAST_INSTALL_ROOT`, `KAST_BIN_DIR`,
-and `KAST_INSTALL_PROFILE=session`. Product read limits, endpoint selection, and
-read-only inspection remain supported. The duplicate `index` command family is
-removed; use `kast ide` for status, refresh, classes, supertype, and completion.
+Filesystem fixtures use their own admitted user home and the same canonical
+relative layout. Product read limits, endpoint selection and read-only
+inspection remain supported. Use `kast ide` for status, refresh, classes,
+supertype and completion.
 
 Version-pinned archives must match the installer contract. To stage historical
 archives that require retired setup inputs, use their matching tagged installer.
