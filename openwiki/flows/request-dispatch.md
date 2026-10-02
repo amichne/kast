@@ -70,14 +70,14 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-e8970cbf92e81dc4000b50e4
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
-  - id: openwiki-source-4409dd5c2a071a9540abe837
-    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedCompatibilityExchangeTest.kt
+  - id: openwiki-source-473526fe1b8c21a06df3f01f
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
 generated: { by: "codex", at: "2026-10-02T13:53:38.453Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T13:57:17.310Z
+    at: 2026-10-02T14:11:27.469Z
 ---
 
 # Request dispatch
