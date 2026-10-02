@@ -3,6 +3,11 @@ package io.github.amichne.kast.cli.installation
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+internal enum class InstallationActivationPolicy {
+    ACTIVATE,
+    STAGE_ONLY,
+}
+
 /** Installation is committed before activation; pending activation never erases that fact. */
 @Serializable
 internal sealed interface InstallationActivation {

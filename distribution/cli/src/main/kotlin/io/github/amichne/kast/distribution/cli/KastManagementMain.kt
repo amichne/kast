@@ -82,6 +82,8 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
         ManagementRoot()
             .subcommands(
                 StatusCommand(),
+                StopCommand(),
+                ReinstallCommand(),
                 ConnectCommand(),
                 DisconnectCommand(),
                 PluginCommand(),
@@ -125,6 +127,32 @@ private class StatusCommand : ManagementNode("status") {
     override fun help(context: Context) = "Inspect installation receipts and passive runtime observations."
 
     override fun selection() = ManagementCommand.Status(json)
+}
+
+private class StopCommand : ManagementNode("stop") {
+    private val json by option("--json", help = "Print the typed lifecycle outcome.").flag()
+    private val force by option("--force", help = "Terminate exactly owned tool processes instead of waiting.").flag()
+
+    override fun help(context: Context) = "Disable automatic restart and verify shutdown; preserve the installation."
+
+    override fun selection() =
+        ManagementCommand.Lifecycle(if (force) LifecycleOperation.STOP_FORCE else LifecycleOperation.STOP, json)
+}
+
+private class ReinstallCommand : ManagementNode("reinstall") {
+    private val json by option("--json", help = "Print the typed lifecycle outcome.").flag()
+    private val force by
+        option(
+                "--force",
+                help = "Retire scoped daemons, erase Kast without prior ownership checks, then install fresh.",
+            )
+            .flag()
+
+    override fun help(context: Context) = "Reinstall the selected release, or reset to the latest release with --force."
+
+    override fun selection() =
+        if (force) ManagementCommand.Reset(ForceResetOperation.REINSTALL, json)
+        else ManagementCommand.Lifecycle(LifecycleOperation.REINSTALL, json)
 }
 
 private class ConnectCommand : ManagementNode("connect") {
@@ -194,9 +222,16 @@ private class UpgradeCommand : ManagementNode("upgrade") {
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {
+    private val force by
+        option("--force", help = "Retire scoped daemons and erase Kast without prior ownership checks.").flag()
+    private val json by option("--json", help = "Print the typed force reset outcome; requires --force.").flag()
+
     override fun help(context: Context) = "Remove this installation and its owned registrations."
 
-    override fun selection() = ManagementCommand.Uninstall
+    override fun selection(): ManagementCommand {
+        if (json && !force) throw CliktError("--json requires --force for uninstall")
+        return if (force) ManagementCommand.Reset(ForceResetOperation.UNINSTALL, json) else ManagementCommand.Uninstall
+    }
 }
 
 internal data class ManagementRejected(val stage: String, val reason: String) : RuntimeException()
@@ -287,9 +322,53 @@ private fun perform(command: ManagementCommand) {
                 }
             }
         }
+        is ManagementCommand.Lifecycle -> {
+            val outcome = executeInstallationLifecycle(root, Path.of(home), environment, command.operation)
+            if (command.json) println(outcome.asJson())
+            else
+                when (outcome) {
+                    is LifecycleOutcome.Stopped ->
+                        println("Kast shutdown verified; automatic restart and new tool calls are disabled")
+                    is LifecycleOutcome.Reinstalled ->
+                        println("Reinstalled Kast ${outcome.version}; reconnect affected harnesses")
+                    is LifecycleOutcome.Rejected ->
+                        System.err.println(
+                            "kast: ${outcome.stage}: ${outcome.failure}; ${lifecycleRecovery(outcome.failure)}"
+                        )
+                    is LifecycleOutcome.Pending ->
+                        System.err.println(
+                            "kast: installed ${outcome.version}; ${outcome.stage}: ${outcome.failure}; " +
+                                lifecycleRecovery(outcome.failure)
+                        )
+                }
+            if (outcome is LifecycleOutcome.Rejected || outcome is LifecycleOutcome.Pending) exitProcess(1)
+        }
+        is ManagementCommand.Reset -> {
+            val outcome = forceResetInstallation(root, Path.of(home), environment, command.operation)
+            when (presentForceReset(outcome, command.json)) {
+                ForceResetExit.COMPLETE -> Unit
+                ForceResetExit.INCOMPLETE -> exitProcess(1)
+            }
+        }
         ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home))
         ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home))
         ManagementCommand.Version -> println(MANAGEMENT_VERSION)
         ManagementCommand.Help -> Unit
     }
 }
+
+private fun lifecycleRecovery(failure: LifecycleFailure): String =
+    when (failure) {
+        LifecycleFailure.HOST_RESTART_REQUIRED -> "quit the selected IntelliJ IDEA, then repeat this command"
+        LifecycleFailure.REGISTRATION_REPAIR_REQUIRED -> "repair the recorded harness registration with kast connect"
+        LifecycleFailure.OWNERSHIP_UNPROVEN,
+        LifecycleFailure.FENCE_REJECTED,
+        LifecycleFailure.CHILD_REJECTED,
+        LifecycleFailure.CHILD_DEADLINE_EXCEEDED,
+        LifecycleFailure.REQUEST_OWNERSHIP_UNPROVEN,
+        LifecycleFailure.REQUESTS_DID_NOT_RETIRE,
+        LifecycleFailure.HOST_OBSERVATION_REJECTED,
+        LifecycleFailure.INSTALLATION_REJECTED,
+        LifecycleFailure.FILESYSTEM_REJECTED ->
+            "inspect kast status --json; shutdown fencing and recovery evidence are retained"
+    }

@@ -502,7 +502,11 @@ def workspaces(installation):
         if not isinstance(raw, str):
             raise Rejected(Failure.REGISTRY_REJECTED)
         root = Path(raw)
-        if not root.is_absolute() or not root.is_dir() or root.resolve() != root or root in admitted:
+        # Hosted installations never execute workspace processes. Deleted historical
+        # roots are not process authority and must not prevent retiring the coordinator.
+        legacy = installation.manifest['schemaVersion'] == 1
+        if (not root.is_absolute() or root.resolve() != root or root in admitted
+                or (legacy and not root.is_dir())):
             raise Rejected(Failure.REGISTRY_REJECTED)
         admitted.append(root)
     return admitted

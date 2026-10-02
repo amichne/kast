@@ -15,8 +15,9 @@ type Tool = {
 };
 
 const dataHome = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share");
+const installRoot = process.env.KAST_INSTALL_ROOT || join(dataHome, "kast");
 const command = process.env.KAST_TOOL_RPC_COMMAND ||
-  join(dataHome, "kast", "current", "bin", "kast-tool-rpc-complete");
+  join(installRoot, "installation", "bin", "kast-tool-rpc-complete");
 
 function run(args: string[], input: string, cwd: string, policy?: {callTimeoutMillis: number; maxResponseBytes: number}, signal?: AbortSignal): Promise<unknown> {
   return new Promise((resolve, reject) => {

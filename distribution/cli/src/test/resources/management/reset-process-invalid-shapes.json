@@ -1,0 +1,101 @@
+[
+  {
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "VERIFY",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "VERIFY",
+    "outcome": "RETIRED"
+  },
+  {
+    "pid": 123,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT",
+    "unexpected": "field"
+  },
+  {
+    "pid": 0,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": -1,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": null,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": "123",
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 1.5,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 9223372036854775808,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "UNKNOWN",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "ACTIVATION",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "VERIFY",
+    "outcome": "UNKNOWN",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "VERIFY",
+    "outcome": "COMPLETED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": "STARTED"
+  },
+  {
+    "pid": 123,
+    "stage": "VERIFY",
+    "outcome": "RETIRED",
+    "type": null
+  }
+]

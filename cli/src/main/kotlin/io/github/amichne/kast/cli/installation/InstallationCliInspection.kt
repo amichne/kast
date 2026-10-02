@@ -38,10 +38,18 @@ internal object InstallationCliInspection {
             }
         }
 
-        val force = arguments == listOf("installation", "install", "--force")
-        if (!force && arguments != listOf("installation", "install")) {
+        val options = arguments.drop(2)
+        if (
+            arguments.take(2) != listOf("installation", "install") ||
+                options.distinct().size != options.size ||
+                options.any { it !in setOf("--force", "--stage-only") }
+        ) {
             return rejected(InstallationFailure.REQUEST_REJECTED, CliBoundaryExitStatus.USAGE)
         }
+        val force = "--force" in options
+        val activationPolicy =
+            if ("--stage-only" in options) InstallationActivationPolicy.STAGE_ONLY
+            else InstallationActivationPolicy.ACTIVATE
         val request =
             when (
                 val parsed =
@@ -52,7 +60,7 @@ internal object InstallationCliInspection {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return requestRejected(parsed.failure)
             }
-        return project(InstallationWorkflow.execute(request))
+        return project(InstallationWorkflow.execute(request, activationPolicy = activationPolicy))
     }
 
     internal fun project(outcome: InstallationOutcome): InstallationHandling =

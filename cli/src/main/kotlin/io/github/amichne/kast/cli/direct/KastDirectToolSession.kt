@@ -27,21 +27,43 @@ import kotlinx.serialization.json.JsonObject
 internal class KastDirectToolSession(
     val catalog: List<DirectToolDocument>,
     val root: () -> CanonicalRootDiscovery,
-    val start: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure>,
+    start: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure>,
     val invokePublic: (AdmittedPublicTool) -> CliExit,
     val invokeSupport: (SupportToolIdentity, JsonObject) -> CliExit = { _, _ ->
         error("No support tool binding")
     },
+    val admission: () -> InstalledToolAdmission = { InstalledToolAdmission.AVAILABLE },
 ) {
-    fun invoke(name: String, arguments: JsonObject): CliExit =
-        SupportToolIdentity.entries.singleOrNull { it.toolName == name }?.let { invokeSupport(it, arguments) }
-            ?: admitAndInvokePublic(name, arguments, invokePublic)
+    val start: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure> = { selected ->
+        when (admission()) {
+            InstalledToolAdmission.AVAILABLE -> start(selected)
+            InstalledToolAdmission.STOPPED,
+            InstalledToolAdmission.UNPROVEN ->
+                Refinement.Rejected(
+                    DaemonOperationFailure.Protocol(
+                        io.github.amichne.kast.appserver.DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION
+                    )
+                )
+        }
+    }
 
-    fun invokeAdmitted(request: AdmittedPublicTool): CliExit = invokePublic(request)
+    fun invoke(name: String, arguments: JsonObject): CliExit =
+        if (admission() != InstalledToolAdmission.AVAILABLE)
+            boundaryExit(CliBoundaryExitStatus.RUNTIME, "installation-shutdown")
+        else
+            SupportToolIdentity.entries.singleOrNull { it.toolName == name }?.let { invokeSupport(it, arguments) }
+                ?: admitAndInvokePublic(name, arguments, invokePublic)
+
+    fun invokeAdmitted(request: AdmittedPublicTool): CliExit =
+        if (admission() == InstalledToolAdmission.AVAILABLE) invokePublic(request)
+        else boundaryExit(CliBoundaryExitStatus.RUNTIME, "installation-shutdown")
 
     companion object {
         @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
         fun installed(directory: Path, home: Path, environment: Map<String, String>): KastDirectToolSession? {
+            val code =
+                Path.of(KastDirectToolSession::class.java.protectionDomain.codeSource.location.toURI()).toRealPath()
+            val installation = code.parent.takeIf { it.fileName.toString() == "lib" }?.parent ?: return null
             val catalog = installedHostedBootstrap().tools.associateBy { it.name }
             val selected =
                 CanonicalAgentToolDefinitions.all.filter { definition ->
@@ -82,6 +104,7 @@ internal class KastDirectToolSession(
             return KastDirectToolSession(
                 catalog = selected.map { catalog.getValue(it.name.value).directToolDocument() } + directSupportTools(),
                 root = root,
+                admission = { observeInstalledToolAdmission(installation) },
                 start = read::start,
                 invokePublic = invokePublic,
                 invokeSupport = investigation::invoke,

@@ -9,12 +9,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 // The catalog is serialized by the production Kotlin RPC bridge, never reconstructed here.
 const catalog = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_CATALOG, 'utf8'));
 const root = process.env.KAST_PACKAGED_ADAPTER_ROOT ? pathToFileURL(process.env.KAST_PACKAGED_ADAPTER_ROOT + '/share/kast/adapters/') : new URL('../../../../', import.meta.url);
-async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure) {
+async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure, env = {KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc'}) {
   const registered = [], calls = [];
   const context = createContext({ Buffer, setTimeout: (callback, millis) => {
     if (failure === 'timeout' && calls.length > 1) { queueMicrotask(callback); return 0; }
     return setTimeout(callback, millis);
-  }, clearTimeout, process: { env: { KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc' }, cwd: () => '/fixture' } });
+  }, clearTimeout, process: { env, cwd: () => '/fixture' } });
   const spawn = (command, args) => {
     calls.push({ command, args });
     const child = new EventEmitter();
@@ -60,6 +60,18 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
   return { registered, calls, error };
 }
 for (const harness of ['copilot', 'pi']) {
+  for (const [environment, expected] of [
+    [{}, '/fixture/.local/share/kast/installation/bin/kast-tool-rpc-complete'],
+    [{XDG_DATA_HOME: '/data'}, '/data/kast/installation/bin/kast-tool-rpc-complete'],
+    [{KAST_INSTALL_ROOT: '/owned/kast'}, '/owned/kast/installation/bin/kast-tool-rpc-complete'],
+  ]) {
+    test(`${harness} selects the ordinary payload launcher from ${JSON.stringify(environment)}`, async () => {
+      const loaded = await load(harness, catalog, undefined, undefined, environment);
+      assert.ifError(loaded.error);
+      assert.equal(loaded.calls.length, 1);
+      assert.equal(loaded.calls[0].command, expected);
+    });
+  }
   test(`${harness} admits the complete generated catalog and invokes query unchanged`, async () => {
     const loaded = await load(harness);
     assert.ifError(loaded.error);

@@ -10,21 +10,22 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 @Serializable
-private enum class InstallStatus {
+internal enum class InstallStatus {
     @SerialName("installed") INSTALLED,
     @SerialName("installed-activation-pending") INSTALLED_ACTIVATION_PENDING,
 }
 
 @Serializable
-private enum class ActivationType {
+internal enum class ActivationType {
     @SerialName("ready") READY,
     @SerialName("pending") PENDING,
+    @SerialName("not-requested") NOT_REQUESTED,
 }
 
-@Serializable private data class ActivationReport(val type: ActivationType, val reason: String? = null)
+@Serializable internal data class ActivationReport(val type: ActivationType, val reason: String? = null)
 
 @Serializable
-private data class InstallerReport(
+internal data class InstallerReport(
     val operation: String,
     val status: InstallStatus,
     val activation: ActivationReport,
@@ -33,7 +34,7 @@ private data class InstallerReport(
 
 private val installerReportJson = Json { ignoreUnknownKeys = true }
 
-private fun requireOwnedExecutable(root: Path): ManagementReceipt {
+internal fun requireOwnedExecutable(root: Path): ManagementReceipt {
     val receipt =
         when (val read = readReceipt(root)) {
             is ReceiptRead.Read -> read.receipt
@@ -54,13 +55,23 @@ private fun installedPrivateInstaller(root: Path): Path {
     return script
 }
 
+private fun requireOwnedInstaller(root: Path) {
+    val installation = selectedInstallation(root)
+    val read = readBundledManifest(installation)
+    if (read !is BundledManifestRead.Read || !payloadOwned(installation, read.manifest, "share/kast/install.sh"))
+        throw ManagementRejected("installation-admission", "private installer ownership is unproven")
+}
+
 private const val INSTALLER_DEADLINE_SECONDS = 300L
 
 @Suppress("ThrowsCount")
-private fun runInstaller(script: Path, arguments: List<String>, report: Path? = null): Int {
+internal fun executePrivateInstaller(script: Path, arguments: List<String>, report: Path? = null): Int {
     val process =
         try {
-            val builder = ProcessBuilder(listOf("/bin/bash", script.toString()) + arguments).inheritIO()
+            val builder =
+                ProcessBuilder(listOf("/bin/bash", script.toString()) + arguments)
+                    .inheritIO()
+                    .redirectOutput(ProcessBuilder.Redirect.appendTo(Path.of("/dev/stderr").toFile()))
             val environment = builder.environment()
             environment.keys
                 .filter {
@@ -94,11 +105,22 @@ private fun runInstaller(script: Path, arguments: List<String>, report: Path? = 
 private const val INSTALLER_REPORT_LIMIT_BYTES = 65536L
 
 @Suppress("ThrowsCount")
-private fun installLatest(root: Path, prior: ManagementReceipt): InstallerReport {
+internal fun installLatest(
+    root: Path,
+    prior: ManagementReceipt,
+    selection: InstallationSelection = InstallationSelection.Latest,
+    executor: InstallerExecutor = InstallerExecutor(::executePrivateInstaller),
+): InstallerReport {
     val script = installedPrivateInstaller(root)
+    if (selection is InstallationSelection.Exact) requireOwnedInstaller(root)
     val options =
-        if (prior.channel == ReleaseChannel.DEVELOPER) listOf("--developer-latest", "--skip-codex-mcp")
-        else listOf("--skip-codex-mcp")
+        when (selection) {
+            is InstallationSelection.Exact ->
+                listOf("--version", selection.version.value, "--force", "--skip-codex-mcp")
+            InstallationSelection.Latest ->
+                if (prior.channel == ReleaseChannel.DEVELOPER) listOf("--developer-latest", "--skip-codex-mcp")
+                else listOf("--skip-codex-mcp")
+        }
     val reportPath =
         try {
             Files.createTempFile(root, ".management-result-", ".json")
@@ -107,7 +129,7 @@ private fun installLatest(root: Path, prior: ManagementReceipt): InstallerReport
         }
     val (code, rawReport) =
         try {
-            val exit = withRegistrationLock(root) { runInstaller(script, options, reportPath) }
+            val exit = executor.execute(script, options, reportPath)
             exit to readBoundedFile(reportPath, INSTALLER_REPORT_LIMIT_BYTES)
         } finally {
             Files.deleteIfExists(reportPath)
@@ -119,28 +141,63 @@ private fun installLatest(root: Path, prior: ManagementReceipt): InstallerReport
             "installer failed with exit $code; installed version: ${status.installedVersion.value ?: "unavailable"}",
         )
     }
-    val report =
-        try {
-            rawReport?.let { installerReportJson.decodeFromString<InstallerReport>(it) }
-        } catch (_: SerializationException) {
-            null
-        } ?: throw ManagementRejected("upgrade-report", "installed state is unverified after installer success")
-    if (!reportMatchesSelectedInstallation(report, root, prior.executable))
-        throw ManagementRejected("upgrade-report", "installed state does not match the selected release")
-    return report
+    return when (val admitted = admitInstallerReport(rawReport, root, prior.executable)) {
+        is InstallerReportAdmission.Admitted -> admitted.report
+        InstallerReportAdmission.Rejected ->
+            throw ManagementRejected("upgrade-report", "installed state is unverified after installer success")
+    }
 }
 
-private fun reportMatchesSelectedInstallation(report: InstallerReport, root: Path, command: String): Boolean =
+internal sealed interface InstallerReportAdmission {
+    data class Admitted(val report: InstallerReport) : InstallerReportAdmission
+
+    data object Rejected : InstallerReportAdmission
+}
+
+internal enum class InstallerReportIntent {
+    ACTIVATION,
+    STAGING,
+}
+
+internal fun admitInstallerReport(
+    raw: String?,
+    root: Path,
+    command: String,
+    intent: InstallerReportIntent = InstallerReportIntent.ACTIVATION,
+): InstallerReportAdmission {
+    if (raw == null) return InstallerReportAdmission.Rejected
+    val report =
+        try {
+            installerReportJson.decodeFromString<InstallerReport>(raw)
+        } catch (_: SerializationException) {
+            return InstallerReportAdmission.Rejected
+        }
+    return if (reportMatchesSelectedInstallation(report, root, command, intent))
+        InstallerReportAdmission.Admitted(report)
+    else InstallerReportAdmission.Rejected
+}
+
+private fun reportMatchesSelectedInstallation(
+    report: InstallerReport,
+    root: Path,
+    command: String,
+    intent: InstallerReportIntent,
+): Boolean =
     report.operation == "installation.install" &&
         report.semanticVersion == readStatus(root, command).installedVersion.value &&
         when (report.status) {
-            InstallStatus.INSTALLED -> report.activation.type == ActivationType.READY
-            InstallStatus.INSTALLED_ACTIVATION_PENDING -> report.activation.type == ActivationType.PENDING
+            InstallStatus.INSTALLED ->
+                when (intent) {
+                    InstallerReportIntent.ACTIVATION -> report.activation.type == ActivationType.READY
+                    InstallerReportIntent.STAGING -> report.activation.type == ActivationType.NOT_REQUESTED
+                }
+            InstallStatus.INSTALLED_ACTIVATION_PENDING ->
+                intent == InstallerReportIntent.ACTIVATION && report.activation.type == ActivationType.PENDING
         }
 
 internal fun upgradeInstallation(root: Path, home: Path) {
     val prior = requireOwnedExecutable(root)
-    val report = installLatest(root, prior)
+    val report = withRegistrationLock(root) { installLatest(root, prior) }
     val failures = mutableListOf<HarnessConnection>()
     prior.registrations.forEach { registration ->
         try {
@@ -178,7 +235,8 @@ internal fun uninstallInstallation(root: Path, home: Path) {
     val receipt = requireOwnedExecutable(root)
     val script = installedPrivateInstaller(root)
     // The private installer owns the safe service and plugin shutdown boundary.
-    val code = withRegistrationLock(root) { runInstaller(script, listOf("uninstall", "--managed-registrations")) }
+    val code =
+        withRegistrationLock(root) { executePrivateInstaller(script, listOf("uninstall", "--managed-registrations")) }
     if (code != 0) {
         throw ManagementRejected(
             "uninstall",

@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.direct.directToolDocument
@@ -159,6 +160,24 @@ class KastToolRpcBridgeTest {
         val changeRequest = publicExample(PublicToolIdentity.ADD_DECLARATION, "exactTarget")
         assertInstanceOf(ToolRpcReply.RejectedDocument::class.java, bridge.call("add_declaration", changeRequest))
         assertEquals(2, preparationCount)
+    }
+
+    @Test
+    fun `shutdown fencing rejects RPC before workspace discovery preparation or semantic dispatch`() {
+        val read = installedHostedBootstrap().tools.single { it.name == "query_symbols" }
+        val session =
+            KastDirectToolSession(
+                catalog = listOf(read.directToolDocument()),
+                root = { error("shutdown must precede workspace discovery") },
+                start = { error("shutdown must precede preparation") },
+                invokePublic = { error("shutdown must precede semantic dispatch") },
+                admission = { InstalledToolAdmission.STOPPED },
+            )
+        assertEquals(
+            ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED),
+            KastToolRpcBridge(session)
+                .call("query_symbols", publicExample(PublicToolIdentity.QUERY_SYMBOLS, "runByName")),
+        )
     }
 
     private fun publicExample(identity: PublicToolIdentity, name: String): String =
