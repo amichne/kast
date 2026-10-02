@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:97c0179d68f9dee7c037381d84877bca2f67b3fb17175c9f506b89abc0447b94",
+  "pageVersion": "sha256:afc22afe039808648411ae5036100a8cabfa62160b6d0643f22146627c23289b",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -32,13 +32,27 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:d56d92af2e07c479e85d6569f4b301e5c7fadc4bc8d6eab0bb684b3be815243b"
+          "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
+        }
+      ]
+    },
+    {
+      "id": "claim_3f97914272f64e71886530b1d812e29e",
+      "statement": "The project socket client retains successfully loaded packaged Control compatibility requirements for its lifetime, retries rejected loads, and still obtains and admits fresh live describe evidence for every operation.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
+          "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
+        },
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
+          "version": "repo-file-v1:sha256:1bc674ddac85e827aee47a29008f03f1914327512fa7e65a74ac1f496a41da02"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T05:15:45.560Z"
+    "at": "2026-10-02T14:11:27.469Z"
   }
 }

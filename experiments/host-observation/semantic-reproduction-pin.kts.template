@@ -63,11 +63,11 @@ run {
     val native = com.intellij.openapi.application.ReadAction.compute<Map<String, Any>, RuntimeException> {
         val modules = com.intellij.openapi.module.ModuleManager.getInstance(project).modules
         check(modules.size <= 5000) // Diagnostic bound, never an admission override.
-        val roots = modules.map { module ->
+        val roots = modules.sortedBy { it.name }.map { module ->
             val entries = com.intellij.openapi.roots.ModuleRootManager.getInstance(module).contentEntries
-            mapOf("module" to module.name, "sourceRoots" to entries.flatMap { it.sourceFolders.toList() }.map {
+            mapOf("module" to module.name, "sourceRoots" to entries.flatMap { it.sourceFolders.toList() }.sortedBy { it.url }.map {
                 mapOf("url" to it.url, "kind" to it.rootType.javaClass.name)
-            }, "contentRoots" to entries.map { it.url })
+            }, "contentRoots" to entries.map { it.url }.sorted())
         }
         val gradlePlugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("org.jetbrains.plugins.gradle"))!!
         val cacheClass = gradlePlugin.pluginClassLoader!!.loadClass("org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache")
@@ -81,9 +81,9 @@ run {
             val current = pending.removeFirst()
             val sourceSets = getter(current, "getSourceSets") as Map<*, *>
             projects.add(mapOf("path" to getter(current, "getPath"), "directory" to getter(current, "getProjectDir").toString(),
-                "sourceSets" to sourceSets.values.map { set ->
-                    mapOf("name" to getter(set!!, "getName"), "roots" to (getter(set, "getSources") as Map<*, *>).map { (kind, value) ->
-                        mapOf("kind" to kind.toString(), "directories" to (getter(value!!, "getSrcDirs") as Collection<*>).map { it.toString() })
+                "sourceSets" to sourceSets.values.sortedBy { getter(it!!, "getName").toString() }.map { set ->
+                    mapOf("name" to getter(set!!, "getName"), "roots" to (getter(set, "getSources") as Map<*, *>).entries.sortedBy { it.key.toString() }.map { (kind, value) ->
+                        mapOf("kind" to kind.toString(), "directories" to (getter(value!!, "getSrcDirs") as Collection<*>).map { it.toString() }.sorted())
                     })
                 }))
             pending.addAll((getter(current, "getChildProjects") as Map<*, *>).values.filterNotNull())
@@ -91,7 +91,7 @@ run {
         mapOf("root" to project.basePath!!, "smart" to !com.intellij.openapi.project.DumbService.isDumb(project),
             "intellijModuleCount" to modules.size, "gradleModelState" to if (imported == null) "unavailable" else "captured", "gradleProjectCount" to projects.size,
             "sourceRootCount" to roots.sumOf { (it["sourceRoots"] as List<*>).size },
-            "modules" to roots, "importedGradleProjects" to projects,
+            "modules" to roots, "importedGradleProjects" to projects.sortedBy { it.getValue("directory").toString() },
             "savedDocuments" to com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().unsavedDocuments.isEmpty(),
             "committedPsi" to !com.intellij.psi.PsiDocumentManager.getInstance(project).hasUncommitedDocuments())
     }

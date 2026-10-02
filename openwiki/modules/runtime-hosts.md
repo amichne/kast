@@ -141,9 +141,6 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T06:27:25.947Z
 sources:
   - id: openwiki-source-4497996830a7e09fc6368cb3
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt
@@ -184,6 +181,9 @@ sources:
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
 generated: { by: "codex", at: "2026-10-02T06:27:25.947Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T13:53:38.453Z
 ---
 
 # Runtime and process hosts
