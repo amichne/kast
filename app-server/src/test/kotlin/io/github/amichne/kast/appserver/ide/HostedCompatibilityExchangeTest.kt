@@ -1,5 +1,10 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.appserver.BrokerInstallationState
+import io.github.amichne.kast.appserver.InstalledCoordinatorConfiguration
+import io.github.amichne.kast.appserver.InstalledWorkspacePreparation
+import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
+import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.wire.CanonicalHostedContract
@@ -16,6 +21,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -30,6 +36,70 @@ class HostedCompatibilityExchangeTest {
     private val json = Json { encodeDefaults = true }
     private val compatibility =
         HostedCompatibilityDocument("262.1.1", "262.1.1-IJ", "0.49.0", CanonicalHostedContract.document)
+
+    @Test
+    fun `registered host status admits live evidence after an independent one shot client query`() {
+        exchange(listOf("DESCRIBE", "DESCRIBE"), compatibility) { oneShot, root ->
+            assertInstanceOf(ExistingIdeExchange.Received::class.java, oneShot.query(root, ExistingIdeOperation.Status))
+            val preparation = installedPreparation(root.path)
+            try {
+                val status =
+                    assertInstanceOf(HostedServiceStatus.Compatible::class.java, preparation.hostedServices().single())
+                assertEquals(root.path.toString(), status.root)
+                assertEquals("00000000-0000-0000-0000-000000000002", status.host)
+                assertEquals(ProcessHandle.current().pid(), status.hostPid)
+                assertEquals("0.49.0", status.hostedPluginVersion)
+            } finally {
+                runBlocking { preparation.operations.close() }
+            }
+        }
+    }
+
+    @Test
+    fun `registered host status preserves actual incompatible contract and host provenance`() {
+        val changed =
+            compatibility.copy(
+                hostedContract = compatibility.hostedContract.copy(wireSchemaDigest = "sha256:" + "0".repeat(64))
+            )
+        exchange(listOf("DESCRIBE"), changed) { _, root ->
+            val preparation = installedPreparation(root.path)
+            try {
+                val status =
+                    assertInstanceOf(
+                        HostedServiceStatus.Incompatible::class.java,
+                        preparation.hostedServices().single(),
+                    )
+                assertEquals(root.path.toString(), status.root)
+                assertEquals("0.49.0", status.hostedPluginVersion)
+                val mismatch =
+                    assertInstanceOf(
+                        io.github.amichne.kast.distribution.contract.HostedCompatibilityStatusFailure.Mismatch::class
+                            .java,
+                        status.failure,
+                    )
+                assertEquals(
+                    io.github.amichne.kast.distribution.contract.HostedCompatibilityStatusField.WIRE_SCHEMA_DIGEST,
+                    mismatch.field,
+                )
+                assertEquals(listOf("sha256:" + "0".repeat(64)), mismatch.observed)
+            } finally {
+                runBlocking { preparation.operations.close() }
+            }
+        }
+    }
+
+    private fun installedPreparation(home: Path): InstalledWorkspacePreparation {
+        val installation = Files.createDirectory(home.resolve("installation"))
+        for (name in listOf("bin", "lib", "share")) Files.createDirectory(installation.resolve(name))
+        val executable = Files.writeString(installation.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
+        Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
+        val registry = WorkspaceEnrollmentStore(installation.resolve("config/workspaces.json"))
+        assertInstanceOf(Refinement.Refined::class.java, registry.enroll(home))
+        val options =
+            (InstalledCoordinatorConfiguration.admit(executable, home, emptyMap()) as Refinement.Refined).value
+        val owner = (BrokerInstallationState.admit(installation) as Refinement.Refined).value
+        return InstalledWorkspacePreparation(options, owner)
+    }
 
     @Test
     fun `different implementation version is retained and operation follows admitted describe`() {

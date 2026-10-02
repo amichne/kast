@@ -131,22 +131,35 @@ code_sources:
     symbols: [HostedServicesObservation, observeRunningHostedServices]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt
     symbols: [IdeLifecycleClient]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T03:24:34.910Z
+    at: 2026-10-02T05:15:45.560Z
 sources:
   - id: openwiki-source-4497996830a7e09fc6368cb3
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt
+  - id: openwiki-source-7c05e12b47d08ef75636350e
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-8d38b171e35bb98b83dfbe58
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
+  - id: openwiki-source-88f09847a1cc4b4d806ffe37
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
+  - id: openwiki-source-d0f22f03abacc7b6ee9cd104
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
   - id: openwiki-source-8ece5abae2f9aab84f07b127
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
   - id: openwiki-source-d719877f4ac62761c9b248b1
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
+  - id: openwiki-source-3adda3013ad0805c51b3ac26
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt
   - id: openwiki-source-c58b3f38ca46d44dd30a8771
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
   - id: openwiki-source-51fd272ea7471c9e42b84369
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
+  - id: openwiki-source-a0efdefba63982f6209d2b1d
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
   - id: openwiki-source-95d1815c680b1c389e562577
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt
   - id: openwiki-source-5efa910d729623be2b070bc2
@@ -155,7 +168,7 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
-generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+generated: { by: "codex", at: "2026-10-02T05:15:45.560Z" }
 ---
 
 # Runtime and process hosts
@@ -374,3 +387,18 @@ ordinary attempt for the same candidate can resume from the active daemon's
 qualified committed request. A different candidate or daemon identity rejects.
 
 The coordinator's passive management reply projects its captured running control version, currently ready workspace roots, observed live connection count, and bounded fresh compatibility observations for each known host. Each host observation retains its project root and host identity, plugin provenance and exact compatibility result; missing evidence remains unavailable. A pending frontend leaves connection count unavailable. The native management client correlates this reply with the installation epoch and live service generation.
+
+Control status distinguishes installed and running Control versions and reports
+each observed Host's identity, loaded plugin version and compatibility. It reads
+the current workspace registry and selects only its admitted exact physical
+settings roots for fresh bounded live describe/status exchanges. A one-shot Tool
+RPC query in another process does not need to populate the daemon client's query
+history. Status does not prepare or enroll workspaces, open projects or select an
+ancestor when a registered root moves or loses its settings file.
+
+A rejected registered root retains its known path with an unavailable result. A
+rejected registry instead reports REGISTRY_UNAVAILABLE with its registry path and
+closed failure; it invents no host or workspace identity. Compatible, incompatible
+and unavailable remain distinct per observed host, and missing live evidence
+never becomes compatibility proof. The passive exchange retains its existing
+750 ms total and 500 ms per-host bounds.

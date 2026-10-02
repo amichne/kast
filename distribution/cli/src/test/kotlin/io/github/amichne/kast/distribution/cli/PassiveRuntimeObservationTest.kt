@@ -114,6 +114,20 @@ class PassiveRuntimeObservationTest {
     }
 
     @Test
+    fun `registered root failure retains registry evidence without a fabricated host identity`() {
+        val rejected =
+            HostedServiceStatus.RegistryUnavailable(
+                "/installation/config/workspaces.json",
+                io.github.amichne.kast.distribution.contract.HostedRegistryFailure.PATH_REJECTED,
+            )
+        assertEquals(listOf(rejected), projectHostedServices(listOf(rejected)).value)
+        assertEquals(
+            ObservationState.UNAVAILABLE,
+            projectHostedServices(listOf(rejected.copy(registryPath = "relative"))).state,
+        )
+    }
+
+    @Test
     fun `unproven host identity or provenance rejects the observation`() {
         val valid = HostedServiceStatus.Compatible("/workspace", "00000000-0000-0000-0000-000000000001", 123, "0.49.0")
         listOf(

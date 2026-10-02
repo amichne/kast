@@ -16,15 +16,22 @@ internal fun InstallationStatus.asText(): String = buildList {
     .joinToString("\n")
 
 private fun hostStatusLines(host: HostedServiceStatus): List<String> =
-    listOf("Host workspace: ${host.root}") +
-        when (host) {
-            is HostedServiceStatus.Compatible ->
+    when (host) {
+        is HostedServiceStatus.Compatible ->
+            listOf("Host workspace: ${host.root}") +
                 loadedHostLines(host.host, host.hostPid, host.hostedPluginVersion, "compatible")
-            is HostedServiceStatus.Incompatible ->
+        is HostedServiceStatus.Incompatible ->
+            listOf("Host workspace: ${host.root}") +
                 loadedHostLines(host.host, host.hostPid, host.hostedPluginVersion, "incompatible")
-            is HostedServiceStatus.Unavailable ->
-                listOf("Host loaded: unavailable", "Compatibility: unavailable (${host.failure})")
-        }
+        is HostedServiceStatus.Unavailable ->
+            listOf(
+                "Host workspace: ${host.root}",
+                "Host loaded: unavailable",
+                "Compatibility: unavailable (${host.failure})",
+            )
+        is HostedServiceStatus.RegistryUnavailable ->
+            listOf("Host registry: ${host.registryPath}", "Compatibility: unavailable (${host.failure})")
+    }
 
 private fun loadedHostLines(host: String, pid: Long, version: String, compatibility: String): List<String> =
     listOf("Host identity: $host (PID $pid)", "Host loaded: $version", "Compatibility: $compatibility")

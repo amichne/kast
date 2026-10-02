@@ -23,8 +23,11 @@ internal class InstalledWorkspacePreparation(
 ) {
     private val lifecycle = installedWorkspaceLifecycleClient(options.userHome, options.configuration.selectedIdeHome)
     private val native = ExistingIdeSocketClient(options.userHome, options.configuration.readLimits)
+    private val registryPath = options.installationRoot.resolve("config/workspaces.json")
+    private val registry = WorkspaceEnrollmentStore(registryPath)
 
-    fun hostedServices(): List<HostedServiceStatus> = native.observedHosts().map(::projectHostedService)
+    fun hostedServices(): List<HostedServiceStatus> =
+        registeredHostedServices(registry.snapshot(), registryPath, native::observedHosts)
 
     val operations =
         WorkspacePreparations(

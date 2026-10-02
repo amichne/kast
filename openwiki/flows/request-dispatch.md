@@ -65,7 +65,7 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T03:24:34.910Z
+    at: 2026-10-02T05:15:45.560Z
 sources:
   - id: openwiki-source-55c5b1c6b24fca5ce9444ac5
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/ProviderFailureCode.kt

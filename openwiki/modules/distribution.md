@@ -163,7 +163,7 @@ code_sources:
     symbols: [GenerateComponentReleaseTask]
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T04:13:44.061Z
+    at: 2026-10-02T05:15:45.560Z
 sources:
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
@@ -205,7 +205,7 @@ sources:
     resource: repo://runtime/hosted/native/mixed_version_acceptance.py
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
-generated: { by: "codex", at: "2026-10-02T04:13:44.061Z" }
+generated: { by: "codex", at: "2026-10-02T05:15:45.560Z" }
 ---
 
 # Distribution and packaging
@@ -438,3 +438,23 @@ retain original bytes for restoration at the same destinations. Original runtime
 PIDs, sockets, readiness and epochs are not restored as authority; the original
 Control must start with a fresh generation and verified original bytes. Static
 and routine tests do not establish that native behavior.
+
+The native inventory rejects entry or byte overflow before hashing the crossing
+input, retaining the resource, maximum and observed lower bound. Its limits match
+the existing Control distribution budget. Runtime installation identity hashes the
+physical root and ordered immutable payload paths and bytes; it is distinct from
+the downloaded archive checksum. Restoration admits the original registered
+workspace before effects and enables the restored service from that exact root.
+The legacy original native loaded-version projection may remain unavailable; the
+report retains that qualification and requires the private production coordinator,
+new epoch and fresh generation to agree with ready service evidence. Candidate
+Control status remains strict.
+
+Each component release records its own source revision and archive checksum. The
+runner also records its checksum and checkout state; components may come from
+different source revisions. A fresh semantic RUN is permitted only for the exact
+typed freshness rejection with MOVED, CONTENT_REVALIDATION and the observed
+restart_read instruction, at most three times with every rejection retained.
+Focused helper tests prove bounded inventory, identity ordering and that recovery
+predicate using case-owned inputs. They do not establish the required live
+mixed-version result; the completed native proof remains a separate gate.

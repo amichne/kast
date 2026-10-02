@@ -6,12 +6,10 @@ import kotlinx.serialization.Serializable
 /** Passive management projection. Provenance identifies a host; only live admission proves compatibility. */
 @Serializable
 sealed interface HostedServiceStatus {
-    val root: String
-
     @Serializable
     @SerialName("COMPATIBLE")
     data class Compatible(
-        override val root: String,
+        val root: String,
         val host: String,
         val hostPid: Long,
         val hostedPluginVersion: String,
@@ -20,7 +18,7 @@ sealed interface HostedServiceStatus {
     @Serializable
     @SerialName("INCOMPATIBLE")
     data class Incompatible(
-        override val root: String,
+        val root: String,
         val host: String,
         val hostPid: Long,
         val hostedPluginVersion: String,
@@ -29,8 +27,20 @@ sealed interface HostedServiceStatus {
 
     @Serializable
     @SerialName("UNAVAILABLE")
-    data class Unavailable(override val root: String, val failure: HostedServiceUnavailableFailure) :
-        HostedServiceStatus
+    data class Unavailable(val root: String, val failure: HostedServiceUnavailableFailure) : HostedServiceStatus
+
+    @Serializable
+    @SerialName("REGISTRY_UNAVAILABLE")
+    data class RegistryUnavailable(val registryPath: String, val failure: HostedRegistryFailure) : HostedServiceStatus
+}
+
+@Serializable
+enum class HostedRegistryFailure {
+    PATH_REJECTED,
+    DOCUMENT_REJECTED,
+    WRITE_REJECTED,
+    WORKSPACE_CONFLICT,
+    CAPACITY_EXCEEDED,
 }
 
 @Serializable

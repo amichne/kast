@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c83db3420636c7f75145ee3572154e84511bb94f598771a9fcf90302ecf246e7",
+  "pageVersion": "sha256:a6f00162bba0598fa20b9a1d51fae305a9e795590fc7f60232531a0adb0cf218",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -178,21 +178,67 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/native/README.md",
-          "version": "repo-file-v1:sha256:9728ba72770bafe669e130d35eb44aa9295ee4bcd463126f1341b9df0018b731"
+          "version": "repo-file-v1:sha256:c198533597ec47eacbadfc1221587f6bf0007ca96900ba768332f007bbe67ea0"
         },
         {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L586-L664",
-          "version": "repo-lines-v1:sha256:284643a0954c155ea995f636e6571edc538fa9e81442b3b14e731189dc5ba3d3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZjYzMjVjZDMxMTViMTcwNWFjMmE4Yzc5NWM2ZWI1NmI1MjY5ZTM2MGE3OGJjNjY5ZTgxNDZkYTBhY2U2NTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4OTAwYTg0NmZmNDkyYjhjY2I2Y2U2ODdkYmM0NjBjMmUwMjVlOWU3Y2UzZGZkNDFhNzI4OTliYzg3Y2FjZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwMDI1NGFhNzY4ODNiZmEwNzBiNzEyODhmMDU0MDEwOWYxOTdhMDE1NjM5NDE4N2Y0YTM0ZjVhODgxZmNiNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2YTk5MWJmZGQyNmU3NmU1MjM4ZmVlNmQzMjY3ZTEwODE1NGIwYzQxYjI2MmVlZjMwYzNhMjBhYzRhYjA5ZWIifQ"
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L850-L924",
+          "version": "repo-lines-v1:sha256:92bba4369a86926022aae055322b1f0c5f317247e3b57bf941d72c7906f61701:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2NmYwY2Y1MDE3N2NhNDljNzQ4MTdkYWFmN2NmYjJmNTVmNmNkYjA3N2YwMTQ0OGRlZDk2YTg5NmQwYjY3NDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzNTU3MWUzMTk5NmQ1YzI3MjNjYTIzOWZmZDZmN2UzMWY4NGUxMDNhNTkzNjcxMTFkM2RlNDAwYWFkMTY1YTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiNGUzMzM4ZjZhMzQ3ZWI0YzJhYjg1MTRmZTRhYjAxNTQwOGE1ZGY4MDY5NjYxN2FiNDc3YTRkZmJmMjc0MzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwOGYwYjMyMjZkOTBkZmYxYTYzOTBmNjlkZTc3NzkyNjdlOGIyOGQwYTNkYWZmNWZkZjkyMDEwYWRiMmEyMzYifQ"
         },
         {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L727-L789",
-          "version": "repo-lines-v1:sha256:07872842c8b337415d7dbcc19ae1f225bff17c36ad88b3032bde4f5881a8578a:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxOTdlOWYxM2RiMjMyMDM0MTBhYTk4ZTY4MzE2YzA5Y2U2MDM1MTA4YTVlZTg2ZjAyNzEyN2IyZjg1NDUyODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNGQ2MTRiZjVkNGVhNmI2MTIwZTNhYzM5MTQ2MWVkYTA4YzQzNzczYzJiY2M1YjEzNzExOGZmNDJmMzg1ZWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1OGYxNWI5YmQxMmQ0MmZjNWMyODQzZjEwYTAxYzk4NGJhNjlhYjhiM2ZlZTJjNzIzMjA2MTk2MzMxYWJlMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViNWMxZWRiYzc3MzczNzk0ZmRhZmU2NTY2NTI2NTRiNTY2NTRhOTM5MmNmOWU3OTZhYzhiN2FhMWIzMmM4ZDMifQ"
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L984-L1040",
+          "version": "repo-lines-v1:sha256:4076f604807ddf4f3a2d2d04456e571b6f578349dda4c58138d645639a271dff:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxOTdlOWYxM2RiMjMyMDM0MTBhYTk4ZTY4MzE2YzA5Y2U2MDM1MTA4YTVlZTg2ZjAyNzEyN2IyZjg1NDUyODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1MDEzODA5NDc5N2I0OTA5N2QyMGQ3MDA1ZWU2ZmQyMTc5MjZlZDViYzhjM2U4MGM3NTEyNzE5MWQ4NjZlOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1OGYxNWI5YmQxMmQ0MmZjNWMyODQzZjEwYTAxYzk4NGJhNjlhYjhiM2ZlZTJjNzIzMjA2MTk2MzMxYWJlMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmMTdhN2MxZTBjOTdkYWEzZDU0OGJiODJjYTU3MzVjODM4YmU2MGFlMjU1NTQ5NmQ4OGNiOGI3OTAzYTZiOTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_544980d0a0334dabb64aeaf53a5909ae",
+      "statement": "The native inventory rejects bounded entry and byte overflow before hashing the crossing input, while runtime installation identity derives from the physical root and ordered immutable payload bytes rather than the archive checksum.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L364-L390",
+          "version": "repo-lines-v1:sha256:c2c798392ce48614495fbb5a3625e5d602e7b02ba3956c25a3a7c85d4d2ac7b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMGM1MTFhZDRhODUxZjQzYmY5NTUxMjQ5MGFjZDRjMjM2NGRhZTFmMzA0MmFlMGU0ZTQyNTZkZjJiODM2YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2OTc0MTY3MWY4NmQyYjliNGEzMzJlMDhlZGNlYjJmN2Y3ZDk3ZmZjNmM2NWM1MGVkYjA3YWIyNjEyZjIwMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllMmJiOTQ3YWYwMWE5ZDMxYzEyMjU3ODM5N2IyY2VhN2I1MTZkMzFiNTFjYzY1ODk0MmM2YzU1Y2YyYTEyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwY2UzZjI0YWI0N2MyZjVhOWQzMzdmMzc3ZWQ4NTczZmE1NjU4NDA3NjQwMmYxYWYwNTRhM2RlZDYxOTQ2MmYifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L435-L451",
+          "version": "repo-lines-v1:sha256:6432c8d4cc35d8e5df6503ccbe4c266606bb7d98bfaf380d9a4a5f52ee37fd35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxZGVjYWVkOTM2YjEwMTgyZTJjNDdmNTRiYTY0MmYyYjNjYWExN2U1OGYxZDI1YmIyYTNlY2E0MDAwMzU4ZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZWE5N2VmNDdlMmJlZWZjZGMyMjhkMWVlMDE1OTVkYjJkYzBhMjg1MDMxMjY2MzhlM2ZhMGE0ZTM0ODM4MGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNDNmMjliODlhMjJkNDljMGNmYmEzYTBlY2E5OWIzN2VmZGI4NTMyZmE2OTMzMWM0ODNhNzFmODI3ZWUwMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3NmQ2NjUyNzRhYWExNjllYmM1ZWIyMTRhNDA1NDk3ZWVlYjViYzA0MTgyNjkwODM0MjJmNzI3NDQzNDFkN2UifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a4b0a4026e7b46378e1a8ee51e5a71b2",
+      "statement": "Native restoration retains a possibly unavailable legacy original loaded-version projection but requires private production readiness, matching runtime identity and epoch, and a fresh Control generation; candidate Control status requires verified versions and an admitted live host.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L669-L677",
+          "version": "repo-lines-v1:sha256:c4494bd31446ea97529ec4f043120745761183bb6bc0a59678b50f75425bc045:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjMzZTdhYjAzZGQ2ZTczNjE4ZGIxM2E1Y2U4MzAyNTMwZGQ3ZmE4MTU2ZWM2OGVhN2U2OWRhNzMxNzI4MzU5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQ5NzdhZjA2ZjNkMWEyY2UxNzVkOWNlMWIzOWI5MDhmNmY4M2NjYjg5OWVmYTcxYTcxZjEwOGYzMDU5M2Y5YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjMxMTQ2ZjE0ZWVmMDM5MmNlNDY0ZGNkYzAwZGFmNjRlYzU4MzQ0ZjY3ZDY2N2YzNTBmZDMzMjAzMjM2MmEyYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmM5YWFlMjRiN2VhYTg2NjNkYjZmZDA3ZmY0NTUxMzZiOGNkZjNjYjRmYTg0YTM5ZGU0NzAwNmZiNmIzMDhhMSJ9"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L870-L919",
+          "version": "repo-lines-v1:sha256:cef38c5a26bfb492c5b51feeb96e70cc542d74d845e39232ea18809e4db7d629:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczNjBiYmRhOTc0MTJkMWZjZDA1YWZiYWYxYzkxNTRmMmRkYmRlYWVlODViMGQxMTZjMzY0OTRlMzUyNGZjMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4OTAwYTg0NmZmNDkyYjhjY2I2Y2U2ODdkYmM0NjBjMmUwMjVlOWU3Y2UzZGZkNDFhNzI4OTliYzg3Y2FjZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzNDg0NmRhNDY2OWI1MmRkZjU0M2E2M2YyMjNhMjNmMTM1ZDRiYjI1NmY1ZGUyNDcxYTE4YjRjZTYyY2ZkNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhYTA5YWQyZmFlZmU5ODY3M2FjOWM4YjQzZmM3ZmVjYjVhYWE4YmJiZjM3ZjVhZWE4NjViZmUyMGJhY2RmNDgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f71d9abaa3904b0290de156ea949a951",
+      "statement": "Native evidence preserves each component source revision independently and permits only bounded fresh semantic RUNs for the exact typed freshness rejection and restart_read instruction; helper tests cannot establish the live mixed-version proof.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/native/README.md",
+          "version": "repo-file-v1:sha256:c198533597ec47eacbadfc1221587f6bf0007ca96900ba768332f007bbe67ea0"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L1064-L1110",
+          "version": "repo-lines-v1:sha256:74667a7b4da2de6fa5b8ce06738ff71edebe13f390e3a14e777babe0a830042b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZGFjYzQzODJlNmQxZWI5ZWJkODY3ODhhMGYxNTlhMzhhN2MwYjE2ZDA0YmY3YTlhYTc4MmZmY2U3MWFmMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3MWMzNTAzYmIzM2ExMGVjYTc1ODdiY2E0Y2Q2MjljMzhmZjBiY2Q1ODM0MDM2YjlhNzkyNTk4MjI1ZDU3NGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMDRlZGIxMmVmMmI1Yzc3MzY0ODI1NWJhOTA1YzA4YWQ5NTRlMjA3ODUzYmMxNzE1MzkzNzVhYmNiZDA1ODQifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L625-L667",
+          "version": "repo-lines-v1:sha256:6be3d9ba98a1d559ddc67c5bfae38c81d8d2dcf712b530b31af6c2e81b61d766:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMjY4YzllYTNlNjJhYzY4ZmRjNjViNWU1MTE5NDFlNmMxNGIwZTM0MDlhMDNiNjAwNjAxZjM0MDcxNWUxZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0Y2RlMWJhYTU3YTc1MTI0OGRjYjZiOGM4OGE2MTY4YjhhZTFjMmU0ODUzOWNlM2U2OTg1NDc3NzMxNGJiODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWVjMzQwMTg3MDQyMTU2NGI1OWJkOTBjZjRhNTY4OGI4ZmM3YjYzZmE2NWFkODA2Y2NjMjE4NmVhODc5NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNzY0MzNiMzA3MTNmMDRkYjI3YjM1NTMxMTI3MGI4NDc5YWYxYjg4NWY4YmU0YTkzMmQxNTc3ZDI4OWZiYzYifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T04:13:44.061Z"
+    "at": "2026-10-02T05:15:45.560Z"
   }
 }

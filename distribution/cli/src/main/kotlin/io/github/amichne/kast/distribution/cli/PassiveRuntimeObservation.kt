@@ -251,23 +251,27 @@ internal fun projectHostedServices(hosts: List<HostedServiceStatus>?): Observati
     return Observation.verified(hosts)
 }
 
-private fun validHostedServiceStatus(status: HostedServiceStatus): Boolean {
-    val rootValid =
-        try {
-            val root = Path.of(status.root)
-            root.isAbsolute && root.normalize() == root
-        } catch (_: IllegalArgumentException) {
-            false
-        }
-    if (!rootValid) return false
-    return when (status) {
-        is HostedServiceStatus.Compatible ->
-            validHostIdentity(status.host, status.hostPid) && validHostedPluginVersion(status.hostedPluginVersion)
-        is HostedServiceStatus.Incompatible ->
-            validHostIdentity(status.host, status.hostPid) && validHostedPluginVersion(status.hostedPluginVersion)
-        is HostedServiceStatus.Unavailable -> true
+private fun validObservedPath(raw: String): Boolean =
+    try {
+        val root = Path.of(raw)
+        root.isAbsolute && root.normalize() == root
+    } catch (_: IllegalArgumentException) {
+        false
     }
-}
+
+private fun validHostedServiceStatus(status: HostedServiceStatus): Boolean =
+    when (status) {
+        is HostedServiceStatus.Compatible ->
+            validObservedPath(status.root) &&
+                validHostIdentity(status.host, status.hostPid) &&
+                validHostedPluginVersion(status.hostedPluginVersion)
+        is HostedServiceStatus.Incompatible ->
+            validObservedPath(status.root) &&
+                validHostIdentity(status.host, status.hostPid) &&
+                validHostedPluginVersion(status.hostedPluginVersion)
+        is HostedServiceStatus.Unavailable -> validObservedPath(status.root)
+        is HostedServiceStatus.RegistryUnavailable -> validObservedPath(status.registryPath)
+    }
 
 private fun validHostedPluginVersion(version: String): Boolean =
     Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9]+-g[0-9a-f]{7,40})?").matches(version)

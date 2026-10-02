@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:993221b295443ba2156bd925731ed1924940bd874a7657bbc9dc54128eae2044",
+  "pageVersion": "sha256:97c0179d68f9dee7c037381d84877bca2f67b3fb17175c9f506b89abc0447b94",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -32,13 +32,13 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:6e068d4a5baeda7cf5451fda23132ed84419075094fed694c9af406d3aee8b04"
+          "version": "repo-file-v1:sha256:d56d92af2e07c479e85d6569f4b301e5c7fadc4bc8d6eab0bb684b3be815243b"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T03:24:34.910Z"
+    "at": "2026-10-02T05:15:45.560Z"
   }
 }

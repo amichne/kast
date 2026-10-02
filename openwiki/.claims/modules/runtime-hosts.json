@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4d6f3448acfdedea157b38cbf4700d5d4c54dcd0908104dc2bdd025122d0f78a",
+  "pageVersion": "sha256:b7e820c6842eef4225bce9ca8633c9e741815c57237f1b2ced9fef655b279b48",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -78,13 +78,53 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
-          "version": "repo-file-v1:sha256:bf6eaa33f33e2fff4be8944a8a5ad8a10d34736cba0002c6b10a855f95698892"
+          "version": "repo-file-v1:sha256:f5d150cef45346c61ca4f8443a6cadf6953db485f0d1818bdc0c4a03102e7879"
+        }
+      ]
+    },
+    {
+      "id": "claim_7240873a9ba74d7aa5c9f8f3881dd50f",
+      "statement": "Passive Host status selects freshly admitted exact physical settings roots from the current workspace registry, independently of daemon-client query history, and performs bounded live exchanges without preparing or enrolling workspaces or rebinding moved roots to ancestors.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
+          "version": "repo-file-v1:sha256:5819901694fb399530247f72388bc0c9620e17bfc15b0ff9a1e3ed7dc0f605fd"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt",
+          "version": "repo-file-v1:sha256:6b77dafa468d7499d88ad674ecaf8298ff28edf088d7565816ab95c9ab842d5f"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L31-L49",
+          "version": "repo-lines-v1:sha256:04bc291eddf6cce084a9e62f8d64f4d0414623329d356c290eb45551709b808b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlMWI5OTVhZjI2YzA2ZjhhZmY1MmIwZThjMjBlZTc5ZmM1NzVhZmQ3MGQ3MjU2Njk0ZjNlMzcxMDYyNjRkMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNiMDNiYTMzNGMzODQ3NWEwYjY0ZTk3NjIwYTU5NDZmNWFiZjk0MWJiYjZkYzQzYjQ2NWZiZDJmOWQzNTFiODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5NTQxYWFkNjRiZjg3YTE4Mjg4YTNlMTRkZGE4NzdkZjM1MzZlMmUzZjk1ZTI2N2QzOTg1NjBhM2U3ODFlYmQifQ"
+        },
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt",
+          "version": "repo-file-v1:sha256:199fe343c71919e466c4a3720cf4324d7c18ce11cfbf16e9e7a466b33d7c21bc"
+        }
+      ]
+    },
+    {
+      "id": "claim_53356e08417a4fceac13833f15d66a6c",
+      "statement": "Rejected workspace roots retain their known path as unavailable; rejected registry observations use the separate REGISTRY_UNAVAILABLE variant with a registry path and closed failure rather than inventing host or workspace identity.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt",
+          "version": "repo-file-v1:sha256:6b77dafa468d7499d88ad674ecaf8298ff28edf088d7565816ab95c9ab842d5f"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
+          "version": "repo-file-v1:sha256:f5d150cef45346c61ca4f8443a6cadf6953db485f0d1818bdc0c4a03102e7879"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt",
+          "version": "repo-file-v1:sha256:5d0857b16b4b24b9c465e1222928dc54fc993281f5f9d68c1d4d82c3cc164012"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T03:24:34.910Z"
+    "at": "2026-10-02T05:15:45.560Z"
   }
 }

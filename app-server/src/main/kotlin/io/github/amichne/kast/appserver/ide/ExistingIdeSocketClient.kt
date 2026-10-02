@@ -28,20 +28,25 @@ class ExistingIdeSocketClient(
         observations[root] ?: HostedServiceObservation.Unavailable(root, ExistingIdeFailure.HOST_UNAVAILABLE)
 
     /** A bounded fresh observation of known hosts; this never starts IDEA or prepares a workspace. */
-    fun observedHosts(): List<HostedServiceObservation> {
-        val roots = observations.keys.toList().sortedBy { it.path.toString() }
-        val deadline = System.nanoTime() + 750_000_000L
+    fun observedHosts(knownRoots: List<CanonicalRoot>): List<HostedServiceObservation> {
+        val roots = knownRoots.distinct().sortedBy { it.path.toString() }
+        val deadline = System.nanoTime() + HOST_STATUS_TOTAL_NANOS
         return roots.map { root ->
             val remaining = (deadline - System.nanoTime()) / 1_000_000L
             if (remaining < 1) HostedServiceObservation.Unavailable(root, ExistingIdeFailure.DEADLINE_EXCEEDED)
-            else {
-                val client = ExistingIdeSocketClient(home, limits, minOf(500, remaining))
-                client.query(root, ExistingIdeOperation.Status)
-                client.observations[root]
-                    ?: HostedServiceObservation.Unavailable(root, ExistingIdeFailure.HOST_UNAVAILABLE)
-            }
+            else observeHost(root, minOf(HOST_STATUS_EXCHANGE_MILLIS, remaining))
         }
     }
+
+    private fun observeHost(root: CanonicalRoot, exchangeMillis: Long): HostedServiceObservation =
+        when (val admitted = admitObservedHostedRoot(root.path)) {
+            is Refinement.Rejected -> HostedServiceObservation.Unavailable(root, admitted.failure)
+            is Refinement.Refined -> {
+                val client = ExistingIdeSocketClient(home, limits, exchangeMillis)
+                client.query(admitted.value, ExistingIdeOperation.Status)
+                client.latestObservation(admitted.value)
+            }
+        }
 
     override fun query(root: CanonicalRoot, operation: ExistingIdeOperation): ExistingIdeExchange =
         query(ExistingIdeTarget.Discovered(root), operation)
@@ -226,6 +231,18 @@ class ExistingIdeSocketClient(
         else ExistingIdeDocuments.response(raw = bytes, root = root, operation = operation, descriptor = descriptor)
     }
 }
+
+/** Re-prove the exact physical settings owner; neither aliases nor a nearest ancestor can replace it. */
+internal fun admitObservedHostedRoot(path: Path): Refinement<CanonicalRoot, ExistingIdeFailure> =
+    when (val discovered = FilesystemCanonicalRootDiscovery.discover(path)) {
+        is CanonicalRootDiscovery.Discovered ->
+            if (discovered.root.path == path) Refinement.Refined(discovered.root)
+            else Refinement.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED)
+        is CanonicalRootDiscovery.Rejected -> Refinement.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED)
+    }
+
+private const val HOST_STATUS_TOTAL_NANOS = 750_000_000L
+private const val HOST_STATUS_EXCHANGE_MILLIS = 500L
 
 /** The filesystem identity admitted by the live describe exchange also fences its operation connection. */
 private class HostedSocketIncarnation(val key: Any)

@@ -105,6 +105,24 @@ class DaemonManagementRuntimeProjectionTest {
     }
 
     @Test
+    fun `registry failure encodes its exact cause and path without inventing a host workspace`() {
+        val status: HostedServiceStatus =
+            HostedServiceStatus.RegistryUnavailable(
+                "/installation/config/workspaces.json",
+                io.github.amichne.kast.distribution.contract.HostedRegistryFailure.PATH_REJECTED,
+            )
+        val document =
+            Json.parseToJsonElement(
+                    DaemonManagementProtocol.json.encodeToString(HostedServiceStatus.serializer(), status)
+                )
+                .jsonObject
+        assertEquals(setOf("type", "registryPath", "failure"), document.keys)
+        assertEquals("REGISTRY_UNAVAILABLE", document.getValue("type").jsonPrimitive.content)
+        assertEquals("/installation/config/workspaces.json", document.getValue("registryPath").jsonPrimitive.content)
+        assertEquals("PATH_REJECTED", document.getValue("failure").jsonPrimitive.content)
+    }
+
+    @Test
     fun `status encodes the passive runtime projection with an exact shape`() {
         val target =
             DaemonManagementTarget(

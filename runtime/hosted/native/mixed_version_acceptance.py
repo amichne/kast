@@ -16,6 +16,7 @@ import fcntl
 from dataclasses import asdict, dataclass, replace
 from enum import Enum
 import hashlib
+import itertools
 import json
 import os
 from pathlib import Path
@@ -67,11 +68,127 @@ class Failure(str, Enum):
     BASELINE_UNPROVEN = 'BASELINE_UNPROVEN'
     PROTECTED_STATE_CHANGED = 'PROTECTED_STATE_CHANGED'
     RESTORATION_UNVERIFIED = 'RESTORATION_UNVERIFIED'
+    INVENTORY_LIMIT_EXCEEDED = 'INVENTORY_LIMIT_EXCEEDED'
+
+
+class InventoryResource(str, Enum):
+    TRAVERSED_ENTRIES = 'TRAVERSED_ENTRIES'
+    PAYLOAD_BYTES = 'PAYLOAD_BYTES'
+
+
+# Match ControlDistributionLimits rather than inventing a smaller native snapshot boundary.
+SNAPSHOT_MAXIMUM_ENTRIES = 16_384
+SNAPSHOT_MAXIMUM_BYTES = 1_073_741_824
+
+
+@dataclass(frozen=True)
+class InventoryLimit:
+    resource: InventoryResource
+    maximum: int
+    observed_at_least: int
+
+
+class HostedFailure(str, Enum):
+    CONFIGURATION_REJECTED = 'CONFIGURATION_REJECTED'
+    RETIRED = 'RETIRED'
+    WRONG_ENDPOINT = 'WRONG_ENDPOINT'
+    WRONG_PROJECT = 'WRONG_PROJECT'
+    BUSY = 'BUSY'
+    STALE_REQUEST = 'STALE_REQUEST'
+    INVALID_SELECTION = 'INVALID_SELECTION'
+    DECLARATION_NOT_FOUND = 'DECLARATION_NOT_FOUND'
+    AMBIGUOUS_DECLARATION = 'AMBIGUOUS_DECLARATION'
+    DECLARATION_IDENTITY_MISMATCH = 'DECLARATION_IDENTITY_MISMATCH'
+    PROJECT_UNAVAILABLE = 'PROJECT_UNAVAILABLE'
+    INDEXING = 'INDEXING'
+    WRONG_THREAD = 'WRONG_THREAD'
+    DIRTY_DOCUMENTS = 'DIRTY_DOCUMENTS'
+    UNCOMMITTED_DOCUMENTS = 'UNCOMMITTED_DOCUMENTS'
+    CONTENT_MOVED = 'CONTENT_MOVED'
+    MODEL_MOVED = 'MODEL_MOVED'
+    UNSUPPORTED_MODEL = 'UNSUPPORTED_MODEL'
+    UNSUPPORTED_DECLARATION = 'UNSUPPORTED_DECLARATION'
+    UNRESOLVED_SUPERTYPE = 'UNRESOLVED_SUPERTYPE'
+    FILE_UNAVAILABLE = 'FILE_UNAVAILABLE'
+    FILE_TOO_LARGE = 'FILE_TOO_LARGE'
+    RESULT_LIMIT_EXCEEDED = 'RESULT_LIMIT_EXCEEDED'
+    OUTSIDE_SCOPE = 'OUTSIDE_SCOPE'
+    AMBIGUOUS_SCOPE = 'AMBIGUOUS_SCOPE'
+    READ_PREEMPTED = 'READ_PREEMPTED'
+    CANCELLED = 'CANCELLED'
+    BUDGET_EXCEEDED = 'BUDGET_EXCEEDED'
+    PLATFORM_FAILURE = 'PLATFORM_FAILURE'
+    PUBLICATION_REJECTED = 'PUBLICATION_REJECTED'
+    PROJECT_ADMISSION_REJECTED = 'PROJECT_ADMISSION_REJECTED'
+    MODEL_CAPTURE_REJECTED = 'MODEL_CAPTURE_REJECTED'
+    READ_EPOCH_REJECTED = 'READ_EPOCH_REJECTED'
+    FRESHNESS_REJECTED = 'FRESHNESS_REJECTED'
+    LIVE_AUTHORITY_REJECTED = 'LIVE_AUTHORITY_REJECTED'
+    NAMED_SOURCE_SCOPE_REJECTED = 'NAMED_SOURCE_SCOPE_REJECTED'
+
+
+class HostedStage(str, Enum):
+    REQUEST_ADMISSION = 'REQUEST_ADMISSION'
+    PROJECT_ADMISSION = 'PROJECT_ADMISSION'
+    EPOCH_OBSERVATION = 'EPOCH_OBSERVATION'
+    MODEL_CAPTURE = 'MODEL_CAPTURE'
+    SEMANTIC_READ = 'SEMANTIC_READ'
+    CONTENT_REVALIDATION = 'CONTENT_REVALIDATION'
+    RESULT_DETACHED = 'RESULT_DETACHED'
+
+
+class HostedRecovery(str, Enum):
+    INCREASE_HOST_DEADLINE = 'increase_host_deadline'
+    AFTER_STATE_CHANGE = 'after_state_change'
+    AFTER_INDEXING = 'after_indexing'
+    REDUCE_READ_WORK = 'reduce_read_work'
+    CANCELLED = 'cancelled'
+    SAVE_SOURCE = 'save_source'
+    WAIT_FOR_CAPACITY = 'wait_for_capacity'
+    RESTART_READ = 'restart_read'
+    REVIEW_FAILURE = 'review_failure'
+    RETAINED_STATE_UNAVAILABLE = 'retained_state_unavailable'
+    REDUCE_RETAINED_WORK = 'reduce_retained_work'
+
+
+@dataclass(frozen=True)
+class SemanticRejection:
+    failure: HostedFailure
+    # HostedQueryRejectionDocument.detail is the schema-defined opaque diagnostic union.
+    detail: str | dict | list
+    stage: HostedStage
+    recovery: HostedRecovery
+    instruction: str | None
+    reply_file: str
+
+
+RESTART_READ_INSTRUCTION = ('The model or source changed during the read. Start a fresh read; '
+                            'a continuation from the old epoch cannot establish current evidence.')
+
+
+def restart_fresh_read(rejection: SemanticRejection) -> bool:
+    return (rejection.failure == HostedFailure.FRESHNESS_REJECTED and rejection.detail == 'MOVED'
+            and rejection.stage == HostedStage.CONTENT_REVALIDATION
+            and rejection.recovery == HostedRecovery.RESTART_READ
+            and rejection.instruction == RESTART_READ_INSTRUCTION)
+
+
+def semantic_rejection(reply, reply_file: str) -> SemanticRejection:
+    document = reply['document']
+    if (document.get('schemaVersion') != 1 or document.get('outcome') != 'rejected'
+            or not isinstance(document.get('detail'), (str, dict, list))):
+        raise Rejected(Failure.SEMANTIC_QUERY_REJECTED)
+    try:
+        return SemanticRejection(HostedFailure(document['failure']), document['detail'],
+                                 HostedStage(document['stage']), HostedRecovery(document['recovery']['kind']),
+                                 document['recovery'].get('instruction'), reply_file)
+    except (ValueError, KeyError, TypeError):
+        raise Rejected(Failure.SEMANTIC_QUERY_REJECTED) from None
 
 
 class Rejected(Exception):
-    def __init__(self, failure: Failure, exit_code: int | None = None):
-        self.failure, self.exit_code = failure, exit_code
+    def __init__(self, failure: Failure, exit_code: int | None = None, limit: InventoryLimit | None = None, semantic: SemanticRejection | None = None):
+        self.failure, self.exit_code, self.limit, self.semantic = failure, exit_code, limit, semantic
 
 
 @dataclass(frozen=True)
@@ -151,6 +268,8 @@ class QueryProof:
     epoch: int
     qualified_identity: str
     result_count: int
+    attempts: int = 1
+    fresh_rejections: tuple[SemanticRejection, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -158,6 +277,31 @@ class ControlProof:
     pid: int
     process_start: str
     service_generation: str
+
+
+class RunnerSourceState(str, Enum):
+    COMMITTED = 'COMMITTED'
+    MODIFIED = 'MODIFIED'
+
+
+class ReleaseComponent(str, Enum):
+    CONTROL = 'control'
+    HOST = 'host'
+
+
+@dataclass(frozen=True)
+class ReleaseSource:
+    component: ReleaseComponent
+    version: str
+    source_revision: str
+
+
+@dataclass(frozen=True)
+class RunnerProvenance:
+    runner_sha256: str
+    checkout_revision: str
+    runner_source_state: RunnerSourceState
+    artifact_sources: tuple[ReleaseSource, ...]
 
 
 @dataclass(frozen=True)
@@ -183,6 +327,7 @@ class Passed:
     cleanup_failures: tuple[Failure, ...]
     restored_original_version: str | None = None
     restored_control: ControlProof | None = None
+    runner: RunnerProvenance | None = None
 
 
 @dataclass(frozen=True)
@@ -194,6 +339,8 @@ class Failed:
     failure: Failure
     exit_code: int | None
     cleanup_failures: tuple[Failure, ...]
+    limit: InventoryLimit | None = None
+    semantic: SemanticRejection | None = None
 
 
 def encode(document) -> str:
@@ -215,11 +362,15 @@ def process_start(pid: int) -> str:
 
 
 def files(root: Path, selected: tuple[str, ...] | None = None) -> tuple[FileFact, ...]:
-    paths = sorted(root.rglob('*')) if selected is None else sorted(
-        path for name in selected for path in (root / name).rglob('*')
-    ) + [root / 'installation.json']
-    facts = []
+    paths = root.rglob('*') if selected is None else itertools.chain(
+        *( (root / name).rglob('*') for name in selected ), (root / 'installation.json',)
+    )
+    facts, entries, total_bytes = [], 0, 0
     for path in paths:
+        entries += 1
+        if entries > SNAPSHOT_MAXIMUM_ENTRIES:
+            raise Rejected(Failure.INVENTORY_LIMIT_EXCEEDED, limit=InventoryLimit(
+                InventoryResource.TRAVERSED_ENTRIES, SNAPSHOT_MAXIMUM_ENTRIES, entries))
         observed = path.lstat()
         if observed.st_uid != os.getuid() or stat.S_ISLNK(observed.st_mode):
             raise Rejected(Failure.OWNERSHIP_REJECTED)
@@ -227,10 +378,15 @@ def files(root: Path, selected: tuple[str, ...] | None = None) -> tuple[FileFact
             continue
         if not stat.S_ISREG(observed.st_mode):
             raise Rejected(Failure.OWNERSHIP_REJECTED)
+        total_bytes += observed.st_size
+        if total_bytes > SNAPSHOT_MAXIMUM_BYTES:
+            raise Rejected(Failure.INVENTORY_LIMIT_EXCEEDED, limit=InventoryLimit(
+                InventoryResource.PAYLOAD_BYTES, SNAPSHOT_MAXIMUM_BYTES, total_bytes))
         facts.append(FileFact(str(path.relative_to(root)), observed.st_dev, observed.st_ino,
                               observed.st_uid, stat.S_IMODE(observed.st_mode), observed.st_size, digest(path)))
-    if not facts or len(facts) > 4096:
+    if not facts:
         raise Rejected(Failure.OWNERSHIP_REJECTED)
+
     return tuple(sorted(facts, key=lambda fact: fact.relative_path))
 
 
@@ -248,6 +404,21 @@ class Snapshot:
     login_anchor: tuple[FileFact, ...]
 
 
+class OriginalProjection(str, Enum):
+    VERIFIED = 'VERIFIED'
+    UNAVAILABLE = 'UNAVAILABLE'
+
+
+@dataclass(frozen=True)
+class OriginalRestoration:
+    type: str
+    control_version: str
+    control: ControlProof
+    runtime_installation_identity: str
+    runtime_epoch: str
+    public_loaded_version_projection: OriginalProjection
+
+
 def single_file(path: Path, base: Path | None = None) -> FileFact:
     observed = path.lstat()
     if (not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid()
@@ -259,6 +430,25 @@ def single_file(path: Path, base: Path | None = None) -> FileFact:
 
 def content_facts(facts):
     return tuple((fact.relative_path, fact.owner, fact.mode, fact.size, fact.sha256) for fact in facts)
+
+
+def runtime_installation_identity(root: Path) -> str:
+    # BrokerInstallationState.identity: physical root and immutable control files only.
+    inventory = files(root, ('bin', 'lib', 'share'))
+    identity = hashlib.sha256(str(root).encode())
+    for fact in inventory:
+        if fact.relative_path == 'installation.json':
+            continue
+        path = root / fact.relative_path
+        if single_file(path, root) != fact:
+            raise Rejected(Failure.OWNERSHIP_REJECTED)
+        identity.update(b'\0')
+        identity.update(fact.relative_path.encode())
+        identity.update(b'\0')
+        with path.open('rb') as source:
+            while block := source.read(65536):
+                identity.update(block)
+    return 'sha256:' + identity.hexdigest()
 
 
 def payload_facts(facts):
@@ -275,6 +465,13 @@ def static_files(root: Path) -> tuple[FileFact, ...]:
 class NativeProof:
     def __init__(self, args):
         self.args = args
+        runner_path = Path(__file__).resolve()
+        source = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=args.repository, text=True,
+                                capture_output=True, check=True, timeout=5).stdout.strip()
+        modified = subprocess.run(['git', 'status', '--porcelain', '--', str(runner_path)], cwd=args.repository,
+                                  text=True, capture_output=True, check=True, timeout=5).stdout.strip()
+        self.runner = RunnerProvenance(digest(runner_path), source,
+            RunnerSourceState.MODIFIED if modified else RunnerSourceState.COMMITTED, args.artifact_sources)
         self.root = args.owned_root
         self.home = Path(pwd.getpwuid(os.getuid()).pw_dir)
         self.workspace = self.root / 'workspace'
@@ -305,18 +502,20 @@ class NativeProof:
         event = Progress('NATIVE_ACCEPTANCE_STAGE', stage, outcome)
         encoded = encode(event)
         with (self.root / 'progress.jsonl').open('a') as output:
+            os.fchmod(output.fileno(), 0o600)
             output.write(json.dumps(asdict(event)) + '\n')
         print(encoded, flush=True)
 
     def command(self, arguments, *, input_text=None, timeout=300, reject=Failure.INSTALL_REJECTED,
-                expected_nonzero=False) -> subprocess.CompletedProcess:
+                expected_nonzero=False, cwd=None) -> subprocess.CompletedProcess:
         self.commands += 1
         prefix = self.root / 'logs' / f'{self.commands:02d}-{self.stage.value.lower()}'
         try:
-            result = subprocess.run([str(argument) for argument in arguments], cwd=self.workspace,
+            result = subprocess.run([str(argument) for argument in arguments], cwd=self.workspace if cwd is None else cwd,
                                     env=self.env, input=input_text, capture_output=True, text=True, timeout=timeout)
         except subprocess.TimeoutExpired:
             raise Rejected(Failure.COMMAND_TIMED_OUT) from None
+        self.last_stdout_log = str(prefix.with_suffix('.stdout'))
         prefix.with_suffix('.stdout').write_text(result.stdout)
         prefix.with_suffix('.stderr').write_text(result.stderr)
         for path in (prefix.with_suffix('.stdout'), prefix.with_suffix('.stderr')):
@@ -372,6 +571,8 @@ class NativeProof:
     def start_idea(self):
         self.idea_closed()
         with (self.root / 'logs/idea.stdout').open('a') as output, (self.root / 'logs/idea.stderr').open('a') as error:
+            os.fchmod(output.fileno(), 0o600)
+            os.fchmod(error.fileno(), 0o600)
             self.idea = subprocess.Popen([str(self.args.idea_home / 'MacOS/idea'), str(self.workspace)],
                                          cwd=self.workspace, env=self.env, stdout=output, stderr=error,
                                          start_new_session=True)
@@ -432,24 +633,38 @@ class NativeProof:
             if time.monotonic() >= deadline:
                 raise Rejected(Failure.NATIVE_ENDPOINT_UNAVAILABLE)
             time.sleep(0.5)
-        call = QueryCall(QueryRun('RUN', QuerySource(), QueryOutput()))
-        result = self.command([self.installation / 'bin/kast-tool-rpc-complete', 'call', 'query_symbols'],
-                              input_text=encode(call), timeout=self.args.readiness_seconds,
-                              reject=Failure.SEMANTIC_QUERY_REJECTED)
-        reply = json.loads(result.stdout)
+        rejections = []
+        for attempt in range(1, 4):
+            if self.host().host != expected_host:
+                raise Rejected(Failure.OWNERSHIP_REJECTED)
+            # Every attempt is a new RUN with fresh authority. No handle/continuation survives rejection.
+            call = QueryCall(QueryRun('RUN', QuerySource(), QueryOutput()))
+            result = self.command([self.installation / 'bin/kast-tool-rpc-complete', 'call', 'query_symbols'],
+                                  input_text=encode(call), timeout=self.args.readiness_seconds,
+                                  reject=Failure.SEMANTIC_QUERY_REJECTED)
+            reply = json.loads(result.stdout)
+            if reply.get('type') != 'rejected_document':
+                break
+            rejected = semantic_rejection(reply, self.last_stdout_log)
+            rejections.append(rejected)
+            evidence = self.root / 'logs' / f'{self.stage.value.lower()}-rejection-{attempt}.json'
+            evidence.write_text(encode(rejected));evidence.chmod(0o600)
+            if not restart_fresh_read(rejected) or attempt == 3:
+                raise Rejected(Failure.SEMANTIC_QUERY_REJECTED, semantic=rejected)
         document = reply.get('document', {})
         rows, live = document.get('items', []), document.get('live', {})
         if (reply.get('type') != 'complete' or document.get('status') != 'complete' or len(rows) != 1
                 or document.get('coverage', {}).get('exhaustive') is not True
-                or document.get('failures') or document.get('omissions')
+                or document.get('failures') != [] or document.get('omissions') != []
                 or rows[0].get('type') != 'exact-symbol'
                 or rows[0].get('name') != 'MixedVersionProof'
+                or rows[0].get('signature', {}).get('type') != 'class-like'
                 or rows[0].get('signature', {}).get('qualifiedIdentity') != 'mixedproof.MixedVersionProof'
                 or live.get('host') != expected_host or live.get('root') != str(self.workspace)
-                or not isinstance(live.get('epoch'), int)):
+                or type(live.get('epoch')) is not int):
             raise Rejected(Failure.SEMANTIC_QUERY_REJECTED)
         self.status(control_version, expected_host)
-        return QueryProof(control_version, live['host'], live['epoch'], 'mixedproof.MixedVersionProof', len(rows))
+        return QueryProof(control_version, live['host'], live['epoch'], 'mixedproof.MixedVersionProof', len(rows), attempt, tuple(rejections))
 
     def status(self, control_version, expected_host=None):
         result = self.command([self.public_command, 'status', '--json'], reject=Failure.CONTROL_STATUS_REJECTED)
@@ -501,6 +716,8 @@ class NativeProof:
 
     def snapshot(self):
         self.progress(Stage.SNAPSHOT)
+        (self.root / 'runner-provenance.json').write_text(encode(self.runner))
+        (self.root / 'runner-provenance.json').chmod(0o600)
         self.idea_closed()
         self.lifecycle('inspect')  # Production admission includes payload/configuration and runtime anchors.
         self.original_control = self.control()
@@ -524,6 +741,11 @@ class NativeProof:
                 digest(path) != item['payloadSha256'] for path, item in zip(self.external, self.registrations)):
             raise Rejected(Failure.BASELINE_UNPROVEN)
         self.original_registry = json.loads((self.installation / 'config/workspaces.json').read_text())
+        if not self.original_registry['roots']:
+            raise Rejected(Failure.BASELINE_UNPROVEN)
+        self.original_workspace = Path(self.original_registry['roots'][0])
+        if not self.original_workspace.is_dir() or self.original_workspace.resolve() != self.original_workspace:
+            raise Rejected(Failure.BASELINE_UNPROVEN)
         self.original_files = static_files(self.installation)
         self.original_plugin = files(self.plugins / 'kast-ide-hosted')
         self.original_plugin_mode = stat.S_IMODE((self.plugins / 'kast-ide-hosted').stat().st_mode)
@@ -597,7 +819,7 @@ class NativeProof:
             if digest(self.root / name) != expected:
                 raise Rejected(Failure.RESTORATION_UNVERIFIED)
         # Ordinary installed lifecycle owns retirement and runtime/alias cleanup. Never signal a control PID.
-        case_payload = json.loads((self.installation / 'installation.json').read_text())['payloadIdentity']
+        case_payload = runtime_installation_identity(self.installation)
         self.lifecycle('reset')
         reset_state = self.installation / 'state'
         state_identity = reset_state.lstat()
@@ -645,25 +867,60 @@ class NativeProof:
             (self.plugins / 'kast-ide-hosted').mkdir(mode=self.original_plugin_mode)
             self.rehydrate('plugin-original.tar', self.plugins / 'kast-ide-hosted')
             self.rehydrate('publication-original.tar', self.home)
+        original_workspace = self.original_workspace
+        if not original_workspace.is_dir() or original_workspace.resolve() != original_workspace:
+            raise Rejected(Failure.OWNERSHIP_REJECTED)
         environment = self.env
         try:
             self.env = self.original_environment
             self.command([self.installation / 'share/kast/libexec/kast-service', 'enable'],
-                         reject=Failure.RESTORATION_UNVERIFIED, timeout=120)
+                         cwd=original_workspace, reject=Failure.RESTORATION_UNVERIFIED, timeout=120)
+            deadline = time.monotonic() + 60
+            while True:
+                status = json.loads(self.command(
+                    [self.installation / 'share/kast/libexec/kast-service', 'status'], cwd=original_workspace,
+                    reject=Failure.RESTORATION_UNVERIFIED, timeout=15).stdout)
+                observation = status.get('coordinator', {}).get('observation', {})
+                if (status.get('transport') == 'ready' and status.get('service', {}).get('ownership') == 'matched'
+                        and observation.get('status') == 'READY'):
+                    break
+                if time.monotonic() >= deadline:
+                    raise Rejected(Failure.RESTORATION_UNVERIFIED)
+                time.sleep(0.25)
+            restored = self.control()
+            epoch = json.loads((self.installation / 'state/epoch.json').read_text())
+            if (observation.get('installationId') != runtime_installation_identity(self.installation)
+                    or observation.get('installationId') != epoch['installation']
+                    or observation.get('stateEpoch') != epoch['epoch']
+                    or observation.get('serviceGeneration') != restored.service_generation
+                    or restored.service_generation == self.original_control.service_generation):
+                raise Rejected(Failure.RESTORATION_UNVERIFIED)
+            self.lifecycle('inspect')
+            public = json.loads(self.command([self.public_command, 'status', '--json'],
+                                             cwd=original_workspace, reject=Failure.RESTORATION_UNVERIFIED).stdout)
+            installed, loaded = public.get('installedVersion', {}), public.get('loadedVersion', {})
+            if installed.get('state') != 'VERIFIED' or installed.get('value') != self.original_version:
+                raise Rejected(Failure.RESTORATION_UNVERIFIED)
+            if loaded.get('state') == 'VERIFIED' and loaded.get('value') == self.original_version:
+                projection = OriginalProjection.VERIFIED
+            elif loaded.get('state') == 'UNAVAILABLE' and loaded.get('value') is None:
+                projection = OriginalProjection.UNAVAILABLE
+            else:
+                raise Rejected(Failure.RESTORATION_UNVERIFIED)
         finally:
             self.env = environment
-        self.status(self.original_version)
-        self.lifecycle('inspect')  # Re-proves regenerated runtime anchors; archived runtime is never authority.
-        restored = self.control()
-        if (restored.service_generation == self.original_control.service_generation
-                or content_facts(static_files(self.installation)) != content_facts(self.original_files)
+        if (content_facts(static_files(self.installation)) != content_facts(self.original_files)
                 or content_facts(files(self.plugins / 'kast-ide-hosted')) != content_facts(self.original_plugin)
                 or content_facts(tuple(single_file(path) for path in (self.install_root / 'management.json', self.public_command))) != content_facts(self.external_original)
                 or content_facts(tuple(single_file(Path(fact.relative_path)) for fact in self.original_login)) != content_facts(self.original_login)):
             raise Rejected(Failure.RESTORATION_UNVERIFIED)
+        self.original_restoration = OriginalRestoration('RESTORED', self.original_version, restored,
+                                                       epoch['installation'], epoch['epoch'], projection)
         self.verify_protected()
         self.idea_closed()
         self.restored_control = restored
+        (self.root / 'recovery.json').write_text(encode(self.original_restoration))
+        (self.root / 'recovery.json').chmod(0o600)
         self.progress(Stage.RESTORE, 'VERIFIED')
 
     def rehydrate(self, name, base):
@@ -837,6 +1094,17 @@ def inputs(args) -> tuple[Artifact, ...]:
     admit_asset('host_installer', args.host_p2, 'host-installation.py')
     if args.control_c1 == args.control_c2 or args.host_p1 == args.host_p2:
         raise Rejected(Failure.INPUT_REJECTED)
+    sources = []
+    for component, version in (('control', args.control_c1), ('control', args.control_c2),
+                               ('host', args.host_p1), ('host', args.host_p2)):
+        name = f'kast-{component}-release-v{version}.json'
+        if component == 'control':
+            admit_asset(component + '_source_record', version, name)
+        source = json.loads((args.assets / name).read_text()).get('sourceRevision')
+        if not isinstance(source, str) or re.fullmatch(r'[0-9a-f]{40}', source) is None:
+            raise Rejected(Failure.INPUT_REJECTED)
+        sources.append(ReleaseSource(ReleaseComponent(component), version, source))
+    args.artifact_sources = tuple(sources)
     return tuple(artifacts)
 
 
@@ -865,18 +1133,21 @@ def main() -> int:
         report = proof.execute(artifacts)
     except Rejected as rejected:
         report = Failed('REJECTED', os.getuid(), str(args.owned_root), proof.stage,
-                        rejected.failure, rejected.exit_code, ())
+                        rejected.failure, rejected.exit_code, (), rejected.limit, rejected.semantic)
     except (OSError, ValueError, KeyError, subprocess.SubprocessError):
         report = Failed('REJECTED', os.getuid(), str(args.owned_root), proof.stage,
                         Failure.INPUT_REJECTED, None, ())
     failure_stage = proof.stage
     cleanup = proof.cleanup()
     if not cleanup and isinstance(report, Passed):
-        report = replace(report, restored_original_version=proof.original_version, restored_control=proof.restored_control)
+        report = replace(report, restored_original_version=proof.original_version, restored_control=proof.restored_control,
+                         runner=proof.runner)
     if cleanup:
         report = Failed('RECOVERY_REQUIRED', os.getuid(), str(args.owned_root), failure_stage,
                         report.failure if isinstance(report, Failed) else Failure.CLEANUP_UNVERIFIED,
-                        report.exit_code if isinstance(report, Failed) else None, cleanup)
+                        report.exit_code if isinstance(report, Failed) else None, cleanup,
+                        report.limit if isinstance(report, Failed) else None,
+                        report.semantic if isinstance(report, Failed) else None)
     (args.owned_root / 'report.json').write_text(encode(report))
     (args.owned_root / 'report.json').chmod(0o600)
     print(encode(report), flush=True)
