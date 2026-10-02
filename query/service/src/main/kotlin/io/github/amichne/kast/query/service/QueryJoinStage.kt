@@ -47,12 +47,12 @@ internal class QueryJoinStage(
         return true
     }
 
-    fun advance(task: PipelineTask.Join): Boolean =
+    fun advance(task: PipelineTask.Join): Refinement<Boolean, QueryIdentityRowFailure> =
         when (val cursor = task.cursor) {
-            QueryJoinCursor.Build -> build(task)
-            is QueryJoinCursor.Inner -> inner(task, cursor)
+            QueryJoinCursor.Build -> Refinement.Refined(build(task))
+            is QueryJoinCursor.Inner -> Refinement.Refined(inner(task, cursor))
             is QueryJoinCursor.Semi -> semi(task, cursor)
-            QueryJoinCursor.Anti -> anti(task)
+            QueryJoinCursor.Anti -> Refinement.Refined(anti(task))
         }
 
     private fun build(task: PipelineTask.Join): Boolean {
@@ -100,19 +100,24 @@ internal class QueryJoinStage(
         return true
     }
 
-    private fun semi(task: PipelineTask.Join, cursor: QueryJoinCursor.Semi): Boolean {
-        val matches = joins.matches(task.stage, task.value) ?: return contractViolation()
-        if (matches.isNotEmpty() && cursor.nextMatch !in matches.indices) return contractViolation()
-        if (!state.consumeUnit()) return false
+    private fun semi(
+        task: PipelineTask.Join,
+        cursor: QueryJoinCursor.Semi,
+    ): Refinement<Boolean, QueryIdentityRowFailure> {
+        val matches = joins.matches(task.stage, task.value) ?: return Refinement.Refined(contractViolation())
+        if (matches.isNotEmpty() && cursor.nextMatch !in matches.indices) return Refinement.Refined(contractViolation())
+        if (!state.consumeUnit()) return Refinement.Refined(false)
         if (matches.isEmpty()) {
             tasks.removeFirst()
-            return true
+            return Refinement.Refined(true)
         }
-        val right = joins.rightRows(task.stage).getOrNull(matches[cursor.nextMatch]) ?: return contractViolation()
+        val right =
+            joins.rightRows(task.stage).getOrNull(matches[cursor.nextMatch])
+                ?: return Refinement.Refined(contractViolation())
         val merged =
             when (val result = mergeRows(cursor.accumulated, right)) {
                 is Refinement.Refined -> result.value
-                is Refinement.Rejected -> return contractViolation()
+                is Refinement.Rejected -> return result
             }
         tasks.removeFirst()
         if (cursor.nextMatch + 1 == matches.size) {
@@ -120,7 +125,7 @@ internal class QueryJoinStage(
         } else {
             tasks.addFirst(task.copy(cursor = QueryJoinCursor.Semi(cursor.nextMatch + 1, merged)))
         }
-        return true
+        return Refinement.Refined(true)
     }
 
     private fun anti(task: PipelineTask.Join): Boolean {

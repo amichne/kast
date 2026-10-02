@@ -127,6 +127,25 @@ internal class QueryExecutionState(
         return SymbolDiscoveryBudget(resources, SymbolDiscoveryByteLimit.parse(bytes).refined())
     }
 
+    /**
+     * Reserve one exact-refinement unit per admitted owner. Indexed occurrence collection receives half the remaining
+     * work, so its candidate capacity is independent of the presentation limit and cannot consume the refinement grant.
+     */
+    fun textDiscoveryBudget(): SymbolDiscoveryBudget? {
+        val discoveryWork = remainingWork() / 2L
+        if (discoveryWork < 1L) {
+            limit(QueryLimitation.WORK_LIMIT_REACHED)
+            return null
+        }
+        val candidateCapacity = discoveryWork.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val resources = remainingResources(candidateCapacity) ?: return null
+        val bytes = childByteAllowance() ?: return null
+        return SymbolDiscoveryBudget(
+            resources.copy(workUnitLimit = WorkUnitLimit.parse(discoveryWork).refined()),
+            SymbolDiscoveryByteLimit.parse(bytes).refined(),
+        )
+    }
+
     fun relationBudget(resultCapacity: Int): RelationBudget? {
         val resources = remainingResources(resultCapacity) ?: return null
         val bytes = childByteAllowance() ?: return null

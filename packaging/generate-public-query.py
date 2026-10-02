@@ -54,6 +54,23 @@ def enum_entry(value: str) -> str:
     return value.replace('-', '_').upper()
 
 
+def kotlin_description_literals(value: str) -> str:
+    """Bound generated source lines by escaped width while preserving every character."""
+    maximum_encoded_width = 100
+    literals = []
+    start = 0
+    encoded_width = 2
+    for offset, character in enumerate(value):
+        character_width = len(json.dumps(character)) - 2
+        if encoded_width + character_width > maximum_encoded_width:
+            literals.append(json.dumps(value[start:offset]))
+            start = offset
+            encoded_width = 2
+        encoded_width += character_width
+    literals.append(json.dumps(value[start:]))
+    return ' +\n            '.join(literals)
+
+
 def validate_authority(authority: dict) -> None:
     """Keep one discriminator and enum convention in the authored contract."""
     if not isinstance(authority.get('contractVersion'), int) or authority['contractVersion'] < 1:
@@ -257,7 +274,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
              'import kotlinx.serialization.json.*\n\n',
              'internal sealed interface PublicToolDocument { val verbose: Boolean }\n\n']
     body = []
+    discovery_body = []
+    discovery_objects = {'DirectoryScope', 'PackageScope', 'LocationSource', 'SearchSource', 'TextSource', 'AllSource'}
     for key, spec in objects.items():
+        object_body = discovery_body if key in discovery_objects else body
         inherited = parents.get(key, [])
         discriminator = 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
@@ -270,9 +290,9 @@ def render_tools(authority: dict) -> dict[Path, str]:
         if inherited:
             annotation += '@SerialName(' + json.dumps(spec['properties'][discriminator]['enum'][0]) + ')\n'
         if not props:
-            body.append(annotation + f'internal data object PublicTool{key}{suffix}\n\n')
+            object_body.append(annotation + f'internal data object PublicTool{key}{suffix}\n\n')
         else:
-            body.append(annotation + f'internal data class PublicTool{key}(\n')
+            object_body.append(annotation + f'internal data class PublicTool{key}(\n')
             for prop, value in props:
                 resolved = definitions[value['$ref'].split('/')[-1]] if '$ref' in value else value
                 default = ''
@@ -297,10 +317,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
                 parameter = prop
                 if 'x-kotlin-type' in resolved and '_' in prop:
                     parameter = prop.split('_')[0] + ''.join(part.title() for part in prop.split('_')[1:])
-                    body.append(f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')
+                    object_body.append(f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')
                 modifier = 'override ' if prop == 'verbose' and key in roots else ''
-                body.append(f'    {modifier}val {parameter}: {field_type}{default},\n')
-            body.append(')' + suffix + '\n\n')
+                object_body.append(f'    {modifier}val {parameter}: {field_type}{default},\n')
+            object_body.append(')' + suffix + '\n\n')
     for key, values in enums.items():
         lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')
         for value in values:
@@ -358,6 +378,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
     document_source = ''.join(lines)
     outputs = {
         KOTLIN / 'PublicToolDocuments.kt': document_source,
+        KOTLIN / 'PublicToolDiscoveryDocuments.kt':
+            '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
+            'package io.github.amichne.kast.appserver.query\n\n'
+            'import io.github.amichne.kast.protocol.contract.BoundedProtocolList\n'
+            'import io.github.amichne.kast.protocol.contract.ProtocolText\n'
+            'import kotlinx.serialization.SerialName\n'
+            'import kotlinx.serialization.Serializable\n\n' + ''.join(discovery_body).rstrip() + '\n',
     }
     identity_lines = ['// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
                       'package io.github.amichne.kast.protocol.registry\n\n',
@@ -373,8 +400,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
                       ') {\n']
     operations = {'query.run': 'QUERY_RUN', 'diagnostic.check': 'DIAGNOSTIC_CHECK', 'change': 'CHANGE'}
     for tool in authority['tools']:
-        description = ' +\n            '.join(json.dumps(tool['description'][offset:offset + 90])
-                                             for offset in range(0, len(tool['description']), 90))
+        description = kotlin_description_literals(tool['description'])
         identity_lines.append(
             f'    {enum_entry(tool["name"])}({json.dumps(tool["name"])}, CanonicalOperation.{operations[tool["operation"]]},\n'
             f'        {description},\n'
@@ -395,8 +421,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
         ') {\n',
     ]
     for tool in authority['supportTools']:
-        description = ' +\n            '.join(json.dumps(tool['description'][offset:offset + 90])
-                                           for offset in range(0, len(tool['description']), 90))
+        description = kotlin_description_literals(tool['description'])
         hosts = ', '.join('SupportToolHost.' + host for host in tool['hosts'])
         support_lines.append(
             f'    {enum_entry(tool["name"])}(\n'

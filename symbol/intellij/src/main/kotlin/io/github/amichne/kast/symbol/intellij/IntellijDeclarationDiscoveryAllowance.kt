@@ -13,8 +13,7 @@ internal class IntellijDeclarationDiscoveryAllowance(
 
     fun now(): Long = clock.now()
 
-    fun expired(): Boolean =
-        clock.now() - started >= request.budget.resources.elapsedTimeLimit.value * NANOSECONDS_PER_MILLISECOND
+    fun expired(): Boolean = clock.now() - started >= request.elapsedLimitNanoseconds().value
 
     fun consume(): Boolean {
         if (consumedWork >= request.budget.resources.workUnitLimit.value) return false
@@ -22,5 +21,3 @@ internal class IntellijDeclarationDiscoveryAllowance(
         return true
     }
 }
-
-private const val NANOSECONDS_PER_MILLISECOND = 1_000_000L

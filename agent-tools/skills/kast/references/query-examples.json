@@ -402,6 +402,60 @@
           }
         }
       }
+    },
+    "knownAppServerClass": {
+      "summary": "Use direct exact declaration discovery for a known class name.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "InstalledAppServerManager",
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "scope": {
+              "type": "DIRECTORY",
+              "relativeDirectoryPath": "app-server"
+            }
+          },
+          "executionBudget": {
+            "maxResults": 10
+          }
+        }
+      }
+    },
+    "scopedTextWord": {
+      "summary": "Find functions containing the indexed word launchd under app-server; inspect or traverse each exact returned ref.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_TEXT",
+            "word": "launchd",
+            "scope": {
+              "type": "DIRECTORY",
+              "relativeDirectoryPath": "app-server",
+              "sourceSetNames": [
+                "main"
+              ]
+            },
+            "declarationKinds": [
+              "FUNCTION"
+            ]
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION"
+            ]
+          },
+          "executionBudget": {
+            "maxResults": 10
+          }
+        }
+      }
     }
   },
   "invalidExamples": {
@@ -454,6 +508,91 @@
           }
         },
         "verbose": 1
+      }
+    },
+    "wordPhrase": {
+      "summary": "Reject unsupported or malformed indexed word discovery.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_TEXT",
+            "word": "restart lifecycle"
+          }
+        }
+      }
+    },
+    "wordLiteral": {
+      "summary": "Reject unsupported or malformed indexed word discovery.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_TEXT",
+            "word": "AppServerAction.Disable"
+          }
+        }
+      }
+    },
+    "wordRegex": {
+      "summary": "Reject unsupported or malformed indexed word discovery.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_TEXT",
+            "word": "launchd|bootstrap"
+          }
+        }
+      }
+    },
+    "wordUnknownMode": {
+      "summary": "Reject unsupported or malformed indexed word discovery.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_TEXT",
+            "word": "launchd",
+            "matching": "FUZZY"
+          }
+        }
+      }
+    },
+    "wordMissing": {
+      "summary": "Reject unsupported or malformed indexed word discovery.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_TEXT"
+          }
+        }
+      }
+    },
+    "wordTooLong": {
+      "summary": "Reject unsupported or malformed indexed word discovery.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_TEXT",
+            "word": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      }
+    },
+    "wordEmptyKinds": {
+      "summary": "Reject unsupported or malformed indexed word discovery.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_TEXT",
+            "word": "launchd",
+            "declarationKinds": []
+          }
+        }
       }
     }
   }

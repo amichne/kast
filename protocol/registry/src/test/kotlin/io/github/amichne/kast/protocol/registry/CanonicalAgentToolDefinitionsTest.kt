@@ -72,6 +72,10 @@ class CanonicalAgentToolDefinitionsTest {
         assertTrue("walk" in CanonicalAgentToolDefinitions.query.description.value)
         val policy = CanonicalAgentToolDefinitions.policy.text
         assertTrue("Use kast.query_symbols for declaration-name search" in policy)
+        assertTrue("SEARCH_TEXT accepts one case-sensitive whole word" in policy)
+        assertTrue("declaration references with bounded lexical match evidence" in policy)
+        assertTrue("AT_LOCATION also" in policy)
+        assertTrue("reference resolution is a separate operation" in policy)
         assertTrue("Preserve returned symbol references" in policy)
         listOf("kast start", "index sync --", "topology build --", "broker serve").forEach { command ->
             assertTrue(command !in policy)

@@ -35,6 +35,7 @@ internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("result-row-unavailable") RESULT_ROW_UNAVAILABLE,
     @SerialName("result-cursor-out-of-range") RESULT_CURSOR_OUT_OF_RANGE,
     @SerialName("result-field-unavailable") RESULT_FIELD_UNAVAILABLE,
+    @SerialName("text-match-limit-exceeded") TEXT_MATCH_LIMIT_EXCEEDED,
     @SerialName("right-input-incomplete") RIGHT_INPUT_INCOMPLETE,
     @SerialName("unknown-binding-name") UNKNOWN_BINDING_NAME,
     @SerialName("output-kind-mismatch") OUTPUT_KIND_MISMATCH,
