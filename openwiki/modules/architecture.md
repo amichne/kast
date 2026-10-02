@@ -32,7 +32,7 @@ code_sources:
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T07:34:50.076Z
+    at: 2026-10-02T12:58:12.674Z
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt

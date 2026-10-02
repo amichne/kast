@@ -42,12 +42,17 @@ code_sources:
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt
   - path: packaging/configuration-schema.json
   - path: build-policy/configuration-ingress.json
+  - path: packaging/install-local.sh
+  - path: packaging/test-install-local.py
+  - path: build.gradle.kts
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T12:09:23.229Z
+    at: 2026-10-02T12:58:12.674Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
+  - id: openwiki-source-2a9daaac1604f238ef4c63fb
+    resource: repo://build.gradle.kts
   - id: openwiki-source-b5958cf441728188e2493589
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
   - id: openwiki-source-211f90f77f217ad3273b0d4f
@@ -68,7 +73,9 @@ sources:
     resource: repo://install.sh
   - id: openwiki-source-4070dc53852de69cdff3bd47
     resource: repo://packaging/install-checkout.sh
-generated: { by: "codex", at: "2026-10-02T12:09:23.229Z" }
+  - id: openwiki-source-37ffb827b915bda4bcca9865
+    resource: repo://packaging/install-local.sh
+generated: { by: "codex", at: "2026-10-02T12:55:44.549Z" }
 ---
 
 # Installation configuration
@@ -171,3 +178,10 @@ Component selection belongs to installation ingress: `KAST_INSTALL_CONTROL_ONLY`
 Exact-version reinstall cold-stages only Control with `--stage-only`, then the existing fenced lifecycle owner activates it. Staging requires no Host artifact and cannot be combined with the bounded `--control-only` upgrade, whose activation and live host checks are mandatory.
 
 The native private-installer boundary removes inherited Host-version and installation selectors, retains ordinary process inputs, and supplies its owned report destination. After admitting installation ownership, install and uninstall explicitly forward that selected root; a foreign ambient root cannot redirect those effects. The recorded public command destination remains a separate publication receipt fact and never selects another installation.
+
+The local staged-product adapter delegates Java selection to the public installer,
+which derives Java from the admitted IntelliJ home. `KAST_LOCAL_JAVA_EXECUTABLE`
+and `KAST_LOCAL_JAVA_HOME` are removed from the catalogue and reject as
+`UNKNOWN_KEY` through every configuration source. `installLocal` supplies
+neither input. The assembled-product acceptance runner retains its separate
+`KAST_ACCEPTANCE_JAVA_EXECUTABLE` binding.
