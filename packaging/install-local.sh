@@ -14,8 +14,6 @@ require_command() {
 install_prefix="${KAST_LOCAL_PREFIX:-}"
 control_product="${KAST_LOCAL_CONTROL_PRODUCT:-}"
 plugin_archive="${KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE:-}"
-java_executable="${KAST_LOCAL_JAVA_EXECUTABLE:-}"
-java_home="${KAST_LOCAL_JAVA_HOME:-}"
 
 [[ -n "${HOME:-}" ]] || fail "HOME is required"
 [[ -z "$install_prefix" || "$install_prefix" == "$HOME/.local" ]] || fail "KAST_LOCAL_PREFIX must be the sole user prefix at HOME/.local"
@@ -27,8 +25,6 @@ case "$component" in pair|control) ;; *) fail "KAST_LOCAL_COMPONENT must be pair
 if [[ "$component" == pair ]]; then
   [[ -f "$plugin_archive" && ! -L "$plugin_archive" ]] || fail "KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE must be a regular file"
 fi
-[[ -n "${java_executable}" ]] || fail "KAST_LOCAL_JAVA_EXECUTABLE is required"
-[[ -n "${java_home}" ]] || fail "KAST_LOCAL_JAVA_HOME is required"
 
 case "${install_prefix}" in
   /*) ;;
@@ -43,16 +39,6 @@ esac
   fail "control product has no private installer"
 [[ -f "${control_product}/share/kast/ide-host.json" ]] ||
   fail "control product has no hosted plugin manifest"
-case "${java_executable}" in
-  /*) ;;
-  *) fail "Java executable must be absolute: ${java_executable}" ;;
-esac
-case "${java_home}" in
-  /*) ;;
-  *) fail "Java home must be absolute: ${java_home}" ;;
-esac
-[[ -x "${java_executable}" ]] || fail "Java executable is unavailable: ${java_executable}"
-[[ -d "${java_home}" ]] || fail "Java home is unavailable: ${java_home}"
 
 # Delegate all activation and retirement authority to the release installer.
 # A local numeric version is explicit; the complete payload digest distinguishes rebuilds.

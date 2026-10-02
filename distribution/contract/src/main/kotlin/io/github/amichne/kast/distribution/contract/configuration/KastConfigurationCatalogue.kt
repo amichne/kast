@@ -346,20 +346,6 @@ enum class ConfigurationParameter(
         ":build-logic",
         mutability = ConfigurationMutability.BUILD_SETTING,
     ),
-    LOCAL_JAVA_EXECUTABLE(
-        "KAST_LOCAL_JAVA_EXECUTABLE",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        ConfigurationScope.BUILD,
-        ":build-logic",
-        mutability = ConfigurationMutability.BUILD_SETTING,
-    ),
-    LOCAL_JAVA_HOME(
-        "KAST_LOCAL_JAVA_HOME",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        ConfigurationScope.BUILD,
-        ":build-logic",
-        mutability = ConfigurationMutability.BUILD_SETTING,
-    ),
     INSTALL_PROCESS_TABLE_COMMAND(
         "KAST_INSTALL_PROCESS_TABLE_COMMAND",
         ConfigurationSyntax.OWNER_INPUT,

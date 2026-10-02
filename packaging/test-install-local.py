@@ -53,9 +53,7 @@ class LocalInstallationTest(unittest.TestCase):
             tool_path = str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath
             env = {'PATH': tool_path, 'HOME': str(root), 'TMPDIR': str(root),
                    'KAST_LOCAL_PREFIX': str(prefix), 'KAST_LOCAL_CONTROL_PRODUCT': str(product),
-                   'KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE': str(plugin), 'KAST_LOCAL_HOST_RELEASE_RECORD': str(host_record),
-                   'KAST_LOCAL_JAVA_EXECUTABLE': shutil.which('true', path=os.defpath),
-                   'KAST_LOCAL_JAVA_HOME': str(root)}
+                   'KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE': str(plugin), 'KAST_LOCAL_HOST_RELEASE_RECORD': str(host_record)}
             result = subprocess.run(['bash', str(script)], env=env, text=True, capture_output=True)
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertTrue(all(path.is_file() and path.read_text() == 'preserve' for path in markers),
