@@ -168,7 +168,7 @@ RESTART_READ_INSTRUCTION = ('The model or source changed during the read. Start 
 
 def restart_fresh_read(rejection: SemanticRejection) -> bool:
     return (rejection.failure == HostedFailure.FRESHNESS_REJECTED and rejection.detail == 'MOVED'
-            and rejection.stage == HostedStage.CONTENT_REVALIDATION
+            and rejection.stage in (HostedStage.MODEL_CAPTURE, HostedStage.CONTENT_REVALIDATION)
             and rejection.recovery == HostedRecovery.RESTART_READ
             and rejection.instruction == RESTART_READ_INSTRUCTION)
 

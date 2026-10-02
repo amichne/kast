@@ -39,7 +39,8 @@ model is unavailable. No model, library, source root or semantic result is synth
 C1/P1, C2/P1 and C2/P2 must each return the one expected compiler-backed declaration
 through installed Tool RPC and report an admitted host through native status.
 At most three independent RUNs are permitted for the exact typed freshness rejection
-and `restart_read` instruction; every rejection is retained. Other failures stop the run.
+at `MODEL_CAPTURE` or `CONTENT_REVALIDATION`, matching the host’s declared
+`restart_read` instruction. Every rejection is retained. Other failures stop the run.
 
 The control-only upgrade must preserve the IntelliJ PID and start time, host UUID,
 socket inode, and every plugin file's checksum and inode. Independent P2 installation

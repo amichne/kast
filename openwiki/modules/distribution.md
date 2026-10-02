@@ -5,6 +5,8 @@ description: Typed configuration and runtime identity contracts constrain manage
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 code_sources:
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
+    symbols: [HostedQueryProgress]
   - path: runtime/hosted/native/README.md
   - path: runtime/hosted/native/mixed_version_acceptance.py
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
@@ -163,7 +165,7 @@ code_sources:
     symbols: [GenerateComponentReleaseTask]
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T05:40:20.143Z
+    at: 2026-10-02T06:45:58.039Z
 sources:
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
@@ -205,7 +207,9 @@ sources:
     resource: repo://runtime/hosted/native/mixed_version_acceptance.py
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
-generated: { by: "codex", at: "2026-10-02T05:15:45.560Z" }
+  - id: openwiki-source-931b927626ea234f44ea20df
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
+generated: { by: "codex", at: "2026-10-02T06:45:58.039Z" }
 ---
 
 # Distribution and packaging
@@ -453,8 +457,9 @@ Control status remains strict.
 Each component release records its own source revision and archive checksum. The
 runner also records its checksum and checkout state; components may come from
 different source revisions. A fresh semantic RUN is permitted only for the exact
-typed freshness rejection with MOVED, CONTENT_REVALIDATION and the observed
-restart_read instruction, at most three times with every rejection retained.
+typed freshness rejection with MOVED at MODEL_CAPTURE or CONTENT_REVALIDATION
+and the observed restart_read instruction, matching the host's two declared restart
+stages. At most three independent RUNs are permitted, with every rejection retained.
 Focused helper tests prove bounded inventory, identity ordering and that recovery
 predicate using case-owned inputs. They do not establish the required live
 mixed-version result; the completed native proof remains a separate gate.

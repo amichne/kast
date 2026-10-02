@@ -6,6 +6,8 @@ import os
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 import sys
+import subprocess
+from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -42,6 +44,7 @@ class RejectionDocument:
 @dataclass(frozen=True)
 class RejectionReply:
     document: RejectionDocument
+    type: str = "rejected_document"
 
 
 class NativeInventoryTest(unittest.TestCase):
@@ -196,6 +199,19 @@ class NativeFreshReadPolicyTest(unittest.TestCase):
             },
         }, json.loads(NATIVE.encode(report)))
 
+    def test_model_capture_movement_with_exact_restart_instruction_admits_fresh_read(self):
+        observed = self.rejection(RejectionDocument(stage="MODEL_CAPTURE"))
+        self.assertTrue(NATIVE.restart_fresh_read(observed))
+        self.assertEqual(NATIVE.HostedStage.MODEL_CAPTURE, observed.stage)
+        self.assertEqual("/owned-evidence/reply.json", observed.reply_file)
+
+    def test_every_other_closed_stage_rejects_fresh_read(self):
+        permitted = {"MODEL_CAPTURE", "CONTENT_REVALIDATION"}
+        for stage in NATIVE.HostedStage:
+            if stage.value not in permitted:
+                with self.subTest(stage=stage.value):
+                    self.assertFalse(NATIVE.restart_fresh_read(self.rejection(RejectionDocument(stage=stage.value))))
+
     def test_other_closed_failure_detail_stage_recovery_and_instruction_do_not_admit_restart(self):
         exact = RejectionDocument()
         for rejected in (
@@ -238,6 +254,51 @@ class NativeFreshReadPolicyTest(unittest.TestCase):
         observed = NATIVE.semantic_rejection(reply, "/owned-evidence/reply.json")
         self.assertIsNone(observed.instruction)
         self.assertFalse(NATIVE.restart_fresh_read(observed))
+
+
+class NativeFreshReadCapTest(unittest.TestCase):
+    def test_three_moved_reads_stop_with_exact_final_failure_and_all_retained_rejections(self):
+        with tempfile.TemporaryDirectory(prefix="kast-native-cap-test-") as temporary:
+            for stage in ("MODEL_CAPTURE", "CONTENT_REVALIDATION"):
+                with self.subTest(stage=stage):
+                    root = Path(temporary).resolve() / stage
+                    (root / "logs").mkdir(parents=True)
+                    proof = object.__new__(NATIVE.NativeProof)
+                    proof.args = SimpleNamespace(readiness_seconds=1)
+                    proof.root = root
+                    proof.stage = NATIVE.Stage.QUERY_C2_P2
+                    proof.installation = root / "installation-address-only"
+                    proof.readiness_status = "admission_ready"
+                    observed_host = NATIVE.HostProof(123, "owned-start", "owned-host", "0.49.1", str(root), 1, 2, "0" * 64)
+                    calls, observations = [], []
+
+                    def host():
+                        self.assertLess(len(observations), 4, "excess host observation")
+                        observations.append(observed_host)
+                        return observed_host
+
+                    def command(arguments, **options):
+                        self.assertLess(len(calls), 3, "excess semantic command")
+                        self.assertEqual([proof.installation / "bin/kast-tool-rpc-complete", "call", "query_symbols"], arguments)
+                        self.assertEqual("RUN", json.loads(options["input_text"])["request"]["type"])
+                        calls.append(arguments)
+                        proof.last_stdout_log = str(root / "logs" / f"reply-{len(calls)}.json")
+                        return subprocess.CompletedProcess(arguments, 0,
+                            stdout=json.dumps(asdict(RejectionReply(RejectionDocument(stage=stage)))))
+
+                    proof.host = host
+                    proof.command = command
+                    with patch.object(NATIVE.time, "sleep", side_effect=AssertionError("unexpected semantic sleep")):
+                        with self.assertRaises(NATIVE.Rejected) as rejected:
+                            proof.query("0.50.3", observed_host.host)
+                    self.assertEqual(3, len(calls), "unconsumed semantic commands")
+                    self.assertEqual(4, len(observations), "unconsumed host observations")
+                    self.assertEqual(NATIVE.Failure.SEMANTIC_QUERY_REJECTED, rejected.exception.failure)
+                    self.assertEqual(NATIVE.HostedStage(stage), rejected.exception.semantic.stage)
+                    self.assertEqual(str(root / "logs/reply-3.json"), rejected.exception.semantic.reply_file)
+                    retained = sorted((root / "logs").glob("query_c2_p2-rejection-*.json"))
+                    self.assertEqual(3, len(retained))
+                    self.assertEqual([stage] * 3, [json.loads(path.read_text())["stage"] for path in retained])
 
 
 if __name__ == "__main__":

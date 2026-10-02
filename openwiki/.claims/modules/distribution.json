@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a336d34ca482e83456dea0f7d8cd1d5175a1dd65bff02e994878e749ef1709fd",
+  "pageVersion": "sha256:dbf439afebaa03e6b638d363acd6193385b1adde047aadde6113ba9b3876449a",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -178,7 +178,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/native/README.md",
-          "version": "repo-file-v1:sha256:c198533597ec47eacbadfc1221587f6bf0007ca96900ba768332f007bbe67ea0"
+          "version": "repo-file-v1:sha256:4d755b356665c85208bebae53077666d4e03beca5c71631a1662c40b0d03a6ac"
         },
         {
           "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L850-L924",
@@ -220,25 +220,33 @@
     },
     {
       "id": "claim_f71d9abaa3904b0290de156ea949a951",
-      "statement": "Native evidence preserves each component source revision independently and permits only bounded fresh semantic RUNs for the exact typed freshness rejection and restart_read instruction; helper tests cannot establish the live mixed-version proof.",
+      "statement": "Native evidence preserves each component source revision independently and permits at most three fresh semantic RUNs only for the exact typed MOVED freshness rejection at MODEL_CAPTURE or CONTENT_REVALIDATION with the declared restart_read instruction, retaining every rejection; helper tests cannot establish the live mixed-version proof.",
       "evidence": [
         {
           "resource": "repo://runtime/hosted/native/README.md",
-          "version": "repo-file-v1:sha256:c198533597ec47eacbadfc1221587f6bf0007ca96900ba768332f007bbe67ea0"
+          "version": "repo-file-v1:sha256:4d755b356665c85208bebae53077666d4e03beca5c71631a1662c40b0d03a6ac"
         },
         {
           "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L1064-L1110",
           "version": "repo-lines-v1:sha256:74667a7b4da2de6fa5b8ce06738ff71edebe13f390e3a14e777babe0a830042b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZGFjYzQzODJlNmQxZWI5ZWJkODY3ODhhMGYxNTlhMzhhN2MwYjE2ZDA0YmY3YTlhYTc4MmZmY2U3MWFmMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3MWMzNTAzYmIzM2ExMGVjYTc1ODdiY2E0Y2Q2MjljMzhmZjBiY2Q1ODM0MDM2YjlhNzkyNTk4MjI1ZDU3NGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMDRlZGIxMmVmMmI1Yzc3MzY0ODI1NWJhOTA1YzA4YWQ5NTRlMjA3ODUzYmMxNzE1MzkzNzVhYmNiZDA1ODQifQ"
         },
         {
+          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L164-L174",
+          "version": "repo-lines-v1:sha256:a743eb997863631cdd1fa54935f6a480d7f88ee6bee644c70c56d0574204edc0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwZjE1NWViNmU5YmMwYzYxZjA3YzEyNWM2MjQ0NWEwNTMzNzZmYmQ5NjE4N2I4MGJhMjBjODdmMzgyODlmOWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmNDMyYzM2ZjJlNzY2ZTJiYzA5NWM1YjQ2NTc4NjE4NTljNTczZTc5ZjM4YzYzYTEwMTliZGFjYzU4MDkyYTQifQ"
+        },
+        {
           "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L625-L667",
           "version": "repo-lines-v1:sha256:6be3d9ba98a1d559ddc67c5bfae38c81d8d2dcf712b530b31af6c2e81b61d766:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMjY4YzllYTNlNjJhYzY4ZmRjNjViNWU1MTE5NDFlNmMxNGIwZTM0MDlhMDNiNjAwNjAxZjM0MDcxNWUxZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0Y2RlMWJhYTU3YTc1MTI0OGRjYjZiOGM4OGE2MTY4YjhhZTFjMmU0ODUzOWNlM2U2OTg1NDc3NzMxNGJiODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWVjMzQwMTg3MDQyMTU2NGI1OWJkOTBjZjRhNTY4OGI4ZmM3YjYzZmE2NWFkODA2Y2NjMjE4NmVhODc5NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNzY0MzNiMzA3MTNmMDRkYjI3YjM1NTMxMTI3MGI4NDc5YWYxYjg4NWY4YmU0YTkzMmQxNTc3ZDI4OWZiYzYifQ"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L224-L229",
+          "version": "repo-lines-v1:sha256:89fd2f8d287854473a04b092919047c5ce3105760b33a0170720d4e60ded1aa7:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjExODZjYmQwZjJlMWU3MmFjMGNiN2IwMGY4MmJjOGMxOTQ4N2JiNGJmODFmYWQzMmEyNDFkNDcxNzY3MGUxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjFjODFmYTljNDEyMDM1MjhlMGE4N2ZjZTMzYjViODllYzRkYjExMWYxNDMwMGQ0NGM2NGY0MmM2OGEyMDUyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTU0MTJjNzQ5NGUwODFiZDNkODg3ZDM1ZTllMTc3MmNhMWZlYWE1ZmFkZDYxNzgxZjkwNDA5YTUzMmRmYmEyOCJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T05:40:20.143Z"
+    "at": "2026-10-02T06:45:58.039Z"
   }
 }
