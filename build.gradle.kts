@@ -235,7 +235,6 @@ val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
         prefix
     }
     .orElse(canonicalLocalInstallPrefix)
-val localLauncherFile = localInstallPrefix.map { it.resolve("bin/kast") }
 val localJavaHome = providers.systemProperty("java.home").map { configuredHome ->
     file(configuredHome).toPath().toRealPath().toFile()
 }

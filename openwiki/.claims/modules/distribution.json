@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6ac27e3d1244848b08c0243f6736acd4a54810a6a881a9354e334fcbed572327",
+  "pageVersion": "sha256:6be23344ef618a79bc447d092770dd11e2b9a5a8adec3c0f653d520666f2609b",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -86,7 +86,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:3c5aa6245878d937a8ae8ad72fd37937ec5ab8005224da8145a92f2e935b5723"
+          "version": "repo-file-v1:sha256:c234ec14cfedabbc7f1635f49a66e370b5fdf1c5b2dd709f8563502a8883e3b2"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -167,7 +167,7 @@
       "statement": "Assembled-product acceptance copies the production Control staging tree directly into an owned fixture before launcher or installer effects, then verifies independent artifact identities and canonical Control cold staging with an exact management publication receipt, installed/not-requested activation and no Host files; it does not establish live-host behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L270-L292",
+          "resource": "repo://build.gradle.kts#L269-L291",
           "version": "repo-lines-v1:sha256:93adbd1533de012849035a0875e4505b6ea917facdbf8add909b0661745ab2e1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNWI1MjU5ODlhYmEzZTYxMjE2ZWNkOWZlMzBhNmRkNzZjZDI0NWQ5YjE5ODcxM2U3ZDUwOGZlZTgwNjk3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5ZTRjNGFmNDg3YTc5ODgxZTE0ODM5MDU4ZGZkYmJlNGRhNmE2NmY0YzE1NWQwNDhhZjY0NWMyZjc4ZmQxMDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzOTIxNDZjMjFkN2EzOGZjNjNkNWM4Y2RlODFhMmVjYTc2MGQxNmE4Y2Q5MDg2OWYyODc3ZDFkZTBlNjM3YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiZWFmMWZmZjhmZmRhMzQ4ZTFkMmQyMDU0MmU3N2RmODAzZGRmNzhkYWYzYmZiNjVhMGI5Yjg4YjAyNGE0YWEifQ"
         },
         {
@@ -281,6 +281,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T12:58:12.674Z"
+    "at": "2026-10-02T13:22:01.032Z"
   }
 }

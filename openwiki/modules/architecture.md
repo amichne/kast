@@ -30,9 +30,6 @@ code_sources:
   - path: query/protocol/build.gradle.kts
   - path: runtime/hosted/build.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T12:58:12.674Z
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
@@ -45,6 +42,9 @@ sources:
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
 generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T13:22:01.032Z
 ---
 
 # Verified module architecture

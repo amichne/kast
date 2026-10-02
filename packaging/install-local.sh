@@ -7,10 +7,6 @@ fail() {
   exit 1
 }
 
-require_command() {
-  command -v "$1" >/dev/null 2>&1 || fail "required command is unavailable: $1"
-}
-
 install_prefix="${KAST_LOCAL_PREFIX:-}"
 control_product="${KAST_LOCAL_CONTROL_PRODUCT:-}"
 plugin_archive="${KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE:-}"
@@ -30,7 +26,6 @@ case "${install_prefix}" in
   /*) ;;
   *) fail "installation prefix must be absolute: ${install_prefix}" ;;
 esac
-[[ "${install_prefix}" != "/" ]] || fail "installation prefix cannot be the filesystem root"
 [[ -d "${control_product}" && ! -L "${control_product}" ]] ||
   fail "control product is not a directory: ${control_product}"
 [[ -x "${control_product}/bin/kast" ]] ||
