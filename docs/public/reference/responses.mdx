@@ -1,37 +1,37 @@
 ---
 title: "Results"
-description: "Understand returned facts, coverage, paired rows, and the handles used to continue."
+description: "Check what a query found, whether it finished, and how to continue or reuse its results."
 icon: "list-checks"
 ---
 
-Read two things in every Kast answer: **the facts returned** and **what the query covered**. A successful tool invocation does not, by itself, establish a complete semantic result.
+Read the returned facts together with coverage and progress. A tool call can finish successfully while the query still has work to do.
+
+## Interpret coverage before making a claim
+
+| Semantic outcome | What it establishes |
+| --- | --- |
+| `complete` | The operation covered its declared scope. |
+| `qualified` | The result contains stated limitations or unfinished work. |
+| `rejected` | Kast could not complete the request under its input or state requirements. |
+
+Read the facts together with limitations, item failures, omissions, and progress. A qualified answer can establish specific callers without establishing that every caller was found. An empty qualified answer does not prove absence.
+
+Diagnostics cover the reported IDEA analysis scope; they do not certify a whole-project build. For a source change, inspect its [receipt and recovery evidence](/change#read-the-receipt) separately: a rejected request or lost response does not prove that no write occurred.
 
 ## What can come back
 
 | Result | Use it for |
 | --- | --- |
-| Symbols | Exact declarations, their issued references, and selected name, location, signature, or source fields. |
-| Occurrences | Individual use sites and relationship facts, including repeated uses. |
-| Traversal records | Relationship evidence with hop depth from a bounded walk. |
-| Binding rows | Named symbol cells produced by an inner join. Project a cell before another symbol step. |
+| Symbols | Exact declarations, issued references, and selected name, location, signature, or source fields |
+| Occurrences | Individual use sites and relationship facts, including repeated uses |
+| Traversal records | Established relationship evidence with hop depth |
+| Binding rows | Named symbol cells produced by an inner join |
 
-See [Query forms](/reference/api) to select an output, or [the composition walkthrough](/query-pipelines) to follow a result into the next query.
-
-## Interpret coverage before making a claim
-
-| Canonical status | What the agent may say |
-| --- | --- |
-| `complete` | The operation covered its declared scope. |
-| `qualified` | These returned facts are usable with the stated limitations; some obligation remains incomplete. |
-| `rejected` | This request did not establish a successful semantic result. |
-
-For example, “Kast found these callers, but the walk stopped with unfinished work” preserves a qualified result. “These are all callers” does not.
-
-A zero-row qualified answer is not proof that a declaration or relationship is absent. Before making an absence claim, check complete coverage of the requested scope, item failures, and omissions. Diagnostics cover the reported IDEA analysis scope; they do not certify a whole-project build.
+See [Query forms](/reference/api) to choose an output or [Combine query results](/query-pipelines) to carry retained rows into another investigation.
 
 ## Follow progress, not row count
 
-A bounded answer can preserve work that has not yet produced a row. Read the semantic status and required qualification progress together; do not decide that an investigation is finished because this page is empty.
+An empty page can still represent progress: Kast may have examined input that did not pass a filter. Use the reported outcome and progress to decide what to do next.
 
 ```mermaid
 %%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
@@ -39,7 +39,7 @@ flowchart TB
   accTitle: Completion, resumable work, and terminal limits are different outcomes
   accDescr: A complete result establishes coverage of its declared universe. A qualified result either carries a usable continuation or a terminal limitation. A rejected request requires its reported recovery action. Row count alone determines none of these states.
   A("Read status and coverage") --> S{"Semantic outcome"}
-  S -->|Complete| C("Declared universe covered")
+  S -->|Complete| C("Requested scope covered")
   S -->|Qualified| Q{"Reported progress"}
   S -->|Rejected| F("Follow the recovery action")
   Q -->|Resumable| R("Resume the issued continuation")
@@ -55,29 +55,29 @@ flowchart TB
   class F rejected;
 ```
 
-When qualification reports resumable execution, use its issued continuation with `RESUME`. This restores saved work; it is not a new `RUN` with reconstructed steps. A terminal qualification keeps its precise reason and any established facts but does not promise a usable successor. Follow the reported recovery guidance instead of fabricating a token or retrying indefinitely.
+When progress is resumable, pass the issued continuation to `RESUME` to continue the saved query. If progress is terminal, keep the returned facts and read the reason it stopped. Follow its recovery guidance; a result limit alone does not mean a continuation exists.
 
-`READ_RESULT` is different. It pages immutable stored rows with a presentation cursor and does not advance semantic providers. It supports retained symbols, occurrences, traversal records, and binding rows with the matching output type. Draining those pages cannot remove the producer's omissions or turn qualified evidence into complete coverage.
+`READ_RESULT` reads saved rows without continuing the query. Choose the output type that matches the retained symbols, occurrences, traversal records, or binding rows, then use a result cursor to read another page. Reading every page leaves the query’s original coverage limits unchanged.
 
-Current progressive Kotlin-source declaration discovery retains unopened partitions and the active source position. Reference output can retain file-scoped imports and aliases without inventing an enclosing declaration. Discovery work counts, emitted rows, and provider coverage are different quantities; a small row count says nothing by itself about how much input was examined.
+`ALL_DECLARATIONS` saves unvisited files and its position in the active file. Rows returned, input examined, and scope covered measure different things. A small row count alone does not tell you how much work the query performed.
 
-Replaying an already-published continuation returns the same semantic page and successor without repeating its scan. Concurrent use of unfinished execution can report `continuation-in-use`. Expired, evicted, or stale state requires explicit recovery; a token is not a permanent snapshot.
+Replaying an already-published continuation returns the same semantic page and successor without repeating its scan. Concurrent use of unfinished execution can report `continuation-in-use`. If saved state expires, is evicted, or becomes stale, follow the reported recovery guidance.
 
 ## Carry the correct handle forward
 
 | Handle | Next use |
 | --- | --- |
-| Exact symbol `ref` | Start a fresh query from `SYMBOL_REFS`; Kast revalidates its identity and basis. |
+| Exact symbol `ref` | Start a fresh query from `SYMBOL_REFS`; Kast checks its identity against the current workspace state. |
 | Retained-result reference | Start from `RESULT`, combine with another retained input, or use `READ_RESULT`. |
 | Issued row ID | Select a row from its owning retained result. A subset does not prove coverage of omitted rows. |
 | Execution continuation | Use `RESUME` to continue stored unfinished work. |
 | Result cursor | Page through stored result rows, not semantic execution. |
 
-Pass tokens unchanged. A stale or unavailable handle requires an explicit recovery decision, not a guessed replacement token. Retention is bounded and can fail without erasing the query's returned facts.
+Pass each reference, continuation, or cursor unchanged. If Kast reports it as stale or unavailable, follow the recovery guidance. A query can return useful facts even when Kast cannot retain them for later use.
 
 ## Compact and detailed output
 
-Omit `verbose` for compact output. Use a strict boolean beside the tool's arguments when execution detail is needed:
+Omit `verbose` for compact output. Set `verbose: true` beside the tool’s arguments when you need execution details:
 
 ```json
 {
@@ -94,7 +94,7 @@ Compact output preserves semantic results, coverage, limitations, exact referenc
 <Accordion title="Counts and bounded presentation">
   `knownMinimum` refers to the logical query's final output, including rows already delivered. It is not a count of remaining presentation rows or unfiltered provider candidates.
 
-  Draining output pages does not remove semantic omissions or turn qualified coverage into complete coverage. Presentation and semantic execution have different continuation owners.
+  Draining output pages does not remove semantic omissions or turn qualified coverage into complete coverage. Use a result cursor to read saved rows and an execution continuation to resume work.
 </Accordion>
 
 <Accordion title="Where the operation document sits in each transport">

@@ -1,7 +1,7 @@
 ---
 title: "What is Kast?"
 sidebarTitle: "Overview"
-description: "Deterministic structure around a probabilistic coding agent: exact program facts, explicit limits, and evidence carried into action."
+description: "Find Kotlin declarations, trace relationships, and make targeted changes through your coding agent."
 icon: "scan-search"
 keywords:
   - "Kotlin"
@@ -10,74 +10,34 @@ keywords:
   - "semantic query"
 ---
 
-**Kast is the deterministic structure around a probabilistic system.**
-
-It gives coding agents compiler-grounded understanding of Kotlin code, so questions the program can answer do not have to remain guesses. The agent decides what to investigate. Kast establishes program facts through IntelliJ IDEA and carries their identity, scope, coverage, and validity into the next operation.
-
-## Fewer questions left to guess
-
-More context can help an agent choose a plausible answer. But a plausible declaration is not an exact declaration, a likely caller is not a confirmed caller, and an empty search is not necessarily evidence of absence.
-
-Kast asks a different question: **how much of this task should remain probabilistic at all?**
-
-When the compiler can establish which declaration is referenced, the agent should not infer it from a name. When a read is incomplete, the agent should not decide that the missing results probably do not exist. When retained evidence is no longer valid, the next operation should not silently treat it as current.
-
-```mermaid
-%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
-flowchart TB
-  accTitle: The agent reasons; Kast establishes program facts
-  accDescr: An agent asks a question. Kast admits the exact workspace and obtains program facts from IntelliJ IDEA. Facts return with coverage and validity so the agent can decide what to do next.
-  A("Agent asks a question") --> W("Admit the exact workspace")
-  W --> I("Establish program facts in IDEA")
-  I --> E("Return facts, coverage, and validity")
-  E --> J("Agent decides the next step")
-  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
-  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
-  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
-  class W,I authority;
-  class E evidence;
-```
-
-The model still supplies judgment. Kast supplies established facts and explicit limits, not a guarantee that every conclusion the model draws is correct.
-
-## What that makes possible
+Kast connects your coding agent to IntelliJ IDEA’s Kotlin analysis. Ask it to find a declaration, trace its callers, inspect source, or make a targeted change. Each result identifies what Kast found and whether the query covered the scope you requested.
 
 <CardGroup cols={2}>
-  <Card title="Find the exact code" icon="fingerprint" href="/search">
-    Distinguish overloads and same-named declarations. Carry an issued symbol reference forward instead of resolving a name again.
+  <Card title="Install and connect" icon="download" href="/start">
+    Install Kast, connect your agent, and check the connection with a real query.
   </Card>
 
-  <Card title="Follow real relationships" icon="git-branch" href="/reference/api">
-    Trace callers, implementations, and individual uses. Keep confirmed relationships separate from uncovered work.
-  </Card>
-
-  <Card title="Build on established evidence" icon="workflow" href="/query-pipelines">
-    Combine retained investigations by semantic identity, resume unfinished execution, or inspect stored rows without restarting the query.
-  </Card>
-
-  <Card title="Change a known target" icon="file-pen-line" href="/change">
-    Add a declaration or replace a supported function body through an exact-target operation with an explicit verification outcome.
+  <Card title="Find and trace code" icon="search" href="/search">
+    Find a declaration, then follow its callers or implementations.
   </Card>
 </CardGroup>
 
-These are parts of one ambition: carry dependable evidence from a question toward a justified action. Knowing something should narrow the next step, not disappear when a tool call ends.
+## From search to source changes
 
-## Know what the answer proves
+**Find a declaration.** Start with a name or a word you remember from the source, and narrow the search to a module or directory. Check the returned signature and location, then reuse its exact reference in your next query. See [Find and trace code](/search).
 
-An exact positive result can remain useful even when the wider investigation is incomplete. A complete empty result supports absence only within the declared search universe. An empty page with unfinished work does not.
+**Trace relationships.** Find callers, implementations, or references, and follow them to a chosen depth. Kast reports any work left unfinished. You can also [combine retained results](/query-pipelines) to compare declarations found by separate queries.
 
-Kast reports complete, qualified, or rejected semantic outcomes. Qualified results preserve their limits and distinguish usable continuation from a terminal stop. References and retained results remain bound to the authority that admits them. Read [what an answer proves](/concepts/evidence-boundaries) before treating a result as exhaustive or reusing it later.
+**Make a targeted change.** Add a declaration to an existing Kotlin file or replace a supported function body. Kast uses an exact reference to identify the target and returns a receipt with the verification outcome. See [the change guide](/change) for supported targets and recovery.
 
-## What Kast does not promise
+## Why the evidence matters
 
-Kast is not another language model, a substitute for your agent's judgment, or a claim of arbitrary refactoring support. Its current source changes are declaration insertion and supported block-body replacement. Retrieved diagnostics and a verified bounded edit do not certify a whole-project build or business correctness.
+Finding one confirmed caller does not mean every caller was found. An empty, incomplete result does not prove that a declaration is absent. Kast reports these limits so your agent can distinguish a useful finding from a finished search.
 
-The current installation targets Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Kast prepares the selected project in the background and reports readiness blockers rather than returning a misleading empty answer. See [compatibility](/reference/compatibility) and [background preparation](/concepts/background-startup).
+References also depend on the workspace and source state that produced them. Kast checks whether they can still be used. Read [What an answer proves](/concepts/evidence-boundaries) for coverage and reuse, or [How Kast works](/concepts/architecture) for the request flow.
 
-## Start using Kast
+## Supported environment
 
-[Install Kast](/start), then [connect your agent](/agent-harnesses). Start the agent in the repository or worktree you want to inspect and ask:
+Kast supports Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Connect Codex, Copilot, or Pi. Kast prepares the selected IDEA project when a query needs it and reports any setup blocker.
 
-> Use Kast to find the declaration relevant to this question. Show its exact identity and source location, trace the relationships that matter, and separate what is established from what remains incomplete.
-
-Use [Find and trace code](/search) for concrete prompts and [Query forms](/reference/api) for the current request shapes.
+Check [compatibility](/reference/compatibility) before installing. After a source change, run the build and tests your project requires; Kast’s edit verification and IDEA diagnostics cover their reported scope.

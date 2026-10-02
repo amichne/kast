@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Deterministic structure for probabilistic coding agents: compiler-grounded Kotlin facts, explicit evidence boundaries, and controlled source changes.",
+  "description": "Connect your coding agent to IntelliJ IDEA to find Kotlin declarations, trace relationships, and make targeted source changes.",
   "colors": {"primary": "#3154C7", "light": "#8FA7FF", "dark": "#27439F"},
   "fonts": {"family": "SUSE"},
   "logo": "/images/kast-mark.svg",
@@ -25,21 +25,42 @@
       },
       {
         "group": "Using Kast",
-        "pages": ["concepts/background-startup", "search", "query-pipelines", "change", "workspaces"]
+        "pages": [
+          "search",
+          "concepts/evidence-boundaries",
+          "query-pipelines",
+          "change",
+          {
+            "group": "Setup and maintenance",
+            "pages": [
+              "concepts/background-startup",
+              "workspaces"
+            ]
+          }
+        ]
       },
       {
         "group": "Reference",
         "openapi": "reference/callables.openapi.json",
         "pages": [
           "concepts/architecture",
-          "concepts/evidence-boundaries",
-          "reference/api",
-          "reference/responses",
+          {
+            "group": "Query reference",
+            "pages": [
+              "reference/api",
+              "reference/responses",
+              "reference/symbols"
+            ]
+          },
           "reference/schemas",
           {
             "group": "Integration contracts",
             "expanded": false,
-            "pages": ["reference/mcp-catalog", "reference/rpc-catalog", "reference/symbols", "reference/compatibility"]
+            "pages": [
+              "reference/mcp-catalog",
+              "reference/rpc-catalog",
+              "reference/compatibility"
+            ]
           },
           {
             "group": "Detailed schemas",
