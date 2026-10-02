@@ -14,6 +14,51 @@ code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationRegistration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RegistrationPayload.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
+    symbols: [ForceResetRoot]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt
+    symbols: [forceResetInstallation, ForceResetExecution]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt
+    symbols: [FencedReset, QuiescentReset, ErasedReset, StagedReset, ActiveReset]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ReadyReset.kt
+    symbols: [ReadyReset]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ResetProcessObservation.kt
+    symbols: [ResetProcessObservation]
+  - path: distribution/contract/src/main/resources/management/reset-process-observation.schema.json
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetFence.kt
+    symbols: [ForceResetFence, RetainedResetStorage]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt
+    symbols: [ForceDaemonRetirement, ResetScopedProcess]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/FreshResetInstallation.kt
+    symbols: [FreshResetInstallation]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RuntimeServiceGeneration.kt
+    symbols: [RuntimeServiceGeneration]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ResetLoginEntries.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationResetFence.kt
+    symbols: [InstallationResetRequest, InstallationResetStorage, installationResetFence]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceReinstallation.kt
+    symbols: [installFresh, ForceReinstaller]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt
+    symbols: [ForceResetOutcome]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt
+    symbols: [executeInstallationLifecycle, LifecycleExecution]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
+    symbols: [InstallationLifecycle]
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationRequestRetirement.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/LifecycleProcesses.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/LifecycleOutcome.kt
+    symbols: [LifecycleOutcome, LifecycleObservation]
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationShutdownFence.kt
+  - path: distribution/contract/src/main/resources/management/management-lifecycle.schema.json
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstalledToolInvocation.kt
+  - path: distribution/contract/src/main/resources/management/installation-reset.schema.json
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
+    symbols: [ResetActivationAdmission, ResetActivationLease]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+  - path: copilot/extension.mjs
+  - path: pi/extension.ts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PassiveRuntimeObservation.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/OneShotObservation.kt
@@ -68,6 +113,10 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PendingInstallationReplacement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationActivation.kt
+    symbols: [InstallationActivation, InstallationActivationPolicy]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationCliInspection.kt
+    symbols: [InstallationCliInspection]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationManifest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationOutcome.kt
     symbols: [InstallationFailure, InstallationOutcome]
@@ -121,13 +170,15 @@ independent skill, plugin, and marketplace ZIPs; candidate admission verifies
 their checksums and SBOM archive identities alongside the control and IDEA
 archives. Query examples in the skill are generated from the public tool schema.
 
-The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows payload and IDEA plugin activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for loaded version, ready workspaces, and live connection count. One-shot tool RPC calls publish a bounded process identity record while executing; native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
+The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows payload and IDEA plugin activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for loaded version, ready workspaces, and live connection count. One-shot tool RPC calls publish a bounded process identity record while executing; MCP sessions publish the same canonical identity contract in a separate session directory. Native status counts only one-shot records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, required launchers including the native management command, and one real session installation in an owned temporary root. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
-The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the ordinary payload and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
+Native lifecycle commands fence admission at `<install-root>/shutdown.json`, outside the replaceable payload. Direct tools and coordinator startup honor the fence. Stop disables the owned coordinator and drains recorded tool processes within one 30-second retirement budget; stop with `--force` additionally signals only admitted exact process incarnations with qualified installed classpaths. The selected IDEA executable is re-derived from its saved launch receipt; a running user-owned host rejects with `HOST_RESTART_REQUIRED`. No replacement proceeds on an unverified shutdown. Reinstall uses the existing installer with the exact installed version, qualifies its report against the selected installation, bootstraps the coordinator, and restores recorded registrations. A failed bootstrap restores the fence, retires any partially started coordinator, and returns a typed installation-pending result. JSON results follow the shipped closed lifecycle schema; stage observations use finite discriminated variants on stderr. Older payloads without the manifest-qualified lifecycle capability reject before effects. Hosted-only lifecycle manifests may retain deleted historical workspace paths because no workspace-specific process is retired; schema-1 isolated installations still require existing roots.
+
+The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the ordinary payload and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection. Both adapters default to `<install-root>/installation/bin/kast-tool-rpc-complete`, honor `KAST_INSTALL_ROOT`, and preserve an explicit `KAST_TOOL_RPC_COMMAND` override.
 
 Codex registration requires the explicit `mcp` or `app-server` transport. MCP owns the selected `kast` server entry in Codex configuration. App Server owns `~/.local/bin/kast-codex`, an executable launcher for the selected installation's existing `kast-codex-complete` facade; the launcher accepts interactive Codex and `app-server` stdio invocation without adding an MCP entry or redirecting ordinary Desktop sessions. Schema-2 management receipts retain the closed connection identity. Schema-1 receipt admission refines existing Codex ownership to MCP while preserving its destination and payload digest. Both recorded Codex transports are independently owned; disconnecting Codex removes its recorded routes.
 
@@ -223,7 +274,7 @@ Server workspace lane. Incomplete recovery leaves the lane protected.
 The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 
-The app server exposes every qualified tool in the canonical agent catalog. There is no subset-selection setting or disabled product variant. Persistent installation activates the login service; private development sessions defer activation. Retired overrides reject before installation effects.
+The app server exposes every qualified tool in the canonical agent catalog. There is no subset-selection setting or disabled product variant. Persistent installation activates the login service; private development sessions and explicit cold staging defer activation. The private `installation install --stage-only` option selects the existing installation owner's typed `STAGE_ONLY` policy and retains an installed `not-requested` activation result. Retired overrides reject before installation effects.
 
 Read [configuration](../contracts/configuration.md) for ingress and ownership rules.
 
@@ -288,3 +339,7 @@ configuration bytes, preserving fields outside its inspection projection.
 Failed restoration retains its backup and reports the recovery destination.
 Symlinked registration paths reject before mutation. Connecting records
 configuration and does not establish that a client loaded or invoked the tools.
+
+Destructive `uninstall --force` and `reinstall --force` bypass old payload and receipt ownership admission while retaining canonical root scope and verified daemon retirement. An exterior fence and persistent lock survive root replacement. The fence records retained storage before the old root is moved atomically to a scoped sibling recovery directory. The runtime boundary unloads exact root-derived launchd jobs, removes exact login entries, and retires scoped Kast process incarnations within a bounded deadline. Shared IDEA and Gradle processes are excluded. Erasure accepts only a quiescent typestate; a retirement or cleanup rejection preserves the fence and reports retained storage.
+
+The closed lifecycle progresses through privately constructed fenced, quiescent, erased, staged, readiness-proven, and active types. A single-use lease rejects replayed effect transitions. The embedded installer cold-stages a fresh latest-stable payload under the selected root, requiring the manifest-qualified reset fence capability. Payload admission and a staging report establish committed bytes without claiming active readiness. Activation records `ACTIVATING` while retaining the exterior marker. Daemon startup requires that intent and the live exclusive reset lease; tools remain fenced until readiness verifies the fresh version and canonical service generation and the marker is lifted. Only then can the lifecycle produce `RESET_REINSTALLED`. Failed staging or activation restores the fence and retires partial startup. Failed compensation preserves the original and recovery failures in `RESET_RECOVERY_REQUIRED`. Interrupted retention remains discoverable through the exterior fence; the lock stays stable across resets. No old registration history survives successful erasure, external harness registrations remain, and erased data has no rollback. OS or filesystem refusal remains a finite failure. The canonical lifecycle schema includes all force reset variants.

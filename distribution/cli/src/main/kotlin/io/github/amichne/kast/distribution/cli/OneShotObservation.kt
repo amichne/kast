@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -23,8 +24,6 @@ private data class OneShotManifest(
     val installationRoot: String,
     val payloadFiles: List<OneShotPayload>,
 )
-
-@Serializable private data class OneShotRecord(val schemaVersion: Int, val pid: Long, val startEpochMillis: Long)
 
 private sealed interface MarkerQualification {
     data object Qualified : MarkerQualification
@@ -73,7 +72,7 @@ private fun inspectInvocation(entry: Path): InvocationState {
     val raw = readBoundedFile(entry, MAXIMUM_ONE_SHOT_RECORD_BYTES) ?: return InvocationState.Unavailable
     val record =
         try {
-            oneShotJson.decodeFromString<OneShotRecord>(raw)
+            oneShotJson.decodeFromString<InstalledToolInvocation>(raw)
         } catch (_: SerializationException) {
             return InvocationState.Unavailable
         }

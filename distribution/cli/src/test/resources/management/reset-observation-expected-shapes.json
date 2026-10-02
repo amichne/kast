@@ -1,0 +1,21 @@
+[
+  {
+    "type": "STARTED",
+    "operation": "REINSTALL_FORCE",
+    "stage": "DAEMONS",
+    "component": "kast-reset"
+  },
+  {
+    "type": "COMPLETED",
+    "operation": "REINSTALL_FORCE",
+    "stage": "DAEMONS",
+    "component": "kast-reset"
+  },
+  {
+    "type": "REJECTED",
+    "operation": "REINSTALL_FORCE",
+    "stage": "DAEMONS",
+    "failure": "PROCESS_RETIREMENT_REJECTED",
+    "component": "kast-reset"
+  }
+]

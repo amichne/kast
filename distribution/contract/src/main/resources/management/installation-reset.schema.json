@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/installation-reset.schema.json",
+  "title": "Kast durable installation reset journal",
+  "description": "A fence outside the replaceable root preserves retention intent across interrupted deletion or replacement. Path scope and filesystem identity require separate runtime admission.",
+  "$defs": {
+    "absolutePath": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 8192,
+      "pattern": "^/",
+      "examples": [
+        "/Users/example/.local/share/kast"
+      ]
+    },
+    "storage": {
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "FENCED"
+              ],
+              "examples": [
+                "FENCED"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "FENCED"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "directory"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "RETAINED"
+              ],
+              "examples": [
+                "RETAINED"
+              ]
+            },
+            "directory": {
+              "$ref": "#/$defs/absolutePath"
+            }
+          },
+          "examples": [
+            {
+              "type": "RETAINED",
+              "directory": "/.kast-retiring-example"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ERASED"
+              ],
+              "examples": [
+                "ERASED"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "ERASED"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ACTIVATING"
+              ],
+              "examples": [
+                "ACTIVATING"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "ACTIVATING"
+            }
+          ],
+          "description": "Replacement activation is in progress. Service startup additionally requires the force reset exclusive lock to remain held; ordinary tool admission remains fenced until fresh readiness is verified."
+        }
+      ],
+      "examples": [
+        {
+          "type": "FENCED"
+        },
+        {
+          "type": "RETAINED",
+          "directory": "/.kast-retiring-example"
+        },
+        {
+          "type": "ERASED"
+        },
+        {
+          "type": "ACTIVATING"
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "required": [
+    "installationRoot",
+    "storage",
+    "type",
+    "schemaVersion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "installationRoot": {
+      "$ref": "#/$defs/absolutePath"
+    },
+    "storage": {
+      "$ref": "#/$defs/storage"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "RESET_IN_PROGRESS"
+      ],
+      "examples": [
+        "RESET_IN_PROGRESS"
+      ]
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [
+        1
+      ],
+      "examples": [
+        1
+      ]
+    }
+  },
+  "examples": [
+    {
+      "installationRoot": "/kast",
+      "storage": {
+        "type": "FENCED"
+      },
+      "type": "RESET_IN_PROGRESS",
+      "schemaVersion": 1
+    },
+    {
+      "installationRoot": "/kast",
+      "storage": {
+        "type": "RETAINED",
+        "directory": "/.kast-retiring-example"
+      },
+      "type": "RESET_IN_PROGRESS",
+      "schemaVersion": 1
+    },
+    {
+      "installationRoot": "/kast",
+      "storage": {
+        "type": "ERASED"
+      },
+      "type": "RESET_IN_PROGRESS",
+      "schemaVersion": 1
+    },
+    {
+      "installationRoot": "/kast",
+      "storage": {
+        "type": "ACTIVATING"
+      },
+      "type": "RESET_IN_PROGRESS",
+      "schemaVersion": 1
+    }
+  ]
+}

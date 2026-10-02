@@ -54,6 +54,19 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
+    fun `parent shutdown fence prevents service startup even after payload replacement`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val command = resolvedCommand(fixture)
+        Files.writeString(fixture.kast.parent.parent.parent.resolve("shutdown.json"), "malformed fence")
+        val host =
+            MacOsPersistentBrokerServiceHost(launchctl = LaunchctlInvoker { _, _ -> error("unexpected launchctl") })
+        assertEquals(
+            PersistentBrokerServiceAdmission.Rejected(PersistentBrokerServiceFailure.DISABLED),
+            host.ensure(command),
+        )
+    }
+
+    @Test
     fun `installation lifecycle fence blocks login bootstrap before enrollment or stopped marker mutation`(
         @TempDir temporary: Path
     ) {

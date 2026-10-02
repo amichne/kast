@@ -85,7 +85,7 @@ force removal of finite variants or precise schema metadata.
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 
-The native management command uses two derived installer inputs: `KAST_MANAGEMENT_CHANNEL` selects the installed release channel during executable publication, and `KAST_MANAGEMENT_REPORT_PATH` carries the private installer activation report to upgrade. They are owned by `:distribution:cli` and are not user configuration settings.
+The native management command uses two derived installer inputs: `KAST_MANAGEMENT_CHANNEL` selects the installed release channel during executable publication, and `KAST_MANAGEMENT_REPORT_PATH` carries the private installer activation report to upgrade and pinned reinstall. They are owned by `:distribution:cli` and are not user configuration settings.
 
 The generated snapshot includes the four `EXECUTION_MAX_*` ceilings for time,
 work, results and returned bytes, each defaulting to 2,147,483,646. It also
@@ -136,4 +136,4 @@ complete payload. The public installer always selects persistent. The checkout
 entrypoint derives the profile from its required session or persistent argument.
 
 The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session; it adds no saved configuration setting. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. Its process command adds no saved configuration setting or Codex App Server request.
-The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, repair, or trust enrollment to the existing owners.
+The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, repair, or trust enrollment to the existing owners.

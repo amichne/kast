@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
+import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.mcp.McpChangePhase
 import io.github.amichne.kast.kernel.Refinement
@@ -36,6 +37,8 @@ object KastToolRpcMain {
                     val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
                     if (bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH)
                         ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
+                    else if (session.admission() != InstalledToolAdmission.AVAILABLE)
+                        ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
                     else
                         OneShotInvocationRecord.begin()?.use { bridge.call(args[1], bytes.decodeToString()) }
                             ?: ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE)
@@ -60,6 +63,8 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
     fun catalog(): ToolRpcReply = ToolRpcReply.Catalog(ToolRpcCatalog(tools.sortedBy(ToolRpcTool::name)))
 
     fun call(name: String, input: String): ToolRpcReply {
+        if (session.admission() != InstalledToolAdmission.AVAILABLE)
+            return ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
         if (tools.none { it.name == name }) return ToolRpcReply.Rejected(ToolRpcFailure.UNKNOWN_TOOL)
         val arguments =
             try {
@@ -88,6 +93,10 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
             } catch (_: RuntimeException) {
                 return ToolRpcReply.Rejected(ToolRpcFailure.INVOCATION_FAILED)
             }
+        return present(exit)
+    }
+
+    private fun present(exit: CliExit): ToolRpcReply {
         val document =
             try {
                 toolRpcJson.parseToJsonElement(exit.document.value) as? JsonObject
@@ -146,6 +155,7 @@ internal enum class ToolRpcToolEffect {
 
 @Serializable
 internal enum class ToolRpcFailure {
+    INSTALLATION_STOPPED,
     OBSERVATION_UNAVAILABLE,
     CATALOG_UNAVAILABLE,
     INVALID_COMMAND,

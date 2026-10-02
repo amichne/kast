@@ -30,7 +30,7 @@ TOOL_PATH = str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath
 
 
 class InstallerEntrypointTest(unittest.TestCase):
-    def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3"):
+    def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False):
         root = Path(directory)
         home = root / "home"
         idea = root / "IntelliJ IDEA.app/Contents"
@@ -54,11 +54,17 @@ class InstallerEntrypointTest(unittest.TestCase):
         control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
         control = assets / control_name
         executable = b"#!/bin/sh\nprintf 'profile=%s mode=%s force=%s idea=%s\\n' \"$KAST_INSTALL_PROFILE\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" \"$KAST_INSTALL_IDEA_HOME\" >&2\n"
+        if reset_capability:
+            executable += b"printf 'options=%s\\n' \"$*\" >&2\n"
         info = tarfile.TarInfo("share/kast/libexec/kast-service")
         info.mode = 0o755
         info.size = len(executable)
         with tarfile.open(control, "w:gz") as archive:
             archive.addfile(info, io.BytesIO(executable))
+            if reset_capability:
+                capability = tarfile.TarInfo("share/kast/reset-fence-v1")
+                capability.mode, capability.size = 0o644, 2
+                archive.addfile(capability, io.BytesIO(b"1\n"))
             management = b'''#!/bin/sh
 set -eu
 [ "$1" = --internal-install ] || exit 92
@@ -88,6 +94,28 @@ esac
             "KAST_INSTALL_ROOT": str(root / "install"), "KAST_BIN_DIR": str(bin_directory),
         }
         return idea, assets, environment
+
+    def test_cold_stage_rejects_incompatible_release_before_private_installer(self):
+        with tempfile.TemporaryDirectory(prefix='kast-stage-old-') as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--stage-only', '--skip-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn('this release cannot stage a fenced reset', result.stderr)
+            self.assertNotIn('profile=', result.stderr)
+            self.assertFalse((Path(directory) / 'install').exists())
+
+    def test_cold_stage_passes_explicit_option_to_compatible_private_installer(self):
+        with tempfile.TemporaryDirectory(prefix='kast-stage-compatible-') as directory:
+            idea, _, environment = self.installer_fixture(directory, reset_capability=True)
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--stage-only', '--skip-codex-mcp', '--verbose', '--dry-run'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('options=install --stage-only', result.stderr)
 
     def developer_curl(self, directory: str, assets: Path, pointer: str):
         binary = Path(directory) / "bin/curl"
@@ -343,7 +371,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                         self.assertTrue(command.startswith(CANONICAL_PREFIX), line)
 
     def test_removed_options_reject_before_installation(self):
-        for option in ("--local", "--install-root", "--bin-dir", "--clean-collisions", "--no-interactive"):
+        for option in ("--local", "--bin-dir", "--clean-collisions", "--no-interactive"):
             with tempfile.TemporaryDirectory(prefix="kast-retired-option-") as directory:
                 result = subprocess.run([str(BASH), str(INSTALLER), option],
                     env={"HOME": directory, "PATH": TOOL_PATH}, text=True, capture_output=True, timeout=10)
@@ -390,6 +418,25 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(b"foreign command\n", foreign.read_bytes())
+
+    def test_explicit_install_root_selects_the_plan_without_changing_the_old_root(self):
+        with tempfile.TemporaryDirectory(prefix="kast-installer-root-") as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            selected = Path(directory) / 'selected-kast'
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--install-root', str(selected), '--dry-run'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn(str(selected), result.stderr)
+            self.assertFalse(selected.exists())
+            self.assertFalse((Path(directory) / 'install').exists())
+
+    def test_relative_explicit_install_root_is_rejected_before_effects(self):
+        result = subprocess.run([str(BASH), str(INSTALLER), '--install-root', 'relative'],
+                                env={"HOME": "/tmp", "PATH": TOOL_PATH}, text=True, capture_output=True, timeout=10)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('install root must be an absolute path', result.stderr)
 
     def test_unsupported_os_is_rejected_before_installation(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-os-") as directory:
