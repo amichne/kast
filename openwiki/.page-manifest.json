@@ -65,18 +65,18 @@
       "completedRunId": "ac636f95-b4c5-406a-b7fa-053064382265"
     },
     "/openwiki/flows/hosted-query.md": {
+      "gitHead": "5ac52edffea644ed66ccb85ab71c093c4706ddd2",
+      "sourceFingerprint": "sha256:b0ab1ca71664dddc43f2d649fea13a85e5c1f2796b52322f1276863c1906d24f",
       "pageVersion": "sha256:60259d831dba6c4a48118b3254c85d3c1f1534bc009547e337c043bd33eceb43",
       "completedBy": "codex",
-      "completedRunId": "d3bb0994-066f-4c12-b55a-96b380121167",
-      "gitHead": "5ac52edffea644ed66ccb85ab71c093c4706ddd2",
-      "sourceFingerprint": "sha256:b0ab1ca71664dddc43f2d649fea13a85e5c1f2796b52322f1276863c1906d24f"
+      "completedRunId": "d3bb0994-066f-4c12-b55a-96b380121167"
     },
     "/openwiki/flows/request-dispatch.md": {
+      "gitHead": "5ac52edffea644ed66ccb85ab71c093c4706ddd2",
+      "sourceFingerprint": "sha256:b0ab1ca71664dddc43f2d649fea13a85e5c1f2796b52322f1276863c1906d24f",
       "pageVersion": "sha256:97c0179d68f9dee7c037381d84877bca2f67b3fb17175c9f506b89abc0447b94",
       "completedBy": "codex",
-      "completedRunId": "d3bb0994-066f-4c12-b55a-96b380121167",
-      "gitHead": "5ac52edffea644ed66ccb85ab71c093c4706ddd2",
-      "sourceFingerprint": "sha256:b0ab1ca71664dddc43f2d649fea13a85e5c1f2796b52322f1276863c1906d24f"
+      "completedRunId": "d3bb0994-066f-4c12-b55a-96b380121167"
     },
     "/openwiki/flows/semantic-query.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",
@@ -121,11 +121,11 @@
       "completedRunId": "ac636f95-b4c5-406a-b7fa-053064382265"
     },
     "/openwiki/modules/architecture.md": {
-      "gitHead": "fe3a23de1b55e2aebb4868c141836f0171735813",
-      "sourceFingerprint": "sha256:9d1cf37faef7553649f35aff2cc952d141553e546ae660edad59527672042c88",
-      "pageVersion": "sha256:19fa7f47a5daf622c9bea9cb6b83baaa029636516264067cd9e5b21c7ef7e31c",
+      "pageVersion": "sha256:46fbba9ca8b6de5ede71fad208cc669251fdfb267a9c5643d74d2a026196755a",
       "completedBy": "codex",
-      "completedRunId": "0b15abc7-1c20-4688-a93d-89cbaa01faa7"
+      "completedRunId": "ecd898ef-b39c-4db0-99be-eff86e5104d3",
+      "gitHead": "d754cb899b971354f60ae3f9c70619299bfca5c1",
+      "sourceFingerprint": "sha256:b2a8c085c331fb063dbceef2ba35714002c08e7c509302cd0606fc481a91aab7"
     },
     "/openwiki/modules/change.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",
@@ -135,11 +135,11 @@
       "completedRunId": "ac636f95-b4c5-406a-b7fa-053064382265"
     },
     "/openwiki/modules/distribution.md": {
-      "pageVersion": "sha256:a6f00162bba0598fa20b9a1d51fae305a9e795590fc7f60232531a0adb0cf218",
+      "pageVersion": "sha256:a336d34ca482e83456dea0f7d8cd1d5175a1dd65bff02e994878e749ef1709fd",
       "completedBy": "codex",
-      "completedRunId": "d3bb0994-066f-4c12-b55a-96b380121167",
-      "gitHead": "5ac52edffea644ed66ccb85ab71c093c4706ddd2",
-      "sourceFingerprint": "sha256:b0ab1ca71664dddc43f2d649fea13a85e5c1f2796b52322f1276863c1906d24f"
+      "completedRunId": "ecd898ef-b39c-4db0-99be-eff86e5104d3",
+      "gitHead": "d754cb899b971354f60ae3f9c70619299bfca5c1",
+      "sourceFingerprint": "sha256:b2a8c085c331fb063dbceef2ba35714002c08e7c509302cd0606fc481a91aab7"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",
@@ -163,11 +163,11 @@
       "completedRunId": "ac636f95-b4c5-406a-b7fa-053064382265"
     },
     "/openwiki/modules/runtime-hosts.md": {
+      "gitHead": "5ac52edffea644ed66ccb85ab71c093c4706ddd2",
+      "sourceFingerprint": "sha256:b0ab1ca71664dddc43f2d649fea13a85e5c1f2796b52322f1276863c1906d24f",
       "pageVersion": "sha256:b7e820c6842eef4225bce9ca8633c9e741815c57237f1b2ced9fef655b279b48",
       "completedBy": "codex",
-      "completedRunId": "d3bb0994-066f-4c12-b55a-96b380121167",
-      "gitHead": "5ac52edffea644ed66ccb85ab71c093c4706ddd2",
-      "sourceFingerprint": "sha256:b0ab1ca71664dddc43f2d649fea13a85e5c1f2796b52322f1276863c1906d24f"
+      "completedRunId": "d3bb0994-066f-4c12-b55a-96b380121167"
     },
     "/openwiki/modules/semantic-reads.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",

@@ -204,8 +204,11 @@ tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
     sourceRevision.set(releaseSourceRevision)
     archive.set(hostedPluginArchive)
     hostedContractFile.set(contractFile)
+    val metadataBaseDirectory = layout.projectDirectory.asFile
     ideaReleaseLine.set(providers.gradleProperty("hostedIdeaHome").map { home ->
-        val metadata = groovy.json.JsonSlurper().parse(file("$home/Resources/product-info.json")) as Map<*, *>
+        val metadataPath = java.io.File(home, "Resources/product-info.json")
+        val metadataFile = if (metadataPath.isAbsolute) metadataPath else java.io.File(metadataBaseDirectory, metadataPath.path)
+        val metadata = groovy.json.JsonSlurper().parse(metadataFile) as Map<*, *>
         (metadata["buildNumber"] as String).substringBefore('.')
     }.orElse(libs.versions.ide.host.build.map { it.substringBefore('.') }))
     outputDirectory.set(layout.buildDirectory.dir("generated/host-release"))
