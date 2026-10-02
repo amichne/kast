@@ -21,3 +21,12 @@ dependencies {
     api(project(":protocol:registry"))
     api(libs.serialization.json)
 }
+
+tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateHostedContract") {
+    group = "build"
+    description = "Generates the exact hosted contract independently of implementation release versions."
+    dependsOn(tasks.named("classes"))
+    classpath.from(sourceSets.main.get().runtimeClasspath)
+    mainClass.set("io.github.amichne.kast.protocol.wire.CanonicalHostedContract")
+    outputFile.set(layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json"))
+}

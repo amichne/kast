@@ -4,8 +4,14 @@ title: Protocol
 description: Canonical operation contracts are completed by an exact registry and projected into generated wire documents.
 resource: file://protocol
 tags: [kotlin, protocol, serialization]
-timestamp: 2026-09-29T00:00:00Z
+timestamp: 2026-10-02T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+    symbols: [HostedContract, HostedContractDocument, HostedCompatibilityPolicy]
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
+    symbols: [CanonicalHostedContract]
+  - path: protocol/contract/src/main/resources/ide-hosted/hosted-request.schema.json
+  - path: protocol/contract/src/main/resources/ide-hosted/hosted-approval.schema.json
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/HostedFailureBudgetSchemaTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointEncodingFixtureTest.kt
@@ -131,3 +137,11 @@ The canonical agent policy delegates preparation for ordinary semantic requests 
 the installed coordinator. Preparation rejection is a broker failure with typed
 workspace cause and operation identity, outside the canonical semantic result.
 It preserves native operation admission and signs the exact plan inside the one-call change boundary.
+
+`HostedContract` is the single exact control/host compatibility tuple. Its canonical
+registry and schema/serializer graph cover actual project requests, responses and
+application lifecycle exchanges. `HostedContractDocument` has a required
+`HOSTED_CONTRACT` discriminator; the existing describe/inspect exchanges require
+that evidence and plugin provenance. Control management and agent presentation
+identities do not enter the tuple. A hosted behavior break requires a declared
+protocol identity change even without a JSON shape change.

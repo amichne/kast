@@ -41,6 +41,11 @@ internal object CanonicalSourceReadSerializers {
     val request = factory.create(SourceReadRequest.serializer())
     val result =
         WireValueCodec<SourceReadResult>(
+            descriptors =
+                listOf(
+                    SourceReadResultWireDocument.serializer().descriptor,
+                    CompactSourceReadDocument.serializer().descriptor,
+                ),
             encodeValue = { value ->
                 when (value.format) {
                     SourceReadFormatDocument.EXPANDED ->

@@ -94,11 +94,12 @@ private fun runInstaller(script: Path, arguments: List<String>, report: Path? = 
 private const val INSTALLER_REPORT_LIMIT_BYTES = 65536L
 
 @Suppress("ThrowsCount")
-private fun installLatest(root: Path, prior: ManagementReceipt): InstallerReport {
+private fun installLatest(root: Path, prior: ManagementReceipt, controlOnly: Boolean): InstallerReport {
     val script = installedPrivateInstaller(root)
     val options =
         if (prior.channel == ReleaseChannel.DEVELOPER) listOf("--developer-latest", "--skip-codex-mcp")
         else listOf("--skip-codex-mcp")
+    val componentOptions = options + if (controlOnly) listOf("--control-only") else emptyList()
     val reportPath =
         try {
             Files.createTempFile(root, ".management-result-", ".json")
@@ -107,7 +108,7 @@ private fun installLatest(root: Path, prior: ManagementReceipt): InstallerReport
         }
     val (code, rawReport) =
         try {
-            val exit = withRegistrationLock(root) { runInstaller(script, options, reportPath) }
+            val exit = withRegistrationLock(root) { runInstaller(script, componentOptions, reportPath) }
             exit to readBoundedFile(reportPath, INSTALLER_REPORT_LIMIT_BYTES)
         } finally {
             Files.deleteIfExists(reportPath)
@@ -138,9 +139,9 @@ private fun reportMatchesSelectedInstallation(report: InstallerReport, root: Pat
             InstallStatus.INSTALLED_ACTIVATION_PENDING -> report.activation.type == ActivationType.PENDING
         }
 
-internal fun upgradeInstallation(root: Path, home: Path) {
+internal fun upgradeInstallation(root: Path, home: Path, controlOnly: Boolean = false) {
     val prior = requireOwnedExecutable(root)
-    val report = installLatest(root, prior)
+    val report = installLatest(root, prior, controlOnly)
     val failures = mutableListOf<HarnessConnection>()
     prior.registrations.forEach { registration ->
         try {
@@ -168,8 +169,10 @@ internal fun upgradeInstallation(root: Path, home: Path) {
     val status = readStatus(root, prior.executable)
     println("Installed Kast ${status.installedVersion.value ?: "unavailable"}")
     println(
-        "Existing calls and sessions were interrupted. " +
-            "Restart IntelliJ IDEA and connected harnesses to load the new payload."
+        if (controlOnly) "Control sessions were interrupted. Running IntelliJ hosts were admitted and reused."
+        else
+            "Existing calls and sessions were interrupted. " +
+                "Restart IntelliJ IDEA and connected harnesses to load the new payload."
     )
 }
 
@@ -177,7 +180,7 @@ internal fun upgradeInstallation(root: Path, home: Path) {
 internal fun uninstallInstallation(root: Path, home: Path) {
     val receipt = requireOwnedExecutable(root)
     val script = installedPrivateInstaller(root)
-    // The private installer owns the safe service and plugin shutdown boundary.
+    // The private installer owns control retirement and managed control removal.
     val code = withRegistrationLock(root) { runInstaller(script, listOf("uninstall", "--managed-registrations")) }
     if (code != 0) {
         throw ManagementRejected(

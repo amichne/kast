@@ -4,7 +4,7 @@ title: Runtime and process hosts
 description: The existing IDEA plugin owns semantic execution; CLI and App Server own installation, transport, sessions and exact challenge signing.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
-timestamp: 2026-09-29T00:00:00Z
+timestamp: 2026-10-02T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/SessionRequests.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeAdmission.kt
@@ -84,6 +84,16 @@ code_sources:
   - path: runtime/hosted/build.gradle.kts
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/compatibility/IdeHostCompatibility.kt
     symbols: [IdeHostCompatibilityPolicy, IdeReleaseLine]
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+    symbols: [HostedContract, HostedCompatibilityPolicy, HostedCompatibilityRequirements, HostProvenance]
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
+    symbols: [CanonicalHostedContract]
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt
+    symbols: [HostedCompatibilityMetadata]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServicesObservation.kt
+    symbols: [HostedServicesObservation, observeRunningHostedServices]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt
+    symbols: [IdeLifecycleClient]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellation.kt
@@ -121,7 +131,21 @@ code_sources:
 
 `runtime:hosted` is the sole production semantic host. Its project service uses the already open IDEA project and delegates admission, model capture, and read epochs to `workspace:intellij-read`. IDEA owns imports and incremental indexes. Kast has no isolated indexer, second workspace importer, index-copy path, or topology backend in the shipped runtime graph. The retained topology modules and their separate SQLite adapter remain buildable for upcoming work.
 
-The plugin archive contains the semantic contracts, services, IntelliJ adapters and durable change stores. Its name binds the product version and IDEA release line. Runtime admission retains exact observed IDEA/Kotlin identities while allowing the configured release-line compatibility policy. The historical [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md) states the tested baseline; a build or schema check alone does not expand that qualification.
+The plugin archive contains the semantic contracts, services, IntelliJ adapters and durable change stores. Its name binds the independent hosted-plugin version and IDEA release line. Runtime admission retains exact observed IDEA/Kotlin identities while allowing the configured release-line compatibility policy. The historical [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md) states the tested baseline; a build or schema check alone does not expand that qualification.
+
+Kast Control and Kast Host communicate through one exact `HostedContract`:
+protocol identity, operation registry digest, wire schema digest and capability set.
+Host version remains provenance and never decides compatibility. The digest covers
+the actual hosted schemas and request/response serializer graphs, including the
+application lifecycle exchange. Agent descriptions and management commands are
+outside this boundary. A breaking hosted behavior change requires a protocol
+identity change even if its serialized shape is unchanged.
+
+The existing project describe exchange and application inspect exchange supply
+required live compatibility evidence. Both clients admit that evidence before
+sending subsequent operations. Older hosts without it reject. The loaded plugin
+reads provenance and contract from its own packaged runtime; control replacement
+cannot change these files. Every later connection repeats admission.
 
 `HostedSemanticServices` composes request-scoped symbol, source, relation and diagnostic services from one admitted project/read context. Canonical queries, planning and post-write verification share this factory. It does not retain a project read across requests or supply project-opening authority.
 
@@ -316,4 +340,4 @@ in place for a later upgrade attempt. If retirement fails after commit, another
 ordinary attempt for the same candidate can resume from the active daemon's
 qualified committed request. A different candidate or daemon identity rejects.
 
-The coordinator's passive management reply projects the loaded release version, currently ready workspace roots, and observed live connection count from their runtime owners. A pending frontend leaves connection count unavailable. The native management client correlates this reply with the installation epoch and live service generation.
+The coordinator's passive management reply projects its captured running control version, currently ready workspace roots, observed live connection count, and bounded fresh compatibility observations for each known host. Each host observation retains its project root and host identity, plugin provenance and exact compatibility result; missing evidence remains unavailable. A pending frontend leaves connection count unavailable. The native management client correlates this reply with the installation epoch and live service generation.

@@ -4,7 +4,7 @@ title: Installed knowledge
 description: The control product exposes bounded syntax documentation and scoped guides without starting a semantic runtime.
 resource: file://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge
 tags: [knowledge, cli, distribution, syntax, guidance]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-10-02T00:00:00Z
 code_sources:
   - path: build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt
   - path: build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsModel.kt
@@ -60,3 +60,7 @@ commands from the private executable.
 
 The former shell lookup examples are retired. Validate the retained generation
 contract with `./gradlew :build-logic:test :cli:check verifyJsonContracts installedProductTest`.
+
+The installed knowledge manifest uses the control release identity. Changing
+`controlVersion` updates that manifest independently of `hostedPluginVersion`;
+shared source module versions do not couple the packaged service releases.

@@ -4,7 +4,7 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-30T00:00:00Z
+timestamp: 2026-10-02T00:00:00Z
 code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
@@ -69,11 +69,22 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PendingInstallationReplacement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
+    symbols: [ControlInstallationRecovery]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/VerifiedInstallationPlan.kt
+    symbols: [VerifiedInstallationPlan]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationManifest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationOutcome.kt
     symbols: [InstallationFailure, InstallationOutcome]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
-    symbols: [InstallationRequest, InstallationProfile]
+    symbols: [ControlInstallRequest, ControlPayload, InstallationProfile]
+  - path: packaging/host-installation.py
+    symbols: [HostInstallRequest, HostedPluginPayload, install]
+  - path: distribution/release/component_release.py
+  - path: distribution/release/component-release.schema.json
+  - path: .github/workflows/release-component.yml
+  - path: build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
+    symbols: [GenerateComponentReleaseTask]
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
   - path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - path: distribution/release/resolve_version.py
@@ -113,11 +124,11 @@ independent skill, plugin, and marketplace ZIPs; candidate admission verifies
 their checksums and SBOM archive identities alongside the control and IDEA
 archives. Query examples in the skill are generated from the public tool schema.
 
-The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows payload and IDEA plugin activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for loaded version, ready workspaces, and live connection count. One-shot tool RPC calls publish a bounded process identity record while executing; native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
+The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows control activation; fresh-pair installation also performs host activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for its captured control version, ready workspaces, live connection count, and each observed host identity, plugin version and compatibility. Installed and running control versions remain separate; missing live host evidence is unavailable. One-shot tool RPC calls publish a bounded process identity record while executing; native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
-Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, required launchers including the native management command, and one real session installation in an owned temporary root. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. The hosted-plugin ZIP is named for its own version and the IDEA release line (`idea-262.zip`). The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check verifies artifact identity, required launchers including the native management command, and one real session installation in an owned temporary root. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
 The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the ordinary payload and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 
@@ -174,6 +185,22 @@ If disable fails after commit, the same candidate can resume retirement while
 the exact prior daemon remains reachable and reports its committed request.
 The upgrade result retains finite blockers and daemon rejection causes.
 
+`kast upgrade --control-only` stages and qualifies the candidate under existing
+installer ownership. The candidate's live host admission runs before prior control
+retirement. Unavailable or incompatible evidence rejects with the previous control
+left in place. Replacement retires only control processes and swaps only control
+files. Candidate activation verifies the exact reachable coordinator, then repeats
+live host admission. A failure after retirement or replacement restores and verifies
+the previous control using the existing replacement transaction. The outcome is
+rejected, activated, rolled back, or recovery required, retaining the original and
+recovery failures. IntelliJ identities and plugin files remain outside these effects.
+
+`HostInstallRequest(HostedPluginPayload)` belongs to the independent plugin installer.
+`install.sh --host-only --version <host-version>` admits host archive identity and
+atomically installs only the plugin. IntelliJ's ordinary restart loads the selected
+host; no control replacement or dynamic plugin lifecycle is introduced. Fresh
+installation composes this owner with `ControlInstallRequest(ControlPayload)`.
+
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Ordinary installation rejects a failed prior admission or retirement with a stage-specific failure and preserves the selected release. An untrusted same-version payload or recovery receipt likewise rejects without replacement. Explicit `--force` remains a separate reset operation.
 
 Prior launchd retirement completes only after observing the selected service absent. A `bootout` exit alone cannot prove retirement: the owner repeats bounded `launchctl list` observations within one ten-second deadline and preserves a finite deadline, I/O, interruption, or exit rejection. The typed `kast_installation_retirement` event retains the `OBSERVE_BEFORE`, `BOOTOUT`, and `OBSERVE_AFTER` stage with the closed result and its admitted exit code where present; it excludes command arguments, service labels, and child output. The public installer renders those facts for people and retains full records through `--verbose`.
@@ -182,11 +209,11 @@ Prior launchd retirement completes only after observing the selected service abs
 
 `ControlPayloadInventory` counts paths globally, including the three payload roots, before sorting or hashing. Installer and broker use that same admission; `verifyReleaseRuntimeAdmission` exercises the runtime identity owner on the actual staged control product. Limit diagnostics retain the resource and observed lower bound. The hosted-plugin ZIP has a separate archive budget.
 
-The product has one ordinary payload at `<install-root>/installation`; schema 3 manifests and recovery receipts bind that physical path. Installation creates no `versions` directory or `current` selector. Native management and agent plugin registration use the stable physical directory. Before replacement, the installer admits the existing payload, protected state, retirement command and recovery baseline. The existing epoch owner validates any copied epoch against the old payload; it preserves an unchanged identity and removes only the admitted copied epoch when the new payload identity changes, so coordinator startup creates a fresh epoch. Protected journals and workspace enrollment remain retained. It stages the new payload and records a typed replacement transaction under `<install-root>/recovery/replacement`, then swaps the ordinary directory under the parent activation lock. A failed swap restores the admitted payload and receipt, or retains a finite recovery-required outcome when restoration cannot be proven.
+The product has one ordinary payload at `<install-root>/installation`; schema 3 manifests and recovery receipts bind that physical path. Installation creates no `versions` directory or `current` selector. Native management and agent plugin registration use the stable physical directory. Before replacement, the installer admits the existing payload, protected state, retirement command and recovery baseline. The existing epoch owner validates any copied epoch against the old payload; it preserves an unchanged identity and removes only the admitted copied epoch when the new payload identity changes, so coordinator startup creates a fresh epoch. Protected journals and workspace enrollment remain retained. Control-only upgrades retain saved configuration and workspace registration while starting fresh control state and session ownership. They do not migrate sessions or copied epochs. Installation stages the new payload and records a typed replacement transaction under `<install-root>/recovery/replacement`, then swaps the ordinary directory under the parent activation lock. A failed swap restores the admitted payload and receipt, or retains a finite recovery-required outcome when restoration cannot be proven.
 
 The replacement snapshot is temporary and remains until the shell bootstrap verifies IDEA plugin activation and completes Codex registration. Only active plugin bytes occupy `plugins/kast-ide-hosted`; a pending candidate and prior baseline stay outside plugin discovery in `.kast-plugin-recovery`. The installer finalizes the replacement only after checking the new physical installation identity and active plugin identity. It removes the admitted previous payload and transient baseline on success. Failed effects preserve recovery evidence and report an incomplete installation. Explicit legacy migration admits old manifests and selector ownership; normal runtime configuration does not follow legacy aliases. Historical unknown artifacts remain subject to the existing ownership review rather than guessed deletion.
 
-`installation-recovery.py detach` fences launches and detaches the receipted IDEA plugin. It executes retirement only after payload admission. Verified retired state is quarantined; uncertain processes and journals stay preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports explicit legacy recovery without executing an unverified installation. Python and JVM installation transitions use compatible POSIX record locks.
+`installation-recovery.py detach --control-only` fences control launches. New control receipts do not own an IDEA plugin. Historical paired receipts remain evidence and control detachment preserves their plugin files; explicit historical paired maintenance is available only as `detach-legacy-pair`; preparing the next control recovery baseline removes host ownership from the new receipt without changing plugin files. It executes retirement only after payload admission. Verified retired state is quarantined; uncertain processes and journals stay preserved and produce `DetachedWithUnresolvedState`. A legacy paired maintenance receipt with incomplete plugin ownership cannot produce a clean legacy maintenance result. The standalone `prepare` operation supports explicit legacy recovery without executing an unverified installation. Python and JVM installation transitions use compatible POSIX record locks.
 
 `install.sh --force` uses the same verified release path with explicit reset authority.
 Under the activation lock it fences and retires the selected and same-version target
@@ -221,7 +248,21 @@ Read [configuration](../contracts/configuration.md) for ingress and ownership ru
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 
-`assembleRelease` ships the control tarball, matching hosted-plugin ZIP, and the skill, Codex plugin and marketplace ZIPs with checksums. `GenerateControlMetadataTask` derives `ide-host.json` from the actual plugin bytes and build identities; installation verifies the exact name, version, length and digest. No semantic-runtime manifest, isolated indexer payload or topology store is shipped. Installation manifests use schema 3 and `hostedPluginSha256`; lifecycle inspection still admits historical schema-1 and schema-2 records so old owned installations can be retired safely.
+`assembleControlRelease` uses `controlVersion` and emits only the control release
+record, artifact and checksum. `assembleHostRelease` uses `hostedPluginVersion`
+and emits only the host release record, artifact and checksum. Component releases
+resolve latest within `control-v` or `host-v`; their versions need not match.
+`ControlRelease` declares its required hosted contract. `HostRelease` declares its
+provided contract and supported IntelliJ release line. Component publication
+validates the record against archived bytes and the exact source revision.
+
+`GenerateControlMetadataTask` derives `ide-host.json` from control build identities
+and the required hosted contract, with no plugin archive input. The plugin embeds
+its own provenance and complete provided contract. `assembleRelease` remains a
+fresh-install convenience containing both artifacts and host metadata; the pair
+is admitted by contract equality. No isolated semantic payload is shipped.
+Control installation manifests have no mandatory plugin digest. Lifecycle
+inspection retains historical records so old control processes can retire safely.
 
 Release asset construction, checksums, SBOM inventory, and publication agree on all five archives.
 

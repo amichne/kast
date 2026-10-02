@@ -6,6 +6,7 @@ import io.github.amichne.kast.appserver.runtime.JsonLineWorkspacePreparationObse
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparations
+import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlin.time.Duration.Companion.milliseconds
@@ -22,6 +23,9 @@ internal class InstalledWorkspacePreparation(
 ) {
     private val lifecycle = installedWorkspaceLifecycleClient(options.userHome, options.configuration.selectedIdeHome)
     private val native = ExistingIdeSocketClient(options.userHome, options.configuration.readLimits)
+
+    fun hostedServices(): List<HostedServiceStatus> = native.observedHosts().map(::projectHostedService)
+
     val operations =
         WorkspacePreparations(
             CoroutineScope(ioDispatcher),

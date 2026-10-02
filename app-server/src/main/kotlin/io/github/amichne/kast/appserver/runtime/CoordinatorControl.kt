@@ -17,6 +17,7 @@ import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.appserver.coordinatorConfigurationIdentity
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.rejectedCoordinatorControl
+import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
 import io.ktor.server.websocket.DefaultWebSocketServerSession
@@ -47,8 +48,11 @@ private constructor(
     private val sessions: DaemonSessions,
     private val preparations: WorkspacePreparations,
     demand: WorkspaceDemand,
+    private val hostedServices: () -> List<HostedServiceStatus>,
 ) {
     private val closed = AtomicBoolean(false)
+    // Capture once: replacing installed bytes cannot change this process's loaded version.
+    private val loadedVersion = captureLoadedControlVersion(installationRoot)
     private val target =
         DaemonManagementTarget(
             owner.installationId.value,
@@ -81,23 +85,12 @@ private constructor(
         )
 
     private fun managementProjection(): ManagementRuntimeProjection {
-        val manifest = installationRoot.resolve("installation.json")
-        val version =
-            try {
-                if (Files.isRegularFile(manifest, LinkOption.NOFOLLOW_LINKS) && Files.size(manifest) <= 67_108_864)
-                    Json { ignoreUnknownKeys = true }
-                        .decodeFromString<LoadedManifestVersion>(Files.readString(manifest))
-                        .semanticVersion
-                else null
-            } catch (_: Exception) {
-                null
-            }
         val connections =
             when (val observed = sessions.inspectSessions()) {
                 is DaemonSessionInspection.Prepared -> observed.connections.size
                 else -> null
             }
-        return ManagementRuntimeProjection(version, preparations.activeRoots(), connections)
+        return ManagementRuntimeProjection(loadedVersion, preparations.activeRoots(), connections, hostedServices())
     }
 
     suspend fun handleManagement(session: DefaultWebSocketServerSession) {
@@ -175,6 +168,7 @@ private constructor(
             sessions: DaemonSessions = UnavailableDaemonSessions,
             preparations: WorkspacePreparations,
             demand: WorkspaceDemand,
+            hostedServices: () -> List<HostedServiceStatus> = { emptyList() },
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
                 val legacy = installationRoot.resolve("state/workers")
@@ -199,6 +193,7 @@ private constructor(
                                 sessions,
                                 preparations,
                                 demand,
+                                hostedServices,
                             )
                         )
                 }
@@ -207,3 +202,21 @@ private constructor(
             }
     }
 }
+
+internal fun captureLoadedControlVersion(installationRoot: Path): String? {
+    val manifest = installationRoot.resolve("installation.json")
+    return try {
+        if (
+            Files.isRegularFile(manifest, LinkOption.NOFOLLOW_LINKS) &&
+                Files.size(manifest) <= CONTROL_MANIFEST_MAXIMUM_BYTES
+        )
+            Json { ignoreUnknownKeys = true }
+                .decodeFromString<LoadedManifestVersion>(Files.readString(manifest))
+                .semanticVersion
+        else null
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private const val CONTROL_MANIFEST_MAXIMUM_BYTES = 67_108_864L

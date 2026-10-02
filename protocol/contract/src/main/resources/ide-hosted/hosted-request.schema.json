@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/experimental/hosted-request/v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "root"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DESCRIBE"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "root",
+        "name"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "CLASS_LOOKUP"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "root",
+        "qualifiedName"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DIRECT_SUPERTYPE"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "qualifiedName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "root",
+        "file",
+        "offset"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DIRECT_SUPERTYPE"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "root",
+        "document"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "QUERY_RUN",
+            "SOURCE_READ",
+            "DIAGNOSTIC_CHECK",
+            "CHANGE_PLAN",
+            "WORKSPACE_REFRESH",
+            "CHANGE_APPROVAL_PREPARE"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "document": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 67108864,
+          "description": "Encoded JSON refined by the owning canonical wire decoder; its generated request serializers are included in WireSchemaDigest."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "root",
+        "document",
+        "approval"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "CHANGE_APPLY",
+            "CHANGE_RECOVER"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "document": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 67108864,
+          "description": "Encoded JSON refined by the owning canonical wire decoder; its generated request serializers are included in WireSchemaDigest."
+        },
+        "approval": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "type": "DESCRIBE",
+      "root": "/workspace/kast"
+    },
+    {
+      "type": "CLASS_LOOKUP",
+      "root": "/workspace/kast",
+      "name": "Main"
+    }
+  ]
+}

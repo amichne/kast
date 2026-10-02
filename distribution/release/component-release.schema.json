@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/distribution/component-release/v1",
+  "title": "Kast independently owned component release",
+  "discriminator": {
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/controlRelease"
+    },
+    {
+      "$ref": "#/$defs/hostRelease"
+    }
+  ],
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "maxLength": 64,
+      "examples": [
+        "0.50.0"
+      ]
+    },
+    "revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "examples": [
+        "1111111111111111111111111111111111111111"
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fileName": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]+$",
+          "maxLength": 255,
+          "examples": [
+            "kast-control-v0.50.0-macos-aarch64.tar.gz"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "examples": [
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ]
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1073741824,
+          "examples": [
+            1048576
+          ]
+        }
+      },
+      "required": [
+        "fileName",
+        "sha256",
+        "bytes"
+      ],
+      "examples": [
+        {
+          "fileName": "kast-control-v0.50.0-macos-aarch64.tar.gz",
+          "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "bytes": 1048576
+        },
+        {
+          "fileName": "kast-ide-hosted-v0.49.0-idea-262.zip",
+          "sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "bytes": 1048576
+        }
+      ]
+    },
+    "controlRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "CONTROL_RELEASE"
+          ],
+          "examples": [
+            "CONTROL_RELEASE"
+          ]
+        },
+        "controlVersion": {
+          "$ref": "#/$defs/version"
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "requiredHostedContract": {
+          "$ref": "https://kast.dev/experimental/hosted-endpoint/v3#/$defs/hostedContract"
+        },
+        "sourceRevision": {
+          "$ref": "#/$defs/revision"
+        }
+      },
+      "required": [
+        "type",
+        "controlVersion",
+        "artifact",
+        "requiredHostedContract",
+        "sourceRevision"
+      ],
+      "examples": [
+        {
+          "type": "CONTROL_RELEASE",
+          "controlVersion": "0.50.0",
+          "artifact": {
+            "fileName": "kast-control-v0.50.0-macos-aarch64.tar.gz",
+            "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 1048576
+          },
+          "requiredHostedContract": {
+            "type": "HOSTED_CONTRACT",
+            "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v2",
+            "operationRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "wireSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "capabilities": [
+              "query.run"
+            ]
+          },
+          "sourceRevision": "1111111111111111111111111111111111111111"
+        }
+      ]
+    },
+    "hostRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "HOST_RELEASE"
+          ],
+          "examples": [
+            "HOST_RELEASE"
+          ]
+        },
+        "hostedPluginVersion": {
+          "$ref": "#/$defs/version"
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "providedHostedContract": {
+          "$ref": "https://kast.dev/experimental/hosted-endpoint/v3#/$defs/hostedContract"
+        },
+        "supportedIntellijReleaseLine": {
+          "type": "string",
+          "pattern": "^[0-9]{3}$",
+          "examples": [
+            "262"
+          ]
+        },
+        "sourceRevision": {
+          "$ref": "#/$defs/revision"
+        }
+      },
+      "required": [
+        "type",
+        "hostedPluginVersion",
+        "artifact",
+        "providedHostedContract",
+        "supportedIntellijReleaseLine",
+        "sourceRevision"
+      ],
+      "examples": [
+        {
+          "type": "HOST_RELEASE",
+          "hostedPluginVersion": "0.49.0",
+          "artifact": {
+            "fileName": "kast-ide-hosted-v0.49.0-idea-262.zip",
+            "sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 1048576
+          },
+          "providedHostedContract": {
+            "type": "HOSTED_CONTRACT",
+            "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v2",
+            "operationRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "wireSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "capabilities": [
+              "query.run"
+            ]
+          },
+          "supportedIntellijReleaseLine": "262",
+          "sourceRevision": "1111111111111111111111111111111111111111"
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "type": "CONTROL_RELEASE",
+      "controlVersion": "0.50.0",
+      "artifact": {
+        "fileName": "kast-control-v0.50.0-macos-aarch64.tar.gz",
+        "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "bytes": 1048576
+      },
+      "requiredHostedContract": {
+        "type": "HOSTED_CONTRACT",
+        "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v2",
+        "operationRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "wireSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capabilities": [
+          "query.run"
+        ]
+      },
+      "sourceRevision": "1111111111111111111111111111111111111111"
+    },
+    {
+      "type": "HOST_RELEASE",
+      "hostedPluginVersion": "0.49.0",
+      "artifact": {
+        "fileName": "kast-ide-hosted-v0.49.0-idea-262.zip",
+        "sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "bytes": 1048576
+      },
+      "providedHostedContract": {
+        "type": "HOSTED_CONTRACT",
+        "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v2",
+        "operationRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "wireSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capabilities": [
+          "query.run"
+        ]
+      },
+      "supportedIntellijReleaseLine": "262",
+      "sourceRevision": "1111111111111111111111111111111111111111"
+    }
+  ]
+}

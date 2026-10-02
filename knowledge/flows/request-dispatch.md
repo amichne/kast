@@ -4,7 +4,7 @@ title: Request dispatch
 description: Hosted requests retain canonical outcomes through native evaluation, bounded encoding and host projection.
 resource: file://runtime/hosted
 tags: [runtime, protocol, dispatch]
-timestamp: 2026-09-29T00:00:00Z
+timestamp: 2026-10-02T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
@@ -236,3 +236,9 @@ passive status remains available. Pending upstream requests survive frontend
 detachment; transport retirement with an unresolved request retains uncertainty
 and cannot supply a quiescence proof. Status observation never repeats preparation
 or seals admission.
+
+Both project semantic dispatch and application lifecycle dispatch admit the live
+host's complete hosted contract before sending an operation. Host release versions
+remain implementation provenance. A control-only installation checks the candidate's
+policy before retiring control and repeats admission after candidate activation;
+these checks do not replace connection-time admission.

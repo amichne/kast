@@ -63,7 +63,7 @@ configurations.configureEach {
 tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     group = "distribution"
     description = "Serializes the verified module architecture and scoped AGENTS.md knowledge."
-    productVersion.set(providers.provider { project.version.toString() })
+    productVersion.set(providers.gradleProperty("controlVersion").orElse(providers.provider { project.version.toString() }))
     sourceRevision.set(providers.gradleProperty("kastSourceRevision"))
     observedProjectPaths.set(
         verifyKastArchitecture.flatMap { it.observedProjectPaths },
@@ -94,7 +94,7 @@ tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
 val generateInstalledKnowledgeBundle = tasks.register<GenerateInstalledKnowledgeTask>("generateInstalledKnowledgeBundle") {
     group = "distribution"
     description = "Joins verified module guidance with detached public Kotlin declaration documentation."
-    productVersion.set(providers.provider { project.version.toString() })
+    productVersion.set(providers.gradleProperty("controlVersion").orElse(providers.provider { project.version.toString() }))
     sourceRevision.set(currentSourceRevision)
     moduleProjectPaths.set(verifyKastArchitecture.flatMap { it.observedProjectPaths })
     agentGuidePaths.set(trackedAgentGuidePaths)

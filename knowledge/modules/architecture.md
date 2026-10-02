@@ -4,7 +4,7 @@ title: Verified module architecture
 description: Gradle verifies module roles, dependencies, exports, and scoped agent guidance before projecting module knowledge.
 resource: file://settings.gradle.kts
 tags: [kotlin, gradle, architecture]
-timestamp: 2026-09-21T00:00:00Z
+timestamp: 2026-10-02T00:00:00Z
 code_sources:
   - path: gradle.properties
   - path: gradle/libs.versions.toml
@@ -110,3 +110,10 @@ The explicit hosted workspace refresh adapter is the sole scoped caller permitte
 The native lifecycle adapter alone has scoped project-manager authority. The existing refresh adapter alone can create initial Gradle link settings and call the narrow native link-plus-refresh seam; its shared spec builder has only the exact quiet import-spec methods. Approval-key reads are confined to the exact lifecycle verification owner. Passive workspace reads retain no project-open, link, import, or lifecycle-control authority.
 
 Builds use strict dependency verification against the checked checksum metadata. Task registration uses the explicit Gradle Kotlin DSL API, retaining lazy task providers without the deprecated delegated registration syntax. The IDEA distribution and platform compilation artifacts share `idea-platform-build`; `ide-host-build` independently pins the packaged host. Unused Maven publication conventions and their plugin dependency have been removed; release delivery remains the GitHub release assembly.
+
+Control and hosted-plugin release versions are independent build inputs. Each
+service packages its required runtime dependencies. The control metadata task
+requires the hosted contract, without a host archive producer. Independent host
+assembly produces no control package, and independent control assembly produces
+no host package. Fresh-pair assembly composes both artifacts as an installation
+convenience; exact hosted contract equality governs communication.

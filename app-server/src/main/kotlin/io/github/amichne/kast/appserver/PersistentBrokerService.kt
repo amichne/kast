@@ -121,17 +121,23 @@ internal value class BrokerExecutableSearchPath private constructor(val value: S
 }
 
 @JvmInline
-internal value class BrokerJvmUserHomeOption private constructor(val value: String) {
+value class BrokerJvmUserHomeOption private constructor(val value: String) {
     companion object {
-        internal fun from(userHome: Path): BrokerJvmUserHomeOption? {
+        fun from(userHome: Path): Refinement<BrokerJvmUserHomeOption, BrokerJvmUserHomeOptionFailure> {
+            if (!userHome.isAbsolute || userHome.normalize() != userHome)
+                return Refinement.Rejected(BrokerJvmUserHomeOptionFailure.INVALID_VALUE)
             val raw = userHome.toString()
             if (raw.any { character -> character == '\n' || character == '\r' || character == '\u0000' }) {
-                return null
+                return Refinement.Rejected(BrokerJvmUserHomeOptionFailure.INVALID_VALUE)
             }
             val quoted = raw.replace("\\", "\\\\").replace("\"", "\\\"")
-            return BrokerJvmUserHomeOption("-Duser.home=\"$quoted\"")
+            return Refinement.Refined(BrokerJvmUserHomeOption("-Duser.home=\"$quoted\""))
         }
     }
+}
+
+enum class BrokerJvmUserHomeOptionFailure {
+    INVALID_VALUE
 }
 
 internal enum class BrokerChildEnvironmentFailure {
@@ -279,8 +285,10 @@ private constructor(
                 canonicalDirectory(userHomeCandidate)
                     ?: return rejected(PersistentBrokerServiceFailure.USER_HOME_REJECTED)
             val jvmUserHomeOption =
-                BrokerJvmUserHomeOption.from(userHome)
-                    ?: return rejected(PersistentBrokerServiceFailure.USER_HOME_REJECTED)
+                when (val option = BrokerJvmUserHomeOption.from(userHome)) {
+                    is Refinement.Refined -> option.value
+                    is Refinement.Rejected -> return rejected(PersistentBrokerServiceFailure.USER_HOME_REJECTED)
+                }
             val admittedConfiguration =
                 when (val admission = InstalledBrokerConfigurationIngress.admit(environment)) {
                     is Refinement.Refined -> admission.value

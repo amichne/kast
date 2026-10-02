@@ -1,3 +1,4 @@
+from dataclasses import asdict, dataclass
 #!/usr/bin/env python3
 """Public installer invocation contract; no network or machine state changes."""
 
@@ -27,6 +28,42 @@ CANONICAL_PREFIX = '/bin/bash -c "$(curl -fsSL '
 # Admit the interpreter once; the collision child's PATH has no host utility fallback.
 BASH = Path(shutil.which('bash', path=os.defpath)).resolve(strict=True)
 TOOL_PATH = str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath
+
+
+@dataclass(frozen=True)
+class ContractFixture:
+    type: str = 'HOSTED_CONTRACT'
+    runtimeProtocolIdentity: str = 'kast.ide-hosted.runtime.v2'
+    operationRegistryDigest: str = 'sha256:' + 'a' * 64
+    wireSchemaDigest: str = 'sha256:' + 'b' * 64
+    capabilities: tuple[str, ...] = ('query.run',)
+
+
+@dataclass(frozen=True)
+class ControlMetadataFixture:
+    productVersion: str
+    schemaVersion: int = 2
+    execution: str = 'existing_ide'
+    ideaBuild: str = '262.1234'
+    kotlinPluginBuild: str = '262.1234-IJ'
+    requiredHostedContract: ContractFixture = ContractFixture()
+
+
+@dataclass(frozen=True)
+class ArtifactFixture:
+    fileName: str
+    sha256: str
+    bytes: int
+
+
+@dataclass(frozen=True)
+class HostReleaseFixture:
+    hostedPluginVersion: str
+    artifact: ArtifactFixture
+    supportedIntellijReleaseLine: str
+    type: str = 'HOST_RELEASE'
+    providedHostedContract: ContractFixture = ContractFixture()
+    sourceRevision: str = '1' * 40
 
 
 class InstallerEntrypointTest(unittest.TestCase):
@@ -70,6 +107,14 @@ esac
             item = tarfile.TarInfo('share/kast/libexec/kast-management')
             item.mode, item.size = 0o755, len(management)
             archive.addfile(item, io.BytesIO(management))
+            helper = (ROOT / 'packaging/host-installation.py').read_bytes()
+            item = tarfile.TarInfo('share/kast/host-installation.py')
+            item.mode, item.size = 0o644, len(helper)
+            archive.addfile(item, io.BytesIO(helper))
+            metadata = json.dumps(asdict(ControlMetadataFixture(version))).encode()
+            item = tarfile.TarInfo('share/kast/ide-host.json')
+            item.mode, item.size = 0o644, len(metadata)
+            archive.addfile(item, io.BytesIO(metadata))
         plugin_name = f"kast-ide-hosted-v{version}-idea-{plugin_line}.zip"
         plugin = assets / plugin_name
         descriptor = (f'<idea-plugin><id>io.github.amichne.kast.ide-hosted</id><version>{version}</version>'
@@ -79,7 +124,12 @@ esac
             jar.writestr("META-INF/plugin.xml", descriptor)
         with zipfile.ZipFile(plugin, "w") as archive:
             archive.writestr("kast-ide-hosted/lib/plugin.jar", jar_buffer.getvalue())
-        for asset in (control, plugin):
+        host_record = assets / f'kast-host-release-v{version}.json'
+        host_record.write_text(json.dumps(asdict(HostReleaseFixture(version,
+            ArtifactFixture(plugin_name, 'sha256:' + hashlib.sha256(plugin.read_bytes()).hexdigest(), plugin.stat().st_size), plugin_line))))
+        host_helper = assets / 'host-installation.py'
+        shutil.copyfile(ROOT / 'packaging/host-installation.py', host_helper)
+        for asset in (control, plugin, host_helper, host_record):
             digest = hashlib.sha256(asset.read_bytes()).hexdigest()
             asset.with_name(asset.name + ".sha256").write_text(f"{digest}  {asset.name}\n")
         environment = {
@@ -157,6 +207,23 @@ else
   printf '%s\\n' '{"operation":"installation.install","status":"installed","activation":{"type":"ready"},"semanticVersion":"1.2.4"}'
 fi
 ''',
+            'share/kast/host-installation.py': b'''import os,sys
+assert sys.argv[1] == '--archive'
+assert sys.argv[3] == '--sha256'
+assert sys.argv[5] == '--version'
+assert sys.argv[7] == '--idea-build'
+assert sys.argv[9] == '--plugin-root'
+assert len(sys.argv) in (15, 16)
+assert sys.argv[11] == '--release-record'
+assert sys.argv[13] == '--required-control'
+if len(sys.argv) == 16:
+    assert sys.argv[15] == '--dry-run'
+    sys.exit(0)
+with open(os.environ['TEST_LOG'], 'a') as log: log.write('plugin\\n')
+code = int(os.environ.get('FAIL_PLUGIN', '0'))
+print('{"type":"REJECTED","failure":"OWNERSHIP_UNPROVEN"}' if code else '{"type":"ACTIVATED","restartRequired":true}')
+sys.exit(code)
+''',
             'share/kast/installation-recovery.py': b'''import os,sys
 operation = sys.argv[1]
 assert operation in ('activate-plugin', 'seal-upgrade')
@@ -226,7 +293,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertIn('"activation":{"type":"ready"}', result.stdout)
-            self.assertIn('"status":"Active"', result.stdout)
+            self.assertIn('"type":"ACTIVATED"', result.stdout)
             self.assertIn('"status":"UpgradeFinalized"', result.stdout)
             self.assertIn('"status":"retained"', result.stdout)
             self.assertIn('"stage":"APP_SERVER_ENABLE"', result.stderr)
@@ -302,7 +369,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(['service', 'plugin'], log.read_text().splitlines())
             self.assertTrue(prior.exists())
             self.assertNotIn('{', result.stdout + result.stderr)
-            self.assertIn('PLUGIN_OWNERSHIP_UNPROVEN', result.stderr)
+            self.assertIn('OWNERSHIP_UNPROVEN', result.stderr)
             self.assertIn('exit 17', result.stderr)
 
     def test_failed_review_rejects_upgrade_without_claiming_success(self):
@@ -330,6 +397,27 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(['service', 'plugin', 'seal'], log.read_text().splitlines())
             self.assertTrue(prior.exists())
             self.assertNotIn('installed Kast 1.2.4', result.stderr)
+
+    def test_control_only_upgrade_never_requests_host_payload_or_host_effect(self):
+        with tempfile.TemporaryDirectory(prefix="kast-control-only-shell-") as directory:
+            idea, environment, prior, log = self.upgrade_fixture(directory)
+            assets = Path(environment['KAST_INSTALL_ASSETS_DIRECTORY'])
+            for plugin in assets.glob('kast-ide-hosted*'): plugin.unlink()
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--control-only'],
+                                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(['service', 'seal'], log.read_text().splitlines())
+            self.assertNotIn('Restart IntelliJ IDEA', result.stderr)
+
+    def test_host_only_install_never_requests_or_installs_control(self):
+        with tempfile.TemporaryDirectory(prefix="kast-host-only-shell-") as directory:
+            idea, assets, environment = self.installer_fixture(directory)
+            for control in assets.glob('kast-control*'): control.unlink()
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--host-only'],
+                                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+            self.assertTrue((Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/plugin.jar').exists())
 
     def test_documented_remote_invocations_use_bash_c(self):
         for document in DOCUMENTS:
@@ -520,7 +608,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(
-                ["--installation", str(selected.resolve()), "remove", "--dry-run", "--json"],
+                ["--installation", str(selected.resolve()), "remove", "--control-only", "--dry-run", "--json"],
                 json.loads(result.stdout),
             )
 

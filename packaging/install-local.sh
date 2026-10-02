@@ -19,7 +19,11 @@ java_home="${KAST_LOCAL_JAVA_HOME:-}"
 
 [[ -n "${install_prefix}" ]] || fail "KAST_LOCAL_PREFIX is required"
 [[ -n "${control_product}" ]] || fail "KAST_LOCAL_CONTROL_PRODUCT is required"
-[[ -f "$plugin_archive" && ! -L "$plugin_archive" ]] || fail "KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE must be a regular file"
+component="${KAST_LOCAL_COMPONENT:-pair}"
+case "$component" in pair|control) ;; *) fail "KAST_LOCAL_COMPONENT must be pair or control" ;; esac
+if [[ "$component" == pair ]]; then
+  [[ -f "$plugin_archive" && ! -L "$plugin_archive" ]] || fail "KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE must be a regular file"
+fi
 [[ -n "${java_executable}" ]] || fail "KAST_LOCAL_JAVA_EXECUTABLE is required"
 [[ -n "${java_home}" ]] || fail "KAST_LOCAL_JAVA_HOME is required"
 
@@ -68,15 +72,35 @@ control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 # member that the release installer's traversal-safe extractor correctly rejects.
 tar -czf "$assets/$control_name" -C "$control_product" bin lib share
 plugin_name="${plugin_archive##*/}"
-case "$plugin_name" in "kast-ide-hosted-v$version-idea-"*.zip) ;; *) fail 'hosted plugin archive and control version differ' ;; esac
-cp "$plugin_archive" "$assets/$plugin_name"
-for name in "$control_name" "$plugin_name"; do
+asset_names=("$control_name")
+host_version=""
+installer_options=()
+if [[ "$component" == pair ]]; then
+  host_version="$(python3 - "$plugin_name" <<'VERSION'
+import re, sys
+match = re.fullmatch(r"kast-ide-hosted-v([0-9]+\.[0-9]+\.[0-9]+)-idea-[0-9]+\.zip", sys.argv[1])
+if match is None: sys.exit("install-local: hosted artifact name rejected")
+print(match.group(1))
+VERSION
+)"
+  cp "$plugin_archive" "$assets/$plugin_name"
+  host_record="${KAST_LOCAL_HOST_RELEASE_RECORD:-}"
+  [[ -f "$host_record" && ! -L "$host_record" ]] || fail "KAST_LOCAL_HOST_RELEASE_RECORD must be the independently generated host release record"
+  record_name="kast-host-release-v$host_version.json"
+  cp "$host_record" "$assets/$record_name"
+  cp "$control_product/share/kast/host-installation.py" "$assets/host-installation.py"
+  asset_names+=("$plugin_name" "$record_name" host-installation.py)
+else
+  installer_options+=(--control-only)
+fi
+for name in "${asset_names[@]}"; do
   (cd "$assets" && shasum -a 256 "$name" > "$name.sha256")
 done
 KAST_VERSION="$version" \
+KAST_HOST_VERSION="$host_version" \
 KAST_RELEASE_BASE_URL="https://github.com/amichne/kast/releases/download" \
 KAST_INSTALL_ASSETS_DIRECTORY="$assets" \
 KAST_INSTALL_ROOT="$install_prefix/share/kast" \
 KAST_BIN_DIR="$install_prefix/bin" \
-KAST_INSTALL_PROFILE=session \
-  bash "$installer"
+KAST_INSTALL_PROFILE="${KAST_LOCAL_PROFILE:-$([[ "$component" == control ]] && printf persistent || printf session)}" \
+  bash "$installer" ${installer_options[@]+"${installer_options[@]}"}

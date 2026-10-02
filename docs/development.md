@@ -160,7 +160,31 @@ source "$(./packaging/install-checkout.sh session --idea-home "/Applications/Int
 ```
 
 Both modes build the working tree, including uncommitted changes, and verify the
-matched control and IDEA plugin archives. Restart IDEA to load the plugin.
+selected control and IDEA plugin archives. Restart IDEA to load the plugin.
+
+The services have independent release inputs and package tasks:
+
+```shell
+./gradlew assembleControlRelease -PcontrolVersion=0.50.0
+./gradlew assembleHostRelease -PhostedPluginVersion=0.49.0
+```
+
+A control release requires the canonical hosted contract and no host archive.
+A host release packages its own runtime dependencies. `assembleRelease` remains
+one fresh-install convenience for a selected pair. Changing a control version
+does not change the host version or hosted contract.
+
+For a loaded baseline host that provides the complete contract, use
+`kast upgrade --control-only`. It admits the live host before retiring control,
+activates the candidate and repeats admission. Plugin files and IntelliJ remain
+unchanged. Control sessions start fresh. `kast status` separates installed and
+running control from each observed host's identity, version and compatibility.
+
+Install a host independently with the public installer's `--host-only --version`
+input, then restart IntelliJ through its ordinary lifecycle. The
+[mixed-version native check](../runtime/hosted/native/README.md) proves this
+boundary with real installed control and compiler-backed queries in an owned
+private IntelliJ profile; routine tests alone do not prove IntelliJ reuse.
 Session mode isolates configuration and broker sockets, disables persistent
 services, and keeps temporary files under `$KAST_SESSION_ROOT`.
 It still stages the Kast plugin in the selected IDEA profile. Restore the

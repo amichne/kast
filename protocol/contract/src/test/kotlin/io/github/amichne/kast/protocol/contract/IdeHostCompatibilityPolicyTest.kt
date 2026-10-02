@@ -50,9 +50,14 @@ class IdeHostCompatibilityPolicyTest {
     }
 
     @Test
-    fun `release line compatibility preserves exact product and protocol checks`() {
+    fun `release line compatibility retains implementation provenance and checks the exact contract`() {
         val candidate = baseline.copy(ideBuild = "262.20000.200", kotlinPluginBuild = "262.20000.200-IJ")
-        assertMismatch(candidate.copy(kastPluginVersion = "1.2.4"), IdeHostCompatibilityField.KAST_PLUGIN_VERSION)
+        val mixed =
+            assertInstanceOf(
+                IdeHostCompatibilityAdmission.Admitted::class.java,
+                policy.admit(candidate.copy(kastPluginVersion = "1.2.4")),
+            )
+        assertEquals("1.2.4", mixed.compatibility.kastPluginVersion.value)
         assertMismatch(
             candidate.copy(runtimeProtocolIdentity = "kast.ide-hosted.runtime.v2"),
             IdeHostCompatibilityField.RUNTIME_PROTOCOL_IDENTITY,
@@ -69,6 +74,25 @@ class IdeHostCompatibilityPolicyTest {
             IdeHostCompatibilityAdmission.Rejected::class.java,
             policy.admit(candidate.copy(capabilities = listOf("unknown.operation"))),
         )
+    }
+
+    @Test
+    fun `capability equality rejects a subset and reordered evidence`() {
+        val required = baseline.copy(capabilities = listOf("source.read", "diagnostic.check"))
+        val exact =
+            when (val defined = IdeHostCompatibilityPolicy.define(required)) {
+                is Refinement.Refined -> defined.value
+                is Refinement.Rejected -> fail("required contract rejected: ${defined.failure}")
+            }
+        for (capabilities in listOf(listOf("source.read"), required.capabilities.reversed())) {
+            val rejected =
+                assertInstanceOf(
+                    IdeHostCompatibilityAdmission.Rejected::class.java,
+                    exact.admit(required.copy(capabilities = capabilities)),
+                )
+            val failure = assertInstanceOf(IdeHostCompatibilityFailure.Mismatch::class.java, rejected.failure)
+            assertEquals(IdeHostCompatibilityField.CAPABILITIES, failure.mismatch.field)
+        }
     }
 
     @Test

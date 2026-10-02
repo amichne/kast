@@ -1,0 +1,113 @@
+name: Release component
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Service to build and publish independently
+        required: true
+        type: choice
+        options: [control, host]
+      bump:
+        description: Selected service semantic version component to increment
+        required: true
+        type: choice
+        default: patch
+        options: [patch, minor, major]
+
+permissions:
+  actions: read
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: release-component-${{ inputs.component }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish selected service
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_COMPONENT: ${{ inputs.component }}
+      RELEASE_BUMP: ${{ inputs.bump }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - name: Admit exact current main source
+        run: |
+          git fetch --no-tags origin main
+          [[ "$GITHUB_SHA" == "$(git rev-parse origin/main)" ]] || exit 1
+          git checkout --detach "$GITHUB_SHA"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: experiments/host-observation/requirements-test.txt
+      - run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt
+      - name: Resolve selected service version
+        id: release_version
+        run: >-
+          python3 distribution/release/resolve_version.py
+          --repository "$GITHUB_REPOSITORY" --component "$RELEASE_COMPONENT" --bump "$RELEASE_BUMP"
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: graalvm
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          validate-wrappers: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            kast/workspace-intellij-read-idea-distributions
+            kast/symbol-intellij-idea-distributions
+            kast/topology-intellij-kotlin-plugin
+      - name: Check selected service and assemble its release
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
+        run: |
+          common=(--no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g "-PkastSourceRevision=$GITHUB_SHA")
+          guards=(spotlessCheck verifyKastArchitecture verifyJsonContracts verifyKnowledgeBase)
+          case "$RELEASE_COMPONENT" in
+            control)
+              ./gradlew "${common[@]}" "-PcontrolVersion=$RELEASE_VERSION" "${guards[@]}" \
+                :cli:check :app-server:check :distribution:cli:check :distribution:managed:check \
+                :protocol:contract:check :protocol:wire:check assembleControlRelease
+              ;;
+            host)
+              ./gradlew "${common[@]}" "-PhostedPluginVersion=$RELEASE_VERSION" "${guards[@]}" \
+                :runtime:hosted:check :protocol:contract:check :protocol:wire:check assembleHostRelease
+              ;;
+            *) exit 1 ;;
+          esac
+          python3 distribution/release/test_resolve_version.py
+          python3 distribution/release/test_component_release.py
+      - name: Admit selected component release
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
+        run: >-
+          python3 distribution/release/component_release.py --component "$RELEASE_COMPONENT"
+          --version "$RELEASE_VERSION" --source-revision "$GITHUB_SHA"
+          --directory "build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}"
+      - name: Retain selected component candidate
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ${{ inputs.component }}-release-candidate-v${{ steps.release_version.outputs.version }}-${{ github.sha }}
+          path: build/release/${{ inputs.component }}-v${{ steps.release_version.outputs.version }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - name: Publish selected component
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
+        run: >-
+          bash .github/scripts/release/publish-component.sh --component "$RELEASE_COMPONENT"
+          --version "$RELEASE_VERSION" --commit "$GITHUB_SHA"
+          --assets-directory "build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}"

@@ -130,6 +130,53 @@ class InstallationRecoveryReceiptTest {
         assertEquals(InstallationRecoveryAdmission.Rejected, admitInstallationRecovery(installation))
     }
 
+    @Test
+    fun `historical host receipt stays in rollback bundle and never becomes control ownership`(
+        @TempDir temporary: Path
+    ) {
+        val root = temporary.toRealPath()
+        val prior = installation(root)
+        assertEquals(InstallationRecoveryPreparation.Prepared, prepareInstallationRecovery(prior))
+        val plugins = Files.createDirectory(root.resolve("plugins"))
+        val host = Files.createDirectory(plugins.resolve("kast-ide-hosted"))
+        val bytes = Files.writeString(host.resolve("host.jar"), "P1")
+        val hostIdentity = identity(host)
+        val token = "a".repeat(32)
+        val historical =
+            ReceiptFixture(
+                installation = prior.toString(),
+                installationIdentity = identity(prior),
+                plugin =
+                    PluginFixture(
+                        host.toString(),
+                        plugins.resolve(".kast-ide-hosted.install-$token").toString(),
+                        hostIdentity,
+                        plugins.resolve(".kast-ide-hosted.baseline-$token").toString(),
+                        null,
+                        plugins.resolve(".kast-ide-hosted.detached-$token").toString(),
+                    ),
+                pluginRoot = plugins.toString(),
+                stage = "Active",
+            )
+        val path = root.resolve("recovery/installation/receipt.json")
+        val encoded = Json { encodeDefaults = true }.encodeToString(historical)
+        Files.writeString(path, encoded)
+        val baseline =
+            assertInstanceOf(InstallationRecoveryAdmission.Admitted::class.java, admitInstallationRecovery(prior))
+                .baseline
+        val retained = root.resolve("historical-control")
+        Files.move(prior, retained)
+        Files.move(root.resolve("recovery/installation"), root.resolve("historical-recovery"))
+        val replacement = installation(root)
+        assertEquals(InstallationRecoveryPreparation.Prepared, prepareInstallationRecovery(replacement, baseline))
+        val current = Json.parseToJsonElement(Files.readString(path)).jsonObject
+        assertEquals(kotlinx.serialization.json.JsonNull, current.getValue("plugin"))
+        assertEquals(kotlinx.serialization.json.JsonNull, current.getValue("pluginRoot"))
+        assertEquals(encoded, Files.readString(root.resolve("historical-recovery/receipt.json")))
+        assertEquals(hostIdentity, identity(host))
+        assertEquals("P1", Files.readString(bytes))
+    }
+
     private fun installation(temporary: Path): Path {
         val installation = Files.createDirectory(temporary.toRealPath().resolve("installation"))
         val scripts = Files.createDirectories(installation.resolve("share/kast"))

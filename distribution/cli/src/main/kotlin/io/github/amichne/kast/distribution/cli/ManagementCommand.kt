@@ -75,7 +75,7 @@ internal sealed interface ManagementCommand {
 
     data class Plugin(val harness: PluginHarness, val json: Boolean) : ManagementCommand
 
-    data object Upgrade : ManagementCommand
+    data class Upgrade(val controlOnly: Boolean = false) : ManagementCommand
 
     data object Uninstall : ManagementCommand
 

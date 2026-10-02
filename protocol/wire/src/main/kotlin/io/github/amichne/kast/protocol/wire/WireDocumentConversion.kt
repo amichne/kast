@@ -110,6 +110,7 @@ internal class GeneratedWireCodecFactory(private val json: Json) {
         toValue: (Document) -> WireDocumentConversion<Value>,
     ): WireValueCodec<Value> =
         WireValueCodec(
+            descriptors = listOf(serializer.descriptor),
             encodeValue = { value -> json.encodeToJsonElement(serializer, toDocument(value)) },
             decodeValue = { element -> toValue(json.decodeFromJsonElement(serializer, element)) },
         )
@@ -126,6 +127,7 @@ internal class GeneratedWireCodecFactory(private val json: Json) {
 /** Typed codec whose JSON structure is owned by one generated kotlinx serializer. */
 internal class WireValueCodec<Value>
 internal constructor(
+    val descriptors: List<kotlinx.serialization.descriptors.SerialDescriptor>,
     private val encodeValue: (Value) -> JsonElement,
     private val decodeValue: (JsonElement) -> WireDocumentConversion<Value>,
 ) {

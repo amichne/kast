@@ -4,7 +4,7 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns five canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-10-01T00:00:00Z
+timestamp: 2026-10-02T00:00:00Z
 code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
@@ -670,3 +670,10 @@ comparing answer evidence. Native receipt schema 6 adds returned discovery and
 relation page counts with explicit request-local zeros; missing older counters
 remain unavailable. The [runbook](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md#compare-complete-workloads-locally)
 keeps counter, byte and overlapping phase-duration units distinct.
+
+The project socket client first requests the existing live describe document and
+admits its required hosted contract before dispatching any hosted operation.
+Admission checks exact protocol, registry, wire schema and capability identities
+while retaining plugin version as provenance. Prepared project identity remains
+required independently. Every later connection repeats admission; missing or
+incompatible live evidence rejects before semantic dispatch.

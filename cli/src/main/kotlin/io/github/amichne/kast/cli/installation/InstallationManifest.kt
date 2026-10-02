@@ -10,7 +10,7 @@ internal data class InstallationManifest(
     val installationRoot: String,
     val payloadIdentity: String,
     val controlSha256: String,
-    val hostedPluginSha256: String,
+    val hostedPluginSha256: String? = null,
     val codexHome: String,
     val configuration: String,
     val workspaceRegistry: String,

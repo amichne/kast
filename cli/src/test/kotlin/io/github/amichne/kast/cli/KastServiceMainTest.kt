@@ -167,6 +167,9 @@ class KastServiceMainTest {
         val cases =
             listOf(
                 ServiceControlFailureDocument.Arguments to "arguments",
+                ServiceControlFailureDocument.Host(
+                    io.github.amichne.kast.appserver.ide.ExistingIdeFailure.COMPATIBILITY_REJECTED
+                ) to "HOST_ADMISSION_REJECTED",
                 ServiceControlFailureDocument.Product(InstalledKastControlProductFailure.CODE_SOURCE_INVALID) to
                     "product",
                 ServiceControlFailureDocument.Management(
@@ -181,29 +184,9 @@ class KastServiceMainTest {
         for ((document, discriminator) in cases) {
             val encoded = serviceControlJson.encodeToJsonElement<ServiceControlFailureDocument>(document).jsonObject
             assertEquals(discriminator, encoded.getValue("type").jsonPrimitive.content)
-            when (document) {
-                ServiceControlFailureDocument.Arguments -> assertEquals(setOf("type"), encoded.keys)
-                is ServiceControlFailureDocument.Product -> {
-                    assertEquals(setOf("type", "failure"), encoded.keys)
-                    assertEquals("CODE_SOURCE_INVALID", encoded.getValue("failure").jsonPrimitive.content)
-                }
-                is ServiceControlFailureDocument.Management -> {
-                    assertEquals(setOf("type", "failure", "serviceFailure"), encoded.keys)
-                    assertEquals("SERVICE_OWNERSHIP_UNPROVEN", encoded.getValue("failure").jsonPrimitive.content)
-                    assertEquals("READINESS_REJECTED", encoded.getValue("serviceFailure").jsonPrimitive.content)
-                }
-                is ServiceControlFailureDocument.Daemon -> {
-                    assertEquals(setOf("type", "reason"), encoded.keys)
-                    val reason = encoded.getValue("reason").jsonObject
-                    assertEquals("protocol", reason.getValue("type").jsonPrimitive.content)
-                    assertEquals("RESPONSE_REJECTED", reason.getValue("failure").jsonPrimitive.content)
-                }
-                is ServiceControlFailureDocument.Trust -> {
-                    assertEquals(setOf("type", "failure"), encoded.keys)
-                    assertEquals("INCOMPLETE_KEYS", encoded.getValue("failure").jsonPrimitive.content)
-                }
-            }
+            assertRejectionDetails(document, encoded)
         }
+
         val withoutServiceFailure =
             serviceControlJson
                 .encodeToJsonElement<ServiceControlFailureDocument>(
@@ -211,6 +194,38 @@ class KastServiceMainTest {
                 )
                 .jsonObject
         assertEquals(JsonNull, withoutServiceFailure.getValue("serviceFailure"))
+    }
+
+    private fun assertRejectionDetails(
+        document: ServiceControlFailureDocument,
+        encoded: kotlinx.serialization.json.JsonObject,
+    ) {
+        when (document) {
+            ServiceControlFailureDocument.Arguments -> assertEquals(setOf("type"), encoded.keys)
+            is ServiceControlFailureDocument.Host -> {
+                assertEquals(setOf("type", "failure"), encoded.keys)
+                assertEquals("COMPATIBILITY_REJECTED", encoded.getValue("failure").jsonPrimitive.content)
+            }
+            is ServiceControlFailureDocument.Product -> {
+                assertEquals(setOf("type", "failure"), encoded.keys)
+                assertEquals("CODE_SOURCE_INVALID", encoded.getValue("failure").jsonPrimitive.content)
+            }
+            is ServiceControlFailureDocument.Management -> {
+                assertEquals(setOf("type", "failure", "serviceFailure"), encoded.keys)
+                assertEquals("SERVICE_OWNERSHIP_UNPROVEN", encoded.getValue("failure").jsonPrimitive.content)
+                assertEquals("READINESS_REJECTED", encoded.getValue("serviceFailure").jsonPrimitive.content)
+            }
+            is ServiceControlFailureDocument.Daemon -> {
+                assertEquals(setOf("type", "reason"), encoded.keys)
+                val reason = encoded.getValue("reason").jsonObject
+                assertEquals("protocol", reason.getValue("type").jsonPrimitive.content)
+                assertEquals("RESPONSE_REJECTED", reason.getValue("failure").jsonPrimitive.content)
+            }
+            is ServiceControlFailureDocument.Trust -> {
+                assertEquals(setOf("type", "failure"), encoded.keys)
+                assertEquals("INCOMPLETE_KEYS", encoded.getValue("failure").jsonPrimitive.content)
+            }
+        }
     }
 }
 

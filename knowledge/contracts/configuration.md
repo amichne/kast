@@ -4,7 +4,7 @@ title: Installation configuration
 description: Every external configuration input has declared ownership, parsing, defaults, and projection before it can affect the broker, installation or existing-IDE request.
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
-timestamp: 2026-09-30T00:00:00Z
+timestamp: 2026-10-02T00:00:00Z
 code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
@@ -127,3 +127,9 @@ entrypoint derives the profile from its required session or persistent argument.
 
 The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session; it adds no saved configuration setting. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. Its process command adds no saved configuration setting or Codex App Server request.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, repair, or trust enrollment to the existing owners.
+
+`KAST_INSTALL_CONTROL_ONLY` is a derived installer switch selecting the bounded
+control upgrade. It does not select a saved compatibility policy. `KAST_HOST_VERSION`
+selects the independent host release; component release selection resolves latest
+within that service. The candidate keeps existing saved control configuration for
+control-only replacement, while new control session ownership starts fresh.

@@ -8,6 +8,43 @@ import org.junit.jupiter.api.Test
 
 class InstallationRequestTest {
     @Test
+    fun `home proof retains quoted JVM identity and rejects control characters`() {
+        val home = "/fixture/home with \"quote\" and \\slash"
+        val request = InstallationRequest.parse(validEnvironment() + ("HOME" to home)) as Refinement.Refined
+        assertEquals(
+            "-Duser.home=\"/fixture/home with \\\"quote\\\" and \\\\slash\"",
+            request.value.jvmUserHomeOption.value,
+        )
+        for (character in listOf('\n', '\r', '\u0000')) {
+            assertEquals(
+                Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.HOME)),
+                InstallationRequest.parse(validEnvironment() + ("HOME" to ("/fixture/home" + character))),
+            )
+        }
+    }
+
+    @Test
+    fun `control-only reset and session combinations reject at request boundary`() {
+        for (unsupported in listOf(mapOf("KAST_INSTALL_FORCE" to "1"), mapOf("KAST_INSTALL_PROFILE" to "session"))) {
+            assertEquals(
+                Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.CONTROL_ONLY)),
+                InstallationRequest.parse(validEnvironment() + mapOf("KAST_INSTALL_CONTROL_ONLY" to "1") + unsupported),
+            )
+        }
+    }
+
+    @Test
+    fun `control request requires no host artifact or digest`() {
+        val environment =
+            validEnvironment() -
+                setOf(
+                    InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE.key,
+                    InstallationEnvironment.HOSTED_PLUGIN_SHA256.key,
+                )
+        org.junit.jupiter.api.Assertions.assertTrue(InstallationRequest.parse(environment) is Refinement.Refined)
+    }
+
+    @Test
     fun `force command reaches verified payload admission while unknown options reject`() {
         val forced =
             InstallationCliInspection.inspect(listOf("installation", "install", "--force"), validEnvironment())

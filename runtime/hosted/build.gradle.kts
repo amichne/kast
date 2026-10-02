@@ -43,6 +43,10 @@ tasks.processResources {
     val registry = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
     fun digest(file: File) =
         "sha256:" + MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+    val contract =
+        project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json")
+    dependsOn(":protocol:wire:generateHostedContract")
+    from(contract)
     val values =
         mapOf(
             "ideBuild" to ideBuild,
