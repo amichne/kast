@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0010035876990d13f7719aed080c1725f93e205206300c1208c64615865d7248",
+  "pageVersion": "sha256:afc22afe039808648411ae5036100a8cabfa62160b6d0643f22146627c23289b",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -45,14 +45,14 @@
           "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
         },
         {
-          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedCompatibilityExchangeTest.kt",
-          "version": "repo-file-v1:sha256:4f1c44449707f73eae9b41342a91d552e3a8c63bd4bdc4a96e93af641ff35f8b"
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
+          "version": "repo-file-v1:sha256:1bc674ddac85e827aee47a29008f03f1914327512fa7e65a74ac1f496a41da02"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T13:57:17.310Z"
+    "at": "2026-10-02T14:11:27.469Z"
   }
 }
