@@ -25,7 +25,11 @@ class InstallationReinstallationTest {
         }
         val installer = InstallerExecutor { script, arguments, report ->
             assertEquals(fixture.installation.resolve("share/kast/install.sh"), script)
-            assertEquals(listOf("--version", "1.2.3", "--force", "--skip-codex-mcp", "--stage-only"), arguments)
+            assertEquals(
+                listOf("--version", "1.2.3", "--force", "--skip-codex-mcp", "--stage-only", "--install-root") +
+                    fixture.root.toString(),
+                arguments,
+            )
             assertTrue(Files.isRegularFile(fixture.root.resolve(SHUTDOWN_FENCE)))
             calls += "installer"
             writeStagedReport(report)

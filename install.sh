@@ -181,6 +181,7 @@ Usage:
   install.sh [--control-only | --host-only] [--host-version <major.minor.patch>] [--idea-home <absolute-path>]
              [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
              [--register-codex-mcp | --skip-codex-mcp] [--install-root <absolute-path>] [--stage-only] [--verbose]
+  install.sh uninstall [--install-root <absolute-path>] [--dry-run] [--managed-registrations] [--verbose]
   install.sh --help
 
 The default command selects a control release and a host release with an equal hosted contract.
@@ -521,7 +522,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --install-root)
-      [[ "$action" == install && $# -ge 2 ]] || fail "--install-root is valid only for installation and requires a value"
+      [[ $# -ge 2 ]] || fail "--install-root requires a value"
       requested_install_root="$2"
       [[ -n "$requested_install_root" ]] || fail "--install-root requires a nonempty path"
       shift 2
@@ -572,6 +573,9 @@ require_absolute_path "binary directory" "$bin_directory"
 
 if [[ "$action" == uninstall ]]; then
   require_command python3
+  [[ -d "$install_root" && ! -L "$install_root" ]] || fail "no Kast installation exists at $install_root"
+  physical_install_root="$(CDPATH='' cd -- "$install_root" && pwd -P)"
+  [[ "$physical_install_root" == "$install_root" ]] || fail "install root must be canonical: $install_root"
   selected="$install_root/installation"
   [[ -d "$selected" && ! -L "$selected" ]] || fail "no Kast installation exists at $install_root"
   selected="$(CDPATH='' cd -- "$selected" && pwd -P)"

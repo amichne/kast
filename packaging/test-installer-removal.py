@@ -74,7 +74,7 @@ class InstallerRemovalTest(unittest.TestCase):
     def test_uninstall_dispatches_only_to_selected_installation_lifecycle(self):
         result = self.uninstall('--verbose')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), json.dumps(['--installation', str(self.product), 'remove', '--json']),
+        self.assertEqual(result.stdout.strip(), json.dumps(['--installation', str(self.product), 'remove', '--control-only', '--json']),
                          'entry point must invoke bounded lifecycle removal, never broad rm')
 
     def test_manifestless_installation_is_rejected(self):
@@ -83,6 +83,33 @@ class InstallerRemovalTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('manifest', result.stderr)
         self.assertTrue(self.product.exists())
+
+    def test_explicit_root_dispatches_only_its_lifecycle_and_preserves_default(self):
+        selected_root = self.root / 'selected-control'
+        self.outer.rename(selected_root)
+        selected = selected_root / 'installation'
+        self.outer.mkdir(parents=True)
+        protected = self.outer / 'installation/share/kast/installation-lifecycle.py'
+        protected.parent.mkdir(parents=True)
+        protected.write_text('raise SystemExit("default installation must remain untouched")\n')
+        before = (protected.stat().st_dev, protected.stat().st_ino, protected.read_bytes())
+        result = self.uninstall('--install-root', str(selected_root), '--verbose')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(result.stdout.strip(), json.dumps([
+            '--installation', str(selected), 'remove', '--control-only', '--json']))
+        self.assertEqual(before, (protected.stat().st_dev, protected.stat().st_ino, protected.read_bytes()))
+
+    def test_explicit_removal_root_rejects_invalid_paths_before_dispatch(self):
+        alias = self.root / 'installation-alias'
+        alias.symlink_to(self.outer, target_is_directory=True)
+        for selected, failure in (('relative', 'absolute path'), (str(alias), 'no Kast installation'),
+                                  (str(self.outer / '..' / 'kast'), 'canonical')):
+            with self.subTest(selected=selected):
+                result = self.uninstall('--install-root', selected, '--verbose')
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(failure, result.stderr)
+                self.assertEqual('', result.stdout)
+                self.assertTrue(self.product.exists())
 
 if __name__ == '__main__':
     unittest.main()

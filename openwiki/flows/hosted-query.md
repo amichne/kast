@@ -76,8 +76,6 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadGauge.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
-    symbols: [selectCliRuntimePath]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryService.kt
     symbols: [HostedQueryService]
@@ -160,13 +158,17 @@ code_sources:
   - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
+    at: 2026-10-02T03:24:34.910Z
 sources:
+  - id: openwiki-source-7c05e12b47d08ef75636350e
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
+  - id: openwiki-source-1320464fca8af68fbc8ba11a
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
   - id: openwiki-source-9ddb39fa2f594fe2e1edaa19
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
 ---
 
 # Existing-IDE semantic query
@@ -678,3 +680,10 @@ comparing answer evidence. Native receipt schema 6 adds returned discovery and
 relation page counts with explicit request-local zeros; missing older counters
 remain unavailable. The [runbook](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md#compare-complete-workloads-locally)
 keeps counter, byte and overlapping phase-duration units distinct.
+
+The project socket client first requests the existing live describe document and
+admits its required hosted contract before dispatching any hosted operation.
+Admission checks exact protocol, registry, wire schema and capability identities
+while retaining plugin version as provenance. Prepared project identity remains
+required independently. Every later connection repeats admission; missing or
+incompatible live evidence rejects before semantic dispatch.

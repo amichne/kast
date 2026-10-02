@@ -65,13 +65,17 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
+    at: 2026-10-02T03:24:34.910Z
 sources:
+  - id: openwiki-source-55c5b1c6b24fca5ce9444ac5
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/ProviderFailureCode.kt
+  - id: openwiki-source-7c05e12b47d08ef75636350e
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-e8970cbf92e81dc4000b50e4
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
 ---
 
 # Request dispatch
@@ -244,3 +248,9 @@ passive status remains available. Pending upstream requests survive frontend
 detachment; transport retirement with an unresolved request retains uncertainty
 and cannot supply a quiescence proof. Status observation never repeats preparation
 or seals admission.
+
+Both project semantic dispatch and application lifecycle dispatch admit the live
+host's complete hosted contract before sending an operation. Host release versions
+remain implementation provenance. A control-only installation checks the candidate's
+policy before retiring control and repeats admission after candidate activation;
+these checks do not replace connection-time admission.

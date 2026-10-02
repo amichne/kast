@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7b112916ef99d111a6ed0a1d5cdebf7d165b6d07ea201826ff5b800d3cb2ce22",
+  "pageVersion": "sha256:c33222ee006eb8958718ac1316f8221eb585c22e70cdd73f3f6b651273709b1f",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -75,10 +75,60 @@
           "version": "repo-lines-v1:sha256:000edd43f70c9ee49c69324e344ebdc8e8bd5bbbd87513f76fe4c12668672593:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZTE3MzBmNTMxMDE4YjVkNzFiZjI4ZGI4YmQ3OGJmN2FlYjk1M2MxMGFlNmUwNzkwNjI5YWExNDk4NTM2N2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_5f1c060cff6246baa129131fe5068c32",
+      "statement": "Control and Host release records, artifacts and installation inputs have independent ownership; fresh installation composes a contract-compatible pair, while Control metadata requires no Host archive.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",
+          "version": "repo-file-v1:sha256:492e2761ce831abc898b2fd87657c209109adff1b489ebec2fb27d004e64a9d4"
+        },
+        {
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:835f21b518256b061ca99be5d7123e546b78b42bf76ddcb876da939a71d74395"
+        },
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:2b9ec22815d5685d25fa9e0eea0a0666dda96204a0793ec787da7f39f6f916f0"
+        }
+      ]
+    },
+    {
+      "id": "claim_acf440b51fcb4a90a652aaca679121f1",
+      "statement": "A control-only upgrade admits the running Host before retiring Control, then verifies candidate readiness and repeats admission; failure after retirement invokes Control-only recovery preserving original and recovery failures.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt",
+          "version": "repo-file-v1:sha256:9ca7e7ce2b1f6438b8ec9ee0e96437b83e29cd31b07311c7eee35fb3992f8dca"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
+          "version": "repo-file-v1:sha256:46c15b747f43f0f3046fc451ff2cc0c32a0af9ee149b6984f3043d6e75dd880e"
+        }
+      ]
+    },
+    {
+      "id": "claim_b12b0cb12d684d09af1019d1b2de6893",
+      "statement": "Exact reinstall and force reset cold-stage Control without a Host artifact; their existing fenced lifecycle owns later activation, while stage-only and bounded control-only upgrade cannot be combined.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
+          "version": "repo-file-v1:sha256:46c15b747f43f0f3046fc451ff2cc0c32a0af9ee149b6984f3043d6e75dd880e"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
+          "version": "repo-file-v1:sha256:eafe64a7a880b0f913dfb1bcb6f79de5b7533c84a64c6c9ce7b378fca183761f"
+        },
+        {
+          "resource": "repo://install.sh",
+          "version": "repo-file-v1:sha256:b8cc5d96802f632a4c773f0516a90806c788431d2d7dd5b93ff47403ea83e060"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:25:07.005Z"
+    "at": "2026-10-02T03:24:34.910Z"
   }
 }

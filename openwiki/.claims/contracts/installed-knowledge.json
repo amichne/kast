@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a758de1bb5cd989c35178905648d1b8add18be0555e9047856509e040bbc146a",
+  "pageVersion": "sha256:58adbdda0fec04adde777f8485e8423fa35f3842d14ba40c0739c81b97904a0b",
   "claims": [
     {
       "id": "claim_10de93622f2540deb257f97bdbfbc003",
@@ -31,10 +31,20 @@
           "version": "repo-lines-v1:sha256:14ba64d9cd7f80f22864118a94bb2988d544c8fbe8d499ff84238ffc6f222aae:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGFlOGRiZWVmODFjYjI4YzUzMTNjNzFmYmRjYjQ3ZDMzNjhiNGNjNmVkNWZlZDVhNDc3Y2Q5NDhmMDk0NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2MjM4ZjY3YmEwNjBkNTk5NTgxNzg1MTQ2MGRhNWJlMDA4N2NkODcxOTcyN2FlMmFiM2VlNDZjZGYyOWY3ZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhODdjYTY4YzQ1YzUyOWExZjVjNjc0ZmM3ODhkYmFlNTExYmFlMzIzZmJlZGUyM2NjOWMyNmRkN2M0YmVlNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_008563ea267a4d9e9d20046e3954d59e",
+      "statement": "The installed knowledge manifest is versioned by Control independently of the hosted IntelliJ plugin release.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts",
+          "version": "repo-file-v1:sha256:6faecd4b9c84a58088bfb0b9d04199fbf60f60685351dc7e73ec4e947bc97fc8"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-10-02T03:24:34.910Z"
   }
 }

@@ -6,6 +6,7 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityField
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityMismatch
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 
@@ -86,6 +87,17 @@ class IdeEndpointDescriptorNegativeTest {
     }
 
     @Test
+    fun `implementation version remains provenance under exact contract admission`() {
+        val changed = candidate.copy(kastPluginVersion = "0.28.2")
+        val admitted =
+            assertInstanceOf(
+                IdeEndpointDescriptorAdmission.Admitted::class.java,
+                IdeEndpointDescriptorV2.create(changed, policy),
+            )
+        assertEquals("0.28.2", admitted.descriptor.compatibility.provenance.version.value)
+    }
+
+    @Test
     fun `compatibility identity mismatches retain the exact rejected field`() {
         listOf(
                 Triple(
@@ -97,11 +109,6 @@ class IdeEndpointDescriptorNegativeTest {
                     candidate.copy(kotlinPluginBuild = "263.9437.186-IJ"),
                     IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD,
                     candidate.kotlinPluginBuild to "263.9437.186-IJ",
-                ),
-                Triple(
-                    candidate.copy(kastPluginVersion = "0.28.2"),
-                    IdeHostCompatibilityField.KAST_PLUGIN_VERSION,
-                    candidate.kastPluginVersion to "0.28.2",
                 ),
                 Triple(
                     candidate.copy(runtimeProtocolIdentity = "kast.ide-hosted.runtime.v2"),

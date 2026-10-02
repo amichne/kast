@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1abb311934a75ee40570c2c08a5437ba5a50c373dba0227f72211d8667df59fc",
+  "pageVersion": "sha256:31965a02626a423ade40517b4c9e599444998b26123400cccce189ad8ff40483",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -44,21 +44,35 @@
     },
     {
       "id": "claim_c032540f949b4a01b41497ccea64b94b",
-      "statement": "The native private installer boundary removes inherited installation/version/channel/report selectors and supplies its owned activation report path; exact reinstall selects an explicitly pinned release version through the same installer owner.",
+      "statement": "The native private installer removes inherited control installation/version/channel/report selectors, supplies its own report path, and cold-stages an exact Control release before the fenced lifecycle activates it.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L107-L122",
-          "version": "repo-lines-v1:sha256:3e19c981eff76c5b42c23a5fc60041c932bd05429cc8d5ba71998042444b5772:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNjYwM2U3ZDQ2OWNmMGIyYzlhMzhmMDc2OWQ3MzEzOTFmZDE1YWFjOTcxZDI1YWY3MTU1Mzg3ZWFjYWI2ZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiMzZjYzYzMjNiOTcwNzRhOWVhNWM2NGVmYmM2YjFiNTRlNDg2YWUxNTlhYmE0YTQ4NzcyZDJmMjdlN2FlMGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3NjBjYWNkNjZiODA5OTE1OWVjOTBlMzcyNDMxNDMyMGU0NDU3MTI0YzBlODQwOTNmYjA1NmU2ZmMyMWI1ZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0NzU1YTg1NzkzZjBmY2U1MzQ4YTdiYTNlMzc1NzcyMDU4MWUyOTM4MzFiMDgzMmZiMTg2MzUyZmZmZThmY2YifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L145-L157",
+          "version": "repo-lines-v1:sha256:8137b3e825d9fea148a1f9b91b6640be3ed6ed8eac845f28dfae3715561f4d09:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyZjE3N2NkMjgwMGE3ZTYzYTU5YTJkMDU5ZGNlYjdjNzAyZjM4M2E0NjVlZTgzYWJjMjZkZjFjY2M0NTgyYzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjYTFhZDEyMzU1ZDNkMjA3MDIwNzJhZjA5NTNiZWFmN2IwOWFhNzQ1NGY1YTE2ZTBhYjZhOTEzM2E1NmExZDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwMDQyMDY1MTI1OGI4ZGVhMzU5OWE5Y2ZlM2Y2YWEyYjI3ZjQyODFhYWFmMTYyNjI2MjlmYmYwMGRkZDdhYWIifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L68-L88",
-          "version": "repo-lines-v1:sha256:4ed5f34c14b116f10d8a20b25519799c95cd6e59b57cb747be23b0073de9eb5c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MDhjODkzYjcxMDNmY2IyYTYxOGYwMjRiODRmZDkyMGI0N2E5ZTZlOWNkZTFkYzhiOWQ5YWQ5ZmMyNTJiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4NzM1YmE5ZDViN2U1NjJkYTE2MzQ2NTBkZWEzNWQyYWE1NWQ0OTc0ZGRhOTJjYThkZDg5YmMzZjc4M2Q2YTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4MTEyZTg5NmMwZDYyYjZmMWMzOTQ4YTQ2NmE2NTcxOGVkMGQ5MzZiYmU5ZDMwMjhmOGQyNGQ4MGNiOGFkMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyMjQ5NmQ1YjU2NDY3ZTczMTNkYjgzMTVmZTIzMmRkYzU3ODhkOGYwOTFhNTZiNDAyNzNiZWI0ZTQxZjI2MmIifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt#L68-L89",
+          "version": "repo-lines-v1:sha256:130623c2355092294cc195b1bb861a61f3cb813d3148cbd561de8d56277efe6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MDhjODkzYjcxMDNmY2IyYTYxOGYwMjRiODRmZDkyMGI0N2E5ZTZlOWNkZTFkYzhiOWQ5YWQ5ZmMyNTJiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxY2M2MzEwMmM4YmZmYWE0OTNiNjcwZGY0NjgxZDY1MDhkMTNjMjhiZjA3NGM1MDY5NGRmNDQ3NDUyNWEwNDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4MTEyZTg5NmMwZDYyYjZmMWMzOTQ4YTQ2NmE2NTcxOGVkMGQ5MzZiYmU5ZDMwMjhmOGQyNGQ4MGNiOGFkMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyM2E2MGRjMzFhNzc4N2YxMmQzNGRkYTUyYmFhZGE2Yzg1NGFhNzQ5NWY5ZTI2ZTZlYWJiMTI2ZTczM2NhZjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e6aecb37382a4b98804745f74f2178d1",
+      "statement": "Component installation selectors have declared configuration ingress ownership; Control-only replacement retains saved configuration and workspace registration while starting fresh control state and session ownership.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
+          "version": "repo-file-v1:sha256:46c15b747f43f0f3046fc451ff2cc0c32a0af9ee149b6984f3043d6e75dd880e"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
+          "version": "repo-file-v1:sha256:9cb630af9916fe513ff9d11f60257119f0142c279872df3dd3969cb68086ee17"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:25:07.005Z"
+    "at": "2026-10-02T03:24:34.910Z"
   }
 }

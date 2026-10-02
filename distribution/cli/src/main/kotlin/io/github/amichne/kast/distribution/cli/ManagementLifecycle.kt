@@ -72,20 +72,11 @@ internal fun executePrivateInstaller(script: Path, arguments: List<String>, repo
                 ProcessBuilder(listOf("/bin/bash", script.toString()) + arguments)
                     .inheritIO()
                     .redirectOutput(ProcessBuilder.Redirect.appendTo(Path.of("/dev/stderr").toFile()))
-            val environment = builder.environment()
-            environment.keys
-                .filter {
-                    it.startsWith("KAST_INSTALL_") ||
-                        it in
-                            setOf(
-                                "KAST_VERSION",
-                                "KAST_RELEASE_BASE_URL",
-                                "KAST_MANAGEMENT_CHANNEL",
-                                "KAST_MANAGEMENT_REPORT_PATH",
-                            )
-                }
-                .forEach(environment::remove)
-            if (report != null) environment["KAST_MANAGEMENT_REPORT_PATH"] = report.toString()
+            val selectedEnvironment = privateInstallerEnvironment(builder.environment(), report)
+            builder.environment().apply {
+                clear()
+                putAll(selectedEnvironment)
+            }
             builder.start()
         } catch (_: Exception) {
             throw ManagementRejected("installer-launch", "private installer could not start")
@@ -102,6 +93,20 @@ internal fun executePrivateInstaller(script: Path, arguments: List<String>, repo
     }
 }
 
+private val inheritedInstallerSelectors =
+    setOf(
+        "KAST_VERSION",
+        "KAST_HOST_VERSION",
+        "KAST_RELEASE_BASE_URL",
+        "KAST_MANAGEMENT_CHANNEL",
+        "KAST_MANAGEMENT_REPORT_PATH",
+    )
+
+internal fun privateInstallerEnvironment(inherited: Map<String, String>, report: Path?): Map<String, String> {
+    val selected = inherited.filterKeys { !it.startsWith("KAST_INSTALL_") && it !in inheritedInstallerSelectors }
+    return if (report == null) selected else selected + ("KAST_MANAGEMENT_REPORT_PATH" to report.toString())
+}
+
 private const val INSTALLER_REPORT_LIMIT_BYTES = 65536L
 
 @Suppress("ThrowsCount")
@@ -113,7 +118,7 @@ internal fun installLatest(
 ): InstallerReport {
     val script = installedPrivateInstaller(root)
     if (selection is InstallationSelection.Exact) requireOwnedInstaller(root)
-    val options = installerArguments(selection, prior.channel)
+    val options = installerArguments(root, selection, prior.channel)
     val reportPath =
         try {
             Files.createTempFile(root, ".management-result-", ".json")
@@ -142,13 +147,13 @@ internal fun installLatest(
     }
 }
 
-internal fun installerArguments(selection: InstallationSelection, channel: ReleaseChannel): List<String> =
+internal fun installerArguments(root: Path, selection: InstallationSelection, channel: ReleaseChannel): List<String> =
     when (selection) {
         is InstallationSelection.Exact ->
             listOf("--version", selection.version.value, "--force", "--skip-codex-mcp", "--stage-only")
         InstallationSelection.Latest -> latestInstallerOptions(channel)
         InstallationSelection.ControlOnly -> latestInstallerOptions(channel) + "--control-only"
-    }
+    } + listOf("--install-root", root.toString())
 
 private fun installerReportIntent(selection: InstallationSelection): InstallerReportIntent =
     when (selection) {
@@ -260,7 +265,12 @@ internal fun uninstallInstallation(root: Path, home: Path) {
     val script = installedPrivateInstaller(root)
     // The private installer owns verified control retirement and managed control removal.
     val code =
-        withRegistrationLock(root) { executePrivateInstaller(script, listOf("uninstall", "--managed-registrations")) }
+        withRegistrationLock(root) {
+            executePrivateInstaller(
+                script,
+                listOf("uninstall", "--managed-registrations", "--install-root", root.toString()),
+            )
+        }
     if (code != 0) {
         throw ManagementRejected(
             "uninstall",

@@ -30,15 +30,21 @@ code_sources:
   - path: query/protocol/build.gradle.kts
   - path: runtime/hosted/build.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-02T03:24:34.910Z
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
+  - id: openwiki-source-dfe8403e5aee6d5722e08a79
+    resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
+  - id: openwiki-source-2a9daaac1604f238ef4c63fb
+    resource: repo://build.gradle.kts
+  - id: openwiki-source-7fa48d17b46dccf82f4b3238
+    resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:25:07.005Z
+generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
 ---
 
 # Verified module architecture
@@ -118,3 +124,10 @@ The explicit hosted workspace refresh adapter is the sole scoped caller permitte
 The native lifecycle adapter alone has scoped project-manager authority. The existing refresh adapter alone can create initial Gradle link settings and call the narrow native link-plus-refresh seam; its shared spec builder has only the exact quiet import-spec methods. Approval-key reads are confined to the exact lifecycle verification owner. Passive workspace reads retain no project-open, link, import, or lifecycle-control authority.
 
 Builds use strict dependency verification against the checked checksum metadata. Task registration uses the explicit Gradle Kotlin DSL API, retaining lazy task providers without the deprecated delegated registration syntax. The IDEA distribution and platform compilation artifacts share `idea-platform-build`; `ide-host-build` independently pins the packaged host. Unused Maven publication conventions and their plugin dependency have been removed; release delivery remains the GitHub release assembly.
+
+Control and hosted-plugin release versions are independent build inputs. Each
+service packages its required runtime dependencies. The control metadata task
+requires the hosted contract, without a host archive producer. Independent host
+assembly produces no control package, and independent control assembly produces
+no host package. Fresh-pair assembly composes both artifacts as an installation
+convenience; exact hosted contract equality governs communication.

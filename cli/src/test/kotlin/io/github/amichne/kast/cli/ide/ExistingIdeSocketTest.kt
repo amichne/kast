@@ -48,6 +48,18 @@ class ExistingIdeSocketTest {
                     server.bind(UnixDomainSocketAddress.of(socket))
                     val response = HostedDescriptorFixture.status(home.toString(), host).toByteArray()
                     val task = executor.submit {
+                        if (scenario == "supertype") {
+                            server.accept().use { client ->
+                                val input = java.io.DataInputStream(Channels.newInputStream(client))
+                                val request =
+                                    Json.parseToJsonElement(String(input.readNBytes(input.readInt()))).jsonObject
+                                assertEquals("DESCRIBE", request["type"]?.jsonPrimitive?.content)
+                                val output = java.io.DataOutputStream(Channels.newOutputStream(client))
+                                output.writeInt(response.size)
+                                output.write(response)
+                                output.flush()
+                            }
+                        }
                         server.accept().use { client ->
                             val input = java.io.DataInputStream(Channels.newInputStream(client))
                             val request = Json.parseToJsonElement(String(input.readNBytes(input.readInt()))).jsonObject

@@ -706,7 +706,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
 
     def test_uninstall_uses_selected_private_lifecycle_control(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-uninstall-") as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             install = root / "data/kast"
             selected = install / "installation"
             control = selected / "share/kast/installation-lifecycle.py"

@@ -39,15 +39,25 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalChangeOperationModels.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+    symbols: [HostedContract, HostedContractDocument, HostedCompatibilityPolicy]
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
+    symbols: [CanonicalHostedContract]
+  - path: protocol/contract/src/main/resources/ide-hosted/hosted-request.schema.json
+  - path: protocol/contract/src/main/resources/ide-hosted/hosted-approval.schema.json
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
+    at: 2026-10-02T03:24:34.910Z
 sources:
+  - id: openwiki-source-1320464fca8af68fbc8ba11a
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
   - id: openwiki-source-207ff2d32f1b70dfee08054c
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
+  - id: openwiki-source-1905c35a82810ccf74696707
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
   - id: openwiki-source-73cd922b518ec220021f920f
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
 ---
 
 # Protocol
@@ -139,3 +149,11 @@ The canonical agent policy delegates preparation for ordinary semantic requests 
 the installed coordinator. Preparation rejection is a broker failure with typed
 workspace cause and operation identity, outside the canonical semantic result.
 It preserves native operation admission and signs the exact plan inside the one-call change boundary.
+
+`HostedContract` is the single exact control/host compatibility tuple. Its canonical
+registry and schema/serializer graph cover actual project requests, responses and
+application lifecycle exchanges. `HostedContractDocument` has a required
+`HOSTED_CONTRACT` discriminator; the existing describe/inspect exchanges require
+that evidence and plugin provenance. Control management and agent presentation
+identities do not enter the tuple. A hosted behavior break requires a declared
+protocol identity change even without a JSON shape change.

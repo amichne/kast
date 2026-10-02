@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e042fac56045d613e68f89673ee3a19bbba2dac9744ffde266ee5188b0af884a",
+  "pageVersion": "sha256:4d6f3448acfdedea157b38cbf4700d5d4c54dcd0908104dc2bdd025122d0f78a",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -49,10 +49,42 @@
           "version": "repo-lines-v1:sha256:2e07a10630c0953a3261defd23e480c564ab59ab3d3309d02905e9c85de0b7b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlY2FkYzM0NzE5YThmZjIzODQ0MTc3OWM3ODQ5MDBlZjI4OGFjYTRmOTFjNmNhNDEyNWU0NDkyMWQ0MjdmMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRjNjc4Njk3NTBhYWUzOGZiZTM3MmM1NGMxOGQ4ZTc4YjgxZWMzZmVmNmQ1N2IzZWQwMDY5ZjU2M2Y5ZjIwMGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_c1a7ea6a7b35409d94230918bc720a48",
+      "statement": "The live Host reports its own packaged plugin version, actual running IntelliJ and Kotlin builds, and complete provided HostedContract through the existing describe and lifecycle inspection exchanges.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt",
+          "version": "repo-file-v1:sha256:f63dec3e8c5e3bae745d95ddec455aca01e45fa10bb0022b051b904a5cc3a654"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
+          "version": "repo-file-v1:sha256:55d67af8a893df804f4c58dab76d5df83b320d96c7c3c3ffdb2969f17bc26474"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
+          "version": "repo-file-v1:sha256:9350377ffa5066250efbfeae97beb936f4a570442a51518e896ae625ac0c27cc"
+        }
+      ]
+    },
+    {
+      "id": "claim_978b7abd205b4bf5ab7a540a18e3e51b",
+      "statement": "Control status retains installed and running versions separately and projects each observed Host identity, loaded version and compatibility; missing live evidence remains unavailable.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt",
+          "version": "repo-file-v1:sha256:704c6fae450e2b83c1ba216a4139c9e5658833b9e02d47d394d4ceda313fb0bd"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
+          "version": "repo-file-v1:sha256:bf6eaa33f33e2fff4be8944a8a5ad8a10d34736cba0002c6b10a855f95698892"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:25:07.005Z"
+    "at": "2026-10-02T03:24:34.910Z"
   }
 }
