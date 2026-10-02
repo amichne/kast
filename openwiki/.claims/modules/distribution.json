@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dbf439afebaa03e6b638d363acd6193385b1adde047aadde6113ba9b3876449a",
+  "pageVersion": "sha256:1a0b185d98424e7bd78a08702ce6c9fefa95d99900e6fb41922150b075734f18",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -86,7 +86,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:8845107cf45774af8a7d2ed4218996361fdc3dfb77a2f0b47b3e73beee2ed9aa"
+          "version": "repo-file-v1:sha256:e26dfef0cdc1b419a8e393613990fce90d571292f910c05fe6b4b059fe5f996a"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -100,11 +100,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt",
-          "version": "repo-file-v1:sha256:9ca7e7ce2b1f6438b8ec9ee0e96437b83e29cd31b07311c7eee35fb3992f8dca"
+          "version": "repo-file-v1:sha256:25e7407842832f2d1b4502db826de7ca180f590cf53292e88b830fd47b85cbac"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:5040b9e97d50af7cfd97c358f5de77725ca7f5b3b9cc856a7ccaa85030f18f0c"
+          "version": "repo-file-v1:sha256:95091e11c7945f7f8e89c0d82568b1fa0bbd96c08b4946aa82478c28481f013d"
         }
       ]
     },
@@ -114,7 +114,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:5040b9e97d50af7cfd97c358f5de77725ca7f5b3b9cc856a7ccaa85030f18f0c"
+          "version": "repo-file-v1:sha256:95091e11c7945f7f8e89c0d82568b1fa0bbd96c08b4946aa82478c28481f013d"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
@@ -122,7 +122,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:821059e1959631c5b87c06be6561eb56c8e69d8130a48310d97bc7239270aaeb"
+          "version": "repo-file-v1:sha256:6651d09950556afe8f5ab551dddbdf0b6b361064ccb42502d6814acd36e9184e"
         }
       ]
     },
@@ -135,8 +135,8 @@
           "version": "repo-lines-v1:sha256:4d1ab4532918fee733ad51165549938e080084e9127dfbd4b209c0a17165fdaa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3OWVhMGUzYjkyY2UyNDI0ZTVjOTQ1MTI5ZWYyZTNmOWZlM2FmNWRiZWU1YjdiNzMwMjVhYTcwYmU5N2RiNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzZDk0NmRjOTE2NThmNjJlMjI4MGYzYWUwNzlkMjBkYTJkZTRmYmIyNGUxYjc4MzViMGFhOWZhMTY1MWJmYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjNzhjMzQzM2IxOTNhMDVlNGYzZjcwNjBiMGViZjQyZjA1YjllOWY0YjUxM2U1NmI0MmFjOGY0MzBkZWViYmIifQ"
         },
         {
-          "resource": "repo://install.sh#L557-L591",
-          "version": "repo-lines-v1:sha256:213709994eee57f24304bd2daf0e4c64d5919d4719b5fa4e52f2b194417dd57c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMmViMzUwMjFiOTY3MTI5NjM3M2EyMWNiMjg4ZGViNGY3MjViMjVmZmQ2NTliNzY4MGVlMjQ1NDFkZDRjOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0ZTc2MDQyNmE4ZTNhODYwZGQxNTBlNmMxMTc4YmFhNmJmMTgyNGM1N2ZlODI3M2IwMmI0YTVjZTQ1M2FhNzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyZTFhZGRiZGZkN2IwY2ZlOGFhYzVkNGE3MGFlOTYxMDNjY2NhZWM5YWM3ZDlkYTg5NGRkZmNmMDc0MGE3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjczNzUxMzE5YTRlNDVkNWMzZGI1YTRhOTEwODM2YzIzZGE2NzZjNTgxYzAzODBlMGE1MDZiODY1Y2VhNmVhNDUifQ"
+          "resource": "repo://install.sh#L561-L597",
+          "version": "repo-lines-v1:sha256:5891c26c30f628868b34b8e9a945b8527b1f347848a3b7ed62d5a4c68393f404:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1YWIwYzk0NTMyNWM2ZDMyNjMzMjU4YzczMTZjMzM3ZjdhNDEzOGFlYTMzNWI5N2JhMjZhNDY4MDg4ZTZjYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjYWJjMDBlMjJkZWJmYzUyMTQ1YjZjZWRlNWUxOWFjOTkxODZmMzIxZWE2ZjZlNGM4MDUzZTdhODVhNTIwZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1ZjYzMTQ1NzAyOWY2ZjgxNzc0M2VkMTQ2MmJlMjg1YTFmYmNjMjM2ZWVlMTQwMmQ4NjQ4NjkwODJkOTk2N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxNGQxZDAzYTFmMjA5MGJlOTExMzA1MTM0NTFhYzNlOTMzZTM2OWZlNDM4YWE4MzUwYjJjMzFkNGRiOGY2MGEifQ"
         },
         {
           "resource": "repo://packaging/test-installer-removal.py",
@@ -149,7 +149,7 @@
       "statement": "The existing installation and reset effect owners reject symlinked ancestors before directory creation or root detachment; public executable publication separately rejects aliased destination parents before writing.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L951-L969",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L950-L968",
           "version": "repo-lines-v1:sha256:5fb91fbe67679114dbc2cc07a1ee59663734a36dfdd618581ceb11c3be3fc11f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODMzMTE3ODE4OTMzYWMxNTA4MThkZjMxZTQ3ZWZjYmE2ZGE2ZjNjMDNkYmIzOTExZmQ2NmYzYjYxZTk0OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMTRmYTBlZjIyMmY5OGZhZDg4ODAxMDcwOWE0NzgxOGVjMTVmMTVmNDkxMjFiZGI1NzI1OWI0YzBkNjNiNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzOTJmZTM3MTljNzFiNzdkZGU2YzAzMDFmYTNlYmNiNTVjYjNlZTExYzBhNWEyY2E3NTc1ZWUxNzkzMTQ5OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMjBmYzYxMTc3N2M4OWRkYjlmZmJhMDE5ODk1YmI3NzVjMmVhMTg4ZmJkNzhmYjUwYzFjOGZiNThlMzFjNjYifQ"
         },
         {
@@ -164,11 +164,19 @@
     },
     {
       "id": "claim_82ac8f4c351843108b7ed80fd36307b3",
-      "statement": "Assembled-product acceptance verifies independent artifact identities and canonical Control cold staging with an exact management publication receipt, installed/not-requested activation and no Host files; it does not establish live-host behavior.",
+      "statement": "Assembled-product acceptance copies the production Control staging tree directly into an owned fixture before launcher or installer effects, then verifies independent artifact identities and canonical Control cold staging with an exact management publication receipt, installed/not-requested activation and no Host files; it does not establish live-host behavior.",
       "evidence": [
         {
-          "resource": "repo://packaging/run-installed-product.py#L127-L167",
-          "version": "repo-lines-v1:sha256:f82dc3a1c927546347f1e5dd7e20114cc27ee3289db13a33af644e9d0d1f8e3d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMGQ3Y2NlOWVmMWNkNWI5YTNmYjViNzhmMjJkM2JhNTAzNTU2OTU5NThlZWZjNTY0NjdhYTE4YjNlMWQwNDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ZDRlMDVmZDhlYmZiYzdiNmM3NGQzYzU4NjczMWM0ZWM1MTA2NDQzYzE0OWJhMmNkMGQ4MjE5NTU5MDUzNWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE1ZGRiMWI2OGRlY2Q4MGU3MmY2YzMzM2I0NmZhNmY2Yjc0ZjAzYWJkYjljMTAzZDlmNmJkMDM5MjdiMzVlOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMzODQ5MWJkMDNlNjA5NjBhMmNmZTk2MDY0YjEzMTVjMWJiMjI1YTU3MzNhNTBhOGNmZDMxMWQxZTY1MzhhY2UifQ"
+          "resource": "repo://build.gradle.kts#L274-L296",
+          "version": "repo-lines-v1:sha256:93adbd1533de012849035a0875e4505b6ea917facdbf8add909b0661745ab2e1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNWI1MjU5ODlhYmEzZTYxMjE2ZWNkOWZlMzBhNmRkNzZjZDI0NWQ5YjE5ODcxM2U3ZDUwOGZlZTgwNjk3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5ZTRjNGFmNDg3YTc5ODgxZTE0ODM5MDU4ZGZkYmJlNGRhNmE2NmY0YzE1NWQwNDhhZjY0NWMyZjc4ZmQxMDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzOTIxNDZjMjFkN2EzOGZjNjNkNWM4Y2RlODFhMmVjYTc2MGQxNmE4Y2Q5MDg2OWYyODc3ZDFkZTBlNjM3YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiZWFmMWZmZjhmZmRhMzQ4ZTFkMmQyMDU0MmU3N2RmODAzZGRmNzhkYWYzYmZiNjVhMGI5Yjg4YjAyNGE0YWEifQ"
+        },
+        {
+          "resource": "repo://packaging/installer_fixture.py#L85-L99",
+          "version": "repo-lines-v1:sha256:7e86aedd26c53ecba987753a954392466851733fe7cde2a816193f9f5a144dd5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlMzdlY2UzMDFkODkyOWE3NjcyNTllOTMyNDMxODg1OTVjN2VmM2ZhYmZkYjRkODA4YWM5NGYzZGZkOWQxYWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2ZGViYmI2OWI4Yzk0OTVmZmEyNjMzMWU3YWIyNTA0YjA0M2I5YzRkN2NkMDk3OTlkZTMxMWM0ZGU4ODAxYjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlYjM3NGVkMmUyZGVhMWQyYjNkMTkwOTZiNWY2MWViYmUzMzU0NTAwN2JiM2I0NmI4Yzg0N2QxOGU1ZmE2Y2YifQ"
+        },
+        {
+          "resource": "repo://packaging/run-installed-product.py#L127-L182",
+          "version": "repo-lines-v1:sha256:deea6ac05c6f2838c7550bf5dfacb36fb55dd95b4b997a8d6d33ef9ec16311ca:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMGQ3Y2NlOWVmMWNkNWI5YTNmYjViNzhmMjJkM2JhNTAzNTU2OTU5NThlZWZjNTY0NjdhYTE4YjNlMWQwNDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0NWM4NzM4N2Y3NWE5Yjg0MDRjYTExNjQ4NjJhYzdmZmIxYjNjMTgwZmQxNGY0ZTQ4NWQ0OTQ4YjZmZWMzMzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE1ZGRiMWI2OGRlY2Q4MGU3MmY2YzMzM2I0NmZhNmY2Yjc0ZjAzYWJkYjljMTAzZDlmNmJkMDM5MjdiMzVlOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNDEzNDBjYzIzOWExNTljZTliNjAyMmU5ZjYzMjI4MzJlMmVhZDc2Y2FlOWU0NzU0ZDIxMGViOGZiNmQ1ZTgifQ"
         }
       ]
     },
@@ -243,10 +251,32 @@
           "version": "repo-lines-v1:sha256:89fd2f8d287854473a04b092919047c5ce3105760b33a0170720d4e60ded1aa7:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjExODZjYmQwZjJlMWU3MmFjMGNiN2IwMGY4MmJjOGMxOTQ4N2JiNGJmODFmYWQzMmEyNDFkNDcxNzY3MGUxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjFjODFmYTljNDEyMDM1MjhlMGE4N2ZjZTMzYjViODllYzRkYjExMWYxNDMwMGQ0NGM2NGY0MmM2OGEyMDUyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTU0MTJjNzQ5NGUwODFiZDNkODg3ZDM1ZTllMTc3MmNhMWZlYWE1ZmFkZDYxNzgxZjkwNDA5YTUzMmRmYmEyOCJ9"
         }
       ]
+    },
+    {
+      "id": "claim_539123f98b294889b48c968e8754549a",
+      "statement": "The public installer parses the explicit Codex registration choice once: Control-only, Host-only and Control cold staging default to skip and accept explicit skip in either order; explicit registration requires a paired installation and rejects component installs before download or installation effects.",
+      "evidence": [
+        {
+          "resource": "repo://install.sh#L510-L559",
+          "version": "repo-lines-v1:sha256:6e02463ba6deb55e154fb98eb6ad931d39e2a02e0aa283cb6fd15b62fd6227e1:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmMWFiZmE5ZTUyZDc4NWU2OWJiMjFhOTJhZGM4MWNhNjlhNzY1YmU0M2Y1NjcyOTJmZDBhOWE3MDM5MmM2OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3NjlkMjM3Y2Q0MjBiOWQzOGI5ODFhMGE0ZjY3NzAxOTBhNGE4M2RjYTFmZTU2YzRmNWJhMWUyY2JjMGVmNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwNGEyOTEzZmExYjY0Njk0MzQ2MTFlNDRlYjJjOTI2ZTgxN2MzYzU0ODhjMTgxMTI4ZTA2N2U1YjA1N2E3NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzMmFlNGZmZmQ1OTRiYWNiMDRlNjg3NjdlZGU5MzgzNGI3MTkzMzY1Njk3ODBmNzI3NmMwZjRkMjI3NmFiMTUifQ"
+        },
+        {
+          "resource": "repo://install.sh#L641-L654",
+          "version": "repo-lines-v1:sha256:cdf06392883f5660c24887c217696204fade5f5cd07838980f5029b910d3ddd7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzNzYzYWI4MmQ2ZGMzNTc5MGU5NjM2ZWZmYjZhYmY1YmU3YzQ2NzZmNDI3NGI0NjY1ZjVlYTE0NTdmNTU2ZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3NjlkMjM3Y2Q0MjBiOWQzOGI5ODFhMGE0ZjY3NzAxOTBhNGE4M2RjYTFmZTU2YzRmNWJhMWUyY2JjMGVmNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhMzY3ZmZkYTEzOTA3M2U2ZjJiM2UxODEzZTJmYTYzZjFlZGZmYTkxNmExYjJiYjlhMjgwYmU2ZDg1ODFhOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI1ZTc4Y2M4OWE4NjcxYjIxZjNiMjQ3OTFiNDhjMDkyZDU2NGFjYTA5MmJlNGY5ODEwMDQ1OGQzYjkzNTM4MzUifQ"
+        },
+        {
+          "resource": "repo://packaging/test-installer-entrypoint.py#L449-L472",
+          "version": "repo-lines-v1:sha256:976a1c3c0a576539b30d237daf9d40f79504a3d840e6bdf3f35578d358b07968:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyNjYyMGM1Y2YxYjIxNGI0N2E2OTk1OGMxOGJkNGExMzk1YjlkOTNhOTdhYjFkYWY1ODUwOWU0ZGRlMGIwNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzZWM1ZmM0NTQzMTVmMTEyYjA2YTlhN2FlMWM2Y2U0OGVjZDJkNGY1YmNkNmNlNzlmZGU3MTA3Y2YzY2QzOWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAxNTQ0ZGUxZjA1Nzk5ZjQ5YzUwNTlmMDU2MzQxYWU2MzVjODUxZmY2ZTE5ZTkwMGVhYmY0NDI5NDA3ZWVjMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjM2M2ZWFlYThlOTJlMjQwM2IwYjRjYTZkMDYzOTg5ZGJjMTJkZjNjZTQ5Y2NhZmJhN2YzOGEwYzBkYWE0YzAifQ"
+        },
+        {
+          "resource": "repo://packaging/test-installer-entrypoint.py#L507-L552",
+          "version": "repo-lines-v1:sha256:c81eca7b28163ab49aa586448f0dd60db9d36c8648bc83e8ce08b4183a9851da:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhNzAwODkxMzM2MzZkZTQ5ZDVjODcyNTI5YjFmYTMwZjYzMzI5MzU5YzJhM2I2MThiNTlhMzUxZjlhNTNmZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MjIyODkzYzlmNTU4ODg0OTNmNDlhMzFiNmRlNTU0NTgyYTk3NTU2NmJjN2E0ZjY4NmVlOWIxZDZhNjVjYWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhMTRhYjYzYTE5NjY4MTQ3OGJiNDA5ZmIzZDhiODlkOWIwOGEzZWZhNTExYTYwMGNhYWVlZjA3Y2Y0ZTUwODEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5YzZmNzVhZTdmMTFhNTgwNjNlN2JmODdiMDNkNGY3NzE4NDdmODg0Y2JhOGM1NzYyOTMzNTZkNDkwYzZiYjcifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T06:45:58.039Z"
+    "at": "2026-10-02T08:15:19.347Z"
   }
 }

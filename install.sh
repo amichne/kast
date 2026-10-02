@@ -218,9 +218,11 @@ Installation enables the app server and its macOS login LaunchAgent by default.
 Upgrades review historical Kast entries one at a time when current ownership
 checks cannot admit them. Only an exact `yes` removes a reviewed entry; without
 a terminal, uncertain entries are retained and reported.
-Interactive persistent installs ask whether to register a user-level Codex MCP
+Interactive paired installs ask whether to register a user-level Codex MCP
 server. Pass --register-codex-mcp or --skip-codex-mcp to make the choice without
-a prompt. Non-interactive installs default to registration for compatibility.
+a prompt. Non-interactive paired installs default to registration for compatibility.
+--register-codex-mcp requires a paired installation. --control-only, --host-only,
+and --stage-only skip registration without prompting; explicit --skip-codex-mcp is accepted.
 After installation, use kast status, kast connect, kast upgrade, or kast uninstall.
 `--force` retires the selected installation, resets its managed state and sockets,
 and restages verified components. It does not change
@@ -475,7 +477,6 @@ while [[ $# -gt 0 ]]; do
     --control-only|--host-only)
       [[ "$action" == install && "$component" == pair ]] || fail "select one component installation"
       if [[ "$1" == --control-only ]]; then component=control; control_only=1; else component=host; fi
-      codex_mcp_choice=skip
       shift
       ;;
     --host-version)
@@ -551,6 +552,10 @@ if [[ "$stage_only" == 1 ]]; then
   # Cold reset staging owns only control; its lifecycle owner activates the candidate later.
   component=control
   host_version=""
+fi
+if [[ "$component" != pair ]]; then
+  [[ "$codex_mcp_choice" != register ]] || fail "--register-codex-mcp requires a paired installation"
+  [[ "$codex_mcp_choice" != unspecified ]] || codex_mcp_choice=skip
 fi
 
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"

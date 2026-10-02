@@ -457,13 +457,19 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             marker = host / 'host.jar'
             marker.write_bytes(b'P1')
             before = (host.stat().st_dev, host.stat().st_ino, marker.read_bytes())
+            registration = Path(environment['HOME']) / '.codex/config.toml'
+            registration.parent.mkdir()
+            registration.write_text('protected registration\n')
+            registration_before = (registration.stat().st_ino, registration.read_bytes())
             result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--stage-only',
-                '--force', '--skip-codex-mcp'], cwd=ROOT, env=environment, capture_output=True, text=True, timeout=10)
+                '--force'], cwd=ROOT, env=environment, capture_output=True, text=True, timeout=10)
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(['service', 'seal'], log.read_text().splitlines())
             self.assertIn('staged Kast Control 1.2.4', result.stderr)
             self.assertNotIn('admitted running IntelliJ', result.stderr)
+            self.assertNotIn('Register a user-level Kast MCP server', result.stderr)
             self.assertEqual(before, (host.stat().st_dev, host.stat().st_ino, marker.read_bytes()))
+            self.assertEqual(registration_before, (registration.stat().st_ino, registration.read_bytes()))
 
     def test_cold_staging_rejects_component_upgrade_combinations_before_effects(self):
         with tempfile.TemporaryDirectory(prefix='kast-control-stage-conflict-') as directory:
@@ -497,6 +503,53 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
             self.assertTrue((Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/plugin.jar').exists())
+
+    def test_component_skip_registration_is_independent_of_argument_order(self):
+        for component in ('--control-only', '--host-only'):
+            for options in ((component, '--skip-codex-mcp'), ('--skip-codex-mcp', component)):
+                with self.subTest(options=options), tempfile.TemporaryDirectory(prefix='kast-component-skip-') as directory:
+                    if component == '--control-only':
+                        idea, environment, _, log = self.upgrade_fixture(directory)
+                        assets = Path(environment['KAST_INSTALL_ASSETS_DIRECTORY'])
+                        for asset in assets.iterdir():
+                            if not asset.name.startswith('kast-control-'): asset.unlink()
+                    else:
+                        idea, assets, environment = self.installer_fixture(directory)
+                        for asset in assets.glob('kast-control*'): asset.unlink()
+                    registration = Path(environment['HOME']) / '.codex/config.toml'
+                    registration.parent.mkdir()
+                    registration.write_text('protected registration\n')
+                    before = (registration.stat().st_ino, registration.read_bytes())
+                    result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), *options],
+                        cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    self.assertEqual(before, (registration.stat().st_ino, registration.read_bytes()))
+                    if component == '--control-only':
+                        self.assertEqual(['service', 'seal'], log.read_text().splitlines())
+                        self.assertNotIn('Restart IntelliJ IDEA', result.stderr)
+                    else:
+                        self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+                        self.assertTrue((Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/plugin.jar').exists())
+
+    def test_component_explicit_registration_rejects_in_either_order_before_effects(self):
+        for component in ('--control-only', '--host-only', '--stage-only'):
+            for options in ((component, '--register-codex-mcp'), ('--register-codex-mcp', component)):
+                with self.subTest(options=options), tempfile.TemporaryDirectory(prefix='kast-component-register-') as directory:
+                    idea, assets, environment = self.installer_fixture(directory)
+                    for asset in assets.iterdir(): asset.unlink()
+                    effect_log = Path(directory) / 'registration.log'
+                    codex = Path(directory) / 'bin/codex'
+                    codex.write_text('#!/bin/sh\nprintf "registration\\n" >> "$TEST_LOG"\n')
+                    codex.chmod(0o755)
+                    environment['TEST_LOG'] = str(effect_log)
+                    result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), *options],
+                        cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn('--register-codex-mcp requires a paired installation', result.stderr)
+                    self.assertNotIn('downloading', result.stderr)
+                    self.assertFalse(effect_log.exists())
+                    self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+                    self.assertFalse((Path(environment['HOME']) / 'Library').exists())
 
     def test_documented_remote_invocations_use_bash_c(self):
         for document in DOCUMENTS:
@@ -544,6 +597,8 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("Usage:", result.stdout)
+        self.assertIn('--register-codex-mcp requires a paired installation', result.stdout)
+        self.assertIn('and --stage-only skip registration without prompting', result.stdout)
         self.assertNotIn("--clean-collisions", result.stdout)
 
     def test_unrelated_command_does_not_block_installation_plan(self):

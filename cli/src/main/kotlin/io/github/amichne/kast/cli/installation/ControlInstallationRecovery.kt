@@ -48,23 +48,17 @@ internal object ControlInstallationRecovery {
 
     fun restoreRunningPrior(
         plan: VerifiedInstallationPlan,
-        prior: Path,
         failure: InstallationFailure,
     ): InstallationOutcome.Recovery {
         val restarted =
             executeInstallationChild(
                 InstallationChildStage.CONTROL_RECOVERY,
-                listOf(prior.resolve("share/kast/libexec/kast-service").toString(), "enable"),
+                listOf(plan.targetRoot.resolve("share/kast/libexec/kast-service").toString(), "enable"),
                 controlChildEnvironment(plan),
             )
         if (restarted != InstallationChildOutcome.COMPLETED)
             return InstallationOutcome.RecoveryRequired(failure, InstallationFailure.CONTROL_RECOVERY_REJECTED)
-        val admitted =
-            executeInstallationChild(
-                InstallationChildStage.RECOVERY_HOST_ADMISSION,
-                listOf(prior.resolve("share/kast/libexec/kast-service").toString(), "host-admission"),
-                controlChildEnvironment(plan),
-            )
+        val admitted = installedHostAdmission(plan, InstallationChildStage.RECOVERY_HOST_ADMISSION)
         return if (admitted == InstallationChildOutcome.COMPLETED) InstallationOutcome.RolledBack(failure)
         else InstallationOutcome.RecoveryRequired(failure, InstallationFailure.RECOVERY_HOST_ADMISSION_REJECTED)
     }
@@ -130,7 +124,7 @@ internal object ControlInstallationRecovery {
         plan: VerifiedInstallationPlan,
         failure: InstallationFailure,
     ): InstallationOutcome.Recovery =
-        when (val restored = restoreRunningPrior(plan, plan.targetRoot, failure)) {
+        when (val restored = restoreRunningPrior(plan, failure)) {
             is InstallationOutcome.RolledBack ->
                 if (
                     failure == InstallationFailure.CONTROL_FINALIZATION_REJECTED &&

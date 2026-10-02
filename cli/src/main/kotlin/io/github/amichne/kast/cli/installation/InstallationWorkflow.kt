@@ -285,7 +285,7 @@ internal object InstallationWorkflow {
                                 is Refinement.Refined -> Unit
                                 is Refinement.Rejected ->
                                     return if (plan.request.controlOnly == InstallationSwitch.ENABLED)
-                                        ControlInstallationRecovery.restoreRunningPrior(plan, prior, retired.failure)
+                                        ControlInstallationRecovery.restoreRunningPrior(plan, retired.failure)
                                     else InstallationOutcome.Rejected(retired.failure)
                             }
                             val priorRegistry = prior.resolve("config/workspaces.json")
@@ -300,7 +300,6 @@ internal object InstallationWorkflow {
                                     return if (plan.request.controlOnly == InstallationSwitch.ENABLED)
                                         ControlInstallationRecovery.restoreRunningPrior(
                                             plan,
-                                            prior,
                                             InstallationFailure.CONFIGURATION_REJECTED,
                                         )
                                     else InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
@@ -346,7 +345,7 @@ internal object InstallationWorkflow {
                             else InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
                         is ActivationResult.Rejected ->
                             return if (plan.request.controlOnly == InstallationSwitch.ENABLED && prior != null)
-                                ControlInstallationRecovery.restoreRunningPrior(plan, prior, activated.failure)
+                                ControlInstallationRecovery.restoreRunningPrior(plan, activated.failure)
                             else InstallationOutcome.Rejected(activated.failure)
                     }
                 } finally {
