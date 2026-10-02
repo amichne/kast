@@ -10,6 +10,8 @@ import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QueryTerminalReason
+import io.github.amichne.kast.query.contract.QueryWalkArrival
+import io.github.amichne.kast.query.contract.QueryWalkCoverage
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationCompilation
@@ -38,6 +40,7 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalRecord
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
 import io.github.amichne.kast.traversal.service.TraversalNanoClock
 import io.github.amichne.kast.traversal.service.traversalOperations
@@ -49,6 +52,56 @@ import org.junit.jupiter.api.Test
 
 /** The production traversal and query schedulers consume one retained relation inventory together. */
 class QueryWalkRetainedProgressTest {
+    @Test
+    fun depthBoundDrainsAcrossResultPages() = runTest {
+        val graph =
+            mapOf(
+                "PaymentService" to listOf("B", "C", "D", "E"),
+                "B" to listOf("F"),
+                "C" to listOf("G"),
+                "D" to listOf("H"),
+                "E" to listOf("I"),
+            )
+        val expected =
+            listOf(
+                Triple("PaymentService", "B", 1),
+                Triple("PaymentService", "C", 1),
+                Triple("PaymentService", "D", 1),
+                Triple("PaymentService", "E", 1),
+                Triple("B", "F", 2),
+                Triple("C", "G", 2),
+                Triple("D", "H", 2),
+                Triple("E", "I", 2),
+            )
+        val baseline = RetainedWalkFixture(graph, depth = 2).drain(resultLimit = 100)
+        val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, baseline.single())
+        assertEquals(8, complete.coverage.resultCount.value)
+        for (capacity in listOf(1, 2)) {
+            val fixture = RetainedWalkFixture(graph, depth = 2)
+            val pages = fixture.drain(resultLimit = capacity)
+            val final = assertInstanceOf(QueryExecutionResult.Complete::class.java, pages.last())
+            val records = pages.walkRecords()
+            assertEquals(
+                expected,
+                records
+                    .map { Triple(it.fact.source.name.value, it.related.name.value, it.depth.value) }
+                    .sortedWith(compareBy({ it.third }, { it.first }, { it.second })),
+            )
+            val semanticRecords = records.map(TraversalRecord::canonicalProjection)
+            assertEquals(
+                baseline.walkRecords().map(TraversalRecord::canonicalProjection).sorted(),
+                semanticRecords.sorted(),
+            )
+            assertEquals(8, semanticRecords.distinct().size)
+            assertEquals(complete.coverage, final.coverage)
+            assertResumableDepthBoundPages(pages, capacity)
+            assertEquals(
+                mapOf("PaymentService" to (4 / capacity), "B" to 1, "C" to 1, "D" to 1, "E" to 1),
+                fixture.reads.groupingBy { it.first }.eachCount(),
+            )
+        }
+    }
+
     @Test
     fun `retained one hop page limits discharge after exact child exhaustion`() = runTest {
         val fixture = RetainedWalkFixture()
@@ -68,6 +121,20 @@ class QueryWalkRetainedProgressTest {
         assertPreservedOmission(RelationLimitation.RESULT_LIMIT_REACHED)
     }
 
+    private fun assertResumableDepthBoundPages(pages: List<QueryExecutionResult>, capacity: Int) {
+        assertTrue(pages.all { it.result().symbolRows().size <= capacity && it.result().failures.isEmpty() })
+        pages.dropLast(1).forEach { page ->
+            val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, page)
+            val continuation = assertInstanceOf(QueryContinuationState.Resumable::class.java, qualified.continuation)
+            (continuation.checkpoint as PipelineCheckpoint)
+                .tasks
+                .filterIsInstance<PipelineTask.Walk>()
+                .mapNotNull { it.cursor }
+                .forEach { cursor -> assertTrue(cursor.checkpoint.frontier.all { it.depth.value < 2 }) }
+        }
+        assertEquals(QueryWalkCoverage.Complete, pages.flatMap { it.result().walkObservations }.last().coverage)
+    }
+
     private suspend fun assertPreservedOmission(reason: RelationLimitation) {
         val fixture = RetainedWalkFixture()
         val expected = fixture.measuredOmission(reason)
@@ -85,17 +152,21 @@ class QueryWalkRetainedProgressTest {
     }
 }
 
-private class RetainedWalkFixture {
+private class RetainedWalkFixture(
+    private val graph: Map<String, List<String>> =
+        mapOf("PaymentService" to listOf("B", "C"), "B" to emptyList(), "C" to emptyList()),
+    depth: Int = 3,
+) {
     private val scope = QueryServiceTest()
     private val selected = scope.selector(scope.selection())
-    private val reads = mutableListOf<Pair<String, Long>>()
+    val reads = mutableListOf<Pair<String, Long>>()
     private val plan =
         scope.admittedPlan(
             QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refinedWalkProgress()),
             listOf(
                 QueryStepSyntax.Walk(
                     RelationMeaning.Callees,
-                    TraversalDepthLimit.parse(3).refinedWalkProgress(),
+                    TraversalDepthLimit.parse(depth).refinedWalkProgress(),
                     TraversalStrategy.BreadthFirst,
                 )
             ),
@@ -113,7 +184,10 @@ private class RetainedWalkFixture {
             )
             .refinedWalkProgress()
 
-    suspend fun drain(firstOmissions: List<RelationOmissionEvidence> = emptyList()): List<QueryExecutionResult> {
+    suspend fun drain(
+        firstOmissions: List<RelationOmissionEvidence> = emptyList(),
+        resultLimit: Int = 1,
+    ): List<QueryExecutionResult> {
         val relations = RelationOperations { read -> relationPage(read, firstOmissions) }
         val service =
             QueryService(
@@ -128,10 +202,10 @@ private class RetainedWalkFixture {
                 queryTestTraversalCeiling(),
                 clock = QueryNanoClock { 0L },
             )
-        val initial = scope.request(plan, workLimit = 100L, resultLimit = 1)
+        val initial = scope.request(plan, workLimit = 100L, resultLimit = resultLimit)
         var request = initial
         val pages = mutableListOf<QueryExecutionResult>()
-        repeat(16) {
+        repeat(64) {
             val page = service.run(request)
             pages += page
             val continuation = (page as? QueryExecutionResult.Qualified)?.continuation
@@ -140,7 +214,7 @@ private class RetainedWalkFixture {
                 QueryExecutionRequest.create(plan, initial.lease, initial.budget, continuation.checkpoint)
                     .refinedWalkProgress()
         }
-        error("The two-fact retained walk did not exhaust within sixteen pages")
+        error("The retained walk did not exhaust within sixty-four pages")
     }
 
     fun assertExactDrain(pages: List<QueryExecutionResult>) {
@@ -158,13 +232,7 @@ private class RetainedWalkFixture {
             (read.position as? RelationReadPosition.Resume)?.continuation?.providerState?.consumedLocatorCount?.value
                 ?: 0L
         reads += read.subject.name.value to position
-        val facts =
-            when (read.subject.name.value) {
-                "PaymentService" -> listOf("B", "C").mapIndexed { index, name -> fact(read, name, index) }
-                "B",
-                "C" -> emptyList()
-                else -> error("Unexpected relation subject")
-            }
+        val facts = graph.getValue(read.subject.name.value).mapIndexed { index, name -> fact(read, name, index) }
         check(position <= facts.size) { "Unexpected relation cursor" }
         val emitted = facts.drop(position.toInt()).take(read.budget.resources.resultLimit.value)
         val inventory = (read.position as? RelationReadPosition.Resume)?.continuation?.providerState ?: inventory(facts)
@@ -197,7 +265,7 @@ private class RetainedWalkFixture {
     ): RelationBatch =
         RelationBatch.create(
                 read,
-                emitted,
+                emitted.sorted(),
                 RelationByteCount.parse(
                         emitted.sumOf { it.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong() }
                     )
@@ -244,6 +312,11 @@ private class RetainedWalkFixture {
             .refinedWalkProgress()
     }
 }
+
+private fun List<QueryExecutionResult>.walkRecords(): List<TraversalRecord> = flatMap {
+    it.result().symbolRows()
+}
+    .flatMap { (it.walkArrival as QueryWalkArrival.Proven).records }
 
 private fun QueryExecutionResult.result() =
     when (this) {

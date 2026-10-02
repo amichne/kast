@@ -245,6 +245,14 @@ class AdmittedIdeProjectSession private constructor(private val admissions: Exis
     internal constructor(
         owner: Disposable,
         limits: ReadLimits = ReadLimits.Default,
+        epochObservation:
+            (
+                Refinement<
+                    ProjectReadEpochState,
+                    io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure,
+                >
+            ) -> Unit =
+            {},
     ) : this(
         ExistingProjectAdmissionOperations { project, root, candidate, policy ->
             AdmittedIdeProject.admitObserved(
@@ -254,7 +262,13 @@ class AdmittedIdeProjectSession private constructor(private val admissions: Exis
                 policy,
                 LiveExistingProjectObservation,
                 ExistingProjectReadEpochSourceFactory { retained, retainedRoot ->
-                    LiveProjectReadEpochSourceFactory.createOwned(retained, retainedRoot, owner, limits)
+                    LiveProjectReadEpochSourceFactory.createOwned(
+                        retained,
+                        retainedRoot,
+                        owner,
+                        limits,
+                        epochObservation,
+                    )
                 },
             )
         }

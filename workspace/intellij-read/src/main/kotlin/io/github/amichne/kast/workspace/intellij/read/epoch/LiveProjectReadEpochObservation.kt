@@ -47,6 +47,7 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
         root: CanonicalWorkspaceRoot,
         owner: Disposable,
         limits: ReadLimits = ReadLimits.Default,
+        observation: (Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>) -> Unit = {},
     ): Refinement<ProjectReadEpoch.Source<*>, ExistingProjectReadEpochSourceInstallationFailure> {
         if (project.isDisposed) {
             return Refinement.Rejected(ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed)
@@ -77,6 +78,7 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
                             projectModelCounter,
                             vfsCounter,
                             limits = limits,
+                            observation = observation,
                         )
                         .source
                 )
@@ -100,6 +102,7 @@ internal class LiveProjectReadEpochSource(
     private val vfsCounter: ProjectReadEpochMetadataCounter,
     private val execution: ProjectReadEpochExecution = IdeaProjectReadEpochExecution,
     private val limits: ReadLimits = ReadLimits.Default,
+    private val observation: (Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>) -> Unit = {},
 ) {
     internal val source = ProjectReadEpoch.Source.create(::observeState, ::observeBeforeWriteState)
 
@@ -113,10 +116,10 @@ internal class LiveProjectReadEpochSource(
                     }
             ) {
                 is EpochPlatformObservation.Observed -> result.value
-                is EpochPlatformObservation.Failed -> return result.rejection()
+                is EpochPlatformObservation.Failed -> return result.rejection().also(observation)
             }
-        if (!admitted) return Refinement.Rejected(ProjectReadEpochObservationFailure.WrongThread)
-        return observeInsideRead()
+        if (!admitted) return Refinement.Rejected(ProjectReadEpochObservationFailure.WrongThread).also(observation)
+        return observeInsideRead().also(observation)
     }
 
     /**
@@ -142,15 +145,15 @@ internal class LiveProjectReadEpochSource(
                     )
             ) {
                 is EpochPlatformObservation.Observed -> observed.value
-                is EpochPlatformObservation.Failed -> return observed.rejection()
+                is EpochPlatformObservation.Failed -> return observed.rejection().also(observation)
             }
         if (dispatchThread) {
-            return Refinement.Rejected(ProjectReadEpochObservationFailure.WrongThread)
+            return Refinement.Rejected(ProjectReadEpochObservationFailure.WrongThread).also(observation)
         }
         return try {
-            execution.compute(::observeInsideRead)
+            execution.compute { observeInsideRead().also(observation) }
         } catch (_: ReadAction.CannotReadException) {
-            Refinement.Rejected(ProjectReadEpochObservationFailure.ReadPreempted)
+            Refinement.Rejected(ProjectReadEpochObservationFailure.ReadPreempted).also(observation)
         }
     }
 

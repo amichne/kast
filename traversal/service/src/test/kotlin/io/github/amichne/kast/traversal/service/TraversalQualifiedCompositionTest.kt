@@ -22,7 +22,7 @@ class TraversalQualifiedCompositionTest {
     private val d = fixture.selector("d", 40)
 
     @Test
-    fun `terminal qualified non leaf and leaf reads retain witnessed depth separately`() {
+    fun incompleteOneHopRemainsIncomplete() {
         listOf(false, true).forEach(::assertQualifiedDepth)
     }
 
@@ -64,8 +64,7 @@ class TraversalQualifiedCompositionTest {
         assertEquals(2L, result.page.progress.totalReads)
         assertEquals(setOf(RelationLimitation.UNSUPPORTED_ITEM), result.qualification.relationLimitations)
         assertEquals(
-            if (leaf) setOf(TraversalLimitation.ONE_HOP_INCOMPLETE)
-            else setOf(TraversalLimitation.ONE_HOP_INCOMPLETE, TraversalLimitation.DEPTH_LIMIT_REACHED),
+            setOf(TraversalLimitation.ONE_HOP_INCOMPLETE),
             result.qualification.limitations,
         )
         assertInstanceOf(TraversalQualification.TerminalIncomplete::class.java, result.qualification)

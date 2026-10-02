@@ -144,6 +144,15 @@ generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
 
 # Semantic read domains
 
+Scoped declaration enumeration preserves every declared source root for ownership
+checks, but seeds its frontier only from roots admitted by the captured IDE source
+model. Absent conventional Gradle folders cannot become failed partitions;
+unavailable partitions inside the admitted universe still qualify coverage.
+Directory admission precedes partition capacity accounting, so excluded children
+cannot consume eligible capacity. Inventory checks cancellation and elapsed
+allowance before preparation and between observations. Finite partition counters
+and termination labels explain the native boundary without logging paths.
+
 Symbol discovery returns bounded candidates; exact resolution refines a candidate into compiler identity. Source reads, relation reads, traversal, and diagnostics consume exact, workspace-bound requests rather than re-parsing loose names.
 
 An exact-symbol query can opt into a five-line source window. The query service asks the source port for the symbol's file region within the same admitted read; the source adapter revalidates the exact anchor and committed document before returning text. Returned text and line coordinates retain that source proof through query projection. Failure stays a finite query item cause and incomplete qualification.

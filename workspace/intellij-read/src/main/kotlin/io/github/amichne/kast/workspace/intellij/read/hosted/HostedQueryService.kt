@@ -3,6 +3,7 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import io.github.amichne.kast.kernel.ReadLimitFailure
@@ -14,6 +15,7 @@ import io.github.amichne.kast.workspace.contract.*
 import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProjectSession
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
+import io.github.amichne.kast.workspace.intellij.read.ProjectReadEpochDiagnostics
 import io.github.amichne.kast.workspace.intellij.read.readHostedConfiguration
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -43,15 +45,22 @@ private constructor(
 
     private val executor = HostedQueryExecutor(serviceScope, diagnostics = diagnostics)
     private val owner = Disposer.newDisposable("Kast hosted query epoch")
+    val hostLifetime = IdeReadHostLifetime.fromBoundary(UUID.randomUUID())
+    private val epochSignalDiagnostics =
+        ProjectReadEpochDiagnostics(hostLifetime) {
+            Logger.getInstance(HostedQueryService::class.java).info(it)
+        }
     val readConfiguration: Refinement<ReadLimits, ReadLimitFailure> = readHostedConfiguration()
     private val configuredSession =
         when (val settings = readConfiguration) {
             is Refinement.Refined ->
-                ConfiguredHostedSession.Ready(settings.value, AdmittedIdeProjectSession(owner, settings.value))
+                ConfiguredHostedSession.Ready(
+                    settings.value,
+                    AdmittedIdeProjectSession(owner, settings.value, epochSignalDiagnostics::record),
+                )
             is Refinement.Rejected ->
                 ConfiguredHostedSession.Rejected(HostedQueryFailure.Configuration(settings.failure))
         }
-    val hostLifetime = IdeReadHostLifetime.fromBoundary(UUID.randomUUID())
     private val liveAuthorities = HostedLiveReadAuthoritySession(hostLifetime)
     private val epochDiagnostics = HostedEpochVfsDiagnostics(project, owner, hostLifetime)
     private val freshnessOwner = HostedReadFreshnessOwner(project, owner, liveAuthorities)

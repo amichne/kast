@@ -154,7 +154,7 @@ internal fun readRelationInventory(
     observation: IntellijReadObservation = IntellijReadObservation.None,
 ): ProviderTermination {
     var retained =
-        when (val inventory = request.inventoryForInvocation(prepare)) {
+        when (val inventory = request.inventoryForInvocation(collector, prepare)) {
             is RelationInventoryPreparation.Prepared -> inventory.state
             RelationInventoryPreparation.Unavailable -> return ProviderTermination.HALTED
         }
@@ -179,12 +179,16 @@ internal fun readRelationInventory(
 }
 
 private fun RelationRequest.inventoryForInvocation(
-    prepare: () -> RelationInventoryPreparation
-): RelationInventoryPreparation =
-    when (val selected = position) {
+    collector: IntellijRelationCollector,
+    prepare: () -> RelationInventoryPreparation,
+): RelationInventoryPreparation {
+    if (collector.admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY)
+        return RelationInventoryPreparation.Unavailable
+    return when (val selected = position) {
         RelationReadPosition.Start -> prepare()
         is RelationReadPosition.Resume -> RelationInventoryPreparation.Prepared(selected.continuation.providerState)
     }
+}
 
 /** Actual restored locator ordinals only; this cannot observe work performed inside native provider APIs. */
 internal fun observeRelationLocatorRestoration(

@@ -48,7 +48,12 @@ private constructor(
                         IntellijSymbolCompilerAdapter(
                                 IntellijNativeDiscoveryAdapter(
                                     IntellijSearchScopeQueryAdapter(
-                                        IntellijSearchScopeCompiler(request.constraints) { path ->
+                                        IntellijSearchScopeCompiler(
+                                            request.constraints,
+                                            sourceRootAdmission = { path ->
+                                                fileAdmission.admits(path, request.constraints.sourceSets)
+                                            },
+                                        ) { path ->
                                             fileAdmission.admits(path, request.constraints.sourceSets)
                                         }
                                     ),
@@ -63,7 +68,12 @@ private constructor(
                         IntellijSymbolExactCompilerAdapter(
                             IntellijSymbolSelectorResolver(
                                 IntellijSearchScopeQueryAdapter(
-                                    IntellijSearchScopeCompiler(constraints) { path ->
+                                    IntellijSearchScopeCompiler(
+                                        constraints,
+                                        sourceRootAdmission = { path ->
+                                            fileAdmission.admits(path, constraints.sourceSets)
+                                        },
+                                    ) { path ->
                                         fileAdmission.admits(path, constraints.sourceSets)
                                     }
                                 ),

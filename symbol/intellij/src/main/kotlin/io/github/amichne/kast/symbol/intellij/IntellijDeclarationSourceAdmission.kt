@@ -18,16 +18,15 @@ internal class IntellijDeclarationSourceAdmission(
 ) {
     private val root = Path.of(request.scope.lease.workspaceRoot.value)
     private val requestedDirectory = request.constraints.directory?.let { root.resolve(it.directory.value).normalize() }
+    private val selectedRoots by lazy { scope.sourceRoots.map { Path.of(it.sourceRoot.value) }.toSet() }
+    private val ownershipRoots by lazy { scope.ownershipRoots.map { Path.of(it.sourceRoot.value) }.toSet() }
 
     fun relevantDirectory(path: Path): Boolean {
         val requested = requestedDirectory
         if (requested != null && !path.startsWith(requested) && !requested.startsWith(path)) return false
         if (excludedDescendantDirectory(path)) return false
-        val owners = scope.ownershipRoots.filter { path.startsWith(Path.of(it.sourceRoot.value)) }
-        val deepest = owners.maxOfOrNull { Path.of(it.sourceRoot.value).nameCount }
-        return deepest == null ||
-            owners.any { Path.of(it.sourceRoot.value).nameCount == deepest && it in scope.sourceRoots } ||
-            scope.sourceRoots.any { Path.of(it.sourceRoot.value).startsWith(path) }
+        val owner = generateSequence(path) { it.parent }.firstOrNull { it in ownershipRoots }
+        return owner == null || owner in selectedRoots || selectedRoots.any { it.startsWith(path) }
     }
 
     private fun excludedDescendantDirectory(path: Path): Boolean {

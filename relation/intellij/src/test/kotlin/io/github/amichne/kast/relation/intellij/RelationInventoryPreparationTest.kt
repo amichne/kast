@@ -28,6 +28,34 @@ class RelationInventoryPreparationTest {
     private val request = fixture.request(RelationMeaning.References)
 
     @Test
+    fun `expired request cannot enter native inventory preparation`() {
+        var now = 0L
+        var preparations = 0
+        val observation = Observation()
+        val collector = IntellijRelationCollector(request, { now }, observation)
+        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        val termination =
+            readRelationInventory(
+                request,
+                collector,
+                prepare = {
+                    preparations += 1
+                    RelationInventoryPreparation.Prepared(RelationProviderState.references(listOf(locator(0))))
+                },
+                confirm = { _, _ -> error("Expired requests must not enter semantic confirmation") },
+                cancellationCheck = {},
+            )
+        assertEquals(ProviderTermination.HALTED, termination)
+        assertEquals(0, preparations)
+        val result = terminal(collector)
+        assertEquals(setOf(RelationLimitation.TIME_LIMIT_REACHED), result.coverage.limitations)
+        assertEquals(0L, result.batch.examinedWorkUnits.value)
+        assertEquals(listOf(IntellijReadTermination.TIME_LIMIT), observation.terminations)
+        assertEquals(0, observation.candidates)
+        assertEquals(0, observation.prepared)
+    }
+
+    @Test
     fun `a published snapshot inventory cannot enter native confirmation`() {
         val lease = (request.subject.lease.requirePublished() as Refinement.Refined).value
         val publication = (RelationPublishedSnapshotIdentity.admit(lease, "a".repeat(64)) as Refinement.Refined).value
@@ -183,6 +211,7 @@ class RelationInventoryPreparationTest {
         var candidates = 0
         var prepared = 0
         val retentionEstimates = mutableListOf<Long>()
+        val terminations = mutableListOf<IntellijReadTermination>()
 
         override fun measure(gauge: IntellijReadGauge, value: IntellijReadGaugeValue) {
             assertEquals(IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES, gauge)
@@ -197,6 +226,8 @@ class RelationInventoryPreparationTest {
             }
         }
 
-        override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) = Unit
+        override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) {
+            terminations += reason
+        }
     }
 }

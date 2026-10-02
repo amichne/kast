@@ -2,7 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read
 
 /** Exhaustive emitted-class inventory for every project-read epoch production type and changed bridge. */
 internal fun productionEpochResources(): List<String> =
-    contractEpochResources() + adapterEpochResources() + admissionBridgeResources()
+    contractEpochResources() + adapterEpochResources() + diagnosticEpochResources() + admissionBridgeResources()
 
 private fun contractEpochResources(): List<String> =
     listOf(
@@ -57,11 +57,10 @@ private fun adapterEpochResources(): List<String> =
             "LiveProjectReadEpochObservationKt.class",
             "LiveProjectReadEpochPlatformPort.class",
             "LiveProjectReadEpochSource.class",
-            "LiveProjectReadEpochSource\$observeState\$1.class",
             "LiveProjectReadEpochSource\$source\$1.class",
             "LiveProjectReadEpochSource\$source\$2.class",
             "LiveProjectReadEpochSourceFactory.class",
-            "LiveProjectReadEpochSourceFactory\$createOwned\$1.class",
+            "LiveProjectReadEpochSourceFactory\$createOwned\$2.class",
             "ObservedEpochGradleModel.class",
             "ProjectEpochRootIdentity.class",
             "ProjectEpochRootIdentity\$Companion.class",
@@ -96,6 +95,44 @@ private fun adapterEpochResources(): List<String> =
             "RootFilteredProjectEpochVfsListener.class",
             "RootModelSignal.class",
             "VfsSignal.class",
+        )
+        .map { name -> ADAPTER + name }
+
+private fun diagnosticEpochResources(): List<String> =
+    listOf(
+            "ProjectReadEpochDiagnosticDocument\$\$serializer.class",
+            "ProjectReadEpochDiagnosticDocument\$Companion.class",
+            "ProjectReadEpochDiagnosticDocument.class",
+            "ProjectReadEpochDiagnosticFailure\$Companion.class",
+            "ProjectReadEpochDiagnosticFailure\$ObservationFailed\$\$serializer.class",
+            "ProjectReadEpochDiagnosticFailure\$ObservationFailed\$Companion.class",
+            "ProjectReadEpochDiagnosticFailure\$ObservationFailed.class",
+            "ProjectReadEpochDiagnosticFailure\$Unavailable\$\$serializer.class",
+            "ProjectReadEpochDiagnosticFailure\$Unavailable\$Companion.class",
+            "ProjectReadEpochDiagnosticFailure\$Unavailable.class",
+            "ProjectReadEpochDiagnosticFailure.class",
+            "ProjectReadEpochDiagnosticOutcome\$Baseline.class",
+            "ProjectReadEpochDiagnosticOutcome\$Companion.class",
+            "ProjectReadEpochDiagnosticOutcome\$Moved\$\$serializer.class",
+            "ProjectReadEpochDiagnosticOutcome\$Moved\$Companion.class",
+            "ProjectReadEpochDiagnosticOutcome\$Moved.class",
+            "ProjectReadEpochDiagnosticOutcome\$Recovered.class",
+            "ProjectReadEpochDiagnosticOutcome\$Rejected\$\$serializer.class",
+            "ProjectReadEpochDiagnosticOutcome\$Rejected\$Companion.class",
+            "ProjectReadEpochDiagnosticOutcome\$Rejected.class",
+            "ProjectReadEpochDiagnosticOutcome.class",
+            "ProjectReadEpochDiagnostics\$Availability\$Available.class",
+            "ProjectReadEpochDiagnostics\$Availability\$Rejected.class",
+            "ProjectReadEpochDiagnostics\$Availability.class",
+            "ProjectReadEpochDiagnostics\$Previous\$Observed.class",
+            "ProjectReadEpochDiagnostics\$Previous\$Unobserved.class",
+            "ProjectReadEpochDiagnostics\$Previous.class",
+            "ProjectReadEpochDiagnostics.class",
+            "ProjectReadEpochDiagnosticsKt.class",
+            "ProjectReadEpochSignal\$Companion.class",
+            "ProjectReadEpochSignal.class",
+            "ProjectReadEpochUnavailableCause\$Companion.class",
+            "ProjectReadEpochUnavailableCause.class",
         )
         .map { name -> ADAPTER + name }
 

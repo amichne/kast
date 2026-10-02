@@ -352,9 +352,36 @@ class TraversalServiceTest {
     }
 
     @Test
-    fun `depth bound is terminal and cannot issue a nonproductive continuation`() {
+    fun depthBoundIsExhaustiveUniverse() {
+        val d = fixture.selector("d", 40)
+        val graph = linkedMapOf(a to listOf(b), b to listOf(c), c to listOf(d), d to emptyList())
+        val reader = InMemoryRelationReader(graph, fixture)
+        val result =
+            assertInstanceOf(
+                TraversalResult.Complete::class.java,
+                runSuspend { TraversalService(reader).run(fixture.plan(a, depth = 2)) },
+            )
+
+        assertEquals(
+            listOf(Triple("a", "b", 1), Triple("b", "c", 2)),
+            result.page.records.map { Triple(it.fact.source.name.value, it.related.name.value, it.depth.value) },
+        )
+        assertEquals(listOf("a", "b"), reader.requests.map { it.node.endpoint.name.value })
+        assertEquals(2, result.coverage.exactRecordCount.value)
+        assertTrue(result.page.partialExpansions.isEmpty())
+    }
+
+    @Test
+    fun `bounded fan out depth remains terminal`() {
         val graph = linkedMapOf(a to listOf(b), b to emptyList())
-        val plan = fixture.plan(a, depth = 1)
+        val plan =
+            TraversalPlan.start(
+                    a,
+                    RelationMeaning.Callees,
+                    fixture.plan(a, depth = 1).budget,
+                    TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined()),
+                )
+                .refined()
 
         val result =
             assertInstanceOf(

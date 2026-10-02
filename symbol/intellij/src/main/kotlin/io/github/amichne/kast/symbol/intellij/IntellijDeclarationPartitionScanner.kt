@@ -28,6 +28,10 @@ internal class IntellijDeclarationPartitionScanner(
         val partition = position?.let { SemanticFilePartition.File(it.file) } ?: state.frontier.firstEntry().value
         val native = observe(partition)
         return when (native) {
+            IntellijDeclarationPartitionObservation.TimeLimit -> {
+                state.qualifications += SymbolDiscoveryQualification.TIME_LIMIT_REACHED
+                false
+            }
             is IntellijDeclarationPartitionObservation.Rejected -> {
                 state.qualifications += SymbolDiscoveryQualification.PROVIDER_FAILURE
                 state.block = native.cause

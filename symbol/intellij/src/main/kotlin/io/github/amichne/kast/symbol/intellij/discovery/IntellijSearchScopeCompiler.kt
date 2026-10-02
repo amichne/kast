@@ -2,7 +2,6 @@ package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.search.DelegatingGlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.ProjectScope
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
@@ -93,6 +92,7 @@ internal constructor(
 
 internal class IntellijSearchScopeCompiler(
     private val constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
+    private val sourceRootAdmission: (Path) -> Boolean = { true },
     private val fileAdmission: (Path) -> Boolean = { true },
 ) {
     /**
@@ -173,7 +173,7 @@ internal class IntellijSearchScopeCompiler(
         if (policyRoots.isEmpty()) {
             return rejected(IntellijSearchScopeFailure.NoReadableSourceRoots)
         }
-        val readableRoots =
+        val constrainedRoots =
             when (val selected = constraints.sourceSets) {
                 SymbolDiscoverySourceSets.All -> policyRoots
                 is SymbolDiscoverySourceSets.Exact -> {
@@ -194,8 +194,23 @@ internal class IntellijSearchScopeCompiler(
                     policyRoots.filter { it.sourceSet in selected.values }
                 }
             }
-        if (readableRoots.isEmpty()) {
+        if (constrainedRoots.isEmpty()) {
             return rejected(IntellijSearchScopeFailure.NoReadableSourceRoots)
+        }
+        // Imported ownership includes Gradle's absent conventional source directories. Retain
+        // that ownership, but only seed discovery with roots admitted by the captured IDE model.
+        val readableRoots = constrainedRoots.filter { sourceRootAdmission(Path.of(it.sourceRoot.value)) }
+        if (readableRoots.isEmpty() && request.scope.libraryPolicy() == SymbolLibraryPolicy.EXCLUDE) {
+            return IntellijSearchScopeCompilation.Compiled(
+                CompiledIntellijSearchScope(
+                    lease = request.lease,
+                    scope = request.scope,
+                    sourceRoots = emptyList(),
+                    ownershipRoots = model.sourceRoots,
+                    nativeScope = GlobalSearchScope.EMPTY_SCOPE,
+                    population = IntellijScopePopulation.KNOWN_EMPTY,
+                )
+            )
         }
 
         val pathPolicy =
@@ -308,54 +323,6 @@ internal class IntellijSearchScopeQueryAdapter(
                 IntellijScopedQueryResult.Completed(query(compilation.capability))
             is IntellijSearchScopeCompilation.Rejected -> IntellijScopedQueryResult.Rejected(compilation.failures)
         }
-}
-
-private sealed interface IntellijModelPathPolicy {
-    fun contains(path: Path): Boolean
-
-    data class ExactFile(val file: Path) : IntellijModelPathPolicy {
-        override fun contains(path: Path): Boolean = path == file
-    }
-
-    data class SourceRoots(
-        val roots: List<Path>,
-        val ownershipRoots: List<Path>,
-    ) : IntellijModelPathPolicy {
-        override fun contains(path: Path): Boolean {
-            val owners = ownershipRoots.filter(path::startsWith)
-            val depth = owners.maxOfOrNull(Path::getNameCount) ?: return false
-            return owners.any { it.nameCount == depth && it in roots }
-        }
-    }
-}
-
-private class ModelOwnedGlobalSearchScope(
-    baseScope: GlobalSearchScope,
-    private val pathPolicy: IntellijModelPathPolicy,
-    private val libraryPolicy: SymbolLibraryPolicy,
-    private val nativePath: (VirtualFile) -> IntellijVirtualFilePath,
-    private val libraryMembership: (VirtualFile) -> IntellijLibraryMembership,
-    private val sourceMembership: (VirtualFile) -> Boolean,
-    private val fileAdmission: (Path) -> Boolean,
-) : DelegatingGlobalSearchScope(baseScope, pathPolicy) {
-    override fun contains(file: VirtualFile): Boolean {
-        if (!super.contains(file)) {
-            return false
-        }
-        if (
-            libraryPolicy == SymbolLibraryPolicy.INCLUDE && libraryMembership(file) == IntellijLibraryMembership.LIBRARY
-        ) {
-            return true
-        }
-        return when (val path = nativePath(file)) {
-            is IntellijVirtualFilePath.Absolute ->
-                sourceMembership(file) && fileAdmission(path.value) && pathPolicy.contains(path.value)
-            IntellijVirtualFilePath.Relative,
-            IntellijVirtualFilePath.Unavailable -> false
-        }
-    }
-
-    override fun isSearchInLibraries(): Boolean = libraryPolicy == SymbolLibraryPolicy.INCLUDE
 }
 
 private fun SymbolSourceKindPolicy.includes(kind: WorkspaceSourceRootKind): Boolean =
