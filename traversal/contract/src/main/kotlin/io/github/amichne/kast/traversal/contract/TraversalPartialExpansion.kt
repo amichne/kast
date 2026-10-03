@@ -82,7 +82,7 @@ private constructor(
             when {
                 limitations.isEmpty() -> return Refinement.Rejected(TraversalPartialExpansionFailure.EMPTY_LIMITATIONS)
                 entry.node.endpoint.lease != plan.start.lease ||
-                    entry.node.endpoint.scope != plan.scope ||
+                    !plan.admitsEndpoint(entry.node.endpoint) ||
                     entry.depth.value >= plan.budget.depth.value ->
                     return Refinement.Rejected(TraversalPartialExpansionFailure.ENTRY_OUTSIDE_PLAN)
                 result.batch.request.subject.fingerprint != entry.node.fingerprint ->

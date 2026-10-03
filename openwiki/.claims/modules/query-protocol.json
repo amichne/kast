@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:36556142d4e2fca64f08eb4b2e899d5bf8d36c8a6ab3cfd7f9aac161d1e70914",
+  "pageVersion": "sha256:5f18b199309aaf227330b7535537520d7faed0c1c467d76a173bce36e67fda70",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
       "statement": "Canonical query protocol separates new run, checkpoint/output continuation, and retained result presentation under the supplied semantic authority; read-result projects retained rows instead of executing a new semantic query.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L8-L45",
-          "version": "repo-lines-v1:sha256:6a2af195b9a496405b20f58619d3bcde296d3b06341eb7ec6b1a7b85dd3b0a66:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNjg4NjQzY2ViOWY4ODFhZmMwYTBhNjY0ZGIyZTFlMDRhYzk2ZWJkZGQ5MzM4OTdlZmUwOTc5ZjVjNDIxOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NGMzNGI3YzU3NzIxYzAwY2JkMjUyZWRhYjg5NTYwMDc2NDg1N2I1M2Q5ZjcwYTUwNGU5NTU4YzQ0MGQyYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyNmQ1NWIzOGNkZDllZDY1NDU3ZjE3MGQxYzU4OTNlNGUzMzk1ZjBlYzYyYzQzYmFhZTllNjQ2OWZkMDFhNTEifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L8-L47",
+          "version": "repo-lines-v1:sha256:22e87b30a587f4026c64d7e80493ad0bbad195d8c9c33ad05278b46aa5059238:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNjg4NjQzY2ViOWY4ODFhZmMwYTBhNjY0ZGIyZTFlMDRhYzk2ZWJkZGQ5MzM4OTdlZmUwOTc5ZjVjNDIxOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NGMzNGI3YzU3NzIxYzAwY2JkMjUyZWRhYjg5NTYwMDc2NDg1N2I1M2Q5ZjcwYTUwNGU5NTU4YzQ0MGQyYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyNmQ1NWIzOGNkZDllZDY1NDU3ZjE3MGQxYzU4OTNlNGUzMzk1ZjBlYzYyYzQzYmFhZTllNjQ2OWZkMDFhNTEifQ"
         }
       ]
     },
@@ -17,14 +17,28 @@
       "statement": "Continuation acquisition has explicit in-use, unavailable, mismatch and capacity failures; publication preparation retains the claim only when the owning publication boundary prepares it, otherwise finally releases it.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L47-L107",
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L49-L109",
           "version": "repo-lines-v1:sha256:f9ab8962ecda2296c7752e874d78a40c14b896f871d877748a3500747bda6058:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ODZlMDY0Mjg1ZDFmMWE3OGM3ZWIyNmE1ZTY5NDgxNWExMTU3YTIzZTExZjA3NmI4MGUzYzBhMDNiY2EzODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2MjhlNmE3NGZjZjI4ZDU4N2JkZDdjOGU0N2YyOTNmYjAyOTNmOWFmYmI1YTUzNTQwMDk4ZTI4NjljZWM2N2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzNmYyNDVmMDhmM2I4YTU0MGQ3NmU5Y2IxN2I2MTEzMzQ2N2VlOGY3NTkxMGMxZDNhMjQwY2U3Njk2NjIyZGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a5c55d136b7f47269c59c8dea9c66276",
+      "statement": "Impact source admission parses domain and model syntax before acquiring native seed/declaration/site proof once; resumed admitted plans retain that proof, while current public admission remains bound to one semantic authority and rejects foreign boundary bases.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt#L103-L124",
+          "version": "repo-lines-v1:sha256:08ac0236247d93d86d5a76c8906cc9cd2ffa9ec4d965ce9a7ebe9fd3cc995d9e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyYjdlMTZiYjUwYzYzN2E5NWFhOGI5Njc4MjE1N2I5NDVhMjU5ZjRkNzA2N2YxNGRkZTI5MDM3ODJmYWRkOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwMmEyNTg2MmQwNzJjNzliYmI5ODdhZmU4NDM1OTE4MWVmMjI5YzAxZTYwN2IwYzhlYjQxYjc2NjVmNDVhOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt#L32-L74",
+          "version": "repo-lines-v1:sha256:e472c56a4702fc2c988b536307302c64afb25f433eb46f893aa9fd9954bafccd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2MjI0YmRhZTJiM2JjZGU0Mjg2NzEyMTM3ODYzZDljOTc5NGJjNzYxN2RlOTk3YjlmZjMxNGQ4ZDdjNmExYWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiNmU4MWVjM2Q3NmI0ODZhMzYwMWUxY2FiMGJhZThiZDAwYTc0YzU1NTQ2YjQyN2NmNDQ0YjI4ZGQwZGNmMTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkMjVmMzIwNmQ1ZjcyZTM2YmI4NDdiMzljOWJmOTQyOGRlMzQ0ZGQ4MzQ4OTM5Yjc0ODdlOTI5ZWIzN2RiZmQifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-10-03T04:45:37.704Z"
   }
 }

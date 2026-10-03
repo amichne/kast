@@ -79,13 +79,15 @@ code_sources:
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+  - id: openwiki-source-da029c0f3804840096380efa
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt
+generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T04:45:37.704Z
 ---
 
 # Query protocol
@@ -235,3 +237,7 @@ and change planning retain strict authority. A refreshed read handle cannot
 refresh a previous page or authorize a write against changed document content.
 
 Source reads retain [precise failure origin](../contracts/source-failures.md) through admission and serialization. Their admitted rejection wrapper retains the complete cause, including internal obligations and finite reference lookup evidence.
+
+Impact source admission parses the expansion domain and closed model syntax before native acquisition. One aggregate grant owns seed, declaration and boundary-site revalidation. The admitted plan retains those current proofs, so resume restores them rather than reacquiring seeds or bindings. The existing query-state result retains the investigation ledger, value-path row kind and original closure; witness sections are presentations of that ledger.
+
+The current public source-admission boundary accepts one supplied semantic authority. Foreign repository bases fail closed before modeled connection; the domain boundary contract can retain separate source and target bases, but this host path does not establish a second repository's current proof. Model syntax, compiler binding, reviewed representation meaning and retained presentation remain distinct evidence levels.

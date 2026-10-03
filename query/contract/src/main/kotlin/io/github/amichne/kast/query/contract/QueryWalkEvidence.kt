@@ -98,6 +98,7 @@ data class QueryWalkObservation
 private constructor(
     val subject: SymbolSelector,
     val meaning: RelationMeaning,
+    val question: QueryRelationQuestion,
     val budget: TraversalBudget,
     val strategy: TraversalStrategy,
     val progress: TraversalProgress,
@@ -106,16 +107,24 @@ private constructor(
     val coverage: QueryWalkCoverage,
     val inheritedOmissions: List<QueryWalkPartialExpansion>,
     val referenceOccurrences: List<io.github.amichne.kast.traversal.contract.TraversalReferenceObservation>,
+    val scopeExclusions: List<io.github.amichne.kast.traversal.contract.TraversalScopeExclusion>,
 ) {
     /** Partition independent proof payloads before output accounting; their shared progress is a witness, not a sum. */
     fun evidenceUnits(): List<QueryWalkObservation> {
-        if (partialExpansions.size + inheritedOmissions.size + referenceOccurrences.size <= 1) return listOf(this)
+        if (partialExpansions.size + inheritedOmissions.size + referenceOccurrences.size + scopeExclusions.size <= 1)
+            return listOf(this)
         val structural =
-            copy(partialExpansions = emptyList(), inheritedOmissions = emptyList(), referenceOccurrences = emptyList())
+            copy(
+                partialExpansions = emptyList(),
+                inheritedOmissions = emptyList(),
+                referenceOccurrences = emptyList(),
+                scopeExclusions = emptyList(),
+            )
         val units =
             partialExpansions.map { structural.copy(partialExpansions = listOf(it)) } +
                 inheritedOmissions.map { structural.copy(inheritedOmissions = listOf(it)) } +
-                referenceOccurrences.map { structural.copy(referenceOccurrences = listOf(it)) }
+                referenceOccurrences.map { structural.copy(referenceOccurrences = listOf(it)) } +
+                scopeExclusions.map { structural.copy(scopeExclusions = listOf(it)) }
         return java.util.Collections.unmodifiableList(units)
     }
 
@@ -130,6 +139,21 @@ private constructor(
             QueryWalkObservation(
                 subject = page.plan.start,
                 meaning = page.plan.meaning,
+                question =
+                    page.plan.let { plan ->
+                        val endpoint = io.github.amichne.kast.relation.contract.RelationEndpoint.subject(plan.start)
+                        QueryRelationQuestion(
+                            endpoint,
+                            plan.meaning,
+                            plan.expansion,
+                            plan.scope,
+                            plan.expansion.effectiveConstraints(endpoint),
+                            io.github.amichne.kast.relation.contract.RelationScopeFingerprint.from(
+                                endpoint,
+                                plan.expansion,
+                            ),
+                        )
+                    },
                 budget = page.plan.budget,
                 strategy = page.plan.strategy,
                 progress = page.progress,
@@ -142,6 +166,7 @@ private constructor(
                         page.inheritedOmissions.map(QueryWalkPartialExpansion::from)
                     ),
                 referenceOccurrences = page.referenceOccurrences,
+                scopeExclusions = page.scopeExclusions,
             )
     }
 }

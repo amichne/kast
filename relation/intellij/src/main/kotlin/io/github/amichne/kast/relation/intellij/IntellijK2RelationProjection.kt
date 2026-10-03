@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
 import org.jetbrains.kotlin.analysis.api.projectStructure.kaModule
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -114,7 +113,7 @@ internal class IntellijK2RelationProjection(
     fun project(declaration: PsiNamedElement): IntellijRelationDeclarationProjection {
         val file = declaration.containingFile?.virtualFile ?: return IntellijRelationDeclarationProjection.Unsupported
         val detached =
-            when (val result = file.detachNative()) {
+            when (val result = detachRelationFile(file, workspaceRoot)) {
                 is IntellijDetachedRelationFile.Found -> result.identity
                 IntellijDetachedRelationFile.Unsupported -> return IntellijRelationDeclarationProjection.Unsupported
             }
@@ -128,59 +127,41 @@ internal class IntellijK2RelationProjection(
                 is IntellijCompilerProjectionResult.Projected -> result.projection
                 IntellijCompilerProjectionResult.Unsupported -> return IntellijRelationDeclarationProjection.Unsupported
             }
-        val range = declaration.textRange ?: return IntellijRelationDeclarationProjection.Unsupported
-        val evidence =
-            when (
-                val refined =
-                    CompilerGroundedSymbolEvidence.fromBoundary(
-                        detached,
-                        range.startOffset,
-                        range.endOffset,
-                        declaration.name.orEmpty(),
-                        projection.qualifiedIdentity,
-                        projection.kind,
-                        projection.signature,
-                    )
-            ) {
-                is Refinement.Refined -> refined.value
-                is Refinement.Rejected -> return IntellijRelationDeclarationProjection.Unsupported
-            }
-        return IntellijRelationDeclarationProjection.Projected(declaration, evidence)
+        return groundedProjection(declaration, detached, projection)
     }
 
     /**
      * Proof transition: `IntellijRelationReferenceAdmission.Admitted -> IntellijK2TargetConfirmation`.
      *
-     * Exact-symbol admission preserves compiler identity equality. Class-construction admission establishes in one K2
-     * analysis session that the call resolves to a constructor whose containing class ID equals the selected class
-     * symbol's class ID. Different and unproved targets remain finite non-admission states. Raw PSI and K2 symbols
-     * remain request-local.
+     * Exact-symbol admission preserves compiler identity and exact declaration location. Class-construction admission
+     * establishes in one K2 session that the call resolves to a constructor whose containing class has the selected
+     * compiler identity and source file/range. Different and unproved targets remain finite non-admission states. Raw
+     * PSI and K2 symbols remain request-local.
      */
     fun confirmTarget(admitted: IntellijRelationReferenceAdmission.Admitted): IntellijK2TargetConfirmation =
         when (admitted) {
             is IntellijRelationReferenceAdmission.Admitted.ExactSymbol ->
                 confirmExactTarget(admitted.reference, admitted.endpoint)
-            is IntellijRelationReferenceAdmission.Admitted.ClassConstruction -> confirmClassConstruction(admitted)
+            is IntellijRelationReferenceAdmission.Admitted.ClassConstruction ->
+                confirmClassConstruction(admitted, workspaceRoot, observation)
         }
 
     fun confirmReferenceTarget(reference: KtReference, subject: RelationEndpoint): IntellijReferenceTargetResult {
-        val identity =
-            when (
-                val result =
-                    analyze(reference.element) {
-                        val symbol =
-                            reference.resolveToSymbol() ?: return@analyze IntellijCompilerProjectionResult.Unsupported
-                        symbol.compilerProjection()
-                    }
-            ) {
-                is IntellijCompilerProjectionResult.Projected -> result.projection.identity
-                IntellijCompilerProjectionResult.Unsupported -> return IntellijReferenceTargetResult.Unresolved
+        val declaration =
+            when (val resolved = resolve(reference)) {
+                is IntellijK2ResolvedDeclaration.Found -> resolved.declaration
+                IntellijK2ResolvedDeclaration.Unresolved -> return IntellijReferenceTargetResult.Unresolved
+            }
+        val evidence =
+            when (val result = project(declaration)) {
+                is IntellijRelationDeclarationProjection.Projected -> result.evidence
+                IntellijRelationDeclarationProjection.Unsupported -> return IntellijReferenceTargetResult.Unresolved
             }
         return when (
             val proof =
                 io.github.amichne.kast.relation.contract.RelationConfirmedReferenceTarget.fromCompiler(
                     subject,
-                    identity,
+                    evidence,
                 )
         ) {
             is Refinement.Refined -> IntellijReferenceTargetResult.Confirmed(proof.value)
@@ -193,26 +174,6 @@ internal class IntellijK2RelationProjection(
             is IntellijReferenceTargetResult.Confirmed -> IntellijK2TargetConfirmation.EXACT_SUBJECT
             IntellijReferenceTargetResult.Different -> IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
             IntellijReferenceTargetResult.Unresolved -> IntellijK2TargetConfirmation.UNRESOLVED
-        }
-
-    private fun confirmClassConstruction(
-        admitted: IntellijRelationReferenceAdmission.Admitted.ClassConstruction
-    ): IntellijK2TargetConfirmation =
-        analyze(admitted.reference.element) {
-            val selectedClass =
-                nativeSymbol(admitted.selectedClass) as? KaClassSymbol
-                    ?: return@analyze IntellijK2TargetConfirmation.UNRESOLVED
-            val selectedClassId = selectedClass.classId ?: return@analyze IntellijK2TargetConfirmation.UNRESOLVED
-            val constructor =
-                admitted.reference.resolveToSymbol() as? KaConstructorSymbol
-                    ?: return@analyze IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
-            val constructorOwner =
-                constructor.containingClassId ?: return@analyze IntellijK2TargetConfirmation.UNRESOLVED
-            if (constructorOwner == selectedClassId) {
-                IntellijK2TargetConfirmation.EXACT_SUBJECT
-            } else {
-                IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
-            }
         }
 
     /**
@@ -310,7 +271,7 @@ internal class IntellijK2RelationProjection(
                     val proof =
                         io.github.amichne.kast.relation.contract.RelationConfirmedReferenceTarget.fromCompiler(
                             subject,
-                            result.evidence.compilerIdentity,
+                            result.evidence,
                         )
                 ) {
                     is Refinement.Refined -> IntellijReferenceTargetResult.Confirmed(proof.value)
@@ -327,27 +288,7 @@ internal class IntellijK2RelationProjection(
         }
 
     /** Detaches one request-local VFS value under the exact selector root. */
-    fun detach(file: VirtualFile): IntellijDetachedRelationFile = file.detachNative()
-
-    private fun VirtualFile.detachNative(): IntellijDetachedRelationFile {
-        val native =
-            when (val classified = relationNativePath(this)) {
-                is IntellijRelationNativePath.Absolute -> classified.value
-                IntellijRelationNativePath.Relative,
-                IntellijRelationNativePath.Unavailable -> null
-            }
-        return when (
-            val detached =
-                SymbolDiscoveryFileIdentity.fromBoundary(
-                    workspaceRoot,
-                    native,
-                    url,
-                )
-        ) {
-            is Refinement.Refined -> IntellijDetachedRelationFile.Found(detached.value)
-            is Refinement.Rejected -> IntellijDetachedRelationFile.Unsupported
-        }
-    }
+    fun detach(file: VirtualFile): IntellijDetachedRelationFile = detachRelationFile(file, workspaceRoot)
 }
 
 private fun confirmed() = IntellijK2DefinitionConfirmation.CONFIRMED
@@ -357,10 +298,35 @@ private fun different() = IntellijK2DefinitionConfirmation.DIFFERENT_RELATION
 private fun rejected(reason: IntellijRelationSubjectFailure) = IntellijRelationSubjectLookup.Rejected(reason)
 
 /** Nullable Java interop results are consumed inside the K2 session and never become evidence. */
-private fun KaSession.nativeSymbol(declaration: PsiNamedElement): org.jetbrains.kotlin.analysis.api.symbols.KaSymbol? =
+internal fun KaSession.nativeSymbol(declaration: PsiNamedElement): org.jetbrains.kotlin.analysis.api.symbols.KaSymbol? =
     when (declaration) {
         is KtNamedDeclaration -> declaration.symbol
         is PsiClass -> declaration.namedClassSymbol
         is PsiMember -> declaration.callableSymbol
         else -> null
     }
+
+internal fun groundedProjection(
+    declaration: PsiNamedElement,
+    detached: SymbolDiscoveryFileIdentity,
+    projection: IntellijCompilerProjection,
+): IntellijRelationDeclarationProjection {
+    val range = declaration.textRange ?: return IntellijRelationDeclarationProjection.Unsupported
+    val evidence =
+        when (
+            val refined =
+                CompilerGroundedSymbolEvidence.fromBoundary(
+                    detached,
+                    range.startOffset,
+                    range.endOffset,
+                    declaration.name.orEmpty(),
+                    projection.qualifiedIdentity,
+                    projection.kind,
+                    projection.signature,
+                )
+        ) {
+            is Refinement.Refined -> refined.value
+            is Refinement.Rejected -> return IntellijRelationDeclarationProjection.Unsupported
+        }
+    return IntellijRelationDeclarationProjection.Projected(declaration, evidence)
+}

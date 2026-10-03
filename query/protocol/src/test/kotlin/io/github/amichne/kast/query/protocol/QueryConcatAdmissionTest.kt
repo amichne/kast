@@ -77,7 +77,7 @@ class QueryConcatAdmissionTest {
                         listOf(fixture.selector),
                         (admitted.plan as AdmittedQueryPlan.ExactReferences).source.values,
                     )
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(
                             QueryRows.Symbols.of(
                                 listOf(QuerySymbol(SymbolDescription.from(fixture.selector), emptyList()))
@@ -183,7 +183,7 @@ class QueryConcatAdmissionTest {
     private fun qualifiedThenComplete(admitted: QueryExecutionRequest, execution: Int): QueryExecutionResult {
         val result = QueryResult(QueryRows.Symbols.of(emptyList()), emptyList())
         if (execution != 1)
-            return QueryExecutionResult.Complete(
+            return QueryExecutionResult.Complete.create(
                 result,
                 QueryCoverage.Complete(QueryCount.parse(0).refined()),
             )

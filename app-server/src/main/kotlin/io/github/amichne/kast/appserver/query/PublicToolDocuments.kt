@@ -90,6 +90,19 @@ internal enum class PublicToolRetention {
 }
 
 @Serializable
+internal enum class PublicToolSourcePolicy {
+    @SerialName("PRODUCTION_ONLY") PRODUCTION_ONLY,
+    @SerialName("TEST_ONLY") TEST_ONLY,
+    @SerialName("PRODUCTION_AND_TEST") PRODUCTION_AND_TEST,
+}
+
+@Serializable
+internal enum class PublicToolGeneratedSources {
+    @SerialName("EXCLUDE") EXCLUDE,
+    @SerialName("INCLUDE") INCLUDE,
+}
+
+@Serializable
 internal sealed interface PublicToolOutput
 
 @Serializable
@@ -121,6 +134,9 @@ internal sealed interface PublicToolAction
 
 @Serializable
 internal sealed interface PublicToolRetainedInput
+
+@Serializable
+internal sealed interface PublicToolExpansionScope
 
 @Serializable
 @SerialName("SYMBOL_REFS")
@@ -166,6 +182,7 @@ internal data class PublicToolWhere(
 @SerialName("EXPAND_RELATION")
 internal data class PublicToolExpandRelation(
     val relation: PublicToolRelation,
+    val expansionScope: PublicToolExpansionScope? = null,
 ) : PublicToolStep
 
 @Serializable
@@ -184,6 +201,7 @@ internal data class PublicToolWalk(
     val relation: PublicToolRelation,
     val maximumDepth: ProtocolCount? = null,
     val strategy: PublicToolWalkStrategy? = null,
+    val expansionScope: PublicToolExpansionScope? = null,
 ) : PublicToolStep
 
 @Serializable
@@ -286,6 +304,10 @@ internal data class PublicToolJoin(
 @Serializable
 @SerialName("BINDING_ROWS")
 internal data object PublicToolBindingRowsOutput : PublicToolOutput, PublicToolReadResultOutput
+
+@Serializable
+@SerialName("VALUE_PATHS")
+internal data object PublicToolValuePathsOutput : PublicToolOutput, PublicToolReadResultOutput
 
 @Serializable
 internal data class PublicToolQuerySymbols(

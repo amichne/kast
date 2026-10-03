@@ -78,49 +78,28 @@ private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, Publ
     }
 
 private fun PublicToolReadResultAction.lowerReadResult(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
-    when (val selected = output?.lower() ?: PublicToolDefaults.output) {
-        is QueryOutputDocument.Symbols ->
-            Refinement.Refined(
-                PublicToolCanonical.Query(
-                    QueryRunRequest.ReadResult.symbols(
-                        result,
-                        cursor ?: QueryResultCursor.Start,
-                        selected,
-                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
-                    )
-                )
-            )
-        QueryOutputDocument.Occurrences ->
-            Refinement.Refined(
-                PublicToolCanonical.Query(
-                    QueryRunRequest.ReadResult.occurrences(
-                        result,
-                        cursor ?: QueryResultCursor.Start,
-                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
-                    )
-                )
-            )
+    Refinement.Refined(PublicToolCanonical.Query(lowerReadResultRequest()))
+
+private fun PublicToolReadResultAction.lowerReadResultRequest(): QueryRunRequest.ReadResult {
+    val selected = output?.lower() ?: PublicToolDefaults.output
+    val retainedCursor = cursor ?: QueryResultCursor.Start
+    val budget = (executionBudget ?: PublicToolDefaults.executionBudget).lower()
+    return when (selected) {
+        is QueryOutputDocument.Symbols -> QueryRunRequest.ReadResult.symbols(result, retainedCursor, selected, budget)
+        QueryOutputDocument.Occurrences -> QueryRunRequest.ReadResult.occurrences(result, retainedCursor, budget)
         QueryOutputDocument.TraversalRecords ->
-            Refinement.Refined(
-                PublicToolCanonical.Query(
-                    QueryRunRequest.ReadResult.traversalRecords(
-                        result,
-                        cursor ?: QueryResultCursor.Start,
-                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
-                    )
-                )
+            QueryRunRequest.ReadResult.traversalRecords(result, retainedCursor, budget)
+        QueryOutputDocument.ValuePaths -> QueryRunRequest.ReadResult.valuePaths(result, retainedCursor, budget)
+        is QueryOutputDocument.ImpactWitness ->
+            QueryRunRequest.ReadResult.impactWitness(
+                result = result,
+                section = selected.section,
+                cursor = retainedCursor,
+                executionBudget = budget,
             )
-        QueryOutputDocument.BindingRows ->
-            Refinement.Refined(
-                PublicToolCanonical.Query(
-                    QueryRunRequest.ReadResult.bindingRows(
-                        result,
-                        cursor ?: QueryResultCursor.Start,
-                        (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
-                    )
-                )
-            )
+        QueryOutputDocument.BindingRows -> QueryRunRequest.ReadResult.bindingRows(result, retainedCursor, budget)
     }
+}
 
 internal fun PublicToolExecutionBudget.lower(): ExecutionBudgetDocument =
     ExecutionBudgetDocument(
@@ -132,6 +111,7 @@ internal fun PublicToolExecutionBudget.lower(): ExecutionBudgetDocument =
 
 private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolInputFailure> =
     when (this) {
+        is PublicToolImpactSource -> Refinement.Refined(lowerImpactSource())
         is PublicToolLocationSource ->
             when (WorkspaceRelativePath.parse(file.value)) {
                 is Refinement.Rejected ->
@@ -258,13 +238,20 @@ private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, Pu
 private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInputFailure> =
     when (this) {
         is PublicToolWhere -> Refinement.Refined(QueryStepDocument.Where(predicate.lower()))
-        is PublicToolExpandRelation -> Refinement.Refined(QueryStepDocument.Related(relation.lower()))
+        is PublicToolExpandRelation ->
+            Refinement.Refined(
+                QueryStepDocument.Related(
+                    relation.lower(),
+                    expansionScope?.lowerExpansionScope() ?: QueryExpansionScopeDocument.Workspace,
+                )
+            )
         is PublicToolWalk ->
             Refinement.Refined(
                 QueryStepDocument.Walk(
                     relation.lower(),
                     maximumDepth ?: PublicToolDefaults.walkDepth,
                     strategy?.lower() ?: TraversalStrategyDocument.BreadthFirst,
+                    expansionScope?.lowerExpansionScope() ?: QueryExpansionScopeDocument.RetainedSeed,
                 )
             )
         PublicToolDistinctSymbols -> Refinement.Refined(QueryStepDocument.Distinct)

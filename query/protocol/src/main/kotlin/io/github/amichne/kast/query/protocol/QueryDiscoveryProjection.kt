@@ -126,7 +126,7 @@ private fun SymbolDiscoveryTarget.matchDocument(): QueryMatchDocument? {
     }
 }
 
-private fun SymbolDiscoverySourceSets.document(): QueryDiscoverySourceSetsDocument? {
+internal fun SymbolDiscoverySourceSets.document(): QueryDiscoverySourceSetsDocument? {
     return when (this) {
         SymbolDiscoverySourceSets.All -> QueryDiscoverySourceSetsDocument.All
         is SymbolDiscoverySourceSets.Exact ->
@@ -139,14 +139,14 @@ private fun SymbolDiscoverySourceSets.document(): QueryDiscoverySourceSetsDocume
     }
 }
 
-private fun SymbolDiscoveryDirectoryConstraint.document(): QueryDirectoryScopeDocument? {
+internal fun SymbolDiscoveryDirectoryConstraint.document(): QueryDirectoryScopeDocument? {
     return QueryDirectoryScopeDocument(
         ProtocolText.parse(directory.value).valueOrNull() ?: return null,
         containment.document(),
     )
 }
 
-private fun SymbolDiscoveryPackageConstraint.document(): QueryPackageScopeDocument? {
+internal fun SymbolDiscoveryPackageConstraint.document(): QueryPackageScopeDocument? {
     return QueryPackageScopeDocument(
         ProtocolText.parse(packageName.value).valueOrNull() ?: return null,
         containment.document(),
@@ -159,7 +159,7 @@ private fun SymbolDiscoveryContainment.document(): QueryContainmentDocument =
         SymbolDiscoveryContainment.DESCENDANTS -> QueryContainmentDocument.DESCENDANTS
     }
 
-private fun CompilerSymbolKind.document(): QueryDeclarationKindDocument =
+internal fun CompilerSymbolKind.document(): QueryDeclarationKindDocument =
     when (this) {
         CompilerSymbolKind.CLASSLIKE -> QueryDeclarationKindDocument.CLASS
         CompilerSymbolKind.CONSTRUCTOR -> QueryDeclarationKindDocument.CONSTRUCTOR
@@ -168,20 +168,20 @@ private fun CompilerSymbolKind.document(): QueryDeclarationKindDocument =
         CompilerSymbolKind.TYPE_ALIAS -> QueryDeclarationKindDocument.TYPE_ALIAS
     }
 
-private fun SymbolSourceKindPolicy.document(): QueryDiscoverySourcePolicyDocument =
+internal fun SymbolSourceKindPolicy.document(): QueryDiscoverySourcePolicyDocument =
     when (this) {
         SymbolSourceKindPolicy.PRODUCTION_ONLY -> QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY
         SymbolSourceKindPolicy.TEST_ONLY -> QueryDiscoverySourcePolicyDocument.TEST_ONLY
         SymbolSourceKindPolicy.PRODUCTION_AND_TEST -> QueryDiscoverySourcePolicyDocument.PRODUCTION_AND_TEST
     }
 
-private fun SymbolGeneratedSourcePolicy.document(): QueryDiscoveryInclusionPolicyDocument =
+internal fun SymbolGeneratedSourcePolicy.document(): QueryDiscoveryInclusionPolicyDocument =
     when (this) {
         SymbolGeneratedSourcePolicy.EXCLUDE -> QueryDiscoveryInclusionPolicyDocument.EXCLUDE
         SymbolGeneratedSourcePolicy.INCLUDE -> QueryDiscoveryInclusionPolicyDocument.INCLUDE
     }
 
-private fun SymbolLibraryPolicy.document(): QueryDiscoveryInclusionPolicyDocument =
+internal fun SymbolLibraryPolicy.document(): QueryDiscoveryInclusionPolicyDocument =
     when (this) {
         SymbolLibraryPolicy.EXCLUDE -> QueryDiscoveryInclusionPolicyDocument.EXCLUDE
         SymbolLibraryPolicy.INCLUDE -> QueryDiscoveryInclusionPolicyDocument.INCLUDE

@@ -1,0 +1,26 @@
+{
+  "subject": {
+    "token": "exact:fixture-node"
+  },
+  "relation": "references",
+  "maximum_depth": 2,
+  "expanded_frontier": 1,
+  "progress": {
+    "checkpointSequence": 1,
+    "totalReads": 1,
+    "totalEdges": 0,
+    "maximumDepthReached": 0
+  },
+  "strategy": {
+    "type": "breadth_first"
+  },
+  "partial_expansions": [],
+  "coverage": {
+    "kind": "complete"
+  },
+  "requested_domain": "WORKSPACE",
+  "domain_fingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+  "inherited_omissions": [],
+  "reference_occurrences": [],
+  "scope_exclusions": []
+}

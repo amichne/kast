@@ -456,6 +456,113 @@
           }
         }
       }
+    },
+    "representationImpact": {
+      "summary": "Illustrative handles only: investigate an exact producer invocation across the workspace and retain value paths. Empty reviewed models leave representation and boundary obligations qualified; native admission must revalidate the handles and whole invocation anchor.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "IMPACT",
+            "seeds": [
+              {
+                "enclosing": "exact:v5:illustrative-enclosing-handle",
+                "callable": "exact:v5:illustrative-producer-handle",
+                "anchor": {
+                  "start": 120,
+                  "end": 136
+                }
+              }
+            ],
+            "declarations": [],
+            "domain": {
+              "type": "WORKSPACE"
+            },
+            "flow": "KOTLIN_FORWARD_V1",
+            "models": []
+          },
+          "steps": [],
+          "output": {
+            "type": "VALUE_PATHS"
+          },
+          "retention": "RETAIN"
+        }
+      }
+    },
+    "readImpactProducers": {
+      "summary": "Read retained producer witnesses using an illustrative result handle; this presentation preserves the original investigation question and qualification.",
+      "value": {
+        "request": {
+          "type": "READ_RESULT",
+          "result": "result:v1:00000000-0000-4000-8000-000000000001",
+          "output": {
+            "type": "IMPACT_WITNESS",
+            "section": "PRODUCERS"
+          }
+        }
+      }
+    },
+    "narrowReferenceExpansion": {
+      "summary": "Illustrative exact reference with native expansion restricted to one imported source set and directory. Replace the handle with an issued current-basis reference; the directory restricts destinations, not seed selection.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          "steps": [
+            {
+              "type": "EXPAND_RELATION",
+              "relation": "REFERENCES",
+              "expansionScope": {
+                "type": "SOURCE_DOMAIN",
+                "sourceSets": [
+                  "main"
+                ],
+                "directory": "logging/src/main/kotlin/representation/fixture",
+                "includeSubdirectories": false,
+                "sourcePolicy": "PRODUCTION_ONLY",
+                "generatedSources": "EXCLUDE"
+              }
+            }
+          ],
+          "output": {
+            "type": "OCCURRENCES"
+          },
+          "retention": "RETAIN"
+        }
+      }
+    },
+    "workspaceReferenceWalk": {
+      "summary": "Illustrative one-hop walk with explicit workspace expansion independent of the selected symbol scope.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          "steps": [
+            {
+              "type": "WALK",
+              "relation": "REFERENCES",
+              "maximumDepth": 1,
+              "expansionScope": {
+                "type": "WORKSPACE"
+              }
+            }
+          ],
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          },
+          "retention": "RETAIN"
+        }
+      }
     }
   },
   "invalidExamples": {
@@ -592,6 +699,153 @@
             "word": "launchd",
             "declarationKinds": []
           }
+        }
+      }
+    },
+    "impactUnknownFlow": {
+      "summary": "Reject an unknown impact flow semantics value.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "IMPACT",
+            "seeds": [
+              {
+                "enclosing": "exact:v5:illustrative-enclosing-handle",
+                "callable": "exact:v5:illustrative-producer-handle",
+                "anchor": {
+                  "start": 120,
+                  "end": 136
+                }
+              }
+            ],
+            "declarations": [],
+            "domain": {
+              "type": "WORKSPACE"
+            },
+            "flow": "UNKNOWN_FLOW",
+            "models": []
+          },
+          "steps": [],
+          "output": {
+            "type": "VALUE_PATHS"
+          },
+          "retention": "RETAIN"
+        }
+      }
+    },
+    "impactUnknownModel": {
+      "summary": "Reject an unknown reviewed-model discriminator.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "IMPACT",
+            "seeds": [
+              {
+                "enclosing": "exact:v5:illustrative-enclosing-handle",
+                "callable": "exact:v5:illustrative-producer-handle",
+                "anchor": {
+                  "start": 120,
+                  "end": 136
+                }
+              }
+            ],
+            "declarations": [],
+            "domain": {
+              "type": "WORKSPACE"
+            },
+            "flow": "KOTLIN_FORWARD_V1",
+            "models": [
+              {
+                "type": "UNKNOWN_MODEL"
+              }
+            ]
+          },
+          "steps": [],
+          "output": {
+            "type": "VALUE_PATHS"
+          },
+          "retention": "RETAIN"
+        }
+      }
+    },
+    "unknownExpansionScope": {
+      "summary": "Expansion scope is a closed discriminator vocabulary.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          "steps": [
+            {
+              "type": "EXPAND_RELATION",
+              "relation": "REFERENCES",
+              "expansionScope": {
+                "type": "UNKNOWN"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "missingExpansionPolicy": {
+      "summary": "SOURCE_DOMAIN explicitly names source ownership policy.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          "steps": [
+            {
+              "type": "EXPAND_RELATION",
+              "relation": "REFERENCES",
+              "expansionScope": {
+                "type": "SOURCE_DOMAIN",
+                "sourceSets": [
+                  "main"
+                ],
+                "generatedSources": "EXCLUDE"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "discoveryPredicateInExpansion": {
+      "summary": "Discovery names cannot substitute for native expansion membership.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          "steps": [
+            {
+              "type": "EXPAND_RELATION",
+              "relation": "REFERENCES",
+              "expansionScope": {
+                "type": "SOURCE_DOMAIN",
+                "sourceSets": [
+                  "main"
+                ],
+                "sourcePolicy": "PRODUCTION_ONLY",
+                "generatedSources": "EXCLUDE",
+                "declarationName": "encrypt"
+              }
+            }
+          ]
         }
       }
     }

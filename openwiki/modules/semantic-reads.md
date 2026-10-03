@@ -131,15 +131,23 @@ code_sources:
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCalleeInventory.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRetainedRelationRead.kt
   - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
+  - id: openwiki-source-c5f0a7cc49121c1f25d33773
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt
+  - id: openwiki-source-6226241beb5c7447a86b663f
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueBoundary.kt
+  - id: openwiki-source-d3f0d7e24d35ed4b47aff3d5
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt
+  - id: openwiki-source-eeb2af1b330e389cae564042
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
   - id: openwiki-source-ca4cb79efb8948231564ac6f
     resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T04:45:37.704Z
 ---
 
 # Semantic read domains
@@ -503,3 +511,11 @@ addition to existing work counters and phase observations. Each hosted request
 initializes both page counters to an observed zero; only a returned native page
 increments its counter. These measurements stay outside model-facing output and
 do not equate page quantity with CPU cost or complete semantic coverage.
+
+## Exact value sites and reviewed models
+
+`ValueInvocation` retains the enclosing compiler declaration, exact invocation range, callable compiler identity and semantic basis. Its result site is distinct from another call of the same function. Value sites add a closed expression, local binding/read, formal argument, return or property-assignment role; an argument retains the actual invocation and resolved formal position.
+
+The current forward adapter handles bounded local immutable bindings and reads, immediate arguments, direct transparent wrapper returns and supported value-producing branch alternatives. Mutable control flow, unsupported expressions, unresolved references, external calls and exhausted grants remain named obligations. All PSI and K2 observations stay inside the native read boundary; retained sites and transfers are detached data.
+
+Reviewed representation rules establish origins, transfers, transformations and consumer expectations. Current state and history are separate: a transformation replaces current representation while retaining its prior evidence. Boundary models bind exact proven source/target positions, contract identity/version and supplied compatibility assumptions. A modeled terminal differs from an unresolved boundary; persistence retains retention/decoding/migration obligations. Compiler identity and flow do not establish runtime encryption or deployment compatibility.

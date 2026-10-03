@@ -185,7 +185,11 @@ class LiveReadOutputSchemaTest {
         listOf(
             CanonicalOperation.QUERY_RUN to
                 CanonicalQueryCliDocuments.project(
-                        complete(CanonicalOperation.QUERY_RUN, basis, QueryRunResult(empty(), empty()))
+                        complete(
+                            CanonicalOperation.QUERY_RUN,
+                            basis,
+                            QueryRunResult(fixtureQueryQuestion(), empty(), empty()),
+                        )
                     )
                     .document(detail),
             CanonicalOperation.SOURCE_READ to
@@ -202,7 +206,7 @@ class LiveReadOutputSchemaTest {
 
     internal fun completeQueryDocument(): io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument =
         (CanonicalQueryCliDocuments.project(
-                complete(CanonicalOperation.QUERY_RUN, live, QueryRunResult(empty(), empty()))
+                complete(CanonicalOperation.QUERY_RUN, live, QueryRunResult(fixtureQueryQuestion(), empty(), empty()))
             ) as ProjectedOperationOutcome.Complete)
             .document
 
@@ -214,7 +218,11 @@ class LiveReadOutputSchemaTest {
             CanonicalOperation.QUERY_RUN to
                 CanonicalQueryCliDocuments.project(
                         OperationOutcome.Qualified(
-                            EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, basis, QueryRunResult(empty(), empty())),
+                            EvidenceEnvelope(
+                                CanonicalOperation.QUERY_RUN.id,
+                                basis,
+                                QueryRunResult(fixtureQueryQuestion(), empty(), empty()),
+                            ),
                             QueryRunQualification.create(
                                     QueryKnownMinimum.parse(0).refined(),
                                     listOf(QueryLimitationDocument.DISCOVERY_INCOMPLETE),
@@ -386,4 +394,26 @@ class LiveReadOutputSchemaTest {
     private fun <T> empty(): BoundedProtocolList<T> = BoundedProtocolList.create(emptyList<T>()).refined()
 
     internal fun <T, F> Refinement<T, F>.refined(): T = (this as Refinement.Refined).value
+}
+
+private fun fixtureQueryQuestion(): io.github.amichne.kast.protocol.contract.QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: io.github.amichne.kast.kernel.Refinement<Value, Failure>): Value =
+        when (value) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return io.github.amichne.kast.protocol.contract.QueryQuestionDocument(
+        io.github.amichne.kast.protocol.contract.QueryFromDocument.Location(
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolText.parse("Fixture.kt")),
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(emptyList())),
+        io.github.amichne.kast.protocol.contract.QueryOutputDocument.Symbols(
+            fixtureValue(
+                io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                    listOf(io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument.NAME)
+                )
+            )
+        ),
+    )
 }

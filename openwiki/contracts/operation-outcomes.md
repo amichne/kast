@@ -18,6 +18,7 @@ code_sources:
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetPresence.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt
   - path: README.md
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
@@ -32,10 +33,16 @@ sources:
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
   - id: openwiki-source-ddbecea6a66f516818cd6c13
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+  - id: openwiki-source-9fcd90db4b894268639790f3
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
+  - id: openwiki-source-4be8493dd702830e9781ac13
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt
+  - id: openwiki-source-02b2e37271b094bf49925843
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt
+generated: { by: "codex", at: "2026-10-03T05:39:07.082Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T03:24:34.910Z
+    at: 2026-10-03T05:39:07.082Z
 ---
 
 # Operation outcomes
@@ -111,3 +118,9 @@ Hosted hard deadline exhaustion cannot publish an unvalidated result. It returns
 `reduce_read_work` with the available admission budget; cancellation is separately
 identified and does not claim a timeout. A semantic provider that stops within
 its grant can return accumulated facts as qualified evidence.
+
+Impact completion additionally requires the conserved investigation ledger. Every admitted producer, compiler branch, read rejection, model arrival and required terminal obligation remains accounted for. A drained execution with required native-flow, boundary, representation, execution-boundary or producer-identity obligations stays qualified. `impact_accounting` retains the original counts and closure independently from the displayed page; a selected subset cannot establish the original closure.
+
+Ledger construction also checks every applicable reviewed origin, transfer, transformation, consumer expectation and boundary alternative. Native branch accounting keeps each route's exact origin history and preceding model steps, so one modeled route cannot supply another route's missing branch. Omission rejects with `MISSING_BRANCH`. Nonmatching or unvisited models remain retained without creating a route; an explicit execution cutoff retains its unresolved obligation.
+
+Impact source admission has closed reference and admission failures. Each admission cause owns its recovery direction, while execution and presentation failures retain their finite owner-specific shapes. These failures do not become empty successful results.

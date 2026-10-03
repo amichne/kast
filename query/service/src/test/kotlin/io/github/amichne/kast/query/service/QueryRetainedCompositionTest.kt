@@ -295,6 +295,7 @@ class QueryRetainedCompositionTest {
         when (this) {
             is QueryExecutionResult.Complete -> result.symbolRows()
             is QueryExecutionResult.Qualified -> result.symbolRows()
+            is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
             is QueryExecutionResult.Rejected -> error("Unexpected rejection: $reason")
         }
 

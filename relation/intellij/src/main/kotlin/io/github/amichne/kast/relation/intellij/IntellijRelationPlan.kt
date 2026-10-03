@@ -102,21 +102,24 @@ internal sealed interface IntellijRelationReferenceAdmission {
         private constructor(
             override val reference: KtReference,
             val selectedClass: PsiNamedElement,
+            val endpoint: RelationEndpoint,
         ) : Admitted {
             companion object {
                 /**
-                 * Proof transition: `(KtReference, KtNamedDeclaration) -> IntellijRelationReferenceAdmission`.
+                 * Proof transition: `(KtReference, PsiNamedElement, RelationEndpoint) ->
+                 * IntellijRelationReferenceAdmission`.
                  *
-                 * An admitted result establishes that the reference occupies the callee range of a Kotlin call. Skipped
-                 * is the closed non-call shape. Raw PSI remains inside the request-local relation adapter and may be
-                 * read only by K2 confirmation.
+                 * An admitted result retains the exact selected endpoint and establishes that the reference occupies
+                 * the callee range of a Kotlin call. Skipped is the closed non-call shape. Raw PSI remains inside the
+                 * request-local relation adapter and may be read only by K2 confirmation.
                  */
                 fun admit(
                     reference: KtReference,
                     selectedClass: PsiNamedElement,
+                    endpoint: RelationEndpoint,
                 ): IntellijRelationReferenceAdmission =
                     if (reference.element.isCallCallee()) {
-                        ClassConstruction(reference, selectedClass)
+                        ClassConstruction(reference, selectedClass, endpoint)
                     } else {
                         Skipped
                     }
@@ -172,7 +175,7 @@ internal fun IntellijRelationPlan.References.admit(
                 IntellijRelationReferenceAdmission.Skipped
             }
         IntellijReferenceConfirmationPlan.ClassConstruction ->
-            IntellijRelationReferenceAdmission.Admitted.ClassConstruction.admit(reference, subject)
+            IntellijRelationReferenceAdmission.Admitted.ClassConstruction.admit(reference, subject, endpoint)
     }.also { admitted ->
         observation.count(
             when (admitted) {

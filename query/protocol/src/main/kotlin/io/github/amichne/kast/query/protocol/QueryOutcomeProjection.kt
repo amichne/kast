@@ -32,6 +32,8 @@ internal class QueryOutcomeProjection(
         publicationOwner: QueryExecutionClaim? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> =
         when (result) {
+            is QueryExecutionResult.ImpactRejected ->
+                OperationOutcome.Rejected(QueryRunRejection.ImpactExecutionRejected(result.failure.executionDocument()))
             is QueryExecutionResult.Complete ->
                 project(
                     request = request,
@@ -82,7 +84,7 @@ internal class QueryOutcomeProjection(
             lease = lease,
             result = presentation.result,
             coverage = presentation.coverage,
-            continuationState = restored.result.producerProgress,
+            continuationState = presentation.producerProgress,
             output = request.output,
             presentedRetention = QueryResultRetention.Retained(request.result),
             presentedRowIds = presentation.rowIds,
@@ -116,7 +118,7 @@ internal class QueryOutcomeProjection(
         val evidence =
             when (val projected = QueryProjectedEvidence.from(result, output, authority)) {
                 is Refinement.Refined -> projected.value
-                is Refinement.Rejected -> return contractRejected()
+                is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
             }
         val qualification =
             when (
@@ -151,11 +153,20 @@ internal class QueryOutcomeProjection(
                 is Refinement.Refined -> projected.value
                 is Refinement.Rejected -> return contractRejected()
             }
-        return finishProjection(lease, evidence, presented, qualification, presentationWindow, presentationOrigin)
+        return finishProjection(
+            lease,
+            io.github.amichne.kast.protocol.contract.QueryQuestionDocument.from(request),
+            evidence,
+            presented,
+            qualification,
+            presentationWindow,
+            presentationOrigin,
+        )
     }
 
     private fun finishProjection(
         lease: SemanticReadAuthority,
+        question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
         evidence: QueryProjectedEvidence,
         presented: PresentedQueryRows,
         qualification: QueryRunQualification?,
@@ -173,6 +184,7 @@ internal class QueryOutcomeProjection(
         val envelope =
             authority.resultEnvelope(
                 lease,
+                question,
                 presented,
                 evidence,
                 fittedWindow,

@@ -68,7 +68,53 @@ internal constructor(
     val request: RelationRequest,
     val sourceRoots: List<ModelOwnedSourceRoot>,
     val nativeScope: GlobalSearchScope,
-)
+    private val sourceDomain: RelationSourceDomainMembership,
+    private val libraryMembership: (VirtualFile) -> Boolean,
+    private val libraries: SymbolLibraryPolicy,
+) {
+    /** Membership is decided before native candidate capacity or locator detachment. */
+    fun admitProviderSite(file: VirtualFile?): RelationProviderScopeAdmission =
+        when {
+            file == null -> RelationProviderScopeAdmission.UNAVAILABLE
+            nativeScope.contains(file) -> RelationProviderScopeAdmission.ADMITTED
+            libraryMembership(file) ->
+                if (libraries == SymbolLibraryPolicy.EXCLUDE) RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED
+                else RelationProviderScopeAdmission.UNAVAILABLE
+            else -> sourceDomain.classifyExcluded(relationNativePath(file))
+        }
+}
+
+internal enum class RelationProviderScopeAdmission {
+    ADMITTED,
+    SOURCE_DOMAIN_EXCLUDED,
+    LIBRARY_POLICY_EXCLUDED,
+    UNAVAILABLE,
+}
+
+/** Retains imported ownership separately from the smaller admitted source domain. */
+internal class RelationSourceDomainMembership(
+    private val paths: RelationPathPolicy,
+    private val ownershipRoots: List<Path>,
+    private val directoryAdmission: (Path) -> Boolean,
+) {
+    fun classifyExcluded(path: IntellijRelationNativePath): RelationProviderScopeAdmission {
+        val absolute =
+            when (path) {
+                is IntellijRelationNativePath.Absolute -> path.value
+                IntellijRelationNativePath.Relative,
+                IntellijRelationNativePath.Unavailable -> return RelationProviderScopeAdmission.UNAVAILABLE
+            }
+        val owners = ownershipRoots.filter(absolute::startsWith)
+        val depth = owners.maxOfOrNull(Path::getNameCount) ?: return RelationProviderScopeAdmission.UNAVAILABLE
+        if (owners.count { it.nameCount == depth } != 1) return RelationProviderScopeAdmission.UNAVAILABLE
+        return if (!paths.contains(absolute) || !directoryAdmission(absolute)) {
+            RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED
+        } else {
+            // An eligible imported owner rejected by the native source boundary is not a proven domain exit.
+            RelationProviderScopeAdmission.UNAVAILABLE
+        }
+    }
+}
 
 internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -> Boolean = { true }) {
     /**
@@ -149,6 +195,15 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                             matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints)
                     },
                 ),
+                RelationSourceDomainMembership(
+                    pathPolicy,
+                    model.sourceRoots.map { Path.of(it.sourceRoot.value) },
+                    directoryAdmission = { path ->
+                        matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints)
+                    },
+                ),
+                libraryScope::contains,
+                libraryPolicy,
             )
         )
     }

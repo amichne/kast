@@ -2,8 +2,6 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
-import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.wire.presentation.cliName
 import kotlinx.serialization.json.JsonArray
@@ -102,9 +100,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "hostedReadRejection" to HostedRejectionSchemas.read,
             "queryResultItem" to queryResultItemSchema(),
             "queryItemFailure" to queryItemFailureSchema(),
-            "ExactSymbolRef" to queryOutputReferenceSchema("exact-symbol"),
+            "ExactSymbolRef" to queryTypedPropertySchema("exact-symbol", "ref"),
             "CandidateRef" to queryOutputReferenceSchema("declaration-candidate"),
-            "ContinuationRef" to textSchema("Opaque snapshot and pipeline-bound next page handle."),
+            "ContinuationRef" to queryContinuationSchema(),
             "queryRejection" to queryRejectionSchema(),
             "sourceReadRejection" to canonicalReadRejectionSchema(CanonicalOperation.SOURCE_READ),
             "compilerFunctionSignature" to functionCompilerSignatureSchema(),
@@ -174,7 +172,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             )
         CanonicalOperation.TOPOLOGY_BUILD -> topologyBuildDocumentSchema(operation)
         CanonicalOperation.SOURCE_READ -> sourceReadOutputSchema(operation)
-        CanonicalOperation.QUERY_RUN -> queryRunDocumentSchema(operation)
+        CanonicalOperation.QUERY_RUN -> queryRunDocumentSchema
         CanonicalOperation.DIAGNOSTIC_CHECK ->
             proofQualifiedOutcomeSchema(
                 operation,
@@ -227,156 +225,37 @@ internal fun changeFilePreviewsSchema(): JsonObject =
         )
     )
 
-@Suppress("LongMethod")
-private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
+private val queryRunDocumentSchema: JsonObject by lazy {
     unionSchema(
-        operationOutcomeVariant(
-            operation,
-            "complete",
-            ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
-            ServerSchemaProperty(
-                "coverage",
-                generatedRequestSchema(
-                    io.github.amichne.kast.protocol.wire.presentation.QueryCoverageCliDocument.serializer()
-                ),
-            ),
-            executionBudgetProperty(),
-            referenceAcquisitionsProperty(),
-            ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema()), required = false),
-            ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema()), required = false),
-            ServerSchemaProperty("walk_observations", arraySchema(queryWalkObservationSchema())),
-            ServerSchemaProperty(
-                "reference_observations",
-                arraySchema(
-                    generatedRequestSchema(
-                        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
-                            .referenceObservationSerializer
-                    )
-                ),
-            ),
-            ServerSchemaProperty(
-                "discovery_observations",
-                arraySchema(
-                    generatedRequestSchema(
-                        io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument.serializer()
-                    )
-                ),
-            ),
-            queryResultRetentionProperty(),
-            queryResultCursorProperty(),
+        generatedRequestSchema(
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.completeSerializer
         ),
-        operationOutcomeVariant(
-            operation,
-            "qualified",
-            ServerSchemaProperty(
-                "continuation",
-                nullableSchema(textSchema("Opaque snapshot and pipeline-bound next page handle.")),
-                required = false,
-            ),
-            ServerSchemaProperty(
-                "terminal_reason",
-                queryTerminalReasonSchema(),
-                required = false,
-            ),
-            ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
-            ServerSchemaProperty(
-                "coverage",
-                generatedRequestSchema(
-                    io.github.amichne.kast.protocol.wire.presentation.QueryCoverageCliDocument.serializer()
-                ),
-            ),
-            executionBudgetProperty(),
-            referenceAcquisitionsProperty(),
-            ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema()), required = false),
-            ServerSchemaProperty("omissions", arraySchema(queryRelationOmissionSchema()), required = false),
-            ServerSchemaProperty("walk_observations", arraySchema(queryWalkObservationSchema())),
-            ServerSchemaProperty(
-                "reference_observations",
-                arraySchema(
-                    generatedRequestSchema(
-                        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
-                            .referenceObservationSerializer
-                    )
-                ),
-            ),
-            ServerSchemaProperty(
-                "discovery_observations",
-                arraySchema(
-                    generatedRequestSchema(
-                        io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument.serializer()
-                    )
-                ),
-            ),
-            queryResultRetentionProperty(),
-            queryResultCursorProperty(),
-            ServerSchemaProperty(
-                "qualification",
-                queryQualificationSchema(),
-            ),
+        generatedRequestSchema(
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualifiedSerializer
         ),
-        operationOutcomeVariant(
-            operation,
-            "rejected",
-            ServerSchemaProperty("rejection", queryRejectionSchema()),
-            readRecoveryActionProperty(),
-        ),
-        operationOutcomeVariant(
-            operation,
-            "rejected",
-            ServerSchemaProperty("rejection", queryRejectionSchema()),
-            readRecoveryActionProperty(),
-            ServerSchemaProperty(
-                "execution_budget",
-                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
-            ),
+        generatedRequestSchema(
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.rejectedSerializer
         ),
     )
+}
 
 private fun queryTerminalReasonSchema(): JsonObject =
     nullableSchema(
-        enumSchema(
-            listOf(
-                "upstream-incomplete",
-                "output-item-too-large",
-                "checkpoint-capacity-exceeded",
-                "no-progress",
-            ),
-            "Why incomplete enumeration cannot continue.",
+        generatedRequestSchema(
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.terminalReasonSerializer
         )
     )
 
 private fun queryQualificationSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("knownMinimum", integerSchema(0, description = "Known returned item count.")),
-        ServerSchemaProperty(
-            "progress",
-            generatedRequestSchema(
-                io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.serializer()
-            ),
-        ),
-        ServerSchemaProperty(
-            "limitations",
-            nonEmptyArraySchema(
-                enumSchema(
-                    QueryLimitationDocument.entries.map(Enum<*>::cliName),
-                    "Every aggregate query limitation.",
-                )
-            ),
-        ),
+    generatedRequestSchema(
+        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualificationSerializer
     )
 
 private fun queryResultItemSchema(): JsonObject =
-    unionSchema(
-        queryExactSymbolItemSchema(),
-        queryOccurrenceItemSchema(),
-        queryTraversalRecordItemSchema(),
-        queryTypedResultItemSchema("binding_row"),
-        queryTypedResultItemSchema("reference-occurrence"),
-    )
-
-/** Select the typed joined-row variant; the sealed serializer supplies its required discriminator. */
-private fun queryTypedResultItemSchema(kind: String): JsonObject =
     generatedRequestSchema(io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.itemSerializer)
+
+private fun queryTypedPropertySchema(kind: String, property: String): JsonObject =
+    queryResultItemSchema()
         .getValue("anyOf")
         .jsonArray
         .map { it.jsonObject }
@@ -392,103 +271,23 @@ private fun queryTypedResultItemSchema(kind: String): JsonObject =
                 .jsonPrimitive
                 .content == kind
         }
+        .getValue("properties")
+        .jsonObject
+        .getValue(property)
+        .jsonObject
 
-private fun queryExactSymbolItemSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
-        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
-        ServerSchemaProperty(
-            "kind",
-            enumSchema(
-                listOf("classlike", "constructor", "function", "property", "type-alias"),
-                "Compiler symbol kind.",
-            ),
-        ),
-        ServerSchemaProperty("name", nullableSchema(textSchema("Projected declaration name."))),
-        ServerSchemaProperty(
-            "location",
-            nullableSchema(
-                objectSchema(
-                    ServerSchemaProperty("file", textSchema("Workspace-relative source file.")),
-                    ServerSchemaProperty("range", sourceRangeSchema()),
-                )
-            ),
-        ),
-        ServerSchemaProperty(
-            "signature",
-            nullableSchema(
-                unionSchema(
-                    functionCompilerSignatureSchema(),
-                    propertyCompilerSignatureSchema(),
-                    typeAliasCompilerSignatureSchema(),
-                    classLikeCompilerSignatureSchema(),
-                )
-            ),
-        ),
-        ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
-        ServerSchemaProperty("source", querySourceWindowSchema(), required = false),
-        ServerSchemaProperty(
-            "matches",
-            queryTypedResultItemSchema("exact-symbol").getValue("properties").jsonObject.getValue("matches").jsonObject,
-            required = false,
-        ),
-        ServerSchemaProperty(
-            "row_id",
-            patternTextSchema(
-                QueryResultRowReference.SERIALIZED_PATTERN,
-                "Opaque row identity scoped to one retained result.",
-            ),
-            required = false,
-        ),
-    )
-
-private fun queryOccurrenceItemSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("occurrence", "Exact relation occurrence.")),
-        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
-        ServerSchemaProperty("relation", relationFactSchema()),
-        ServerSchemaProperty(
-            "row_id",
-            patternTextSchema(
-                QueryResultRowReference.SERIALIZED_PATTERN,
-                "Opaque row identity scoped to one retained result.",
-            ),
-            required = false,
-        ),
-    )
-
-private fun queryTraversalRecordItemSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema("traversal_record", "Exact traversal edge.")),
-        ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
-        ServerSchemaProperty(
-            "record",
-            objectSchema(
-                ServerSchemaProperty("depth", integerSchema(0, description = "Breadth-first hop depth.")),
-                ServerSchemaProperty("relation", relationFactSchema()),
-            ),
-        ),
-        ServerSchemaProperty(
-            "row_id",
-            patternTextSchema(
-                QueryResultRowReference.SERIALIZED_PATTERN,
-                "Opaque row identity scoped to one retained result.",
-            ),
-            required = false,
-        ),
-    )
-
-private fun queryWalkObservationSchema(): JsonObject =
+private fun queryContinuationSchema(): JsonObject =
     generatedRequestSchema(
-        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.walkObservationSerializer
-    )
-
-private fun queryRelationOmissionSchema(): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("subject", queryOutputReferenceSchema("exact-symbol")),
-        ServerSchemaProperty("relation", relationSchema()),
-        ServerSchemaProperty("evidence", relationOmissionSchema()),
-    )
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualifiedSerializer
+        )
+        .getValue("properties")
+        .jsonObject
+        .getValue("continuation")
+        .jsonObject
+        .getValue("anyOf")
+        .jsonArray
+        .first()
+        .jsonObject
 
 /** Syntax identifies the reference family; only the existing semantic owner can admit its authority. */
 private fun queryOutputReferenceSchema(kind: String): JsonObject =
@@ -498,162 +297,13 @@ private fun queryOutputReferenceSchema(kind: String): JsonObject =
     )
 
 private fun queryItemFailureSchema(): JsonObject =
-    unionSchema(
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("refinement", "Candidate refinement failure.")),
-            ServerSchemaProperty(
-                "location",
-                objectSchema(
-                    ServerSchemaProperty("file", textSchema("Discovery file.")),
-                    ServerSchemaProperty("offset", integerSchema(0, description = "Declaration offset.")),
-                ),
-            ),
-            ServerSchemaProperty("reason", queryExactFailureSchema()),
-        ),
-        queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),
-        queryItemFailureVariantSchema("predicate", "exact-symbol", queryPredicateFailureSchema()),
-        queryItemFailureVariantSchema("source", "exact-symbol", querySourceFailureSchema()),
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("relation", "Per-symbol relation failure.")),
-            ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
-            ServerSchemaProperty("relation", relationSchema()),
-            ServerSchemaProperty("reason", queryRelationFailureSchema()),
-        ),
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("walk", "Per-symbol traversal failure.")),
-            ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
-            ServerSchemaProperty("relation", relationSchema()),
-            ServerSchemaProperty("reason", queryWalkFailureSchema()),
-        ),
-    )
-
-private fun queryWalkFailureSchema(): JsonObject =
-    unionSchema(
-        objectSchema(
-            ServerSchemaProperty("kind", constantSchema("one_hop", "One-hop relation failure.")),
-            ServerSchemaProperty("reason", queryRelationFailureSchema()),
-        ),
-        *listOf(
-                "required_evidence_unavailable",
-                "required_evidence_stale",
-                "reader_contract_violation",
-                "traversal_contract_violation",
-            )
-            .map { kind -> objectSchema(ServerSchemaProperty("kind", constantSchema(kind, "Traversal failure."))) }
-            .toTypedArray(),
-    )
-
-private fun queryItemFailureVariantSchema(
-    type: String,
-    refKind: String,
-    reason: JsonObject,
-): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("type", constantSchema(type, "Per-item query failure.")),
-        ServerSchemaProperty("ref", queryOutputReferenceSchema(refKind)),
-        ServerSchemaProperty("reason", reason),
-    )
-
-private fun queryExactFailureSchema(): JsonObject =
-    enumSchema(
-        listOf(
-            "workspace-not-ready",
-            "workspace-root-mismatch",
-            "stale-generation",
-            "scope-rejected",
-            "workspace-index-unavailable",
-            "stale-location",
-            "outside-scope",
-            "ambiguous-declaration",
-            "unsupported-declaration",
-            "compiler-identity-unavailable",
-            "declaration-moved-or-changed",
-            "compiler-contract-violation",
-        ),
-        "Closed exact-symbol refinement failure.",
-    )
-
-private fun queryPredicateFailureSchema(): JsonObject =
-    enumSchema(
-        listOf(
-            "predicate-unproven",
-            "workspace-not-ready",
-            "workspace-root-mismatch",
-            "stale-generation",
-            "source-state-mismatch",
-            "candidate-stale",
-            "source-selector-stale",
-            "source-snapshot-mismatch",
-            "source-unavailable",
-            "document-dirty",
-            "psi-document-uncommitted",
-            "outside-source-scope",
-            "anchor-not-found",
-            "ambiguous-anchor",
-            "region-not-applicable",
-            "region-absent",
-            "compiler-analysis-unavailable",
-            "contract-violation",
-        ),
-        "Closed exact-symbol predicate failure.",
-    )
-
-private fun queryRelationFailureSchema(): JsonObject =
-    enumSchema(
-        listOf(
-            "workspace-not-ready",
-            "workspace-root-mismatch",
-            "stale-generation",
-            "scope-rejected",
-            "workspace-index-unavailable",
-            "stale-selector",
-            "outside-scope",
-            "ambiguous-subject",
-            "unsupported-subject",
-            "compiler-identity-unavailable",
-            "continuation-cursor-moved",
-            "compiler-contract-violation",
-        ),
-        "Closed semantic-relation failure.",
+    generatedRequestSchema(
+        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.itemFailureSerializer
     )
 
 private fun queryRejectionSchema(): JsonObject =
-    unionSchema(
-        objectSchema(ServerSchemaProperty("type", constantSchema("workspace-not-ready", "Workspace unavailable."))),
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("reference-rejected", "Reference admission rejected.")),
-            ServerSchemaProperty("path", textSchema("Rejected reference path.")),
-            ServerSchemaProperty(
-                "reason",
-                enumSchema(
-                    io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason.entries.map { it.cliName() },
-                    "Exact reference rejection reason.",
-                ),
-            ),
-        ),
-        objectSchema(
-            ServerSchemaProperty(
-                "type",
-                constantSchema("source-rejected", "Query source is not exhaustively supported."),
-            ),
-            ServerSchemaProperty("kind", constantSchema("constructor", "Unsupported declaration family.")),
-            ServerSchemaProperty(
-                "reason",
-                constantSchema("unsupported-declaration-kind", "Closed source-admission failure."),
-            ),
-        ),
-        objectSchema(
-            ServerSchemaProperty("type", constantSchema("execution-rejected", "Query execution rejected.")),
-            ServerSchemaProperty(
-                "reason",
-                enumSchema(
-                    io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument.entries.map {
-                        it.cliName()
-                    },
-                    "Closed execution rejection reason.",
-                ),
-            ),
-        ),
+    generatedRequestSchema(
+        io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.rejectionSerializer
     )
 
 private fun outcomeSchema(
@@ -1533,18 +1183,5 @@ internal fun referenceAcquisitionsProperty() =
     ServerSchemaProperty(
         "reference_acquisitions",
         generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions.serializer()),
-        required = false,
-    )
-
-private fun queryResultRetentionProperty() =
-    ServerSchemaProperty(
-        "retention",
-        generatedRequestSchema(io.github.amichne.kast.protocol.contract.QueryResultRetention.serializer()),
-    )
-
-private fun queryResultCursorProperty() =
-    ServerSchemaProperty(
-        "next_cursor",
-        generatedRequestSchema(io.github.amichne.kast.protocol.contract.QueryResultCursor.serializer()),
         required = false,
     )

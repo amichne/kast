@@ -139,6 +139,7 @@ class QueryRetainedRowAdmissionTest {
                         is AdmittedQueryPlan.ExactReferences -> error("Unexpected exact source")
                         is AdmittedQueryPlan.Location -> error("Unexpected location source")
                         is AdmittedQueryPlan.Text -> error("Unexpected text source")
+                        is AdmittedQueryPlan.Impact -> error("Unexpected impact source")
                     }
                 },
                 CanonicalQueryReferences(),
@@ -272,7 +273,7 @@ class QueryRetainedRowAdmissionTest {
                 .refined()
         val pair = QueryBindingRow.join(mode, symbol, symbol).refined()
         val result =
-            QueryExecutionResult.Complete(
+            QueryExecutionResult.Complete.create(
                 QueryResult(QueryRows.Bindings.of(listOf(pair, pair), mode), emptyList()),
                 QueryCoverage.Complete(QueryCount.parse(2).refined()),
             )
@@ -287,9 +288,9 @@ class QueryRetainedRowAdmissionTest {
         return store.issueResult(run(QueryFromDocument.Symbols(discovery())), retained) as QueryResultIssuance.Issued
     }
 
-    private fun completeRows(): QueryExecutionResult.Complete {
+    private fun completeRows(): QueryExecutionResult {
         val rows = listOf(fixture.selector, other.selector).map { QuerySymbol(SymbolDescription.from(it), emptyList()) }
-        return QueryExecutionResult.Complete(
+        return QueryExecutionResult.Complete.create(
             QueryResult(QueryRows.Symbols.of(rows), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(rows.size).refined()),
         )
@@ -305,7 +306,7 @@ class QueryRetainedRowAdmissionTest {
         )
 
     private fun emptyExecution() =
-        QueryExecutionResult.Complete(
+        QueryExecutionResult.Complete.create(
             QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(0).refined()),
         )

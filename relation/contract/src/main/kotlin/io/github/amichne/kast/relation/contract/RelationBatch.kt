@@ -59,6 +59,7 @@ enum class RelationBatchFailure {
     ENCODED_BYTE_COUNT_MISMATCH,
     RESULT_COUNT_MISMATCH,
     INVALID_OMISSION_EVIDENCE,
+    INVALID_SCOPE_EXCLUSION,
 }
 
 @ConsistentCopyVisibility
@@ -71,6 +72,7 @@ private constructor(
     val resultCount: RelationResultCount,
     val omissions: List<RelationOmissionEvidence>,
     val referenceOccurrences: List<RelationReferenceOccurrence>,
+    val scopeExclusions: List<RelationScopeExclusion>,
 ) {
     val semanticResultCount: Int
         get() =
@@ -92,6 +94,32 @@ private constructor(
     }
 
     companion object {
+        private fun semanticResultCount(
+            facts: List<RelationFact>,
+            occurrences: List<RelationReferenceOccurrence>,
+        ): Int =
+            occurrences.size +
+                facts.count { fact ->
+                    occurrences.none { it.occurrence == fact.occurrence && it.target == fact.target }
+                }
+
+        private fun admitEncodedBytes(
+            facts: List<RelationFact>,
+            occurrences: List<RelationReferenceOccurrence>,
+            exclusions: List<RelationScopeExclusion>,
+            expected: RelationByteCount,
+        ): Refinement<Unit, RelationBatchFailure> {
+            val factBytes = facts.sumOf { it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() }
+            val occurrenceBytes = occurrences.sumOf {
+                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+            }
+            val exclusionBytes = exclusions.sumOf {
+                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+            }
+            return if (factBytes + occurrenceBytes + exclusionBytes == expected.value) Refinement.Refined(Unit)
+            else Refinement.Rejected(RelationBatchFailure.ENCODED_BYTE_COUNT_MISMATCH)
+        }
+
         /**
          * Proof transition: `(RelationRequest, List<RelationFact>, RelationByteCount, RelationWorkCount) ->
          * Refinement<RelationBatch, RelationBatchFailure>`.
@@ -107,7 +135,17 @@ private constructor(
             examinedWorkUnits: RelationWorkCount,
             resultCount: RelationResultCount,
             referenceOccurrences: List<RelationReferenceOccurrence> = emptyList(),
+            scopeExclusions: List<RelationScopeExclusion> = emptyList(),
         ): Refinement<RelationBatch, RelationBatchFailure> {
+            if (
+                scopeExclusions.any { !it.belongsTo(request) } || scopeExclusions != scopeExclusions.distinct().sorted()
+            )
+                return Refinement.Rejected(RelationBatchFailure.INVALID_SCOPE_EXCLUSION)
+            if (
+                scopeExclusions.size + semanticResultCount(facts, referenceOccurrences) >
+                    request.budget.resources.resultLimit.value
+            )
+                return Refinement.Rejected(RelationBatchFailure.RESULT_LIMIT_EXCEEDED)
             when (val admitted = request.admitOccurrences(referenceOccurrences)) {
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
@@ -116,11 +154,7 @@ private constructor(
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
             }
-            val semanticCount =
-                referenceOccurrences.size +
-                    facts.count { fact ->
-                        referenceOccurrences.none { it.occurrence == fact.occurrence && it.target == fact.target }
-                    }
+            val semanticCount = semanticResultCount(facts, referenceOccurrences)
             when (val admitted = admitBounds(request, semanticCount, resultCount, encodedBytes, examinedWorkUnits)) {
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
@@ -130,14 +164,9 @@ private constructor(
             ) {
                 return Refinement.Rejected(RelationBatchFailure.NON_DETERMINISTIC_ORDER)
             }
-            val measured = facts.sumOf {
-                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-            }
-            val occurrenceBytes = referenceOccurrences.sumOf {
-                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-            }
-            if (measured + occurrenceBytes != encodedBytes.value) {
-                return Refinement.Rejected(RelationBatchFailure.ENCODED_BYTE_COUNT_MISMATCH)
+            when (val admitted = admitEncodedBytes(facts, referenceOccurrences, scopeExclusions, encodedBytes)) {
+                is Refinement.Rejected -> return admitted
+                is Refinement.Refined -> Unit
             }
             return Refinement.Refined(
                 RelationBatch(
@@ -148,6 +177,7 @@ private constructor(
                     resultCount,
                     emptyList(),
                     java.util.Collections.unmodifiableList(referenceOccurrences.toList()),
+                    java.util.Collections.unmodifiableList(scopeExclusions.toList()),
                 )
             )
         }

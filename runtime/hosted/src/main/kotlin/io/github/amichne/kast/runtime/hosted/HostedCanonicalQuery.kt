@@ -61,10 +61,12 @@ private suspend fun evaluateHostedQuery(
                     relations = services.relations,
                     traversal = traversalOperations(services.relations),
                     traversalCeiling = services.budgets.hostedTraversalBudget,
+                    valueFlow = services.valueFlow,
                 ),
                 services.readReferences,
                 queryContinuations.queryState,
                 publication,
+                services.producerSeeds,
             )
             .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
     context.observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.ENCODING)

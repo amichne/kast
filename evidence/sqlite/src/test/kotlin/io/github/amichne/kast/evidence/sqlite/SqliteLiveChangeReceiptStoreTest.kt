@@ -6,6 +6,7 @@ import io.github.amichne.kast.change.verify.LiveAddDeclarationReceiptCodec
 import io.github.amichne.kast.change.verify.LiveChangeReceiptIssuance
 import io.github.amichne.kast.change.verify.LiveChangeReceiptLookup
 import io.github.amichne.kast.change.verify.LiveChangeReceiptStoreFailure
+import io.github.amichne.kast.change.verify.LiveReceiptFailure
 import io.github.amichne.kast.evidence.contract.HostedWorkspaceStateLocation
 import io.github.amichne.kast.evidence.contract.KastUserStateRoot
 import io.github.amichne.kast.evidence.contract.MutationDatabaseLocation
@@ -26,6 +27,16 @@ import org.junit.jupiter.api.io.TempDir
 
 class SqliteLiveChangeReceiptStoreTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `historical receipt with unsupported embedded plan stays rejected`() {
+        val historical = checkNotNull(javaClass.getResource("/live-add-declaration-receipt-v1.json")).readText()
+        assertEquals(
+            LiveReceiptFailure.PLAN_MISMATCH,
+            assertInstanceOf<Refinement.Rejected<LiveReceiptFailure>>(LiveAddDeclarationReceiptCodec.decode(historical))
+                .failure,
+        )
+    }
 
     @Test
     fun `historical receipt survives replacement and returns its original before after approval and scope`() {
@@ -208,7 +219,7 @@ class SqliteLiveChangeReceiptStoreTest {
 
     private fun fixture() =
         LiveAddDeclarationReceiptCodec.decode(
-                checkNotNull(javaClass.getResource("/live-add-declaration-receipt-v1.json")).readText()
+                checkNotNull(javaClass.getResource("/live-add-declaration-receipt-v1-plan-v2.json")).readText()
             )
             .refined()
 

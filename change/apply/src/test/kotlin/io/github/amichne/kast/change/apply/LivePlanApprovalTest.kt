@@ -19,7 +19,7 @@ import org.junit.jupiter.api.assertInstanceOf
 class LivePlanApprovalTest {
     private val plan: LiveAddDeclarationChangePlan =
         LiveAddDeclarationPlanCodec.decode(
-                checkNotNull(javaClass.getResource("/live-add-declaration-plan-v1.json")).readText()
+                checkNotNull(javaClass.getResource("/live-add-declaration-plan-v2.json")).readText()
             )
             .refined()
     private val pair: KeyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()

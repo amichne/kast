@@ -29,8 +29,16 @@ internal data class QueryWalkObservationCliDocument(
     val strategy: TraversalStrategyDocument,
     @SerialName("partial_expansions") val partialExpansions: List<TraversalPartialExpansionCliDocument>,
     val coverage: QueryWalkCoverageCliDocument,
+    @SerialName("requested_domain")
+    val requestedDomain: io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument,
+    @SerialName("effective_domain")
+    val effectiveDomain: io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument,
+    @SerialName("domain_fingerprint")
+    val domainFingerprint: io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint,
     @SerialName("inherited_omissions") val inheritedOmissions: List<TraversalPartialExpansionCliDocument>,
     @SerialName("reference_occurrences") val referenceOccurrences: List<TraversalReferenceObservationWireDocument>,
+    @SerialName("scope_exclusions")
+    val scopeExclusions: List<io.github.amichne.kast.protocol.wire.QueryWalkScopeExclusionWireDocument>,
 )
 
 @Serializable
@@ -75,14 +83,23 @@ internal fun QueryWalkObservationDocument.toQueryCliDocument() =
                     selected.relationLimitations.map { it.cliName() },
                 )
         },
+        requestedDomain,
+        effectiveDomain,
+        domainFingerprint,
         inheritedOmissions.values.map { it.toCliDocument() },
         referenceOccurrences.values.map { it.toWireDocument() },
+        scopeExclusions.values.map { it.toWireDocument() },
     )
 
 @Serializable
 @JsonClassDiscriminator("kind")
 internal sealed interface QueryWalkFailureCliDocument {
-    @Serializable @SerialName("one_hop") data class OneHop(val reason: String) : QueryWalkFailureCliDocument
+    @Serializable
+    @SerialName("one_hop")
+    data class OneHop(
+        @Serializable(with = QueryRelationFailureCliSerializer::class)
+        val reason: io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
+    ) : QueryWalkFailureCliDocument
 
     @Serializable
     @SerialName("required_evidence_unavailable")
@@ -101,7 +118,7 @@ internal sealed interface QueryWalkFailureCliDocument {
 
 internal fun QueryWalkFailureDocument.toQueryCliDocument(): QueryWalkFailureCliDocument =
     when (this) {
-        is QueryWalkFailureDocument.OneHop -> QueryWalkFailureCliDocument.OneHop(reason.cliName())
+        is QueryWalkFailureDocument.OneHop -> QueryWalkFailureCliDocument.OneHop(reason)
         QueryWalkFailureDocument.RequiredEvidenceUnavailable -> QueryWalkFailureCliDocument.RequiredEvidenceUnavailable
         QueryWalkFailureDocument.RequiredEvidenceStale -> QueryWalkFailureCliDocument.RequiredEvidenceStale
         QueryWalkFailureDocument.ReaderContractViolation -> QueryWalkFailureCliDocument.ReaderContractViolation

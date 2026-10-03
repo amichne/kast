@@ -33,6 +33,7 @@ internal class IntellijRelationCollector(
     private val startedAt = allowance.startedAt
     private val facts = mutableListOf<RelationFact>()
     private val referenceOccurrences = mutableListOf<RelationReferenceOccurrence>()
+    private val scopeExclusions = mutableListOf<io.github.amichne.kast.relation.contract.RelationScopeExclusion>()
     private var providerState: RelationProviderState? =
         (request.position as? RelationReadPosition.Resume)?.continuation?.providerState
     private val limitations = request.retainedLimitations.toMutableSet()
@@ -107,7 +108,7 @@ internal class IntellijRelationCollector(
         when {
             examined >= request.budget.resources.workUnitLimit.value ->
                 haltAdmission(RelationLimitation.WORK_LIMIT_REACHED)
-            semanticResultCount() >= request.budget.resources.resultLimit.value ->
+            semanticResultCount() + scopeExclusions.size >= request.budget.resources.resultLimit.value ->
                 haltAdmission(RelationLimitation.RESULT_LIMIT_REACHED)
             else -> {
                 pendingProviderItem = item
@@ -140,7 +141,7 @@ internal class IntellijRelationCollector(
     fun accept(fact: RelationFact): Boolean {
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         val pending = pendingProviderItem ?: return contractHalt()
-        if (semanticResultCount() >= request.budget.resources.resultLimit.value) {
+        if (semanticResultCount() + scopeExclusions.size >= request.budget.resources.resultLimit.value) {
             return halt(RelationLimitation.RESULT_LIMIT_REACHED)
         }
 
@@ -158,6 +159,21 @@ internal class IntellijRelationCollector(
         providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.GraphConfirmed(fact)
         observation.count(IntellijReadCounter.RELATION_FACTS)
         return if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
+    }
+
+    /** Retains a proven domain exit before consuming its provider item; an overflow remains resumable. */
+    fun acceptScopeExclusion(value: io.github.amichne.kast.relation.contract.RelationScopeExclusion): Boolean {
+        if (state != IntellijRelationCollectionState.COLLECTING) return false
+        if (pendingProviderItem == null || !value.belongsTo(request)) return contractHalt()
+        if (value in scopeExclusions) return dismissProviderItem()
+        if (semanticResultCount() + scopeExclusions.size >= request.budget.resources.resultLimit.value)
+            return halt(RelationLimitation.RESULT_LIMIT_REACHED)
+        val bytes = value.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+        if (retainedBytes + bytes > request.budget.returnedBytes.value)
+            return halt(RelationLimitation.BYTE_LIMIT_REACHED)
+        scopeExclusions += value
+        retainedBytes += bytes
+        return dismissProviderItem()
     }
 
     /** Records one explicit compiler/provider coverage loss without manufacturing a fact. */
@@ -188,6 +204,7 @@ internal class IntellijRelationCollector(
                 request = request,
                 facts = facts,
                 occurrences = referenceOccurrences,
+                scopeExclusions = scopeExclusions,
                 examined = examined,
                 state = state,
                 pending = pendingProviderItem != null,

@@ -18,7 +18,15 @@ enum class QueryBindingRowDocumentFailure {
 }
 
 sealed interface QueryResultItemDocument {
+    data class ImpactWitness(val item: ImpactWitnessItemDocument) : QueryResultItemDocument {
+        override val rowId: QueryResultRowReference?
+            get() = null
+    }
+
     val rowId: QueryResultRowReference?
+
+    data class ValuePath(val path: ImpactPathDocument, override val rowId: QueryResultRowReference? = null) :
+        QueryResultItemDocument
 
     data class ExactSymbol(
         val ref: QueryReferenceDocument.ExactSymbol,

@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test
 class GeneratedCliProjectionTest {
     @Test
     fun `completed empty query reports exhausted scope`() {
-        val result = QueryRunResult(bounded(emptyList()), bounded(emptyList()))
+        val result = QueryRunResult(fixtureQueryQuestion(), bounded(emptyList()), bounded(emptyList()))
         val outcome = OperationOutcome.Complete(evidence(CanonicalOperation.QUERY_RUN, result))
         val projected = queryRunCliProjector.project(outcome) as ProjectedOperationOutcome.Complete
         val document = Json.parseToJsonElement(projected.document.value).jsonObject
@@ -50,6 +50,7 @@ class GeneratedCliProjectionTest {
         val tokens = listOf("exact:v3:first-overload", "exact:v3:second-overload")
         val result =
             QueryRunResult(
+                fixtureQueryQuestion(),
                 bounded(
                     tokens.map { token ->
                         QueryResultItemDocument.ExactSymbol(
@@ -221,4 +222,26 @@ class GeneratedCliProjectionTest {
             is Refinement.Refined -> value
             is Refinement.Rejected -> error(failure.toString())
         }
+}
+
+private fun fixtureQueryQuestion(): io.github.amichne.kast.protocol.contract.QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: io.github.amichne.kast.kernel.Refinement<Value, Failure>): Value =
+        when (value) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return io.github.amichne.kast.protocol.contract.QueryQuestionDocument(
+        io.github.amichne.kast.protocol.contract.QueryFromDocument.Location(
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolText.parse("Fixture.kt")),
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(emptyList())),
+        io.github.amichne.kast.protocol.contract.QueryOutputDocument.Symbols(
+            fixtureValue(
+                io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                    listOf(io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument.NAME)
+                )
+            )
+        ),
+    )
 }

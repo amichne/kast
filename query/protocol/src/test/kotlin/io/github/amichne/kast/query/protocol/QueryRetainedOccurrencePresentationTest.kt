@@ -110,13 +110,7 @@ class QueryRetainedOccurrencePresentationTest {
         // Compiler-confirmed facts are starting inputs. This case proves detached presentation, not compiler
         // resolution.
         val occurrences = (0 until 101).map(::confirmedOccurrence)
-        val execution =
-            QueryExecutionResult.Complete(
-                QueryResult(QueryRows.Occurrences.of(occurrences.map(QueryOccurrence::Reference)), emptyList()),
-                QueryCoverage.Complete(QueryCount.parse(101).refined()),
-            )
-        val retained = QueryRetainedResult.capture(fixture.authority, execution).refined()
-        val issued = store.issueResult(run(), retained) as QueryResultIssuance.Issued
+        val issued = issueOccurrences(occurrences)
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { error("Retained occurrence presentation must not execute semantic work") },
@@ -126,6 +120,11 @@ class QueryRetainedOccurrencePresentationTest {
         val request = QueryRunRequest.ReadResult.occurrences(issued.reference)
         val first = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Complete
         val replay = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Complete
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryQuestionDocument.from(run()),
+            first.evidence.payload.question,
+        )
+        assertEquals(first.evidence.payload.question, replay.evidence.payload.question)
         assertEquals(first.evidence.payload.items, replay.evidence.payload.items)
         assertEquals(100, first.evidence.payload.items.values.size)
         assertEquals(100, first.evidence.payload.nextCursor?.value)
@@ -135,6 +134,7 @@ class QueryRetainedOccurrencePresentationTest {
                 fixture.authority,
                 budget,
             ) as OperationOutcome.Complete
+        assertEquals(first.evidence.payload.question, last.evidence.payload.question)
         assertNull(last.evidence.payload.nextCursor)
         val items =
             (first.evidence.payload.items.values + last.evidence.payload.items.values).map {
@@ -156,6 +156,16 @@ class QueryRetainedOccurrencePresentationTest {
             },
         )
         assertEquals(issued.rowIds, restored.rowIds)
+    }
+
+    private fun issueOccurrences(occurrences: List<RelationReferenceOccurrence>): QueryResultIssuance.Issued {
+        val execution =
+            QueryExecutionResult.Complete.create(
+                QueryResult(QueryRows.Occurrences.of(occurrences.map(QueryOccurrence::Reference)), emptyList()),
+                QueryCoverage.Complete(QueryCount.parse(101).refined()),
+            )
+        val retained = QueryRetainedResult.capture(fixture.authority, execution).refined()
+        return store.issueResult(run(), retained) as QueryResultIssuance.Issued
     }
 
     private suspend fun assertSymbolPresentationRejected(
@@ -197,7 +207,13 @@ class QueryRetainedOccurrencePresentationTest {
                 RelationSearchBoundary.WORKSPACE_EXPANSION,
             )
         val target =
-            RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity).refined()
+            RelationConfirmedReferenceTarget.fromCompiler(
+                    request.subject,
+                    io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromSelector(
+                        (request.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector
+                    ),
+                )
+                .refined()
         val context = if (index % 2 == 0) RelationReferenceContext.IMPORT else RelationReferenceContext.ALIASED_IMPORT
         return RelationReferenceOccurrence.confirmed(
                 request,
@@ -265,7 +281,13 @@ private class ReferenceAdmissionBoundFixture(
             val meaning = if (index % 2 == 0) RelationMeaning.References else RelationMeaning.TypeUses
             val request = RelationRequest.start(selector, meaning, fixture.budget)
             val confirmed =
-                RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity)
+                RelationConfirmedReferenceTarget.fromCompiler(
+                        request.subject,
+                        io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromSelector(
+                            (request.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject)
+                                .selector
+                        ),
+                    )
                     .refined()
             val context =
                 when (ownership) {
@@ -348,7 +370,7 @@ private class ReferenceAdmissionBoundFixture(
 
     suspend fun assertFits(proof: RelationReferenceOccurrence) {
         val execution =
-            QueryExecutionResult.Complete(
+            QueryExecutionResult.Complete.create(
                 QueryResult(QueryRows.Occurrences.of(listOf(QueryOccurrence.Reference(proof))), emptyList()),
                 QueryCoverage.Complete(QueryCount.parse(1).refined()),
             )

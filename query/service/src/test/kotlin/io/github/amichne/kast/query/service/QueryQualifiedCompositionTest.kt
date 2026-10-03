@@ -96,6 +96,7 @@ class QueryQualifiedCompositionTest {
                         assertEquals(terminal, QueryLimitation.RELATION_INCOMPLETE in page.coverage.limitations)
                         page.result
                     }
+                    is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                     is QueryExecutionResult.Rejected -> error(page.toString())
                 }
             symbols += result.symbolRows()

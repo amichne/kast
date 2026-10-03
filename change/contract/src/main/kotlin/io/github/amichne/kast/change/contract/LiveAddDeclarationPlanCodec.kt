@@ -23,7 +23,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /** Versioned historical plan representation. Decoding never creates read or source-write authority. */
 object LiveAddDeclarationPlanCodec {
-    const val VERSION = 1
+    const val VERSION = 2
     private const val FORMAT = "LIVE_ADD_DECLARATION"
 
     private val json = Json {
@@ -181,7 +181,7 @@ object LiveAddDeclarationPlanCodec {
                 return it
             }
         val scope =
-            LiveVerificationScopeCodec.restore(verificationScope, basis.reference.workspaceRoot, evidence).required {
+            LiveVerificationScopeCodec.restore(verificationScope, basis, evidence).required {
                 return it
             }
         return AdmittedLiveAddDeclarationPlanInput.restore(

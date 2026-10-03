@@ -1,0 +1,160 @@
+[
+  {
+    "type": "IMPACT_WITNESS",
+    "item": {
+      "section": "PRODUCERS",
+      "ordinal": 0,
+      "witness": {
+        "type": "PRODUCER",
+        "site": {
+          "enclosing": {
+            "basis": {
+              "type": "PUBLISHED",
+              "root": "/workspace",
+              "generation": 7
+            },
+            "file": "/workspace/File.kt",
+            "range": {
+              "start": 0,
+              "end": 100
+            },
+            "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "range": {
+            "start": 10,
+            "end": 11
+          },
+          "role": {
+            "type": "EXPRESSION_RESULT"
+          }
+        },
+        "invocation": {
+          "range": {
+            "start": 10,
+            "end": 11
+          },
+          "callable": {
+            "basis": {
+              "type": "PUBLISHED",
+              "root": "/workspace",
+              "generation": 7
+            },
+            "file": "/workspace/File.kt",
+            "range": {
+              "start": 0,
+              "end": 100
+            },
+            "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "IMPACT_WITNESS",
+    "item": {
+      "section": "PRODUCERS",
+      "ordinal": 1,
+      "witness": {
+        "type": "PRODUCER_SITE_ONLY",
+        "site": {
+          "enclosing": {
+            "basis": {
+              "type": "PUBLISHED",
+              "root": "/workspace",
+              "generation": 7
+            },
+            "file": "/workspace/File.kt",
+            "range": {
+              "start": 0,
+              "end": 100
+            },
+            "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "range": {
+            "start": 10,
+            "end": 11
+          },
+          "role": {
+            "type": "EXPRESSION_RESULT"
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "IMPACT_WITNESS",
+    "item": {
+      "section": "NATIVE_READS",
+      "ordinal": 2,
+      "witness": {
+        "type": "FLOW_OBLIGATION",
+        "observationOrdinal": 0,
+        "obligationOrdinal": 0,
+        "site": {
+          "enclosing": {
+            "basis": {
+              "type": "PUBLISHED",
+              "root": "/workspace",
+              "generation": 7
+            },
+            "file": "/workspace/File.kt",
+            "range": {
+              "start": 0,
+              "end": 100
+            },
+            "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "range": {
+            "start": 10,
+            "end": 11
+          },
+          "role": {
+            "type": "EXPRESSION_RESULT"
+          }
+        },
+        "cause": "EXTERNAL_CALL"
+      }
+    }
+  },
+  {
+    "type": "IMPACT_WITNESS",
+    "item": {
+      "section": "READ_REJECTIONS",
+      "ordinal": 0,
+      "witness": {
+        "type": "READ_REJECTION",
+        "rejection": {
+          "type": "NATIVE",
+          "source": {
+            "enclosing": {
+              "basis": {
+                "type": "PUBLISHED",
+                "root": "/workspace",
+                "generation": 7
+              },
+              "file": "/workspace/File.kt",
+              "range": {
+                "start": 0,
+                "end": 100
+              },
+              "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "range": {
+              "start": 10,
+              "end": 11
+            },
+            "role": {
+              "type": "EXPRESSION_RESULT"
+            }
+          },
+          "domain": {
+            "type": "WORKSPACE"
+          },
+          "cause": "NATIVE_UNAVAILABLE",
+          "examinedWorkUnits": 3
+        }
+      }
+    }
+  }
+]

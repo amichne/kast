@@ -23,6 +23,9 @@ internal data class GeneratedOperationSerializers<
     val qualification: WireValueCodec<Qualification>,
     val rejection: WireValueCodec<Rejection>,
     val rejectionBudget: RejectionBudgetCodec<Rejection> = RejectionBudgetCodec(),
+    val validateComplete: (Result) -> io.github.amichne.kast.kernel.Refinement<Unit, WireFailure> = {
+        io.github.amichne.kast.kernel.Refinement.Refined(Unit)
+    },
 )
 
 sealed interface WireEncoding {
@@ -52,6 +55,9 @@ enum class WireBodyKind {
 }
 
 sealed interface WireFailure {
+    data class InvalidImpactAccounting(val cause: io.github.amichne.kast.protocol.contract.ImpactAccountingFailure) :
+        WireFailure
+
     data object MalformedEnvelope : WireFailure
 
     data class InvalidSchemaIdentity(val failure: SchemaIdentityFailure) : WireFailure

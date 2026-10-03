@@ -1,0 +1,79 @@
+[
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "TEXT",
+      "cause": "BLANK"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "TEXT",
+      "cause": "TOO_LONG"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "OFFSET",
+      "cause": "NEGATIVE"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "MODEL",
+      "cause": "INVALID_IDENTIFIER"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "MODEL",
+      "cause": "NOT_POSITIVE"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "MODEL",
+      "cause": "UNSUPPORTED_FORMAT"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "COLLECTION",
+      "cause": "TOO_LARGE"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "DOMAIN_FINGERPRINT",
+      "cause": "INVALID_FINGERPRINT"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "COUNT",
+      "cause": "NEGATIVE"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "BUDGET",
+      "cause": "NOT_POSITIVE"
+    }
+  },
+  {
+    "type": "IMPACT_PRESENTATION_REJECTED",
+    "cause": {
+      "type": "DOMAIN_PROJECTION_REJECTED"
+    }
+  },
+ {"type":"IMPACT_PRESENTATION_REJECTED","cause":{"type":"ACCOUNTING","cause":"PAGE_COUNT_MISMATCH"}}
+]

@@ -50,6 +50,12 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
         is QueryRunRejection.ReferenceRejected -> rejection.reason.recoveryAction()
         is QueryRunRejection.StepReferenceRejected -> rejection.reason.recoveryAction()
         is QueryRunRejection.SourceRejected -> ReadRecoveryAction.CORRECT_REQUEST
+        is QueryRunRejection.ImpactSourceRejected -> rejection.cause.recoveryAction()
+        is QueryRunRejection.ImpactExecutionRejected -> ReadRecoveryAction.REPORT_FAILURE
+        is QueryRunRejection.ImpactPresentationRejected ->
+            if (rejection.cause is ImpactPresentationFailureDocument.Collection)
+                ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
+            else ReadRecoveryAction.REPORT_FAILURE
         is QueryRunRejection.ExecutionRejected ->
             when (rejection.reason) {
                 QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE,
@@ -77,6 +83,12 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
                 QueryExecutionRejectionDocument.NON_ADVANCING_CONTINUATION,
                 QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION -> ReadRecoveryAction.REPORT_FAILURE
             }
+    }
+
+private fun QueryImpactSourceFailureDocument.recoveryAction(): ReadRecoveryAction =
+    when (this) {
+        is QueryImpactSourceFailureDocument.Reference -> reason.recoveryAction()
+        is QueryImpactSourceFailureDocument.Admission -> cause.recoveryAction
     }
 
 private fun SourceReferenceFailure.recoveryAction(): ReadRecoveryAction =

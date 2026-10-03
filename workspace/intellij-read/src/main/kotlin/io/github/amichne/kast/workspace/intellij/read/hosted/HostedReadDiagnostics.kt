@@ -29,6 +29,11 @@ internal class HostedReadDiagnostics(
         // Explicit zeros prove page observation capability even when a workload never enters that provider.
         counters[IntellijReadCounter.NATIVE_DISCOVERY_PAGES to IntellijReadContributor.NONE] = 0L
         counters[IntellijReadCounter.NATIVE_RELATION_PAGES to IntellijReadContributor.NONE] = 0L
+        // Retained value evidence reads must prove that no compiler provider was replayed.
+        counters[IntellijReadCounter.VALUE_PRODUCER_SEED_READS to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.VALUE_MODEL_REVALIDATIONS to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.VALUE_MODEL_SITE_REVALIDATIONS to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.VALUE_FLOW_READS to IntellijReadContributor.NONE] = 0L
         // Both alternatives must remain observable when comparing locator retention across reads.
         counters[IntellijReadCounter.REVALIDATION_LOCATORS_RETAINED to IntellijReadContributor.NONE] = 0L
         counters[IntellijReadCounter.REVALIDATION_LOCATORS_REJECTED to IntellijReadContributor.NONE] = 0L

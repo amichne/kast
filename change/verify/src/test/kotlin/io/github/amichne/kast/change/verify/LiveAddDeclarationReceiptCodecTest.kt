@@ -128,7 +128,7 @@ internal fun historicalReceiptFixture(): HistoricalLiveAddDeclarationReceipt {
     val plan =
         LiveAddDeclarationPlanCodec.decode(
                 checkNotNull(
-                        LiveAddDeclarationReceiptCodecTest::class.java.getResource("/live-add-declaration-plan-v1.json")
+                        LiveAddDeclarationReceiptCodecTest::class.java.getResource("/live-add-declaration-plan-v2.json")
                     )
                     .readText()
             )

@@ -3,9 +3,10 @@
 package io.github.amichne.kast.protocol.wire.presentation
 
 import io.github.amichne.kast.kernel.OperationOutcome
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.protocol.contract.ImpactPresentationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
@@ -15,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.ReadRecoveryAction
 import io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions
@@ -23,6 +25,8 @@ import io.github.amichne.kast.protocol.contract.continuationToken
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.contract.recoveryAction
 import io.github.amichne.kast.protocol.contract.terminalReason
+import io.github.amichne.kast.protocol.contract.validateImpactAccounting
+import io.github.amichne.kast.protocol.contract.validateImpactCompletion
 import io.github.amichne.kast.protocol.wire.RelationReferenceOccurrenceWireDocument
 import io.github.amichne.kast.protocol.wire.toWireDocument
 import kotlinx.serialization.KSerializer
@@ -30,6 +34,27 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 object CanonicalQueryCliDocuments {
+    val itemFailureSerializer: KSerializer<*>
+        get() = QueryItemFailureCliDocument.serializer()
+
+    val qualificationSerializer: KSerializer<*>
+        get() = QueryQualificationCliDocument.serializer()
+
+    val terminalReasonSerializer: KSerializer<*>
+        get() = QueryTerminalReasonCliSerializer
+
+    val completeSerializer: KSerializer<*>
+        get() = QueryCompleteCliDocument.serializer()
+
+    val qualifiedSerializer: KSerializer<*>
+        get() = QueryQualifiedCliDocument.serializer()
+
+    val rejectedSerializer: KSerializer<*>
+        get() = QueryRejectedCliDocument.serializer()
+
+    val rejectionSerializer: KSerializer<*>
+        get() = QueryRejectionCliDocument.serializer()
+
     val itemSerializer: KSerializer<*>
         get() = QueryResultItemCliDocument.serializer()
 
@@ -39,35 +64,35 @@ object CanonicalQueryCliDocuments {
     val walkObservationSerializer: KSerializer<*>
         get() = QueryWalkObservationCliDocument.serializer()
 
-    fun project(outcome: OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunFailure>) =
-        projectClosedOutcome(
-            outcome,
-            complete = { result, live ->
-                completeFactory.create(
-                    QueryCompleteCliDocument(
-                        operation = CanonicalOperation.QUERY_RUN.id.value,
-                        status = "complete",
-                        items = result.items.values.map(QueryResultItemDocument::toCliDocument),
-                        failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
-                        omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
-                        walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
-                        referenceObservations = result.referenceObservations.values.map { it.toWireDocument() },
-                        discoveryObservations = result.discoveryObservations.values,
-                        retention = result.retention,
-                        nextCursor = result.nextCursor,
-                        coverage = QueryCoverageCliDocument(exhaustive = true),
-                        executionBudget = result.executionBudget,
-                        referenceAcquisitions = result.referenceAcquisitions,
-                        live = live,
+    fun project(
+        outcome: OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunFailure>
+    ): ProjectedOperationOutcome {
+        val validation =
+            when (outcome) {
+                is OperationOutcome.Complete -> outcome.evidence.payload.validateImpactCompletion()
+                is OperationOutcome.Qualified -> outcome.evidence.payload.validateImpactAccounting()
+                is OperationOutcome.Rejected -> Refinement.Refined(Unit)
+            }
+        when (validation) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected ->
+                return project(
+                    OperationOutcome.Rejected(
+                        QueryRunRejection.ImpactPresentationRejected(
+                            ImpactPresentationFailureDocument.Accounting(validation.failure)
+                        )
                     )
                 )
-            },
+        }
+        return projectClosedOutcome(
+            outcome,
+            complete = ::projectComplete,
             qualified = ::projectQualified,
             rejected = { rejection ->
                 rejectedFactory.create(
                     QueryRejectedCliDocument(
-                        CanonicalOperation.QUERY_RUN.id.value,
-                        "rejected",
+                        QueryCliOperation.RUN,
+                        QueryRejectedCliStatus.REJECTED,
                         rejection.reason().toCliDocument(),
                         rejection.recoveryAction(),
                         rejection.budgetPresence(),
@@ -75,7 +100,31 @@ object CanonicalQueryCliDocuments {
                 )
             },
         )
+    }
 }
+
+private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?): CanonicalJsonDocument =
+    completeFactory.create(
+        QueryCompleteCliDocument(
+            question = result.question,
+            impactAccounting = result.impactAccounting,
+            operation = QueryCliOperation.RUN,
+            status = QueryCompleteCliStatus.COMPLETE,
+            items = result.items.values.map(QueryResultItemDocument::toCliDocument),
+            failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
+            omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
+            walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
+            referenceObservations = result.referenceObservations.values.map { it.toWireDocument() },
+            discoveryObservations = result.discoveryObservations.values,
+            relationObservations = result.relationObservations.values.map { it.toWireDocument() },
+            retention = result.retention,
+            nextCursor = result.nextCursor,
+            coverage = QueryCoverageCliDocument(exhaustive = true),
+            executionBudget = result.executionBudget,
+            referenceAcquisitions = result.referenceAcquisitions,
+            live = live,
+        )
+    )
 
 private fun projectQualified(
     result: QueryRunResult,
@@ -84,25 +133,28 @@ private fun projectQualified(
 ): CanonicalJsonDocument =
     qualifiedFactory.create(
         QueryQualifiedCliDocument(
-            operation = CanonicalOperation.QUERY_RUN.id.value,
-            status = "qualified",
+            question = result.question,
+            impactAccounting = result.impactAccounting,
+            operation = QueryCliOperation.RUN,
+            status = QueryQualifiedCliStatus.QUALIFIED,
             items = result.items.values.map(QueryResultItemDocument::toCliDocument),
             failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
             omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
             walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
             referenceObservations = result.referenceObservations.values.map { it.toWireDocument() },
             discoveryObservations = result.discoveryObservations.values,
+            relationObservations = result.relationObservations.values.map { it.toWireDocument() },
             retention = result.retention,
             nextCursor = result.nextCursor,
             coverage = QueryCoverageCliDocument(exhaustive = false),
             qualification =
                 QueryQualificationCliDocument(
                     qualification.knownMinimum.value,
-                    qualification.limitations.map(Enum<*>::cliName),
+                    qualification.limitations,
                     qualification.progress,
                 ),
             continuation = qualification.progress.continuationToken?.value,
-            terminalReason = qualification.progress.terminalReason?.cliName(),
+            terminalReason = qualification.progress.terminalReason,
             executionBudget = result.executionBudget,
             referenceAcquisitions = result.referenceAcquisitions,
             live = live,
@@ -111,19 +163,22 @@ private fun projectQualified(
 
 @Serializable
 private data class QueryCompleteCliDocument(
-    val operation: String,
-    val status: String,
+    val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
+    @SerialName("impact_accounting")
+    val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,
+    val operation: QueryCliOperation,
+    val status: QueryCompleteCliStatus,
     val items: List<QueryResultItemCliDocument>,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val failures: List<QueryItemFailureCliDocument>? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val omissions: List<QueryRelationOmissionCliDocument>? = null,
     @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
-    @SerialName("reference_observations")
-    val referenceObservations: List<RelationReferenceOccurrenceWireDocument> = emptyList(),
+    @SerialName("reference_observations") val referenceObservations: List<RelationReferenceOccurrenceWireDocument>,
     @SerialName("discovery_observations")
-    val discoveryObservations: List<io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument> =
-        emptyList(),
+    val discoveryObservations: List<io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument>,
+    @SerialName("relation_observations")
+    val relationObservations: List<io.github.amichne.kast.protocol.wire.QueryRelationObservationWireDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
@@ -141,19 +196,22 @@ private data class QueryCompleteCliDocument(
 
 @Serializable
 private data class QueryQualifiedCliDocument(
-    val operation: String,
-    val status: String,
+    val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
+    @SerialName("impact_accounting")
+    val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,
+    val operation: QueryCliOperation,
+    val status: QueryQualifiedCliStatus,
     val items: List<QueryResultItemCliDocument>,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val failures: List<QueryItemFailureCliDocument>? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val omissions: List<QueryRelationOmissionCliDocument>? = null,
     @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
-    @SerialName("reference_observations")
-    val referenceObservations: List<RelationReferenceOccurrenceWireDocument> = emptyList(),
+    @SerialName("reference_observations") val referenceObservations: List<RelationReferenceOccurrenceWireDocument>,
     @SerialName("discovery_observations")
-    val discoveryObservations: List<io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument> =
-        emptyList(),
+    val discoveryObservations: List<io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument>,
+    @SerialName("relation_observations")
+    val relationObservations: List<io.github.amichne.kast.protocol.wire.QueryRelationObservationWireDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
@@ -161,10 +219,17 @@ private data class QueryQualifiedCliDocument(
     val coverage: QueryCoverageCliDocument,
     val qualification: QueryQualificationCliDocument,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(
+        minimumLength = 1,
+        maximumLength = MAXIMUM_QUERY_CLI_TEXT_LENGTH,
+    )
     val continuation: String? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("terminal_reason")
-    val terminalReason: String? = null,
+    val terminalReason:
+        @Serializable(with = QueryTerminalReasonCliSerializer::class)
+        io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument? =
+        null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: ExecutionBudgetReport? = null,
@@ -179,8 +244,8 @@ private data class QueryQualifiedCliDocument(
 
 @Serializable
 private data class QueryRejectedCliDocument(
-    val operation: String,
-    val status: String,
+    val operation: QueryCliOperation,
+    val status: QueryRejectedCliStatus,
     val rejection: QueryRejectionCliDocument,
     @SerialName("next_action") val nextAction: ReadRecoveryAction,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -191,81 +256,24 @@ private data class QueryRejectedCliDocument(
 @Serializable
 private data class QueryQualificationCliDocument(
     val knownMinimum: Int,
-    val limitations: List<String>,
+    val limitations:
+        List<
+            @Serializable(with = QueryLimitationCliSerializer::class)
+            io.github.amichne.kast.protocol.contract.QueryLimitationDocument
+        >,
     val progress: QueryQualifiedProgressDocument,
 )
 
 @Serializable
 private data class QueryRelationOmissionCliDocument(
-    val subject: String,
-    val relation: String,
+    @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(pattern = "^exact:v[2345]:") val subject: String,
+    @Serializable(with = RelationKindCliSerializer::class)
+    val relation: io.github.amichne.kast.protocol.contract.RelationKindDocument,
     val evidence: RelationOmissionCliDocument,
 )
 
-@Serializable private data class QueryRefinementLocationCliDocument(val file: String, val offset: Int)
-
-@Serializable
-private sealed interface QueryItemFailureCliDocument {
-    @Serializable
-    @SerialName("refinement")
-    data class Refinement(val location: QueryRefinementLocationCliDocument, val reason: String) :
-        QueryItemFailureCliDocument
-
-    @Serializable
-    @SerialName("exact-reference")
-    data class ExactReference(val ref: String, val reason: String) : QueryItemFailureCliDocument
-
-    @Serializable
-    @SerialName("predicate")
-    data class Predicate(val ref: String, val reason: String) : QueryItemFailureCliDocument
-
-    @Serializable
-    @SerialName("source")
-    data class Source(val ref: String, val reason: String) : QueryItemFailureCliDocument
-
-    @Serializable
-    @SerialName("relation")
-    data class Relation(
-        val ref: String,
-        val relation: String,
-        val reason: String,
-    ) : QueryItemFailureCliDocument
-
-    @Serializable
-    @SerialName("walk")
-    data class Walk(
-        val ref: String,
-        val relation: String,
-        val reason: QueryWalkFailureCliDocument,
-    ) : QueryItemFailureCliDocument
-}
-
 private fun QueryRelationOmissionDocument.toCliDocument() =
-    QueryRelationOmissionCliDocument(subject.toCliDocument(), relation.cliName(), evidence.toCliDocument())
-
-private fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocument =
-    when (this) {
-        is QueryItemFailureDocument.Refinement ->
-            QueryItemFailureCliDocument.Refinement(
-                QueryRefinementLocationCliDocument(location.file.value, location.offset.value),
-                reason.cliName(),
-            )
-        is QueryItemFailureDocument.ExactReference ->
-            QueryItemFailureCliDocument.ExactReference(ref.toCliDocument(), reason.cliName())
-        is QueryItemFailureDocument.Predicate ->
-            QueryItemFailureCliDocument.Predicate(ref.toCliDocument(), reason.cliName())
-        is QueryItemFailureDocument.Source -> QueryItemFailureCliDocument.Source(ref.toCliDocument(), reason.cliName())
-        is QueryItemFailureDocument.Relation ->
-            QueryItemFailureCliDocument.Relation(
-                ref.toCliDocument(),
-                relation.cliName(),
-                reason.cliName(),
-            )
-        is QueryItemFailureDocument.Walk ->
-            QueryItemFailureCliDocument.Walk(ref.toCliDocument(), relation.cliName(), reason.toQueryCliDocument())
-    }
-
-internal fun QueryReferenceDocument.toCliDocument(): String = token.value
+    QueryRelationOmissionCliDocument(subject.toCliDocument(), relation, evidence.toCliDocument())
 
 private val completeFactory =
     CanonicalJsonDocument.generated(QueryCompleteCliDocument.serializer()) {
@@ -287,3 +295,7 @@ private val qualifiedFactory =
         )
     }
 private val rejectedFactory = CanonicalJsonDocument.generated(QueryRejectedCliDocument.serializer())
+
+private const val MAXIMUM_QUERY_CLI_TEXT_LENGTH = 1_048_576
+
+internal fun QueryReferenceDocument.toCliDocument(): String = token.value

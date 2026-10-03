@@ -17,8 +17,6 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationOmissionSample
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
-import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
@@ -243,24 +241,74 @@ internal class IntellijK2RelationSearch(
             reference: KtReference,
         ): Boolean {
             val file = target.containingFile?.virtualFile
-            val workspace = request.searchScope as? io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace
-            if (
-                file != null &&
-                    workspace?.libraries == io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy.EXCLUDE &&
-                    IntellijProjectFileIndexClassifier.classify(project, file, limits) is
-                        IntellijProjectFileClassification.Library
-            ) {
-                observation.terminated(IntellijReadTermination.LIBRARY_POLICY_EXCLUSION)
-                return collector.dismissProviderItem()
-            }
-            if (file == null || !scope.nativeScope.contains(file)) {
-                observation.terminated(IntellijReadTermination.CALLEE_OUTSIDE_NATIVE_SCOPE)
-                return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+            when (scope.admitProviderSite(file)) {
+                RelationProviderScopeAdmission.ADMITTED -> Unit
+                RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED -> {
+                    observation.terminated(IntellijReadTermination.LIBRARY_POLICY_EXCLUSION)
+                    return excludeCalleeTarget(
+                        target,
+                        reference,
+                        io.github.amichne.kast.relation.contract.RelationScopeExclusionReason.LIBRARY_POLICY,
+                    )
+                }
+                RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED -> {
+                    observation.terminated(IntellijReadTermination.CALLEE_OUTSIDE_NATIVE_SCOPE)
+                    return excludeCalleeTarget(
+                        target,
+                        reference,
+                        io.github.amichne.kast.relation.contract.RelationScopeExclusionReason.SOURCE_DOMAIN,
+                    )
+                }
+                RelationProviderScopeAdmission.UNAVAILABLE ->
+                    return incompleteItem(
+                        RelationLimitation.UNSUPPORTED_ITEM,
+                        reference.element,
+                        reference.rangeInElement,
+                    )
             }
             return when (packageDisposition(target)) {
                 ProviderItemDisposition.READY -> emitCallee(owner, target, reference)
                 ProviderItemDisposition.SKIPPED -> true
                 ProviderItemDisposition.HALTED -> false
+            }
+        }
+
+        private fun excludeCalleeTarget(
+            target: PsiNamedElement,
+            reference: KtReference,
+            reason: io.github.amichne.kast.relation.contract.RelationScopeExclusionReason,
+        ): Boolean {
+            val evidence =
+                when (val projected = projection.project(target)) {
+                    is IntellijRelationDeclarationProjection.Projected -> projected.evidence
+                    IntellijRelationDeclarationProjection.Unsupported ->
+                        return incompleteItem(
+                            RelationLimitation.UNSUPPORTED_ITEM,
+                            reference.element,
+                            reference.rangeInElement,
+                        )
+                }
+            val occurrence =
+                when (val sample = projection.omissionSample(reference.element, reference.rangeInElement)) {
+                    is RelationOmissionSample.Located -> sample.occurrence
+                    RelationOmissionSample.Unavailable ->
+                        return incompleteItem(
+                            RelationLimitation.UNSUPPORTED_ITEM,
+                            reference.element,
+                            reference.rangeInElement,
+                        )
+                }
+            return when (
+                val excluded =
+                    io.github.amichne.kast.relation.contract.RelationScopeExclusion.fromNativeBoundary(
+                        request,
+                        occurrence,
+                        evidence,
+                        reason,
+                    )
+            ) {
+                is Refinement.Refined -> collector.acceptScopeExclusion(excluded.value)
+                is Refinement.Rejected -> collector.blockPartition(RelationLimitation.PROVIDER_INCOMPLETE)
             }
         }
 

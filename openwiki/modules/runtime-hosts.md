@@ -178,12 +178,16 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - id: openwiki-source-b711ac75af08966d13a95b22
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - id: openwiki-source-dc64f3c714e0e7abfefc0f56
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
-generated: { by: "codex", at: "2026-10-02T06:27:25.947Z" }
+  - id: openwiki-source-738d50046b5f0d1312b7fcb7
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T13:53:38.453Z
+    at: 2026-10-03T05:14:41.058Z
 ---
 
 # Runtime and process hosts
@@ -431,3 +435,7 @@ The owner envelope is outside the hosted-contract digest inputs.
 Preflight scan diagnostics contain closed stage and outcome variants with finite
 failures. Each distinct tuple is emitted at most once per scan, keeping evidence
 bounded without including paths, process identities or payloads.
+
+The hosted service factory now supplies the K2 value-flow adapter, exact producer seeds, callable model revalidation and boundary-site revalidation from the same admitted project, source model and observation capability. Successful native acquisition contributes measured work and time to the shared request accounting; model interpretation remains outside the compiler adapter.
+
+Each semantic diagnostic receipt initializes seed-read, declaration-model, boundary-site-model and value-flow provider counters to zero before observations. Retained-page captures can therefore distinguish an observed zero from an unavailable counter. These bounded, host/epoch-correlated runtime measurements do not grant compiler, model or completion authority.

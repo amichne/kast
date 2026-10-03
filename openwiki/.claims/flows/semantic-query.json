@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5ef35e95303ebef825134cb0ae6c6ff56b0526968bee199b3350964be5d4c843",
+  "pageVersion": "sha256:f71d886e74c1c6a2f04624a0e7880bc1b8b6591db8bc05b82c6c48c7459bb0ed",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -17,8 +17,8 @@
       "statement": "Complete membership needed to prove absence is admitted only when retained coverage is complete and there are no failures, omissions, or unfinished producer progress.",
       "evidence": [
         {
-          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt#L19-L38",
-          "version": "repo-lines-v1:sha256:77da2a6e4ee618dc3ff39477217e08cb182aed61b93e3ff17f37bc9ce898101c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwZDEwMTAyM2NiMDNmMjFlNWQ1MTczOGYxYzNhZTY1ODI3MDgzMTQwZGQ5NzFjM2RlN2Y3MTU0ZmI4MmI2NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA2YjIyZDEwYzliY2UxMDA0N2QzZDNjYjBkY2UwZDYzYjNjNThlMmFmYjIzNTU1NTQ0YWEyZDllZWE0ODE2NzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQzNzdlOWY4MzY1YjNiNmE3NjIyNWNlYTgyNzNhNjQ3OGI3YzI1YWM2NTJlYWZhOWJlMjc3MzcwMjIxYTE3MGEifQ"
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt#L18-L29",
+          "version": "repo-lines-v1:sha256:fba9f9449a80c2c0f65f64b16b33adfea3709e747d592432124afec804df2c4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMzMwMjdiYzIwYjViY2M0YjEzOTBiNjM2YjJhY2E4YjA4NTNiZjUwMjA0YjAyMDlhMTdiOGY0ODQwN2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1YTFhNWU4NjM5YWM4ZTJlNTljZGFkMTNiOTVmMjg2MzMwMjUzNDYyN2RiYjc0MjcxNjE4ODc3N2UxOTQ1M2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
     },
@@ -27,14 +27,32 @@
       "statement": "Pipeline checkpoints preserve ordered detached work and observations, including failure, omission, discovery, revalidation, set, distinct, and join tasks.",
       "evidence": [
         {
-          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt#L44-L85",
-          "version": "repo-lines-v1:sha256:5d306b950f0265037b728f8f052a2fce1eec4a685a5f5d488cd1982b9d9b82f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1NzA0YmUyNjFlYmJjNTRjZmM2MWVlNWMzY2Y3YWI1ZWViMmMzNWUxZGY1NmJhZjUzNDI5NGY2YTYwYjNiOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNzZjYTFiYjBlM2YwMjhhZDFkZTA2ZmZmYzllYTM4N2JjZjk3MzczOGU1Y2ZlNzdhMDg1NDRiZmQ3ZjExNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEwM2ViMTNmYzRjYTE3YmE1OTBkNDY4MDg1MzM0MmJmNGYwZjNlODBkMmU3Zjg0MmYzNzEwZGRjMjU1Y2U1NjUifQ"
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt#L35-L113",
+          "version": "repo-lines-v1:sha256:d3dae66dd89e024a099eff24cdd5327b0f180073f04069d2d80637c0256664d3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1NTc5YjBhNDk0Nzg2ZTI2NDljODA0NDhmZDg3YWJmNDQyNGFkZGEwNDAxZDllOTBkODJjZjZhMzA1Nzg0ODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNzZjYTFiYjBlM2YwMjhhZDFkZTA2ZmZmYzllYTM4N2JjZjk3MzczOGU1Y2ZlNzdhMDg1NDRiZmQ3ZjExNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0YzRlOTY5ZDFlYWJhYTczZDhhODljNDgwYTM4ZWQ4ODliMThlM2FmZGZhZWNkODZhMTI3YTI5ZWEzYmJiMWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4f880dc775d94628907ce450b6a3e9d4",
+      "statement": "Impact execution caches detached native reads by exact site and queues compiler/model arrivals in the existing pipeline; rejected reads and required unsupported, cycle or capacity obligations remain typed path terminals before ledger conservation validation.",
+      "evidence": [
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactObservedArrivals.kt",
+          "version": "repo-file-v1:sha256:eb4464f9c6aa6e7685b0dbe6db097e9135cb1546c3794780d82d828873546279"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactSnapshot.kt",
+          "version": "repo-file-v1:sha256:9764fe438d0c136f7f6dda575ad9cb6f525a8b2052448d2f96bcc5666838f6cd"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt#L68-L131",
+          "version": "repo-lines-v1:sha256:c667d80ea62a4a75b8cf65d83f537dc0f27efe7d7e360d8441c573a3b4003139:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5ODZjYzQ2NmVhNmYyMTQ5ZGNiYTI3NDU5YWI4MDQ0NTU5MDYzMDAyNjNmZGJlMGExZjhkZGUyNjUyMDU4OWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwMTc2Y2Y2MGFlYTQxNjk5ZTYyZGQwZGM3MGRmZDUzMzA3NDdjMmMzMjYwYzMwOTI4ZmRjYjBiODg5ZGViNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4OTlmM2QwMGRkMDNhNTZmY2Q0MGRiNWY1MmUzYTczNzhlM2E2MWZkZmQ1MDk2YjdkZWVlNWE5MTU1Y2E2ZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkM2UzM2U4M2MzNzBkODcxZTU4OTM0ODRjMGViYzdkMjQ0NGRlMDU1YzdiMzA1NjM2ZjFiNmVmOTQwZWQwOWUifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-10-03T04:45:37.704Z"
   }
 }

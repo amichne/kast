@@ -5,13 +5,11 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
-import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryMatch
 import io.github.amichne.kast.query.contract.QueryRetainedResult
-import io.github.amichne.kast.query.contract.QueryWalkCoverage
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationFact
@@ -23,7 +21,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
-import io.github.amichne.kast.traversal.contract.TraversalLimitation
 import io.github.amichne.kast.traversal.contract.TraversalQualification
 
 /** Mutable accounting is request-local; semantic authority remains in the typed request. */
@@ -40,27 +37,12 @@ internal class QueryExecutionState(
     var contractViolation: Boolean = false
 
     fun inheritRetainedLimitations(result: QueryRetainedResult) {
-        val inherited = (result.coverage as? QueryCoverage.Qualified)?.limitations.orEmpty()
-        val failures =
-            result.failures.map { failure ->
-                when (failure) {
-                    is QueryItemFailure.Refinement,
-                    is QueryItemFailure.ExactReference -> QueryLimitation.REFINEMENT_INCOMPLETE
-                    is QueryItemFailure.Visibility,
-                    is QueryItemFailure.PredicateUnproven -> QueryLimitation.VISIBILITY_INCOMPLETE
-                    is QueryItemFailure.Source -> QueryLimitation.SOURCE_INCOMPLETE
-                    is QueryItemFailure.Relation -> QueryLimitation.RELATION_INCOMPLETE
-                    is QueryItemFailure.Walk -> QueryLimitation.TRAVERSAL_INCOMPLETE
-                }
-            }
-        val omissions = if (result.omissions.isEmpty()) emptyList() else listOf(QueryLimitation.RELATION_INCOMPLETE)
-        val walks =
-            if (result.walkObservations.any { it.coverage.isTerminallyIncomplete() })
-                listOf(QueryLimitation.TRAVERSAL_INCOMPLETE)
-            else emptyList()
-        limitations += inherited + failures + omissions + walks
-        upstreamLimitations += inherited + failures + omissions + walks
+        val inherited = retainedQueryLimitations(result)
+        limitations += inherited
+        upstreamLimitations += inherited
     }
+
+    fun canProcessImpact(): Boolean = observeTime()
 
     fun canContinue(workRequired: Boolean): Boolean {
         if (workRequired && remainingWork() < 1L) {
@@ -157,6 +139,16 @@ internal class QueryExecutionState(
             resources.copy(workUnitLimit = WorkUnitLimit.parse(discoveryWork).refined()),
             SymbolDiscoveryByteLimit.parse(bytes).refined(),
         )
+    }
+
+    /** Native flow grants are separate from page output and bounded by remaining checkpoint storage. */
+    fun impactBudget(checkpointRemaining: Long, itemBytes: Long): RelationBudget? {
+        if (!canContinue(true)) return null
+        val capacity =
+            minOf(remainingWork(), checkpointRemaining / itemBytes.coerceAtLeast(1L), Int.MAX_VALUE.toLong()).toInt()
+        val resources = remainingResources(capacity) ?: return null
+        if (checkpointRemaining < 1L) return null
+        return RelationBudget(resources, RelationByteLimit.parse(checkpointRemaining).refined())
     }
 
     fun relationBudget(resultCapacity: Int): RelationBudget? {
@@ -359,10 +351,6 @@ internal val recoverableRelationPageLimits =
         RelationLimitation.CANDIDATE_LIMIT_REACHED,
     )
 
-private fun QueryWalkCoverage.isTerminallyIncomplete(): Boolean =
-    this is QueryWalkCoverage.TerminalIncomplete ||
-        (this is QueryWalkCoverage.Resumable && TraversalLimitation.ONE_HOP_INCOMPLETE in limitations)
-
 private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
     when (this) {
         is Refinement.Refined -> value
@@ -371,14 +359,3 @@ private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
 
 internal fun saturatedAdd(left: Long, right: Long): Long =
     if (right > Long.MAX_VALUE - left) Long.MAX_VALUE else left + right
-
-internal fun QueryExecutionState.completedWithoutMissingEvidence(
-    tasks: Collection<PipelineTask>,
-    result: io.github.amichne.kast.query.contract.QueryResult,
-): Boolean {
-    if (tasks.isNotEmpty() || upstreamLimitations.isNotEmpty()) return false
-    if (result.failures.isNotEmpty() || result.omissions.isNotEmpty()) return false
-    if (result.walkObservations.any { it.coverage !is QueryWalkCoverage.Complete }) return false
-    // A clock read after the final successful effect cannot make completed work incomplete.
-    return limitations.isEmpty() || limitations == setOf(QueryLimitation.TIME_LIMIT_REACHED)
-}

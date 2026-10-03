@@ -1,0 +1,21 @@
+package io.github.amichne.kast.protocol.contract
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+enum class ImpactAccountingFailure {
+    COMPLETION_NOT_CONSERVED,
+    MISSING_VALUE_ACCOUNTING,
+    ACCOUNTING_FOR_NON_VALUE_OUTPUT,
+    MIXED_ROW_KINDS,
+    WITNESS_VIEW_MISMATCH,
+    WITNESS_ORDINAL_MISMATCH,
+    PAGE_COUNT_MISMATCH,
+    ORIGINAL_COUNT_UNDERRUN,
+    CONSERVED_COUNT_MISMATCH,
+    SUBSET_COUNT_MISMATCH,
+    EMPTY_SEEDS,
+    DUPLICATE_SEED,
+    DUPLICATE_MODEL_REFERENCE,
+    EMPTY_UNRESOLVED_OBLIGATIONS,
+}

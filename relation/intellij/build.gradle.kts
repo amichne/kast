@@ -89,6 +89,7 @@ dependencies {
 
 // The native call oracle must compile with the repository's compiler before IDE acceptance.
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
+    source(rootProject.file("experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt"))
     source(rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt"))
     source(
         rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferenceTarget.kt")

@@ -75,10 +75,11 @@ internal class TraversalTestFixture {
         name: String,
         offset: Int,
         signature: CanonicalCompilerSignature = functionSignature("sample.$name"),
+        selectedScope: SymbolSearchScope = scope,
     ): SymbolSelector {
         val request =
             SymbolDiscoveryRequest(
-                SymbolSearchScopeRequest(lease, scope),
+                SymbolSearchScopeRequest(lease, selectedScope),
                 SymbolDiscoveryTarget.Name(
                     SymbolNameDiscoveryKind.SYMBOL,
                     SymbolDiscoveryPattern.parse(name).refined(),
@@ -223,6 +224,8 @@ internal class TraversalTestFixture {
     fun endpoint(
         subject: RelationEndpoint,
         target: SymbolSelector,
+        expansionScope: SymbolSearchScope = subject.scope,
+        constraints: io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints = subject.constraints,
     ): RelationEndpoint.Resolved {
         val description = SymbolDescription.from(target)
         val qualifiedIdentity = (description.qualifiedIdentity as ExactDeclarationQualifiedIdentity.Available).value
@@ -237,7 +240,7 @@ internal class TraversalTestFixture {
                     description.signature,
                 )
                 .refined()
-        return RelationEndpoint.resolve(subject.lease, subject.scope, evidence).refined()
+        return RelationEndpoint.resolve(subject.lease, expansionScope, evidence, constraints).refined()
     }
 
     fun completeRelationResult(

@@ -59,13 +59,13 @@ private sealed interface OneHopRelationRequestProjection {
  * extraction is not permitted at this adapter boundary.
  */
 private fun OneHopRelationRequest.toRelationRequest(): OneHopRelationRequestProjection {
-    if (node.endpoint.scope != scope) return OneHopRelationRequestProjection.Rejected
+    if (expansion.effectiveScope(node.endpoint) != scope) return OneHopRelationRequestProjection.Rejected
     return when (val oneHopPosition = position) {
         OneHopRelationPosition.Start ->
             OneHopRelationRequestProjection.Admitted(
                 when (val subject = node.endpoint) {
-                    is RelationEndpoint.Subject -> RelationRequest.start(subject.selector, meaning, budget)
-                    is RelationEndpoint.Resolved -> RelationRequest.start(subject, meaning, budget)
+                    is RelationEndpoint.Subject -> RelationRequest.start(subject.selector, meaning, budget, expansion)
+                    is RelationEndpoint.Resolved -> RelationRequest.start(subject, meaning, budget, expansion)
                 }
             )
         is OneHopRelationPosition.Resume ->
@@ -76,6 +76,7 @@ private fun OneHopRelationRequest.toRelationRequest(): OneHopRelationRequestProj
                             meaning,
                             budget,
                             oneHopPosition.continuation,
+                            expansion,
                         )
                         .toProjection()
                 is RelationEndpoint.Resolved ->
@@ -84,6 +85,7 @@ private fun OneHopRelationRequest.toRelationRequest(): OneHopRelationRequestProj
                             meaning,
                             budget,
                             oneHopPosition.continuation,
+                            expansion,
                         )
                         .toProjection()
             }

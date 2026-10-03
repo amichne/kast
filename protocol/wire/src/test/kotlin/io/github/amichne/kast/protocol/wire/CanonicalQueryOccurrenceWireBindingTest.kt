@@ -43,7 +43,8 @@ class CanonicalQueryOccurrenceWireBindingTest {
     fun `binding row preserves two named cells and rejects forged pair evidence`() {
         val (left, right) = bindingCells()
         val row = QueryResultItemDocument.BindingRow.create(left, right).refined()
-        val result = QueryRunResult(bounded(listOf(row)), bounded(emptyList()), bounded(emptyList()))
+        val result =
+            QueryRunResult(fixtureQueryQuestion(), bounded(listOf(row)), bounded(emptyList()), bounded(emptyList()))
         val encoded = CanonicalQuerySerializers.result.encode(result, WireValueRole.RESULT) as WireValueEncoding.Encoded
         val item = encoded.value.jsonObject.getValue("items").jsonArray.single().jsonObject
         assertEquals("binding_row", item.getValue("type").jsonPrimitive.content)
@@ -184,6 +185,7 @@ class CanonicalQueryOccurrenceWireBindingTest {
                 )
                 .refined()
         return QueryRunResult(
+            fixtureQueryQuestion(),
             bounded(
                 listOf(
                     QueryResultItemDocument.Occurrence(
@@ -233,4 +235,26 @@ class CanonicalQueryOccurrenceWireBindingTest {
             is Refinement.Refined -> value
             is Refinement.Rejected -> error(failure.toString())
         }
+}
+
+private fun fixtureQueryQuestion(): io.github.amichne.kast.protocol.contract.QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: io.github.amichne.kast.kernel.Refinement<Value, Failure>): Value =
+        when (value) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return io.github.amichne.kast.protocol.contract.QueryQuestionDocument(
+        io.github.amichne.kast.protocol.contract.QueryFromDocument.Location(
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolText.parse("Fixture.kt")),
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(emptyList())),
+        io.github.amichne.kast.protocol.contract.QueryOutputDocument.Symbols(
+            fixtureValue(
+                io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                    listOf(io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument.NAME)
+                )
+            )
+        ),
+    )
 }

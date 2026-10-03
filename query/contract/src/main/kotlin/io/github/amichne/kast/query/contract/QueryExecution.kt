@@ -66,6 +66,7 @@ private constructor(
         ): Refinement<QueryExecutionRequest, QueryExecutionRequestFailure> {
             val referenceLeases =
                 when (plan) {
+                    is AdmittedQueryPlan.Impact -> listOf(plan.source.lease)
                     is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { it.lease }
                     is AdmittedQueryPlan.Retained -> listOf(plan.source.lease)
                     is AdmittedQueryPlan.Symbols,
@@ -172,6 +173,7 @@ data class QueryResult(
     val walkObservations: List<QueryWalkObservation> = emptyList(),
     val referenceObservations: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
     val discoveryObservations: List<QueryDiscoveryObservation> = emptyList(),
+    val relationObservations: List<QueryRelationObservation> = emptyList(),
 )
 
 enum class QueryCountFailure {
@@ -202,6 +204,7 @@ enum class QueryLimitation {
     RELATION_INCOMPLETE,
     TRAVERSAL_INCOMPLETE,
     ROW_SELECTION_INCOMPLETE,
+    IMPACT_COVERAGE_UNPROVEN,
 }
 
 sealed interface QueryCoverage {
@@ -242,10 +245,36 @@ enum class QueryExecutionRejection {
 }
 
 sealed interface QueryExecutionResult {
-    data class Complete(
+    sealed interface Rejection : QueryExecutionResult
+
+    data class ImpactRejected(val failure: QueryImpactExecutionFailure) : Rejection
+
+    @ConsistentCopyVisibility
+    data class Complete
+    private constructor(
         val result: QueryResult,
         val coverage: QueryCoverage.Complete,
-    ) : QueryExecutionResult
+    ) : QueryExecutionResult {
+        companion object {
+            /** Terminal qualifications cannot be erased by labeling the detached evidence complete. */
+            fun create(result: QueryResult, coverage: QueryCoverage.Complete): QueryExecutionResult {
+                val snapshot =
+                    result.copy(
+                        failures = Collections.unmodifiableList(result.failures.toList()),
+                        omissions = Collections.unmodifiableList(result.omissions.toList()),
+                        walkObservations = Collections.unmodifiableList(result.walkObservations.toList()),
+                        referenceObservations = Collections.unmodifiableList(result.referenceObservations.toList()),
+                        discoveryObservations = Collections.unmodifiableList(result.discoveryObservations.toList()),
+                        relationObservations = Collections.unmodifiableList(result.relationObservations.toList()),
+                    )
+                return if (snapshot.hasUnresolvedRequiredEvidence()) {
+                    Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
+                } else {
+                    Complete(snapshot, coverage)
+                }
+            }
+        }
+    }
 
     data class Qualified(
         val result: QueryResult,
@@ -257,8 +286,22 @@ sealed interface QueryExecutionResult {
     data class Rejected(
         val reason: QueryExecutionRejection,
         val discoveryReason: SymbolDiscoveryRejection? = null,
-    ) : QueryExecutionResult
+    ) : Rejection
 }
+
+internal fun QueryResult.hasUnresolvedRequiredEvidence(): Boolean =
+    // Connectivity alone cannot prove seed accounting or exhaustion of every required expansion.
+    (rows is QueryRows.ImpactWitness) ||
+        (rows is QueryRows.ValuePaths && !rows.hasCompleteAccounting()) ||
+        failures.isNotEmpty() ||
+        omissions.isNotEmpty() ||
+        walkObservations.any { it.coverage.isTerminallyIncomplete() } ||
+        discoveryObservations.any { it.progress is QueryDiscoveryProgress.Blocked } ||
+        relationObservations.any { it.coverage is QueryRelationCoverage.TerminalIncomplete } ||
+        relationObservations
+            .groupBy { it.question }
+            .values
+            .any { it.last().coverage !is QueryRelationCoverage.Exhausted }
 
 /** Detached execution proof. Implementations must retain no live compiler/PSI objects. */
 interface QueryCheckpoint {

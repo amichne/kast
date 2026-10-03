@@ -9,6 +9,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -23,6 +24,41 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 class QueryBindingRetentionTest {
+    @Test
+    fun `complete evidence snapshots caller owned qualification lists`() {
+        val basis = lease()
+        val failures = mutableListOf<QueryItemFailure>()
+        val result = QueryResult(QueryRows.Symbols.of(emptyList()), failures)
+        val complete =
+            assertInstanceOf(
+                QueryExecutionResult.Complete::class.java,
+                QueryExecutionResult.Complete.create(result, QueryCoverage.Complete(QueryCount.parse(0).refined())),
+            )
+        failures += QueryItemFailure.ExactReference(selector(basis), SymbolExactRejection.STALE_LOCATION)
+
+        assertEquals(emptyList<QueryItemFailure>(), complete.result.failures)
+        assertThrows(UnsupportedOperationException::class.java) {
+            (complete.result.failures as MutableList<QueryItemFailure>).add(failures.single())
+        }
+    }
+
+    @Test
+    fun `an unresolved exact reference cannot construct complete absence`() {
+        val basis = lease()
+        val result =
+            QueryResult(
+                QueryRows.Symbols.of(emptyList()),
+                listOf(QueryItemFailure.ExactReference(selector(basis), SymbolExactRejection.STALE_LOCATION)),
+            )
+        val execution =
+            QueryExecutionResult.Complete.create(result, QueryCoverage.Complete(QueryCount.parse(0).refined()))
+
+        assertEquals(
+            QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION),
+            execution,
+        )
+    }
+
     @Test
     fun `empty binding result retains its row kind and immutable qualification`() {
         val limitation = QueryLimitation.ROW_SELECTION_INCOMPLETE
@@ -72,7 +108,8 @@ class QueryBindingRetentionTest {
     fun `empty complete symbol result yields a proof bound to those rows`() {
         val basis = lease()
         val result = QueryResult(QueryRows.Symbols.of(emptyList()), emptyList())
-        val execution = QueryExecutionResult.Complete(result, QueryCoverage.Complete(QueryCount.parse(0).refined()))
+        val execution =
+            QueryExecutionResult.Complete.create(result, QueryCoverage.Complete(QueryCount.parse(0).refined()))
         val retained = QueryRetainedResult.capture(basis, execution).refined()
 
         val symbols = assertInstanceOf(QueryRetainedResult.Symbols::class.java, retained)
@@ -95,7 +132,8 @@ class QueryBindingRetentionTest {
         val mode = QueryJoinMode.Inner.create(bindingName("left"), bindingName("right")).refined()
         val row = QueryBindingRow.join(mode, symbol, symbol).refined()
         val result = QueryResult(QueryRows.Bindings.of(listOf(row), mode), emptyList())
-        val execution = QueryExecutionResult.Complete(result, QueryCoverage.Complete(QueryCount.parse(1).refined()))
+        val execution =
+            QueryExecutionResult.Complete.create(result, QueryCoverage.Complete(QueryCount.parse(1).refined()))
 
         assertEquals(
             Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH),

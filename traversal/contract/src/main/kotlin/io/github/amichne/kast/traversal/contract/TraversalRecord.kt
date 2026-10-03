@@ -57,7 +57,7 @@ private constructor(
             if (fact.authority != plan.start.lease.identity) {
                 return Refinement.Rejected(TraversalRecordFailure.GENERATION_MISMATCH)
             }
-            if (fact.source.scope != plan.scope || fact.target.scope != plan.scope) {
+            if (!plan.admitsEndpoint(fact.source) || !plan.admitsEndpoint(fact.target)) {
                 return Refinement.Rejected(TraversalRecordFailure.SCOPE_MISMATCH)
             }
             if (depth.value > plan.budget.depth.value) {

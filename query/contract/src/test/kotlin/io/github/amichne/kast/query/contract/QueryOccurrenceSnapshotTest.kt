@@ -59,7 +59,7 @@ class QueryOccurrenceSnapshotTest {
             (snapshot.symbol.connections as MutableList<RelationFact>).clear()
         }
         val execution =
-            QueryExecutionResult.Complete(
+            QueryExecutionResult.Complete.create(
                 QueryResult(rows, emptyList()),
                 QueryCoverage.Complete(QueryCount.parse(1).refined()),
             )

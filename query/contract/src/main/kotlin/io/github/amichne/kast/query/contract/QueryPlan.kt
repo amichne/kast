@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
@@ -27,6 +28,8 @@ class QuerySymbolFields private constructor(val values: List<QuerySymbolField>) 
 }
 
 sealed interface QueryOutputSyntax {
+    data class ImpactWitness(val section: QueryImpactWitnessSection) : QueryOutputSyntax
+
     data class Symbols(val fields: QuerySymbolFields) : QueryOutputSyntax
 
     data object Occurrences : QueryOutputSyntax
@@ -34,6 +37,8 @@ sealed interface QueryOutputSyntax {
     data object TraversalRecords : QueryOutputSyntax
 
     data object BindingRows : QueryOutputSyntax
+
+    data object ValuePaths : QueryOutputSyntax
 }
 
 data class QueryPlanSyntax(
@@ -62,13 +67,18 @@ sealed interface ExactQueryStage {
 
     data class Where(val predicate: QueryPredicate, val next: ExactQueryStage) : ExactQueryStage
 
-    data class Related(val meaning: RelationMeaning, val next: ExactQueryStage) : ExactQueryStage
+    data class Related(
+        val meaning: RelationMeaning,
+        val next: ExactQueryStage,
+        val expansion: RelationSearchBoundary = RelationSearchBoundary.WORKSPACE_EXPANSION,
+    ) : ExactQueryStage
 
     data class Walk(
         val meaning: RelationMeaning,
         val maximumDepth: TraversalDepthLimit,
         val strategy: TraversalStrategy,
         val next: ExactQueryStage,
+        val expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
     ) : ExactQueryStage
 
     data class Distinct(val next: ExactQueryStage) : ExactQueryStage
@@ -92,6 +102,9 @@ sealed interface ExactQueryStage {
 }
 
 sealed interface AdmittedQueryPlan {
+    data class Impact internal constructor(val source: QueryImpactSource, val stage: ExactQueryStage) :
+        AdmittedQueryPlan
+
     data class Symbols
     internal constructor(
         val source: QueryDiscoverySyntax,
@@ -137,6 +150,7 @@ object QueryPlanCompiler {
             when (source) {
                 is QuerySourceSyntax.Symbols -> source.discovery.declarationKinds.values
                 is QuerySourceSyntax.Text -> source.discovery.declarationKinds.values
+                is QuerySourceSyntax.Impact,
                 is QuerySourceSyntax.Location,
                 is QuerySourceSyntax.ExactReferences,
                 is QuerySourceSyntax.Retained -> emptyList()
@@ -153,6 +167,7 @@ object QueryPlanCompiler {
         val stage = exactStage(syntax.steps, syntax.output)
         val plan =
             when (source) {
+                is QuerySourceSyntax.Impact -> AdmittedQueryPlan.Impact(source.source, stage)
                 is QuerySourceSyntax.Symbols -> AdmittedQueryPlan.Symbols(source.discovery, stage)
                 is QuerySourceSyntax.Text -> AdmittedQueryPlan.Text(source.discovery, stage)
                 is QuerySourceSyntax.Location -> AdmittedQueryPlan.Location(source.target, stage)
@@ -170,9 +185,9 @@ object QueryPlanCompiler {
                     is QueryStepSyntax.ProjectBinding -> ExactQueryStage.ProjectBinding(step.name, stage)
                     QueryStepSyntax.Distinct -> ExactQueryStage.Distinct(stage)
                     is QueryStepSyntax.Where -> ExactQueryStage.Where(step.predicate, stage)
-                    is QueryStepSyntax.Related -> ExactQueryStage.Related(step.meaning, stage)
+                    is QueryStepSyntax.Related -> ExactQueryStage.Related(step.meaning, stage, step.expansion)
                     is QueryStepSyntax.Walk ->
-                        ExactQueryStage.Walk(step.meaning, step.maximumDepth, step.strategy, stage)
+                        ExactQueryStage.Walk(step.meaning, step.maximumDepth, step.strategy, stage, step.expansion)
                     is QueryStepSyntax.Concat -> ExactQueryStage.Concat(step.input, stage)
                     is QueryStepSyntax.Intersect ->
                         ExactQueryStage.Set(QuerySetOperator.INTERSECTION, step.right, stage)
@@ -191,6 +206,7 @@ object QueryPlanCompiler {
 
 internal fun AdmittedQueryPlan.composedInputLeases(): List<SemanticReadAuthority> =
     when (this) {
+        is AdmittedQueryPlan.Impact -> stage.composedInputLeases()
         is AdmittedQueryPlan.Symbols -> stage.composedInputLeases()
         is AdmittedQueryPlan.Text -> stage.composedInputLeases()
         is AdmittedQueryPlan.Location -> stage.composedInputLeases()

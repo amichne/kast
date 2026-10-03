@@ -100,7 +100,7 @@ class CanonicalQueryRetentionProtocolTest {
         val unrelated =
             io.github.amichne.kast.query.contract.QueryRetainedResult.capture(
                     lease,
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     ),
@@ -131,7 +131,7 @@ class CanonicalQueryRetentionProtocolTest {
             CanonicalQueryProtocol(
                 QueryOperations {
                     executions++
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
@@ -196,7 +196,7 @@ class CanonicalQueryRetentionProtocolTest {
                             QueryContinuationState.Resumable(checkpoint),
                         )
                     } else
-                        QueryExecutionResult.Complete(
+                        QueryExecutionResult.Complete.create(
                             QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                             QueryCoverage.Complete(QueryCount.parse(0).refined()),
                         )

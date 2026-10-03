@@ -1,0 +1,39 @@
+{
+  "subject": {
+    "token": "exact:fixture-node"
+  },
+  "relation": "references",
+  "maximum_depth": 2,
+  "expanded_frontier": 1,
+  "progress": {
+    "checkpointSequence": 1,
+    "totalReads": 1,
+    "totalEdges": 0,
+    "maximumDepthReached": 0
+  },
+  "strategy": {
+    "type": "breadth_first"
+  },
+  "partial_expansions": [],
+  "coverage": {
+    "kind": "complete"
+  },
+  "effective_domain": {
+    "scope": {
+      "type": "WORKSPACE"
+    },
+    "source_policy": "production-and-test",
+    "generated_sources": "exclude",
+    "libraries": "exclude",
+    "source_sets": {
+      "kind": "all"
+    },
+    "directory": null,
+    "package_name": null,
+    "declaration_kinds": []
+  },
+  "domain_fingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+  "inherited_omissions": [],
+  "reference_occurrences": [],
+  "scope_exclusions": []
+}

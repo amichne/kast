@@ -248,7 +248,7 @@ class HostedQueryPublicationProjectionTest {
         )
 
     private fun complete(owner: RelationPagingFixture) =
-        QueryExecutionResult.Complete(
+        QueryExecutionResult.Complete.create(
             QueryResult(
                 QueryRows.Symbols.of(List(3) { QuerySymbol(SymbolDescription.from(owner.selector), emptyList()) }),
                 emptyList(),

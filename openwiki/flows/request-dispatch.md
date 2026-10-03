@@ -70,14 +70,18 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-e8970cbf92e81dc4000b50e4
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
+  - id: openwiki-source-e750eea4b9efa673ce4df938
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt
+  - id: openwiki-source-6699d194831006a24f8c790c
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
   - id: openwiki-source-473526fe1b8c21a06df3f01f
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-02T13:53:38.453Z" }
+generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T14:11:27.469Z
+    at: 2026-10-03T05:39:07.082Z
 ---
 
 # Request dispatch
@@ -260,3 +264,5 @@ these checks do not replace connection-time admission.
 The project socket client retains successfully loaded packaged Control requirements
 for its own lifetime. Failed loads remain retryable. Every exchange still obtains
 and admits a fresh live describe before dispatching the requested operation.
+
+Public impact syntax uses the same `query.run` dispatch. Typed facade lowering preserves seeds, model declarations, expansion domain and forward-flow semantics in the canonical request. Read-result lowering selects the existing typed constructors for value paths or impact witness sections, retaining the result, cursor and admitted execution budget. Model syntax and native source revalidation remain separate steps; lowering alone establishes no compiler or representation facts.

@@ -14,8 +14,6 @@ import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
-import io.github.amichne.kast.protocol.contract.SourceReadResult
-import io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument
 import io.github.amichne.kast.protocol.registry.OperationDefinition
 import java.util.UUID
 import kotlinx.serialization.KSerializer
@@ -156,6 +154,10 @@ internal constructor(
         if (!evidence.payload.retainsEvidenceBasis(evidence.basis)) {
             return WireEncoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT))
         }
+        when (val admission = serializers.validateComplete(evidence.payload)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return WireEncoding.Rejected(admission.failure)
+        }
         return when (val result = serializers.result.encode(evidence.payload, WireValueRole.RESULT)) {
             is WireValueEncoding.Encoded ->
                 encodeEnvelope(
@@ -220,7 +222,11 @@ internal constructor(
         body: WireBodyDocument.Complete
     ): WireDecoding<OperationOutcome<Result, Qualification, Rejection>> =
         when (val evidence = decodeEvidence(body.generation, body.live, body.result)) {
-            is WireDecoding.Decoded -> WireDecoding.Decoded(OperationOutcome.Complete(evidence.value))
+            is WireDecoding.Decoded ->
+                when (val admission = serializers.validateComplete(evidence.value.payload)) {
+                    is Refinement.Refined -> WireDecoding.Decoded(OperationOutcome.Complete(evidence.value))
+                    is Refinement.Rejected -> WireDecoding.Rejected(admission.failure)
+                }
             is WireDecoding.Rejected -> evidence
         }
 
@@ -347,21 +353,6 @@ internal constructor(
             }
         }
 }
-
-/** Repeated snapshot evidence must preserve the exact admitted envelope, not just its shape. */
-private fun OperationResult.retainsEvidenceBasis(basis: EvidenceBasis): Boolean =
-    when (this) {
-        is SourceReadResult ->
-            when (val context = snapshot.context) {
-                is SourceSnapshotContextDocument.Published ->
-                    basis is EvidenceBasis.Published && context.generation == basis.generation
-                is SourceSnapshotContextDocument.Live ->
-                    basis is EvidenceBasis.Live &&
-                        context.evidence == basis.evidence &&
-                        snapshot.canonicalRoot.value == basis.evidence.workspaceRoot
-            }
-        else -> true
-    }
 
 private sealed interface BindingIdentityAdmission {
     data object Admitted : BindingIdentityAdmission

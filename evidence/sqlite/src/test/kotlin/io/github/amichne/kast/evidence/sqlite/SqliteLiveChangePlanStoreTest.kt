@@ -3,6 +3,7 @@ package io.github.amichne.kast.evidence.sqlite
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
 import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanCodec
+import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanDecodeFailure
 import io.github.amichne.kast.change.contract.LiveChangeApplicationClaim
 import io.github.amichne.kast.change.contract.LiveChangeApplicationHistory
 import io.github.amichne.kast.change.contract.LiveChangePlanIssuance
@@ -29,6 +30,18 @@ import org.junit.jupiter.api.io.TempDir
 
 class SqliteLiveChangePlanStoreTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `historical add plan resource stays unsupported`() {
+        val historical = checkNotNull(javaClass.getResource("/live-add-declaration-plan-v1.json")).readText()
+        assertEquals(
+            LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED,
+            assertInstanceOf<Refinement.Rejected<LiveAddDeclarationPlanDecodeFailure>>(
+                    LiveAddDeclarationPlanCodec.decode(historical)
+                )
+                .failure,
+        )
+    }
 
     @Test
     fun `body replacement plan survives store replacement with its exact postimage`() {
@@ -265,7 +278,7 @@ class SqliteLiveChangePlanStoreTest {
 
     private fun fixture(): LiveAddDeclarationChangePlan =
         LiveAddDeclarationPlanCodec.decode(
-                checkNotNull(javaClass.getResource("/live-add-declaration-plan-v1.json")).readText()
+                checkNotNull(javaClass.getResource("/live-add-declaration-plan-v2.json")).readText()
             )
             .refined()
 

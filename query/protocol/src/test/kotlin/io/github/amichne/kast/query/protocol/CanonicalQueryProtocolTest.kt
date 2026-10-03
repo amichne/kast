@@ -43,7 +43,7 @@ class CanonicalQueryProtocolTest {
                         setOf("main"),
                         (scope.sourceSets as SymbolDiscoverySourceSets.Exact).values.map { it.value }.toSet(),
                     )
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
@@ -86,7 +86,7 @@ class CanonicalQueryProtocolTest {
                     assertEquals("/workspace/src/Subject.kt", source.file.value)
                     assertEquals(12, source.offset.value)
                     observed = true
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
@@ -155,7 +155,7 @@ class CanonicalQueryProtocolTest {
                         setOf("main", "test"),
                         (scope.sourceSets as SymbolDiscoverySourceSets.Exact).values.map { it.value }.toSet(),
                     )
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )

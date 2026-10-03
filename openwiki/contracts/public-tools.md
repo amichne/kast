@@ -26,6 +26,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
     symbols: [DaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryMapping.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt
@@ -55,24 +56,38 @@ code_sources:
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolBindingContractTest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedSymbolHandle.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
   - id: openwiki-source-468da36f81e497d3a91bd73f
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
+  - id: openwiki-source-63060dfccafe31127ab3d22b
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt
+  - id: openwiki-source-b005241729c6acea7908126a
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt
+  - id: openwiki-source-25b472ce8bd658b8f8006f96
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt
   - id: openwiki-source-c3a707e4531bdd548867dd23
     resource: repo://packaging/generate-public-query.py
+  - id: openwiki-source-1363c35728458151b90e82c5
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt
+  - id: openwiki-source-25796dce45aaa5a543a07570
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
   - id: openwiki-source-a184ae82a49703816522523e
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+  - id: openwiki-source-584136874e8bed46fcb3def2
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
+  - id: openwiki-source-4bf64022307aff9f9f531f9b
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+generated: { by: "codex", at: "2026-10-03T05:39:07.082Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T05:39:07.082Z
 ---
 
 # Public intent tools
 
 The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Nullable DTO fields lower null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.
 
-`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits declaration discovery, scoped indexed-word discovery into containing declarations, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, or binding rows according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
+`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits exact impact producers, declaration discovery, scoped indexed-word discovery into containing declarations, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued execution continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, binding rows, value paths, or impact witness sections according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
@@ -218,3 +233,10 @@ never changes retained evidence, request lowering or canonical wire outcomes.
 
 Lifecycle results retain their full state and ownership evidence in both modes;
 its tool-only boolean never enters canonical lifecycle requests or close approvals.
+
+
+An `IMPACT` source declares producer invocation anchors with exact enclosing and callable references, an expansion domain, `KOTLIN_FORWARD_V1` semantics, a declaration inventory, and explicit representation or boundary models. Native admission revalidates the exact sites and model positions under current authority before execution. `VALUE_PATHS` reports compiler transfers, reviewed model applications and terminal obligations without inferring representation from names.
+
+Public relation and walk steps accept `expansionScope` through the same closed `ExpansionScope` union used by `IMPACT.domain`. `EXPAND_RELATION` defaults to `WORKSPACE`; `WALK` defaults to `RETAINED_SEED`. Omission and explicit null retain those defaults. `SOURCE_DOMAIN` selects source sets, directory containment, production/test policy and generated-source inclusion, and lowers to the existing canonical expansion owner independently of producer selection or later row filters.
+
+`READ_RESULT` with `IMPACT_WITNESS` selects `PRODUCERS`, `MODELS`, `NATIVE_READS` or `READ_REJECTIONS` from the same retained investigation ledger. These pages use the existing result reference, presentation cursor and byte fitter; they do not start semantic providers. Original question, basis, requested domain, counts and unresolved closure remain attached even when a page or selection displays fewer paths. A reusable source recipe must reacquire current references after epoch movement; retained tokens do not become a recipe.

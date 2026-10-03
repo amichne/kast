@@ -225,6 +225,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
     enums = {}
     unions = {}
     for name, schema in definitions.items():
+        if 'x-kotlin-type' in schema:
+            continue
         if 'anyOf' not in schema:
             continue
         variants = [branch['$ref'].split('/')[-1] for branch in schema['anyOf'] if '$ref' in branch]
@@ -275,9 +277,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
              'internal sealed interface PublicToolDocument { val verbose: Boolean }\n\n']
     body = []
     discovery_body = []
+    impact_body = []
     discovery_objects = {'DirectoryScope', 'PackageScope', 'LocationSource', 'SearchSource', 'TextSource', 'AllSource'}
     for key, spec in objects.items():
-        object_body = discovery_body if key in discovery_objects else body
+        object_body = impact_body if key.startswith('Impact') else discovery_body if key in discovery_objects else body
         inherited = parents.get(key, [])
         discriminator = 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
@@ -290,7 +293,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
         if inherited:
             annotation += '@SerialName(' + json.dumps(spec['properties'][discriminator]['enum'][0]) + ')\n'
         if not props:
-            object_body.append(annotation + f'internal data object PublicTool{key}{suffix}\n\n')
+            declaration = f'internal data object PublicTool{key}{suffix}'
+            inline_annotation = annotation.replace('\n', ' ')
+            object_annotation = (inline_annotation if key.startswith('Impact') and
+                                 len(inline_annotation + declaration) <= 120 else annotation)
+            object_body.append(object_annotation + declaration + '\n\n')
         else:
             object_body.append(annotation + f'internal data class PublicTool{key}(\n')
             for prop, value in props:
@@ -319,7 +326,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
                     parameter = prop.split('_')[0] + ''.join(part.title() for part in prop.split('_')[1:])
                     object_body.append(f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')
                 modifier = 'override ' if prop == 'verbose' and key in roots else ''
-                object_body.append(f'    {modifier}val {parameter}: {field_type}{default},\n')
+                comma = '' if key.startswith('Impact') and len(props) == 1 else ','
+                object_body.append(f'    {modifier}val {parameter}: {field_type}{default}{comma}\n')
             object_body.append(')' + suffix + '\n\n')
     for key, values in enums.items():
         lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')
@@ -385,6 +393,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
             'import io.github.amichne.kast.protocol.contract.ProtocolText\n'
             'import kotlinx.serialization.SerialName\n'
             'import kotlinx.serialization.Serializable\n\n' + ''.join(discovery_body).rstrip() + '\n',
+        KOTLIN / 'PublicToolImpactDocuments.kt':
+            '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
+            'package io.github.amichne.kast.appserver.query\n\n'
+            'import io.github.amichne.kast.protocol.contract.BoundedProtocolList\n'
+            'import io.github.amichne.kast.protocol.contract.ProtocolText\n'
+            'import kotlinx.serialization.SerialName\n'
+            'import kotlinx.serialization.Serializable\n\n' + ''.join(impact_body).rstrip() + '\n',
     }
     identity_lines = ['// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
                       'package io.github.amichne.kast.protocol.registry\n\n',

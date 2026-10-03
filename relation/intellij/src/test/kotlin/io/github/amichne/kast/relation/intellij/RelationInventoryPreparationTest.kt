@@ -207,15 +207,67 @@ class RelationInventoryPreparationTest {
             is Refinement.Rejected -> error("Inventory fixture limits rejected: ${admitted.failure}")
         }
 
+    @Test
+    fun `native preparation duration is separate from confirmation and preserves unavailable outcome`() {
+        val observation = Observation()
+        val collector = IntellijRelationCollector(request, { 0L }, observation)
+        var now = 10L
+        val unavailable =
+            readRelationInventory(
+                request,
+                collector,
+                prepare = {
+                    now = 90L
+                    RelationInventoryPreparation.Unavailable
+                },
+                confirm = { _, _ -> error("Unavailable preparation cannot confirm") },
+                cancellationCheck = {},
+                observation = observation,
+                clockNanoseconds = { now },
+            )
+        assertEquals(ProviderTermination.HALTED, unavailable)
+        assertEquals(listOf(80L), observation.preparationNanos)
+        assertEquals(emptyList<Long>(), observation.confirmationNanos)
+    }
+
+    @Test
+    fun `successful native preparation measures confirmation independently`() {
+        val observation = Observation()
+        val collector = IntellijRelationCollector(request, { 0L }, observation)
+        var now = 10L
+        val terminal =
+            readRelationInventory(
+                request,
+                collector,
+                prepare = {
+                    now = 90L
+                    RelationInventoryPreparation.Prepared(RelationProviderState.references(emptyList()))
+                },
+                confirm = { _, _ -> error("Empty inventory cannot confirm a locator") },
+                cancellationCheck = {},
+                observation = observation,
+                clockNanoseconds = { now },
+            )
+        assertEquals(ProviderTermination.TERMINAL, terminal)
+        assertEquals(listOf(80L), observation.preparationNanos)
+        assertEquals(listOf(0L), observation.confirmationNanos)
+    }
+
     private class Observation : IntellijReadObservation {
         var candidates = 0
         var prepared = 0
         val retentionEstimates = mutableListOf<Long>()
         val terminations = mutableListOf<IntellijReadTermination>()
+        val preparationNanos = mutableListOf<Long>()
+        val confirmationNanos = mutableListOf<Long>()
 
         override fun measure(gauge: IntellijReadGauge, value: IntellijReadGaugeValue) {
-            assertEquals(IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES, gauge)
-            retentionEstimates += value.value
+            when (gauge) {
+                IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES -> retentionEstimates += value.value
+                IntellijReadGauge.RELATION_PREPARATION_NANOS -> preparationNanos += value.value
+                IntellijReadGauge.RELATION_CONFIRMATION_NANOS -> confirmationNanos += value.value
+                else -> error("Unexpected inventory gauge $gauge")
+            }
         }
 
         override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {

@@ -60,33 +60,15 @@ class QueryWalkObservationWireTest {
     @Test
     fun `query walk observation retains partial expansion depth evidence and remainder`() {
         for (remainder in TraversalExpansionRemainderDocument.entries) {
-            val partial =
-                TraversalPartialExpansionDocument.create(
-                        ProtocolText.parse("exact:fixture-node").value(),
-                        TraversalDepthDocument.parse(2).value(),
-                        listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
-                        remainder,
-                        knownMinimum = QueryKnownMinimum.parse(0).value(),
-                        omissions = unmeasuredPageOmissions(),
-                    )
-                    .value()
-            val observation =
-                QueryWalkObservationDocument(
-                    QueryReferenceDocument.ExactSymbol(ProtocolText.parse("exact:fixture-node").value()),
-                    RelationKindDocument.CALLEES,
-                    ProtocolCount.parse(3).value(),
-                    QueryExpandedFrontierDocument.parse(1).value(),
-                    TraversalProgressDocument(1, 2, 3, 2),
-                    TraversalStrategyDocument.BreadthFirst,
-                    BoundedProtocolList.create(listOf(partial)).value(),
-                    QueryWalkCoverageDocument.resumable(
-                            listOf(TraversalLimitationDocument.ONE_HOP_INCOMPLETE),
-                            listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
-                        )
-                        .value(),
-                )
+            val observation = partialObservation(remainder)
             val wire = observation.toWireDocument()
             val encoded = wireJson.encodeToJsonElement(QueryWalkObservationWireDocument.serializer(), wire)
+            assertEquals(
+                wireJson.parseToJsonElement(
+                    checkNotNull(javaClass.getResource("/query/walk-effective-domain.json")).readText()
+                ),
+                encoded.jsonObject.getValue("effective_domain"),
+            )
             val expectedPartial =
                 wireJson.parseToJsonElement(
                     checkNotNull(javaClass.getResource("/query/walk-partial-expansion.json"))
@@ -101,6 +83,66 @@ class QueryWalkObservationWireTest {
                 wireJson.decodeFromString(QueryWalkObservationWireDocument.serializer(), unknown)
             }
         }
+    }
+
+    @Test
+    fun `complete empty walk encodes mandatory domain and rejects missing witness fields`() {
+        val observation =
+            QueryWalkObservationDocument(
+                QueryReferenceDocument.ExactSymbol(ProtocolText.parse("exact:fixture-node").value()),
+                RelationKindDocument.REFERENCES,
+                ProtocolCount.parse(2).value(),
+                QueryExpandedFrontierDocument.parse(1).value(),
+                TraversalProgressDocument(1, 1, 0, 0),
+                TraversalStrategyDocument.BreadthFirst,
+                BoundedProtocolList.create(emptyList<TraversalPartialExpansionDocument>()).value(),
+                QueryWalkCoverageDocument.Complete,
+                io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument.WORKSPACE,
+                fixtureWalkDomain(),
+                io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint.parse("1".repeat(64)).value(),
+            )
+        val expected = checkNotNull(javaClass.getResource("/query/walk-empty-domain.json")).readText()
+        val encoded =
+            wireJson.encodeToJsonElement(QueryWalkObservationWireDocument.serializer(), observation.toWireDocument())
+        assertEquals(wireJson.parseToJsonElement(expected), encoded)
+        for (field in listOf("requested_domain", "effective_domain", "domain_fingerprint")) {
+            val missing = checkNotNull(javaClass.getResource("/query/walk-empty-missing-$field.json")).readText()
+            assertThrows(SerializationException::class.java) {
+                wireJson.decodeFromString(QueryWalkObservationWireDocument.serializer(), missing)
+            }
+        }
+        assertEquals(WireDocumentConversion.Converted(observation), observation.toWireDocument().toContract())
+    }
+
+    private fun partialObservation(remainder: TraversalExpansionRemainderDocument): QueryWalkObservationDocument {
+        val partial =
+            TraversalPartialExpansionDocument.create(
+                    ProtocolText.parse("exact:fixture-node").value(),
+                    TraversalDepthDocument.parse(2).value(),
+                    listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
+                    remainder,
+                    knownMinimum = QueryKnownMinimum.parse(0).value(),
+                    omissions = unmeasuredPageOmissions(),
+                )
+                .value()
+        return QueryWalkObservationDocument(
+            QueryReferenceDocument.ExactSymbol(ProtocolText.parse("exact:fixture-node").value()),
+            RelationKindDocument.CALLEES,
+            ProtocolCount.parse(3).value(),
+            QueryExpandedFrontierDocument.parse(1).value(),
+            TraversalProgressDocument(1, 2, 3, 2),
+            TraversalStrategyDocument.BreadthFirst,
+            BoundedProtocolList.create(listOf(partial)).value(),
+            QueryWalkCoverageDocument.resumable(
+                    listOf(TraversalLimitationDocument.ONE_HOP_INCOMPLETE),
+                    listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
+                )
+                .value(),
+            requestedDomain = io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument.WORKSPACE,
+            effectiveDomain = fixtureWalkDomain(),
+            domainFingerprint =
+                io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint.parse("1".repeat(64)).value(),
+        )
     }
 
     private fun unmeasuredPageOmissions(): BoundedProtocolList<RelationOmissionDocument> =
@@ -122,3 +164,18 @@ class QueryWalkObservationWireTest {
 
     private fun <T, F> Refinement<T, F>.value(): T = (this as Refinement.Refined).value
 }
+
+private fun fixtureWalkDomain(): io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument =
+    io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument(
+        io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument.Workspace,
+        io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument.PRODUCTION_AND_TEST,
+        io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument.All,
+        null,
+        null,
+        (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                emptyList<io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument>()
+            ) as io.github.amichne.kast.kernel.Refinement.Refined)
+            .value,
+    )

@@ -26,8 +26,23 @@ internal class IntellijReferenceInventory(
                 .forEach(
                     Processor { reference ->
                         cancellationCheck()
-                        collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
-                            inventory.append(locators.reference(reference))
+                        when (scope.admitProviderSite(reference.element.containingFile?.virtualFile)) {
+                            RelationProviderScopeAdmission.ADMITTED ->
+                                collector.admitProviderCandidate() ==
+                                    IntellijRelationProviderEnumerationAdmission.READY &&
+                                    inventory.append(locators.reference(reference))
+                            RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED,
+                            RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED -> {
+                                observation.count(
+                                    io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter.SCOPE_FILTERED
+                                )
+                                true
+                            }
+                            RelationProviderScopeAdmission.UNAVAILABLE ->
+                                collector.blockPartition(
+                                    io.github.amichne.kast.relation.contract.RelationLimitation.PROVIDER_INCOMPLETE
+                                )
+                        }
                     }
                 )
         return inventory.finish(exhausted, RelationProviderState::references)

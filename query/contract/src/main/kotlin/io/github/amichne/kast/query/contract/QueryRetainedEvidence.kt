@@ -35,8 +35,24 @@ internal fun QuerySymbol.hasForeignBasis(lease: SemanticReadAuthority): Boolean 
         }
 
 internal fun QueryResult.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    (when (val resultRows = rows) {
+    rows.hasForeignBasis(lease) ||
+        failures.any { it.hasForeignBasis(lease) } ||
+        omissions.any { it.subject.lease != lease } ||
+        walkObservations.any { it.subject.lease != lease } ||
+        referenceObservations.any { it.target.lease != lease || it.authority != lease.identity } ||
+        discoveryObservations.any { it.authority != lease } ||
+        relationObservations.any { it.question.subject.lease != lease }
+
+private fun QueryRows.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (val resultRows = this) {
+        is QueryRows.ImpactWitness -> resultRows.view.ledger.hasForeignBasis(lease)
         is QueryRows.Symbols -> resultRows.values.any { it.hasForeignBasis(lease) }
+        is QueryRows.ValuePaths ->
+            resultRows.values.any { it.hasForeignBasis(lease) } ||
+                when (val witness = resultRows.accounting) {
+                    QueryValuePathAccounting.EvidenceOnly -> false
+                    is QueryValuePathAccounting.Investigated -> witness.ledger.hasForeignBasis(lease)
+                }
         is QueryRows.Occurrences ->
             resultRows.values.any { occurrence ->
                 when (occurrence) {
@@ -49,12 +65,7 @@ internal fun QueryResult.hasForeignBasis(lease: SemanticReadAuthority): Boolean 
             resultRows.values.any { row ->
                 row.left.value.symbol.hasForeignBasis(lease) || row.right.value.symbol.hasForeignBasis(lease)
             }
-    }) ||
-        failures.any { it.hasForeignBasis(lease) } ||
-        omissions.any { it.subject.lease != lease } ||
-        walkObservations.any { it.subject.lease != lease } ||
-        referenceObservations.any { it.target.lease != lease || it.authority != lease.identity } ||
-        discoveryObservations.any { it.authority != lease }
+    }
 
 internal fun QueryWalkCoverage.isTerminallyIncomplete(): Boolean =
     this is QueryWalkCoverage.TerminalIncomplete ||
@@ -82,6 +93,7 @@ internal fun retainedStorageBytes(
     lease: SemanticReadAuthority,
     references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence>,
     discoveries: List<QueryDiscoveryObservation>,
+    relations: List<QueryRelationObservation>,
 ): Long {
     val sourceText =
         rows.fold(0L) { size, row ->
@@ -100,6 +112,11 @@ internal fun retainedStorageBytes(
         .saturatedAdd(failures.toString().utf8UpperBound())
         .saturatedAdd(omissions.toString().utf8UpperBound())
         .saturatedAdd(walkObservations.toString().utf8UpperBound())
+        .saturatedAdd(
+            walkObservations.sumOf { observation ->
+                observation.scopeExclusions.sumOf { it.exclusion.canonicalProjection().utf8UpperBound() }
+            }
+        )
         .saturatedAdd(coverage.toString().utf8UpperBound())
         .saturatedAdd(lease.toString().utf8UpperBound())
         .saturatedAdd(sourceText)
@@ -107,6 +124,7 @@ internal fun retainedStorageBytes(
         .saturatedAdd(relationEvidence)
         .saturatedAdd(references.sumOf { it.retainedBytes })
         .saturatedAdd(discoveries.sumOf { it.retainedBytes })
+        .saturatedAdd(relations.sumOf { it.retainedBytes })
         .saturatedAdd(checkpoint?.retainedBytes ?: 0L)
         .saturatedAdd(priorRetainedSource)
         .saturatedMultiply(RETAINED_STATE_OVERHEAD_MULTIPLIER)

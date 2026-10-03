@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b4665a9e942dce45e0aa5c5e09811076f8fe4addc431aa59060ca1d9cc512071",
+  "pageVersion": "sha256:9acef40b312d5db392554aa9da86e50b1e4417aca64a44892ecfbddb94b7d295",
   "claims": [
     {
       "id": "claim_4d6ed902909b4ef0b5885ebf90819d17",
@@ -21,10 +21,24 @@
           "version": "repo-lines-v1:sha256:a45304a3fd001b9eb4f6f3cc1c9663345493bbedeac6c5458f9118d0d2f223f3:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiOWQxOGEzNzViOWQ3ODZhZmRjMzg3MTEzYWQ3NGJjZmUzM2Y5MDhjZjFmMzBlMDM3MjE5ZjY5OGQ5NDVjNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlMjI4MzBjOWU2NTI0NWQwYjdjMmUwYzA4NmY5NTI2OGUwM2JjMDVhYjEyNDBiMzFmYjM0ZGVmNjBhZTI2OWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_310e917902a2456287eda7a1beddf226",
+      "statement": "Durable live-plan row storage version1 is independent of embedded plan codecs: issuance and reload use the same storage owner, then checksum and document-specific codec/identity validation reject unsupported or corrupt evidence.",
+      "evidence": [
+        {
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt#L187-L220",
+          "version": "repo-lines-v1:sha256:1411302108593dfb4ac9bd862c21669385ce57ff8c717f37023425f602c421de:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMTM2MzdmNmIwOTk4N2I5NWUxZjY1MGNmMWY5NjA5YmU5MjM4MDZhM2EwY2ZkZjQzY2Y5OGZhZGI3ODdmZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2YjA1NWE3ZGQxZjAxZWMzZjdjYmM0NTMwNzNmN2I2MTcyMDMwNTY0Zjk1OTEwZjNkNTA0ZGNhMDYwMzlhMGIifQ"
+        },
+        {
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt#L85-L99",
+          "version": "repo-lines-v1:sha256:4cda41ba1a33f5d71e07a5c817a8d96d61c4ea8d9a4e306bb4d4bd4036c663b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkOGNmYmQ5ZmQ3MzEyYWQxMmVkZTkwNzNhMjIzZTlmMjJjNDVhYTU3MzQzNjc5ZjRhMjM2OTI5NjNhZTYxODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMWQ4NDc2ZmI3MjZjMWRkMDQxN2FlYWJkMjljM2JmYTE2NTdhYjYyOWFjZDA5MzgxZTQ2N2MxYmU4ODMxZTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4MDljYjcwNjFiMTE0N2I0ODg5MGVkYzZhNTlhZTBhYWNkYWNmOWU4ZDk4YWU4YjIzZjM4MjA3M2VkOWQ1MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5MzVlM2I3Njk4ZmJhZTM1MzI2OThlYmFiYzg0ZGEyY2VjOGYwYzhmZjVmMjMzMjUwMzMzZjYwYWFiZjBiM2YifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-10-03T04:57:02.812Z"
   }
 }

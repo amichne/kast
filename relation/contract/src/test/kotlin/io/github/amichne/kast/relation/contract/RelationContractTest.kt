@@ -44,6 +44,28 @@ import org.junit.jupiter.api.Test
 
 class RelationContractTest {
     @Test
+    fun `explicit expansion binds the domain separately from the seed`() {
+        val selector = selector(exactFile = true)
+        val workspace =
+            SymbolSearchScope.Workspace(
+                selector.scope.sourceKinds,
+                selector.scope.generatedSources,
+                SymbolLibraryPolicy.EXCLUDE,
+            )
+        val boundary = RelationSearchBoundary.Explicit(workspace)
+        val read =
+            RelationRequest.start(selector, RelationMeaning.Callees, request(RelationMeaning.Callees).budget, boundary)
+        assertSame(selector.scope, read.subject.scope)
+        assertEquals(workspace, read.searchScope)
+        assertEquals(boundary, read.boundary)
+        assertNotEquals(RelationScopeFingerprint.from(read.subject), read.scopeFingerprint)
+        assertNotEquals(
+            RelationScopeFingerprint.from(read.subject, RelationSearchBoundary.WORKSPACE_EXPANSION),
+            read.scopeFingerprint,
+        )
+    }
+
+    @Test
     fun `workspace expansion retains subject proof while admitting a different file endpoint`() {
         val selector = selector(exactFile = true)
         val request =
@@ -53,21 +75,13 @@ class RelationContractTest {
                 request(RelationMeaning.Callees).budget,
                 RelationSearchBoundary.WORKSPACE_EXPANSION,
             )
-        assertSame(selector, (request.subject as RelationEndpoint.Subject).selector)
+        assertSame(
+            selector,
+            (request.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector,
+        )
         assertSame(selector.scope, request.subject.scope)
         assertInstanceOf(SymbolSearchScope.Workspace::class.java, request.searchScope)
-        val otherFile =
-            (SymbolDiscoveryCandidate.fromBoundary(
-                        SymbolDiscoveryKind.SYMBOL,
-                        "other",
-                        selector.lease,
-                        Path.of("/workspace/other/Other.kt"),
-                        "file:///workspace/other/Other.kt",
-                        0,
-                    )
-                    .refined()
-                    .location as SymbolDiscoveryCandidateLocation.Declaration)
-                .file
+        val otherFile = nativeFile(selector.lease, "other", Path.of("/workspace/other/Other.kt"))
         val evidence =
             CompilerGroundedSymbolEvidence.fromBoundary(
                     otherFile,
@@ -252,7 +266,7 @@ class RelationContractTest {
         assertEquals(
             RelationResumeFailure.MEANING_MISMATCH,
             (RelationRequest.resume(
-                    (request.subject as RelationEndpoint.Subject).selector,
+                    (request.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector,
                     RelationMeaning.Callers,
                     request.budget,
                     resumableCoverage.continuation,
@@ -303,74 +317,6 @@ class RelationContractTest {
             forward.consumedPrefixDigest,
             moved.consumedPrefixDigest,
         )
-    }
-
-    @Test
-    fun `compiler confirmed alias occurrence has file ownership and cannot manufacture a declaration edge`() {
-        val request = request(RelationMeaning.References)
-        val target =
-            RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity).refined()
-        val location = RelationOccurrence.fromBoundary(request.subject.file, 8, 14).refined()
-        val occurrence =
-            RelationReferenceOccurrence.confirmed(
-                    request,
-                    target,
-                    location,
-                    RelationReferenceContext.ALIASED_IMPORT,
-                    RelationReferenceOwnership.FileScoped(RelationReferenceContext.ALIASED_IMPORT),
-                    RelationProvenance.K2_AUTHORED_SOURCE,
-                )
-                .refined()
-
-        assertSame(request.subject, occurrence.target)
-        assertEquals(request.subject.lease.identity, occurrence.authority)
-        assertEquals(RelationFactCoverage.EXACT_COMPILER_CONFIRMED, occurrence.coverage)
-        assertEquals(
-            RelationReferenceProjectionFailure.FILE_SCOPED,
-            (occurrence.declarationFact(request) as Refinement.Rejected).failure,
-        )
-        assertEquals(
-            RelationReferenceTargetFailure.DIFFERENT_COMPILER_IDENTITY,
-            (RelationConfirmedReferenceTarget.fromCompiler(request.subject, related(request.subject).compilerIdentity)
-                    as Refinement.Rejected)
-                .failure,
-        )
-        assertEquals(
-            RelationReferenceOccurrenceFailure.FILE_CONTEXT_MISMATCH,
-            (RelationReferenceOccurrence.confirmed(
-                    request,
-                    target,
-                    location,
-                    RelationReferenceContext.CODE,
-                    RelationReferenceOwnership.FileScoped(RelationReferenceContext.ALIASED_IMPORT),
-                    RelationProvenance.K2_AUTHORED_SOURCE,
-                ) as Refinement.Rejected)
-                .failure,
-        )
-    }
-
-    @Test
-    fun `owned reference carries the original endpoint proof into a real declaration edge`() {
-        val request = request(RelationMeaning.References)
-        val owner = related(request.subject)
-        val target =
-            RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity).refined()
-        val location = RelationOccurrence.fromBoundary(owner.file, 73, 79).refined()
-        val occurrence =
-            RelationReferenceOccurrence.confirmed(
-                    request,
-                    target,
-                    location,
-                    RelationReferenceContext.TYPE,
-                    RelationReferenceOwnership.DeclarationOwned(owner),
-                    RelationProvenance.K2_AUTHORED_SOURCE,
-                )
-                .refined()
-        val edge = occurrence.declarationFact(request).refined()
-
-        assertSame(owner, edge.source)
-        assertSame(request.subject, edge.target)
-        assertSame(location, edge.occurrence)
     }
 
     @Test
@@ -437,6 +383,23 @@ class RelationContractTest {
         assertEquals(1, batch.resultCount.value)
         assertEquals(RelationFactCoverage.EXACT_COMPILER_CONFIRMED, batch.facts.single().coverage)
     }
+
+    private fun nativeFile(
+        lease: io.github.amichne.kast.workspace.contract.SemanticReadAuthority,
+        name: String,
+        path: Path,
+    ) =
+        (SymbolDiscoveryCandidate.fromBoundary(
+                    SymbolDiscoveryKind.SYMBOL,
+                    name,
+                    lease,
+                    path,
+                    "file://$path",
+                    0,
+                )
+                .refined()
+                .location as SymbolDiscoveryCandidateLocation.Declaration)
+            .file
 
     private fun related(subject: RelationEndpoint): RelationEndpoint.Resolved =
         RelationEndpoint.resolve(

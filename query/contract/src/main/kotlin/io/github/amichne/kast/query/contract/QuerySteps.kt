@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
@@ -68,12 +69,16 @@ sealed interface QueryStepSyntax {
 
     data class Where(val predicate: QueryPredicate) : QueryStepSyntax
 
-    data class Related(val meaning: RelationMeaning) : QueryStepSyntax
+    data class Related(
+        val meaning: RelationMeaning,
+        val expansion: RelationSearchBoundary = RelationSearchBoundary.WORKSPACE_EXPANSION,
+    ) : QueryStepSyntax
 
     data class Walk(
         val meaning: RelationMeaning,
         val maximumDepth: TraversalDepthLimit,
         val strategy: TraversalStrategy,
+        val expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
     ) : QueryStepSyntax
 
     data class Concat(val input: QueryCompositionInput) : QueryStepSyntax

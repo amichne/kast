@@ -86,6 +86,7 @@ class QueryDeadlineAdmissionTest {
         with(replay) {
             when (first) {
                 is QueryExecutionResult.Complete -> assertEquals(expected, first.symbolCount(), "clock read $cutoff")
+                is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                 is QueryExecutionResult.Rejected -> error("Unexpected rejection ${first.reason}")
                 is QueryExecutionResult.Qualified ->
                     when (val continuation = first.continuation) {

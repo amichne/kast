@@ -1,0 +1,1 @@
+{"type":"SOURCE_DOMAIN","source_sets":["main"],"directory":{"path":"shared","containment":"descendants"},"source_policy":"production-only","generated_sources":"exclude"}

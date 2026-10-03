@@ -70,7 +70,7 @@ class QueryTextMatchProjectionTest {
                     assertInstanceOf(AdmittedQueryPlan.Text::class.java, admitted.plan)
                     executions++
                     check(executions == 1) { "Retained presentation must not execute semantic discovery" }
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(QueryRows.Symbols.of(listOf(row)), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(1).refined()),
                     )

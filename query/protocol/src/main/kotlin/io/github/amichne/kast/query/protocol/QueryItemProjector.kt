@@ -26,22 +26,52 @@ import io.github.amichne.kast.query.contract.QueryWalkArrival
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 
 internal class QueryItemProjector(private val authority: QueryReferenceAuthority) {
-    fun projectItems(output: QueryOutputDocument, rows: QueryRows): QueryProjection<QueryResultItemDocument> =
-        when (rows) {
-            is QueryRows.Symbols ->
-                when (output) {
-                    is QueryOutputDocument.Symbols -> projectSymbols(output, rows.values)
-                    QueryOutputDocument.Occurrences -> projectOccurrences(rows.values)
-                    QueryOutputDocument.TraversalRecords -> projectTraversalRecords(rows.values)
-                    QueryOutputDocument.BindingRows -> QueryProjection.Rejected
-                }
+    fun projectItems(output: QueryOutputDocument, rows: QueryRows): QueryProjection<QueryResultItemDocument> {
+        return when (rows) {
+            is QueryRows.ImpactWitness -> projectWitnessRows(output, rows)
+            is QueryRows.Symbols -> projectSymbolRows(output, rows)
             is QueryRows.Occurrences ->
                 if (output == QueryOutputDocument.Occurrences) rows.values.mapProjected(::projectOccurrence)
                 else QueryProjection.Rejected
+            is QueryRows.ValuePaths ->
+                if (output == QueryOutputDocument.ValuePaths) projectValuePaths(rows) else QueryProjection.Rejected
             is QueryRows.Bindings ->
                 if (output == QueryOutputDocument.BindingRows) rows.values.mapProjected(::projectBindingRow)
                 else QueryProjection.Rejected
         }
+    }
+
+    private fun projectWitnessRows(
+        output: QueryOutputDocument,
+        rows: QueryRows.ImpactWitness,
+    ): QueryProjection<QueryResultItemDocument> =
+        if (output is QueryOutputDocument.ImpactWitness && output.section.witnessSection() == rows.view.section)
+            rows.projectWitnessItems()
+        else QueryProjection.Rejected
+
+    private fun projectSymbolRows(
+        output: QueryOutputDocument,
+        rows: QueryRows.Symbols,
+    ): QueryProjection<QueryResultItemDocument> =
+        when (output) {
+            is QueryOutputDocument.Symbols -> projectSymbols(output, rows.values)
+            QueryOutputDocument.Occurrences -> projectOccurrences(rows.values)
+            QueryOutputDocument.TraversalRecords -> projectTraversalRecords(rows.values)
+            is QueryOutputDocument.ImpactWitness,
+            QueryOutputDocument.BindingRows,
+            QueryOutputDocument.ValuePaths -> QueryProjection.Rejected
+        }
+
+    private fun projectValuePaths(rows: QueryRows.ValuePaths): QueryProjection<QueryResultItemDocument> {
+        val documents = mutableListOf<QueryResultItemDocument>()
+        for (path in rows.values) when (val projected = path.impactDocument()) {
+            is io.github.amichne.kast.kernel.Refinement.Refined ->
+                documents += QueryResultItemDocument.ValuePath(projected.value)
+            is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                return QueryProjection.ImpactRejected(projected.failure)
+        }
+        return QueryProjection.Projected(documents)
+    }
 
     private fun projectOccurrence(value: QueryOccurrence): QueryResultItemDocument? {
         return when (value) {
@@ -97,7 +127,7 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
         return projectSymbol(QueryOutputDocument.Symbols(bounded), symbol)
     }
 
-    private fun projectTraversalRecords(items: List<QuerySymbol>): QueryProjection<QueryResultItemDocument> =
+    private fun projectTraversalRecords(items: List<QuerySymbol>): QueryProjection.Legacy<QueryResultItemDocument> =
         items.mapProjected { symbol ->
             val record =
                 (symbol.walkArrival as? QueryWalkArrival.Proven)?.records?.singleOrNull() ?: return@mapProjected null
@@ -115,7 +145,7 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
             )
         }
 
-    private fun projectOccurrences(items: List<QuerySymbol>): QueryProjection<QueryResultItemDocument> =
+    private fun projectOccurrences(items: List<QuerySymbol>): QueryProjection.Legacy<QueryResultItemDocument> =
         items.mapProjected { symbol ->
             val fact =
                 (symbol.arrival as? QueryArrivalEvidence.Proven)?.facts?.singleOrNull() ?: return@mapProjected null
@@ -131,7 +161,7 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
     private fun projectSymbols(
         output: QueryOutputDocument.Symbols,
         items: List<QuerySymbol>,
-    ): QueryProjection<QueryResultItemDocument> = items.mapProjected { symbol -> projectSymbol(output, symbol) }
+    ): QueryProjection.Legacy<QueryResultItemDocument> = items.mapProjected { symbol -> projectSymbol(output, symbol) }
 
     private fun projectSymbol(
         output: QueryOutputDocument.Symbols,
@@ -186,7 +216,7 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
         )
     }
 
-    private fun projectTextMatches(symbol: QuerySymbol): QueryProjection<QueryTextMatchDocument> =
+    private fun projectTextMatches(symbol: QuerySymbol): QueryProjection.Legacy<QueryTextMatchDocument> =
         symbol.textMatches.values.mapProjected {
             when (val match = it.protocolDocument()) {
                 is QueryTextMatchProjection.Projected -> match.document

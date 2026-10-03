@@ -121,6 +121,11 @@ internal class TraversalAccounting(
     val referenceOccurrences: MutableList<io.github.amichne.kast.traversal.contract.TraversalReferenceObservation> =
         mutableListOf(),
 ) {
+    val scopeExclusions = mutableListOf<io.github.amichne.kast.traversal.contract.TraversalScopeExclusion>()
+
+    val retainedResultCount: Int
+        get() = semanticResultCount + scopeExclusions.size
+
     val semanticResultCount: Int
         get() =
             records.size +
@@ -162,6 +167,7 @@ internal class TraversalAccounting(
             partialExpansions,
             inheritedOmissions,
             referenceOccurrences.sorted(),
+            scopeExclusions.sorted(),
         )
     }
 }

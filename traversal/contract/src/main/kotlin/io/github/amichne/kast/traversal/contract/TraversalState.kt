@@ -79,7 +79,7 @@ data class TraversalNode private constructor(val endpoint: RelationEndpoint) : C
         ): Refinement<TraversalNode, TraversalNodeFailure> =
             when {
                 endpoint.lease != plan.start.lease -> Refinement.Rejected(TraversalNodeFailure.LEASE_MISMATCH)
-                endpoint.scope != plan.scope -> Refinement.Rejected(TraversalNodeFailure.SCOPE_MISMATCH)
+                !plan.admitsEndpoint(endpoint) -> Refinement.Rejected(TraversalNodeFailure.SCOPE_MISMATCH)
                 else -> Refinement.Refined(TraversalNode(endpoint))
             }
 
@@ -130,7 +130,7 @@ private constructor(
             when {
                 node.endpoint.lease != plan.start.lease ->
                     Refinement.Rejected(TraversalFrontierEntryFailure.LEASE_MISMATCH)
-                node.endpoint.scope != plan.scope -> Refinement.Rejected(TraversalFrontierEntryFailure.SCOPE_MISMATCH)
+                !plan.admitsEndpoint(node.endpoint) -> Refinement.Rejected(TraversalFrontierEntryFailure.SCOPE_MISMATCH)
                 else -> Refinement.Refined(TraversalFrontierEntry(node, depth))
             }
     }
@@ -165,13 +165,13 @@ private constructor(
             continuation: RelationContinuation,
         ): Refinement<TraversalPendingRead, TraversalPendingReadFailure> =
             when {
-                entry.node.endpoint.lease != plan.start.lease || entry.node.endpoint.scope != plan.scope ->
+                entry.node.endpoint.lease != plan.start.lease || !plan.admitsEndpoint(entry.node.endpoint) ->
                     Refinement.Rejected(TraversalPendingReadFailure.FRONTIER_MISMATCH)
                 continuation.subject != entry.node.fingerprint ->
                     Refinement.Rejected(TraversalPendingReadFailure.SELECTOR_MISMATCH)
                 continuation.meaning != plan.meaning ->
                     Refinement.Rejected(TraversalPendingReadFailure.MEANING_MISMATCH)
-                continuation.scope != RelationScopeFingerprint.from(entry.node.endpoint) ->
+                continuation.scope != RelationScopeFingerprint.from(entry.node.endpoint, plan.expansion) ->
                     Refinement.Rejected(TraversalPendingReadFailure.SCOPE_MISMATCH)
                 continuation.authority != plan.start.lease.identity ->
                     Refinement.Rejected(TraversalPendingReadFailure.GENERATION_MISMATCH)
@@ -261,7 +261,7 @@ private constructor(
             }
             if (
                 frontier.any {
-                    it.node.endpoint.lease != plan.start.lease || it.node.endpoint.scope != plan.scope
+                    it.node.endpoint.lease != plan.start.lease || !plan.admitsEndpoint(it.node.endpoint)
                 }
             ) {
                 return Refinement.Rejected(TraversalCheckpointFailure.FRONTIER_NODE_MISMATCH)
@@ -302,7 +302,7 @@ private constructor(
                 return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)
             if (
                 omissions.any {
-                    it.entry.node.endpoint.lease != plan.start.lease || it.entry.node.endpoint.scope != plan.scope
+                    it.entry.node.endpoint.lease != plan.start.lease || !plan.admitsEndpoint(it.entry.node.endpoint)
                 }
             )
                 return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)

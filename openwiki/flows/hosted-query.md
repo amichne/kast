@@ -162,9 +162,6 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
   - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T13:53:38.453Z
 sources:
   - id: openwiki-source-57bcbe3766714342dda0682a
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt
@@ -174,11 +171,16 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+  - id: openwiki-source-680008eb9e24b45cf91f6d9d
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-9ddb39fa2f594fe2e1edaa19
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-02T06:27:25.947Z" }
+generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T04:45:37.704Z
 ---
 
 # Existing-IDE semantic query
@@ -710,3 +712,9 @@ admission. The admitted endpoint retains a positive typed process owner through
 exact root and socket binding into the live exchange. Owner-envelope parsing alone
 never admits a hosted contract; the complete current descriptor and live describe
 remain separate admission requirements.
+
+## Exact impact admission and execution
+
+The existing hosted query composition supplies native producer-seed proof and value-flow ports to `CanonicalQueryProtocol` and `QueryService`. The admitted project's authority, query state and publication session remain the owners. Exact source anchors, callable identities and reviewed model positions are revalidated before impact execution; no new endpoint or semantic engine is introduced.
+
+Value flow emits detached sites, compiler transfers and named unsupported obligations inside the existing read lifetime. Native source binding and model binding are separately measured. Retained impact witness presentation reads the original ledger; zero-initialized value-flow counters make measured absence of provider work explicit. These counters are runtime observations, separate from compiler and model evidence.

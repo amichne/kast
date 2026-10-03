@@ -62,16 +62,7 @@ class QueryWalkCliProjectionTest {
 
     private fun qualifiedWalk(): OperationOutcome.Qualified<QueryRunResult, QueryRunQualification> {
         val exact = ProtocolText.parse("exact:v2:fixture-node").value()
-        val partial =
-            TraversalPartialExpansionDocument.create(
-                    exact,
-                    TraversalDepthDocument.parse(0).value(),
-                    listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
-                    TraversalExpansionRemainderDocument.NOT_EXPLORED,
-                    knownMinimum = QueryKnownMinimum.parse(0).value(),
-                    omissions = unmeasuredPageOmissions(),
-                )
-                .value()
+        val partial = partialExpansion(exact)
         val observation =
             QueryWalkObservationDocument(
                 QueryReferenceDocument.ExactSymbol(exact),
@@ -86,9 +77,16 @@ class QueryWalkCliProjectionTest {
                         listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
                     )
                     .value(),
+                requestedDomain =
+                    io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument.WORKSPACE,
+                effectiveDomain = fixtureWalkDomain(),
+                domainFingerprint =
+                    io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint.parse("1".repeat(64))
+                        .value(),
             )
         val result =
             QueryRunResult(
+                fixtureQueryQuestion(),
                 BoundedProtocolList.create(emptyList<QueryResultItemDocument>()).value(),
                 BoundedProtocolList.create(emptyList<QueryItemFailureDocument>()).value(),
                 walkObservations = BoundedProtocolList.create(listOf(observation)).value(),
@@ -103,6 +101,18 @@ class QueryWalkCliProjectionTest {
                 walkQualification(),
             )
         return outcome
+    }
+
+    private fun partialExpansion(exact: ProtocolText): TraversalPartialExpansionDocument {
+        return TraversalPartialExpansionDocument.create(
+                exact,
+                TraversalDepthDocument.parse(0).value(),
+                listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
+                TraversalExpansionRemainderDocument.NOT_EXPLORED,
+                knownMinimum = QueryKnownMinimum.parse(0).value(),
+                omissions = unmeasuredPageOmissions(),
+            )
+            .value()
     }
 
     private fun walkQualification(): QueryRunQualification =
@@ -132,3 +142,40 @@ class QueryWalkCliProjectionTest {
 
     private fun <T, F> Refinement<T, F>.value(): T = (this as Refinement.Refined).value
 }
+
+private fun fixtureQueryQuestion(): io.github.amichne.kast.protocol.contract.QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: io.github.amichne.kast.kernel.Refinement<Value, Failure>): Value =
+        when (value) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return io.github.amichne.kast.protocol.contract.QueryQuestionDocument(
+        io.github.amichne.kast.protocol.contract.QueryFromDocument.Location(
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolText.parse("Fixture.kt")),
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(emptyList())),
+        io.github.amichne.kast.protocol.contract.QueryOutputDocument.Symbols(
+            fixtureValue(
+                io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                    listOf(io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument.NAME)
+                )
+            )
+        ),
+    )
+}
+
+private fun fixtureWalkDomain(): io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument =
+    io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument(
+        io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument.Workspace,
+        io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument.PRODUCTION_AND_TEST,
+        io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument.All,
+        null,
+        null,
+        (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                emptyList<io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument>()
+            ) as io.github.amichne.kast.kernel.Refinement.Refined)
+            .value,
+    )

@@ -90,6 +90,8 @@ class QueryExactReferences private constructor(val values: List<SymbolSelector>)
 data class QueryContainingDeclaration(val file: CanonicalWorkspaceFilePath, val offset: SymbolDiscoverySourceOffset)
 
 sealed interface QuerySourceSyntax {
+    data class Impact(val source: QueryImpactSource) : QuerySourceSyntax
+
     data class Symbols(val discovery: QueryDiscoverySyntax) : QuerySourceSyntax
 
     data class Text(val discovery: QueryTextDiscoverySyntax) : QuerySourceSyntax

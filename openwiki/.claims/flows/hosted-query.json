@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:57ffbee8359a7acd7530e6626799d048cb286f152dc65192e73d23fd055a05e8",
+  "pageVersion": "sha256:a70d52f1e54394ec7179ef40033e7c036f25735e9592769b2ac26e3e51fcde76",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -59,10 +59,20 @@
           "version": "repo-lines-v1:sha256:12541db011e05be32444f688dc40a6d88f74abd5e6132f62908ebcc64d955c4c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlZDFiMzYwMzI4NDk5OTY0NTczZjUxYTdmOThmOGQ0MjNlODBkOTNkZjA5N2M3ZTI1OTcwM2FmZmUyMGM3YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2M2MxNjMzOWY2ZTA4OWM5Y2E1YjM5NDg3Mjk4ZTk0MTc3NmE5NmU1OGE2YjBkYzRhODkyMTM4OTgyYjNmOGIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_84c3a48f741046079b3c65d8a3844966",
+      "statement": "Hosted impact execution composes native seed and value-flow ports through the existing canonical query protocol, query service, epoch-bound query state and publication session.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L42-L84",
+          "version": "repo-lines-v1:sha256:cbd82a31d74880da9bcbb960c25c846a249a9f61d95b18a13a62aac200296941:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZDMwNWRjMGJkMTIxNDkxOTdlZTljMmFlMDBhODY0NmMwMjFmY2UyODJjYjFjMDY0MGQ1NWJhYWE4YzY3MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyOGQwMGFiZjBiYmQ1NDU5NTgzNThlOTI5MTk5NTA2MTRlZjYzNzk5YWM1MWEwM2RkMmRiZGYxNjAxZjIwYzUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T13:53:38.453Z"
+    "at": "2026-10-03T04:45:37.704Z"
   }
 }

@@ -3,7 +3,7 @@ package io.github.amichne.kast.relation.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
-import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.detachedIdentityBytes
@@ -11,18 +11,31 @@ import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
 enum class RelationReferenceTargetFailure {
-    DIFFERENT_COMPILER_IDENTITY
+    DIFFERENT_COMPILER_IDENTITY,
+    DIFFERENT_DECLARATION_FILE,
+    DIFFERENT_DECLARATION_RANGE,
 }
 
-/** Equality proof retains the exact target authority, rather than reducing confirmation to a flag. */
-class RelationConfirmedReferenceTarget private constructor(val target: RelationEndpoint) {
+/** Equality proof retains resolved compiler facts and the selected exact declaration authority. */
+class RelationConfirmedReferenceTarget
+private constructor(
+    val target: RelationEndpoint,
+    val resolved: CompilerGroundedSymbolEvidence,
+) {
     companion object {
         fun fromCompiler(
             target: RelationEndpoint,
-            resolved: CompilerSymbolIdentity,
+            resolved: CompilerGroundedSymbolEvidence,
         ): Refinement<RelationConfirmedReferenceTarget, RelationReferenceTargetFailure> =
-            if (target.compilerIdentity == resolved) Refinement.Refined(RelationConfirmedReferenceTarget(target))
-            else Refinement.Rejected(RelationReferenceTargetFailure.DIFFERENT_COMPILER_IDENTITY)
+            when {
+                target.compilerIdentity != resolved.compilerIdentity ->
+                    Refinement.Rejected(RelationReferenceTargetFailure.DIFFERENT_COMPILER_IDENTITY)
+                target.file != resolved.file ->
+                    Refinement.Rejected(RelationReferenceTargetFailure.DIFFERENT_DECLARATION_FILE)
+                target.range != resolved.range ->
+                    Refinement.Rejected(RelationReferenceTargetFailure.DIFFERENT_DECLARATION_RANGE)
+                else -> Refinement.Refined(RelationConfirmedReferenceTarget(target, resolved))
+            }
     }
 }
 

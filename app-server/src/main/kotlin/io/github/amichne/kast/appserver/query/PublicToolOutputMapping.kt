@@ -11,14 +11,17 @@ internal fun PublicToolOutput.lower(): QueryOutputDocument =
         PublicToolOccurrencesOutput -> QueryOutputDocument.Occurrences
         PublicToolTraversalRecordsOutput -> QueryOutputDocument.TraversalRecords
         PublicToolBindingRowsOutput -> QueryOutputDocument.BindingRows
+        PublicToolValuePathsOutput -> QueryOutputDocument.ValuePaths
     }
 
 internal fun PublicToolReadResultOutput.lower(): QueryOutputDocument =
     when (this) {
+        is PublicToolImpactWitnessOutput -> QueryOutputDocument.ImpactWitness(section)
         is PublicToolSymbolsOutput -> symbolsOutput()
         PublicToolOccurrencesOutput -> QueryOutputDocument.Occurrences
         PublicToolTraversalRecordsOutput -> QueryOutputDocument.TraversalRecords
         PublicToolBindingRowsOutput -> QueryOutputDocument.BindingRows
+        PublicToolValuePathsOutput -> QueryOutputDocument.ValuePaths
     }
 
 private fun PublicToolSymbolsOutput.symbolsOutput(): QueryOutputDocument.Symbols =
