@@ -22,6 +22,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 - [tool-rpc.md](tool-rpc.md) - one-shot tool contract and Copilot/Pi extension setup.
 
 - [hosted-read-configuration.md](hosted-read-configuration.md) - hosted read grants, retention configuration, and reported limitations.
+- [reviews/representation-impact-proof.md](reviews/representation-impact-proof.md) - exact installed representation-impact qualification, retained evidence, and proof limits.
 - [public/reference/schemas.mdx](public/reference/schemas.mdx) - generated schema and authored sample entry points.
 - [public/reference/models/query-item.mdx](public/reference/models/query-item.mdx) - query item documentation backed by generated canonical schema.
 
