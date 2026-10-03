@@ -87,7 +87,7 @@ class IntellijValueFlowCompilerAdapter(
         request: ValueSiteRevalidationRequest,
         model: WorkspaceSearchScopeModelCompilation,
     ): ValueModelSiteRead =
-        IntellijValueSiteRevalidationNative(this).revalidate(project, current, request, model).also {
+        IntellijValueSiteRevalidationNative(this, observation).revalidate(project, current, request, model).also {
             observation.count(IntellijReadCounter.VALUE_MODEL_SITE_REVALIDATIONS)
             if (it !is ValueModelSiteRead.Revalidated)
                 observation.count(IntellijReadCounter.VALUE_MODEL_SITE_REVALIDATIONS_REJECTED)
@@ -124,7 +124,7 @@ class IntellijValueFlowCompilerAdapter(
         anchor: ExactDeclarationTextRange,
     ): ValueSiteResolution {
         val expression =
-            prepared.owner.exactValueElement(anchor) as? KtExpression
+            prepared.owner.exactValueElement(anchor)
                 ?: return ValueSiteResolution.Rejected(ValueFlowRejection.UNSUPPORTED_SEED)
         when (val admitted = admittedOwnership(expression, prepared.owner)) {
             is Refinement.Refined -> Unit
@@ -290,11 +290,13 @@ private fun SemanticReadAuthority.isCurrentValueAuthority(): Boolean =
         is SemanticReadLease -> true
     }
 
-internal fun PsiElement.exactValueElement(range: ExactDeclarationTextRange): PsiElement? =
+/** Exact Kotlin semantic elements exclude same-range lexer tokens and argument container wrappers. */
+internal fun PsiElement.exactValueElement(range: ExactDeclarationTextRange): KtExpression? =
     generateSequence(containingFile.findElementAt(range.startInclusive)) { it.parent }
         .takeWhile {
             it.textRange.startOffset >= textRange.startOffset && it.textRange.endOffset <= textRange.endOffset
         }
+        .filterIsInstance<KtExpression>()
         .firstOrNull {
             it.textRange.startOffset == range.startInclusive && it.textRange.endOffset == range.endExclusive
         }

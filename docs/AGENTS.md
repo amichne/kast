@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: 4803441e1d24 -->
+<!-- generated: 2026-10-03 | hash: e787d26e9c74 -->
 
 # docs
 
@@ -20,6 +20,10 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 - [development.md](development.md) - build, local installation, docs preview, and behavior-sized testing.
 - [installation-recovery.md](installation-recovery.md) - offline recovery of damaged installations.
 - [tool-rpc.md](tool-rpc.md) - one-shot tool contract and Copilot/Pi extension setup.
+
+- [hosted-read-configuration.md](hosted-read-configuration.md) - hosted read grants, retention configuration, and reported limitations.
+- [public/reference/schemas.mdx](public/reference/schemas.mdx) - generated schema and authored sample entry points.
+- [public/reference/models/query-item.mdx](public/reference/models/query-item.mdx) - query item documentation backed by generated canonical schema.
 
 ## Subdirectories
 

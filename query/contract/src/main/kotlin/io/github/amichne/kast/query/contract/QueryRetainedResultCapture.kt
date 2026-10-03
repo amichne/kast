@@ -6,6 +6,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 internal fun captureRetainedQueryResult(
     lease: SemanticReadAuthority,
     execution: QueryExecutionResult,
+    rowScope: QueryRetainedCaptureRows = QueryRetainedCaptureRows.PRESENTED,
 ): Refinement<QueryRetainedResult, QueryRetainedResultFailure> {
     val result: QueryResult
     val coverage: QueryCoverage
@@ -32,7 +33,10 @@ internal fun captureRetainedQueryResult(
     ) {
         return Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH)
     }
-    return captureRows(lease, result, coverage, progress)
+    if (rowScope == QueryRetainedCaptureRows.ORIGINAL_INVESTIGATION && result.rows !is QueryRows.ValuePaths) {
+        return Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
+    }
+    return captureRows(lease, result, coverage, progress, rowScope)
 }
 
 private fun captureRows(
@@ -40,6 +44,7 @@ private fun captureRows(
     result: QueryResult,
     coverage: QueryCoverage,
     progress: QueryContinuationState?,
+    rowScope: QueryRetainedCaptureRows,
 ): Refinement<QueryRetainedResult, QueryRetainedResultFailure> =
     when (val rows = result.rows) {
         is QueryRows.ImpactWitness -> Refinement.Rejected(QueryRetainedResultFailure.PRESENTATION_ONLY_ROWS)
@@ -73,7 +78,7 @@ private fun captureRows(
                     result.relationObservations,
                 )
             )
-        is QueryRows.ValuePaths -> Refinement.Refined(captureValuePaths(lease, rows, result, coverage, progress))
+        is QueryRows.ValuePaths -> rows.captureValuePaths(lease, result, coverage, progress, rowScope)
         is QueryRows.Bindings ->
             Refinement.Refined(
                 QueryRetainedResult.Bindings(
@@ -92,22 +97,34 @@ private fun captureRows(
             )
     }
 
-private fun captureValuePaths(
+private fun QueryRows.ValuePaths.captureValuePaths(
     lease: SemanticReadAuthority,
-    rows: QueryRows.ValuePaths,
     result: QueryResult,
     coverage: QueryCoverage,
     progress: QueryContinuationState?,
-): QueryRetainedResult.ValuePaths =
-    QueryRetainedResult.ValuePaths(
-        lease,
-        rows,
-        result.failures,
-        result.omissions,
-        result.walkObservations,
-        coverage,
-        progress,
-        result.referenceObservations,
-        result.discoveryObservations,
-        result.relationObservations,
+    rowScope: QueryRetainedCaptureRows,
+): Refinement<QueryRetainedResult.ValuePaths, QueryRetainedResultFailure> {
+    val retainedRows =
+        when (rowScope) {
+            QueryRetainedCaptureRows.PRESENTED -> this
+            QueryRetainedCaptureRows.ORIGINAL_INVESTIGATION ->
+                when (val original = originalInvestigationRows()) {
+                    is Refinement.Refined -> original.value
+                    is Refinement.Rejected -> return original
+                }
+        }
+    return Refinement.Refined(
+        QueryRetainedResult.ValuePaths(
+            lease,
+            retainedRows,
+            result.failures,
+            result.omissions,
+            result.walkObservations,
+            coverage,
+            progress,
+            result.referenceObservations,
+            result.discoveryObservations,
+            result.relationObservations,
+        )
     )
+}

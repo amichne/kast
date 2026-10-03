@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -39,6 +40,43 @@ class HostedValueFlowDiagnosticsTest {
             assertEquals(1, receipts.size)
             assertEquals(outcome, receipts.single().outcome)
             assertProviderCounts(receipts.single(), listOf(2L, 0L, 0L, 1L))
+        }
+    }
+
+    @Test
+    fun `restoration success and failures encode additive bounded phase and outcome evidence`() {
+        for (outcome in
+            listOf(
+                IntellijReadCounter.VALUE_SITE_SHAPES_RESTORED,
+                IntellijReadCounter.VALUE_SITE_SHAPES_REJECTED,
+                IntellijReadCounter.VALUE_SITE_ANCHORS_UNAVAILABLE,
+            )) {
+            val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+            val diagnostics = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+            diagnostics.phase(IntellijReadPhase.VALUE_SITE_RESTORATION)
+            diagnostics.count(IntellijReadCounter.VALUE_SITE_RESTORATIONS)
+            diagnostics.count(outcome)
+            diagnostics.finish(HostedDiagnosticOutcome.Completed)
+            val document = Json.parseToJsonElement(receipts.single().encode()).jsonObject
+            assertEquals("6", document.getValue("schemaVersion").jsonPrimitive.content)
+            val phase = document.getValue("nativePhase").jsonObject
+            assertEquals(setOf("type", "phase"), phase.keys)
+            assertEquals("entered", phase.getValue("type").jsonPrimitive.content)
+            assertEquals("VALUE_SITE_RESTORATION", phase.getValue("phase").jsonPrimitive.content)
+            val counters =
+                document.getValue("counters").jsonArray.filter {
+                    it.jsonObject.getValue("counter").jsonPrimitive.content.startsWith("VALUE_SITE_")
+                }
+            assertEquals(
+                listOf("VALUE_SITE_RESTORATIONS", outcome.name),
+                counters.map { it.jsonObject.getValue("counter").jsonPrimitive.content },
+            )
+            counters.forEach {
+                val counter = it.jsonObject
+                assertEquals(setOf("counter", "contributor", "count"), counter.keys)
+                assertEquals("NONE", counter.getValue("contributor").jsonPrimitive.content)
+                assertEquals("1", counter.getValue("count").jsonPrimitive.content)
+            }
         }
     }
 

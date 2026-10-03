@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: f0a2ff140582 -->
+<!-- generated: 2026-10-03 | hash: b6f38faa3135 -->
 
 # app-server
 
@@ -51,9 +51,14 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 - [src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt](src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt) - intent-tool admission and schema identity.
 
+- [tools.schema.json](src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) - authored public actions, expansion scope, impact inputs, outputs, and examples.
+- [PublicToolExpansionScopeMapping.kt](src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt) - one closed expansion domain shared by relation stages and impact sources.
+- [PublicToolImpactSourceMapping.kt](src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt) - impact source syntax lowering into the canonical query owner.
+
 ## Subdirectories
 
 - `src/main/kotlin/io/github/amichne/kast/appserver/core` - pure broker/session domain.
+- `src/main/kotlin/io/github/amichne/kast/appserver/query` - public query grammar, admission, and canonical lowering; preserve its authored guide.
 - `src/main/kotlin/io/github/amichne/kast/appserver/host` - CLI, desktop, and installed-client host adapters; read its nested `AGENTS.md` first.
 - `src/main/kotlin/io/github/amichne/kast/appserver/protocol` - Codex and Copilot projections plus thread catalog state.
 - `src/main/kotlin/io/github/amichne/kast/appserver/provider` - process, Gradle, invocation, and observer boundaries.

@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: 755eeee3f634 -->
+<!-- generated: 2026-10-03 | hash: c83eaff59f53 -->
 
 # cli
 
@@ -42,6 +42,9 @@ legacy command graph retained for migration, and hosted output projections.
 - [src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt) - local installed knowledge selector.
 - [src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt](src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt) - shallow search and exact typed resource reads.
 
+- [InstalledServerProjectionDocuments.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt) - installed query result schemas derived from canonical result serializers.
+- [MintlifyCallableSchemaProjection.kt](src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt) - documentation projection preserving canonical schema assertions.
+
 ## Subdirectories
 
 - `src/main/kotlin/io/github/amichne/kast/cli/bootstrap` - executable and installed-resource assembly.
@@ -67,7 +70,7 @@ legacy command graph retained for migration, and hosted output projections.
 - Start with the [repository knowledge](../openwiki/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
 - For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
-- For output compatibility, start in `projection` and follow to `protocol/wire`.
+- For query output compatibility, start with `InstalledServerProjectionDocuments.kt` and follow to `protocol/wire/presentation/CanonicalQueryCliDocuments.kt`; its typed serializers own the installed query schema. Other output projections live in `projection`.
 
 - Semantic operations use the hosted provider. The installed MCP starts
   preparation for the discovered Gradle root on its first valid request, launching the

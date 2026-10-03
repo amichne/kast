@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-29 | hash: 9b6ab7c209f5 -->
+<!-- generated: 2026-10-03 | hash: 9b6ab7c209f5 -->
 
 # runtime
 
@@ -32,7 +32,7 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 - [HostedEndpointService.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt) - project endpoint ownership.
 - [HostedCompatibilityMetadata.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt) - packaged Host version and provided contract exposed through live describe.
 - [hosted/native/README.md](hosted/native/README.md) - real mixed-version installation and ordinary IntelliJ lifecycle qualification.
-- [HostedSemanticServices.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt) - request-scoped semantic service composition.
+- [HostedSemanticServices.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt) - request-scoped semantic service composition, including bounded value-flow reads, producer seeds, and model revalidation under shared acquisition accounting.
 - [HostedCanonicalQuery.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) - bounded canonical read dispatch.
 - [HostedReadBudgetAdmission.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt) - necessary response-byte admission before semantic dispatch.
 - [HostedResponse.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt) - original semantic outcomes retained through encoding and transport.

@@ -28,20 +28,36 @@ private constructor(
     val start: QueryResultCursor,
     val end: QueryResultCursor,
     val resultEnd: QueryResultCursor,
+    private val cursorContinuity: CursorContinuity,
 ) {
+    private enum class CursorContinuity {
+        CONTIGUOUS,
+        NON_CONTIGUOUS,
+    }
+
     val itemCount: Int
         get() = end.value - start.value
 
     val nextCursor: QueryResultCursor?
-        get() = if (end == resultEnd) null else end
+        get() =
+            when (cursorContinuity) {
+                CursorContinuity.CONTIGUOUS -> if (end == resultEnd) null else end
+                CursorContinuity.NON_CONTIGUOUS -> null
+            }
 
     internal fun prefix(count: Int): Refinement<QueryRetainedPresentationWindow, QueryPresentationWindowFailure> =
         if (count !in 0..itemCount) Refinement.Rejected(QueryPresentationWindowFailure.INVALID_ITEM_COUNT)
-        else Refinement.Refined(QueryRetainedPresentationWindow(reference, start, split(count), resultEnd))
+        else
+            Refinement.Refined(
+                QueryRetainedPresentationWindow(reference, start, split(count), resultEnd, cursorContinuity)
+            )
 
     internal fun suffix(count: Int): Refinement<QueryRetainedPresentationWindow, QueryPresentationWindowFailure> =
         if (count !in 0..itemCount) Refinement.Rejected(QueryPresentationWindowFailure.INVALID_ITEM_COUNT)
-        else Refinement.Refined(QueryRetainedPresentationWindow(reference, split(count), end, resultEnd))
+        else
+            Refinement.Refined(
+                QueryRetainedPresentationWindow(reference, split(count), end, resultEnd, cursorContinuity)
+            )
 
     private fun split(count: Int): QueryResultCursor =
         when (val parsed = QueryResultCursor.parse(start.value + count)) {
@@ -50,6 +66,19 @@ private constructor(
         }
 
     companion object {
+        /** Selected row identities cannot imply an ordinal successor in the original result. */
+        fun nonContiguous(
+            reference: QueryResultReference,
+            itemCount: QueryResultCursor,
+        ): QueryRetainedPresentationWindow =
+            QueryRetainedPresentationWindow(
+                reference,
+                QueryResultCursor.Start,
+                itemCount,
+                itemCount,
+                CursorContinuity.NON_CONTIGUOUS,
+            )
+
         fun create(
             reference: QueryResultReference,
             start: QueryResultCursor,
@@ -60,7 +89,10 @@ private constructor(
                 start.value > end.value -> Refinement.Rejected(QueryPresentationWindowFailure.REVERSED_WINDOW)
                 end.value > resultEnd.value ->
                     Refinement.Rejected(QueryPresentationWindowFailure.OUTSIDE_RETAINED_RESULT)
-                else -> Refinement.Refined(QueryRetainedPresentationWindow(reference, start, end, resultEnd))
+                else ->
+                    Refinement.Refined(
+                        QueryRetainedPresentationWindow(reference, start, end, resultEnd, CursorContinuity.CONTIGUOUS)
+                    )
             }
     }
 }

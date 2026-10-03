@@ -138,16 +138,30 @@ sources:
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueBoundary.kt
   - id: openwiki-source-d3f0d7e24d35ed4b47aff3d5
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt
+  - id: openwiki-source-b237fe55f86308ccb96d0596
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt
   - id: openwiki-source-eeb2af1b330e389cae564042
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt
+  - id: openwiki-source-e67ae8e62f9893feb962d771
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt
+  - id: openwiki-source-5e4eb99eb5fd7a5dcae4b5eb
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt
+  - id: openwiki-source-24e2e528bd8a607e4d35c899
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt
+  - id: openwiki-source-b8e3c573182d699252496925
+    resource: repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
   - id: openwiki-source-ca4cb79efb8948231564ac6f
     resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
-generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+  - id: openwiki-source-738d50046b5f0d1312b7fcb7
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+  - id: openwiki-source-8d15fa1e67cdc054e05e2796
+    resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
+generated: { by: "codex", at: "2026-10-03T06:44:24.507Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T04:45:37.704Z
+    at: 2026-10-03T06:44:24.507Z
 ---
 
 # Semantic read domains
@@ -519,3 +533,39 @@ do not equate page quantity with CPU cost or complete semantic coverage.
 The current forward adapter handles bounded local immutable bindings and reads, immediate arguments, direct transparent wrapper returns and supported value-producing branch alternatives. Mutable control flow, unsupported expressions, unresolved references, external calls and exhausted grants remain named obligations. All PSI and K2 observations stay inside the native read boundary; retained sites and transfers are detached data.
 
 Reviewed representation rules establish origins, transfers, transformations and consumer expectations. Current state and history are separate: a transformation replaces current representation while retaining its prior evidence. Boundary models bind exact proven source/target positions, contract identity/version and supplied compatibility assumptions. A modeled terminal differs from an unresolved boundary; persistence retains retention/decoding/migration obligations. Compiler identity and flow do not establish runtime encryption or deployment compatibility.
+
+### Exact Kotlin restoration and diagnostics
+
+Value-site restoration starts at the exact source offset, follows PSI ancestors
+within the selected declaration range, and selects an exact-range Kotlin
+expression. It filters out same-range lexer tokens and argument containers
+before selection. A local binding restores its property declaration; an argument
+restores the argument expression. A partial identifier range cannot become an
+expression, and a property cannot satisfy an argument shape claim. Missing
+anchors and unsupported role shapes remain distinct finite restoration failures.
+Native admission then checks lexical execution ownership and the required K2
+role, callable and argument binding. Structural PSI restoration cannot establish
+those compiler facts by itself.
+
+Producer selection restores its enclosing and expected callable declarations
+under their retained authorities. The exact invocation expression must belong
+to that owner and pass current compiler confirmation. The investigation's
+expansion domain limits later flow work; it does not replace the producer's
+declaration authority. Physical PSI regressions exercise exact argument and
+property restoration, wrong role shapes and partial anchors. They establish
+restoration and instrumentation behavior without claiming an executed K2 binding
+or installed IDE result.
+
+The restoration boundary adds `VALUE_SITE_RESTORATION` phase evidence and one
+`VALUE_SITE_RESTORATIONS` counter with a finite restored-shape, rejected-shape or
+unavailable-anchor outcome. Request-local hosted diagnostics accumulate those
+bounded counters and phase evidence beside the existing receipt. The schema-6
+receipt also initializes explicit zero counters for producer seed reads, model
+declaration revalidation, model-site revalidation and value-flow reads; entered
+providers add their actual observations. Completion or rejection finalizes one
+immutable receipt, and later count calls cannot alter it. Typed serialization
+retains the closed counter and phase identities without source payloads,
+declaration names, opaque handles or compiler objects. These diagnostics expose
+effect entry and outcomes; they do not establish compiler identity, branch
+conservation or complete investigation coverage. Installed qualification still
+requires the exact candidate, current semantic basis and native observations.

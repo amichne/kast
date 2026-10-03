@@ -191,6 +191,15 @@ sealed interface QueryRows {
                     Refinement.Refined(ValuePaths(Collections.unmodifiableList(indices.map(values::get)), accounting))
             }
 
+        /** The original immutable ledger was admitted before any presentation selection. */
+        internal fun originalInvestigationRows(): Refinement<ValuePaths, QueryRetainedResultFailure> =
+            when (val witness = accounting) {
+                QueryValuePathAccounting.EvidenceOnly ->
+                    Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
+                is QueryValuePathAccounting.Investigated ->
+                    Refinement.Refined(ValuePaths(witness.ledger.paths, witness))
+            }
+
         override fun equals(other: Any?): Boolean =
             other is ValuePaths && values == other.values && accounting == other.accounting
 

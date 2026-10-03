@@ -4,15 +4,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.Collections
 
-enum class QueryRetainedResultFailure {
-    EXECUTION_REJECTED,
-    PRESENTATION_ONLY_ROWS,
-    BASIS_MISMATCH,
-    INCONSISTENT_COVERAGE,
-    UNKNOWN_ROW,
-    DUPLICATE_ROW,
-}
-
 /** Detached, immutable semantic rows from one read basis. Row kind survives retention and selection. */
 sealed class QueryRetainedResult
 protected constructor(
@@ -264,6 +255,11 @@ protected constructor(
         val valuePaths: List<QueryImpactPath>
             get() = rows.values
 
+        fun originalOrdinals(
+            selected: QueryRows.ValuePaths
+        ): Refinement<List<QueryRetainedRowOrdinal>, QueryRetainedResultFailure> =
+            originalInvestigationOrdinals(this, selected)
+
         override val rowCount: Int
             get() = rows.values.size
 
@@ -387,6 +383,12 @@ protected constructor(
     }
 
     companion object {
+        fun captureInvestigation(
+            lease: SemanticReadAuthority,
+            execution: QueryExecutionResult,
+        ): Refinement<QueryRetainedResult, QueryRetainedResultFailure> =
+            captureRetainedQueryResult(lease, execution, QueryRetainedCaptureRows.ORIGINAL_INVESTIGATION)
+
         fun capture(
             lease: SemanticReadAuthority,
             execution: QueryExecutionResult,

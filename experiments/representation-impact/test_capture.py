@@ -138,7 +138,7 @@ class Diagnostic:
     readId: str = 'fixture-read-id'
     durationNanos: int = 10
     stages: tuple = ()
-    nativePhase: None = None
+    nativePhase: 'EnteredPhase | None' = None
     nativePhaseDurations: tuple = ()
     semanticEntry: None = None
     semanticBudget: None = None
@@ -160,7 +160,25 @@ def log_line(record):
     return b'unretained IDE prefix kast_semantic_read ' + encoded(record) + b'\n'
 
 
+@dataclass(frozen=True)
+class EnteredPhase:
+    phase: str = 'VALUE_SITE_RESTORATION'
+    type: str = 'entered'
+
+
 class CaptureTest(unittest.TestCase):
+    def test_additive_restoration_vocabulary_preserves_schema6_receipt_and_exact_counters(self):
+        for outcome in ('VALUE_SITE_SHAPES_RESTORED', 'VALUE_SITE_SHAPES_REJECTED', 'VALUE_SITE_ANCHORS_UNAVAILABLE'):
+            counts = (Counter('VALUE_SITE_RESTORATIONS', 'NONE', 1), Counter(outcome, 'NONE', 1))
+            diagnostic = replace(Diagnostic(), counters=counts, nativePhase=EnteredPhase())
+            response = decoded(Reply())
+            observed = c.select_receipts((decoded(diagnostic),), 42, response)
+            self.assertEqual(Correlation.MATCHED, observed.correlation)
+            self.assertEqual((), observed.uncertainty)
+            self.assertEqual(counts, observed.counters)
+            self.assertEqual(decoded(diagnostic), observed.receipts[0])
+            self.assertEqual(6, observed.receipts[0]['schemaVersion'])
+
     def test_current_generated_schema_rejects_unknown_or_duplicate_request_before_effects(self):
         self.assertIsInstance(c.validate_request(encoded(Request())), RequestAdmitted)
         for raw in (b'{"request":{"type":"RUN","source":{"type":"ASSUMED"}}}',

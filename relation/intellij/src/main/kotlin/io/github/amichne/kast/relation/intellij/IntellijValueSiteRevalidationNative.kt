@@ -21,6 +21,7 @@ import io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest
 import io.github.amichne.kast.relation.contract.ValueSiteRoleClaim
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
@@ -33,7 +34,10 @@ import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
 
 /** Revalidates one exact claimed role without exploring a flow or attaching model vocabulary. */
-internal class IntellijValueSiteRevalidationNative(private val adapter: IntellijValueFlowCompilerAdapter) {
+internal class IntellijValueSiteRevalidationNative(
+    private val adapter: IntellijValueFlowCompilerAdapter,
+    private val observation: IntellijReadObservation,
+) {
     suspend fun revalidate(
         project: Project,
         current: SemanticReadAuthority,
@@ -80,9 +84,18 @@ internal class IntellijValueSiteRevalidationNative(private val adapter: Intellij
                 is IntellijValueFlowCompilerAdapter.Prepared.Ready -> result
                 is IntellijValueFlowCompilerAdapter.Prepared.Rejected -> return nativeSiteRejected(result.cause)
             }
-        val element =
-            prepared.owner.exactValueElement(request.anchor) ?: return nativeSiteRejected(ValueFlowRejection.STALE_SITE)
-        return admittedRole(element, request, prepared)
+        return when (val restored = prepared.owner.restoreValueSiteElement(request.anchor, request.role, observation)) {
+            is Refinement.Refined -> admittedRole(restored.value, request, prepared)
+            is Refinement.Rejected ->
+                when (restored.failure) {
+                    NativeValueSiteRestorationFailure.ANCHOR_UNAVAILABLE ->
+                        nativeSiteRejected(ValueFlowRejection.STALE_SITE)
+                    NativeValueSiteRestorationFailure.ROLE_SHAPE_UNSUPPORTED ->
+                        Refinement.Rejected(
+                            NativeSiteFailure.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                        )
+                }
+        }
     }
 
     private fun admittedRole(

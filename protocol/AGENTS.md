@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: d217066e0d36 -->
+<!-- generated: 2026-10-03 | hash: d217066e0d36 -->
 
 # protocol
 
@@ -38,6 +38,14 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryResultItemWireDocuments.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryResultItemWireDocuments.kt) - query item serialization and admission.
 
 - [registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt](registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt) - closed public tool identity vocabulary.
+
+- [QueryQuestionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryQuestionDocument.kt) - original source, steps, and output retained with results.
+- [QueryExpansionScopeDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt) - closed expansion policy independent of seed selection.
+- [QueryRelationObservationDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRelationObservationDocument.kt) - requested and effective domains with finite coverage witnesses.
+- [QueryImpactSourceDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImpactSourceDocument.kt) - producer, domain, flow, and reviewed model request documents.
+- [ImpactAccountingDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt) - conservation and unresolved obligation accounting.
+- [ImpactWitnessDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactWitnessDocuments.kt) - retained producer, model, native-read, and rejected-read presentation.
+- [CanonicalQueryCliDocuments.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt) - typed CLI query envelopes and serializer owners for installed schemas.
 
 ## Subdirectories
 

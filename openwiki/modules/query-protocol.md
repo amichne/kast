@@ -80,14 +80,30 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
 sources:
+  - id: openwiki-source-843b2f72b64738a9d114aff8
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRetainedPresentationWindow.kt
+  - id: openwiki-source-df5814ea9050f768658bd6bc
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResultCapture.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - id: openwiki-source-da029c0f3804840096380efa
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt
-generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+  - id: openwiki-source-b51014e0385264d1b67f03cd
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
+  - id: openwiki-source-bff1faad340ec1120efffe0b
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentedResultIssuance.kt
+  - id: openwiki-source-96ef904abd7028335557559c
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentedWindowSelection.kt
+  - id: openwiki-source-2ccdc01e43e3898d9dd2e63f
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt
+  - id: openwiki-source-4bf64022307aff9f9f531f9b
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+  - id: openwiki-source-11b3793b16152a8db22d714e
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/OriginalImpactRetentionTest.kt
+generated: { by: "codex", at: "2026-10-03T06:44:24.507Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T04:45:37.704Z
+    at: 2026-10-03T06:44:24.507Z
 ---
 
 # Query protocol
@@ -241,3 +257,35 @@ Source reads retain [precise failure origin](../contracts/source-failures.md) th
 Impact source admission parses the expansion domain and closed model syntax before native acquisition. One aggregate grant owns seed, declaration and boundary-site revalidation. The admitted plan retains those current proofs, so resume restores them rather than reacquiring seeds or bindings. The existing query-state result retains the investigation ledger, value-path row kind and original closure; witness sections are presentations of that ledger.
 
 The current public source-admission boundary accepts one supplied semantic authority. Foreign repository bases fail closed before modeled connection; the domain boundary contract can retain separate source and target bases, but this host path does not establish a second repository's current proof. Model syntax, compiler binding, reviewed representation meaning and retained presentation remain distinct evidence levels.
+
+## Original impact result retention
+
+An original `IMPACT` producer request with retention enabled captures every path
+from its admitted immutable investigation ledger, independently of the initial
+output selection. An empty initial page caused by output capacity does not turn
+the retained result into an empty path set. Capture preserves the original
+question, semantic basis, coverage, producer progress and ledger accounting.
+Ordinary queries over explicitly selected retained rows keep their selected
+membership; they do not expand back to every path in the original investigation.
+
+The existing `QueryStateStore` issues row identities for the full original path
+set. Initial presentation selects those identities by exact ordered path
+evidence and original ordinal, so a reordered selection such as `[2, 0]` retains
+the identities of original rows 2 and 0. A contiguous initial prefix carries the
+original retained result end: zero emitted rows may expose presentation cursor
+0, and a one-row prefix may expose cursor 1. Neither cursor permits semantic
+execution to resume. A noncontiguous selection carries a finite cursor
+qualification through prefix and suffix fitting and cannot imply a contiguous
+next cursor. `READ_RESULT` from cursor 0 can still inspect the full original
+retained result.
+
+Retained value-path and witness pages use the existing result reference, store
+and presentation cursor. They project detached ledger evidence without
+reacquiring producers, revalidating models or executing value-flow reads.
+Draining those pages preserves unresolved original obligations and terminal
+execution reasons, including `OUTPUT_ITEM_TOO_LARGE`; presentation does not
+manufacture complete investigation coverage. The production projection, store
+and read-result regressions cover empty initial output, contiguous prefixes,
+reordered selections and ordinary selected-result capture with a semantic
+executor that must remain unused. Those tests establish the retained contract,
+not installed IDE qualification.

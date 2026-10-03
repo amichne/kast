@@ -220,7 +220,7 @@ private fun exactSeedExpression(
     request: ValueProducerSeedRequest,
 ): Refinement<NativeSeedExpression, ValueProducerSeedRejection> {
     val expression =
-        enclosing.owner.exactValueElement(request.anchor) as? KtExpression
+        enclosing.owner.exactValueElement(request.anchor)
             ?: return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
     if (valueNativeOwnership(expression, enclosing.owner) != NativeValueOwnership.ADMITTED)
         return Refinement.Rejected(ValueProducerSeedRejection.OWNER_MISMATCH)

@@ -177,7 +177,18 @@ internal class QueryOutcomeProjection(
             QueryKnownMinimum.parse(it).refinedForQueryOrNull() ?: return contractRejected()
         }
         val fittedWindow =
-            when (val admitted = presented.retention.presentationWindow(window, presented.items.values.size)) {
+            when (
+                val admitted =
+                    presented.retention.presentationWindow(
+                        window
+                            ?: when (val selection = presented.selection) {
+                                is QueryPresentedWindowSelection.Contiguous -> selection.window
+                                is QueryPresentedWindowSelection.NonContiguous -> selection.window
+                                QueryPresentedWindowSelection.NotRetained -> null
+                            },
+                        presented.items.values.size,
+                    )
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return contractRejected()
             }
