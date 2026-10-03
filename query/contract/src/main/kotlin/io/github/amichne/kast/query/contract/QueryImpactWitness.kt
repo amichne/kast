@@ -82,12 +82,17 @@ private constructor(
             if (start < 0 || end < start) return Refinement.Rejected(QueryImpactWitnessFailure.INVALID_RANGE)
             if (end.toLong() - start > WITNESS_PAGE_MAX_ITEMS)
                 return Refinement.Rejected(QueryImpactWitnessFailure.PAGE_TOO_LARGE)
-            val all =
-                when (val collected = entries(ledger, section)) {
+            val count =
+                when (val bound = count(ledger, section)) {
+                    is Refinement.Refined -> bound.value
+                    is Refinement.Rejected -> return bound
+                }
+            if (end > count.value) return Refinement.Rejected(QueryImpactWitnessFailure.INVALID_RANGE)
+            val selected =
+                when (val collected = entriesForSection(ledger, section, start, end)) {
                     is Refinement.Refined -> collected.value
                     is Refinement.Rejected -> return collected
                 }
-            if (end > all.size) return Refinement.Rejected(QueryImpactWitnessFailure.INVALID_RANGE)
             val first =
                 when (val value = QueryImpactWitnessOrdinal.parse(start)) {
                     is Refinement.Refined -> value.value
@@ -98,11 +103,6 @@ private constructor(
                     is Refinement.Refined -> value.value
                     is Refinement.Rejected -> return value
                 }
-            val count =
-                when (val value = QueryImpactWitnessOrdinal.parse(all.size)) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected -> return value
-                }
             return Refinement.Refined(
                 QueryImpactWitnessView(
                     ledger,
@@ -110,7 +110,7 @@ private constructor(
                     first,
                     next,
                     count,
-                    Collections.unmodifiableList(all.subList(start, end).toList()),
+                    Collections.unmodifiableList(selected.toList()),
                 )
             )
         }
@@ -132,50 +132,57 @@ private constructor(
             return if (total > Int.MAX_VALUE) Refinement.Rejected(QueryImpactWitnessFailure.SECTION_TOO_LARGE)
             else QueryImpactWitnessOrdinal.parse(total.toInt())
         }
-
-        private fun entries(
-            ledger: QueryImpactLedger,
-            section: QueryImpactWitnessSection,
-        ): Refinement<List<QueryImpactWitnessRecord>, QueryImpactWitnessFailure> {
-            when (val bound = count(ledger, section)) {
-                is Refinement.Refined -> Unit
-                is Refinement.Rejected -> return bound
-            }
-            val all =
-                when (val collected = entriesForSection(ledger, section)) {
-                    is Refinement.Refined -> collected.value
-                    is Refinement.Rejected -> return collected
-                }
-            return all.withWitnessOrdinals(::QueryImpactWitnessRecord)
-        }
     }
 }
 
 private fun entriesForSection(
     ledger: QueryImpactLedger,
     section: QueryImpactWitnessSection,
-): Refinement<List<QueryImpactWitnessEntry>, QueryImpactWitnessFailure> =
-    when (section) {
-        QueryImpactWitnessSection.FINDINGS -> findingEntries(ledger)
-        QueryImpactWitnessSection.PRODUCERS ->
-            Refinement.Refined(ledger.producerEvidence.map(QueryImpactWitnessEntry::Producer))
-        QueryImpactWitnessSection.MODELS ->
-            Refinement.Refined(
-                ledger.representationModels.map(QueryImpactWitnessEntry::RepresentationModel) +
-                    ledger.boundaryModels.map(QueryImpactWitnessEntry::BoundaryModel)
-            )
-        QueryImpactWitnessSection.READ_REJECTIONS ->
-            Refinement.Refined(ledger.readRejections.map(QueryImpactWitnessEntry::ReadRejected))
-        QueryImpactWitnessSection.NATIVE_READS -> nativeEntries(ledger.observations)
-    }
+    start: Int,
+    end: Int,
+): Refinement<List<QueryImpactWitnessRecord>, QueryImpactWitnessFailure> {
+    val collected =
+        when (section) {
+            QueryImpactWitnessSection.FINDINGS -> return findingEntries(ledger, start, end)
+            QueryImpactWitnessSection.PRODUCERS ->
+                Refinement.Refined(ledger.producerEvidence.map(QueryImpactWitnessEntry::Producer))
+            QueryImpactWitnessSection.MODELS ->
+                Refinement.Refined(
+                    ledger.representationModels.map(QueryImpactWitnessEntry::RepresentationModel) +
+                        ledger.boundaryModels.map(QueryImpactWitnessEntry::BoundaryModel)
+                )
+            QueryImpactWitnessSection.READ_REJECTIONS ->
+                Refinement.Refined(ledger.readRejections.map(QueryImpactWitnessEntry::ReadRejected))
+            QueryImpactWitnessSection.NATIVE_READS -> nativeEntries(ledger.observations)
+        }
+    val all =
+        when (collected) {
+            is Refinement.Refined -> collected.value
+            is Refinement.Rejected -> return collected
+        }
+    val records =
+        when (val admitted = all.withWitnessOrdinals(::QueryImpactWitnessRecord)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return admitted
+        }
+    return Refinement.Refined(records.subList(start, end))
+}
 
 private fun findingEntries(
-    ledger: QueryImpactLedger
-): Refinement<List<QueryImpactWitnessEntry>, QueryImpactWitnessFailure> {
-    val result = mutableListOf<QueryImpactWitnessEntry>()
-    for (ordinal in ledger.paths.indices) {
-        when (val finding = QueryImpactFinding.fromOriginalPath(ledger, ordinal)) {
-            is Refinement.Refined -> result += QueryImpactWitnessEntry.Finding(finding.value)
+    ledger: QueryImpactLedger,
+    start: Int,
+    end: Int,
+): Refinement<List<QueryImpactWitnessRecord>, QueryImpactWitnessFailure> {
+    val result = ArrayList<QueryImpactWitnessRecord>(end - start)
+    for (index in start until end) {
+        val ordinal =
+            when (val admitted = QueryImpactWitnessOrdinal.parse(index)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        when (val finding = QueryImpactFinding.fromOriginalPath(ledger, index)) {
+            is Refinement.Refined ->
+                result += QueryImpactWitnessRecord(ordinal, QueryImpactWitnessEntry.Finding(finding.value))
             is Refinement.Rejected -> return finding
         }
     }

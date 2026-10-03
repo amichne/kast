@@ -262,7 +262,7 @@ class QueryImpactLedgerTest {
         )
     }
 
-    internal class Fixture {
+    internal class Fixture(ownerEnd: Int = 200) {
         val lease =
             SemanticReadLease(
                 CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/fixture")).value(),
@@ -290,7 +290,7 @@ class QueryImpactLedgerTest {
             CompilerGroundedSymbolEvidence.fromBoundary(
                     file,
                     0,
-                    200,
+                    ownerEnd,
                     "owner",
                     "fixture.owner",
                     CompilerSymbolKind.FUNCTION,
