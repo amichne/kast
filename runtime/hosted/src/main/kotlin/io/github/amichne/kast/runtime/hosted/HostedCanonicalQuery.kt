@@ -71,6 +71,7 @@ private suspend fun evaluateHostedQuery(
                     queryContinuations.queryState,
                     publication,
                     services.producerSeeds,
+                    hostedQueryResultRetentionObservation(context.observation),
                 )
                 .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
         },

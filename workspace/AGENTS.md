@@ -9,7 +9,7 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 
 ## Key Files
 
-- [IntellijReadObservation.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt) - bounded stage and counter vocabulary covers exclusive traversal coordination, native relation preparation, producer seeds, model revalidation, and value-flow outcomes without source payloads.
+- [IntellijReadObservation.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt) - bounded stage and counter vocabulary covers exclusive traversal coordination, native relation preparation, producer seeds, model revalidation, value-flow outcomes, and finite query-retention capture and issuance outcomes without source payloads.
 
 - [HostedQueryLifetime.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryLifetime.kt) - bounded concurrent permits with exact invocation ownership.
 - [HostedReadFreshnessOwner.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt) - native freshness reobservation within short semantic authority transitions.

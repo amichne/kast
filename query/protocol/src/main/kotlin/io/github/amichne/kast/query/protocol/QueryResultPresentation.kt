@@ -10,11 +10,11 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
-import io.github.amichne.kast.query.contract.QueryRetainedResult
-import io.github.amichne.kast.query.contract.QueryRetainedRowOrdinal
-import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QueryImpactExecutionFailure
+import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 internal data class PresentedQueryRows(
@@ -24,7 +24,10 @@ internal data class PresentedQueryRows(
 )
 
 /** Retention issuance and row identity establish one exact detached presentation. */
-internal class QueryResultPresentation(private val state: QueryStateStore) {
+internal class QueryResultPresentation(
+    private val state: QueryStateStore,
+    private val observation: QueryResultRetentionObservation,
+) {
     fun present(
         request: QueryRunRequest.Run,
         lease: SemanticReadAuthority,
@@ -34,7 +37,7 @@ internal class QueryResultPresentation(private val state: QueryStateStore) {
         presentedRetention: QueryResultRetention?,
         presentedRowIds: List<QueryResultRowReference>?,
         publicationOwner: QueryExecutionClaim?,
-    ): Refinement<PresentedQueryRows, QueryExecutionRejectionDocument> {
+    ): Refinement<PresentedQueryRows, QueryRunRejection> {
         val issuance =
             if (presentedRetention != null) null
             else
@@ -42,7 +45,7 @@ internal class QueryResultPresentation(private val state: QueryStateStore) {
                     val requested = requestedRetention(request, lease, retainedExecution, progress, publicationOwner)
                 ) {
                     is Refinement.Refined -> requested.value
-                    is Refinement.Rejected -> return presentationRejected()
+                    is Refinement.Rejected -> return requested
                 }
         val retention =
             presentedRetention
@@ -51,7 +54,7 @@ internal class QueryResultPresentation(private val state: QueryStateStore) {
                     QueryPresentedResultIssuance.NotRequested -> QueryResultRetention.NotRequested
                     is QueryPresentedResultIssuance.Issued -> QueryResultRetention.Retained(issuance.original.reference)
                     QueryPresentedResultIssuance.Unavailable ->
-                        return Refinement.Rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
+                        return executionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
                     QueryPresentedResultIssuance.CapacityExceeded -> QueryResultRetention.CapacityExceeded
                 }
         val rowIds = presentedRowIds ?: (issuance as? QueryPresentedResultIssuance.Issued)?.presentedRowIds
@@ -67,8 +70,8 @@ internal class QueryResultPresentation(private val state: QueryStateStore) {
         return Refinement.Refined(PresentedQueryRows(bounded, retention, selection))
     }
 
-    private fun presentationRejected(): Refinement.Rejected<QueryExecutionRejectionDocument> =
-        Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
+    private fun presentationRejected(): Refinement.Rejected<QueryRunRejection> =
+        executionRejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
 
     private fun requestedRetention(
         request: QueryRunRequest.Run,
@@ -76,66 +79,66 @@ internal class QueryResultPresentation(private val state: QueryStateStore) {
         execution: QueryExecutionResult?,
         progress: QueryQualifiedProgressDocument?,
         publicationOwner: QueryExecutionClaim?,
-    ): Refinement<QueryPresentedResultIssuance, QueryExecutionRejectionDocument> {
+    ): Refinement<QueryPresentedResultIssuance, QueryRunRejection> {
         if (request.retention == QueryRetentionModeDocument.DISCARD) {
             return Refinement.Refined(QueryPresentedResultIssuance.NotRequested)
         }
-        val retained =
-            execution ?: return Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
-        val captured =
-            when (
-                val result =
-                    if (request.from is QueryFromDocument.Impact)
-                        QueryRetainedResult.captureInvestigation(lease, retained)
-                    else QueryRetainedResult.capture(lease, retained)
-            ) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected ->
-                    return Refinement.Rejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
+        val retained = execution ?: return presentationRejected()
+        val source =
+            when (val admitted = QueryResultRetentionSource.admit(request.from, retained)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return captureRejected(request, admitted.failure)
             }
+        observation.observe(QueryResultRetentionEvidence.CaptureStarted(source.scope))
+        val captured =
+            when (val result = source.capture(lease)) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> return captureRejected(request, result.failure)
+            }
+        observation.observe(QueryResultRetentionEvidence.Captured(source.scope))
         val protectedCheckpoint =
             ((progress as? QueryQualifiedProgressDocument.Resumable)?.checkpoint as? QueryCheckpointDocument.Upstream)
                 ?.token
         val selection =
-            when (val selected = presentedOrdinals(request, retained, captured)) {
+            when (val selected = source.ordinals(captured)) {
                 is Refinement.Refined -> selected.value
-                is Refinement.Rejected -> return selected
+                is Refinement.Rejected -> return captureRejected(request, selected.failure)
             }
-        return Refinement.Refined(
-            when (val issued = state.issueResult(request, captured, protectedCheckpoint, publicationOwner)) {
-                QueryResultIssuance.Unavailable -> QueryPresentedResultIssuance.Unavailable
-                QueryResultIssuance.CapacityExceeded -> QueryPresentedResultIssuance.CapacityExceeded
-                is QueryResultIssuance.Issued -> return QueryPresentedResultIssuance.Issued.admit(issued, selection)
-            }
+        val issued = state.issueResult(request, captured, protectedCheckpoint, publicationOwner)
+        observation.observe(
+            QueryResultRetentionEvidence.Issuance(
+                when (issued) {
+                    QueryResultIssuance.Unavailable -> QueryResultRetentionIssue.UNAVAILABLE
+                    QueryResultIssuance.CapacityExceeded -> QueryResultRetentionIssue.CAPACITY_EXCEEDED
+                    is QueryResultIssuance.Issued -> QueryResultRetentionIssue.ISSUED
+                }
+            )
         )
+        return when (issued) {
+            QueryResultIssuance.Unavailable -> Refinement.Refined(QueryPresentedResultIssuance.Unavailable)
+            QueryResultIssuance.CapacityExceeded -> Refinement.Refined(QueryPresentedResultIssuance.CapacityExceeded)
+            is QueryResultIssuance.Issued ->
+                when (val admitted = QueryPresentedResultIssuance.Issued.admit(issued, selection)) {
+                    is Refinement.Refined -> admitted
+                    is Refinement.Rejected -> executionRejected(admitted.failure)
+                }
+        }
     }
 
-    private fun presentedOrdinals(
+    private fun captureRejected(
         request: QueryRunRequest.Run,
-        execution: QueryExecutionResult,
-        retained: QueryRetainedResult,
-    ): Refinement<List<QueryRetainedRowOrdinal>, QueryExecutionRejectionDocument> {
-        if (request.from !is QueryFromDocument.Impact) {
-            val ordinals = mutableListOf<QueryRetainedRowOrdinal>()
-            for (index in 0 until retained.rowCount) when (
-                val admitted = QueryRetainedRowOrdinal.admit(index, retained.rowCount)
-            ) {
-                is Refinement.Refined -> ordinals += admitted.value
-                is Refinement.Rejected -> return presentationRejected()
-            }
-            return Refinement.Refined(ordinals)
-        }
-        val result =
-            when (execution) {
-                is QueryExecutionResult.Complete -> execution.result
-                is QueryExecutionResult.Qualified -> execution.result
-                is QueryExecutionResult.Rejection -> return presentationRejected()
-            }
-        val original = retained as? QueryRetainedResult.ValuePaths ?: return presentationRejected()
-        val selected = result.rows as? QueryRows.ValuePaths ?: return presentationRejected()
-        return when (val ordinals = original.originalOrdinals(selected)) {
-            is Refinement.Refined -> Refinement.Refined(ordinals.value)
-            is Refinement.Rejected -> presentationRejected()
-        }
+        failure: QueryRetainedResultFailure,
+    ): Refinement.Rejected<QueryRunRejection> {
+        observation.observe(QueryResultRetentionEvidence.CaptureRejected(failure))
+        return if (request.from is QueryFromDocument.Impact)
+            Refinement.Rejected(
+                QueryRunRejection.ImpactExecutionRejected(
+                    QueryImpactExecutionFailure.Selection(failure).executionDocument()
+                )
+            )
+        else presentationRejected()
     }
+
+    private fun executionRejected(reason: QueryExecutionRejectionDocument): Refinement.Rejected<QueryRunRejection> =
+        Refinement.Rejected(QueryRunRejection.ExecutionRejected(reason))
 }

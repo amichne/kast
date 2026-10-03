@@ -104,9 +104,11 @@ code_sources:
 - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionObservation.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T09:30:07.512Z
+    at: 2026-10-03T10:31:14.639Z
 sources:
   - id: openwiki-source-368288aea315bf5b4628a899
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
@@ -120,8 +122,6 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt
   - id: openwiki-source-47b84d48b89b57b3b1609484
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt
-  - id: openwiki-source-df5814ea9050f768658bd6bc
-    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResultCapture.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - id: openwiki-source-922a5bf331e56677e884867b
@@ -142,6 +142,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
   - id: openwiki-source-2ccdc01e43e3898d9dd2e63f
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt
+  - id: openwiki-source-d531f9a1f24035c5d61d45d5
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-06ad73bc218ddc2ffa485553
@@ -150,13 +152,17 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
   - id: openwiki-source-11b3793b16152a8db22d714e
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/OriginalImpactRetentionTest.kt
+  - id: openwiki-source-ff3a32a34def3fbe81d63b1c
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
+  - id: openwiki-source-1263068512b14f5d3a0bde82
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactRetentionTest.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - id: openwiki-source-711e20b0c3995766bf099120
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-generated: { by: "codex", at: "2026-10-03T09:30:07.512Z" }
+generated: { by: "codex", at: "2026-10-03T10:31:14.639Z" }
 ---
 
 # Query protocol
@@ -359,3 +365,9 @@ conservative byte guard; storage limits remain independent of output bytes.
 `QueryImpactFinding` admits the original path ordinal against the ledger path count and retains that same immutable path object. The `FINDINGS` witness section derives one entry per original path. `RetainedQueryPresentation` checks the full retained path order and issued row count, then passes the matching original row-ID slice through `QueryOutcomeProjection` and `QueryProjectedEvidence`. The witness projector checks the entry ordinals and original path objects before constructing the required link; missing context rejects instead of supplying a draft identity.
 
 The compact DTO keeps producer and destination sites, current representation alternatives, ordered model provenance, terminal cause and boundary obligations. It omits compiler transfer payloads and full rule/history payloads because its path ordinal and row ID expand that exact original `VALUE_PATHS` row on the same retained result. No new store, cursor, row kind or semantic evaluator is introduced. The canonical accounting validator checks finding ordinal/count consistency, unique page row IDs and nonempty present representation alternatives, and retains the selected-view qualification over original closure. Focused tests compare wide and one-row presentation, exact full-row expansion, encoded finite variants and rejected identity context with a semantic executor that must remain unused. These are local contract proofs; installed qualification is separate.
+
+### Pending and finalized impact retention
+
+`QueryResultRetentionSource` admits finalized investigated accounting for original-ledger capture, independent of the first page selection. It admits evidence-only impact accounting only for an empty qualified result with a resumable checkpoint. That pending snapshot retains the existing checkpoint rather than supplying original investigation ordinals. Terminal or nonempty evidence-only impact output rejects with the exact selection cause `INCONSISTENT_COVERAGE`. Ordinary queries retain their presented membership.
+
+Presentation protects the advertised upstream checkpoint during result issuance. Pending path reads remain qualified and witness reads reject with `RESULT_FIELD_UNAVAILABLE`, without executing semantics or consuming the checkpoint. Explicit retention observations distinguish source choice, capture outcome and issuance outcome. The hosted adapter supplies the effect boundary; protocol ownership and the query-state lifetime remain unchanged.

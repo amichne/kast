@@ -191,9 +191,11 @@ code_sources:
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T09:30:07.512Z
+    at: 2026-10-03T10:31:14.639Z
 sources:
   - id: openwiki-source-57bcbe3766714342dda0682a
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt
@@ -215,6 +217,10 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - id: openwiki-source-4e38a945b050af72c2343f02
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
+  - id: openwiki-source-2ccdc01e43e3898d9dd2e63f
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt
+  - id: openwiki-source-d531f9a1f24035c5d61d45d5
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-06ad73bc218ddc2ffa485553
@@ -225,11 +231,13 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-9ddb39fa2f594fe2e1edaa19
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
+  - id: openwiki-source-9d98513f38a6f5a6f98d8cdc
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
   - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-03T09:30:07.512Z" }
+generated: { by: "codex", at: "2026-10-03T10:31:14.639Z" }
 ---
 
 # Existing-IDE semantic query
@@ -788,3 +796,7 @@ intervals, and relation return restores the traversal phase. This is neither an
 inclusive traversal span nor CPU time.
 
 Compact impact `FINDINGS` follows this same retained presentation path. The existing retained owner admits a slice of original path row IDs alongside the witness window. `QueryOutcomeProjection` passes that identity context into the shared item projector before constructing required finding links. The existing envelope, result window, byte fitter and publication owner then bound the presentation. No summary operation invokes the semantic query evaluator or creates a separate retained result lifetime. Original unresolved closure remains attached, so fitting a compact page cannot establish semantic completion.
+
+Pending impact retention distinguishes a qualified empty evidence-only snapshot from a finalized original investigation. The existing upstream checkpoint owns unfinished routes and remains protected when the snapshot is issued. Finalized ledgers keep original path ordinals. Inconsistent scope retains the finite impact selection failure instead of becoming an internal-contract rejection.
+
+The hosted retention adapter records finite source-choice, capture, and issuance outcomes through the existing `RETENTION` phase and counter vocabulary. Its exhaustive mappings carry no payloads, paths, anchors, or handles and supply runtime observation only.

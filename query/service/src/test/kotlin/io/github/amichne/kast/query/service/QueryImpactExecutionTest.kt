@@ -17,6 +17,7 @@ import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QueryValuePathAccounting
 import io.github.amichne.kast.query.contract.QueryValuePathAccountingStatus
 import io.github.amichne.kast.query.contract.accountingStatus
+import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueFlowCompilerPort
@@ -141,8 +142,17 @@ class QueryImpactExecutionTest {
         val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(f.request(work = 3)))
         assertEquals(listOf(a), native.examined)
         assertEquals(emptyList<QueryImpactPath>(), (first.result.rows as QueryRows.ValuePaths).values)
+        assertEquals(
+            QueryValuePathAccountingStatus.EvidenceOnly,
+            (first.result.rows as QueryRows.ValuePaths).accountingStatus,
+        )
         assertTrue(QueryLimitation.WORK_LIMIT_REACHED in first.coverage.limitations)
-        val checkpoint = (first.continuation as QueryContinuationState.Resumable).checkpoint
+        val checkpoint =
+            assertInstanceOf(
+                PipelineCheckpoint::class.java,
+                (first.continuation as QueryContinuationState.Resumable).checkpoint,
+            )
+        assertRetainedNativePrefix(f, checkpoint, native.grants.single())
         val last =
             assertInstanceOf(
                 QueryExecutionResult.Complete::class.java,
@@ -152,6 +162,31 @@ class QueryImpactExecutionTest {
         assertEquals(listOf(a, b), native.examined)
         assertEquals(listOf(3L, 3L), native.grants.map { it.resources.workUnitLimit.value })
         native.assertConsumed()
+    }
+
+    private fun assertRetainedNativePrefix(
+        fixture: QueryImpactExecutionFixture,
+        checkpoint: PipelineCheckpoint,
+        grant: RelationBudget,
+    ) {
+        val producer = fixture.producer.site
+        assertSame(fixture.plan, checkpoint.plan)
+        assertSame(fixture.lease, checkpoint.lease)
+        val saved = assertInstanceOf(QueryImpactSnapshot::class.java, checkpoint.impact)
+        assertEquals(null, saved.ledger)
+        assertEquals(emptyList<QueryImpactPath>(), saved.paths)
+        assertEquals(setOf(producer), saved.reads.keys)
+        val observed = assertInstanceOf(ValueFlowRead.Observed::class.java, saved.reads[producer])
+        assertEquals(producer, observed.step.source)
+        assertEquals(3L, observed.step.examinedWorkUnits.value)
+        assertEquals(grant, observed.step.domain.budget)
+        val pending = assertInstanceOf(PipelineTask.ImpactExplore::class.java, checkpoint.tasks.first())
+        assertEquals(producer, pending.route.producer)
+        assertEquals(
+            listOf(observed.step.transfers.single()),
+            pending.route.steps.map { (it as QueryImpactStep.Compiler).transfer },
+        )
+        assertEquals(listOf(pending, PipelineTask.ImpactFinalize), checkpoint.tasks)
     }
 
     @Test

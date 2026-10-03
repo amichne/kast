@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6c2c024ece5ded04ed5dfcaef9489b8ad9716d6746e17f9c5081fa5d827005fb",
+  "pageVersion": "sha256:316ce4a4a593f55509fbbf92384d135fe9ed1a3cb0dfb997dd4315de9a2212d7",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -65,8 +65,8 @@
       "statement": "Hosted impact execution composes native seed and value-flow ports through the existing canonical query protocol, query service, epoch-bound query state and publication session.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L42-L98",
-          "version": "repo-lines-v1:sha256:0156fdc2f3aa2f82f3a44a739240aa428cd57d05e71660864a1c70907ceb910f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZDMwNWRjMGJkMTIxNDkxOTdlZTljMmFlMDBhODY0NmMwMjFmY2UyODJjYjFjMDY0MGQ1NWJhYWE4YzY3MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjYzQ4MjkzNDI3NzUxNDNhZjFlNjBlOTYyMWYwOTU3YjBjOTAzY2I3MGU1OTAzOGYxMjk3ZmY4MTQzZmY0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0MmFkOTc1YjY1NDA5MTQ4N2UyYjg1OWE5ZWRlMzNiYjE5Nzg0ZWMzNDM3NzUxZjg4ZDI5NGQ3NWI2ZTRhOWQifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L42-L99",
+          "version": "repo-lines-v1:sha256:c5f571f87d6a5da08b21e3a46db83ddd5b2354864951955b653d62e86e45b143:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZDMwNWRjMGJkMTIxNDkxOTdlZTljMmFlMDBhODY0NmMwMjFmY2UyODJjYjFjMDY0MGQ1NWJhYWE4YzY3MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjYzQ4MjkzNDI3NzUxNDNhZjFlNjBlOTYyMWYwOTU3YjBjOTAzY2I3MGU1OTAzOGYxMjk3ZmY4MTQzZmY0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0MmFkOTc1YjY1NDA5MTQ4N2UyYjg1OWE5ZWRlMzNiYjE5Nzg0ZWMzNDM3NzUxZjg4ZDI5NGQ3NWI2ZTRhOWQifQ"
         }
       ]
     },
@@ -101,8 +101,8 @@
           "version": "repo-file-v1:sha256:11745d56837c3bec77a63e07b924a9079a532c143b8eaac26e078f433fa11a7a"
         },
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L42-L98",
-          "version": "repo-lines-v1:sha256:0156fdc2f3aa2f82f3a44a739240aa428cd57d05e71660864a1c70907ceb910f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZDMwNWRjMGJkMTIxNDkxOTdlZTljMmFlMDBhODY0NmMwMjFmY2UyODJjYjFjMDY0MGQ1NWJhYWE4YzY3MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjYzQ4MjkzNDI3NzUxNDNhZjFlNjBlOTYyMWYwOTU3YjBjOTAzY2I3MGU1OTAzOGYxMjk3ZmY4MTQzZmY0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0MmFkOTc1YjY1NDA5MTQ4N2UyYjg1OWE5ZWRlMzNiYjE5Nzg0ZWMzNDM3NzUxZjg4ZDI5NGQ3NWI2ZTRhOWQifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L42-L99",
+          "version": "repo-lines-v1:sha256:c5f571f87d6a5da08b21e3a46db83ddd5b2354864951955b653d62e86e45b143:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZDMwNWRjMGJkMTIxNDkxOTdlZTljMmFlMDBhODY0NmMwMjFmY2UyODJjYjFjMDY0MGQ1NWJhYWE4YzY3MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjYzQ4MjkzNDI3NzUxNDNhZjFlNjBlOTYyMWYwOTU3YjBjOTAzY2I3MGU1OTAzOGYxMjk3ZmY4MTQzZmY0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0MmFkOTc1YjY1NDA5MTQ4N2UyYjg1OWE5ZWRlMzNiYjE5Nzg0ZWMzNDM3NzUxZjg4ZDI5NGQ3NWI2ZTRhOWQifQ"
         }
       ]
     },
@@ -121,8 +121,8 @@
       "statement": "Compact FINDINGS uses the existing retained witness window and original path row IDs, which QueryOutcomeProjection passes into the shared item projector before required finding links are constructed; the same envelope fitter, retained result and publication owner bound that presentation without semantic evaluation or a separate lifetime.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt#L102-L164",
-          "version": "repo-lines-v1:sha256:7f660d23bb79779e9728d2e7c257739b36043edc23a126cb46186694d4190c29:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlYmY5OTQ2YjMxMjg4NTQxZTczYWI5ZjZmZWJjNDY4NWFmMTI4MWMzZjM2YWRkOTMzYTRlYTAyNmYyZDYxNGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmMGQ3NTk1MGRmMGZmOWEzZWU5NjYzOWRjYzhmZjVlYWVkYjQwZDY4MmJlYTkyNjIyYjUyMGRkODg3ZDkzZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg0NGU4Y2MzOGUxOGM2NThhMGE0NzI5MTMyYWJmZjVhMDYzNDMxMjI5NGJjMzNjNWI3ZjhmNmFlZmFjODVhM2MifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt#L103-L165",
+          "version": "repo-lines-v1:sha256:8a662b8c838ae9e02f90af78f3f1d56d9d7f0d34ee094ca400af07cb4361f4b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlYmY5OTQ2YjMxMjg4NTQxZTczYWI5ZjZmZWJjNDY4NWFmMTI4MWMzZjM2YWRkOTMzYTRlYTAyNmYyZDYxNGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmMGQ3NTk1MGRmMGZmOWEzZWU5NjYzOWRjYzhmZjVlYWVkYjQwZDY4MmJlYTkyNjIyYjUyMGRkODg3ZDkzZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg0NGU4Y2MzOGUxOGM2NThhMGE0NzI5MTMyYWJmZjVhMDYzNDMxMjI5NGJjMzNjNWI3ZjhmNmFlZmFjODVhM2MifQ"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt#L28-L43",
@@ -137,10 +137,34 @@
           "version": "repo-file-v1:sha256:28cce43374604c322e2589aec32e168048f5d2f7d215bc11ad4aec362a5fae49"
         }
       ]
+    },
+    {
+      "id": "claim_31c3aee3299f4eea9c65918d8184504c",
+      "statement": "Pending impact retention admits only a qualified resumable empty evidence-only snapshot, protects its existing upstream checkpoint, retains original investigation ordinals after finalization, and preserves finite selection failures for inconsistent capture scope.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt#L76-L139",
+          "version": "repo-lines-v1:sha256:accbae5c9278088f2de1af1aa3137110fcfbf498fd47ea9dbd67fba6443b3946:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2MzQwOGVhZmRjNWE5NDQ4MzJkZGU1NWI5NDgwYmMyNmJlOGNkMGIyZTEzMDQxMzY4ZDZkYmM0N2U5N2JiOTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwYzM2MDQxNmM2OTA2NmVmMzU1MmQ1M2NlYTA3ZWU1NjI3NDFlMzJlMzA2YmQ0MjM2OGYyOTY1NTg4M2QxMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjMzBlZTgwMTI4YzFiMzhhZjRjYmEwNGExMTJlMDBmZjNkYTQwZThiNDYyNmNjYjgyN2YwYmFjZDAyMjkxZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzNTIxYjQ4MWEwOWUxMjZmOTg3YWZjOTAxNTJkOGFhNjg5YWE0ZWYzNzVlY2U1MWUxMGIxZDM0MmZhNDczNzkifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt#L18-L81",
+          "version": "repo-lines-v1:sha256:fe37925ea4facf1ff73f0696f9f1db3820ca9ac5dc7c290f9f2f5f9fd5858cee:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlOGE2YmI5YzBjYmEyY2YyOGQ5ZTg0ZGJhZTBhMGU5MjI4MDJiMGUxMDdjMDMzMjBjZjkyMzliZWI3MmExNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJiZTkzNmU1N2E5N2JkNDE0N2FjMjEzM2E1MDU5YjE4YmIyMDY1MTA1NDg4ODNiNjMxOTM2ZTExYTZiYTdlMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b3cc50ec1df44d24a9f22f3b8069bf21",
+      "statement": "The hosted query-retention adapter exhaustively maps finite source-choice, capture failures and issuance outcomes into the existing RETENTION phase and bounded counters without recording source payloads or retained handles.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt",
+          "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T09:30:07.512Z"
+    "at": "2026-10-03T10:31:14.639Z"
   }
 }

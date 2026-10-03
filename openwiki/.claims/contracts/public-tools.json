@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:65a2a90ceb6dc872b910c007048b111041b0a20e5e80d9724e963f8f539a483d",
+  "pageVersion": "sha256:a859e34368ba1671e09efe13c047909bb4bfceacff0eb0e5174eccd50b905259",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -99,10 +99,20 @@
           "version": "repo-file-v1:sha256:28cce43374604c322e2589aec32e168048f5d2f7d215bc11ad4aec362a5fae49"
         }
       ]
+    },
+    {
+      "id": "claim_a3d6003f5b114baa8b90bde66348627e",
+      "statement": "A retained qualified empty pending impact snapshot preserves its upstream checkpoint; READ_RESULT returns qualified evidence-only paths and rejects witness output with RESULT_FIELD_UNAVAILABLE without semantic execution or checkpoint consumption.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt#L24-L73",
+          "version": "repo-lines-v1:sha256:dae70d29fbbfe5194d08d63334e2247669fdeef0a5eab6bb37ad2cc7c77a2a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NzVkNGFhYTdmZmM3MjQwZTBkOGRkYTMzZDlhZDVjMmRiMjJjNjI2NTg4NTc1OGI2NGNiZTVlNWRiNmM4NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YTJmYjA1ZDEzNGNiZmQxZmRiYTlhZDJiMzQ5ZTVjODEzZTRhZjE2YTg1ZGUxMTE5ZDk0NzE4MWZlM2JjNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0MDU4OTk5MTY3ZjE5N2EyM2NjZjY0NjQyMTM3NDI4MzQxZWU3YzgwODdhNmY4N2M3YmFlZjBiZjE3YTBhNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmODcyNDA2ZTY1ZTY1ZDdkMDcxZWVkMzRlMjhkZjU1YjlmZmRlZWNlZDNmNjhkYmFkMzZjYTkxYTFiYjdkYjYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T09:30:07.512Z"
+    "at": "2026-10-03T10:31:14.639Z"
   }
 }

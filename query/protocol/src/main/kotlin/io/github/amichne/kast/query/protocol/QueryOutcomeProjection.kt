@@ -24,6 +24,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 internal class QueryOutcomeProjection(
     private val authority: QueryReferenceAuthority,
     private val state: QueryStateStore,
+    private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
 ) {
     fun projectExecution(
         request: QueryRunRequest.Run,
@@ -138,7 +139,7 @@ internal class QueryOutcomeProjection(
         val presented =
             when (
                 val projected =
-                    QueryResultPresentation(state)
+                    QueryResultPresentation(state, retentionObservation)
                         .present(
                             request,
                             lease,
@@ -151,7 +152,7 @@ internal class QueryOutcomeProjection(
                         )
             ) {
                 is Refinement.Refined -> projected.value
-                is Refinement.Rejected -> return contractRejected()
+                is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
             }
         return finishProjection(
             lease,

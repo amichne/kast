@@ -13,8 +13,9 @@ class CanonicalQueryProtocol(
     private val publication: QueryExecutionPublication = QueryExecutionPublication.Immediate,
     private val producerSeeds: io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort =
         UnavailableValueProducerSeeds,
+    private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
 ) {
-    private val projection = QueryOutcomeProjection(authority, state)
+    private val projection = QueryOutcomeProjection(authority, state, retentionObservation)
 
     suspend fun execute(
         request: QueryRunRequest,

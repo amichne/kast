@@ -73,9 +73,10 @@ code_sources:
 - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
+- path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T09:30:07.512Z
+    at: 2026-10-03T10:31:14.639Z
 sources:
   - id: openwiki-source-468da36f81e497d3a91bd73f
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
@@ -101,7 +102,9 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-06ad73bc218ddc2ffa485553
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
-generated: { by: "codex", at: "2026-10-03T09:30:07.512Z" }
+  - id: openwiki-source-ff3a32a34def3fbe81d63b1c
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
+generated: { by: "codex", at: "2026-10-03T10:31:14.639Z" }
 ---
 
 # Public intent tools
@@ -263,3 +266,5 @@ Public relation and walk steps accept `expansionScope` through the same closed `
 `READ_RESULT` with `IMPACT_WITNESS` selects `PRODUCERS`, `MODELS`, `NATIVE_READS`, `READ_REJECTIONS` or `FINDINGS` from the same retained investigation ledger. These pages use the existing result reference, presentation cursor and byte fitter; they do not start semantic providers. Original question, basis, requested domain, counts and unresolved closure remain attached even when a page or selection displays fewer paths. A reusable source recipe must reacquire current references after epoch movement; retained tokens do not become a recipe.
 
 `FINDINGS` presents one compact row per original path, without grouping routes that happen to share a destination. Each finding requires its original path ordinal and issued path row ID. It retains the producer and destination, current representation alternatives, ordered model provenance, closed terminal outcome and boundary obligations. The original compiler steps, complete model payloads and history expand through `VALUE_PATHS` on the same result with that ordinal as the presentation cursor and `executionBudget.maxResults: 1`; the expanded row retains the same row ID. These summaries add no semantic authority. Missing identity context, inconsistent original counts or ordinals, duplicate page row IDs and empty present representation alternatives fail closed.
+
+Before an impact ledger is finalized, a qualified, empty `EVIDENCE_ONLY` value-path snapshot can be retained alongside its unchanged upstream checkpoint. `READ_RESULT` returns that qualified empty page without executing semantic work or consuming the checkpoint. Impact witness output returns the finite `RESULT_FIELD_UNAVAILABLE` rejection until an investigation ledger exists. Resume uses the original checkpoint to continue unfinished routes.

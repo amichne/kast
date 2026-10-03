@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b668a93def498f1d4650ce5ee9c4ac0b9f5ca5b7ba5e682eb09cc36370947e8f",
+  "pageVersion": "sha256:003a2dd7a934f8e40a31cfaa385e3513194216f9f3a572a5e77ae03dfd037a91",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -93,10 +93,24 @@
           "version": "repo-file-v1:sha256:b44f1268e6873e74e0bade219119d8d0d4bb61dda440aebc5a52097872582928"
         }
       ]
+    },
+    {
+      "id": "claim_2d12226c67fb41fb9f19ab4057521653",
+      "statement": "Before impact finalization, only a qualified resumable empty evidence-only snapshot is admitted for retention; its exact existing checkpoint retains unfinished execution, while original investigation ordinals and witness sections require a finalized ledger.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt#L18-L81",
+          "version": "repo-lines-v1:sha256:fe37925ea4facf1ff73f0696f9f1db3820ca9ac5dc7c290f9f2f5f9fd5858cee:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlOGE2YmI5YzBjYmEyY2YyOGQ5ZTg0ZGJhZTBhMGU5MjI4MDJiMGUxMDdjMDMzMjBjZjkyMzliZWI3MmExNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJiZTkzNmU1N2E5N2JkNDE0N2FjMjEzM2E1MDU5YjE4YmIyMDY1MTA1NDg4ODNiNjMxOTM2ZTExYTZiYTdlMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt#L24-L73",
+          "version": "repo-lines-v1:sha256:dae70d29fbbfe5194d08d63334e2247669fdeef0a5eab6bb37ad2cc7c77a2a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NzVkNGFhYTdmZmM3MjQwZTBkOGRkYTMzZDlhZDVjMmRiMjJjNjI2NTg4NTc1OGI2NGNiZTVlNWRiNmM4NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YTJmYjA1ZDEzNGNiZmQxZmRiYTlhZDJiMzQ5ZTVjODEzZTRhZjE2YTg1ZGUxMTE5ZDk0NzE4MWZlM2JjNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0MDU4OTk5MTY3ZjE5N2EyM2NjZjY0NjQyMTM3NDI4MzQxZWU3YzgwODdhNmY4N2M3YmFlZjBiZjE3YTBhNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmODcyNDA2ZTY1ZTY1ZDdkMDcxZWVkMzRlMjhkZjU1YjlmZmRlZWNlZDNmNjhkYmFkMzZjYTkxYTFiYjdkYjYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T09:30:07.512Z"
+    "at": "2026-10-03T10:31:14.639Z"
   }
 }

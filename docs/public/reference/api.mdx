@@ -68,6 +68,8 @@ Set `flow` to `KOTLIN_FORWARD_V1`, choose the expansion `domain`, and supply the
 
 Run an impact source with no transformation steps and `output: {"type":"VALUE_PATHS"}`. Add `retention: "RETAIN"` to inspect its paths and witnesses later. Unsupported transfers, rejected native reads, and unresolved obligations retain their qualifications. See the [generated request schema and examples](/reference/schemas#raw-json-schema) for the complete model forms.
 
+Before the impact ledger is finalized, a work-limited run can return a qualified, empty `VALUE_PATHS` page with `EVIDENCE_ONLY` accounting and a resumable execution checkpoint. Reading that retained page preserves the checkpoint and performs no semantic work. Witness sections, including `FINDINGS`, return `RESULT_FIELD_UNAVAILABLE` until the investigation ledger exists. Resume the execution checkpoint to continue the investigation.
+
 Read `IMPACT_WITNESS` with section `FINDINGS` for one compact row per original path. Each row retains the producer, destination, current representation, model provenance, terminal outcome, and boundary obligations. Its `path` contains `pathOrdinal` and `pathRowId`. To expand the original evidence, read the same result with `VALUE_PATHS`, set `cursor` to the path ordinal, and set `executionBudget.maxResults` to `1`; the expanded row has that same row ID. Paging findings preserves the original investigation’s unresolved obligations and performs no semantic reads. A compact finding is a presentation of retained evidence; it supplies no new compiler or model fact.
 
 ## Apply only the steps you need
