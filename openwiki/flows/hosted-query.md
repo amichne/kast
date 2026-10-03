@@ -238,10 +238,14 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+  - id: openwiki-source-738d50046b5f0d1312b7fcb7
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+  - id: openwiki-source-63abd5c24e7d947c619c1a6e
+    resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
+generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T14:16:26.318Z
+    at: 2026-10-03T14:44:52.932Z
 ---
 
 # Existing-IDE semantic query
@@ -806,3 +810,5 @@ Pending impact retention distinguishes a qualified empty evidence-only snapshot 
 The hosted retention adapter records finite source-choice, capture, and issuance outcomes through the existing `RETENTION` phase and counter vocabulary. Its exhaustive mappings carry no payloads, paths, anchors, or handles and supply runtime observation only.
 
 Requested-site accounting follows the existing retained presentation branch. Before projecting `SITE_ACCOUNTING`, the restored path list and row count must agree with the original ledger. The projector receives all original path row IDs, validates each target's original ordinal and ledger ownership, and constructs links for reached paths and scope exclusions. `READ_RESULT` uses the projection owner without invoking query operations; its original closure and native admission receipts remain captured evidence.
+
+Each hosted read initializes both value-site revalidation attempts and rejections to explicit zero. A provider-free retained read can therefore report both measurements without relying on absent fields. Actual attempt and rejection increments survive completed or rejected receipt publication. These bounded counts supply runtime work evidence, not compiler or relationship authority.

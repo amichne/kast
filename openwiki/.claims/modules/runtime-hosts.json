@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fc928356e933e2749d462ae1196278f31c739bc87ad3a22f9e64d0beff788a17",
+  "pageVersion": "sha256:3dab2ee231135777dfb3c5e55c655b53532ea722570cd79f3bc024fda6a1d795",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -162,15 +162,15 @@
     },
     {
       "id": "claim_701ef0942dd94ab7b41b64b441f699c0",
-      "statement": "Hosted value-flow and model-binding ports use one admitted project's K2 adapter and source model, while diagnostics explicitly initialize the four value provider counters to zero so absence of observed work is distinguishable from absent measurement.",
+      "statement": "Hosted value-flow and model-binding ports use one admitted project's K2 adapter and source model, while diagnostics explicitly initialize value provider counters and site rejection counts to zero so absence of observed work is distinguishable from absent measurement.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt#L121-L166",
-          "version": "repo-lines-v1:sha256:f8ad1104bb15d727b0f23caed4f6389c2bee5b4f4aa5846bf3749c458998a6ed:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkNmU3YzBmOGUzYzZkMzcxZTJiYTBhZDE0YzQxOGUwZThmOWJiZDY0YTRkMGI0Njc2ZTEyOTBlMGExM2MyMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyNGRlOGRiYzU4YmIyMmRjNDIzNjhlODY3MWMyNmJhOWQ1NGVhZmEzZWE5OWJkYzM2N2ZlZmFiOTJhMzE2OTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyMmUwOGZmYmNiZDQ2Y2I5ODllMGQ5ZDhjZGRkOTBjZWVkZjU2MzgzNzhkMjY2M2U5ZmJmY2RiYTU4NTY3ZWIifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt",
+          "version": "repo-file-v1:sha256:029d09f3074e2bd4659ca38646154cc8bd165652c4f075f42491020374eeca75"
         },
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt#L28-L41",
-          "version": "repo-lines-v1:sha256:1156e6d8784852d871e6c2ccad86068e8054bde1bc5a3c9d9b1b786836b67c6f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkZTAzY2Y2NTQ1YTZmNjA1MWQzYWZmNjM2M2I5MmUzYzgxNTMzZDcxNThiMjJhODlkNGNjNWUwZTQ1YjFlZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmOGEwYTBhMGI2ODk4ZmEzZTg2ZDYwNDI0YThmYjE2OWEzZjEyMzA2YmM5M2UwYjFjNzUwODEyNTZlMDY4OWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0NzVjYzA1ZWYzMmZmN2MyMWUzYTkzN2IyYTlmYzFhNWIzNjg2YjM5ZmYzMDgzNTdjNjJhODNjZjMzMTY5M2UifQ"
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
+          "version": "repo-file-v1:sha256:824a43e5461b14adab7c746a26899b0bd3005c3badb490e14c82c2e19d96a074"
         }
       ]
     },
@@ -202,7 +202,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:9391c894337ace843511f38c4d1657c64a41aea870001ec37ac9e888dcbd0626"
+          "version": "repo-file-v1:sha256:824a43e5461b14adab7c746a26899b0bd3005c3badb490e14c82c2e19d96a074"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt",
@@ -227,6 +227,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T10:31:14.639Z"
+    "at": "2026-10-03T14:44:52.932Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:bea16e4d3aff0995d410a226a019dd548f50b18cffa4ab8cf31282faef0690cf",
+  "pageVersion": "sha256:365929f91b89f74f9e11cbe5f9fe4359750ede9b033b38a99176a3923beff04b",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -179,10 +179,24 @@
           "version": "repo-file-v1:sha256:39c16486a772267038bbf7aebf24555b91f37e927a0e363a6b15a060343701ba"
         }
       ]
+    },
+    {
+      "id": "claim_d818e3a3ac154670a922707690780348",
+      "statement": "Hosted diagnostics initializes both value-site revalidation attempts and rejections to explicit zero and preserves actual increments through receipt encoding, so provider-free retained reads can report measured absence without interpreting a missing field as zero.",
+      "evidence": [
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
+          "version": "repo-file-v1:sha256:824a43e5461b14adab7c746a26899b0bd3005c3badb490e14c82c2e19d96a074"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt",
+          "version": "repo-file-v1:sha256:04d178ea15962a84249bddcc2b7661239fd78141c9d7c2da9322faf2007f11b9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T14:16:26.318Z"
+    "at": "2026-10-03T14:44:52.932Z"
   }
 }

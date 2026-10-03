@@ -179,9 +179,6 @@ code_sources:
 - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-03T10:31:14.639Z
 sources:
   - id: openwiki-source-4497996830a7e09fc6368cb3
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt
@@ -239,7 +236,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-03T10:31:14.639Z" }
+generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T14:44:52.932Z
 ---
 
 # Runtime and process hosts
@@ -490,7 +490,7 @@ bounded without including paths, process identities or payloads.
 
 The hosted service factory now supplies the K2 value-flow adapter, exact producer seeds, callable model revalidation and boundary-site revalidation from the same admitted project, source model and observation capability. Successful native acquisition contributes measured work and time to the shared request accounting; model interpretation remains outside the compiler adapter.
 
-Each semantic diagnostic receipt initializes seed-read, declaration-model, boundary-site-model and value-flow provider counters to zero before observations. Retained-page captures can therefore distinguish an observed zero from an unavailable counter. These bounded, host/epoch-correlated runtime measurements do not grant compiler, model or completion authority.
+Each semantic diagnostic receipt initializes seed-read, declaration-model, boundary-site-model and value-flow provider counters to zero before observations. Site revalidation rejection counts also begin at explicit zero and retain actual increments through receipt publication. Retained-page captures can therefore distinguish an observed zero from an unavailable counter. These bounded, host/epoch-correlated runtime measurements do not grant compiler, model or completion authority.
 
 The existing client response boundary emits private typed frame, body and
 admission activity. Frame bounds precede body acquisition; finite canonical-wire,

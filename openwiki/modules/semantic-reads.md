@@ -164,9 +164,6 @@ code_sources:
 - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRetainedRelationRead.kt
 - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt
 - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-03T10:31:14.639Z
 sources:
   - id: openwiki-source-c5f0a7cc49121c1f25d33773
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt
@@ -204,7 +201,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-03T10:31:14.639Z" }
+generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T14:44:52.932Z
 ---
 
 # Semantic read domains
@@ -604,7 +604,7 @@ The restoration boundary adds `VALUE_SITE_RESTORATION` phase evidence and one
 unavailable-anchor outcome. Request-local hosted diagnostics accumulate those
 bounded counters and phase evidence beside the existing receipt. The schema-6
 receipt also initializes explicit zero counters for producer seed reads, model
-declaration revalidation, model-site revalidation and value-flow reads; entered
+declaration revalidation, model-site revalidation, model-site revalidation rejection and value-flow reads; entered
 providers add their actual observations. Completion or rejection finalizes one
 immutable receipt, and later count calls cannot alter it. Typed serialization
 retains the closed counter and phase identities without source payloads,
