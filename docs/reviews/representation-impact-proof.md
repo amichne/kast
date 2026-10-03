@@ -4,7 +4,7 @@ The installed candidate returns **19 qualified paths from four exact producers**
 
 The tested artifact is commit **`8bd9bf5db3701368f6cd10895065393fa24244a6`**, including implementation commit `5d338edda`. Later receipt and metadata commits do not change the tested artifact identity. This is local installed qualification on macOS arm64, IntelliJ IDEA 2026.2.3 / JBR 25.0.4, candidate version `0.1.5`. It is not a published release, deployed compatibility proof, or evidence that the six issues are closed.
 
-This receipt records the completed candidate-5 cohorts as a checkpoint. The independent #909 audit, larger-domain and rename counterfactuals, and foreign-basis boundary assessment continue separately; their unobserved outcomes are not included here.
+This receipt records the completed candidate-5 cohorts as a checkpoint. The independent #909 regression audit, larger-domain counterfactual, and local rename audit are included. An actual foreign-basis admission probe is captured below; its independent audit and the guarded positive-boundary extension continue separately.
 
 ## Question and authority
 
@@ -74,6 +74,29 @@ On the second owned IDEA incarnation (PID 88188, host `df532bca-fb64-49f7-8fb9-6
 
 Earlier installed probes retain evidence for unrelated declaration growth and exact-file/source-domain scope, duplicate names, different invocations, reassignment, opaque transformation stops, supported wrapper return, immediate return/property assignment, missing models, wrong callable, synthetic and actual stale model bases, and restart. The unrelated-growth case used three owned files and 16 unrelated declarations; it is not large-domain preparation scaling proof. All source effects were restored exactly.
 
+## Local rename
+
+Nine exact five-byte identifiers change `first`→`clear`, leaving all source offsets stable. Fresh identities are acquired before and after the edit on owned PID 91659 / host `23343c5c-7ac8-40cc-9c1c-f3e9c014a7f1`, epochs 1→2. Each cohort contains 15 actual captures, including seven retained reads. The independent audit passes 43 direct checks and nine detached adverse-auditor checks; all 30 actual request envelopes and response documents validate against current canonical schemas.
+
+All 19 full path payloads remain equal after normalizing only the independently verified live host/epoch and excluding the outer request-local row ID across results. Exact ranges, compiler identities, steps, current representation, ordered history, models, terminal variants, obligations, and closure remain compared. Within each result, row IDs/order/payload remain exact. Both cohorts retain `8/6/4/1` paths, four producers, six models, 57 native headers, 55 transfers, 14 obligations, 126 native witnesses, and zero read rejection records. Fifty-seven native elapsed allowances differ and remain recorded; there is no blanket byte-equivalence claim.
+
+All seven retained reads per cohort have `MATCHED` correlation and six explicit zero counters. Six ordinary lookups retain `UNAVAILABLE` correlation. Native witness pages contain `100+26` rows under exact requested/effective max-results 128, with no clamping. The original 1745-byte source is restored exactly to SHA-256 `58509a615028343d7dd5f0b5c919d27d0b234f1cfa94d35c9c8f2fe4fb7a7be2`; reconstruction of the nine edits yields renamed SHA `5f7e9765c778c417dc88c26629853050dfbcd878d6b7d4965c8d24afa267b71d`. Rename stability preserves qualified evidence, including its unresolved obligations.
+
+## Scoped preparation under unrelated growth
+
+The third owned IDEA incarnation, PID 91659 / host `23343c5c`, captures baseline, larger-domain, and restored cohorts at epochs 3, 4, and 5. Growth adds 64 exact files, 1126720 bytes, and 8192 authored self-call sites to the existing imported `core/main` module. It does not change build settings or add an imported root. The narrow domain remains the direct `logging/main` fixture directory; the comparison domain is `WORKSPACE`.
+
+An independent audit enumerates 38 actual captures: one preserved first harness attempt, then 12 baseline, 13 large, and 12 restored captures. All three original K2 reference facts, their compiler identities and source anchors, domain fingerprints, and 4746-byte inventories stay unchanged. Both domains' one-row drains return `[1,1,1]`, with exact fact sets equal to each wide repetition. Wide and drained output orders differ; the final retained delta is one. A native lookup establishes one representative decoy as a distinct callable. The 8192 authored self-calls are fixture intent, not 8192 individually compiler-confirmed facts.
+
+| Domain | Baseline preparation median ms | Large median ms | Restored median ms |
+| --- | ---: | ---: | ---: |
+| `SOURCE_DOMAIN` | 2.987 | 4.355 | 2.735 |
+| `WORKSPACE` | 3.241 | 3.897 | 3.264 |
+
+Each median has three actual observations. First source-domain preparations after epoch changes reach 50.820 ms and 47.627 ms. The records separate preparation, confirmation, RPC time, bytes, gauges, and counter vectors; they establish no flat-cost, speedup, CPU/heap, or provider-internal index-hit claim. Scoped eligibility precedes candidate capacity and detached locator inventory in production source. Retained resumes show no new preparation gauge or inventory phase, with recorded prefix replay zero.
+
+All 37 verbose captures retain exact requested/effective grants without clamping. Public harness correlation remains `UNAVAILABLE`; actual verbose public live bases separately match the raw PID/host/epoch receipts. The first successful product query returned three facts, but its harness stopped at `GRANT_MISMATCH` because verbose budget metadata was omitted. That capture and executed runner remain unchanged. The corrected runner explicitly requests verbose output and counts the prior attempt against the shared 80-capture bound. All 64 files and two newly created parents were removed by exact restoration, preserving five original input hashes.
+
 ## Reviewed serialization continuation
 
 All five variants execute on the second host's epoch 2: 113 captures, 96 retained pages, 87 independent passing checks. Two exact modeled edges connect argument 0 to result: response writer→client reader, then later-request sender→server reader. Both use reviewed serialization slot `ciphertext` and explicit contract assumptions `CONTRACT_COMPATIBLE` and `REPRESENTATION_PRESERVED` on one compiler root/basis.
@@ -87,6 +110,23 @@ All five variants execute on the second host's epoch 2: 113 captures, 96 retaine
 | Synthetic stale outer model basis | Finite `MODEL_INVALID_INVOCATION`; no retained result. Distinct from the actual epoch-change checkpoint experiment. |
 
 All six retained sections preserve exact rows, ordinal chains, original accounting, and closure under wide/one-row grants with matched zero selected native work. This is same-root modeled continuation; it proves no real network, deployed compatibility, runtime cryptography, or foreign enrolled compiler authority.
+
+## Independently acquired peer basis
+
+The fourth owned IDEA incarnation, PID 98064, opens and imports a separate seven-file peer fixture through the public workspace-preparation path. Native producer acquisition uses peer-first, source-second reads, fresh declaration references, and current canonical schemas. Nine actual calls acquire the two producer witnesses and submit one combined boundary request:
+
+| Endpoint | Actual acquired live basis |
+| --- | --- |
+| Source fixture | Host `0288dfb4-664d-408c-a5d5-8680b0f05372`, epoch 1, original canonical fixture root |
+| Peer fixture | Host `af905a1b-877d-4edd-b027-ade7478cbbc3`, epoch 2, `/private/tmp/ka-2osfg1j9-v5/peer-fixture-0` |
+
+Both witnesses identify exact invocation-result range `876–901` within their own compiler-resolved enclosing/callable declarations. Equal names and ranges do not combine their roots or authorities. The source-root request supplies one reviewed continuation with these actual positions; its contract vocabulary and compatibility assumptions remain caller-supplied model facts. Production rejects `IMPACT_SOURCE_REJECTED` / `ADMISSION` / `BOUNDARY_BASIS_MISMATCH`, position 1. It creates no combined retained result or positive cross-repository edge.
+
+Public correlation on that rejection is `UNAVAILABLE`. One separate raw receipt matches the source host/epoch and PID and records six selected query counters as zero; it is not response-correlated semantic proof. Earlier attempts remain captured: one `TRUST_REQUIRED` prerequisite, then one `FRESHNESS_REJECTED` / `MOVED` at `CONTENT_REVALIDATION` after native import, requesting `restart_read`. The successful fresh retry counts both prior captures: 11 total against a shared bound of 24. Private registration separately rejects `SERVICE_IDENTITY_REJECTED`; native public preparation and producer acquisition are established independently.
+
+The peer is created from seven exact owned fixture/wrapper files; native import subsequently writes its own metadata. Standard IDE per-root trust configuration is verified against the installed vendor persistence contract, applied offline after exact owned retirement, and later restored. Trust-all flags and product admission bypasses are not used. Both third and fourth IDE processes have exact ownership-checked retirement, PID absence, and new native shutdown records. The IDE reordered the two trust entries on shutdown; the first exact-byte restoration rejected before any effect. A fresh helper requires the actual reordered preimage SHA `50f001d5709cd66a661d5a9ee3086294136d2bb90023d08622ac51380486a83c` and restores original 297 bytes / SHA `764eaf28492b8030918a6043ccf2e124d3520839e32cf2a23cda9dc17e9ab5d7`, removing only the peer entry. Protected user PID 5961 remains present.
+
+This establishes the public one-basis admission limit against separately acquired native authority. Positive cross-repository modeled evidence remains an implementation requirement: both endpoint proofs must retain their own bases, with an explicit peer proof boundary and unresolved obligations. A decoded peer claim alone cannot become current native authority.
 
 ## Measurements and checks
 
@@ -104,6 +144,8 @@ Equivalent presentations use the same retained result, basis, and effective gran
 Compact bytes decrease in these cohorts; hosted wide time increases. There is no CPU, heap, latency speedup, or equivalent full-path 32768-byte drain claim. Candidate 2→3 retained quota high-water accounting decreases 27477980→13182772 bytes under a 33554432-byte continuation quota, while paths/work/closure and existing retained entries differ; this is neither heap measurement nor a performance comparison on equivalent semantics. No equivalent manual baseline exists.
 
 Focused pending retention first fails in three behavior cases, then passes eight retention cases, twelve instrumentation cases, and one pending retained-read case. Final affected checks cover 676 tests with zero failures/errors/skips. Global `productBuildGate knowledgeImpact verifyKnowledgeBase` with GraalVM 25 and explicit candidate versions passes: 2775 report tests, zero failures/errors, three documented Codex prerequisite skips; ten owners execute and 35 are up to date. Retained up-to-date reports are not fresh execution. Mintlify validation and broken-link checks pass. JSON contracts, architecture, formatting, detekt, and 28 knowledge concepts pass.
+
+The independent #909 audit traces merged PR commit `9173f9464aea46d2390ffc31a5b0a2cbfd99bdd7` and source commit `fbfe4c874e3e603315fa5a5cc267972d07da6c55`. Nineteen named test classes contain 96 passing cases, zero failures/errors/skips: 71 #909 regression cases and 25 coverage/identity cases. Exact selectors, inspected source bytes, report digests, and executed/up-to-date gate states are retained. Inspected source and test bytes match the installed candidate. This resolves the prior regression-audit gap; it does not turn retained reports into fresh execution or prove every issue criterion.
 
 ```sh
 ./gradlew :query:protocol:check :query:service:test :runtime:hosted:check :workspace:intellij-read:check
@@ -128,10 +170,16 @@ Raw captures are local historical evidence, not portable live handles. Candidate
 | `flow-continuation-resource-cut-v5.json` | `dd8ebdb9d0df7fe8f49df9636d0e132c4295baad324ccbc418c721cc083b170c` |
 | `stale-pending-native-audit-v5.json` | `e9723bb5ba44687df446e30d57c74065d43e2ed9cd5de6a7930d3d34500926f0` |
 | `two-side-candidate5-audit-final.json` | `da73763ee2f0b6af24b30b4cfeda4b86de45ce874f67228c7fc309b0d15666dd` |
+| `pr909-issue910-regression-audit-v5.json` | `c404af0a4bb91cbc6871350eb7c8389dde2e99f20ed895f92901cd125a3eb4f3` |
+| `large-domain-native-audit-sealed-v5.json` | `1f31e140264d30eafce5335ce5d65bc54ea5ec5dbb249bd2d9cf6488c8594064` |
+| `local-rename-native-audit-v5-final.json` | `3ead6fd29d9c2854357ed1313a7e478497b2ee15028b096d593656183ff8aa4d` |
+| `vendor-trust-contract-audit-v5.json` | `509b0b532c48ca43c7e9e7cc7d613b6a8758462a3991c465cfa77ae4b5090a1c` |
+| `current-acceptance-assessment-v5-sealed.json` | `f767d6d8efbde9dd433bdbcf19441785dc390f47de0378da8e49d1dc571289b5` |
+| `issue915-named-site-preflight-v5.json` | `e657a2467f874763eaed0a91f58d4429093106bcf0f019c6ecc6501a8eda27ed` |
 | `issue-closure-assessment-v5-after.json` | `39ecce814e9ad298a0d265b52f2f71ccfbd186035db639d5288993f97e59b123` |
 
 Preserved harness failures include the original work-30 equality assertion, a final-only reference helper rejecting pending metadata before any native call, and a stale planner expecting the wrong discriminator despite schema-valid actual rejection. The full drain helper's scalar `retainedPageCount=-1222` is defective; physical enumeration establishes 171 total/163 retained captures. Executed scripts and captures were not rewritten to manufacture success. Candidate-4 lifecycle capacity rejection remains historical evidence; a fresh owned IDEA incarnation permits all candidate-5 serialization variants without changing that limit.
 
-The owned serialization file SHA `13ce1ae82eaca664fd4833a1ee5a0ae2938a679ab12747d42ee456cb9f3909ff` and its previously absent parent were removed after capture; the original fixture hash remains unchanged. Both candidate-5 IDEA incarnations received one ownership-checked SIGTERM and subsequently have observed PID absence plus native `IDE SHUTDOWN` records. Their retirement helper fails closed when process identity disappears during exit; separate observations establish shutdown. Protected user PID 5961 remains present. The isolated candidate's public `stop` rejects `unsupported-private-installer-command`; private service stop rejects `SERVICE_OWNERSHIP_UNPROVEN` / `READINESS_REJECTED`. Coordinator retirement is unverified and was not forced. These cleanup failures do not become semantic success claims.
+The owned serialization file SHA `13ce1ae82eaca664fd4833a1ee5a0ae2938a679ab12747d42ee456cb9f3909ff` and its previously absent parent were removed after capture; the original fixture hash remains unchanged. All four candidate-5 IDEA incarnations received one ownership-checked SIGTERM and have observed PID absence plus native `IDE SHUTDOWN` records. The first two retirement helpers fail closed when process identity disappears during exit; separate observations establish shutdown. Later helpers retain the shutdown observation directly. Protected user PID 5961 remains present. The isolated candidate's public `stop` rejects `unsupported-private-installer-command`; private service stop rejects `SERVICE_OWNERSHIP_UNPROVEN` / `READINESS_REJECTED`. Coordinator retirement is unverified and was not forced. These cleanup failures do not become semantic success claims.
 
-The independent issue assessment covers 56 literal criteria and 35 hashed source/capture receipts. #912's bounded forward-slice criteria are locally demonstrated. #910 still needs the independent #909 regression audit; #911 needs controlled large-domain preparation scaling; #913 needs the actual rename counterfactual; #914 needs foreign enrolled compiler authority; #915 retains the three unreached authored sites and missing equivalent manual baseline. All six issues remain open because this candidate is unpublished and the wider criteria are not all demonstrated. No issue comments, closures, pushes, or pull requests were made by this qualification.
+The prior independent issue assessment covers 56 literal criteria and 35 hashed source/capture receipts. Its #910 regression-audit, #911 large-domain measurement, and #913 rename gaps are now addressed by the later records above. #912's bounded forward-slice criteria are locally demonstrated. The current sealed assessment distinguishes supported implementation checkboxes for #910–#913 from #911's unavailable historical before-code measurement. #914 still needs positive cross-repository modeled evidence despite the actual foreign-basis rejection. #915 requires production accounting for the three independently named unreached sites; its equivalent manual-before measurement also remains unavailable. All six issues remain open because this candidate is unpublished and the wider criteria are not all demonstrated. No issue comments, closures, pushes, or pull requests were made by this qualification.
