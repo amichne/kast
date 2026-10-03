@@ -45,10 +45,10 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 
 ## New Thread Remote Refresh
 
-- At the start of every new thread, inspect the current branch, working tree, and configured upstream, then fetch that upstream's remote before changing repository files.
-- If the working tree is clean and the local branch can fast-forward to the fetched upstream head, fast-forward it and verify the resulting `HEAD` matches the upstream.
-- If the checkout is clean and detached or has no configured upstream, fetch `origin` and create the implementation branch from `origin/main` without asking for a base decision. Preserve existing branch references and verify the new branch starts at the fetched `origin/main`.
-- If histories diverge or local changes block the fast-forward, preserve the branch, working tree, and stashes. Report the exact state and get a base decision before moving commits or applying stashes.
+- At the start of every new thread, default to the latest `origin/main` unless the user explicitly requests another base. Inspect the current branch, working tree, and configured upstream, then run `git fetch origin main` before changing repository files.
+- In a clean task checkout, check out the fetched `origin/main`, run `git pull --ff-only origin main`, and verify `HEAD` matches `origin/main`. A detached checkout is valid when `main` is already checked out in another worktree. Create an implementation branch from the refreshed head when needed.
+- A detached checkout, missing upstream, or divergent branch does not require a base decision: use the latest `origin/main`. Preserve existing branch references; retain any unique detached commits under a branch before switching bases.
+- If local changes prevent refreshing the task checkout, preserve that checkout and its stashes, and use a separate clean managed worktree from the fetched `origin/main`. Pull and verify that worktree as above, then continue there without asking the user to choose a base. Do not reset, overwrite, stash, rebase, or apply existing work merely to refresh the base.
 
 ## Navigation Hints
 
