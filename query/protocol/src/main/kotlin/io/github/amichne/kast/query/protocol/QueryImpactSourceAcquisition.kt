@@ -17,10 +17,10 @@ import io.github.amichne.kast.query.contract.QueryImpactProducer
 import io.github.amichne.kast.query.contract.QueryImpactRequestedSite
 import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactSource
-import io.github.amichne.kast.query.contract.QueryImpactSourceFailure
 import io.github.amichne.kast.relation.contract.BoundaryPosition
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
@@ -40,9 +40,11 @@ internal class QueryImpactSourceAcquisition(
     private val compiler: ValueProducerSeedCompilerPort,
     private val budget: QueryBudget,
     private val domain: RelationSearchBoundary,
+    private val peers: ImpactPeerSourceEvidence? = null,
 ) {
-    private var examinedWork = 0L
-    private var retainedBytes = 0L
+    private var examinedWork = peers?.examinedWork ?: 0L
+    private val peerRetainedBytes = peers?.retainedBytes ?: 0L
+    private var retainedBytes = peerRetainedBytes
     private val producers = mutableListOf<QueryImpactProducer>()
     private val current = mutableListOf<RevalidatedRelationEndpoint>()
     private val currentSelectors = mutableListOf<SymbolSelector>()
@@ -85,20 +87,6 @@ internal class QueryImpactSourceAcquisition(
         return Refinement.Refined(RelationBudget(current.copy(workUnitLimit = work), bytes))
     }
 
-    private fun restore(token: ProtocolText, position: Int): Refinement<SymbolSelector, QueryRunRejection> =
-        when (val restored = authority.restoreExact(token, lease)) {
-            is CanonicalSelectorDecoding.Decoded -> Refinement.Refined(restored.value)
-            is CanonicalSelectorDecoding.Rejected ->
-                Refinement.Rejected(
-                    QueryRunRejection.ImpactSourceRejected(
-                        QueryImpactSourceFailureDocument.Reference(
-                            restored.failure.queryRejection(token),
-                            queryPosition(position),
-                        )
-                    )
-                )
-        }
-
     suspend fun acquireSeeds(seeds: List<QueryImpactProducerDocument>): Refinement<Unit, QueryRunRejection> {
         for ((position, seed) in seeds.withIndex()) when (val admitted = acquireSeed(seed, position)) {
             is Refinement.Refined -> Unit
@@ -112,12 +100,12 @@ internal class QueryImpactSourceAcquisition(
         position: Int,
     ): Refinement<ValueProducerSeedRequest, QueryRunRejection> {
         val enclosing =
-            when (val restored = restore(seed.enclosing, position)) {
+            when (val restored = restoreImpactDeclaration(authority, seed.enclosing, lease, position)) {
                 is Refinement.Refined -> restored.value
                 is Refinement.Rejected -> return restored
             }
         val callable =
-            when (val restored = restore(seed.callable, position)) {
+            when (val restored = restoreImpactDeclaration(authority, seed.callable, lease, position)) {
                 is Refinement.Refined -> restored.value
                 is Refinement.Rejected -> return restored
             }
@@ -175,18 +163,11 @@ internal class QueryImpactSourceAcquisition(
             is Refinement.Rejected -> return impactFailure(QueryImpactSourceFailureCode.ROLE_MISMATCH, position)
         }
         when (val retained = QueryImpactSource.admit(producers, emptyList(), emptyList(), domain)) {
-            is Refinement.Refined -> retainedBytes = retained.value.retainedBytes
+            is Refinement.Refined ->
+                retainedBytes = saturatingImpactAdmissionCount(peerRetainedBytes, retained.value.retainedBytes)
             is Refinement.Rejected ->
                 return impactFailure(
-                    when (retained.failure) {
-                        QueryImpactSourceFailure.DUPLICATE_REQUESTED_SITE ->
-                            QueryImpactSourceFailureCode.DUPLICATE_REQUESTED_SITE
-                        QueryImpactSourceFailure.EMPTY_PRODUCERS -> QueryImpactSourceFailureCode.EMPTY_PRODUCERS
-                        QueryImpactSourceFailure.DUPLICATE_PRODUCER -> QueryImpactSourceFailureCode.DUPLICATE_PRODUCER
-                        QueryImpactSourceFailure.DUPLICATE_MODEL ->
-                            QueryImpactSourceFailureCode.DUPLICATE_MODEL_REFERENCE
-                        QueryImpactSourceFailure.FOREIGN_BASIS -> QueryImpactSourceFailureCode.BASIS_MISMATCH
-                    },
+                    retained.failure.impactFailure(),
                     position,
                 )
         }
@@ -207,12 +188,24 @@ internal class QueryImpactSourceAcquisition(
         return Refinement.Refined(Unit)
     }
 
+    suspend fun acquirePeerSite(
+        selection: QueryImpactPeerSelection
+    ): Refinement<QueryImpactRequestedSite, QueryRunRejection> {
+        for (declaration in selection.declarations) {
+            when (val admitted = acquireDeclaration(declaration, selection.modelPosition.value)) {
+                is Refinement.Rejected -> return admitted
+                is Refinement.Refined -> Unit
+            }
+        }
+        return acquireSite(selection.site, selection.modelPosition.value, ImpactSiteAdmissionOrigin.PEER_BOUNDARY)
+    }
+
     private suspend fun acquireDeclaration(
         declaration: QueryImpactDeclarationDocument,
         position: Int,
     ): Refinement<Unit, QueryRunRejection> {
         val selected =
-            when (val restored = restore(declaration.reference, position)) {
+            when (val restored = restoreImpactDeclaration(authority, declaration.reference, lease, position)) {
                 is Refinement.Refined -> restored.value
                 is Refinement.Rejected -> return restored
             }
@@ -231,17 +224,10 @@ internal class QueryImpactSourceAcquisition(
         if (read.examinedWorkUnits.value > grant.resources.workUnitLimit.value)
             return impactFailure(QueryImpactSourceFailureCode.WORK_RECEIPT_EXCEEDS_GRANT, position)
         examinedWork += read.examinedWorkUnits.value
-        val endpoint = read.declaration.endpoint
-        if (
-            endpoint.compilerIdentity != selected.compilerIdentity ||
-                endpoint.file != selected.file ||
-                endpoint.range != selected.range
-        )
-            return impactFailure(QueryImpactSourceFailureCode.DECLARATION_MISMATCH, position)
-        if (!declaration.declaration.matchesDeclaration(endpoint))
-            return impactFailure(QueryImpactSourceFailureCode.DECLARATION_MISMATCH, position)
-        if (endpoint.lease.identity != lease.identity || !declaration.declaration.basis.matchesBasis(lease.identity))
-            return impactFailure(QueryImpactSourceFailureCode.STALE_DECLARATION, position)
+        when (val matched = matchImpactDeclaration(declaration, selected, read.declaration.endpoint, lease, position)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return matched
+        }
         current += read.declaration
         currentSelectors += selected
         return Refinement.Refined(Unit)
@@ -252,7 +238,11 @@ internal class QueryImpactSourceAcquisition(
     ): Refinement<Unit, QueryRunRejection> {
         for ((position, declared) in declaredPositions.withIndex()) {
             val site =
-                when (val cached = sites[declared.site]) {
+                when (
+                    val cached =
+                        peers?.admissions?.singleOrNull { declared.site.matchesSite(it.site) }?.selection
+                            ?: sites[declared.site]
+                ) {
                     null ->
                         when (
                             val admitted =
@@ -312,11 +302,15 @@ internal class QueryImpactSourceAcquisition(
                 is Refinement.Rejected -> return admitted
             }
         examinedWork += proof.examinedWorkUnits.value
-        retainedBytes +=
-            when (origin) {
-                ImpactSiteAdmissionOrigin.BOUNDARY_MODEL -> proof.site.retainedBytes
-                ImpactSiteAdmissionOrigin.REQUESTED_SITE -> QueryImpactRetainedGraph().site(proof.site)
-            }
+        retainedBytes =
+            saturatingImpactAdmissionCount(
+                retainedBytes,
+                when (origin) {
+                    ImpactSiteAdmissionOrigin.BOUNDARY_MODEL -> proof.site.retainedBytes
+                    ImpactSiteAdmissionOrigin.REQUESTED_SITE -> QueryImpactRetainedGraph().site(proof.site)
+                    ImpactSiteAdmissionOrigin.PEER_BOUNDARY -> QueryImpactRetainedGraph().requestedSite(proof)
+                },
+            )
         if (retainedBytes > budget.checkpointBytes.value)
             return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED, position)
         return Refinement.Refined(proof)
@@ -333,10 +327,50 @@ internal class QueryImpactSourceAcquisition(
                 currentPositions.toList(),
                 examinedWork,
                 requestedSites.toList(),
+                peers?.admissions.orEmpty(),
             ),
             modelSyntax,
             domain,
             flow,
             budget,
         )
+}
+
+private fun restoreImpactDeclaration(
+    authority: QueryReferenceAuthority,
+    token: ProtocolText,
+    lease: SemanticReadAuthority,
+    position: Int,
+): Refinement<SymbolSelector, QueryRunRejection> =
+    when (val restored = authority.restoreExact(token, lease)) {
+        is CanonicalSelectorDecoding.Decoded -> Refinement.Refined(restored.value)
+        is CanonicalSelectorDecoding.Rejected ->
+            Refinement.Rejected(
+                QueryRunRejection.ImpactSourceRejected(
+                    QueryImpactSourceFailureDocument.Reference(
+                        restored.failure.queryRejection(token),
+                        queryPosition(position),
+                    )
+                )
+            )
+    }
+
+private fun matchImpactDeclaration(
+    declaration: QueryImpactDeclarationDocument,
+    selected: SymbolSelector,
+    endpoint: RelationEndpoint,
+    lease: SemanticReadAuthority,
+    position: Int,
+): Refinement<Unit, QueryRunRejection> {
+    if (
+        endpoint.compilerIdentity != selected.compilerIdentity ||
+            endpoint.file != selected.file ||
+            endpoint.range != selected.range
+    )
+        return impactFailure(QueryImpactSourceFailureCode.DECLARATION_MISMATCH, position)
+    if (!declaration.declaration.matchesDeclaration(endpoint))
+        return impactFailure(QueryImpactSourceFailureCode.DECLARATION_MISMATCH, position)
+    if (endpoint.lease.identity != lease.identity || !declaration.declaration.basis.matchesBasis(lease.identity))
+        return impactFailure(QueryImpactSourceFailureCode.STALE_DECLARATION, position)
+    return Refinement.Refined(Unit)
 }

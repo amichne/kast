@@ -6,11 +6,13 @@ import io.github.amichne.kast.relation.contract.ValueFlowRejection
 internal enum class ImpactSiteAdmissionOrigin {
     BOUNDARY_MODEL,
     REQUESTED_SITE,
+    PEER_BOUNDARY,
 }
 
 internal fun ValueFlowRejection.siteFailure(origin: ImpactSiteAdmissionOrigin): QueryImpactSourceFailureCode =
     when (origin) {
-        ImpactSiteAdmissionOrigin.BOUNDARY_MODEL -> boundaryFailure()
+        ImpactSiteAdmissionOrigin.BOUNDARY_MODEL,
+        ImpactSiteAdmissionOrigin.PEER_BOUNDARY -> boundaryFailure()
         ImpactSiteAdmissionOrigin.REQUESTED_SITE ->
             when (this) {
                 ValueFlowRejection.STALE_SITE -> QueryImpactSourceFailureCode.STALE_REQUESTED_SITE

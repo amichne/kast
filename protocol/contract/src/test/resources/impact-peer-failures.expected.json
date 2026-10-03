@@ -1,0 +1,47 @@
+[
+  {
+    "type": "PEER_PROOF",
+    "cause": "WORK_RECEIPT_EXCEEDS_GRANT",
+    "position": 1
+  },
+  {
+    "type": "PEER_PROOF",
+    "cause": "TIME_RECEIPT_EXCEEDS_GRANT",
+    "position": 1
+  },
+  {
+    "type": "PEER_PROOF",
+    "cause": "SITE_WORK_EXCEEDS_ACQUISITION_WORK",
+    "position": 1
+  },
+  {
+    "type": "PEER_PROOF",
+    "cause": "SITE_GRANT_EXCEEDS_ACQUISITION_GRANT",
+    "position": 1
+  },
+  {
+    "type": "PEER_PROOF",
+    "cause": "TARGET_BASIS_MISMATCH",
+    "position": 1
+  },
+  {
+    "type": "PEER_PROOF",
+    "cause": "TARGET_IDENTITY_MISMATCH",
+    "position": 1
+  },
+  {
+    "type": "PEER_PROOF",
+    "cause": "SOURCE_BASIS_MISMATCH",
+    "position": 1
+  },
+  {
+    "type": "PEER_PROOF",
+    "cause": "SAME_SOURCE_ROOT",
+    "position": 1
+  },
+  {
+    "type": "PEER_PROOF",
+    "cause": "CONNECTION_MISMATCH",
+    "position": 1
+  }
+]

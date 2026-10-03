@@ -28,6 +28,14 @@ data class ImpactWitnessItemDocument(
 @JsonClassDiscriminator("type")
 sealed interface ImpactWitnessDocument {
     @Serializable
+    @SerialName("PEER_BOUNDARY_MODEL")
+    data class PeerBoundaryModel(
+        val reference: ImpactRuleReferenceDocument,
+        val rule: ImpactBoundaryRuleDocument,
+        val admission: ImpactPeerSiteAdmissionDocument,
+    ) : ImpactWitnessDocument
+
+    @Serializable
     @SerialName("SITE_ACCOUNTING")
     data class SiteAccounting(val accounting: ImpactSiteAccountingDocument) : ImpactWitnessDocument
 
@@ -149,6 +157,15 @@ sealed interface ImpactFindingProvenanceDocument {
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactFindingTerminalDocument {
+    @Serializable
+    @SerialName("UNRESOLVED_PEER_CONTINUATION")
+    data class UnresolvedPeerContinuation(
+        val reference: ImpactRuleReferenceDocument,
+        val target: ImpactValueSiteReferenceDocument,
+        val admission: ImpactPeerSiteAdmissionDocument,
+        val reason: ImpactPeerContinuationReasonDocument,
+    ) : ImpactFindingTerminalDocument
+
     @Serializable
     @SerialName("CONSUMER")
     data class Consumer(

@@ -35,6 +35,9 @@ import io.github.amichne.kast.protocol.contract.ImpactModelVersionDocument
 import io.github.amichne.kast.protocol.contract.ImpactNativeReadRejectionDocument
 import io.github.amichne.kast.protocol.contract.ImpactPathDocument
 import io.github.amichne.kast.protocol.contract.ImpactPathTerminalDocument
+import io.github.amichne.kast.protocol.contract.ImpactPeerAcquisitionReceiptDocument
+import io.github.amichne.kast.protocol.contract.ImpactPeerContinuationReasonDocument
+import io.github.amichne.kast.protocol.contract.ImpactPeerSiteAdmissionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReadContractRejectionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReadRejectionDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationEvidenceDocument
@@ -43,6 +46,7 @@ import io.github.amichne.kast.protocol.contract.ImpactRequestedBoundaryDocument
 import io.github.amichne.kast.protocol.contract.ImpactRuleReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactScopeExclusionDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.ImpactSiteAdmissionDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
@@ -82,6 +86,7 @@ class ImpactPathSchemaTest {
                 "UNRESOLVED_FLOW",
                 "UNRESOLVED_BOUNDARY",
                 "UNRESOLVED_READ",
+                "UNRESOLVED_PEER_CONTINUATION",
                 "EXECUTION_STOP",
                 "SUPPORTED_DOMAIN_END",
                 "EXPLICIT_SCOPE_EXCLUSION",
@@ -105,6 +110,53 @@ class ImpactPathSchemaTest {
                 )) assertTrue(schema.validate(malformed, InputFormat.JSON).isNotEmpty(), malformed)
         }
     }
+
+    @Test
+    fun `peer path terminal requires exact target completed receipt and unresolved reason`() {
+        val document = generatedRequestSchema(ImpactPathTerminalDocument.serializer())
+        val peer =
+            document
+                .getValue("anyOf")
+                .jsonArray
+                .single {
+                    it.jsonObject
+                        .getValue("properties")
+                        .jsonObject
+                        .getValue("type")
+                        .jsonObject
+                        .getValue("enum")
+                        .jsonArray
+                        .single()
+                        .jsonPrimitive
+                        .content == "UNRESOLVED_PEER_CONTINUATION"
+                }
+                .jsonObject
+        assertEquals(setOf("type", "reference", "target", "admission", "reason"), requiredFields(peer))
+        val admission = peer.getValue("properties").jsonObject.getValue("admission").jsonObject
+        assertEquals(setOf("acquisition", "selection"), requiredFields(admission))
+        val fields = admission.getValue("properties").jsonObject
+        assertEquals(
+            setOf("completedBasis", "budget", "examinedWorkUnits", "elapsedNanos"),
+            requiredFields(fields.getValue("acquisition").jsonObject),
+        )
+        assertEquals(setOf("budget", "examinedWorkUnits"), requiredFields(fields.getValue("selection").jsonObject))
+        val schema =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(document.toString())
+        val raw = Json.encodeToString(ImpactPathTerminalDocument.serializer(), Fixture().peerTerminal)
+        assertTrue(schema.validate(raw, InputFormat.JSON).isEmpty(), raw)
+        for (malformed in
+            listOf(
+                raw.replace(",\"reason\":\"PEER_FLOW_NOT_INVESTIGATED\"", ""),
+                raw.replace(",\"elapsedNanos\":2", ""),
+                raw.replace("PEER_FLOW_NOT_INVESTIGATED", "ASSUMED_PEER_COMPLETE"),
+            )) {
+            assertTrue(malformed != raw)
+            assertTrue(schema.validate(malformed, InputFormat.JSON).isNotEmpty(), malformed)
+        }
+    }
+
+    private fun requiredFields(schema: kotlinx.serialization.json.JsonObject): Set<String> =
+        schema.getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet()
 
     private fun discriminatorValues(variants: kotlinx.serialization.json.JsonArray): Set<String> =
         variants
@@ -209,6 +261,34 @@ class ImpactPathSchemaTest {
                 QueryDiscoveryCountDocument.parse(2048).refined(),
                 ImpactFlowTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED,
             )
+        val peerTerminal =
+            ImpactPathTerminalDocument.UnresolvedPeerContinuation(
+                reference,
+                site.copy(
+                    enclosing =
+                        declaration.copy(
+                            basis =
+                                ImpactSemanticBasisDocument.Published(
+                                    text("/peer"),
+                                    ImpactEvidenceRevisionDocument.parse(9).refined(),
+                                ),
+                            file = text("/peer/File.kt"),
+                        )
+                ),
+                ImpactPeerSiteAdmissionDocument(
+                    ImpactPeerAcquisitionReceiptDocument(
+                        ImpactSemanticBasisDocument.Published(
+                            text("/peer"),
+                            ImpactEvidenceRevisionDocument.parse(9).refined(),
+                        ),
+                        end.domain.budget,
+                        QueryDiscoveryCountDocument.parse(3).refined(),
+                        QueryDiscoveryCountDocument.parse(2).refined(),
+                    ),
+                    ImpactSiteAdmissionDocument(end.domain.budget, QueryDiscoveryCountDocument.parse(1).refined()),
+                ),
+                ImpactPeerContinuationReasonDocument.PEER_FLOW_NOT_INVESTIGATED,
+            )
         val terminals =
             listOf(
                 ImpactPathTerminalDocument.Consumer(
@@ -268,6 +348,7 @@ class ImpactPathSchemaTest {
                     domain,
                     ImpactScopeExclusionDocument.OUTSIDE_EXACT_FILE,
                 ),
+                peerTerminal,
             )
     }
 

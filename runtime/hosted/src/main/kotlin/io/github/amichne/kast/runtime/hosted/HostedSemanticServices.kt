@@ -118,7 +118,10 @@ internal class HostedSemanticServices(
             },
         )
 
-    private val acquisitionAccounting = ReadAcquisitionAccounting()
+    val acquisitionAccounting = ReadAcquisitionAccounting()
+
+    fun acquisitionWork() = acquisitionAccounting.snapshot()
+
     private val valueCompiler = IntellijValueFlowCompilerAdapter(context.observation, context.limits)
     private val valueModel = WorkspaceSearchScopeModelCompilation.Compiled(context.model)
     val valueFlow =

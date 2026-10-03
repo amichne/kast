@@ -17,6 +17,8 @@ sealed interface QueryImpactExecutionFailure {
 
     data class Path(val cause: QueryImpactPathFailure) : QueryImpactExecutionFailure
 
+    data class PeerBoundary(val cause: QueryImpactPeerProofFailure) : QueryImpactExecutionFailure
+
     data class Ledger(val cause: QueryImpactLedgerFailure) : QueryImpactExecutionFailure
 
     data class Accounting(val cause: QueryValuePathAccountingFailure) : QueryImpactExecutionFailure

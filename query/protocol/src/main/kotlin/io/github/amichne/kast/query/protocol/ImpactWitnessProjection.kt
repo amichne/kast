@@ -104,6 +104,7 @@ private fun QueryImpactWitnessEntry.impactDocument(
             rule.reference.impactDocument().impactZip(rule.impactDocument()).impactMap { (reference, rule) ->
                 ImpactWitnessDocument.RepresentationModel(reference, rule)
             }
+        is QueryImpactWitnessEntry.PeerBoundaryModel -> boundary.projectPeerModelWitness()
         is QueryImpactWitnessEntry.BoundaryModel ->
             model.reference.impactDocument().impactZip(model.impactDocument()).impactMap { (reference, rule) ->
                 ImpactWitnessDocument.BoundaryModel(reference, rule)

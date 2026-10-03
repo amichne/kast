@@ -224,6 +224,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - id: openwiki-source-b711ac75af08966d13a95b22
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - id: openwiki-source-30bb99efffb5b58bc0e7db17
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteCompletion.kt
+  - id: openwiki-source-bd35e661989c1e05fe3916b5
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteReadPort.kt
   - id: openwiki-source-9d98513f38a6f5a6f98d8cdc
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
   - id: openwiki-source-dc64f3c714e0e7abfefc0f56
@@ -232,14 +236,16 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
+  - id: openwiki-source-eed0394918ec9e3d4c1a1c51
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/RegisteredPeerRead.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
+generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T14:44:52.932Z
+    at: 2026-10-03T17:08:58.136Z
 ---
 
 # Runtime and process hosts
@@ -504,3 +510,5 @@ intervals, leaving native inventory and confirmation in their own phases; these
 intervals are not inclusive traversal duration or CPU measurements.
 
 `HostedCanonicalQuery` supplies an explicit retention observation callback to the canonical protocol. The adapter maps presented, pending-impact and original-investigation capture starts and successes, each closed capture failure, and issuance outcomes into existing bounded `RETENTION` diagnostics. It records no source payload or handles and creates no new state or semantic authority. Typed adapter tests and the actual diagnostic serializer golden cover success and rejection signals.
+
+The peer-site adapter uses the already created lifecycle application's registry without activating it. Exact registered host, canonical root and non-disposed project must agree before an independently owned child read is allowed. That read revalidates the complete target basis before restoring declaration tokens, uses single evaluation and final freshness validation, and binds the actual admitted grant, aggregate work and whole elapsed time into a completed receipt. An over-granted child or missing/changed authority fails closed. It neither opens the peer nor traverses target flow.

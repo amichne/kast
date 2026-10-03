@@ -16,6 +16,10 @@ fun QueryRunResult.validateImpactAccounting(): Refinement<Unit, ImpactAccounting
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
     }
+    when (val peer = validatePeerEvidence()) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return peer
+    }
     return when (val accounting = impactAccounting) {
         is ImpactAccountingDocument.EvidenceOnly -> validatePageCount(accounting.pagePathCount.value, pathCount)
         is ImpactAccountingDocument.Investigated -> accounting.validateInvestigation(pathCount)
@@ -173,7 +177,8 @@ private fun ImpactWitnessDocument.section(): ImpactWitnessSectionDocument =
         is ImpactWitnessDocument.Producer,
         is ImpactWitnessDocument.ProducerSiteOnly -> ImpactWitnessSectionDocument.PRODUCERS
         is ImpactWitnessDocument.RepresentationModel,
-        is ImpactWitnessDocument.BoundaryModel -> ImpactWitnessSectionDocument.MODELS
+        is ImpactWitnessDocument.BoundaryModel,
+        is ImpactWitnessDocument.PeerBoundaryModel -> ImpactWitnessSectionDocument.MODELS
         is ImpactWitnessDocument.NativeRead,
         is ImpactWitnessDocument.CompilerTransfer,
         is ImpactWitnessDocument.FlowObligation -> ImpactWitnessSectionDocument.NATIVE_READS

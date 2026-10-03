@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:154aaf1fb4b926fa3735b1d17954867c833c03a826fe0fa497ca7d5bcc72ef02",
+  "pageVersion": "sha256:fdad9ef7ff8fb41d8e21ba605f199b352850a7413fb692692915e64775e27b40",
   "claims": [
     {
       "id": "claim_55bbe06398c44272b3f13d3df179d4ee",
@@ -17,8 +17,8 @@
       "statement": "Read recovery actions are finite directions derived exhaustively from rejection data; they grant no retry, refresh or mutation capability.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt#L6-L92",
-          "version": "repo-lines-v1:sha256:1077e90398ebed3a42dcb6d44142905848a4ed15e66a42461c1d1a474a719bdd:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGFiNzgxNjdiZTllOWY5ZjhmNzJkYWVhZmVkNjRlYmQ4NjkyZjhjYjlkMTE3MTliNmJjMTBmOTQ5MTNlZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNzEyMGRhZTk4ODdiOTlhMTg4YmI4ZTg5YTYxZjE0MmY1ZTBlYWViNjU0YTY0NjZkMTIyZDlhODE5MmU1YjUifQ"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt#L6-L93",
+          "version": "repo-lines-v1:sha256:24948c5abc485c9df64ce9784ed1e45d65f869bb6bfb80e56ebee406e6c3141e:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGFiNzgxNjdiZTllOWY5ZjhmNzJkYWVhZmVkNjRlYmQ4NjkyZjhjYjlkMTE3MTliNmJjMTBmOTQ5MTNlZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNzEyMGRhZTk4ODdiOTlhMTg4YmI4ZTg5YTYxZjE0MmY1ZTBlYWViNjU0YTY0NjZkMTIyZDlhODE5MmU1YjUifQ"
         }
       ]
     },
@@ -52,15 +52,15 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
-          "version": "repo-file-v1:sha256:aa2594402c36da1e046d533409953fd47a5ad6ada46bc8b45775d58ddb1508f6"
+          "version": "repo-file-v1:sha256:79dd9f8cf43e78c8b14af5102fd0dca571c00497ce01c51aff7f701b251f8f8b"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt",
-          "version": "repo-file-v1:sha256:f85007f7cb91cab365c73c1aa50d99a38ecfbc85f61bcd4b5d889b8b97da080a"
+          "version": "repo-file-v1:sha256:e380ce43460f4e7f01ec54edc5e745ce9109b50a90df01effadc36e9d3f2f2ed"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt",
-          "version": "repo-file-v1:sha256:de381996cf6633b5749deefba6d23b24aa00313a6edbef311404c7ebece2025a"
+          "version": "repo-file-v1:sha256:fbd38b30d157b905b0cdbc4203a09ff43398f76705d5a55dd7be11dc174aa68b"
         }
       ]
     },
@@ -70,17 +70,31 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
-          "version": "repo-file-v1:sha256:aa2594402c36da1e046d533409953fd47a5ad6ada46bc8b45775d58ddb1508f6"
+          "version": "repo-file-v1:sha256:79dd9f8cf43e78c8b14af5102fd0dca571c00497ce01c51aff7f701b251f8f8b"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt",
           "version": "repo-file-v1:sha256:bf434da0a104f53da1983e4a112ca111a142cda769158cbc2fc1d18ab3814048"
         }
       ]
+    },
+    {
+      "id": "claim_ae8da1bfc7784218bfe179e3dc517496",
+      "statement": "A guarded peer continuation retains its independently completed target read and reviewed model edge, ends with PEER_FLOW_NOT_INVESTIGATED and a required BOUNDARY obligation, and does not admit peer flow observations into the source investigation.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt",
+          "version": "repo-file-v1:sha256:fbd38b30d157b905b0cdbc4203a09ff43398f76705d5a55dd7be11dc174aa68b"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactPath.kt",
+          "version": "repo-file-v1:sha256:c4a2507cdc172a86a62039a46d5df7aad34945335d8ba4eff799b990a752f28f"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T14:16:26.318Z"
+    "at": "2026-10-03T17:08:58.136Z"
   }
 }

@@ -14,7 +14,9 @@ class CanonicalQueryProtocol(
     private val producerSeeds: io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort =
         UnavailableValueProducerSeeds,
     private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
+    peerSiteAdmissions: List<QueryImpactPeerSiteAdmission> = emptyList(),
 ) {
+    private val peerSiteAdmissions = java.util.Collections.unmodifiableList(peerSiteAdmissions.toList())
     private val projection = QueryOutcomeProjection(authority, state, retentionObservation)
 
     suspend fun execute(
@@ -162,17 +164,18 @@ class CanonicalQueryProtocol(
                 is Refinement.Refined -> restored.value
                 is Refinement.Rejected -> return restored
             }
-        val admissionAuthority = admissionAuthority(request, lease)
         val source = request.from
+        val peerSelections =
+            when (val selected = source.peerSelections(lease)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return selected
+            }
+        val admissionAuthority = admissionAuthority(request, lease, peerSelections)
         val impact =
-            if (source is QueryFromDocument.Impact) {
-                when (
-                    val admitted = source.investigation.admitImpact(lease, admissionAuthority, producerSeeds, budget)
-                ) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected -> return admitted
-                }
-            } else null
+            when (val admitted = admitImpactSource(source, lease, admissionAuthority, budget)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
         val syntax =
             when (
                 val admitted =
@@ -195,6 +198,16 @@ class CanonicalQueryProtocol(
             is QueryPlanAdmission.Rejected -> Refinement.Rejected(admitted.failure.protocolRejection())
         }
     }
+
+    private suspend fun admitImpactSource(
+        source: QueryFromDocument,
+        lease: SemanticReadAuthority,
+        admissionAuthority: QueryReferenceAuthority,
+        budget: QueryBudget,
+    ): Refinement<QueryImpactSourceAdmission?, QueryRunRejection> =
+        if (source is QueryFromDocument.Impact)
+            source.investigation.admitImpact(lease, admissionAuthority, producerSeeds, budget, peerSiteAdmissions)
+        else Refinement.Refined(null)
 
     private fun restoreInputs(
         request: QueryRunRequest.Run,
@@ -266,6 +279,7 @@ class CanonicalQueryProtocol(
     private suspend fun admissionAuthority(
         request: QueryRunRequest.Run,
         lease: SemanticReadAuthority,
+        peers: List<QueryImpactPeerSelection>,
     ): QueryReferenceAuthority {
         val sourceReferences =
             (request.from as? QueryFromDocument.References)
@@ -284,7 +298,9 @@ class CanonicalQueryProtocol(
                 ?.investigation
                 ?.let {
                     it.seeds.values.flatMap { seed -> listOf(seed.enclosing, seed.callable) } +
-                        it.declarations.values.map { declaration -> declaration.reference }
+                        it.declarations.values
+                            .filter { declaration -> peers.none { declaration in it.declarations } }
+                            .map { declaration -> declaration.reference }
                 }
                 .orEmpty()
         val references = sourceReferences + concatenatedReferences + impactReferences
@@ -323,3 +339,8 @@ private fun QueryResultRestoration.Restored.selectRows(
         is Refinement.Rejected -> null
     }
 }
+
+private fun QueryFromDocument.peerSelections(
+    lease: SemanticReadAuthority
+): Refinement<List<QueryImpactPeerSelection>, QueryRunRejection> =
+    if (this is QueryFromDocument.Impact) investigation.selectPeerSites(lease) else Refinement.Refined(emptyList())

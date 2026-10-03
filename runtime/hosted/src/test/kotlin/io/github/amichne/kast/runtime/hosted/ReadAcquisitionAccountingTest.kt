@@ -38,5 +38,23 @@ class ReadAcquisitionAccountingTest {
         assertEquals(Refinement.Rejected(ReadReacquisitionBudgetFailure.TIME_LIMIT_REACHED), time.remaining(budget))
     }
 
+    @Test
+    fun `work snapshot stays detached and does not debit the same observation twice`() {
+        val accounting = ReadAcquisitionAccounting()
+        accounting.record(2, 1)
+        val first = accounting.snapshot()
+        accounting.record(3, 2_000_001)
+        assertEquals(2, first.value)
+        assertEquals(5, accounting.snapshot().value)
+        val remaining = accounting.remaining(budget).value()
+        assertEquals(5, remaining.workUnitLimit.value)
+        assertEquals(16, remaining.elapsedTimeLimit.value)
+    }
+
+    @Test
+    fun `no acquisition produces an exact zero work snapshot`() {
+        assertEquals(0, ReadAcquisitionAccounting().snapshot().value)
+    }
+
     private fun <T> Refinement<T, *>.value() = (this as Refinement.Refined).value
 }

@@ -232,6 +232,12 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-9ddb39fa2f594fe2e1edaa19
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
+  - id: openwiki-source-f33cff27f5084631ed8eb931
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteAdmissions.kt
+  - id: openwiki-source-30bb99efffb5b58bc0e7db17
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteCompletion.kt
+  - id: openwiki-source-bd35e661989c1e05fe3916b5
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteReadPort.kt
   - id: openwiki-source-9d98513f38a6f5a6f98d8cdc
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
   - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
@@ -242,10 +248,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
+generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T14:44:52.932Z
+    at: 2026-10-03T17:08:58.136Z
 ---
 
 # Existing-IDE semantic query
@@ -812,3 +818,7 @@ The hosted retention adapter records finite source-choice, capture, and issuance
 Requested-site accounting follows the existing retained presentation branch. Before projecting `SITE_ACCOUNTING`, the restored path list and row count must agree with the original ledger. The projector receives all original path row IDs, validates each target's original ordinal and ledger ownership, and constructs links for reached paths and scope exclusions. `READ_RESULT` uses the projection owner without invoking query operations; its original closure and native admission receipts remain captured evidence.
 
 Each hosted read initializes both value-site revalidation attempts and rejections to explicit zero. A provider-free retained read can therefore report both measurements without relying on absent fields. Actual attempt and rejection increments survive completed or rejected receipt publication. These bounded counts supply runtime work evidence, not compiler or relationship authority.
+
+Guarded peer-site acquisition precedes source impact admission. The existing application registry passively selects an already registered exact peer; the query does not open, import or trust a root. One child `HostedQueryService` read revalidates the target under its own authority, uses single evaluation and final freshness validation, and returns a completed receipt. The parent's original accounting owner debits the child's aggregate work and whole wall time once. Source admission reserves the retained peer payload before native source work. Resume and retained presentation do not repeat peer acquisition.
+
+`PEER_SITE_ADMISSION` and explicit `PEER_SITE_READS_STARTED`, `PEER_SITE_READS_COMPLETED` and `PEER_SITE_READS_REJECTED` counters observe this boundary. A completed child receipt is historical target evidence; later source publication does not create a shared atomic epoch or investigate target flow.

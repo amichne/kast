@@ -89,6 +89,10 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt
   - id: openwiki-source-368288aea315bf5b4628a899
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
+  - id: openwiki-source-11f9ee447344d26046d96f7d
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPeerAccountingValidation.kt
+  - id: openwiki-source-340e5089f189b3661207f6a6
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPeerProofDocuments.kt
   - id: openwiki-source-aa500efdcfbb4a93d17c95ed
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactSiteAccountingDocuments.kt
   - id: openwiki-source-1363c35728458151b90e82c5
@@ -97,6 +101,8 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
   - id: openwiki-source-a184ae82a49703816522523e
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+  - id: openwiki-source-688b7c51874ea284b181c1ce
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactPeerTerminalProjection.kt
   - id: openwiki-source-584136874e8bed46fcb3def2
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
@@ -105,10 +111,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-ff3a32a34def3fbe81d63b1c
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
-generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T14:16:26.318Z
+    at: 2026-10-03T17:08:58.136Z
 ---
 
 # Public intent tools
@@ -274,3 +280,5 @@ Public relation and walk steps accept `expansionScope` through the same closed `
 Before an impact ledger is finalized, a qualified, empty `EVIDENCE_ONLY` value-path snapshot can be retained alongside its unchanged upstream checkpoint. `READ_RESULT` returns that qualified empty page without executing semantic work or consuming the checkpoint. Impact witness output returns the finite `RESULT_FIELD_UNAVAILABLE` rejection until an investigation ledger exists. Resume uses the original checkpoint to continue unfinished routes.
 
 An `IMPACT` source may supply up to 128 exact `requestedSites`; omitted or null public input lowers to an empty universe. Each selected site is revalidated natively under the admitted basis and retains its admission grant and observed work. The investigated response requires the original requested-site universe even when empty. `SITE_ACCOUNTING` reports one finite `REACHED`, `EXCLUDED` or `RELATIONSHIP_UNPROVEN` outcome per original target. Reached paths and exclusions link to original path ordinals and row IDs; an unmatched target preserves required unresolved relationship closure. Selection proves site identity, not a producer relationship. These pages use the existing retained store and presentation cursor without repeating native reads.
+
+A guarded cross-root continuation uses the existing reviewed `CONTINUATION` input. The target must be independently admitted from an already registered peer root. Path and finding output use `UNRESOLVED_PEER_CONTINUATION` with required target admission and fixed `PEER_FLOW_NOT_INVESTIGATED` reason. The original `MODELS` row uses `PEER_BOUNDARY_MODEL`, retaining the reviewed rule and the same completed acquisition and site receipts. Raw accounting rejects foreign ordinary source claims and inconsistent peer receipts; decoding these documents does not grant live authority.

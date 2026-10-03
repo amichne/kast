@@ -58,6 +58,8 @@ private fun QueryImpactTerminal.storageBytes(g: QueryImpactRetainedGraph): Long 
             is QueryImpactTerminal.Unresolved.ReadRejected -> rejection.storageBytes(g)
             is QueryImpactTerminal.Unresolved.Flow -> g.node(obligation) { obligation.site.storageBytes(g) }
             is QueryImpactTerminal.Unresolved.Boundary -> boundary.storageBytes(g)
+            is QueryImpactTerminal.Unresolved.PeerContinuation ->
+                boundary.storageBytes(g).saturatedAdd(connection.storageBytes(g))
             is QueryImpactTerminal.SupportedDomainEnd -> observation.storageBytes(g)
             is QueryImpactTerminal.ExplicitScopeExclusion ->
                 g.node(exclusion) {
@@ -87,6 +89,7 @@ internal fun QueryImpactLedger.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.collection(paths) { it.storageBytes(g) })
             .saturatedAdd(g.collection(requestedSites) { it.storageBytes(g) })
             .saturatedAdd(g.collection(siteAccounting) { it.storageBytes(g) })
+            .saturatedAdd(g.collection(peerBoundaries) { it.storageBytes(g) })
             .saturatedAdd(
                 g.node(closure) {
                     when (val current = closure) {
@@ -105,6 +108,7 @@ internal fun QueryImpactSource.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(domain.storageBytes(g))
             .saturatedAdd(g.node(lease) { 0L })
             .saturatedAdd(g.collection(requestedSites) { it.storageBytes(g) })
+            .saturatedAdd(g.collection(peerBoundaries) { it.storageBytes(g) })
     }
 
 internal fun QueryImpactProducer.storageBytes(g: QueryImpactRetainedGraph): Long =
@@ -204,6 +208,21 @@ private fun SymbolSelector.storageBytes(g: QueryImpactRetainedGraph): Long =
                         is ExactDeclarationQualifiedIdentity.Available -> g.text(identity.value)
                         ExactDeclarationQualifiedIdentity.Unavailable -> 0L
                     }
+                }
+            )
+    }
+
+internal fun QueryImpactPeerBoundary.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) { model.storageBytes(g).saturatedAdd(target.storageBytes(g)) }
+
+internal fun QueryImpactPeerSiteAdmission.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        selection
+            .storageBytes(g)
+            .saturatedAdd(
+                g.node(acquisition) {
+                    g.node(acquisition.completedAuthority) { 0L }
+                        .saturatedAdd(g.node(acquisition.grant) { g.node(acquisition.grant.resources) { 0L } })
                 }
             )
     }

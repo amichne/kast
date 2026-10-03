@@ -18,6 +18,7 @@ internal class QueryImpactLedgerValidation(
     observations: List<ValueFlowStep>,
     private val paths: List<QueryImpactPath>,
     rejections: List<QueryImpactReadRejection>,
+    private val peers: List<QueryImpactPeerBoundary>,
 ) {
     private val native = observations.groupBy { it.source }
     private val rejected = rejections.groupBy { it.source }
@@ -48,10 +49,28 @@ internal class QueryImpactLedgerValidation(
         val references = representations.map { it.reference } + boundaries.map { it.reference }
         if (references.distinct().size != references.size)
             return reject(QueryImpactLedgerFailure.DUPLICATE_MODEL_REFERENCE)
+        if (peers.isNotEmpty()) {
+            when (val admitted = admitPeerBoundaries(seeds.first().enclosing.lease, boundaries, peers)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected ->
+                    return reject(
+                        when (admitted.failure) {
+                            QueryImpactPeerDeclarationFailure.DUPLICATE_BOUNDARY ->
+                                QueryImpactLedgerFailure.DUPLICATE_MODEL_REFERENCE
+                            QueryImpactPeerDeclarationFailure.UNDECLARED_BOUNDARY ->
+                                QueryImpactLedgerFailure.UNDECLARED_MODEL
+                            QueryImpactPeerDeclarationFailure.FOREIGN_BASIS ->
+                                QueryImpactLedgerFailure.FOREIGN_PEER_BASIS
+                        }
+                    )
+            }
+        }
         return Refinement.Refined(Unit)
     }
 
     private fun nativeDomain(): Refinement<Unit, QueryImpactLedgerFailure> {
+        if (peers.isNotEmpty() && native.values.flatten().any { it.hasForeignBasis(seeds.first().enclosing.lease) })
+            return reject(QueryImpactLedgerFailure.FOREIGN_PEER_BASIS)
         if (
             native.values.flatten().any { it.domain.boundary != domain } ||
                 rejected.values.flatten().any { it.domain != domain }
@@ -105,6 +124,7 @@ internal class QueryImpactLedgerValidation(
                     return if (end.rejection in rejected[source].orEmpty()) accounted()
                     else reject(QueryImpactLedgerFailure.UNPROVEN_TERMINAL)
                 is QueryImpactTerminal.ExplicitScopeExclusion -> return exclusion(source, end)
+                is QueryImpactTerminal.Unresolved.PeerContinuation -> return peerWitness(path, source, end)
                 is QueryImpactTerminal.Consumer,
                 is QueryImpactTerminal.ModeledTerminal,
                 is QueryImpactTerminal.Unresolved.Flow,
@@ -115,6 +135,17 @@ internal class QueryImpactLedgerValidation(
         val observed =
             native[source]?.singleOrNull() ?: return reject(QueryImpactLedgerFailure.MISSING_NATIVE_OBSERVATION)
         return Refinement.Refined(PositionWitness.Native(observed))
+    }
+
+    private fun peerWitness(
+        path: QueryImpactPath,
+        source: ValueSite,
+        end: QueryImpactTerminal.Unresolved.PeerContinuation,
+    ): Refinement<PositionWitness, QueryImpactLedgerFailure> {
+        if (end.boundary !in peers || path.hasForeignBasis(seeds.first().enclosing.lease))
+            return reject(QueryImpactLedgerFailure.UNPROVEN_TERMINAL)
+        if (source in native || source in rejected) return reject(QueryImpactLedgerFailure.CONFLICTING_OBSERVATIONS)
+        return accounted()
     }
 
     private fun exclusion(

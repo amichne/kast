@@ -85,6 +85,7 @@ private fun QueryImpactPath.boundaryObligations(): List<BoundaryObligation> =
         when (val terminal = terminal) {
             is QueryImpactTerminal.ModeledTerminal -> terminal.boundary.obligations
             is QueryImpactTerminal.Unresolved.Boundary -> listOf(terminal.boundary.obligation)
+            is QueryImpactTerminal.Unresolved.PeerContinuation,
             is QueryImpactTerminal.Consumer,
             is QueryImpactTerminal.Unresolved.Flow,
             is QueryImpactTerminal.Unresolved.ExecutionStop,

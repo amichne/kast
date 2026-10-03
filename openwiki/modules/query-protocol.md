@@ -131,12 +131,16 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
   - id: openwiki-source-37ab3b1971d180b6eee551f9
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
+  - id: openwiki-source-0f6f5a60fd62343e10a988ad
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactPeerSourceEvidence.kt
   - id: openwiki-source-3c2b2f675cf9e1f0d4b1d01c
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactSiteAccountingProjection.kt
   - id: openwiki-source-9b416e3e9536841d04ef9780
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactSiteRevalidation.kt
   - id: openwiki-source-584136874e8bed46fcb3def2
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
+  - id: openwiki-source-c754dabd913ffc31ab2c0d99
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactPeerSelection.kt
   - id: openwiki-source-473a965ca24f2431cb51317a
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAcquisition.kt
   - id: openwiki-source-da029c0f3804840096380efa
@@ -171,10 +175,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T14:16:26.318Z
+    at: 2026-10-03T17:08:58.136Z
 ---
 
 # Query protocol
@@ -327,7 +331,7 @@ Source reads retain [precise failure origin](../contracts/source-failures.md) th
 
 Impact source admission parses the expansion domain and closed model syntax before native acquisition. One aggregate grant owns seed, declaration and boundary-site revalidation. The admitted plan retains those current proofs, so resume restores them rather than reacquiring seeds or bindings. The existing query-state result retains the investigation ledger, value-path row kind and original closure; witness sections are presentations of that ledger.
 
-The current public source-admission boundary accepts one supplied semantic authority. Foreign repository bases fail closed before modeled connection; the domain boundary contract can retain separate source and target bases, but this host path does not establish a second repository's current proof. Model syntax, compiler binding, reviewed representation meaning and retained presentation remain distinct evidence levels.
+The public source-admission boundary retains the supplied source authority. Pure peer selection permits only exact reviewed continuation targets with an independent root and complete declaration inventory; ordinary producers, requested sites and representation claims remain on the source basis. A completed child read must prove each selected target under its own full authority. Admission rejects missing, duplicate or unrequested peer proof and reserves its aggregate work and retained storage before source native effects. The modeled edge ends at an unresolved peer terminal; no target flow task is scheduled. Model syntax, compiler binding, reviewed representation meaning and retained historical presentation remain distinct evidence levels.
 
 ## Original impact result retention
 

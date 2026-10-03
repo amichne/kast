@@ -42,7 +42,7 @@ internal fun modeledImpactArrivals(
         }
     }
     for (model in source.boundaryModels.filter { it.source.site == route.site }) {
-        when (val arrival = boundaryArrival(route, model)) {
+        when (val arrival = boundaryArrival(route, model, source)) {
             is Refinement.Rejected -> return arrival
             is Refinement.Refined -> {
                 tasks += arrival.value.tasks
@@ -113,6 +113,7 @@ private fun modeledRepresentation(
 private fun boundaryArrival(
     route: QueryImpactRoute,
     model: BoundaryModel,
+    source: QueryImpactSource,
 ): Refinement<QueryImpactModelArrivals, QueryImpactExecutionFailure> =
     when (model) {
         is BoundaryModel.Terminal ->
@@ -123,13 +124,14 @@ private fun boundaryArrival(
         is BoundaryModel.Continuation ->
             when (val arrival = BoundaryArrival.connect(model.source, model)) {
                 is Refinement.Rejected -> Refinement.Rejected(QueryImpactExecutionFailure.Boundary(arrival.failure))
-                is Refinement.Refined -> connectedArrival(route, arrival.value)
+                is Refinement.Refined -> connectedArrival(route, arrival.value, source)
             }
     }
 
 private fun connectedArrival(
     route: QueryImpactRoute,
     connection: BoundaryArrival.Connected,
+    source: QueryImpactSource,
 ): Refinement<QueryImpactModelArrivals, QueryImpactExecutionFailure> {
     val representation =
         when (val current = route.representation) {
@@ -141,19 +143,19 @@ private fun connectedArrival(
                     is Refinement.Refined -> QueryImpactRepresentation.Present(next.value)
                 }
         }
-    return Refinement.Refined(
-        QueryImpactModelArrivals(
-            listOf(
-                PipelineTask.ImpactExplore(
-                    route.copy(
-                        steps = route.steps + QueryImpactStep.ModeledBoundary(connection),
-                        representation = representation,
-                    )
-                )
-            ),
-            emptyList(),
+    val next =
+        route.copy(
+            steps = route.steps + QueryImpactStep.ModeledBoundary(connection),
+            representation = representation,
         )
-    )
+    val peer = source.peerBoundaries.singleOrNull { it.model == connection.model }
+    if (peer != null) {
+        return when (val terminal = QueryImpactTerminal.Unresolved.PeerContinuation.admit(peer, connection)) {
+            is Refinement.Refined -> terminalArrival(next, terminal.value)
+            is Refinement.Rejected -> Refinement.Rejected(QueryImpactExecutionFailure.PeerBoundary(terminal.failure))
+        }
+    }
+    return Refinement.Refined(QueryImpactModelArrivals(listOf(PipelineTask.ImpactExplore(next)), emptyList()))
 }
 
 private fun terminalArrival(

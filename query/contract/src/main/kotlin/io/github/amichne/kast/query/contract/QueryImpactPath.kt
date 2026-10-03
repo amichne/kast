@@ -139,6 +139,28 @@ sealed interface QueryImpactTerminal {
                 get() = obligation.site
         }
 
+        class PeerContinuation
+        private constructor(
+            val boundary: QueryImpactPeerBoundary,
+            val connection: BoundaryArrival.Connected,
+        ) : Unresolved {
+            override val site: ValueSite
+                get() = boundary.target.site
+
+            val reason: QueryImpactPeerContinuationReason = QueryImpactPeerContinuationReason.PEER_FLOW_NOT_INVESTIGATED
+
+            companion object {
+                fun admit(
+                    boundary: QueryImpactPeerBoundary,
+                    connection: BoundaryArrival.Connected,
+                ): Refinement<PeerContinuation, QueryImpactPeerProofFailure> =
+                    when (val admitted = boundary.admitConnection(connection)) {
+                        is Refinement.Refined -> Refinement.Refined(PeerContinuation(boundary, admitted.value))
+                        is Refinement.Rejected -> admitted
+                    }
+            }
+        }
+
         data class Boundary(val boundary: BoundaryArrival.Unresolved) : Unresolved {
             override val site: ValueSite
                 get() = boundary.source.site
@@ -273,6 +295,9 @@ private fun admitConnectedPath(
     }
     if (terminal.site.identity != current.identity)
         return Refinement.Rejected(QueryImpactPathFailure.TERMINAL_SITE_MISMATCH)
+    val peer = terminal as? QueryImpactTerminal.Unresolved.PeerContinuation
+    if (peer != null && !admitPeerPath(producer, steps, peer))
+        return Refinement.Rejected(QueryImpactPathFailure.DISCONNECTED_STEP)
     val cycle = (terminal as? QueryImpactTerminal.Unresolved.ExecutionStop)?.stop as? QueryImpactExecutionStop.Cycle
     if (cycle != null && (cycle.producer != producer || cycle.prefix != steps))
         return Refinement.Rejected(QueryImpactPathFailure.DISCONNECTED_STEP)
@@ -311,3 +336,16 @@ private fun admitPresentRepresentation(
             Refinement.Rejected(QueryImpactPathFailure.CONSUMER_REPRESENTATION_MISMATCH)
         else -> Refinement.Refined(Unit)
     }
+
+private fun admitPeerPath(
+    producer: ValueSite,
+    steps: List<QueryImpactStep>,
+    terminal: QueryImpactTerminal.Unresolved.PeerContinuation,
+): Boolean {
+    val last = steps.lastOrNull() as? QueryImpactStep.ModeledBoundary ?: return false
+    val source = terminal.boundary.model.source.site.enclosing.lease
+    return last.connection == terminal.connection &&
+        terminal.boundary.admitConnection(last.connection) is Refinement.Refined &&
+        !producer.hasForeignBasis(source) &&
+        steps.dropLast(1).none { it.hasForeignBasis(source) }
+}

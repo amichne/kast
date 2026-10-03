@@ -39,12 +39,14 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt
   - id: openwiki-source-02b2e37271b094bf49925843
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt
+  - id: openwiki-source-3267e638d001b779dc0bb288
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactPath.kt
   - id: openwiki-source-8abcd99add0585ea126a3883
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
-generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T14:16:26.318Z
+    at: 2026-10-03T17:08:58.136Z
 ---
 
 # Operation outcomes
@@ -128,3 +130,5 @@ Ledger construction also checks every applicable reviewed origin, transfer, tran
 Impact source admission has closed reference and admission failures. Each admission cause owns its recovery direction, while execution and presentation failures retain their finite owner-specific shapes. These failures do not become empty successful results.
 
 Requested sites form an independent, native-admitted target universe. Each target retains one accounting outcome derived from the original ledger paths: reached paths, exact site and domain scope exclusions, or an unproven relationship. A reached target also retains any separate proven exclusions. Native site admission proves the selected site identity; it does not prove a relationship to a producer. An unmatched target adds the required `REQUESTED_SITE_RELATIONSHIP` obligation, so a drained investigation cannot report semantic completion while that relationship remains unproven.
+
+A guarded peer continuation retains the independently completed target read and the reviewed model edge. It ends with `PEER_FLOW_NOT_INVESTIGATED` and a required `BOUNDARY` obligation. No compiler observation for the peer target is admitted into the source investigation, so completing execution cannot discharge that obligation. The completed target receipt is historical evidence, not a claim that the two roots share an atomic epoch.

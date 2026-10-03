@@ -36,6 +36,7 @@ internal suspend fun QueryImpactSourceDocument.admitImpact(
     authority: QueryReferenceAuthority,
     compiler: ValueProducerSeedCompilerPort,
     budget: QueryBudget,
+    peerAdmissions: List<io.github.amichne.kast.query.contract.QueryImpactPeerSiteAdmission> = emptyList(),
 ): Refinement<QueryImpactSourceAdmission, QueryRunRejection> {
     when (val admitted = admitCountBounds()) {
         is Refinement.Refined -> Unit
@@ -46,40 +47,87 @@ internal suspend fun QueryImpactSourceDocument.admitImpact(
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> return impactFailure(parsed.failure.impactFailure())
         }
-    val modelSyntax = mutableListOf<AdmittedImpactModelSyntax>()
+    val modelSyntax =
+        when (val admitted = admitModelSyntax()) {
+            is Refinement.Rejected -> return admitted
+            is Refinement.Refined -> admitted.value
+        }
+    val peers =
+        when (val admitted = admitPeers(lease, peerAdmissions, budget)) {
+            is Refinement.Rejected -> return admitted
+            is Refinement.Refined -> admitted.value
+        }
+    val acquisition = QueryImpactSourceAcquisition(lease, authority, compiler, budget, domain, peers)
+    when (val admitted = acquisition.acquireSourceInputs(this, peers)) {
+        is Refinement.Rejected -> return admitted
+        is Refinement.Refined -> Unit
+    }
+    return acquisition.bindSource(modelSyntax, flow)
+}
+
+private fun QueryImpactSourceDocument.admitModelSyntax():
+    Refinement<List<AdmittedImpactModelSyntax>, QueryRunRejection> {
+    val admittedModels = mutableListOf<AdmittedImpactModelSyntax>()
     for ((position, model) in models.values.withIndex()) {
         when (val admitted = AdmittedImpactModelSyntax.admit(model)) {
-            is Refinement.Refined -> modelSyntax += admitted.value
+            is Refinement.Refined -> admittedModels += admitted.value
             is Refinement.Rejected -> return impactFailure(admitted.failure.impactFailure(), position)
         }
     }
-    val declaredPositions = models.values.filterIsInstance<ImpactModelDocument.Boundary>().flatMap { it.positions() }
-    when (val admitted = admitBoundaryClaims(lease, declaredPositions)) {
+    return Refinement.Refined(admittedModels.toList())
+}
+
+private fun QueryImpactSourceDocument.admitPeers(
+    lease: SemanticReadAuthority,
+    peerAdmissions: List<io.github.amichne.kast.query.contract.QueryImpactPeerSiteAdmission>,
+    budget: QueryBudget,
+): Refinement<ImpactPeerSourceEvidence, QueryRunRejection> {
+    val peers =
+        when (val selected = selectPeerSites(lease)) {
+            is Refinement.Rejected -> return selected
+            is Refinement.Refined ->
+                when (val admitted = ImpactPeerSourceEvidence.admit(selected.value, peerAdmissions)) {
+                    is Refinement.Rejected -> return admitted
+                    is Refinement.Refined -> admitted.value
+                }
+        }
+    if (peers.retainedBytes > budget.checkpointBytes.value)
+        return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED)
+    if (peers.examinedWork >= budget.resources.workUnitLimit.value)
+        return impactFailure(QueryImpactSourceFailureCode.WORK_LIMIT_REACHED)
+    return Refinement.Refined(peers)
+}
+
+private suspend fun QueryImpactSourceAcquisition.acquireSourceInputs(
+    source: QueryImpactSourceDocument,
+    peers: ImpactPeerSourceEvidence,
+): Refinement<Unit, QueryRunRejection> {
+    val declaredPositions =
+        source.models.values.filterIsInstance<ImpactModelDocument.Boundary>().flatMap { it.positions() }
+    when (val admitted = acquireSeeds(source.seeds.values)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
     }
-    when (val admitted = admitSiteClaims(lease, requestedSites.values, QueryImpactSourceFailureCode.BASIS_MISMATCH)) {
+    when (
+        val admitted =
+            acquireDeclarations(
+                source.declarations.values.filter { declaration ->
+                    peers.selections.none { declaration in it.declarations }
+                }
+            )
+    ) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
     }
-    val acquisition = QueryImpactSourceAcquisition(lease, authority, compiler, budget, domain)
-    when (val admitted = acquisition.acquireSeeds(seeds.values)) {
+    when (val admitted = acquirePositions(declaredPositions)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
     }
-    when (val admitted = acquisition.acquireDeclarations(declarations.values)) {
+    when (val admitted = acquireRequestedSites(source.requestedSites.values)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
     }
-    when (val admitted = acquisition.acquirePositions(declaredPositions)) {
-        is Refinement.Refined -> Unit
-        is Refinement.Rejected -> return admitted
-    }
-    when (val admitted = acquisition.acquireRequestedSites(requestedSites.values)) {
-        is Refinement.Refined -> Unit
-        is Refinement.Rejected -> return admitted
-    }
-    return acquisition.bindSource(modelSyntax, flow)
+    return Refinement.Refined(Unit)
 }
 
 internal fun impactFailure(
@@ -96,7 +144,7 @@ private const val MAXIMUM_PRODUCERS = 32
 private const val MAXIMUM_DECLARATIONS = 128
 private const val MAXIMUM_MODELS = 32
 
-private fun QueryImpactSourceDocument.admitCountBounds(): Refinement<Unit, QueryRunRejection> {
+internal fun QueryImpactSourceDocument.admitCountBounds(): Refinement<Unit, QueryRunRejection> {
     if (requestedSites.values.size > MAXIMUM_DECLARATIONS)
         return impactFailure(QueryImpactSourceFailureCode.TOO_MANY_REQUESTED_SITES)
     if (requestedSites.values.distinct().size != requestedSites.values.size)
@@ -113,7 +161,7 @@ private fun QueryImpactSourceDocument.admitCountBounds(): Refinement<Unit, Query
     return Refinement.Refined(Unit)
 }
 
-private fun QueryImpactSourceDocument.admitBoundaryClaims(
+internal fun QueryImpactSourceDocument.admitBoundaryClaims(
     lease: SemanticReadAuthority,
     declaredPositions: List<io.github.amichne.kast.protocol.contract.ImpactBoundaryPositionDocument>,
 ): Refinement<Unit, QueryRunRejection> {
@@ -124,7 +172,7 @@ private fun QueryImpactSourceDocument.admitBoundaryClaims(
     )
 }
 
-private fun QueryImpactSourceDocument.admitSiteClaims(
+internal fun QueryImpactSourceDocument.admitSiteClaims(
     lease: SemanticReadAuthority,
     sites: List<ImpactValueSiteReferenceDocument>,
     basisFailure: QueryImpactSourceFailureCode,

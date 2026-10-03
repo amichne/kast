@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.protocol.contract.ImpactModelSyntaxFailure
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
+import io.github.amichne.kast.query.contract.QueryImpactSourceFailure
 import io.github.amichne.kast.relation.contract.BoundaryModelFailure
 import io.github.amichne.kast.relation.contract.ModelBindingFailure
 import io.github.amichne.kast.relation.contract.ModelIdentifierFailure
@@ -131,4 +132,15 @@ internal fun ImpactModelAdmissionFailure.impactFailure(): QueryImpactSourceFailu
         is ImpactModelAdmissionFailure.State -> cause.impactFailure()
         is ImpactModelAdmissionFailure.Rule -> cause.impactFailure()
         is ImpactModelAdmissionFailure.Boundary -> cause.impactFailure()
+    }
+
+internal fun QueryImpactSourceFailure.impactFailure(): QueryImpactSourceFailureCode =
+    when (this) {
+        QueryImpactSourceFailure.DUPLICATE_REQUESTED_SITE -> QueryImpactSourceFailureCode.DUPLICATE_REQUESTED_SITE
+        QueryImpactSourceFailure.EMPTY_PRODUCERS -> QueryImpactSourceFailureCode.EMPTY_PRODUCERS
+        QueryImpactSourceFailure.DUPLICATE_PRODUCER -> QueryImpactSourceFailureCode.DUPLICATE_PRODUCER
+        QueryImpactSourceFailure.DUPLICATE_MODEL -> QueryImpactSourceFailureCode.DUPLICATE_MODEL_REFERENCE
+        QueryImpactSourceFailure.FOREIGN_BASIS -> QueryImpactSourceFailureCode.BASIS_MISMATCH
+        QueryImpactSourceFailure.DUPLICATE_PEER_BOUNDARY -> QueryImpactSourceFailureCode.DUPLICATE_PEER_BOUNDARY
+        QueryImpactSourceFailure.UNDECLARED_PEER_BOUNDARY -> QueryImpactSourceFailureCode.UNDECLARED_PEER_BOUNDARY
     }

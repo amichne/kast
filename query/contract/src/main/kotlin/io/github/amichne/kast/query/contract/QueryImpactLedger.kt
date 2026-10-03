@@ -36,6 +36,7 @@ enum class QueryImpactLedgerFailure {
     PRODUCER_IDENTITY_MISMATCH,
     DUPLICATE_REQUESTED_SITE,
     FOREIGN_REQUESTED_SITE,
+    FOREIGN_PEER_BASIS,
 }
 
 enum class QueryImpactRequiredObligation {
@@ -70,6 +71,7 @@ private constructor(
     val paths: List<QueryImpactPath>,
     val closure: QueryImpactClosure,
     val requestedSites: List<QueryImpactRequestedSite>,
+    val peerBoundaries: List<QueryImpactPeerBoundary>,
     val siteAccounting: List<QueryImpactSiteAccounting>,
 ) {
     companion object {
@@ -84,6 +86,7 @@ private constructor(
             readRejections: List<QueryImpactReadRejection> = emptyList(),
             originalProducers: List<QueryImpactProducer> = emptyList(),
             requestedSites: List<QueryImpactRequestedSite> = emptyList(),
+            peerBoundaries: List<QueryImpactPeerBoundary> = emptyList(),
         ): Refinement<QueryImpactLedger, QueryImpactLedgerFailure> {
             val validation =
                 QueryImpactLedgerValidation(
@@ -95,6 +98,7 @@ private constructor(
                     observations,
                     paths,
                     readRejections,
+                    peerBoundaries,
                 )
             when (val admitted = validation.validate()) {
                 is Refinement.Refined -> Unit
@@ -107,16 +111,7 @@ private constructor(
                 }
             val relationship = accounting.relationshipRequirements()
             val producers = producerEvidence(originalProducers, seeds)
-            val required =
-                (paths.flatMap { it.requiredObligations() } +
-                        relationship +
-                        if (producers.any { it is QueryImpactProducerEvidence.SiteOnly })
-                            listOf(QueryImpactRequiredObligation.PRODUCER_IDENTITY)
-                        else emptyList())
-                    .toSet()
-            val closure =
-                if (required.isEmpty()) QueryImpactClosure.Discharged
-                else QueryImpactClosure.Unresolved(Collections.unmodifiableSet(required))
+            val closure = investigationClosure(paths, producers, relationship)
             return Refinement.Refined(
                 QueryImpactLedger(
                     snapshot(seeds),
@@ -130,6 +125,7 @@ private constructor(
                     snapshot(paths),
                     closure,
                     snapshot(requestedSites),
+                    snapshot(peerBoundaries),
                     accounting,
                 )
             )
@@ -138,6 +134,22 @@ private constructor(
 }
 
 private fun <T> snapshot(values: List<T>): List<T> = Collections.unmodifiableList(values.toList())
+
+private fun investigationClosure(
+    paths: List<QueryImpactPath>,
+    producers: List<QueryImpactProducerEvidence>,
+    relationship: List<QueryImpactRequiredObligation>,
+): QueryImpactClosure {
+    val required =
+        (paths.flatMap { it.requiredObligations() } +
+                relationship +
+                if (producers.any { it is QueryImpactProducerEvidence.SiteOnly })
+                    listOf(QueryImpactRequiredObligation.PRODUCER_IDENTITY)
+                else emptyList())
+            .toSet()
+    return if (required.isEmpty()) QueryImpactClosure.Discharged
+    else QueryImpactClosure.Unresolved(Collections.unmodifiableSet(required))
+}
 
 internal fun QueryImpactPath.hasModeledArrival(index: Int): Boolean =
     when (steps.getOrNull(index)) {
@@ -161,6 +173,7 @@ internal fun QueryImpactTerminal.isEstablishedBy(observed: ValueFlowStep): Boole
         is QueryImpactTerminal.Unresolved.ReadRejected -> false
         is QueryImpactTerminal.Unresolved.ExecutionStop -> false
         is QueryImpactTerminal.Unresolved.Boundary -> boundary.source.site == observed.source
+        is QueryImpactTerminal.Unresolved.PeerContinuation -> false
         is QueryImpactTerminal.Consumer,
         is QueryImpactTerminal.ModeledTerminal,
         is QueryImpactTerminal.ExplicitScopeExclusion -> site == observed.source
@@ -227,7 +240,8 @@ private fun QueryImpactTerminal.requiredObligations(): List<QueryImpactRequiredO
         is QueryImpactTerminal.Unresolved.Flow -> listOf(QueryImpactRequiredObligation.NATIVE_FLOW)
         is QueryImpactTerminal.Unresolved.ReadRejected -> listOf(QueryImpactRequiredObligation.NATIVE_FLOW)
         is QueryImpactTerminal.Unresolved.ExecutionStop -> listOf(QueryImpactRequiredObligation.EXECUTION_BOUNDARY)
-        is QueryImpactTerminal.Unresolved.Boundary -> listOf(QueryImpactRequiredObligation.BOUNDARY)
+        is QueryImpactTerminal.Unresolved.Boundary,
+        is QueryImpactTerminal.Unresolved.PeerContinuation -> listOf(QueryImpactRequiredObligation.BOUNDARY)
         is QueryImpactTerminal.ModeledTerminal ->
             if (end.boundary.obligations.isEmpty()) emptyList() else listOf(QueryImpactRequiredObligation.BOUNDARY)
         is QueryImpactTerminal.Consumer ->

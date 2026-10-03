@@ -33,6 +33,8 @@ enum class QueryImpactSourceFailure {
     DUPLICATE_MODEL,
     FOREIGN_BASIS,
     DUPLICATE_REQUESTED_SITE,
+    DUPLICATE_PEER_BOUNDARY,
+    UNDECLARED_PEER_BOUNDARY,
 }
 
 /** One admitted finite question, on one current authority, interpreted by the existing query execution owner. */
@@ -45,6 +47,7 @@ private constructor(
     val semantics: QueryImpactFlowSemantics,
     val lease: SemanticReadAuthority,
     val requestedSites: List<QueryImpactRequestedSite>,
+    val peerBoundaries: List<QueryImpactPeerBoundary>,
 ) {
     /** Native observation admission retains the full current authority, beyond equal epoch identifiers. */
     fun admitObservation(step: ValueFlowStep): Refinement<ValueFlowStep, ValueFlowStepFailure> =
@@ -62,6 +65,7 @@ private constructor(
             domain: RelationSearchBoundary,
             semantics: QueryImpactFlowSemantics = QueryImpactFlowSemantics.KOTLIN_FORWARD_V1,
             requestedSites: List<QueryImpactRequestedSite> = emptyList(),
+            peerBoundaries: List<QueryImpactPeerBoundary> = emptyList(),
         ): Refinement<QueryImpactSource, QueryImpactSourceFailure> {
             if (producers.isEmpty()) return Refinement.Rejected(QueryImpactSourceFailure.EMPTY_PRODUCERS)
             if (producers.map { it.site }.distinct().size != producers.size)
@@ -72,12 +76,21 @@ private constructor(
             if (requestedSites.map { it.site }.distinct().size != requestedSites.size)
                 return Refinement.Rejected(QueryImpactSourceFailure.DUPLICATE_REQUESTED_SITE)
             val lease = producers.first().site.enclosing.lease
-            if (
-                producers.any { it.hasForeignBasis(lease) } ||
-                    representationModels.any { it.hasForeignBasis(lease) } ||
-                    boundaryModels.any { it.hasForeignBasis(lease) }
-            )
+            if (producers.any { it.hasForeignBasis(lease) } || representationModels.any { it.hasForeignBasis(lease) })
                 return Refinement.Rejected(QueryImpactSourceFailure.FOREIGN_BASIS)
+            when (val admitted = admitPeerBoundaries(lease, boundaryModels, peerBoundaries)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected ->
+                    return Refinement.Rejected(
+                        when (admitted.failure) {
+                            QueryImpactPeerDeclarationFailure.DUPLICATE_BOUNDARY ->
+                                QueryImpactSourceFailure.DUPLICATE_PEER_BOUNDARY
+                            QueryImpactPeerDeclarationFailure.UNDECLARED_BOUNDARY ->
+                                QueryImpactSourceFailure.UNDECLARED_PEER_BOUNDARY
+                            QueryImpactPeerDeclarationFailure.FOREIGN_BASIS -> QueryImpactSourceFailure.FOREIGN_BASIS
+                        }
+                    )
+            }
             if (requestedSites.any { it.site.hasForeignBasis(lease) })
                 return Refinement.Rejected(QueryImpactSourceFailure.FOREIGN_BASIS)
             return Refinement.Refined(
@@ -89,6 +102,7 @@ private constructor(
                     semantics,
                     lease,
                     Collections.unmodifiableList(requestedSites.toList()),
+                    Collections.unmodifiableList(peerBoundaries.toList()),
                 )
             )
         }

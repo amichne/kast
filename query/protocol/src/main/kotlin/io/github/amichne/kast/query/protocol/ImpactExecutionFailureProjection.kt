@@ -9,10 +9,12 @@ import io.github.amichne.kast.protocol.contract.ImpactExecutionPathCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRepresentationCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRowIdentityCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionSelectionCause
+import io.github.amichne.kast.protocol.contract.ImpactPeerProofFailureDocument
 import io.github.amichne.kast.query.contract.QueryImpactExecutionFailure
 import io.github.amichne.kast.query.contract.QueryImpactLedgerFailure
 import io.github.amichne.kast.query.contract.QueryImpactModelHistoryFailure
 import io.github.amichne.kast.query.contract.QueryImpactPathFailure
+import io.github.amichne.kast.query.contract.QueryImpactPeerProofFailure
 import io.github.amichne.kast.query.contract.QueryImpactRowIdentityFailure
 import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 import io.github.amichne.kast.query.contract.QueryValuePathAccountingFailure
@@ -23,6 +25,8 @@ internal fun QueryImpactExecutionFailure.executionDocument(): ImpactExecutionFai
     when (this) {
         QueryImpactExecutionFailure.PresentationOnly -> ImpactExecutionFailureDocument.PresentationOnly
 
+        is QueryImpactExecutionFailure.PeerBoundary ->
+            ImpactExecutionFailureDocument.PeerBoundary(cause.peerProofDocument())
         is QueryImpactExecutionFailure.Path -> ImpactExecutionFailureDocument.Path(cause.executionCauseDocument())
         is QueryImpactExecutionFailure.Ledger -> ImpactExecutionFailureDocument.Ledger(cause.executionCauseDocument())
         is QueryImpactExecutionFailure.Accounting ->
@@ -55,6 +59,7 @@ private fun QueryImpactLedgerFailure.executionCauseDocument(): ImpactExecutionLe
     when (this) {
         QueryImpactLedgerFailure.DUPLICATE_REQUESTED_SITE -> ImpactExecutionLedgerCause.DUPLICATE_REQUESTED_SITE
         QueryImpactLedgerFailure.FOREIGN_REQUESTED_SITE -> ImpactExecutionLedgerCause.FOREIGN_REQUESTED_SITE
+        QueryImpactLedgerFailure.FOREIGN_PEER_BASIS -> ImpactExecutionLedgerCause.FOREIGN_PEER_BASIS
         QueryImpactLedgerFailure.EMPTY_SEEDS -> ImpactExecutionLedgerCause.EMPTY_SEEDS
         QueryImpactLedgerFailure.DUPLICATE_SEED -> ImpactExecutionLedgerCause.DUPLICATE_SEED
         QueryImpactLedgerFailure.DUPLICATE_PATH -> ImpactExecutionLedgerCause.DUPLICATE_PATH
@@ -113,4 +118,21 @@ private fun QueryRetainedResultFailure.executionCauseDocument(): ImpactExecution
 private fun QueryImpactRowIdentityFailure.executionCauseDocument(): ImpactExecutionRowIdentityCause =
     when (this) {
         QueryImpactRowIdentityFailure.CHANGED_RETAINED_ROWS -> ImpactExecutionRowIdentityCause.CHANGED_RETAINED_ROWS
+    }
+
+private fun QueryImpactPeerProofFailure.peerProofDocument(): ImpactPeerProofFailureDocument =
+    when (this) {
+        QueryImpactPeerProofFailure.WORK_RECEIPT_EXCEEDS_GRANT ->
+            ImpactPeerProofFailureDocument.WORK_RECEIPT_EXCEEDS_GRANT
+        QueryImpactPeerProofFailure.TIME_RECEIPT_EXCEEDS_GRANT ->
+            ImpactPeerProofFailureDocument.TIME_RECEIPT_EXCEEDS_GRANT
+        QueryImpactPeerProofFailure.SITE_WORK_EXCEEDS_ACQUISITION_WORK ->
+            ImpactPeerProofFailureDocument.SITE_WORK_EXCEEDS_ACQUISITION_WORK
+        QueryImpactPeerProofFailure.SITE_GRANT_EXCEEDS_ACQUISITION_GRANT ->
+            ImpactPeerProofFailureDocument.SITE_GRANT_EXCEEDS_ACQUISITION_GRANT
+        QueryImpactPeerProofFailure.TARGET_BASIS_MISMATCH -> ImpactPeerProofFailureDocument.TARGET_BASIS_MISMATCH
+        QueryImpactPeerProofFailure.TARGET_IDENTITY_MISMATCH -> ImpactPeerProofFailureDocument.TARGET_IDENTITY_MISMATCH
+        QueryImpactPeerProofFailure.SOURCE_BASIS_MISMATCH -> ImpactPeerProofFailureDocument.SOURCE_BASIS_MISMATCH
+        QueryImpactPeerProofFailure.SAME_SOURCE_ROOT -> ImpactPeerProofFailureDocument.SAME_SOURCE_ROOT
+        QueryImpactPeerProofFailure.CONNECTION_MISMATCH -> ImpactPeerProofFailureDocument.CONNECTION_MISMATCH
     }

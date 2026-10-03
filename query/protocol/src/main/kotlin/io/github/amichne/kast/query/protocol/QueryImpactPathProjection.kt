@@ -53,6 +53,7 @@ private fun QueryImpactTerminal.impactDocument(): ImpactProjected<ImpactPathTerm
     when (this) {
         is QueryImpactTerminal.Consumer -> projectConsumer()
         is QueryImpactTerminal.ModeledTerminal -> projectModeledTerminal()
+        is QueryImpactTerminal.Unresolved.PeerContinuation -> projectPeerTerminal()
         is QueryImpactTerminal.Unresolved.Flow -> projectFlow()
         is QueryImpactTerminal.Unresolved.ExecutionStop -> projectExecutionStop()
         is QueryImpactTerminal.Unresolved.ReadRejected -> projectReadRejected()

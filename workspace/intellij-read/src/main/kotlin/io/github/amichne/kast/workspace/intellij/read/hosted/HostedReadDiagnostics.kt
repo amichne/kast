@@ -34,6 +34,9 @@ internal class HostedReadDiagnostics(
         counters[IntellijReadCounter.VALUE_MODEL_REVALIDATIONS to IntellijReadContributor.NONE] = 0L
         counters[IntellijReadCounter.VALUE_MODEL_SITE_REVALIDATIONS to IntellijReadContributor.NONE] = 0L
         counters[IntellijReadCounter.VALUE_MODEL_SITE_REVALIDATIONS_REJECTED to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.PEER_SITE_READS_STARTED to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.PEER_SITE_READS_COMPLETED to IntellijReadContributor.NONE] = 0L
+        counters[IntellijReadCounter.PEER_SITE_READS_REJECTED to IntellijReadContributor.NONE] = 0L
         counters[IntellijReadCounter.VALUE_FLOW_READS to IntellijReadContributor.NONE] = 0L
         // Both alternatives must remain observable when comparing locator retention across reads.
         counters[IntellijReadCounter.REVALIDATION_LOCATORS_RETAINED to IntellijReadContributor.NONE] = 0L

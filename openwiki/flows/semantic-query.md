@@ -120,6 +120,8 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
   - id: openwiki-source-f0cad133a15126760b814619
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt
+  - id: openwiki-source-541f239f2752220a46901ef4
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryValuePathBasis.kt
   - id: openwiki-source-922a5bf331e56677e884867b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
   - id: openwiki-source-37ab3b1971d180b6eee551f9
@@ -134,6 +136,8 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - id: openwiki-source-a0bad9b6f38ff3fd5d037242
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactCapacity.kt
+  - id: openwiki-source-6c15039bee993194f685f911
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactModelArrivals.kt
   - id: openwiki-source-61fafb2f3dea54cb612abc88
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactObservedArrivals.kt
   - id: openwiki-source-02892939c89f7aefe94224ab
@@ -142,10 +146,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T14:16:26.318Z
+    at: 2026-10-03T17:08:58.136Z
 ---
 
 # Semantic query
@@ -302,3 +306,5 @@ factors remain. Ordinary pipeline accounting retains its existing policy.
 A work stop before impact finalization can retain an empty, qualified evidence-only value-path snapshot. Unfinished routes and cached native reads remain owned by the exact existing execution checkpoint. The snapshot does not establish investigation closure. Only a finalized investigation supplies original path ordinals and witness sections; pending witness reads reject with `RESULT_FIELD_UNAVAILABLE`. Retained presentation leaves the upstream checkpoint available.
 
 Requested targets do not schedule additional value-flow exploration. Finalization passes the independently admitted requested-site universe into the same ledger, which compares exact site identities with original producers, destinations and step endpoints. Each target retains reached original paths, exact same-domain exclusions, or an unproven relationship. The last outcome adds a required relationship obligation to the existing closure. Retained `SITE_ACCOUNTING` derives from these original outcomes without changing path order or creating a second interpreter.
+
+An admitted independent peer continuation finishes one reviewed modeled branch at the exact target site. The interpreter retains that edge and `PEER_FLOW_NOT_INVESTIGATED`; it schedules no target value-flow task. Producer identity, compiler prefix and representation history stay on the source basis. Only the last modeled edge and its guarded terminal may carry the target basis, backed by the completed child receipt. The original `MODELS` ordinal retains the guarded rule even when no route visits it. Existing identity-based storage accounting includes the shared peer proof without changing quota factors.

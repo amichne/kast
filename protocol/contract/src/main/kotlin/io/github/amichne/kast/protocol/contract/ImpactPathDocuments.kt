@@ -201,6 +201,15 @@ data class ImpactBoundaryObligationDocument(
 @JsonClassDiscriminator("type")
 sealed interface ImpactPathTerminalDocument {
     @Serializable
+    @SerialName("UNRESOLVED_PEER_CONTINUATION")
+    data class UnresolvedPeerContinuation(
+        val reference: ImpactRuleReferenceDocument,
+        val target: ImpactValueSiteReferenceDocument,
+        val admission: ImpactPeerSiteAdmissionDocument,
+        val reason: ImpactPeerContinuationReasonDocument,
+    ) : ImpactPathTerminalDocument
+
+    @Serializable
     @SerialName("CONSUMER")
     data class Consumer(
         val site: ImpactValueSiteReferenceDocument,

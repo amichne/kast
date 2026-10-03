@@ -42,6 +42,8 @@ data class QueryImpactSourceDocument(
 enum class QueryImpactSourceFailureCode(internal val recoveryAction: ReadRecoveryAction) {
     EMPTY_PRODUCERS(ReadRecoveryAction.CORRECT_REQUEST),
     DUPLICATE_REQUESTED_SITE(ReadRecoveryAction.CORRECT_REQUEST),
+    DUPLICATE_PEER_BOUNDARY(ReadRecoveryAction.CORRECT_REQUEST),
+    UNDECLARED_PEER_BOUNDARY(ReadRecoveryAction.CORRECT_REQUEST),
     STALE_REQUESTED_SITE(ReadRecoveryAction.REACQUIRE_AUTHORITY),
     UNSUPPORTED_REQUESTED_SITE(ReadRecoveryAction.CORRECT_REQUEST),
     UNRESOLVED_REQUESTED_SITE(ReadRecoveryAction.CORRECT_REQUEST),
@@ -134,6 +136,11 @@ enum class QueryImpactSourceFailureCode(internal val recoveryAction: ReadRecover
 
 @Serializable
 sealed interface QueryImpactSourceFailureDocument {
+    @Serializable
+    @SerialName("PEER_PROOF")
+    data class PeerProof(val cause: ImpactPeerProofFailureDocument, val position: ProtocolOffset) :
+        QueryImpactSourceFailureDocument
+
     @Serializable
     @SerialName("ADMISSION")
     data class Admission(val cause: QueryImpactSourceFailureCode, val position: ProtocolOffset) :

@@ -24,6 +24,10 @@ class QueryImpactRetainedGraph {
     internal fun <T> collection(values: Collection<T>, element: (T) -> Long): Long =
         node(values) { values.fold(0L) { bytes, value -> bytes.saturatedAdd(element(value)) } }
 
+    fun requestedSite(value: QueryImpactRequestedSite): Long = value.storageBytes(this).scaledStorage()
+
+    fun peerSiteAdmission(value: QueryImpactPeerSiteAdmission): Long = value.storageBytes(this).scaledStorage()
+
     fun path(value: QueryImpactPath): Long = value.storageBytes(this).scaledStorage()
 
     fun source(value: QueryImpactSource): Long = value.storageBytes(this).scaledStorage()

@@ -45,6 +45,8 @@ sealed interface QueryImpactWitnessEntry {
     data class BoundaryModel(val model: io.github.amichne.kast.relation.contract.BoundaryModel) :
         QueryImpactWitnessEntry
 
+    data class PeerBoundaryModel(val boundary: QueryImpactPeerBoundary) : QueryImpactWitnessEntry
+
     data class NativeRead(val observationOrdinal: QueryImpactWitnessOrdinal, val observation: ValueFlowStep) :
         QueryImpactWitnessEntry
 
@@ -168,7 +170,11 @@ private fun entriesForSection(
         QueryImpactWitnessSection.MODELS ->
             Refinement.Refined(
                 ledger.representationModels.map(QueryImpactWitnessEntry::RepresentationModel) +
-                    ledger.boundaryModels.map(QueryImpactWitnessEntry::BoundaryModel)
+                    ledger.boundaryModels.map { model ->
+                        val peer = ledger.peerBoundaries.singleOrNull { it.model == model }
+                        if (peer == null) QueryImpactWitnessEntry.BoundaryModel(model)
+                        else QueryImpactWitnessEntry.PeerBoundaryModel(peer)
+                    }
             )
         QueryImpactWitnessSection.READ_REJECTIONS ->
             Refinement.Refined(ledger.readRejections.map(QueryImpactWitnessEntry::ReadRejected))

@@ -9,6 +9,10 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactExecutionFailureDocument {
+    @Serializable
+    @SerialName("PEER_BOUNDARY")
+    data class PeerBoundary(val cause: ImpactPeerProofFailureDocument) : ImpactExecutionFailureDocument
+
     @Serializable @SerialName("PRESENTATION_ONLY") data object PresentationOnly : ImpactExecutionFailureDocument
 
     @Serializable
@@ -75,6 +79,7 @@ enum class ImpactExecutionLedgerCause {
     PRODUCER_IDENTITY_MISMATCH,
     DUPLICATE_REQUESTED_SITE,
     FOREIGN_REQUESTED_SITE,
+    FOREIGN_PEER_BASIS,
 }
 
 @Serializable

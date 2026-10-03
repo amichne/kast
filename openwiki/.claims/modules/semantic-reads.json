@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b67f805eb34c8cfbe832b81e83b4044d7537a3e80e902410c7d8fe62c1dd41b4",
+  "pageVersion": "sha256:ac856c06a87c167e2cb1331d5cc2a736d77d8c0a1d85823bad418f1a256e8d88",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -104,7 +104,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:824a43e5461b14adab7c746a26899b0bd3005c3badb490e14c82c2e19d96a074"
+          "version": "repo-file-v1:sha256:07d837d3b7e28744731c78b1e8c53f4d2e990d84eb1a670fbe3023720a9eecd4"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt",
@@ -126,7 +126,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:922d5c7349c112a33dde6f4fb81304f6aba5bc7d5fb4bfb064376dbfe3c57cc5"
+          "version": "repo-file-v1:sha256:0fd8e97ab306246e6ecf03f69430847068d7b2aac8a2ab500852535a356f5e45"
         }
       ]
     },
@@ -139,7 +139,7 @@
           "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
         },
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L80-L101",
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L83-L104",
           "version": "repo-lines-v1:sha256:b549f7448349e17615d6d5320cf7a300cd42e81ee77cce41d82d04db20f55066:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNzI4MmEzMzY1N2ZjNmIxOTE0MmFmMGE0ZjdhNzg5ZGY0YWRkYzQ5YmUzZGFkODljYzAxNzM1YWI4MTgwZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzMWNlMDBiMjZkMTlhMTg0M2JhY2Y4YTBmZTJiZDE5OWE1YjkyMTA2NTViNTdiNGZiNThkODQ4N2ZlMjY2NWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3MTRlMzY4ZWU4NWZmMWE2NjJlYmViMzAyNThjNmQyOTJjNTI2MGFjYWFmNmUwM2E0OTJiZDU5ZWU2ODZhMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0YzE1NGM2OWRiMjRhNDExNmI3Y2VmNDMxY2IyODg5ZTkyMzhkYmQxOTljNDI0NmIwZDhhNjhiZGNmMjA1MGMifQ"
         },
         {
@@ -151,6 +151,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T14:44:52.932Z"
+    "at": "2026-10-03T17:08:58.136Z"
   }
 }

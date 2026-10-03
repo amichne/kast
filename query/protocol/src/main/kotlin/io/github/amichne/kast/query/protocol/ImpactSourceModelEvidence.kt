@@ -11,7 +11,6 @@ import io.github.amichne.kast.query.contract.QueryImpactFlowSemantics
 import io.github.amichne.kast.query.contract.QueryImpactProducer
 import io.github.amichne.kast.query.contract.QueryImpactRequestedSite
 import io.github.amichne.kast.query.contract.QueryImpactSource
-import io.github.amichne.kast.query.contract.QueryImpactSourceFailure
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.BoundaryPosition
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
@@ -24,9 +23,14 @@ internal data class ImpactSourceModelEvidence(
     val positions: List<BoundaryPosition>,
     val examinedWork: Long,
     val requestedSites: List<QueryImpactRequestedSite>,
+    val peers: List<io.github.amichne.kast.query.contract.QueryImpactPeerSiteAdmission>,
 )
 
-private data class ImpactSourceModels(val representation: List<RepresentationRule>, val boundaries: List<BoundaryModel>)
+private data class ImpactSourceModels(
+    val representation: List<RepresentationRule>,
+    val boundaries: List<BoundaryModel>,
+    val peers: List<io.github.amichne.kast.query.contract.QueryImpactPeerBoundary>,
+)
 
 internal fun bindImpactSourceModels(
     evidence: ImpactSourceModelEvidence,
@@ -52,21 +56,11 @@ internal fun bindImpactSourceModels(
                         QueryImpactFlowDocument.KOTLIN_FORWARD_V1 -> QueryImpactFlowSemantics.KOTLIN_FORWARD_V1
                     },
                     evidence.requestedSites,
+                    models.peers,
                 )
         ) {
             is Refinement.Refined -> admitted.value
-            is Refinement.Rejected ->
-                return impactFailure(
-                    when (admitted.failure) {
-                        QueryImpactSourceFailure.DUPLICATE_REQUESTED_SITE ->
-                            QueryImpactSourceFailureCode.DUPLICATE_REQUESTED_SITE
-                        QueryImpactSourceFailure.EMPTY_PRODUCERS -> QueryImpactSourceFailureCode.EMPTY_PRODUCERS
-                        QueryImpactSourceFailure.DUPLICATE_PRODUCER -> QueryImpactSourceFailureCode.DUPLICATE_PRODUCER
-                        QueryImpactSourceFailure.DUPLICATE_MODEL ->
-                            QueryImpactSourceFailureCode.DUPLICATE_MODEL_REFERENCE
-                        QueryImpactSourceFailure.FOREIGN_BASIS -> QueryImpactSourceFailureCode.BASIS_MISMATCH
-                    }
-                )
+            is Refinement.Rejected -> return impactFailure(admitted.failure.impactFailure())
         }
     if (source.retainedBytes > budget.checkpointBytes.value)
         return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED)
@@ -79,6 +73,7 @@ private fun admitModels(
 ): Refinement<ImpactSourceModels, QueryRunRejection> {
     val representation = mutableListOf<RepresentationRule>()
     val boundaries = mutableListOf<BoundaryModel>()
+    val peers = mutableListOf<io.github.amichne.kast.query.contract.QueryImpactPeerBoundary>()
     for ((position, syntax) in modelSyntax.withIndex()) {
         val model = syntax.document
         when (model) {
@@ -88,11 +83,60 @@ private fun admitModels(
                     is Refinement.Rejected -> return impactFailure(bound.failure.impactFailure(), position)
                 }
             is ImpactModelDocument.Boundary ->
-                when (val bound = AdmittedBoundaryModel.admit(syntax, evidence.positions)) {
-                    is Refinement.Refined -> boundaries += bound.value.rules
-                    is Refinement.Rejected -> return impactFailure(bound.failure.impactFailure(), position)
+                when (val bound = admitBoundaryModels(syntax, evidence, position)) {
+                    is Refinement.Refined -> {
+                        boundaries += bound.value.boundaries
+                        peers += bound.value.peers
+                    }
+                    is Refinement.Rejected -> return bound
                 }
         }
     }
-    return Refinement.Refined(ImpactSourceModels(representation.toList(), boundaries.toList()))
+    return Refinement.Refined(ImpactSourceModels(representation.toList(), boundaries.toList(), peers.toList()))
+}
+
+private fun admitBoundaryModels(
+    syntax: AdmittedImpactModelSyntax,
+    evidence: ImpactSourceModelEvidence,
+    position: Int,
+): Refinement<ImpactSourceModels, QueryRunRejection> {
+    val rules =
+        when (val bound = AdmittedBoundaryModel.admit(syntax, evidence.positions)) {
+            is Refinement.Refined -> bound.value.rules
+            is Refinement.Rejected -> return impactFailure(bound.failure.impactFailure(), position)
+        }
+    val peers =
+        when (val admitted = admitPeerModelBoundaries(rules, evidence, position)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return admitted
+        }
+    return Refinement.Refined(ImpactSourceModels(emptyList(), rules, peers))
+}
+
+private fun admitPeerModelBoundaries(
+    boundaries: List<BoundaryModel>,
+    evidence: ImpactSourceModelEvidence,
+    position: Int,
+): Refinement<List<io.github.amichne.kast.query.contract.QueryImpactPeerBoundary>, QueryRunRejection> {
+    val peers = mutableListOf<io.github.amichne.kast.query.contract.QueryImpactPeerBoundary>()
+    val sourceAuthority = evidence.producers.first().site.enclosing.lease
+    for (model in boundaries) {
+        if (
+            model is BoundaryModel.Continuation &&
+                model.target.site.enclosing.lease.identity != sourceAuthority.identity
+        ) {
+            val target =
+                evidence.peers.singleOrNull { it.site == model.target.site }
+                    ?: return impactFailure(QueryImpactSourceFailureCode.BOUNDARY_BASIS_MISMATCH, position)
+            when (
+                val admitted =
+                    io.github.amichne.kast.query.contract.QueryImpactPeerBoundary.admit(sourceAuthority, model, target)
+            ) {
+                is Refinement.Refined -> peers += admitted.value
+                is Refinement.Rejected ->
+                    return Refinement.Rejected(admitted.failure.peerRejection(queryPosition(position)))
+            }
+        }
+    }
+    return Refinement.Refined(peers.toList())
 }

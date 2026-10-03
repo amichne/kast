@@ -121,6 +121,7 @@ internal class QueryImpactTasks(
                 rejections,
                 source.producers,
                 source.requestedSites,
+                source.peerBoundaries,
             )
         if (admitted is Refinement.Rejected)
             return QueryImpactTaskTransition.Rejected(QueryImpactExecutionFailure.Ledger(admitted.failure))

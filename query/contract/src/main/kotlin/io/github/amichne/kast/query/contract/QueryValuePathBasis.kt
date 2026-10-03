@@ -14,7 +14,12 @@ import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 /** The single query store admits one current authority; a model cannot merge independent repository epochs. */
-internal fun QueryImpactPath.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+internal fun QueryImpactPath.hasForeignBasis(lease: SemanticReadAuthority): Boolean {
+    val peer = terminal as? QueryImpactTerminal.Unresolved.PeerContinuation
+    return if (peer == null) ordinaryPathHasForeignBasis(lease) else peerPathHasForeignBasis(lease, peer)
+}
+
+private fun QueryImpactPath.ordinaryPathHasForeignBasis(lease: SemanticReadAuthority): Boolean =
     producer.hasForeignBasis(lease) ||
         steps.any { it.hasForeignBasis(lease) } ||
         when (val current = representation) {
@@ -22,6 +27,45 @@ internal fun QueryImpactPath.hasForeignBasis(lease: SemanticReadAuthority): Bool
             is QueryImpactRepresentation.Present -> current.evidence.hasForeignBasis(lease)
         } ||
         terminal.hasForeignBasis(lease)
+
+private fun QueryImpactPath.peerPathHasForeignBasis(
+    lease: SemanticReadAuthority,
+    peer: QueryImpactTerminal.Unresolved.PeerContinuation,
+): Boolean {
+    val last = steps.lastOrNull() as? QueryImpactStep.ModeledBoundary ?: return true
+    if (
+        producer.hasForeignBasis(lease) ||
+            steps.dropLast(1).any { it.hasForeignBasis(lease) } ||
+            peer.boundary.model.source.site.hasForeignBasis(lease)
+    )
+        return true
+    if (
+        peer.boundary.admitConnection(last.connection) is io.github.amichne.kast.kernel.Refinement.Rejected ||
+            last.connection != peer.connection
+    )
+        return true
+    return when (val current = representation) {
+        QueryImpactRepresentation.NotModeled -> false
+        is QueryImpactRepresentation.Present -> current.evidence.peerEvidenceHasForeignBasis(lease, peer)
+    }
+}
+
+private fun RepresentationEvidence.peerEvidenceHasForeignBasis(
+    lease: SemanticReadAuthority,
+    peer: QueryImpactTerminal.Unresolved.PeerContinuation,
+): Boolean =
+    site != peer.site ||
+        site.hasForeignBasis(peer.boundary.target.acquisition.completedAuthority) ||
+        branches.any { branch ->
+            branch.history.withIndex().any { (index, history) ->
+                if (index != branch.history.lastIndex) history.hasForeignBasis(lease)
+                else
+                    history !is RepresentationHistory.BoundaryModel ||
+                        history.reference != peer.boundary.model.reference ||
+                        history.source != peer.connection.source.reference ||
+                        history.target != peer.connection.target.reference
+            }
+        }
 
 internal fun ValueSite.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     enclosing.lease != lease ||
@@ -64,7 +108,7 @@ private fun BoundaryArrival.hasForeignBasis(lease: SemanticReadAuthority): Boole
         } ||
         obligations.any { it.position.site.hasForeignBasis(lease) }
 
-private fun QueryImpactStep.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+internal fun QueryImpactStep.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     when (this) {
         is QueryImpactStep.Compiler -> source.hasForeignBasis(lease) || target.hasForeignBasis(lease)
         is QueryImpactStep.ModeledRepresentation -> application.hasForeignBasis(lease)
@@ -72,27 +116,21 @@ private fun QueryImpactStep.hasForeignBasis(lease: SemanticReadAuthority): Boole
     }
 
 private fun RepresentationEvidence.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    site.hasForeignBasis(lease) ||
-        branches.any { branch ->
-            branch.history.any { history ->
-                when (history) {
-                    is RepresentationHistory.Origin ->
-                        history.output.hasForeignBasis(lease) ||
-                            history.invocation.hasForeignBasis(lease) ||
-                            history.rule.hasForeignBasis(lease)
-                    is RepresentationHistory.CompilerTransfer ->
-                        history.transfer.source.hasForeignBasis(lease) || history.transfer.target.hasForeignBasis(lease)
-                    is RepresentationModelApplication -> history.hasForeignBasis(lease)
-                    is RepresentationHistory.Unmodeled ->
-                        history.source.basis != lease.identity || history.target.basis != lease.identity
-                    is RepresentationHistory.BoundaryModel ->
-                        history.source.basis != lease.identity || history.target.basis != lease.identity
-                }
-            }
-        }
+    site.hasForeignBasis(lease) || branches.any { branch -> branch.history.any { it.hasForeignBasis(lease) } }
+
+private fun RepresentationHistory.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (this) {
+        is RepresentationHistory.Origin ->
+            output.hasForeignBasis(lease) || invocation.hasForeignBasis(lease) || rule.hasForeignBasis(lease)
+        is RepresentationHistory.CompilerTransfer ->
+            transfer.source.hasForeignBasis(lease) || transfer.target.hasForeignBasis(lease)
+        is RepresentationModelApplication -> hasForeignBasis(lease)
+        is RepresentationHistory.Unmodeled -> source.basis != lease.identity || target.basis != lease.identity
+        is RepresentationHistory.BoundaryModel -> source.basis != lease.identity || target.basis != lease.identity
+    }
 
 private fun QueryImpactTerminal.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    site.hasForeignBasis(lease) ||
+    (this !is QueryImpactTerminal.Unresolved.PeerContinuation && site.hasForeignBasis(lease)) ||
         when (this) {
             is QueryImpactTerminal.Consumer ->
                 evidence.rule.hasForeignBasis(lease) ||
@@ -111,6 +149,7 @@ private fun QueryImpactTerminal.hasForeignBasis(lease: SemanticReadAuthority): B
             is QueryImpactTerminal.Unresolved.ReadRejected -> rejection.source.hasForeignBasis(lease)
             is QueryImpactTerminal.Unresolved.Flow -> obligation.site.hasForeignBasis(lease)
             is QueryImpactTerminal.Unresolved.Boundary -> boundary.hasForeignBasis(lease)
+            is QueryImpactTerminal.Unresolved.PeerContinuation -> boundary.model.source.site.hasForeignBasis(lease)
             is QueryImpactTerminal.SupportedDomainEnd -> observation.domain.subject.lease != lease
             is QueryImpactTerminal.ExplicitScopeExclusion -> exclusion.site.hasForeignBasis(lease)
         }
@@ -128,7 +167,8 @@ internal fun QueryImpactLedger.hasForeignBasis(lease: SemanticReadAuthority): Bo
         } ||
         readRejections.any { it.source.hasForeignBasis(lease) } ||
         representationModels.any { it.hasForeignBasis(lease) } ||
-        boundaryModels.any { it.hasForeignBasis(lease) } ||
+        admitPeerBoundaries(lease, boundaryModels, peerBoundaries) is
+            io.github.amichne.kast.kernel.Refinement.Rejected ||
         observations.any { it.hasForeignBasis(lease) } ||
         paths.any { it.hasForeignBasis(lease) }
 

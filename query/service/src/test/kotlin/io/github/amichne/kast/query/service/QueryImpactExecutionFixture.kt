@@ -117,9 +117,17 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
         boundaries: List<BoundaryModel> = emptyList(),
         domain: RelationSearchBoundary = RelationSearchBoundary.WORKSPACE_EXPANSION,
         requestedSites: List<QueryImpactRequestedSite> = emptyList(),
+        peerBoundaries: List<io.github.amichne.kast.query.contract.QueryImpactPeerBoundary> = emptyList(),
     ): AdmittedQueryPlan {
         val source =
-            QueryImpactSource.admit(listOf(producer), models, boundaries, domain, requestedSites = requestedSites)
+            QueryImpactSource.admit(
+                    listOf(producer),
+                    models,
+                    boundaries,
+                    domain,
+                    requestedSites = requestedSites,
+                    peerBoundaries = peerBoundaries,
+                )
                 .value()
         return (QueryPlanCompiler.admit(
                 QueryPlanSyntax(QuerySourceSyntax.Impact(source), emptyList(), QueryOutputSyntax.ValuePaths)

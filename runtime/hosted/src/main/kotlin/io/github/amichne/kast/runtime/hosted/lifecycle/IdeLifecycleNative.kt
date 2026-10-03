@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.IdeProjectOwnership
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
+import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure
@@ -25,14 +26,13 @@ import io.github.amichne.kast.runtime.hosted.HostedEndpointService
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 
 /** Ordinary graphical 262 APIs only. No force closure, global preferences, or implicit trust. */
@@ -88,6 +88,12 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             }
     }
 
+    /** Only already registered peers are eligible; the helper has no lifecycle mutation capability. */
+    suspend fun <Value> withRegisteredPeer(
+        expected: ImpactSemanticBasisDocument.Live,
+        action: suspend (Project, CanonicalWorkspaceRoot) -> HostedSemanticReadResult<Value>,
+    ): HostedSemanticReadResult<Value> = readRegisteredPeer(projects, expected, ::canonicalRoot, action)
+
     suspend fun execute(command: IdeLifecycleCommand): IdeLifecycleResult =
         when (command) {
             is IdeLifecycleCommand.Open -> open(command)
@@ -134,7 +140,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
     ): IdeLifecycleResult {
         val target = observe(project, root, IdeProjectOwnership.BORROWED)
         val endpoint = project.getService(HostedEndpointService::class.java)
-        if (!awaitCondition { project.isDisposed || endpoint.lifecycleRefreshReady() })
+        if (!awaitLifecycleCondition { project.isDisposed || endpoint.lifecycleRefreshReady() })
             return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
         if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
         lifecycleVfsFailure(endpoint, root)?.let {
@@ -155,7 +161,11 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             val project = openNative(root, importScopes) ?: return blocked(IdeLifecycleFailure.OPEN_FAILED)
             val target = observe(project, root, IdeProjectOwnership.MANAGED)
             val endpoint = project.getService(HostedEndpointService::class.java)
-            if (!awaitCondition { project.isDisposed || (project.isInitialized && endpoint.lifecycleRefreshReady()) })
+            if (
+                !awaitLifecycleCondition {
+                    project.isDisposed || (project.isInitialized && endpoint.lifecycleRefreshReady())
+                }
+            )
                 return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
             if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
             lifecycleVfsFailure(endpoint, root)?.let {
@@ -291,7 +301,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
         initial: WorkspaceRefreshResult,
     ): IdeLifecycleResult {
         var result = initial
-        val finished = awaitCondition {
+        val finished = awaitLifecycleCondition {
             if (result is WorkspaceRefreshResult.Pending) {
                 result = endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Status(requestId))
                 val pending = result as? WorkspaceRefreshResult.Pending
@@ -339,7 +349,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                     }
                 }
             if (result !is IdeLifecycleResult.Closed) return result
-            if (!awaitCondition { project.isDisposed && endpoint.lifecycleEndpointRetired() })
+            if (!awaitLifecycleCondition { project.isDisposed && endpoint.lifecycleEndpointRetired() })
                 return blocked(IdeLifecycleFailure.CLOSE_RETIREMENT_PENDING)
             return result
         } finally {
@@ -365,17 +375,6 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             }
         if (project.isDisposed || root.value != target.root) return blocked(IdeLifecycleFailure.STALE_PROJECT)
         return action(project)
-    }
-
-    private suspend fun awaitCondition(condition: () -> Boolean): Boolean =
-        withTimeoutOrNull(OPERATION_WAIT_MILLIS) {
-            while (!condition()) delay(POLL_MILLIS)
-            true
-        } ?: false
-
-    private companion object {
-        const val OPERATION_WAIT_MILLIS = 120_000L
-        const val POLL_MILLIS = 100L
     }
 
     private fun blocked(reason: IdeLifecycleFailure) = IdeLifecycleResult.Blocked(reason)

@@ -20,6 +20,7 @@ internal fun QueryImpactTerminal.findingDocument(): ImpactProjected<ImpactFindin
     when (this) {
         is QueryImpactTerminal.Consumer -> projectFindingConsumer()
         is QueryImpactTerminal.ModeledTerminal -> projectFindingModeledTerminal()
+        is QueryImpactTerminal.Unresolved.PeerContinuation -> projectPeerFindingTerminal()
         is QueryImpactTerminal.Unresolved.Flow ->
             Refinement.Refined(ImpactFindingTerminalDocument.UnresolvedFlow(obligation.cause.impactDocument()))
         is QueryImpactTerminal.Unresolved.ReadRejected ->

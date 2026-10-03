@@ -137,6 +137,7 @@ private fun QueryImpactPath.stopsBeforeModels(index: Int): Boolean =
         when (terminal) {
             is QueryImpactTerminal.Unresolved.ExecutionStop,
             is QueryImpactTerminal.Unresolved.ReadRejected,
+            is QueryImpactTerminal.Unresolved.PeerContinuation,
             is QueryImpactTerminal.ExplicitScopeExclusion -> true
             is QueryImpactTerminal.Consumer,
             is QueryImpactTerminal.ModeledTerminal,
