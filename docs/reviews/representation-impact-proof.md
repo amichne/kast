@@ -4,7 +4,7 @@ The installed candidate returns **19 qualified paths from four exact producers**
 
 The tested artifact is commit **`8bd9bf5db3701368f6cd10895065393fa24244a6`**, including implementation commit `5d338edda`. Later receipt and metadata commits do not change the tested artifact identity. This is local installed qualification on macOS arm64, IntelliJ IDEA 2026.2.3 / JBR 25.0.4, candidate version `0.1.5`. It is not a published release, deployed compatibility proof, or evidence that the six issues are closed.
 
-This receipt records the completed candidate-5 cohorts as a checkpoint. The independent #909 regression audit, larger-domain counterfactual, and local rename audit are included. An actual foreign-basis admission probe is captured below; its independent audit and the guarded positive-boundary extension continue separately.
+This receipt records the completed candidate-5 cohorts as a checkpoint. Independent audits cover the #909 regressions, larger-domain counterfactual, local rename, and actual foreign-basis admission rejection. The guarded positive-boundary extension continues separately.
 
 ## Question and authority
 
@@ -124,6 +124,8 @@ Both witnesses identify exact invocation-result range `876–901` within their o
 
 Public correlation on that rejection is `UNAVAILABLE`. One separate raw receipt matches the source host/epoch and PID and records six selected query counters as zero; it is not response-correlated semantic proof. Earlier attempts remain captured: one `TRUST_REQUIRED` prerequisite, then one `FRESHNESS_REJECTED` / `MOVED` at `CONTENT_REVALIDATION` after native import, requesting `restart_read`. The successful fresh retry counts both prior captures: 11 total against a shared bound of 24. Private registration separately rejects `SERVICE_IDENTITY_REJECTED`; native public preparation and producer acquisition are established independently.
 
+The independent audit passes 13 direct checks and six detached adverse-auditor checks. All 11 actual request envelopes and their appropriate semantic, hosted, or runtime diagnostic documents pass canonical validation. Four fresh lookups and the final rejection retain `UNAVAILABLE` correlation; two bootstrap runs and two retained producer reads have `MATCHED` correlation. Both retained producer reads report six selected counters as zero. The audit verifies source/grant/basis/ref conservation and exact trust/retirement receipt authority; it creates no additional native observations.
+
 The peer is created from seven exact owned fixture/wrapper files; native import subsequently writes its own metadata. Standard IDE per-root trust configuration is verified against the installed vendor persistence contract, applied offline after exact owned retirement, and later restored. Trust-all flags and product admission bypasses are not used. Both third and fourth IDE processes have exact ownership-checked retirement, PID absence, and new native shutdown records. The IDE reordered the two trust entries on shutdown; the first exact-byte restoration rejected before any effect. A fresh helper requires the actual reordered preimage SHA `50f001d5709cd66a661d5a9ee3086294136d2bb90023d08622ac51380486a83c` and restores original 297 bytes / SHA `764eaf28492b8030918a6043ccf2e124d3520839e32cf2a23cda9dc17e9ab5d7`, removing only the peer entry. Protected user PID 5961 remains present.
 
 This establishes the public one-basis admission limit against separately acquired native authority. Positive cross-repository modeled evidence remains an implementation requirement: both endpoint proofs must retain their own bases, with an explicit peer proof boundary and unresolved obligations. A decoded peer claim alone cannot become current native authority.
@@ -174,6 +176,7 @@ Raw captures are local historical evidence, not portable live handles. Candidate
 | `large-domain-native-audit-sealed-v5.json` | `1f31e140264d30eafce5335ce5d65bc54ea5ec5dbb249bd2d9cf6488c8594064` |
 | `local-rename-native-audit-v5-final.json` | `3ead6fd29d9c2854357ed1313a7e478497b2ee15028b096d593656183ff8aa4d` |
 | `vendor-trust-contract-audit-v5.json` | `509b0b532c48ca43c7e9e7cc7d613b6a8758462a3991c465cfa77ae4b5090a1c` |
+| `enrolled-peer-native-audit-v5-sealed.json` | `d2300b5374bd6688592395919dfdc51468957c215d69199998a1724d252c2953` |
 | `current-acceptance-assessment-v5-sealed.json` | `f767d6d8efbde9dd433bdbcf19441785dc390f47de0378da8e49d1dc571289b5` |
 | `issue915-named-site-preflight-v5.json` | `e657a2467f874763eaed0a91f58d4429093106bcf0f019c6ecc6501a8eda27ed` |
 | `issue-closure-assessment-v5-after.json` | `39ecce814e9ad298a0d265b52f2f71ccfbd186035db639d5288993f97e59b123` |
