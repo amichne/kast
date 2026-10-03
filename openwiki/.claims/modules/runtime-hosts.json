@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f9f620ef4d3285cde34b0cc0f0ea76919d24153b695df7dde88a06d9b68cd1aa",
+  "pageVersion": "sha256:e18e88b174487b3348d22a88d95cff6c0e44fd0a784add2eaffeab33fc323f6e",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -173,10 +173,46 @@
           "version": "repo-lines-v1:sha256:1156e6d8784852d871e6c2ccad86068e8054bde1bc5a3c9d9b1b786836b67c6f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkZTAzY2Y2NTQ1YTZmNjA1MWQzYWZmNjM2M2I5MmUzYzgxNTMzZDcxNThiMjJhODlkNGNjNWUwZTQ1YjFlZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmOGEwYTBhMGI2ODk4ZmEzZTg2ZDYwNDI0YThmYjE2OWEzZjEyMzA2YmM5M2UwYjFjNzUwODEyNTZlMDY4OWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0NzVjYzA1ZWYzMmZmN2MyMWUzYTkzN2IyYTlmYzFhNWIzNjg2YjM5ZmYzMDgzNTdjNjJhODNjZjMzMTY5M2UifQ"
         }
       ]
+    },
+    {
+      "id": "claim_e073644efa88452eb37b1a498f39049b",
+      "statement": "The existing client response boundary records bounded private typed frame, body and finite admission causes without logging payloads or opaque identities or changing public failure authority.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseCause.kt",
+          "version": "repo-file-v1:sha256:e6e5bfbc73b83099056a97f6eb45a9bd20e8268624862b354b91b59c1d3a8452"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
+          "version": "repo-file-v1:sha256:4d0894be4bea8b658b8f223fc61e6e5c99315d6132b8cd5217cb60a096a92c73"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
+          "version": "repo-file-v1:sha256:13a2782a9244e0d4c863d2cbb468e17a9cdc5969e6c0fa1a8b6e9f4c0e486542"
+        }
+      ]
+    },
+    {
+      "id": "claim_feb8a9cd000f4c5db0b8a680bc227c5b",
+      "statement": "Hosted traversal observes exclusive coordination intervals through the existing diagnostic clock and restores TRAVERSAL after relation reads while preserving native relation phase ownership.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt",
+          "version": "repo-file-v1:sha256:3038406976ed781f4bbdd941f0f0021afc0adcb4781a0687301ac262446addcd"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
+          "version": "repo-file-v1:sha256:9391c894337ace843511f38c4d1657c64a41aea870001ec37ac9e888dcbd0626"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt",
+          "version": "repo-file-v1:sha256:8697db10c5bd2f38c41e8565888b590bb9190980ca33e7742b017e03595d68ef"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T05:14:41.058Z"
+    "at": "2026-10-03T08:10:55.203Z"
   }
 }

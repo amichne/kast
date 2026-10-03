@@ -33,7 +33,8 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 - [HostedCompatibilityMetadata.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt) - packaged Host version and provided contract exposed through live describe.
 - [hosted/native/README.md](hosted/native/README.md) - real mixed-version installation and ordinary IntelliJ lifecycle qualification.
 - [HostedSemanticServices.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt) - request-scoped semantic service composition, including bounded value-flow reads, producer seeds, and model revalidation under shared acquisition accounting.
-- [HostedCanonicalQuery.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) - bounded canonical read dispatch.
+- [HostedCanonicalQuery.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) - bounded canonical read dispatch, pairing value-path evaluation with the existing full-envelope fitter and publication session.
+- [HostedTraversalOperations.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt) - observational adapter around the existing traversal service, restoring coordination timing after native relation phases.
 - [HostedReadBudgetAdmission.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt) - necessary response-byte admission before semantic dispatch.
 - [HostedResponse.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt) - original semantic outcomes retained through encoding and transport.
 - [HostedChangeResources.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeResources.kt) - shared durable mutation stores.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e7fece7f385c1f9a20d09bd0bc4617712fbb322e949cf330125c8604d9760436",
+  "pageVersion": "sha256:6a281587fcd7e799b49cc1011242a50792e5630503dfa69a83f2b1e003bcc162",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -123,10 +123,28 @@
           "version": "repo-lines-v1:sha256:2174fd8a12103a4f0a0991eb86d1dd967682b6e703506baedfc0312857ce47bf:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwM2UzNTk4YjZjZTViOGIzYTc1MmNmMjJiOGE0YzRkMDliNzlkMjAwNmJkZTVjNGRlYjc4YzJmOTdiOWY3MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFmMmI0ZmI1YjA0NDhjNmYwNmMzMjViOTc1ZGU4NGQxOTAzODhlZDgyNThiMjc5ZmRmNGM0NTQ4NGQwZTFjYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
         }
       ]
+    },
+    {
+      "id": "claim_aec873a6792b40b3a3c17789af889a00",
+      "statement": "Hosted traversal observation records exclusive TRAVERSAL coordination intervals through the existing phase owner, preserving native relation authority and the original plan, requests and outcomes.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt",
+          "version": "repo-file-v1:sha256:3038406976ed781f4bbdd941f0f0021afc0adcb4781a0687301ac262446addcd"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt",
+          "version": "repo-file-v1:sha256:2c7ca12a6e5f02c1d376a07c974c7453ca6a8bc8b224267fc506114e01ae15ea"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
+          "version": "repo-file-v1:sha256:df823036fdb6e17ec8402648e71cc29f1ac92929ccdaa6a95984f34271ff8145"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T06:44:24.507Z"
+    "at": "2026-10-03T08:10:55.203Z"
   }
 }

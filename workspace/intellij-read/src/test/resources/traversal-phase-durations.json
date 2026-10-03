@@ -1,0 +1,6 @@
+[
+  {"phase": "TRAVERSAL", "durationNanos": 13},
+  {"phase": "REFERENCE_INVENTORY", "durationNanos": 7},
+  {"phase": "REFERENCE_CONFIRMATION", "durationNanos": 10},
+  {"phase": "ENCODING", "durationNanos": 1}
+]

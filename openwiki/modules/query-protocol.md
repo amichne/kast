@@ -82,6 +82,10 @@ code_sources:
 sources:
   - id: openwiki-source-843b2f72b64738a9d114aff8
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRetainedPresentationWindow.kt
+  - id: openwiki-source-ceaa6e4a1cc8af84eede173b
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt
+  - id: openwiki-source-47b84d48b89b57b3b1609484
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt
   - id: openwiki-source-df5814ea9050f768658bd6bc
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResultCapture.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
@@ -100,10 +104,16 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-11b3793b16152a8db22d714e
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/OriginalImpactRetentionTest.kt
-generated: { by: "codex", at: "2026-10-03T06:44:24.507Z" }
+  - id: openwiki-source-8bba742d3ecbc32c906815e6
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
+  - id: openwiki-source-711e20b0c3995766bf099120
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
+  - id: openwiki-source-680008eb9e24b45cf91f6d9d
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
+generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T06:44:24.507Z
+    at: 2026-10-03T08:10:55.203Z
 ---
 
 # Query protocol
@@ -289,3 +299,14 @@ and read-result regressions cover empty initial output, contiguous prefixes,
 reordered selections and ordinary selected-result capture with a semantic
 executor that must remain unused. Those tests establish the retained contract,
 not installed IDE qualification.
+
+Impact retained-storage charge uses a request-local visitor over actual shared
+immutable objects, separate from row identity and compiler identity. References
+and list cells remain charged; equal copies remain separate allocations. The
+visitor changes neither the query-state owner nor its quotas and safety factors.
+It is conservative admission arithmetic rather than a measurement of heap use.
+
+Hosted value-path output uses a scoped evaluation capability paired with the
+existing encoded-envelope fitter. The capability is retired before fitting and
+cannot be carried into checkpoints. Standalone service execution keeps its
+conservative byte guard; storage limits remain independent of output bytes.

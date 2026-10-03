@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ade2477e421db445e4e62835ba88d1cee532514d6c0a43f4823575259f363d0a",
+  "pageVersion": "sha256:7846f3eff377e1188016d8e90fca60970ecb670d83743a433f2adbe49d90325d",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -101,10 +101,42 @@
           "version": "repo-lines-v1:sha256:5ea032e2c76f69683c35f95a0cb90e7180fbbdc978fd8428a61bb8e0bff54aad:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjZWViZjkzYjg1ODIwZTg0YTFiYjFlYjM1YzJiMWYwYWFiNmYwNWZjODczN2MwNWMzZmM1NDk1MmMyYmZmNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxODM1NDE4ZWM4M2MwZDNhYTk3YjM5MjIwYzFiYjMyYzE3NzI2Y2FjOThmMzhkOGI4OGU3ZGMxY2M5MjYxZGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3OTBlZDczYjM2ZGNmMjczZjMwYTJjNjI2NmU5ZjViOWUyMTUzNGExZGQwODUyMDFiOTE5ZTIxMTY1YTIyZmEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_0630d80b12624f8484987df3dfc24377",
+      "statement": "Impact storage charge uses request-local JVM-identity accounting for shared immutable evidence while preserving reference charges, quotas, query-state ownership and separate semantic identities.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
+          "version": "repo-file-v1:sha256:0c6e3d30228fe7c1502982604a4e120f2589713bca9e514de87e2da024718dac"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
+          "version": "repo-file-v1:sha256:b54dd6c0a274aa68280608e30ba8995a5f40535db3f8d3d03e637077e0f559fa"
+        }
+      ]
+    },
+    {
+      "id": "claim_7331379eac4c4c13a1954837e7b237d8",
+      "statement": "Hosted value-path output admission is scoped to evaluation paired with the existing encoded-envelope fitter; standalone service byte guards and retained-storage bounds remain separate.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt",
+          "version": "repo-file-v1:sha256:9c4fcaaaf84bf9f6824f069af0674ec3dd9301bab10dcfb195b2e22301238e53"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt",
+          "version": "repo-file-v1:sha256:11745d56837c3bec77a63e07b924a9079a532c143b8eaac26e078f433fa11a7a"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
+          "version": "repo-file-v1:sha256:84d82f5d27911b64fe971fffda353887a69b97b9108eaa833c064f9fbe27a074"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T06:44:24.507Z"
+    "at": "2026-10-03T08:10:55.203Z"
   }
 }

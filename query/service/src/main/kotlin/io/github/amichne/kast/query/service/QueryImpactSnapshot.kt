@@ -7,17 +7,19 @@ import io.github.amichne.kast.query.contract.QueryImpactPath
 import io.github.amichne.kast.query.contract.QueryImpactPathFailure
 import io.github.amichne.kast.query.contract.QueryImpactProducer
 import io.github.amichne.kast.query.contract.QueryImpactRepresentation
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.query.contract.QueryImpactStep
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryRows
-import io.github.amichne.kast.query.contract.retainedStorageBytes
 import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
+
+private const val IMPACT_CONTAINER_STORAGE_BYTES = 512L
 
 /** Detached routes are tasks in the one query interpreter, never independent continuation tokens. */
 internal data class QueryImpactRoute(
@@ -29,14 +31,10 @@ internal data class QueryImpactRoute(
         get() = steps.lastOrNull()?.target ?: producer
 
     val retainedBytes: Long
-        get() =
-            saturatedAdd(
-                producer.retainedBytes,
-                saturatedAdd(
-                    steps.fold(0L) { bytes, step -> saturatedAdd(bytes, step.retainedStorageBytes()) },
-                    representation.retainedStorageBytes(),
-                ),
-            )
+        get() = retainedBytes(QueryImpactRetainedGraph())
+
+    fun retainedBytes(graph: QueryImpactRetainedGraph): Long =
+        saturatedAdd(IMPACT_CONTAINER_STORAGE_BYTES, graph.route(producer, steps, representation))
 
     fun path(terminal: QueryImpactTerminal): Refinement<QueryImpactPath, QueryImpactPathFailure> =
         QueryImpactPath.fromEvidence(producer, steps, representation, terminal)
@@ -81,21 +79,24 @@ internal data class QueryImpactSnapshot(
     val ledger: QueryImpactLedger? = null,
 ) {
     val retainedBytes: Long
-        get() =
-            ledger?.retainedStorageBytes()
-                ?: saturatedAdd(
-                    paths.fold(512L) { bytes, path -> saturatedAdd(bytes, path.retainedBytes) },
-                    reads.entries.fold(0L) { bytes, entry ->
+        get() = retainedBytes(QueryImpactRetainedGraph())
+
+    fun retainedBytes(graph: QueryImpactRetainedGraph): Long =
+        saturatedAdd(
+            paths.fold(IMPACT_CONTAINER_STORAGE_BYTES) { bytes, path -> saturatedAdd(bytes, graph.path(path)) },
+            saturatedAdd(
+                reads.entries.fold(IMPACT_CONTAINER_STORAGE_BYTES) { bytes, entry ->
+                    saturatedAdd(
+                        bytes,
                         saturatedAdd(
-                            bytes,
-                            when (val read = entry.value) {
-                                is ValueFlowRead.Observed -> read.step.retainedBytes
-                                is ValueFlowRead.Rejected,
-                                is ValueFlowRead.ContractRejected -> saturatedAdd(512L, entry.key.retainedBytes)
-                            },
-                        )
-                    },
-                )
+                            IMPACT_CONTAINER_STORAGE_BYTES,
+                            saturatedAdd(graph.site(entry.key), graph.read(entry.value)),
+                        ),
+                    )
+                },
+                ledger?.let(graph::ledger) ?: 0L,
+            ),
+        )
 }
 
 internal sealed interface QueryImpactRowsState {

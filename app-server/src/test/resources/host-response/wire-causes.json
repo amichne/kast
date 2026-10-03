@@ -1,0 +1,13 @@
+[
+ {"type":"MALFORMED_ENVELOPE"},
+ {"type":"INVALID_IMPACT_ACCOUNTING","cause":"COMPLETION_NOT_CONSERVED"},
+ {"type":"INVALID_SCHEMA_IDENTITY","cause":"BLANK"},
+ {"type":"UNKNOWN_SCHEMA"},
+ {"type":"INVALID_OPERATION_IDENTITY","cause":"INVALID_FORMAT"},
+ {"type":"UNKNOWN_OPERATION"},
+ {"type":"UNEXPECTED_OPERATION","expected":"QUERY_RUN","observed":"SOURCE_READ"},
+ {"type":"UNEXPECTED_BODY","expected":["QUALIFIED"],"observed":"COMPLETE"},
+ {"type":"INVALID_EVIDENCE_GENERATION","cause":"NEGATIVE"},
+ {"type":"INVALID_PAYLOAD","role":"RESULT"},
+ {"type":"PAYLOAD_ENCODING_FAILED","role":"REJECTION"}
+]

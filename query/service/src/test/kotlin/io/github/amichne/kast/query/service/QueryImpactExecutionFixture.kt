@@ -197,7 +197,10 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
             )
             .value()
 
-    fun service(port: ValueFlowCompilerPort) =
+    fun service(
+        port: ValueFlowCompilerPort,
+        presentation: io.github.amichne.kast.query.contract.QueryPresentationExecution? = null,
+    ) =
         QueryService(
             SymbolDiscoveryOperations { error("Unexpected discovery") },
             QueryServiceTest().exactOperations { error("Unexpected exact read") },
@@ -207,6 +210,7 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
             queryTestTraversalCeiling(),
             QueryNanoClock { 0 },
             port,
+            presentation,
         )
 
     fun script(reads: List<ImpactReadExpectation>) = Script(reads)

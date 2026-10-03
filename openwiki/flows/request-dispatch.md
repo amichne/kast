@@ -66,6 +66,12 @@ code_sources:
 sources:
   - id: openwiki-source-55c5b1c6b24fca5ce9444ac5
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/ProviderFailureCode.kt
+  - id: openwiki-source-4c5e6b173c3019b41db49cec
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseAdmission.kt
+  - id: openwiki-source-2c3b08dc9c41e6f8d4b897ec
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt
+  - id: openwiki-source-14d52fd94b27c13881cd2d4d
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt
   - id: openwiki-source-7c05e12b47d08ef75636350e
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-e8970cbf92e81dc4000b50e4
@@ -78,10 +84,10 @@ sources:
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T05:39:07.082Z
+    at: 2026-10-03T08:10:55.203Z
 ---
 
 # Request dispatch
@@ -137,6 +143,13 @@ operation-specific decoders, rejects published evidence, and checks a successful
 live envelope against the requested root and admitted descriptor host. A typed host
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
+
+Private client response activity distinguishes frame admission, body draining,
+strict JSON decoding, canonical wire decoding, live-basis admission and prepared
+completion admission. The finite cause remains diagnostic data alongside the
+existing finite public rejection. Announced lengths are checked against the
+configured client limit before reading or decoding a body. The activity records
+host process and operation without payloads, paths or opaque handles.
 
 App Server reads `share/kast/provider-catalog.json` and qualifies projection version 16
 against the canonical registry, packaged operation schemas, and declared default budgets.

@@ -50,17 +50,7 @@ private constructor(
         else Refinement.Refined(step)
 
     val retainedBytes: Long
-        get() =
-            producers
-                .fold(RETAINED_STATE_BASE_BYTES) { bytes, producer ->
-                    bytes.saturatedAdd(producer.site.storageBytes()).saturatedAdd(producer.invocation.storageBytes())
-                }
-                .saturatedAdd(
-                    representationModels.fold(0L) { bytes, model -> bytes.saturatedAdd(model.storageBytes()) }
-                )
-                .saturatedAdd(boundaryModels.fold(0L) { bytes, model -> bytes.saturatedAdd(model.storageBytes()) })
-                .saturatedAdd(domain.canonical(producers.first().site.enclosing).utf8UpperBound())
-                .saturatedMultiply(8L)
+        get() = QueryImpactRetainedGraph().source(this)
 
     companion object {
         fun admit(

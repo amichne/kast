@@ -166,7 +166,22 @@ class EnteredPhase:
     type: str = 'entered'
 
 
+@dataclass(frozen=True)
+class PhaseDuration:
+    phase: str
+    durationNanos: int
+
+
 class CaptureTest(unittest.TestCase):
+    def test_traversal_and_native_intervals_remain_separate_opaque_schema6_evidence(self):
+        durations = (PhaseDuration('TRAVERSAL', 7), PhaseDuration('REFERENCE_CONFIRMATION', 11))
+        diagnostic = replace(Diagnostic(), nativePhase=EnteredPhase('TRAVERSAL'), nativePhaseDurations=durations)
+        observed = c.select_receipts((decoded(diagnostic),), 42, decoded(Reply()))
+        self.assertEqual(Correlation.MATCHED, observed.correlation)
+        self.assertEqual((), observed.uncertainty)
+        self.assertEqual(decoded(diagnostic), observed.receipts[0])
+        self.assertEqual([asdict(value) for value in durations], observed.receipts[0]['nativePhaseDurations'])
+
     def test_additive_restoration_vocabulary_preserves_schema6_receipt_and_exact_counters(self):
         for outcome in ('VALUE_SITE_SHAPES_RESTORED', 'VALUE_SITE_SHAPES_REJECTED', 'VALUE_SITE_ANCHORS_UNAVAILABLE'):
             counts = (Counter('VALUE_SITE_RESTORATIONS', 'NONE', 1), Counter(outcome, 'NONE', 1))

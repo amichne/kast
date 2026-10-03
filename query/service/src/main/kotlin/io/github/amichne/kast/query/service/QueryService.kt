@@ -29,12 +29,16 @@ class QueryService(
     private val traversalCeiling: TraversalBudget,
     private val clock: QueryNanoClock = SystemQueryNanoClock,
     private val valueFlow: io.github.amichne.kast.relation.contract.ValueFlowCompilerPort = unavailableValueFlowPort,
+    private val presentation: io.github.amichne.kast.query.contract.QueryPresentationExecution? = null,
 ) : QueryOperations {
     private val stages = QueryReadStages(discovery, exact, source)
     private val relationStage = QueryRelationStage(relations)
     private val walkStage = QueryWalkStage(traversal, traversalCeiling)
 
     override suspend fun run(request: QueryExecutionRequest): QueryExecutionResult {
+        if (presentation?.admitValuePath() is Refinement.Rejected) {
+            return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
+        }
         val checkpoint = request.checkpoint
         if (checkpoint != null && checkpoint !is PipelineCheckpoint) {
             return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
@@ -109,7 +113,7 @@ class QueryService(
             when (task) {
                 is PipelineTask.ImpactExplore -> impactTransition(impactTasks.explore(task, ::retainedBytes))
                 PipelineTask.ImpactFinalize -> impactTransition(impactTasks.finalizeInvestigation())
-                is PipelineTask.ValuePath -> emit(task.value.retainedBytes) { valuePaths += task.value }
+                is PipelineTask.ValuePath -> emitValuePath(task.value)
                 is PipelineTask.Failure -> emit(task.value.projectedUtf8Size()) { completedFailures += task.value }
                 is PipelineTask.Omission -> emit(task.value.projectedUtf8Size()) { completedOmissions += task.value }
                 is PipelineTask.WalkObservation ->
@@ -164,7 +168,8 @@ class QueryService(
                 }
             }
 
-        private fun retainedBytes(): Long = checkpoint(emittedBefore).retainedBytes
+        private fun retainedBytes(graph: io.github.amichne.kast.query.contract.QueryImpactRetainedGraph): Long =
+            checkpoint(emittedBefore).retainedBytes(graph)
 
         private fun discovered(
             result: DiscoveryExecution,
@@ -237,6 +242,21 @@ class QueryService(
             return false
         }
 
+        private fun emitValuePath(path: io.github.amichne.kast.query.contract.QueryImpactPath): Boolean =
+            when (
+                val admitted =
+                    admitValuePathOutput(presentation, { emit(path.retainedBytes) { valuePaths += path } }) {
+                        valuePaths += path
+                        tasks.removeFirst()
+                    }
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> {
+                    rejection = QueryExecutionResult.Rejected(admitted.failure)
+                    false
+                }
+            }
+
         private fun emit(bytes: Long, append: () -> Unit): Boolean {
             if (!state.consumeOutput(bytes)) {
                 if (bytes > request.budget.returnedBytes.value) terminal = QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
@@ -267,7 +287,7 @@ class QueryService(
                     tasks.removeFirst()
                     true
                 }
-                is ExactQueryStage.Where -> where(task, stage)
+                is ExactQueryStage.Where -> stages.where(task, stage, state, tasks)
                 is ExactQueryStage.Concat -> {
                     tasks.removeFirst()
                     tasks.addFirst(task.copy(stage = stage.next))
@@ -285,25 +305,6 @@ class QueryService(
                     tasks.addFirst(PipelineTask.Walk(task.value, stage, null))
                     true
                 }
-            }
-
-        private suspend fun where(task: PipelineTask.Symbol, stage: ExactQueryStage.Where): Boolean =
-            when (val predicate = stage.predicate) {
-                is io.github.amichne.kast.query.contract.QueryPredicate.Primitive -> {
-                    tasks.removeFirst()
-                    if (stages.matchesPrimitive(task.value, predicate)) tasks.addFirst(task.copy(stage = stage.next))
-                    true
-                }
-                is io.github.amichne.kast.query.contract.QueryPredicate.Visibility ->
-                    when (val admitted = state.sourceResources()) {
-                        is Refinement.Rejected -> false
-                        is Refinement.Refined -> {
-                            val values = stages.whereVisibility(task.value, predicate, state, admitted.value)
-                            tasks.removeFirst()
-                            values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
-                            true
-                        }
-                    }
             }
 
         private suspend fun related(task: PipelineTask.Related): Boolean =

@@ -80,8 +80,12 @@ code_sources:
 sources:
   - id: openwiki-source-25796dce45aaa5a543a07570
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
+  - id: openwiki-source-ceaa6e4a1cc8af84eede173b
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
+  - id: openwiki-source-a0bad9b6f38ff3fd5d037242
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactCapacity.kt
   - id: openwiki-source-61fafb2f3dea54cb612abc88
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactObservedArrivals.kt
   - id: openwiki-source-02892939c89f7aefe94224ab
@@ -90,10 +94,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T04:45:37.704Z
+    at: 2026-10-03T08:10:55.203Z
 ---
 
 # Semantic query
@@ -236,3 +240,11 @@ counts are separate from public calls and semantic result cardinality.
 An admitted impact plan enters the existing pipeline as exact producer routes. `QueryImpactTasks` caches each detached native value-flow read by its exact site, queues every compiler and reviewed model arrival separately, and records rejected reads, unsupported flow, explicit scope exits, cycles and capacity cuts as typed path terminals. Native observations establish compiler transfers; reviewed models supply representation or boundary meaning. Neither the ledger nor presentation creates missing semantic facts.
 
 The existing checkpoint retains these tasks, reads and paths. Finalization validates seed and branch conservation before producing value-path rows. The closure requires every required obligation to be discharged; finishing task execution alone does not permit complete semantic proof. Retained witness sections derive from that same immutable ledger and existing query-state lifetime. Changing epoch requires fresh recipe admission rather than revival of old handles.
+
+Impact checkpoint admission shares one request-local storage visitor across the
+actual plan, tasks, routes, reads, paths and ledger. It charges incoming references
+and collection cells, counts shared immutable payloads once by JVM identity, and
+counts equal detached copies separately. Prospective expansion reserves new route
+wrappers and prefixes before scheduling. This is conservative quota arithmetic,
+not heap measurement or semantic deduplication; the existing quotas and safety
+factors remain. Ordinary pipeline accounting retains its existing policy.

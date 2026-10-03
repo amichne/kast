@@ -165,22 +165,34 @@ code_sources:
 sources:
   - id: openwiki-source-57bcbe3766714342dda0682a
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt
+  - id: openwiki-source-c14bf8abf46d0827988ea4e4
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseCause.kt
+  - id: openwiki-source-2c3b08dc9c41e6f8d4b897ec
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt
+  - id: openwiki-source-14d52fd94b27c13881cd2d4d
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt
   - id: openwiki-source-7c05e12b47d08ef75636350e
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-235a629b1cad4fc91515f118
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+  - id: openwiki-source-47b84d48b89b57b3b1609484
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt
+  - id: openwiki-source-711e20b0c3995766bf099120
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-9ddb39fa2f594fe2e1edaa19
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
+  - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T04:45:37.704Z
+    at: 2026-10-03T08:10:55.203Z
 ---
 
 # Existing-IDE semantic query
@@ -298,6 +310,13 @@ generation; live traversal roots must match the enclosing root. Both encoding an
 decoding reject contradictory evidence before CLI projection.
 It rejects a publication envelope on this path. Typed host rejection remains
 available when admission fails before operation authority exists.
+
+The private existing-IDE response activity records the announced frame size and
+configured limit, body drain outcome, and finite decoding/admission stage and
+cause. An over-limit frame is rejected before body reading or decoding. These
+bounded stderr records retain the host process and operation, without recording
+payloads, paths, anchors or references; they explain transport outcomes without
+creating semantic evidence.
 
 The [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the installed plugin and final default-route CLI matrix on IDEA
@@ -718,3 +737,15 @@ remain separate admission requirements.
 The existing hosted query composition supplies native producer-seed proof and value-flow ports to `CanonicalQueryProtocol` and `QueryService`. The admitted project's authority, query state and publication session remain the owners. Exact source anchors, callable identities and reviewed model positions are revalidated before impact execution; no new endpoint or semantic engine is introduced.
 
 Value flow emits detached sites, compiler transfers and named unsupported obligations inside the existing read lifetime. Native source binding and model binding are separately measured. Retained impact witness presentation reads the original ledger; zero-initialized value-flow counters make measured absence of provider work explicit. These counters are runtime observations, separate from compiler and model evidence.
+
+Hosted value-path byte admission uses a scoped capability that pairs query
+evaluation with the existing encoded-envelope fitter. The capability expires
+when evaluation ends, before fitting begins, and is never retained in a plan or
+checkpoint. Standalone service execution keeps its conservative byte admission;
+hosted execution still applies result, work, time and retained-storage limits.
+
+Hosted traversal uses the existing traversal engine and relation port. Its
+`TRAVERSAL` phase records exclusive coordination intervals, including service
+overhead without another phase. Native inventory and confirmation keep their own
+intervals, and relation return restores the traversal phase. This is neither an
+inclusive traversal span nor CPU time.

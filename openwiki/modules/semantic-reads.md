@@ -150,18 +150,24 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt
   - id: openwiki-source-b8e3c573182d699252496925
     resource: repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt
+  - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
+  - id: openwiki-source-5ea9f19dac1745ee97dffee2
+    resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
   - id: openwiki-source-ca4cb79efb8948231564ac6f
     resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+  - id: openwiki-source-76dc60162dca56e35a6ed9ac
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-03T06:44:24.507Z" }
+generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T06:44:24.507Z
+    at: 2026-10-03T08:10:55.203Z
 ---
 
 # Semantic read domains
@@ -569,3 +575,9 @@ declaration names, opaque handles or compiler objects. These diagnostics expose
 effect entry and outcomes; they do not establish compiler identity, branch
 conservation or complete investigation coverage. Installed qualification still
 requires the exact candidate, current semantic basis and native observations.
+
+The hosted traversal observation adapter adds `TRAVERSAL` to the existing phase
+owner. It records exclusive coordination intervals and restores that phase after
+native relation reads. Native inventory and compiler confirmation keep their own
+intervals and authority. The adapter preserves the existing traversal plan,
+relation requests and outcomes; phase timing grants no semantic coverage.

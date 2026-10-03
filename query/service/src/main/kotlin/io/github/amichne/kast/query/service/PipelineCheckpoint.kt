@@ -6,6 +6,7 @@ import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryJoinMode
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
@@ -42,10 +43,13 @@ internal data class PipelineCheckpoint(
     val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
     val impact: QueryImpactSnapshot? = null,
 ) : QueryCheckpoint {
-    override val retainedBytes: Long =
+    override val retainedBytes: Long
+        get() = retainedBytes(QueryImpactRetainedGraph())
+
+    fun retainedBytes(graph: QueryImpactRetainedGraph): Long =
         saturatedAdd(
-            (initialTasks(plan) + tasks).fold(0L) { total, task ->
-                saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes()))
+            (if (plan is AdmittedQueryPlan.Impact) tasks else initialTasks(plan) + tasks).fold(0L) { total, task ->
+                saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes(graph)))
             },
             saturatedAdd(
                 identityRows.values.fold(0L) { total, rows ->
@@ -54,18 +58,18 @@ internal data class PipelineCheckpoint(
                     }
                 },
                 saturatedAdd(
-                    saturatedAdd(plan.retainedInputBytes(), impact?.retainedBytes ?: 0L),
+                    saturatedAdd(plan.retainedInputBytes(graph), impact?.retainedBytes(graph) ?: 0L),
                     QueryJoins(joinState).retainedBytes(),
                 ),
             ),
         )
 }
 
-private fun PipelineTask.retainedBytes(): Long =
+private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
     when (this) {
-        is PipelineTask.ImpactExplore -> route.retainedBytes
+        is PipelineTask.ImpactExplore -> route.retainedBytes(graph)
         PipelineTask.ImpactFinalize -> TASK_OVERHEAD_BYTES
-        is PipelineTask.ValuePath -> value.retainedBytes
+        is PipelineTask.ValuePath -> graph.path(value)
         is PipelineTask.Failure -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Omission -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.RelationObservation -> value.retainedBytes
@@ -309,8 +313,8 @@ private fun ExactQueryStage.retainedInputs(): List<QueryRetainedResult> =
         is ExactQueryStage.Emit -> emptyList()
     }
 
-private fun AdmittedQueryPlan.retainedInputBytes(): Long =
-    retainedInputs().fold((this as? AdmittedQueryPlan.Impact)?.source?.retainedBytes ?: 0L) { size, result ->
+private fun AdmittedQueryPlan.retainedInputBytes(graph: QueryImpactRetainedGraph): Long =
+    retainedInputs().fold((this as? AdmittedQueryPlan.Impact)?.source?.let(graph::source) ?: 0L) { size, result ->
         saturatedAdd(size, result.retainedBytes)
     }
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f71d886e74c1c6a2f04624a0e7880bc1b8b6591db8bc05b82c6c48c7459bb0ed",
+  "pageVersion": "sha256:8e3920cc792cdebc306333400a6b7aa144e3e816e6bd4c5aab7299dd59763165",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -27,8 +27,8 @@
       "statement": "Pipeline checkpoints preserve ordered detached work and observations, including failure, omission, discovery, revalidation, set, distinct, and join tasks.",
       "evidence": [
         {
-          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt#L35-L113",
-          "version": "repo-lines-v1:sha256:d3dae66dd89e024a099eff24cdd5327b0f180073f04069d2d80637c0256664d3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1NTc5YjBhNDk0Nzg2ZTI2NDljODA0NDhmZDg3YWJmNDQyNGFkZGEwNDAxZDllOTBkODJjZjZhMzA1Nzg0ODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNzZjYTFiYjBlM2YwMjhhZDFkZTA2ZmZmYzllYTM4N2JjZjk3MzczOGU1Y2ZlNzdhMDg1NDRiZmQ3ZjExNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0YzRlOTY5ZDFlYWJhYTczZDhhODljNDgwYTM4ZWQ4ODliMThlM2FmZGZhZWNkODZhMTI3YTI5ZWEzYmJiMWYifQ"
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
+          "version": "repo-file-v1:sha256:b54dd6c0a274aa68280608e30ba8995a5f40535db3f8d3d03e637077e0f559fa"
         }
       ]
     },
@@ -42,17 +42,35 @@
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactSnapshot.kt",
-          "version": "repo-file-v1:sha256:9764fe438d0c136f7f6dda575ad9cb6f525a8b2052448d2f96bcc5666838f6cd"
+          "version": "repo-file-v1:sha256:cf45629758a131a08cd530ae25a9aa7a4b750ffae84ea9a08b63d9e9c3f69242"
         },
         {
-          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt#L68-L131",
-          "version": "repo-lines-v1:sha256:c667d80ea62a4a75b8cf65d83f537dc0f27efe7d7e360d8441c573a3b4003139:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5ODZjYzQ2NmVhNmYyMTQ5ZGNiYTI3NDU5YWI4MDQ0NTU5MDYzMDAyNjNmZGJlMGExZjhkZGUyNjUyMDU4OWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwMTc2Y2Y2MGFlYTQxNjk5ZTYyZGQwZGM3MGRmZDUzMzA3NDdjMmMzMjYwYzMwOTI4ZmRjYjBiODg5ZGViNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4OTlmM2QwMGRkMDNhNTZmY2Q0MGRiNWY1MmUzYTczNzhlM2E2MWZkZmQ1MDk2YjdkZWVlNWE5MTU1Y2E2ZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkM2UzM2U4M2MzNzBkODcxZTU4OTM0ODRjMGViYzdkMjQ0NGRlMDU1YzdiMzA1NjM2ZjFiNmVmOTQwZWQwOWUifQ"
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
+          "version": "repo-file-v1:sha256:d29fd2b02e5d15474848fc7c79a952554569b31034cb1eb282cfeaa0aa756ada"
+        }
+      ]
+    },
+    {
+      "id": "claim_40f794eeea9347739f4011436356ab92",
+      "statement": "Impact checkpoint quota arithmetic shares a request-local JVM-identity visitor across retained evidence and reserves prospective route storage without changing quotas or semantic identity.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
+          "version": "repo-file-v1:sha256:0c6e3d30228fe7c1502982604a4e120f2589713bca9e514de87e2da024718dac"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
+          "version": "repo-file-v1:sha256:b54dd6c0a274aa68280608e30ba8995a5f40535db3f8d3d03e637077e0f559fa"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactCapacity.kt",
+          "version": "repo-file-v1:sha256:f501f4f2638fee23e1dc6ce303c3289d09e0a0b566c05fab77b1320bf37b80a8"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T04:45:37.704Z"
+    "at": "2026-10-03T08:10:55.203Z"
   }
 }

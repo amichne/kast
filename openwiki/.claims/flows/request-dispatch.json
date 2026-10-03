@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:26418fb1c0885868351f751fc8ece2dca7b76cddfc6c819af4595e09f83aeb37",
+  "pageVersion": "sha256:22b323d2168045a40d554c8538b1be1e94565b8bdc5691a8435b10466f94cb71",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -32,7 +32,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
+          "version": "repo-file-v1:sha256:765b717ab5737a4fc9326ffa1555ba7f9bfa9d480cc2d5b3ae0a2031176eed9d"
         }
       ]
     },
@@ -42,7 +42,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
+          "version": "repo-file-v1:sha256:765b717ab5737a4fc9326ffa1555ba7f9bfa9d480cc2d5b3ae0a2031176eed9d"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
@@ -63,10 +63,28 @@
           "version": "repo-lines-v1:sha256:c377a261740512a32b5164ad4298e08a0d4e712010a30e0f133cbb1c3cce3c03:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhYzNhYTAwOWQzNzUzMjZiYmVkN2MzOTc3ZTI2MmY0MTljNTQ1ZjQ2YmUxYTdjZGVhNmIzYWFjZDYxZjY5OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3NGY2ZmUzYzM2ZTVhZGM0Y2EwODRlMWJhOGE5YTgxYTY0OWU1ZjA2NGUxYmI3ODJiMjg0YjdjYjdmNTdjNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2OWJlNTUyNGI3MTBiZDQ5YThjMTAzMzYyYTQ1ODAwZDM5MTQwNTZkNmU3NTdlNTRlZGZiNDM3YThjODVmZDQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_94a73b3385e448fbb2429d1da6274423",
+      "statement": "The existing-IDE client emits bounded private response activity for frame, body, strict JSON, canonical wire, live-basis and prepared-completion admission while preserving existing finite public rejections.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseAdmission.kt",
+          "version": "repo-file-v1:sha256:0320736139cbf7b23db460ae1240ee1d80d4d4b47a3b67569aa31318b0c0d0cf"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
+          "version": "repo-file-v1:sha256:4d0894be4bea8b658b8f223fc61e6e5c99315d6132b8cd5217cb60a096a92c73"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
+          "version": "repo-file-v1:sha256:13a2782a9244e0d4c863d2cbb468e17a9cdc5969e6c0fa1a8b6e9f4c0e486542"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T05:39:07.082Z"
+    "at": "2026-10-03T08:10:55.203Z"
   }
 }

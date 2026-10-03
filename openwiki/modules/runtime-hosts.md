@@ -144,6 +144,12 @@ code_sources:
 sources:
   - id: openwiki-source-4497996830a7e09fc6368cb3
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt
+  - id: openwiki-source-c14bf8abf46d0827988ea4e4
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseCause.kt
+  - id: openwiki-source-2c3b08dc9c41e6f8d4b897ec
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt
+  - id: openwiki-source-14d52fd94b27c13881cd2d4d
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt
   - id: openwiki-source-7c05e12b47d08ef75636350e
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-e0ba61e5e6f650bc7c5673a6
@@ -180,14 +186,18 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - id: openwiki-source-dc64f3c714e0e7abfefc0f56
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
+  - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
-generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+  - id: openwiki-source-73144b588342a1cc6d17731e
+    resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
+generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T05:14:41.058Z
+    at: 2026-10-03T08:10:55.203Z
 ---
 
 # Runtime and process hosts
@@ -439,3 +449,14 @@ bounded without including paths, process identities or payloads.
 The hosted service factory now supplies the K2 value-flow adapter, exact producer seeds, callable model revalidation and boundary-site revalidation from the same admitted project, source model and observation capability. Successful native acquisition contributes measured work and time to the shared request accounting; model interpretation remains outside the compiler adapter.
 
 Each semantic diagnostic receipt initializes seed-read, declaration-model, boundary-site-model and value-flow provider counters to zero before observations. Retained-page captures can therefore distinguish an observed zero from an unavailable counter. These bounded, host/epoch-correlated runtime measurements do not grant compiler, model or completion authority.
+
+The existing client response boundary emits private typed frame, body and
+admission activity. Frame bounds precede body acquisition; finite canonical-wire,
+live-basis and completion causes survive in diagnostic evidence beside the
+existing public failure. No response payload or opaque identity is logged.
+
+Hosted traversal retains the existing traversal service and relation authority.
+Its observation adapter enters `TRAVERSAL` around coordination and restores it
+after relation reads. The shared diagnostic clock records exclusive phase
+intervals, leaving native inventory and confirmation in their own phases; these
+intervals are not inclusive traversal duration or CPU measurements.

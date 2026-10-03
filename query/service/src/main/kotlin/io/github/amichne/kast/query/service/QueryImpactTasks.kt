@@ -8,6 +8,7 @@ import io.github.amichne.kast.query.contract.QueryImpactExecutionStop
 import io.github.amichne.kast.query.contract.QueryImpactLedger
 import io.github.amichne.kast.query.contract.QueryImpactPath
 import io.github.amichne.kast.query.contract.QueryImpactReadRejection
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactScopeExclusion
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryRows
@@ -57,7 +58,10 @@ internal class QueryImpactTasks(
         }
     }
 
-    suspend fun explore(task: PipelineTask.ImpactExplore, retainedBytes: () -> Long): QueryImpactTaskTransition {
+    suspend fun explore(
+        task: PipelineTask.ImpactExplore,
+        retainedBytes: (QueryImpactRetainedGraph) -> Long,
+    ): QueryImpactTaskTransition {
         if (!state.canProcessImpact()) return QueryImpactTaskTransition.NotStarted
         val route = task.route
         val cycle = QueryImpactExecutionStop.Cycle.admit(route.producer, route.steps)
@@ -128,9 +132,9 @@ internal class QueryImpactTasks(
     private fun observed(
         route: QueryImpactRoute,
         observation: ValueFlowStep,
-        retainedBytes: () -> Long,
+        retainedBytes: (QueryImpactRetainedGraph) -> Long,
     ): QueryImpactTaskTransition {
-        val required = requiredImpactExpansionBytes(route, observation, source, retainedBytes())
+        val required = requiredImpactExpansionBytes(route, observation, source, retainedBytes)
         if (required > request.budget.checkpointBytes.value) {
             val cutoff = impactCapacityStop(route, required, request.budget.checkpointBytes.value)
             return finishRoute(route, QueryImpactTerminal.Unresolved.ExecutionStop(cutoff))
@@ -169,12 +173,16 @@ internal class QueryImpactTasks(
         if (path !in paths) paths += path
     }
 
-    private suspend fun acquireRead(route: QueryImpactRoute, retainedBytes: () -> Long): QueryImpactReadAcquisition {
+    private suspend fun acquireRead(
+        route: QueryImpactRoute,
+        retainedBytes: (QueryImpactRetainedGraph) -> Long,
+    ): QueryImpactReadAcquisition {
         val cached = reads[route.site]
         if (cached != null) return QueryImpactReadAcquisition.Ready(cached)
-        val current = retainedBytes()
+        val graph = QueryImpactRetainedGraph()
+        val current = retainedBytes(graph)
         val remaining = (request.budget.checkpointBytes.value - current).coerceAtLeast(0L)
-        val itemBytes = saturatedAdd(route.retainedBytes, saturatedAdd(route.site.retainedBytes, 4096L))
+        val itemBytes = saturatedAdd(route.retainedBytes(graph), saturatedAdd(graph.site(route.site), 4096L))
         val reserve = saturatedAdd(itemBytes, itemBytes)
         if (remaining < reserve)
             return QueryImpactReadAcquisition.Cutoff(
