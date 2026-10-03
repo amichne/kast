@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.ImpactWitnessItemDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.query.contract.QueryImpactProducerEvidence
 import io.github.amichne.kast.query.contract.QueryImpactWitnessEntry
 import io.github.amichne.kast.query.contract.QueryImpactWitnessSection
@@ -15,6 +16,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 
 internal fun ImpactWitnessSectionDocument.witnessSection(): QueryImpactWitnessSection =
     when (this) {
+        ImpactWitnessSectionDocument.FINDINGS -> QueryImpactWitnessSection.FINDINGS
         ImpactWitnessSectionDocument.PRODUCERS -> QueryImpactWitnessSection.PRODUCERS
         ImpactWitnessSectionDocument.MODELS -> QueryImpactWitnessSection.MODELS
         ImpactWitnessSectionDocument.NATIVE_READS -> QueryImpactWitnessSection.NATIVE_READS
@@ -23,17 +25,23 @@ internal fun ImpactWitnessSectionDocument.witnessSection(): QueryImpactWitnessSe
 
 internal fun QueryImpactWitnessSection.witnessDocument(): ImpactWitnessSectionDocument =
     when (this) {
+        QueryImpactWitnessSection.FINDINGS -> ImpactWitnessSectionDocument.FINDINGS
         QueryImpactWitnessSection.PRODUCERS -> ImpactWitnessSectionDocument.PRODUCERS
         QueryImpactWitnessSection.MODELS -> ImpactWitnessSectionDocument.MODELS
         QueryImpactWitnessSection.NATIVE_READS -> ImpactWitnessSectionDocument.NATIVE_READS
         QueryImpactWitnessSection.READ_REJECTIONS -> ImpactWitnessSectionDocument.READ_REJECTIONS
     }
 
-internal fun QueryRows.ImpactWitness.projectWitnessItems(): QueryProjection<QueryResultItemDocument> {
+internal fun QueryRows.ImpactWitness.projectWitnessItems(
+    originalRowIds: List<QueryResultRowReference>? = null
+): QueryProjection<QueryResultItemDocument> {
+    if (view.section == QueryImpactWitnessSection.FINDINGS && !hasOriginalFindingLinks(originalRowIds))
+        return QueryProjection.Rejected
     val result = mutableListOf<QueryResultItemDocument>()
-    for (record in values) {
+    for ((index, record) in values.withIndex()) {
+        val document = record.evidence.impactDocument(originalRowIds?.getOrNull(index))
         val projected =
-            count(record.ordinal.value).impactZip(record.evidence.impactDocument()).impactMap { (ordinal, witness) ->
+            count(record.ordinal.value).impactZip(document).impactMap { (ordinal, witness) ->
                 QueryResultItemDocument.ImpactWitness(
                     ImpactWitnessItemDocument(view.section.witnessDocument(), ordinal, witness)
                 )
@@ -46,8 +54,24 @@ internal fun QueryRows.ImpactWitness.projectWitnessItems(): QueryProjection<Quer
     return QueryProjection.Projected(result)
 }
 
-private fun QueryImpactWitnessEntry.impactDocument(): ImpactProjected<ImpactWitnessDocument> =
+private fun QueryRows.ImpactWitness.hasOriginalFindingLinks(rowIds: List<QueryResultRowReference>?): Boolean {
+    if (rowIds == null || rowIds.size != values.size) return false
+    return values.withIndex().all { (index, record) ->
+        val evidence = record.evidence
+        evidence is QueryImpactWitnessEntry.Finding &&
+            record.ordinal.value == view.firstOrdinal.value + index &&
+            evidence.finding.pathOrdinal.value == record.ordinal.value &&
+            evidence.finding.path === view.ledger.paths[record.ordinal.value]
+    }
+}
+
+private fun QueryImpactWitnessEntry.impactDocument(
+    originalRowId: QueryResultRowReference?
+): ImpactProjected<ImpactWitnessDocument> =
     when (this) {
+        is QueryImpactWitnessEntry.Finding ->
+            if (originalRowId == null) Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
+            else finding.findingDocument(originalRowId).impactMap(ImpactWitnessDocument::Finding)
         is QueryImpactWitnessEntry.Producer ->
             when (val producer = evidence) {
                 is QueryImpactProducerEvidence.Invocation ->

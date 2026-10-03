@@ -4624,7 +4624,8 @@
         "PRODUCERS",
         "MODELS",
         "NATIVE_READS",
-        "READ_REJECTIONS"
+        "READ_REJECTIONS",
+        "FINDINGS"
       ],
       "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument"
     },
@@ -4647,7 +4648,7 @@
         "section"
       ],
       "additionalProperties": false,
-      "description": "Page retained producer, model, native-read, or rejected-read evidence through READ_RESULT. This output presents the existing investigation without reexecuting semantic reads."
+      "description": "Page retained producer, model, native-read, rejected-read, or compact finding evidence through READ_RESULT. Each finding links to its original VALUE_PATHS row by ordinal and row ID. This output preserves qualifications and presents the existing investigation without reexecuting semantic reads."
     },
     "ExpansionScope": {
       "anyOf": [
@@ -5189,6 +5190,19 @@
               "output": {
                 "type": "IMPACT_WITNESS",
                 "section": "PRODUCERS"
+              }
+            }
+          }
+        },
+        "readImpactFindings": {
+          "summary": "Read compact findings for an illustrative retained investigation. Each finding preserves its terminal qualification and links to the exact original VALUE_PATHS row; expand that row using its path ordinal as the presentation cursor and executionBudget.maxResults 1.",
+          "value": {
+            "request": {
+              "type": "READ_RESULT",
+              "result": "result:v1:00000000-0000-4000-8000-000000000001",
+              "output": {
+                "type": "IMPACT_WITNESS",
+                "section": "FINDINGS"
               }
             }
           }

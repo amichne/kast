@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.QueryRetainedPresentationWindow
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCoverage
+import io.github.amichne.kast.query.contract.QueryImpactWitnessSection
 import io.github.amichne.kast.query.contract.QueryImpactWitnessView
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryResult
@@ -109,6 +110,8 @@ private constructor(
                         QueryResultCursor.parse(count.value).refinedForQueryOrNull() ?: return contractRejected(),
                     )
                     .refinedForQueryOrNull() ?: return contractRejected()
+            val rowIds =
+                originalWitnessRowIds(restored, retained, view).refinedForQueryOrNull() ?: return contractRejected()
             val coverage = witnessCoverage(retained).refinedForQueryOrNull() ?: return contractRejected()
             val result = witnessResult(retained, view)
             return Refinement.Refined(
@@ -117,10 +120,21 @@ private constructor(
                     coverage,
                     retained.producerProgress
                         ?: QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
-                    emptyList(),
+                    rowIds,
                     window,
                 )
             )
+        }
+
+        private fun originalWitnessRowIds(
+            restored: QueryResultRestoration.Restored,
+            retained: QueryRetainedResult.ValuePaths,
+            view: QueryImpactWitnessView,
+        ): Refinement<List<QueryResultRowReference>, QueryExecutionRejectionDocument> {
+            if (view.section != QueryImpactWitnessSection.FINDINGS) return Refinement.Refined(emptyList())
+            if (restored.rowIds.size != view.ledger.paths.size || retained.valuePaths != view.ledger.paths)
+                return contractRejected()
+            return Refinement.Refined(restored.rowIds.subList(view.firstOrdinal.value, view.nextOrdinal.value))
         }
 
         private fun witnessCoverage(

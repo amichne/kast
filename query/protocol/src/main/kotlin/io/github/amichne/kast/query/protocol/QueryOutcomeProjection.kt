@@ -116,7 +116,7 @@ internal class QueryOutcomeProjection(
         publicationOwner: QueryExecutionClaim? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val evidence =
-            when (val projected = QueryProjectedEvidence.from(result, output, authority)) {
+            when (val projected = QueryProjectedEvidence.from(result, output, authority, presentedRowIds)) {
                 is Refinement.Refined -> projected.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
             }

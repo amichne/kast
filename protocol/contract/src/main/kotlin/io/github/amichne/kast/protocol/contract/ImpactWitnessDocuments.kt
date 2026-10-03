@@ -12,6 +12,7 @@ enum class ImpactWitnessSectionDocument {
     MODELS,
     NATIVE_READS,
     READ_REJECTIONS,
+    FINDINGS,
 }
 
 /** Stable ordinal within one section of the original immutable retained investigation. */
@@ -25,6 +26,8 @@ data class ImpactWitnessItemDocument(
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactWitnessDocument {
+    @Serializable @SerialName("FINDING") data class Finding(val finding: ImpactFindingDocument) : ImpactWitnessDocument
+
     @Serializable
     @SerialName("PRODUCER_SITE_ONLY")
     data class ProducerSiteOnly(val site: ImpactValueSiteReferenceDocument) : ImpactWitnessDocument
@@ -79,6 +82,130 @@ sealed interface ImpactWitnessDocument {
     @Serializable
     @SerialName("READ_REJECTION")
     data class ReadRejection(val rejection: ImpactReadRejectionDocument) : ImpactWitnessDocument
+}
+
+/** Compact projection of an original retained path; its reference expands the unchanged full evidence. */
+@Serializable
+data class ImpactFindingDocument(
+    val path: ImpactFindingEvidenceReferenceDocument,
+    val producer: ImpactValueSiteReferenceDocument,
+    val destination: ImpactValueSiteReferenceDocument,
+    val representation: ImpactFindingRepresentationDocument,
+    val terminal: ImpactFindingTerminalDocument,
+    val boundaryObligations: BoundedProtocolList<ImpactBoundaryObligationDocument>,
+)
+
+@Serializable
+data class ImpactFindingEvidenceReferenceDocument(
+    val pathOrdinal: QueryDiscoveryCountDocument,
+    val pathRowId: QueryResultRowReference,
+)
+
+@Serializable
+data class ImpactFindingBranchDocument(
+    val current: ImpactRepresentationCurrentDocument,
+    val provenance: BoundedProtocolList<ImpactFindingProvenanceDocument>,
+)
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactFindingRepresentationDocument {
+    @Serializable @SerialName("NOT_MODELED") data object NotModeled : ImpactFindingRepresentationDocument
+
+    @Serializable
+    @SerialName("PRESENT")
+    data class Present(val branches: BoundedProtocolList<ImpactFindingBranchDocument>) :
+        ImpactFindingRepresentationDocument
+}
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactFindingProvenanceDocument {
+    @Serializable
+    @SerialName("ORIGIN")
+    data class Origin(val reference: ImpactRuleReferenceDocument, val state: ImpactRepresentationStateDocument) :
+        ImpactFindingProvenanceDocument
+
+    @Serializable
+    @SerialName("MODELED_TRANSFER")
+    data class ModeledTransfer(val reference: ImpactRuleReferenceDocument) : ImpactFindingProvenanceDocument
+
+    @Serializable
+    @SerialName("MODELED_TRANSFORMATION")
+    data class ModeledTransformation(val reference: ImpactRuleReferenceDocument) : ImpactFindingProvenanceDocument
+
+    @Serializable
+    @SerialName("BOUNDARY_MODEL")
+    data class BoundaryModel(val reference: ImpactRuleReferenceDocument) : ImpactFindingProvenanceDocument
+
+    @Serializable @SerialName("UNMODELED") data object Unmodeled : ImpactFindingProvenanceDocument
+}
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactFindingTerminalDocument {
+    @Serializable
+    @SerialName("CONSUMER")
+    data class Consumer(
+        val reference: ImpactRuleReferenceDocument,
+        val expectedState: ImpactRepresentationStateDocument,
+        val outcome: ImpactConsumerOutcomeDocument,
+    ) : ImpactFindingTerminalDocument
+
+    @Serializable
+    @SerialName("MODELED_TERMINAL")
+    data class ModeledTerminal(
+        val reference: ImpactRuleReferenceDocument,
+        val source: ImpactBoundaryPositionDocument,
+        val meaning: ImpactBoundaryTerminalDocument,
+        val obligations: BoundedProtocolList<ImpactBoundaryObligationDocument>,
+    ) : ImpactFindingTerminalDocument
+
+    @Serializable
+    @SerialName("UNRESOLVED_FLOW")
+    data class UnresolvedFlow(val cause: ImpactFlowUnsupportedDocument) : ImpactFindingTerminalDocument
+
+    @Serializable
+    @SerialName("UNRESOLVED_READ")
+    data class UnresolvedRead(val rejection: ImpactReadRejectionDocument) : ImpactFindingTerminalDocument
+
+    @Serializable
+    @SerialName("UNRESOLVED_BOUNDARY")
+    data class UnresolvedBoundary(
+        val source: ImpactBoundaryPositionDocument,
+        val reason: ImpactBoundaryUnresolvedDocument,
+        val obligation: ImpactBoundaryObligationDocument,
+    ) : ImpactFindingTerminalDocument
+
+    @Serializable
+    @SerialName("EXECUTION_STOP")
+    data class ExecutionStop(val stop: ImpactFindingExecutionStopDocument) : ImpactFindingTerminalDocument
+
+    @Serializable
+    @SerialName("SUPPORTED_DOMAIN_END")
+    data class SupportedDomainEnd(val observation: ImpactFlowEndObservationDocument) : ImpactFindingTerminalDocument
+
+    @Serializable
+    @SerialName("EXPLICIT_SCOPE_EXCLUSION")
+    data class ExplicitScopeExclusion(
+        val domain: QueryRelationDomainDocument,
+        val cause: ImpactScopeExclusionDocument,
+    ) : ImpactFindingTerminalDocument
+}
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactFindingExecutionStopDocument {
+    @Serializable
+    @SerialName("CYCLE")
+    data class Cycle(val repeatedAt: QueryDiscoveryCountDocument) : ImpactFindingExecutionStopDocument
+
+    @Serializable
+    @SerialName("CHECKPOINT_CAPACITY")
+    data class CheckpointCapacity(
+        val requiredBytes: QueryDiscoveryCountDocument,
+        val availableBytes: QueryDiscoveryCountDocument,
+    ) : ImpactFindingExecutionStopDocument
 }
 
 @Serializable

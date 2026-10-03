@@ -38,7 +38,7 @@ icon: "book-open"
 
     Present stored rows without evaluating the query again. Omitted output reads retained symbols. Choose `OCCURRENCES`, `TRAVERSAL_RECORDS`, `BINDING_ROWS`, or `VALUE_PATHS` for the matching retained row type. Kast rejects an output that does not match the retained row type. A presentation cursor is not an execution continuation.
 
-    For a retained impact investigation, `output: {"type":"IMPACT_WITNESS","section":"PRODUCERS"}` reads its producer evidence. The other sections are `MODELS`, `NATIVE_READS`, and `READ_REJECTIONS`. Use `READ_RESULT` with the issued result reference and optional `cursor`; witness output is unavailable on `RUN`.
+    For a retained impact investigation, `output: {"type":"IMPACT_WITNESS","section":"PRODUCERS"}` reads its producer evidence. The other sections are `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, and `FINDINGS`. Use `READ_RESULT` with the issued result reference and optional `cursor`; witness output is unavailable on `RUN`.
   </Tab>
 </Tabs>
 
@@ -67,6 +67,8 @@ Discovery accepts a directory or package scope. Without a scope override, it sea
 Set `flow` to `KOTLIN_FORWARD_V1`, choose the expansion `domain`, and supply the reviewed representation or boundary rules in `models`. Use `declarations` to pair each modeled callable's issued reference with its identity claim for fresh revalidation. Native checks establish invocation and site identity; the supplied model defines representation and boundary meaning. An explicit `models: []` supplies no model rules.
 
 Run an impact source with no transformation steps and `output: {"type":"VALUE_PATHS"}`. Add `retention: "RETAIN"` to inspect its paths and witnesses later. Unsupported transfers, rejected native reads, and unresolved obligations retain their qualifications. See the [generated request schema and examples](/reference/schemas#raw-json-schema) for the complete model forms.
+
+Read `IMPACT_WITNESS` with section `FINDINGS` for one compact row per original path. Each row retains the producer, destination, current representation, model provenance, terminal outcome, and boundary obligations. Its `path` contains `pathOrdinal` and `pathRowId`. To expand the original evidence, read the same result with `VALUE_PATHS`, set `cursor` to the path ordinal, and set `executionBudget.maxResults` to `1`; the expanded row has that same row ID. Paging findings preserves the original investigation’s unresolved obligations and performs no semantic reads. A compact finding is a presentation of retained evidence; it supplies no new compiler or model fact.
 
 ## Apply only the steps you need
 

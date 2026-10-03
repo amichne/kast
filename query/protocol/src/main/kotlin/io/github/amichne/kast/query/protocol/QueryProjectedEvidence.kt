@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationReferenceOccurrenceDocument
@@ -29,9 +30,10 @@ internal data class QueryProjectedEvidence(
             result: QueryResult,
             output: QueryOutputDocument,
             authority: QueryReferenceAuthority,
+            originalRowIds: List<QueryResultRowReference>? = null,
         ): Refinement<QueryProjectedEvidence, QueryRunRejection> {
             val items =
-                when (val admitted = projectResultItems(result, output, authority)) {
+                when (val admitted = projectResultItems(result, output, authority, originalRowIds)) {
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return admitted
                 }
@@ -79,8 +81,9 @@ private fun projectResultItems(
     result: QueryResult,
     output: QueryOutputDocument,
     authority: QueryReferenceAuthority,
+    originalRowIds: List<QueryResultRowReference>?,
 ): Refinement<List<QueryResultItemDocument>, QueryRunRejection> =
-    when (val projected = QueryItemProjector(authority).projectItems(output, result.rows)) {
+    when (val projected = QueryItemProjector(authority).projectItems(output, result.rows, originalRowIds)) {
         is QueryProjection.Projected -> Refinement.Refined(projected.values)
         is QueryProjection.ImpactRejected -> Refinement.Rejected(projected.cause.presentationRejection())
         QueryProjection.Rejected ->

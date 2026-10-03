@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7846f3eff377e1188016d8e90fca60970ecb670d83743a433f2adbe49d90325d",
+  "pageVersion": "sha256:c322382ca8416434712be2297ad8231806dfe3f55c949979eefaae1c0847dd5e",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -89,7 +89,7 @@
           "version": "repo-lines-v1:sha256:86bab031e25d151d20af63fc293b5feaa267a2b55f4d72b6715cbddbae3bbce3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiNjZiMGI5MmYxNGFkYzJmMGE0ZjQ4NDVmNTJhOTI0MGRiYTdiN2RiNDY0ODc5MGY4YWFhZmUyMDdiZGUzNWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViOTRjNzcwOTFjNzlkZWE1MGIwMzFhMjYxM2RmOGYyNGYxOWMyYzE1OTkyNTk2MWM4YmE2ZmRkNDRjNzhkNGIifQ"
         },
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt#L29-L83",
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt#L30-L84",
           "version": "repo-lines-v1:sha256:7fc861ac5c19570db583f90a082d084648b9a4b0b9fa19dcdd7107e820e5f31e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMTYzZjc3ODZjNDJjYTg4OTI3MGY3NTNhNzgwNjI2NDI2YzAzZjk3M2EwNWFkZWFlZGQ0ZmE0ZDI3MGYwZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4MjQ4ZWM5MTk0ZTRkYzAyNGIzZmVjZDA2ZTk3ODNiY2RhYjFlOGQxZTc2YzFkYjQ1NjA5MGZiODc4ZjJkM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1NmZiMDVjODQ2NzdkZWQyMGIzMGE4Y2MzMGIzNDEzNDY4OTkzNzUxOGYyODljYzBlNjg1OWE5NjI2ZWY1M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkMGMzMTZhYTRiZDI3M2I5ZDNjOGU1YjE4NDA0OWMyODkyNGE3YTBiYTA1MTBlZGM1OWMwZmUwNGNiNmJmOGEifQ"
         },
         {
@@ -133,10 +133,62 @@
           "version": "repo-file-v1:sha256:84d82f5d27911b64fe971fffda353887a69b97b9108eaa833c064f9fbe27a074"
         }
       ]
+    },
+    {
+      "id": "claim_1dad81955dd440ee98ba73cffd851cc5",
+      "statement": "FINDINGS extends the original retained witness owner with one original path object and admitted ordinal per entry; the retained presentation verifies original path order/count and passes its existing row-ID slice into projection before required finding links are constructed. Missing context fails closed and no competing state, cursor or semantic execution owner is introduced.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt",
+          "version": "repo-file-v1:sha256:0e21faff90688e0ee11981c10b6c2aa24e680ec4421710e9ab9377537f1bcea2"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt#L35-L74",
+          "version": "repo-lines-v1:sha256:0af65e0365796e78ca250541ba048fb42bcfdef9e1201836fb5a99c9e822b294:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3MWY4NzYzN2I5MzQ2ODU2NDkxNWVmOWJiNzIwYzY5NmEyY2RmNzBkYTUzNmU0MzcyMDhjZTZkNTA0NzJmZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwZGVlYjFiMDU1ZTUzYmY3M2FjMGYxNDI0MmVkZTZkNGU2YTBkYjlhZTdiOGFkZTUxMjcwZjkzN2Y5MTA3NDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3MWU0NThlZTZkZmQ1Mzg0ZTRhMGQ5MmJiYjFkNjg1YjY0YzQ0ZWY0OTFmMTg4MGZmZThlNWIxYjgzMGNlYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmY2Q3YzMzZDhiZjdkODdmZWM3YTkyMDgyMGMyM2YyZDFjODVmYmM1YTIwNDg0YjQ3ZGVmMTJhYTc4MWY2MzgifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt#L28-L43",
+          "version": "repo-lines-v1:sha256:d12b17dabc9d04d00bd994c49ec22c85edaddab0506340b4b182562bc900f995:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMzMwMjdiYzIwYjViY2M0YjEzOTBiNjM2YjJhY2E4YjA4NTNiZjUwMjA0YjAyMDlhMTdiOGY0ODQwN2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZTY2Yjg2NzY3ODU4OTRjODdkNWE2M2I3MTI2ZDEyMGI2OGQ4YzQzYjY2MWNkNjZjY2VlYmY2MWQ3N2RkNjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0ZWIwNjM0N2RkYzdjYjBiOTE1ZTNkNThlOWZjNDVlYjAzMmM1ODk0NDI5NjFkNmY5NDQ5NTQzZjRjZWI2MmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhOTRkMGQwMzk4NmI5YTFkMDM0YTM2MDJmYWRjYWE1YWFlMmY0MzU5NjQ4YTk2N2EwYTI3NDg4ZjA2ZDhiYTIifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt#L88-L137",
+          "version": "repo-lines-v1:sha256:84017b2b2d566f6e833fd4b4ff77a2c5238a8a1bccbace431745fc75cb1b876e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkMmMyNTI0N2U5YTUxMWM1Njk5ZTliMzI3Y2IwYTkxNDg4OTdmMzQ3MGEyYWI3NzNhMzk1YTAzNzQ3ZDI5ZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NGQ2MmZiMzU2ZjVmOTM1MzgxNjVlN2ZmM2VkNWRjOGMxMDk5MmNmNTM2ZDAzZGI3YjRiNzZjOWVlYjViMDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZkMGMzMTZhYTRiZDI3M2I5ZDNjOGU1YjE4NDA0OWMyODkyNGE3YTBiYTA1MTBlZGM1OWMwZmUwNGNiNmJmOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwZDY4YjA3MmZjMTFjODU5NWM4M2FmZTUwOWI1ZjI2YmU4NmQzMzY2NWNkZmIwMDNmZDM0Y2RkNTMxMDQ2MjIifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt",
+          "version": "repo-file-v1:sha256:28cce43374604c322e2589aec32e168048f5d2f7d215bc11ad4aec362a5fae49"
+        }
+      ]
+    },
+    {
+      "id": "claim_f3f04d7f1b854a60b71fb633908d2f02",
+      "statement": "Compact finding projection retains representation alternatives, ordered model provenance, finite terminal outcomes and boundary obligations while exact omitted compiler and full model evidence stays on its linked path; canonical accounting rejects invalid finding count/ordinal relations, duplicate page row IDs and empty present representation alternatives without strengthening original closure.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt#L40-L89",
+          "version": "repo-lines-v1:sha256:972d82c40b9ab09cb775986c344f03fc8e9e788aa43c745fc7f28de6b20adaac:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0MWM5ZmVjMjRkNTg5NGE5N2Q5NjZmMDFmMTRkY2UyNmQzYzRmMzQzYTY3ZDQ2ODFiMWI1NTY3ZDIyZWQxZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3ZTQxNmIyODcxYTI5MzQ3OTNlODYwNmQ0NWMxODdjZjgzNDdjMWU4OThiMTNmZjFkMzQ5NjIxODRmOTg0MjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyNTIzZGJhODM2NjY4ZjQ3OGEzNDNlZDc2YTc2NzZjY2U4ZmVjNWI1YWRhNGM3NDM3YzgyZGU4MjgxY2RjNWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2ZTA3OGE1ZGIyODA3NzYwNjRhMjJiODcxNTNkZWRhYWRlMjUyM2ZjYjZmZDhhYmFjMzM2OTk1ODIwYWFiNDMifQ"
+        },
+        {
+          "resource": "repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/ImpactFindingAccountingTest.kt",
+          "version": "repo-file-v1:sha256:ee90987818c9385f30ffebed1bbe2e13a7a7e0f5fe59d9b50f8daf7fef189565"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt",
+          "version": "repo-file-v1:sha256:55d701eaef8a7b4f839dbb8a0073dd3f3189a9bbd11a1a998081db3c382e9305"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt",
+          "version": "repo-file-v1:sha256:41dc862bcad8e6a7ca8e961442f3059e9615e7c12b99e34c0416a61369fac5c4"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt",
+          "version": "repo-file-v1:sha256:b44f1268e6873e74e0bade219119d8d0d4bb61dda440aebc5a52097872582928"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T08:10:55.203Z"
+    "at": "2026-10-03T09:30:07.512Z"
   }
 }

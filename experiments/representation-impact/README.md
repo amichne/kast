@@ -38,4 +38,29 @@ build/python-tests/env/bin/python3 -m unittest discover \
   -s experiments/representation-impact -p 'test_*.py' -v
 ```
 
+## Reacquire the fixture investigation
+
+The checked-in `fixture-intent.expected.json` is reusable intent, separate from live references, model declaration claims, result handles, and continuations. Use its source hash, four seed anchors, and reviewed rule intent to construct a new question after an epoch change or restart. The following offsets apply only to that exact ASCII fixture copied at the manifest's `sourcePath`.
+
+| Fresh `AT_LOCATION` lookup | UTF-16 offset |
+| --- | ---: |
+| `investigate` | 794 |
+| `Voltage.encrypt` | 161 |
+| `Hiped.encrypt` | 273 |
+| `Hiped.decrypt` | 320 |
+| `display` | 630 |
+| `persist` | 745 |
+
+1. Verify the fixture bytes and reacquire these six exact references. Do not reuse references or declaration bases from an earlier run.
+2. Run a model-free retained `IMPACT` bootstrap with exact invocation anchors `876–901`, `1296–1319`, `1340–1360`, `1416–1438`, and `1717–1742`, all enclosed by the fresh `investigate` reference. These anchors select native identities needed for the reviewed models; they do not establish representation meaning.
+3. Read its `PRODUCERS` witnesses. Use the returned invocation callable identities and enclosing declaration evidence to bind the reviewed models. Require one current live basis across all supplied bindings. Preserve any native rejection or unsupported bootstrap result.
+4. Run a new retained investigation with the manifest's four seed anchors, `WORKSPACE`, and `KOTLIN_FORWARD_V1`. Supply the five representation rules as reviewed model data. The separate reviewed persistence model identifies invocation `1717–1742`, argument `1` at `1736–1741`, contract `fixture-account-storage` version `1`, slot `value`, and terminal meaning `REVIEWED_RETENTION`. Retention, decoding compatibility, and migration remain obligations.
+5. Follow issued execution continuations until terminal progress. Drain retained `VALUE_PATHS` and witness pages with their presentation cursors. `FINDINGS` supplies one compact row per original path; expand each row on the same result using its path ordinal and verify the original row ID. Retained reads must preserve the original basis, domain, closure, qualifications, and native-counter evidence.
+
+The grant used by the installed experiment is 128 results, 2000 ms, 100000 work units, and 524288 returned bytes. One-row presentation uses the same grant with one result. Record requested and effective limits; these allowances do not discharge semantic obligations. The installed client and host response limits must independently admit the requested envelope.
+
+The fixture's `unmodeled` and `Unrelated.decrypt` functions both return their argument unchanged. Their names do not make them opaque transformations; a compiler-proven wrapper return is legitimate. A separate opaque-transform probe is required to prove an unsupported transformation stop. A source-intent site beyond a mutable-value or constructor stop remains unreached under the supported flow; it must not be reported as absent.
+
+An old retained response is historical evidence on its original basis. After epoch movement or restart, reacquire this recipe's identities and model bindings and run again. A rejected old result or continuation cannot establish the exact expiration cause by itself.
+
 The focused tests use private log files and an explicit process observation seam. They cover schema rejection before effects, PID/append selection, counters, uncertain observations, exact child environment, product rejection preservation, and source-intent anchors. They do not launch native IDEA or establish installed product behavior.

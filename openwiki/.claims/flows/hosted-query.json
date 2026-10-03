@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:64c4ad7e1d97466eac4bd834e6cdce2fb985207f9eca4a0304c4d458c5244a4e",
+  "pageVersion": "sha256:6c2c024ece5ded04ed5dfcaef9489b8ad9716d6746e17f9c5081fa5d827005fb",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -115,10 +115,32 @@
           "version": "repo-file-v1:sha256:3038406976ed781f4bbdd941f0f0021afc0adcb4781a0687301ac262446addcd"
         }
       ]
+    },
+    {
+      "id": "claim_8643dbf16a284f8a87d92b7ae1f98ad7",
+      "statement": "Compact FINDINGS uses the existing retained witness window and original path row IDs, which QueryOutcomeProjection passes into the shared item projector before required finding links are constructed; the same envelope fitter, retained result and publication owner bound that presentation without semantic evaluation or a separate lifetime.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt#L102-L164",
+          "version": "repo-lines-v1:sha256:7f660d23bb79779e9728d2e7c257739b36043edc23a126cb46186694d4190c29:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlYmY5OTQ2YjMxMjg4NTQxZTczYWI5ZjZmZWJjNDY4NWFmMTI4MWMzZjM2YWRkOTMzYTRlYTAyNmYyZDYxNGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmMGQ3NTk1MGRmMGZmOWEzZWU5NjYzOWRjYzhmZjVlYWVkYjQwZDY4MmJlYTkyNjIyYjUyMGRkODg3ZDkzZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg0NGU4Y2MzOGUxOGM2NThhMGE0NzI5MTMyYWJmZjVhMDYzNDMxMjI5NGJjMzNjNWI3ZjhmNmFlZmFjODVhM2MifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt#L28-L43",
+          "version": "repo-lines-v1:sha256:d12b17dabc9d04d00bd994c49ec22c85edaddab0506340b4b182562bc900f995:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMzMwMjdiYzIwYjViY2M0YjEzOTBiNjM2YjJhY2E4YjA4NTNiZjUwMjA0YjAyMDlhMTdiOGY0ODQwN2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZTY2Yjg2NzY3ODU4OTRjODdkNWE2M2I3MTI2ZDEyMGI2OGQ4YzQzYjY2MWNkNjZjY2VlYmY2MWQ3N2RkNjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0ZWIwNjM0N2RkYzdjYjBiOTE1ZTNkNThlOWZjNDVlYjAzMmM1ODk0NDI5NjFkNmY5NDQ5NTQzZjRjZWI2MmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhOTRkMGQwMzk4NmI5YTFkMDM0YTM2MDJmYWRjYWE1YWFlMmY0MzU5NjQ4YTk2N2EwYTI3NDg4ZjA2ZDhiYTIifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt#L88-L137",
+          "version": "repo-lines-v1:sha256:84017b2b2d566f6e833fd4b4ff77a2c5238a8a1bccbace431745fc75cb1b876e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkMmMyNTI0N2U5YTUxMWM1Njk5ZTliMzI3Y2IwYTkxNDg4OTdmMzQ3MGEyYWI3NzNhMzk1YTAzNzQ3ZDI5ZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NGQ2MmZiMzU2ZjVmOTM1MzgxNjVlN2ZmM2VkNWRjOGMxMDk5MmNmNTM2ZDAzZGI3YjRiNzZjOWVlYjViMDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZkMGMzMTZhYTRiZDI3M2I5ZDNjOGU1YjE4NDA0OWMyODkyNGE3YTBiYTA1MTBlZGM1OWMwZmUwNGNiNmJmOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwZDY4YjA3MmZjMTFjODU5NWM4M2FmZTUwOWI1ZjI2YmU4NmQzMzY2NWNkZmIwMDNmZDM0Y2RkNTMxMDQ2MjIifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt",
+          "version": "repo-file-v1:sha256:28cce43374604c322e2589aec32e168048f5d2f7d215bc11ad4aec362a5fae49"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T08:10:55.203Z"
+    "at": "2026-10-03T09:30:07.512Z"
   }
 }

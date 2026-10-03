@@ -1,87 +1,129 @@
 ---
 type: Runtime Flow
 title: Semantic query
-description: Query syntax and restored references are admitted into compatible stages and evaluated under one published or live authority with bounded resource accounting.
+description: Query syntax and restored references are admitted into compatible stages
+  and evaluated under one published or live authority with bounded resource accounting.
 resource: file://query/service
-tags: [query, symbol, source, relation]
+tags:
+- query
+- symbol
+- source
+- relation
 code_sources:
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryTextMatches.kt
-    symbols: [QueryTextMatches]
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryReadStages.kt
-    symbols: [QueryReadStages]
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTextDiscoveryStage.kt
-    symbols: [QueryTextDiscoveryStage]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryTextMatchProjection.kt
-    symbols: [protocolDocument]
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoinStage.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRows.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt
-  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolDiscoveryProgress.kt
-  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderState.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventory.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRetainedRelationRead.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryDiscoveryObservation.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QuerySyntaxAdmission.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedEvidence.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryStepModels.kt
-  - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
-  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryRetainedCompositionTest.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
-  - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
-  - path: docs/reviews/live-semantic-read-acceptance.md
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
-    symbols: [selectCliRuntimePath]
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
-    symbols: [QueryPlanCompiler, AdmittedQueryPlan]
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt
-    symbols: [QueryStepSyntax, QueryPredicate]
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryExecutionState.kt
-    symbols: [QueryExecutionState]
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryPageFacts.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryPageCompletion.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryTasks.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
-    symbols: [QueryService]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryIdentityRows.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
-    symbols: [visibilityRequest]
-  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryServiceTest.kt
-  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryServiceSourceTest.kt
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDeclarationVisibility.kt
-    symbols: [SourceDeclarationVisibility, SourceDeclarationVisibilityFailure]
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadRequest.kt
-    symbols: [Containment]
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt
-    symbols: [discoverNative]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryQuery.kt
-    symbols: [IntellijNativeDiscoveryQuery]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryAdapter.kt
-    symbols: [isAdmittedContributorName]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
-    symbols: [CanonicalQueryProtocol]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
-  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryTextMatches.kt
+  symbols:
+  - QueryTextMatches
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryReadStages.kt
+  symbols:
+  - QueryReadStages
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTextDiscoveryStage.kt
+  symbols:
+  - QueryTextDiscoveryStage
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryTextMatchProjection.kt
+  symbols:
+  - protocolDocument
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoinStage.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRows.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt
+- path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolDiscoveryProgress.kt
+- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderState.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventory.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRetainedRelationRead.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryDiscoveryObservation.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QuerySyntaxAdmission.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedEvidence.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryStepModels.kt
+- path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
+- path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryRetainedCompositionTest.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
+- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
+- path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
+- path: docs/reviews/live-semantic-read-acceptance.md
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
+  symbols:
+  - selectCliRuntimePath
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
+  symbols:
+  - QueryPlanCompiler
+  - AdmittedQueryPlan
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt
+  symbols:
+  - QueryStepSyntax
+  - QueryPredicate
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryExecutionState.kt
+  symbols:
+  - QueryExecutionState
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryPageFacts.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryPageCompletion.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryTasks.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
+  symbols:
+  - QueryService
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryIdentityRows.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
+  symbols:
+  - visibilityRequest
+- path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryServiceTest.kt
+- path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryServiceSourceTest.kt
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDeclarationVisibility.kt
+  symbols:
+  - SourceDeclarationVisibility
+  - SourceDeclarationVisibilityFailure
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadRequest.kt
+  symbols:
+  - Containment
+- path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt
+  symbols:
+  - discoverNative
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryQuery.kt
+  symbols:
+  - IntellijNativeDiscoveryQuery
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryAdapter.kt
+  symbols:
+  - isAdmittedContributorName
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  symbols:
+  - CanonicalQueryProtocol
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
+- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
+- path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T09:30:07.512Z
 sources:
   - id: openwiki-source-25796dce45aaa5a543a07570
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
+  - id: openwiki-source-927d5002042f13cac9db37f1
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
   - id: openwiki-source-ceaa6e4a1cc8af84eede173b
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt
+  - id: openwiki-source-f0cad133a15126760b814619
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt
+  - id: openwiki-source-922a5bf331e56677e884867b
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
+  - id: openwiki-source-37ab3b1971d180b6eee551f9
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
+  - id: openwiki-source-89a23fbeb799d9605ab4e1dc
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - id: openwiki-source-a0bad9b6f38ff3fd5d037242
@@ -94,10 +136,7 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-03T08:10:55.203Z
+generated: { by: "codex", at: "2026-10-03T09:30:07.512Z" }
 ---
 
 # Semantic query
@@ -248,3 +287,5 @@ counts equal detached copies separately. Prospective expansion reserves new rout
 wrappers and prefixes before scheduling. This is conservative quota arithmetic,
 not heap measurement or semantic deduplication; the existing quotas and safety
 factors remain. Ordinary pipeline accounting retains its existing policy.
+
+`FINDINGS` is a retained witness projection with one record per original ledger path. Paths sharing a destination remain separate. The admitted ordinal points to the original path object; the retained presentation supplies its existing issued row ID before compact DTO construction. Compact rows keep current representation alternatives and ordered model provenance, finite terminal causes and boundary obligations. Compiler transfer payloads and full model history remain on the linked `VALUE_PATHS` row. The original accounting and unresolved closure accompany every page, so a smaller summary cannot strengthen the investigation or revive a stale basis.

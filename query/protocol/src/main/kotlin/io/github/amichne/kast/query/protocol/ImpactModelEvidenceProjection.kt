@@ -129,17 +129,17 @@ internal fun BoundaryModel.impactDocument(): ImpactProjected<ImpactBoundaryRuleD
                     ImpactBoundaryRuleDocument.Terminal(
                         id,
                         source,
-                        when (meaning) {
-                            BoundaryTerminalMeaning.REVIEWED_DISPOSAL ->
-                                ImpactBoundaryTerminalDocument.REVIEWED_DISPOSAL
-                            BoundaryTerminalMeaning.REVIEWED_EXTERNAL_SINK ->
-                                ImpactBoundaryTerminalDocument.REVIEWED_EXTERNAL_SINK
-                            BoundaryTerminalMeaning.REVIEWED_RETENTION ->
-                                ImpactBoundaryTerminalDocument.REVIEWED_RETENTION
-                        },
+                        meaning.impactDocument(),
                     )
                 )
         }
+    }
+
+internal fun BoundaryTerminalMeaning.impactDocument(): ImpactBoundaryTerminalDocument =
+    when (this) {
+        BoundaryTerminalMeaning.REVIEWED_DISPOSAL -> ImpactBoundaryTerminalDocument.REVIEWED_DISPOSAL
+        BoundaryTerminalMeaning.REVIEWED_EXTERNAL_SINK -> ImpactBoundaryTerminalDocument.REVIEWED_EXTERNAL_SINK
+        BoundaryTerminalMeaning.REVIEWED_RETENTION -> ImpactBoundaryTerminalDocument.REVIEWED_RETENTION
     }
 
 internal fun BoundaryObligation.impactDocument(): ImpactProjected<ImpactBoundaryObligationDocument> =
@@ -192,18 +192,9 @@ internal fun RepresentationEvidence.impactDocument(): ImpactProjected<ImpactRepr
         )
         .impactMap { (site, branches) -> ImpactRepresentationEvidenceDocument.Present(site, branches) }
 
-private fun RepresentationCurrent.impactDocument(): ImpactProjected<ImpactRepresentationCurrentDocument> =
+internal fun RepresentationCurrent.impactDocument(): ImpactProjected<ImpactRepresentationCurrentDocument> =
     when (this) {
-        is RepresentationCurrent.Known ->
-            state.domain.model
-                .impactDocument()
-                .impactZip(state.domain.states.impactEach { it.value.impactId() })
-                .impactZip(state.id.value.impactId())
-                .impactMap { (domain, state) ->
-                    ImpactRepresentationCurrentDocument.Known(
-                        ImpactRepresentationStateDocument(domain.first, domain.second, state)
-                    )
-                }
+        is RepresentationCurrent.Known -> state.impactDocument().impactMap(ImpactRepresentationCurrentDocument::Known)
         is RepresentationCurrent.Unknown ->
             Refinement.Refined(
                 ImpactRepresentationCurrentDocument.Unknown(
@@ -218,6 +209,14 @@ private fun RepresentationCurrent.impactDocument(): ImpactProjected<ImpactRepres
                 )
             )
     }
+
+internal fun io.github.amichne.kast.relation.contract.RepresentationState.impactDocument():
+    ImpactProjected<ImpactRepresentationStateDocument> =
+    domain.model
+        .impactDocument()
+        .impactZip(domain.states.impactEach { it.value.impactId() })
+        .impactZip(id.value.impactId())
+        .impactMap { (domain, state) -> ImpactRepresentationStateDocument(domain.first, domain.second, state) }
 
 private fun RepresentationHistory.impactDocument(): ImpactProjected<ImpactRepresentationHistoryDocument> =
     when (this) {

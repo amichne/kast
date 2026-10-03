@@ -9,6 +9,7 @@ import io.github.amichne.kast.relation.contract.ValueTransfer
 import java.util.Collections
 
 enum class QueryImpactWitnessSection {
+    FINDINGS,
     PRODUCERS,
     MODELS,
     NATIVE_READS,
@@ -32,6 +33,8 @@ value class QueryImpactWitnessOrdinal private constructor(val value: Int) {
 }
 
 sealed interface QueryImpactWitnessEntry {
+    data class Finding(val finding: QueryImpactFinding) : QueryImpactWitnessEntry
+
     data class Producer(val evidence: QueryImpactProducerEvidence) : QueryImpactWitnessEntry
 
     data class RepresentationModel(val rule: RepresentationRule) : QueryImpactWitnessEntry
@@ -118,6 +121,7 @@ private constructor(
         ): Refinement<QueryImpactWitnessOrdinal, QueryImpactWitnessFailure> {
             val total =
                 when (section) {
+                    QueryImpactWitnessSection.FINDINGS -> ledger.paths.size.toLong()
                     QueryImpactWitnessSection.PRODUCERS -> ledger.producerEvidence.size.toLong()
                     QueryImpactWitnessSection.MODELS ->
                         ledger.representationModels.size.toLong() + ledger.boundaryModels.size
@@ -152,6 +156,7 @@ private fun entriesForSection(
     section: QueryImpactWitnessSection,
 ): Refinement<List<QueryImpactWitnessEntry>, QueryImpactWitnessFailure> =
     when (section) {
+        QueryImpactWitnessSection.FINDINGS -> findingEntries(ledger)
         QueryImpactWitnessSection.PRODUCERS ->
             Refinement.Refined(ledger.producerEvidence.map(QueryImpactWitnessEntry::Producer))
         QueryImpactWitnessSection.MODELS ->
@@ -163,6 +168,19 @@ private fun entriesForSection(
             Refinement.Refined(ledger.readRejections.map(QueryImpactWitnessEntry::ReadRejected))
         QueryImpactWitnessSection.NATIVE_READS -> nativeEntries(ledger.observations)
     }
+
+private fun findingEntries(
+    ledger: QueryImpactLedger
+): Refinement<List<QueryImpactWitnessEntry>, QueryImpactWitnessFailure> {
+    val result = mutableListOf<QueryImpactWitnessEntry>()
+    for (ordinal in ledger.paths.indices) {
+        when (val finding = QueryImpactFinding.fromOriginalPath(ledger, ordinal)) {
+            is Refinement.Refined -> result += QueryImpactWitnessEntry.Finding(finding.value)
+            is Refinement.Rejected -> return finding
+        }
+    }
+    return Refinement.Refined(result)
+}
 
 private fun nativeEntries(
     observations: List<ValueFlowStep>

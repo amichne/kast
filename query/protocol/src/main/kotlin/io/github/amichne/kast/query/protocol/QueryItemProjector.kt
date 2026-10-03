@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.contract.QueryExactLocationDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QuerySourceWindowDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.QueryTextMatchDocument
@@ -26,9 +27,13 @@ import io.github.amichne.kast.query.contract.QueryWalkArrival
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 
 internal class QueryItemProjector(private val authority: QueryReferenceAuthority) {
-    fun projectItems(output: QueryOutputDocument, rows: QueryRows): QueryProjection<QueryResultItemDocument> {
+    fun projectItems(
+        output: QueryOutputDocument,
+        rows: QueryRows,
+        originalRowIds: List<QueryResultRowReference>? = null,
+    ): QueryProjection<QueryResultItemDocument> {
         return when (rows) {
-            is QueryRows.ImpactWitness -> projectWitnessRows(output, rows)
+            is QueryRows.ImpactWitness -> projectWitnessRows(output, rows, originalRowIds)
             is QueryRows.Symbols -> projectSymbolRows(output, rows)
             is QueryRows.Occurrences ->
                 if (output == QueryOutputDocument.Occurrences) rows.values.mapProjected(::projectOccurrence)
@@ -44,9 +49,10 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
     private fun projectWitnessRows(
         output: QueryOutputDocument,
         rows: QueryRows.ImpactWitness,
+        originalRowIds: List<QueryResultRowReference>?,
     ): QueryProjection<QueryResultItemDocument> =
         if (output is QueryOutputDocument.ImpactWitness && output.section.witnessSection() == rows.view.section)
-            rows.projectWitnessItems()
+            rows.projectWitnessItems(originalRowIds)
         else QueryProjection.Rejected
 
     private fun projectSymbolRows(

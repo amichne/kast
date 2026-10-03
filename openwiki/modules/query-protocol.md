@@ -1,87 +1,121 @@
 ---
 type: Kotlin Module
 title: Query protocol
-description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
+description: Shared semantic-read admission and projection bind canonical requests
+  and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
-tags: [kotlin, protocol, query, authority]
+tags:
+- kotlin
+- protocol
+- query
+- authority
 code_sources:
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryTextMatchProjection.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryTextMatches.kt
-    symbols: [QueryTextMatches]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ReacquiringQueryReferences.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/ReadAcquisitionAccounting.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/CurrentDeclarationReacquisition.kt
-  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt
-  - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExactRevalidationStore.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePreparedCoverage.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRunQualification.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryQualifiedProgressDocument.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProgressProjection.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPreparedCoverage.kt
-  - path: query/protocol/build.gradle.kts
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
-    symbols: [CanonicalQueryProtocol]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
-    symbols: [QueryOutcomeProjection]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectionRows.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentationWindowMapping.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultEnvelope.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjection.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRetainedPresentationWindow.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QuerySyntaxAdmission.kt
-    symbols: [evidenceBasis]
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRecords.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPublicationTransition.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRetention.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateContracts.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryExecutionPublication.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryDiscoveryObservation.kt
-  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedEvidence.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryItemProjector.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryBindingDocuments.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
-    symbols: [CanonicalSourceReadProtocol]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalDiagnosticCheckProtocol.kt
-    symbols: [CanonicalDiagnosticCheckProtocol]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
-    symbols: [QueryReferenceAuthority]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSelectorDocumentAdmission.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryReferences.kt
-    symbols: [CanonicalQueryReferences]
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelectorToken.kt
-    symbols: [SourceSelectorTokenCodec]
-  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CandidateSelector.kt
-    symbols: [CandidateSelector]
-  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolSearchScope.kt
-    symbols: [SymbolSearchScope]
-  - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceSearchScopeModel.kt
-    symbols: [WorkspaceSearchScopeModel]
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
-  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryTextMatchProjection.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryTextMatches.kt
+  symbols:
+  - QueryTextMatches
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ReacquiringQueryReferences.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/ReadAcquisitionAccounting.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/CurrentDeclarationReacquisition.kt
+- path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt
+- path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExactRevalidationStore.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePreparedCoverage.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRunQualification.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryQualifiedProgressDocument.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProgressProjection.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPreparedCoverage.kt
+- path: query/protocol/build.gradle.kts
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  symbols:
+  - CanonicalQueryProtocol
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
+  symbols:
+  - QueryOutcomeProjection
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectionRows.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentationWindowMapping.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultEnvelope.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjection.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRetainedPresentationWindow.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QuerySyntaxAdmission.kt
+  symbols:
+  - evidenceBasis
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRecords.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPublicationTransition.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRetention.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateContracts.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryExecutionPublication.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryDiscoveryObservation.kt
+- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedEvidence.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryItemProjector.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryBindingDocuments.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryWalkProjection.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
+  symbols:
+  - CanonicalSourceReadProtocol
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalDiagnosticCheckProtocol.kt
+  symbols:
+  - CanonicalDiagnosticCheckProtocol
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
+  symbols:
+  - QueryReferenceAuthority
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSelectorDocumentAdmission.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryReferences.kt
+  symbols:
+  - CanonicalQueryReferences
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelectorToken.kt
+  symbols:
+  - SourceSelectorTokenCodec
+- path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CandidateSelector.kt
+  symbols:
+  - CandidateSelector
+- path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolSearchScope.kt
+  symbols:
+  - SymbolSearchScope
+- path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceSearchScopeModel.kt
+  symbols:
+  - WorkspaceSearchScopeModel
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+- path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
+- path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
+- path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T09:30:07.512Z
 sources:
+  - id: openwiki-source-368288aea315bf5b4628a899
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
   - id: openwiki-source-843b2f72b64738a9d114aff8
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRetainedPresentationWindow.kt
+  - id: openwiki-source-2a21ecdc94f78bbee9750c81
+    resource: repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/ImpactFindingAccountingTest.kt
+  - id: openwiki-source-927d5002042f13cac9db37f1
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
   - id: openwiki-source-ceaa6e4a1cc8af84eede173b
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt
   - id: openwiki-source-47b84d48b89b57b3b1609484
@@ -90,6 +124,12 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResultCapture.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  - id: openwiki-source-922a5bf331e56677e884867b
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
+  - id: openwiki-source-37ab3b1971d180b6eee551f9
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
+  - id: openwiki-source-584136874e8bed46fcb3def2
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
   - id: openwiki-source-da029c0f3804840096380efa
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt
   - id: openwiki-source-b51014e0385264d1b67f03cd
@@ -98,10 +138,16 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentedResultIssuance.kt
   - id: openwiki-source-96ef904abd7028335557559c
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentedWindowSelection.kt
+  - id: openwiki-source-4e38a945b050af72c2343f02
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
   - id: openwiki-source-2ccdc01e43e3898d9dd2e63f
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+  - id: openwiki-source-06ad73bc218ddc2ffa485553
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
+  - id: openwiki-source-89a23fbeb799d9605ab4e1dc
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
   - id: openwiki-source-11b3793b16152a8db22d714e
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/OriginalImpactRetentionTest.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
@@ -110,10 +156,7 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-03T08:10:55.203Z
+generated: { by: "codex", at: "2026-10-03T09:30:07.512Z" }
 ---
 
 # Query protocol
@@ -310,3 +353,9 @@ Hosted value-path output uses a scoped evaluation capability paired with the
 existing encoded-envelope fitter. The capability is retired before fitting and
 cannot be carried into checkpoints. Standalone service execution keeps its
 conservative byte guard; storage limits remain independent of output bytes.
+
+## Compact retained findings
+
+`QueryImpactFinding` admits the original path ordinal against the ledger path count and retains that same immutable path object. The `FINDINGS` witness section derives one entry per original path. `RetainedQueryPresentation` checks the full retained path order and issued row count, then passes the matching original row-ID slice through `QueryOutcomeProjection` and `QueryProjectedEvidence`. The witness projector checks the entry ordinals and original path objects before constructing the required link; missing context rejects instead of supplying a draft identity.
+
+The compact DTO keeps producer and destination sites, current representation alternatives, ordered model provenance, terminal cause and boundary obligations. It omits compiler transfer payloads and full rule/history payloads because its path ordinal and row ID expand that exact original `VALUE_PATHS` row on the same retained result. No new store, cursor, row kind or semantic evaluator is introduced. The canonical accounting validator checks finding ordinal/count consistency, unique page row IDs and nonempty present representation alternatives, and retains the selected-view qualification over original closure. Focused tests compare wide and one-row presentation, exact full-row expansion, encoded finite variants and rejected identity context with a semantic executor that must remain unused. These are local contract proofs; installed qualification is separate.

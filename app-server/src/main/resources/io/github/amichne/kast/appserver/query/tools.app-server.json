@@ -4627,7 +4627,8 @@
               "PRODUCERS",
               "MODELS",
               "NATIVE_READS",
-              "READ_REJECTIONS"
+              "READ_REJECTIONS",
+              "FINDINGS"
             ]
           },
           "ImpactWitnessOutput": {
@@ -4649,7 +4650,7 @@
               "section"
             ],
             "additionalProperties": false,
-            "description": "Page retained producer, model, native-read, or rejected-read evidence through READ_RESULT. This output presents the existing investigation without reexecuting semantic reads."
+            "description": "Page retained producer, model, native-read, rejected-read, or compact finding evidence through READ_RESULT. Each finding links to its original VALUE_PATHS row by ordinal and row ID. This output preserves qualifications and presents the existing investigation without reexecuting semantic reads."
           },
           "ExpansionScope": {
             "anyOf": [

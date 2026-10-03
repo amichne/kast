@@ -4,6 +4,8 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ImpactBoundaryObligationDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionAccountingCause
@@ -15,6 +17,10 @@ import io.github.amichne.kast.protocol.contract.ImpactExecutionPathCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRepresentationCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRowIdentityCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionSelectionCause
+import io.github.amichne.kast.protocol.contract.ImpactFindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactFindingEvidenceReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactFindingRepresentationDocument
+import io.github.amichne.kast.protocol.contract.ImpactFindingTerminalDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowUnsupportedDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactNativeReadRejectionDocument
@@ -28,6 +34,7 @@ import io.github.amichne.kast.protocol.contract.ImpactWitnessDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -51,6 +58,7 @@ class ImpactWitnessSchemaTest {
                 "COMPILER_TRANSFER",
                 "FLOW_OBLIGATION",
                 "READ_REJECTION",
+                "FINDING",
             ),
             variants
                 .map {
@@ -82,6 +90,26 @@ class ImpactWitnessSchemaTest {
                 schema.validate(raw.replaceFirst("\"type\":", "\"unknownType\":"), InputFormat.JSON).isNotEmpty()
             )
         }
+    }
+
+    @Test
+    fun `finding schema requires both original path identity fields`() {
+        val document = generatedRequestSchema(ImpactWitnessDocument.serializer())
+        val schema =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(document.toString())
+        val finding = witnessExamples().filterIsInstance<ImpactWitnessDocument.Finding>().single()
+        val raw = Json.encodeToString(ImpactWitnessDocument.serializer(), finding)
+        assertTrue(schema.validate(raw, InputFormat.JSON).isEmpty(), raw)
+        val missingOrdinal = raw.replace("\"pathOrdinal\":0,", "")
+        val missingRow =
+            raw.replace(
+                ",\"pathRowId\":\"result-row:v1:00000000-0000-0000-0000-000000000001\"",
+                "",
+            )
+        assertTrue(missingOrdinal != raw)
+        assertTrue(missingRow != raw)
+        assertTrue(schema.validate(missingOrdinal, InputFormat.JSON).isNotEmpty())
+        assertTrue(schema.validate(missingRow, InputFormat.JSON).isNotEmpty())
     }
 
     @Test
@@ -150,6 +178,7 @@ class ImpactWitnessSchemaTest {
             listOf(
                 ImpactWitnessDocument.Producer(site, ImpactInvocationReferenceDocument(site.range, owner)),
                 ImpactWitnessDocument.ProducerSiteOnly(site),
+                findingExample(site),
                 ImpactWitnessDocument.FlowObligation(
                     count(0),
                     count(0),
@@ -167,6 +196,23 @@ class ImpactWitnessSchemaTest {
             )
         return cases
     }
+
+    private fun findingExample(site: ImpactValueSiteReferenceDocument): ImpactWitnessDocument.Finding =
+        ImpactWitnessDocument.Finding(
+            ImpactFindingDocument(
+                path =
+                    ImpactFindingEvidenceReferenceDocument(
+                        count(0),
+                        QueryResultRowReference.parse("result-row:v1:00000000-0000-0000-0000-000000000001").value(),
+                    ),
+                producer = site,
+                destination = site,
+                representation = ImpactFindingRepresentationDocument.NotModeled,
+                terminal =
+                    ImpactFindingTerminalDocument.UnresolvedFlow(ImpactFlowUnsupportedDocument.MUTABLE_CONTROL_FLOW),
+                boundaryObligations = BoundedProtocolList.create(emptyList<ImpactBoundaryObligationDocument>()).value(),
+            )
+        )
 
     private fun interpreterExamples(): List<ImpactExecutionFailureDocument> {
         val cases =

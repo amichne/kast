@@ -41,7 +41,40 @@ private fun QueryRunResult.validateImpactRows(pathCount: Long): Refinement<Unit,
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
     if (accounting.status !is ImpactAccountingStatusDocument.SelectedSubset)
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
+    if (witnessView.section == ImpactWitnessSectionDocument.FINDINGS) {
+        when (val findings = validateFindingReferences(witnessView, witnessItems, accounting.originalPathCount.value)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return findings
+        }
+    }
     return witnessView.validateWitnessOrdinals(witnessItems)
+}
+
+private fun validateFindingReferences(
+    view: ImpactAccountingViewDocument.Witness,
+    items: List<QueryResultItemDocument.ImpactWitness>,
+    originalPathCount: Long,
+): Refinement<Unit, ImpactAccountingFailure> {
+    if (view.sectionCount.value != originalPathCount)
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
+    val findings = items.map { (it.item.witness as ImpactWitnessDocument.Finding).finding }
+    if (
+        findings.any {
+            val representation = it.representation
+            representation is ImpactFindingRepresentationDocument.Present && representation.branches.values.isEmpty()
+        }
+    )
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
+    val references = findings.map { it.path }
+    if (
+        items.zip(references).any { (item, reference) ->
+            reference.pathOrdinal != item.item.ordinal || reference.pathOrdinal.value >= originalPathCount
+        }
+    )
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
+    if (references.map { it.pathRowId }.distinct().size != references.size)
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
+    return Refinement.Refined(Unit)
 }
 
 private fun ImpactAccountingViewDocument.Witness.validateWitnessOrdinals(
@@ -118,6 +151,7 @@ fun QueryRunResult.validateImpactCompletion(): Refinement<Unit, ImpactAccounting
 
 private fun ImpactWitnessDocument.section(): ImpactWitnessSectionDocument =
     when (this) {
+        is ImpactWitnessDocument.Finding -> ImpactWitnessSectionDocument.FINDINGS
         is ImpactWitnessDocument.Producer,
         is ImpactWitnessDocument.ProducerSiteOnly -> ImpactWitnessSectionDocument.PRODUCERS
         is ImpactWitnessDocument.RepresentationModel,

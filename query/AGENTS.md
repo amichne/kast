@@ -40,6 +40,7 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 - [QueryImpactSource.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSource.kt) - same-basis producer and reviewed model admission.
 - [QueryImpactLedger.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt) - branch conservation and required obligation closure.
+- [QueryImpactFinding.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt) - admitted original path ordinal and identity for compact retained witness projection.
 - [QueryImpactRetainedGraph.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt) - request-local storage charging of shared immutable proof objects and their reference cells.
 - [QueryPresentationExecution.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt) - scoped pairing of value-path evaluation with encoded-page fitting; standalone execution retains its conservative byte guard.
 - [QueryRelationObservation.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRelationObservation.kt) - actual relation request domain and coverage retained through composition.

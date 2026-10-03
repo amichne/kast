@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8e3920cc792cdebc306333400a6b7aa144e3e816e6bd4c5aab7299dd59763165",
+  "pageVersion": "sha256:b668a93def498f1d4650ce5ee9c4ac0b9f5ca5b7ba5e682eb09cc36370947e8f",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -67,10 +67,36 @@
           "version": "repo-file-v1:sha256:f501f4f2638fee23e1dc6ce303c3289d09e0a0b566c05fab77b1320bf37b80a8"
         }
       ]
+    },
+    {
+      "id": "claim_073fb1b711524b17ae9d704d845af722",
+      "statement": "FINDINGS derives one record from each original ledger path without grouping equal destinations, binds the admitted original ordinal and existing row ID, and projects current representation alternatives, ordered model provenance, finite terminals and boundary obligations; omitted compiler/model history remains on the linked full path and original unresolved closure is preserved.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt",
+          "version": "repo-file-v1:sha256:0e21faff90688e0ee11981c10b6c2aa24e680ec4421710e9ab9377537f1bcea2"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt#L120-L180",
+          "version": "repo-lines-v1:sha256:f36208566d7ebf94320ff97344afee52e9d5667d9b23f605953261a52f9ff66b:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2MjRkOTQyMWFlZTM0NzcwYTMyYTQ2NmFmOWY4NjcwOGI4MzQ1NjUxNDFhYzM0ZjUzMzFmZjZlOGFiNDE1MWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5NTBjNGE3ZTMxY2QwY2ZmZWYxMmEyNjQ0M2EwMWM0MmI0ZWExOWQ4Zjc3MmIwZTY4MGM0MDMwMDdjMThiYjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhY2JhZjI5ZjIxOTcyMDc3OTU1NmRiY2I1NmEwNzZmNjZlNjhlMWM5ZDJkZGYxMmFiNGZlMThjYTdkYzBkY2UifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt",
+          "version": "repo-file-v1:sha256:55d701eaef8a7b4f839dbb8a0073dd3f3189a9bbd11a1a998081db3c382e9305"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt",
+          "version": "repo-file-v1:sha256:41dc862bcad8e6a7ca8e961442f3059e9615e7c12b99e34c0416a61369fac5c4"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt",
+          "version": "repo-file-v1:sha256:b44f1268e6873e74e0bade219119d8d0d4bb61dda440aebc5a52097872582928"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T08:10:55.203Z"
+    "at": "2026-10-03T09:30:07.512Z"
   }
 }

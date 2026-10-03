@@ -1,0 +1,194 @@
+{
+  "section": "FINDINGS",
+  "ordinal": 2,
+  "witness": {
+    "type": "FINDING",
+    "finding": {
+      "path": {
+        "pathOrdinal": 2,
+        "pathRowId": "result-row:v1:00000000-0000-0000-0000-000000000001"
+      },
+      "producer": {
+        "enclosing": {
+          "basis": {
+            "type": "PUBLISHED",
+            "root": "/workspace",
+            "generation": 7
+          },
+          "file": "/workspace/File.kt",
+          "range": {
+            "start": 0,
+            "end": 100
+          },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "range": {
+          "start": 10,
+          "end": 11
+        },
+        "role": {
+          "type": "EXPRESSION_RESULT"
+        }
+      },
+      "destination": {
+        "enclosing": {
+          "basis": {
+            "type": "PUBLISHED",
+            "root": "/workspace",
+            "generation": 7
+          },
+          "file": "/workspace/File.kt",
+          "range": {
+            "start": 0,
+            "end": 100
+          },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "range": {
+          "start": 20,
+          "end": 21
+        },
+        "role": {
+          "type": "PROPERTY_ASSIGNMENT"
+        }
+      },
+      "representation": {
+        "type": "PRESENT",
+        "branches": [
+          {
+            "current": {
+              "type": "KNOWN",
+              "state": {
+                "model": {
+                  "id": "crypto",
+                  "version": 1,
+                  "provenance": "reviewed"
+                },
+                "domain": [
+                  "HIPED",
+                  "VOLTAGE"
+                ],
+                "state": "VOLTAGE"
+              }
+            },
+            "provenance": [
+              {
+                "type": "ORIGIN",
+                "reference": {
+                  "model": {
+                    "id": "crypto",
+                    "version": 1,
+                    "provenance": "reviewed"
+                  },
+                  "rule": "rule"
+                },
+                "state": {
+                  "model": {
+                    "id": "crypto",
+                    "version": 1,
+                    "provenance": "reviewed"
+                  },
+                  "domain": [
+                    "HIPED",
+                    "VOLTAGE"
+                  ],
+                  "state": "VOLTAGE"
+                }
+              },
+              {
+                "type": "MODELED_TRANSFER",
+                "reference": {
+                  "model": {
+                    "id": "crypto",
+                    "version": 1,
+                    "provenance": "reviewed"
+                  },
+                  "rule": "rule"
+                }
+              },
+              {
+                "type": "MODELED_TRANSFORMATION",
+                "reference": {
+                  "model": {
+                    "id": "crypto",
+                    "version": 1,
+                    "provenance": "reviewed"
+                  },
+                  "rule": "rule"
+                }
+              },
+              {
+                "type": "BOUNDARY_MODEL",
+                "reference": {
+                  "model": {
+                    "id": "crypto",
+                    "version": 1,
+                    "provenance": "reviewed"
+                  },
+                  "rule": "rule"
+                }
+              },
+              {
+                "type": "UNMODELED"
+              }
+            ]
+          },
+          {
+            "current": {
+              "type": "UNKNOWN",
+              "reason": "UNMODELED_TRANSFORMATION"
+            },
+            "provenance": [
+              {
+                "type": "UNMODELED"
+              }
+            ]
+          }
+        ]
+      },
+      "terminal": {
+        "type": "UNRESOLVED_FLOW",
+        "cause": "MUTABLE_CONTROL_FLOW"
+      },
+      "boundaryObligations": [
+        {
+          "position": {
+            "site": {
+              "enclosing": {
+                "basis": {
+                  "type": "PUBLISHED",
+                  "root": "/workspace",
+                  "generation": 7
+                },
+                "file": "/workspace/File.kt",
+                "range": {
+                  "start": 0,
+                  "end": 100
+                },
+                "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "range": {
+                "start": 20,
+                "end": 21
+              },
+              "role": {
+                "type": "PROPERTY_ASSIGNMENT"
+              }
+            },
+            "kind": "PERSISTENCE",
+            "contract": {
+              "id": "storage",
+              "version": 1
+            },
+            "slot": "ciphertext"
+          },
+          "required": [
+            "RETENTION_POLICY",
+            "DECODING_COMPATIBILITY",
+            "MIGRATION_PROOF"
+          ]
+        }
+      ]
+    }
+  }
+}
