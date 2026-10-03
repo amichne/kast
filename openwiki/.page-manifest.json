@@ -65,11 +65,11 @@
       "completedRunId": "ac636f95-b4c5-406a-b7fa-053064382265"
     },
     "/openwiki/flows/hosted-query.md": {
+      "gitHead": "bab2ce209064f859c65b485d0eb8d11a25ebf46e",
+      "sourceFingerprint": "sha256:581ad1a5234f6e4d36838dd4f44c9d97a553af3781447f75a2b493f2010256f1",
       "pageVersion": "sha256:365929f91b89f74f9e11cbe5f9fe4359750ede9b033b38a99176a3923beff04b",
       "completedBy": "codex",
-      "completedRunId": "76d36229-2014-4872-8b73-fff29d9c1d31",
-      "gitHead": "bab2ce209064f859c65b485d0eb8d11a25ebf46e",
-      "sourceFingerprint": "sha256:581ad1a5234f6e4d36838dd4f44c9d97a553af3781447f75a2b493f2010256f1"
+      "completedRunId": "76d36229-2014-4872-8b73-fff29d9c1d31"
     },
     "/openwiki/flows/request-dispatch.md": {
       "gitHead": "a5db7a1cfea1569226000945cbb17476d2ddee5d",
@@ -163,18 +163,18 @@
       "completedRunId": "ac7f3dd4-0d82-4fc5-95f0-2d16a50182c7"
     },
     "/openwiki/modules/runtime-hosts.md": {
+      "gitHead": "bab2ce209064f859c65b485d0eb8d11a25ebf46e",
+      "sourceFingerprint": "sha256:581ad1a5234f6e4d36838dd4f44c9d97a553af3781447f75a2b493f2010256f1",
       "pageVersion": "sha256:3dab2ee231135777dfb3c5e55c655b53532ea722570cd79f3bc024fda6a1d795",
       "completedBy": "codex",
-      "completedRunId": "76d36229-2014-4872-8b73-fff29d9c1d31",
-      "gitHead": "bab2ce209064f859c65b485d0eb8d11a25ebf46e",
-      "sourceFingerprint": "sha256:581ad1a5234f6e4d36838dd4f44c9d97a553af3781447f75a2b493f2010256f1"
+      "completedRunId": "76d36229-2014-4872-8b73-fff29d9c1d31"
     },
     "/openwiki/modules/semantic-reads.md": {
+      "gitHead": "bab2ce209064f859c65b485d0eb8d11a25ebf46e",
+      "sourceFingerprint": "sha256:581ad1a5234f6e4d36838dd4f44c9d97a553af3781447f75a2b493f2010256f1",
       "pageVersion": "sha256:b67f805eb34c8cfbe832b81e83b4044d7537a3e80e902410c7d8fe62c1dd41b4",
       "completedBy": "codex",
-      "completedRunId": "76d36229-2014-4872-8b73-fff29d9c1d31",
-      "gitHead": "bab2ce209064f859c65b485d0eb8d11a25ebf46e",
-      "sourceFingerprint": "sha256:581ad1a5234f6e4d36838dd4f44c9d97a553af3781447f75a2b493f2010256f1"
+      "completedRunId": "76d36229-2014-4872-8b73-fff29d9c1d31"
     },
     "/openwiki/modules/topology-evidence.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",
