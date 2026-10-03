@@ -13,6 +13,7 @@ enum class ImpactWitnessSectionDocument {
     NATIVE_READS,
     READ_REJECTIONS,
     FINDINGS,
+    SITE_ACCOUNTING,
 }
 
 /** Stable ordinal within one section of the original immutable retained investigation. */
@@ -26,6 +27,10 @@ data class ImpactWitnessItemDocument(
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactWitnessDocument {
+    @Serializable
+    @SerialName("SITE_ACCOUNTING")
+    data class SiteAccounting(val accounting: ImpactSiteAccountingDocument) : ImpactWitnessDocument
+
     @Serializable @SerialName("FINDING") data class Finding(val finding: ImpactFindingDocument) : ImpactWitnessDocument
 
     @Serializable

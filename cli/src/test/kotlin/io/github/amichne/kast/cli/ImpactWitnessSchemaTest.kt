@@ -3,7 +3,11 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.ReturnedByteLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryObligationDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
@@ -21,12 +25,16 @@ import io.github.amichne.kast.protocol.contract.ImpactFindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingEvidenceReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingRepresentationDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingTerminalDocument
+import io.github.amichne.kast.protocol.contract.ImpactFlowBudgetDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowUnsupportedDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactNativeReadRejectionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReadRejectionDocument
 import io.github.amichne.kast.protocol.contract.ImpactRequestedBoundaryDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.ImpactSiteAccountingDocument
+import io.github.amichne.kast.protocol.contract.ImpactSiteAdmissionDocument
+import io.github.amichne.kast.protocol.contract.ImpactSiteOutcomeDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
@@ -59,6 +67,7 @@ class ImpactWitnessSchemaTest {
                 "FLOW_OBLIGATION",
                 "READ_REJECTION",
                 "FINDING",
+                "SITE_ACCOUNTING",
             ),
             variants
                 .map {
@@ -179,6 +188,7 @@ class ImpactWitnessSchemaTest {
                 ImpactWitnessDocument.Producer(site, ImpactInvocationReferenceDocument(site.range, owner)),
                 ImpactWitnessDocument.ProducerSiteOnly(site),
                 findingExample(site),
+                siteAccountingExample(site),
                 ImpactWitnessDocument.FlowObligation(
                     count(0),
                     count(0),
@@ -196,6 +206,24 @@ class ImpactWitnessSchemaTest {
             )
         return cases
     }
+
+    private fun siteAccountingExample(site: ImpactValueSiteReferenceDocument) =
+        ImpactWitnessDocument.SiteAccounting(
+            ImpactSiteAccountingDocument(
+                count(0),
+                site,
+                ImpactSiteOutcomeDocument.RelationshipUnproven,
+                ImpactSiteAdmissionDocument(
+                    ImpactFlowBudgetDocument(
+                        ElapsedTimeLimitMillis.parse(1000).value(),
+                        WorkUnitLimit.parse(10).value(),
+                        ResultLimit.parse(10).value(),
+                        ReturnedByteLimit.parse(4096).value(),
+                    ),
+                    count(1),
+                ),
+            )
+        )
 
     private fun findingExample(site: ImpactValueSiteReferenceDocument): ImpactWitnessDocument.Finding =
         ImpactWitnessDocument.Finding(

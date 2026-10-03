@@ -24,6 +24,12 @@ class PublicImpactSourceSchemaTest {
         for (property in listOf("seeds", "declarations", "models")) {
             assertSchemaEquals(expected.getValue(property), actual.getValue(property), definitions, property)
         }
+        assertSchemaEquals(
+            expected.getValue("requestedSites").jsonObject.getValue("items"),
+            actual.getValue("requestedSites").jsonObject.getValue("items"),
+            definitions,
+            "requestedSites.items",
+        )
     }
 
     private fun assertSchemaEquals(expected: JsonElement, actual: JsonElement, definitions: JsonObject, path: String) {

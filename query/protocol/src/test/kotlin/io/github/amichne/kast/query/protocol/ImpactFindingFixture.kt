@@ -34,8 +34,10 @@ import io.github.amichne.kast.query.contract.QueryImpactLedger
 import io.github.amichne.kast.query.contract.QueryImpactPath
 import io.github.amichne.kast.query.contract.QueryImpactProducer
 import io.github.amichne.kast.query.contract.QueryImpactRepresentation
+import io.github.amichne.kast.query.contract.QueryImpactRequestedSite
 import io.github.amichne.kast.query.contract.QueryImpactStep
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
+import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
@@ -45,17 +47,20 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.contract.RevalidatedValueSite
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest
+import io.github.amichne.kast.relation.contract.ValueSiteRoleClaim
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 
-internal class ImpactFindingFixture {
+internal class ImpactFindingFixture(withRequestedSites: Boolean = false) {
     val symbols = RelationPagingFixture.published()
     val budget =
         QueryBudget(
@@ -168,6 +173,34 @@ internal class ImpactFindingFixture {
                 QueryImpactTerminal.SupportedDomainEnd.admit(last).value(),
             )
             .value()
+    val requestedSites =
+        if (withRequestedSites)
+            listOf(
+                    target,
+                    ValueSite.fromCompiler(
+                            domain.subject,
+                            ExactDeclarationTextRange.parse(4, 5).value(),
+                            ValueRole.ExpressionResult,
+                        )
+                        .value(),
+                )
+                .map { exact ->
+                    val request =
+                        ValueSiteRevalidationRequest.create(
+                                symbols.selector,
+                                exact.range,
+                                ValueSiteRoleClaim.ExpressionResult,
+                                domain.budget,
+                            )
+                            .value()
+                    QueryImpactRequestedSite.admit(
+                            request,
+                            RevalidatedValueSite.fromCompiler(request, exact).value(),
+                            RelationWorkCount.parse(1).value(),
+                        )
+                        .value()
+                }
+        else emptyList()
     val ledger =
         QueryImpactLedger.fromEvidence(
                 listOf(site),
@@ -178,6 +211,7 @@ internal class ImpactFindingFixture {
                 listOf(first, middleRead, last),
                 listOf(path, alternatePath),
                 originalProducers = listOf(producer),
+                requestedSites = requestedSites,
             )
             .value()
     val request =
@@ -200,6 +234,7 @@ internal class ImpactFindingFixture {
                     QueryExpansionScopeDocument.Workspace,
                     QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
                     bounded(emptyList()),
+                    bounded(requestedSites.map { it.site.impactDocument().value() }),
                 )
             ),
             bounded(emptyList()),
@@ -209,10 +244,20 @@ internal class ImpactFindingFixture {
         )
     val store = QueryStateStore(clock = { 0 })
     private val execution =
-        QueryExecutionResult.Complete.create(
-            QueryResult(QueryRows.ValuePaths.fromInvestigation(ledger).value(), emptyList()),
-            QueryCoverage.Complete(QueryCount.parse(2).value()),
-        )
+        if (withRequestedSites)
+            QueryExecutionResult.Qualified(
+                QueryResult(QueryRows.ValuePaths.fromInvestigation(ledger).value(), emptyList()),
+                QueryCoverage.Qualified.create(
+                        QueryCount.parse(2).value(),
+                        setOf(QueryLimitation.IMPACT_COVERAGE_UNPROVEN),
+                    )
+                    .value(),
+            )
+        else
+            QueryExecutionResult.Complete.create(
+                QueryResult(QueryRows.ValuePaths.fromInvestigation(ledger).value(), emptyList()),
+                QueryCoverage.Complete(QueryCount.parse(2).value()),
+            )
     private val retained = QueryRetainedResult.capture(symbols.authority, execution).value()
     val reference = (store.issueResult(request, retained) as QueryResultIssuance.Issued).reference
 }

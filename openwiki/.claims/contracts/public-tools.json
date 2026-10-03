@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a859e34368ba1671e09efe13c047909bb4bfceacff0eb0e5174eccd50b905259",
+  "pageVersion": "sha256:ba3c73ce4bb31abddb0c61d49649e53242e4c702e6b2d979198607980df6b267",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
       "statement": "The authored tools.schema.json generates Kotlin DTOs, per-tool admission and strict Responses schemas, examples and App Server registrations; check mode rejects any stale generated artifact.",
       "evidence": [
         {
-          "resource": "repo://packaging/generate-public-query.py#L463-L501",
+          "resource": "repo://packaging/generate-public-query.py#L467-L505",
           "version": "repo-lines-v1:sha256:94373d8b7b4e73d1639969c94e24a12d62e722e0a8f9a0f572aa9df8cc095e6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMDFhMmQ5YjhlZmRkODg2MTQ1Zjk4ZTg0Nzg0Mzc0OWY5ZWEyN2U5Mzg0NmIwNDg2Mjk5MDUzYmQ4YmIxNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNDRkZTQ0ZDdiMzUzYzFmZDRkMjljMTRhMDQwMmUwMDJlYTgzNTNlZGM1ZjdhZjM0NzUxZDY3NTJjNDE4ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZjEzMjY1NjFlMjFiNDdjZDdmYWFiNzc3MzJlMDU2NjljYzJjY2YxNDlkYzNmZjI0YjUzZDhiYTM2YTVlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxMzVjYzI2Zjk3ZGMxY2RkNmM3NGVlZThhZjI0NTI3YzVhODYzMzVlZmU1Y2RiODA4N2Y0NDQyNzBhNzBkMmYifQ"
         }
       ]
@@ -44,19 +44,19 @@
     },
     {
       "id": "claim_41b3f3345913464693ec3dc6ec6dbe64",
-      "statement": "Public IMPACT syntax requires exact producer anchors, explicit domain and semantics, declaration inventory and model input; retained IMPACT_WITNESS pages select producers, models, native reads, rejected reads or compact findings from the retained investigation rather than re-executing semantic work.",
+      "statement": "Public IMPACT syntax requires exact producer anchors, explicit domain and semantics, declaration inventory and model input; retained IMPACT_WITNESS pages select producers, models, native reads, rejected reads compact findings or requested-site accounting from the retained investigation rather than re-executing semantic work.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt#L25-L39",
-          "version": "repo-lines-v1:sha256:b3eab41bde0bb8649057d72026b9458b87563fec4a2e6dc5a83bf7228489f11e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjMGZhZDdmNDk1ZWQ1Mzc3MDMwOTc4ZTkwMDJhZjhkOTIyZTQ1ZDhmNWQyODg0NGVmMDEzN2QxOTAwODdlNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0MDc0YzI0NDg3ZTBkZWI4MjljNThmNWY1ZjAwODEzNDg1YWZlOTEzYTk5NWIzOGYzZWZmODFmNDI2ZjViOTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt",
+          "version": "repo-file-v1:sha256:7e3d4cf091505c3d2323733b2c524af41f77b0315cb5fcd87bbd9322c2ffad5f"
         },
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt#L16-L55",
-          "version": "repo-lines-v1:sha256:b6c60f485bb9e46703643c92170a20ef574656b1a0b847c19b2ff88841b4cd79:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNjE5YjNkZTU3ODIzNTgxMGQzZDA5ZWJlMjlmY2Q5YTViOWU2YjA2MzM5YjQ1NTMxY2ExNzk0YTg2MGJjMGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhY2VhNjczZTljY2FmNWUxMzZkZTg0YTRkZmZkYmQ1Nzc2NWVmOGNmYzQ1NTJkMGMzZWI4ODdkNDYxZDk3MjIifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
+          "version": "repo-file-v1:sha256:44034d463f379259c4b6a5fbf649a2d0c016767e0daf4ee3814b1b1bcbd44af8"
         },
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt#L88-L137",
-          "version": "repo-lines-v1:sha256:84017b2b2d566f6e833fd4b4ff77a2c5238a8a1bccbace431745fc75cb1b876e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkMmMyNTI0N2U5YTUxMWM1Njk5ZTliMzI3Y2IwYTkxNDg4OTdmMzQ3MGEyYWI3NzNhMzk1YTAzNzQ3ZDI5ZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NGQ2MmZiMzU2ZjVmOTM1MzgxNjVlN2ZmM2VkNWRjOGMxMDk5MmNmNTM2ZDAzZGI3YjRiNzZjOWVlYjViMDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZkMGMzMTZhYTRiZDI3M2I5ZDNjOGU1YjE4NDA0OWMyODkyNGE3YTBiYTA1MTBlZGM1OWMwZmUwNGNiNmJmOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwZDY4YjA3MmZjMTFjODU5NWM4M2FmZTUwOWI1ZjI2YmU4NmQzMzY2NWNkZmIwMDNmZDM0Y2RkNTMxMDQ2MjIifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
+          "version": "repo-file-v1:sha256:39c16486a772267038bbf7aebf24555b91f37e927a0e363a6b15a060343701ba"
         }
       ]
     },
@@ -83,16 +83,16 @@
       "statement": "Each compact finding binds one original retained path ordinal and its issued row ID; the existing retained presentation rejects missing or inconsistent identity context, while canonical accounting rejects inconsistent original counts or ordinals, duplicate page row IDs, and empty present representation alternatives. Finding presentation retains original unresolved closure and creates no semantic authority.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt#L40-L89",
-          "version": "repo-lines-v1:sha256:972d82c40b9ab09cb775986c344f03fc8e9e788aa43c745fc7f28de6b20adaac:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0MWM5ZmVjMjRkNTg5NGE5N2Q5NjZmMDFmMTRkY2UyNmQzYzRmMzQzYTY3ZDQ2ODFiMWI1NTY3ZDIyZWQxZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3ZTQxNmIyODcxYTI5MzQ3OTNlODYwNmQ0NWMxODdjZjgzNDdjMWU4OThiMTNmZjFkMzQ5NjIxODRmOTg0MjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyNTIzZGJhODM2NjY4ZjQ3OGEzNDNlZDc2YTc2NzZjY2U4ZmVjNWI1YWRhNGM3NDM3YzgyZGU4MjgxY2RjNWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2ZTA3OGE1ZGIyODA3NzYwNjRhMjJiODcxNTNkZWRhYWRlMjUyM2ZjYjZmZDhhYmFjMzM2OTk1ODIwYWFiNDMifQ"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt",
+          "version": "repo-file-v1:sha256:921fecace5f8a894ca5846949a6a6258de557f9cc4660c28e99e8496c1f48cb7"
         },
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt#L35-L74",
-          "version": "repo-lines-v1:sha256:0af65e0365796e78ca250541ba048fb42bcfdef9e1201836fb5a99c9e822b294:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3MWY4NzYzN2I5MzQ2ODU2NDkxNWVmOWJiNzIwYzY5NmEyY2RmNzBkYTUzNmU0MzcyMDhjZTZkNTA0NzJmZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwZGVlYjFiMDU1ZTUzYmY3M2FjMGYxNDI0MmVkZTZkNGU2YTBkYjlhZTdiOGFkZTUxMjcwZjkzN2Y5MTA3NDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3MWU0NThlZTZkZmQ1Mzg0ZTRhMGQ5MmJiYjFkNjg1YjY0YzQ0ZWY0OTFmMTg4MGZmZThlNWIxYjgzMGNlYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmY2Q3YzMzZDhiZjdkODdmZWM3YTkyMDgyMGMyM2YyZDFjODVmYmM1YTIwNDg0YjQ3ZGVmMTJhYTc4MWY2MzgifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
+          "version": "repo-file-v1:sha256:44034d463f379259c4b6a5fbf649a2d0c016767e0daf4ee3814b1b1bcbd44af8"
         },
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt#L129-L153",
-          "version": "repo-lines-v1:sha256:7467c26266f4ded5ff439991208827490122c8743b620f72126d572119137440:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1ZWFiMmNkN2RmOWZkMDcxODljYTBiZDBiZWE4YTE1Nzk2MTA4ZDg3NDU2NzFiNTAwY2RlMGJkYjU2YjZiZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkOGZkZTcxNTJhMzNmZDI3YjM2NDkyMDEyMjAxNzUyOTg5YmQ0OTUyZDE4NGY3NzU1YTAwYjlmMGQ2ZjcyNzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiY2IyOGEwNGY2MDA1YTBjNDMyNzA1Mzg4ZjRlYjJkYjkwOTY3MzQ3YTI2NWY4YmY5YTA4ZDA4OTg5MTQ2ODEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhOWY4NmQyOGU3ODRmOWZkMzFmYjcyZDE1ZjYwY2JjZWFhZmRkNjY5Y2JkNWI2ZGE3ODg4YTAyMzMyMWViYjkifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
+          "version": "repo-file-v1:sha256:39c16486a772267038bbf7aebf24555b91f37e927a0e363a6b15a060343701ba"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt",
@@ -109,10 +109,32 @@
           "version": "repo-lines-v1:sha256:dae70d29fbbfe5194d08d63334e2247669fdeef0a5eab6bb37ad2cc7c77a2a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NzVkNGFhYTdmZmM3MjQwZTBkOGRkYTMzZDlhZDVjMmRiMjJjNjI2NTg4NTc1OGI2NGNiZTVlNWRiNmM4NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YTJmYjA1ZDEzNGNiZmQxZmRiYTlhZDJiMzQ5ZTVjODEzZTRhZjE2YTg1ZGUxMTE5ZDk0NzE4MWZlM2JjNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0MDU4OTk5MTY3ZjE5N2EyM2NjZjY0NjQyMTM3NDI4MzQxZWU3YzgwODdhNmY4N2M3YmFlZjBiZjE3YTBhNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmODcyNDA2ZTY1ZTY1ZDdkMDcxZWVkMzRlMjhkZjU1YjlmZmRlZWNlZDNmNjhkYmFkMzZjYTkxYTFiYjdkYjYifQ"
         }
       ]
+    },
+    {
+      "id": "claim_a28818cc88854f0eac69f136af875068",
+      "statement": "Optional public requestedSites input lowers omitted or null to an empty bounded universe; investigated output requires the original universe and retained SITE_ACCOUNTING exposes native admission grants, work and finite original-path relationship outcomes without native replay.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt",
+          "version": "repo-file-v1:sha256:7e3d4cf091505c3d2323733b2c524af41f77b0315cb5fcd87bbd9322c2ffad5f"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt",
+          "version": "repo-file-v1:sha256:0c6a175518d6db3e46025108fd39a4d4e8df9adb9b66c64675ee59f29038c22f"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactSiteAccountingDocuments.kt",
+          "version": "repo-file-v1:sha256:3c67d460484f79b1f8707886e1c41033cf1fba9a94a8c1045b4e5933c78ccf45"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
+          "version": "repo-file-v1:sha256:44034d463f379259c4b6a5fbf649a2d0c016767e0daf4ee3814b1b1bcbd44af8"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T10:31:14.639Z"
+    "at": "2026-10-03T14:16:26.318Z"
   }
 }

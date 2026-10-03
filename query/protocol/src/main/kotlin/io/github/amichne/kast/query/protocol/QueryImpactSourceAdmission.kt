@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedImpactModelSyntax
 import io.github.amichne.kast.protocol.contract.ImpactModelDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
@@ -57,6 +58,10 @@ internal suspend fun QueryImpactSourceDocument.admitImpact(
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
     }
+    when (val admitted = admitSiteClaims(lease, requestedSites.values, QueryImpactSourceFailureCode.BASIS_MISMATCH)) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return admitted
+    }
     val acquisition = QueryImpactSourceAcquisition(lease, authority, compiler, budget, domain)
     when (val admitted = acquisition.acquireSeeds(seeds.values)) {
         is Refinement.Refined -> Unit
@@ -67,6 +72,10 @@ internal suspend fun QueryImpactSourceDocument.admitImpact(
         is Refinement.Rejected -> return admitted
     }
     when (val admitted = acquisition.acquirePositions(declaredPositions)) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return admitted
+    }
+    when (val admitted = acquisition.acquireRequestedSites(requestedSites.values)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
     }
@@ -88,6 +97,10 @@ private const val MAXIMUM_DECLARATIONS = 128
 private const val MAXIMUM_MODELS = 32
 
 private fun QueryImpactSourceDocument.admitCountBounds(): Refinement<Unit, QueryRunRejection> {
+    if (requestedSites.values.size > MAXIMUM_DECLARATIONS)
+        return impactFailure(QueryImpactSourceFailureCode.TOO_MANY_REQUESTED_SITES)
+    if (requestedSites.values.distinct().size != requestedSites.values.size)
+        return impactFailure(QueryImpactSourceFailureCode.DUPLICATE_REQUESTED_SITE)
     if (seeds.values.isEmpty()) return impactFailure(QueryImpactSourceFailureCode.EMPTY_PRODUCERS)
     if (seeds.values.size > MAXIMUM_PRODUCERS) return impactFailure(QueryImpactSourceFailureCode.TOO_MANY_PRODUCERS)
     if (declarations.values.size > MAXIMUM_DECLARATIONS)
@@ -104,10 +117,22 @@ private fun QueryImpactSourceDocument.admitBoundaryClaims(
     lease: SemanticReadAuthority,
     declaredPositions: List<io.github.amichne.kast.protocol.contract.ImpactBoundaryPositionDocument>,
 ): Refinement<Unit, QueryRunRejection> {
-    for ((position, declared) in declaredPositions.withIndex()) {
+    return admitSiteClaims(
+        lease,
+        declaredPositions.map { it.site },
+        QueryImpactSourceFailureCode.BOUNDARY_BASIS_MISMATCH,
+    )
+}
+
+private fun QueryImpactSourceDocument.admitSiteClaims(
+    lease: SemanticReadAuthority,
+    sites: List<ImpactValueSiteReferenceDocument>,
+    basisFailure: QueryImpactSourceFailureCode,
+): Refinement<Unit, QueryRunRejection> {
+    for ((position, declared) in sites.withIndex()) {
         val claims =
-            listOf(declared.site.enclosing) +
-                when (val role = declared.site.role) {
+            listOf(declared.enclosing) +
+                when (val role = declared.role) {
                     is ImpactValueRoleDocument.Argument -> listOf(role.invocation.callable)
                     ImpactValueRoleDocument.ExpressionResult,
                     ImpactValueRoleDocument.LocalBinding,
@@ -115,8 +140,7 @@ private fun QueryImpactSourceDocument.admitBoundaryClaims(
                     ImpactValueRoleDocument.Return,
                     ImpactValueRoleDocument.PropertyAssignment -> emptyList()
                 }
-        if (claims.any { !it.basis.matchesBasis(lease.identity) })
-            return impactFailure(QueryImpactSourceFailureCode.BOUNDARY_BASIS_MISMATCH, position)
+        if (claims.any { !it.basis.matchesBasis(lease.identity) }) return impactFailure(basisFailure, position)
         if (claims.any { claim -> declarations.values.none { it.declaration == claim } })
             return impactFailure(QueryImpactSourceFailureCode.MISSING_DECLARATION, position)
     }

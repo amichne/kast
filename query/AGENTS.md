@@ -40,6 +40,8 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 - [protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt) - issued and restored reference authority.
 
 - [QueryImpactSource.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSource.kt) - same-basis producer and reviewed model admission.
+- [QueryImpactRequestedSite.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRequestedSite.kt) - exact native site selection with its revalidation request and observed work grant.
+- [QueryImpactSiteAccounting.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt) - original path links, proven scope exits, and required unresolved relationships for independently requested sites.
 - [QueryImpactLedger.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt) - branch conservation and required obligation closure.
 - [QueryImpactFinding.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt) - admitted original path ordinal and identity for compact retained witness projection.
 - [QueryImpactRetainedGraph.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt) - request-local storage charging of shared immutable proof objects and their reference cells.

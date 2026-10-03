@@ -4592,6 +4592,18 @@
               "flow": {
                 "$ref": "#/$defs/ImpactFlow",
                 "description": "Versioned supported forward Kotlin value transfers. Unsupported flow retains explicit unresolved obligations."
+              },
+              "requestedSites": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/$defs/ImpactRequestedSite"
+                },
+                "maxItems": 128,
+                "default": null,
+                "description": "Optional exact requested-site universe. Native admission preserves original order and identity. Unmatched sites remain explicitly RELATIONSHIP_UNPROVEN; no path or absence is inferred."
               }
             },
             "required": [
@@ -4628,7 +4640,8 @@
               "MODELS",
               "NATIVE_READS",
               "READ_REJECTIONS",
-              "FINDINGS"
+              "FINDINGS",
+              "SITE_ACCOUNTING"
             ]
           },
           "ImpactWitnessOutput": {
@@ -4663,6 +4676,443 @@
               {
                 "$ref": "#/$defs/ImpactSourceDomain"
               }
+            ]
+          },
+          "ImpactRequestedSite": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enclosing": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "basis": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": {
+                            "enum": [
+                              "LIVE"
+                            ],
+                            "type": "string",
+                            "default": "LIVE"
+                          },
+                          "root": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1048576,
+                            "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                          },
+                          "host": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1048576,
+                            "allOf": [
+                              {
+                                "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                              },
+                              {
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                              }
+                            ]
+                          },
+                          "epoch": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "contentView": {
+                            "type": "string",
+                            "enum": [
+                              "SAVED_PSI_COMMITTED"
+                            ],
+                            "default": "SAVED_PSI_COMMITTED"
+                          },
+                          "referenceVersion": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "root",
+                          "host",
+                          "epoch",
+                          "contentView",
+                          "referenceVersion"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": {
+                            "enum": [
+                              "PUBLISHED"
+                            ],
+                            "type": "string",
+                            "default": "PUBLISHED"
+                          },
+                          "root": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1048576,
+                            "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                          },
+                          "generation": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "root",
+                          "generation"
+                        ]
+                      }
+                    ]
+                  },
+                  "file": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1048576,
+                    "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                  },
+                  "range": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "start": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "end": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end"
+                    ]
+                  },
+                  "compilerIdentity": {
+                    "type": "string",
+                    "minLength": 94,
+                    "maxLength": 94,
+                    "allOf": [
+                      {
+                        "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                      },
+                      {
+                        "pattern": "^canonical-signature-sha256-v1\\|[0-9a-f]{64}$"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "basis",
+                  "file",
+                  "range",
+                  "compilerIdentity"
+                ]
+              },
+              "range": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "start": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "end": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "start",
+                  "end"
+                ]
+              },
+              "role": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "ARGUMENT"
+                        ],
+                        "type": "string",
+                        "default": "ARGUMENT"
+                      },
+                      "invocation": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "range": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "start": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "start",
+                              "end"
+                            ]
+                          },
+                          "callable": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "basis": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "type": {
+                                        "enum": [
+                                          "LIVE"
+                                        ],
+                                        "type": "string",
+                                        "default": "LIVE"
+                                      },
+                                      "root": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 1048576,
+                                        "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                      },
+                                      "host": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 1048576,
+                                        "allOf": [
+                                          {
+                                            "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                          },
+                                          {
+                                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                                          }
+                                        ]
+                                      },
+                                      "epoch": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                      },
+                                      "contentView": {
+                                        "type": "string",
+                                        "enum": [
+                                          "SAVED_PSI_COMMITTED"
+                                        ],
+                                        "default": "SAVED_PSI_COMMITTED"
+                                      },
+                                      "referenceVersion": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "root",
+                                      "host",
+                                      "epoch",
+                                      "contentView",
+                                      "referenceVersion"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "type": {
+                                        "enum": [
+                                          "PUBLISHED"
+                                        ],
+                                        "type": "string",
+                                        "default": "PUBLISHED"
+                                      },
+                                      "root": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 1048576,
+                                        "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                      },
+                                      "generation": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "root",
+                                      "generation"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "file": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1048576,
+                                "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                              },
+                              "range": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "start": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "end": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "start",
+                                  "end"
+                                ]
+                              },
+                              "compilerIdentity": {
+                                "type": "string",
+                                "minLength": 94,
+                                "maxLength": 94,
+                                "allOf": [
+                                  {
+                                    "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                  },
+                                  {
+                                    "pattern": "^canonical-signature-sha256-v1\\|[0-9a-f]{64}$"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "basis",
+                              "file",
+                              "range",
+                              "compilerIdentity"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "range",
+                          "callable"
+                        ]
+                      },
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "invocation",
+                      "index"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "EXPRESSION_RESULT"
+                        ],
+                        "type": "string",
+                        "default": "EXPRESSION_RESULT"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "LOCAL_BINDING"
+                        ],
+                        "type": "string",
+                        "default": "LOCAL_BINDING"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "LOCAL_READ"
+                        ],
+                        "type": "string",
+                        "default": "LOCAL_READ"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "PROPERTY_ASSIGNMENT"
+                        ],
+                        "type": "string",
+                        "default": "PROPERTY_ASSIGNMENT"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "RETURN"
+                        ],
+                        "type": "string",
+                        "default": "RETURN"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "enclosing",
+              "range",
+              "role"
             ]
           }
         }

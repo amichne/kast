@@ -38,7 +38,7 @@ icon: "book-open"
 
     Present stored rows without evaluating the query again. Omitted output reads retained symbols. Choose `OCCURRENCES`, `TRAVERSAL_RECORDS`, `BINDING_ROWS`, or `VALUE_PATHS` for the matching retained row type. Kast rejects an output that does not match the retained row type. A presentation cursor is not an execution continuation.
 
-    For a retained impact investigation, `output: {"type":"IMPACT_WITNESS","section":"PRODUCERS"}` reads its producer evidence. The other sections are `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, and `FINDINGS`. Use `READ_RESULT` with the issued result reference and optional `cursor`; witness output is unavailable on `RUN`.
+    For a retained impact investigation, `output: {"type":"IMPACT_WITNESS","section":"PRODUCERS"}` reads its producer evidence. The other sections are `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS`, and `SITE_ACCOUNTING`. Use `READ_RESULT` with the issued result reference and optional `cursor`; witness output is unavailable on `RUN`.
   </Tab>
 </Tabs>
 
@@ -71,6 +71,10 @@ Run an impact source with no transformation steps and `output: {"type":"VALUE_PA
 Before the impact ledger is finalized, a work-limited run can return a qualified, empty `VALUE_PATHS` page with `EVIDENCE_ONLY` accounting and a resumable execution checkpoint. Reading that retained page preserves the checkpoint and performs no semantic work. Witness sections, including `FINDINGS`, return `RESULT_FIELD_UNAVAILABLE` until the investigation ledger exists. Resume the execution checkpoint to continue the investigation.
 
 Read `IMPACT_WITNESS` with section `FINDINGS` for one compact row per original path. Each row retains the producer, destination, current representation, model provenance, terminal outcome, and boundary obligations. Its `path` contains `pathOrdinal` and `pathRowId`. To expand the original evidence, read the same result with `VALUE_PATHS`, set `cursor` to the path ordinal, and set `executionBudget.maxResults` to `1`; the expanded row has that same row ID. Paging findings preserves the original investigation’s unresolved obligations and performs no semantic reads. A compact finding is a presentation of retained evidence; it supplies no new compiler or model fact.
+
+Supply optional `requestedSites` inside the impact source to account for exact value sites independently of the producer paths. Each site includes its enclosing declaration identity, range, and role; argument sites also identify the whole invocation, callable, and formal parameter index. Pair their declaration claims with issued references in `declarations`. Kast revalidates these sites under the same acquisition grant. A valid site establishes its identity; it does not establish a relationship to a producer.
+
+Read section `SITE_ACCOUNTING` for one row per requested site in the original order. Each row retains its native admission grant and observed work. `REACHED` links to original paths by `pathOrdinal` and `pathRowId`, preserving any separate proven scope exits. `EXCLUDED` retains exact scope-exclusion witnesses from original paths. `RELATIONSHIP_UNPROVEN` preserves the site and adds the required `REQUESTED_SITE_RELATIONSHIP` obligation, which prevents semantic completion. Paging these rows uses the same retained result and performs no semantic reads.
 
 ## Apply only the steps you need
 

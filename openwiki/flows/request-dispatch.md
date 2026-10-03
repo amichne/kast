@@ -84,10 +84,10 @@ sources:
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-03T08:10:55.203Z" }
+generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T08:10:55.203Z
+    at: 2026-10-03T14:16:26.318Z
 ---
 
 # Request dispatch
@@ -279,3 +279,5 @@ for its own lifetime. Failed loads remain retryable. Every exchange still obtain
 and admits a fresh live describe before dispatching the requested operation.
 
 Public impact syntax uses the same `query.run` dispatch. Typed facade lowering preserves seeds, model declarations, expansion domain and forward-flow semantics in the canonical request. Read-result lowering selects the existing typed constructors for value paths or impact witness sections, retaining the result, cursor and admitted execution budget. Model syntax and native source revalidation remain separate steps; lowering alone establishes no compiler or representation facts.
+
+Optional requested-site claims follow that same lowering path. Omitted or null `requestedSites` becomes the canonical empty requested-site list; supplied claims remain in original order for canonical admission. The facade does not infer a relationship from the claim. `SITE_ACCOUNTING` is another section of the existing retained witness output, so its dispatch carries the original result reference and presentation cursor rather than starting a second query.

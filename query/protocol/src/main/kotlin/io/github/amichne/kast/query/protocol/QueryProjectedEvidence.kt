@@ -31,9 +31,12 @@ internal data class QueryProjectedEvidence(
             output: QueryOutputDocument,
             authority: QueryReferenceAuthority,
             originalRowIds: List<QueryResultRowReference>? = null,
+            originalPathRowIds: List<QueryResultRowReference>? = null,
         ): Refinement<QueryProjectedEvidence, QueryRunRejection> {
             val items =
-                when (val admitted = projectResultItems(result, output, authority, originalRowIds)) {
+                when (
+                    val admitted = projectResultItems(result, output, authority, originalRowIds, originalPathRowIds)
+                ) {
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return admitted
                 }
@@ -82,8 +85,12 @@ private fun projectResultItems(
     output: QueryOutputDocument,
     authority: QueryReferenceAuthority,
     originalRowIds: List<QueryResultRowReference>?,
+    originalPathRowIds: List<QueryResultRowReference>?,
 ): Refinement<List<QueryResultItemDocument>, QueryRunRejection> =
-    when (val projected = QueryItemProjector(authority).projectItems(output, result.rows, originalRowIds)) {
+    when (
+        val projected =
+            QueryItemProjector(authority).projectItems(output, result.rows, originalRowIds, originalPathRowIds)
+    ) {
         is QueryProjection.Projected -> Refinement.Refined(projected.values)
         is QueryProjection.ImpactRejected -> Refinement.Rejected(projected.cause.presentationRejection())
         QueryProjection.Rejected ->

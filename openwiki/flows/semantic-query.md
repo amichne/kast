@@ -107,16 +107,17 @@ code_sources:
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-03T10:31:14.639Z
 sources:
   - id: openwiki-source-25796dce45aaa5a543a07570
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
   - id: openwiki-source-927d5002042f13cac9db37f1
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
+  - id: openwiki-source-9fcd90db4b894268639790f3
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
   - id: openwiki-source-ceaa6e4a1cc8af84eede173b
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt
+  - id: openwiki-source-8abcd99add0585ea126a3883
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
   - id: openwiki-source-f0cad133a15126760b814619
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt
   - id: openwiki-source-922a5bf331e56677e884867b
@@ -141,7 +142,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-generated: { by: "codex", at: "2026-10-03T10:31:14.639Z" }
+generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T14:16:26.318Z
 ---
 
 # Semantic query
@@ -296,3 +300,5 @@ factors remain. Ordinary pipeline accounting retains its existing policy.
 `FINDINGS` is a retained witness projection with one record per original ledger path. Paths sharing a destination remain separate. The admitted ordinal points to the original path object; the retained presentation supplies its existing issued row ID before compact DTO construction. Compact rows keep current representation alternatives and ordered model provenance, finite terminal causes and boundary obligations. Compiler transfer payloads and full model history remain on the linked `VALUE_PATHS` row. The original accounting and unresolved closure accompany every page, so a smaller summary cannot strengthen the investigation or revive a stale basis.
 
 A work stop before impact finalization can retain an empty, qualified evidence-only value-path snapshot. Unfinished routes and cached native reads remain owned by the exact existing execution checkpoint. The snapshot does not establish investigation closure. Only a finalized investigation supplies original path ordinals and witness sections; pending witness reads reject with `RESULT_FIELD_UNAVAILABLE`. Retained presentation leaves the upstream checkpoint available.
+
+Requested targets do not schedule additional value-flow exploration. Finalization passes the independently admitted requested-site universe into the same ledger, which compares exact site identities with original producers, destinations and step endpoints. Each target retains reached original paths, exact same-domain exclusions, or an unproven relationship. The last outcome adds a required relationship obligation to the existing closure. Retained `SITE_ACCOUNTING` derives from these original outcomes without changing path order or creating a second interpreter.

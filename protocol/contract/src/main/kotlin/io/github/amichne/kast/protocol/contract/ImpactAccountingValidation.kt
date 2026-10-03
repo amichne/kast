@@ -8,6 +8,10 @@ fun QueryRunResult.validateImpactAccounting(): Refinement<Unit, ImpactAccounting
     if (impactAccounting == ImpactAccountingDocument.NotApplicable) return validateNonImpactAccounting(pathCount)
     if (question.output != QueryOutputDocument.ValuePaths)
         return Refinement.Rejected(ImpactAccountingFailure.ACCOUNTING_FOR_NON_VALUE_OUTPUT)
+    val investigated = impactAccounting as? ImpactAccountingDocument.Investigated
+    val source = question.from as? QueryFromDocument.Impact
+    if (investigated != null && source != null && investigated.requestedSites != source.investigation.requestedSites)
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
     when (val admitted = validateImpactRows(pathCount)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
@@ -41,14 +45,25 @@ private fun QueryRunResult.validateImpactRows(pathCount: Long): Refinement<Unit,
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
     if (accounting.status !is ImpactAccountingStatusDocument.SelectedSubset)
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
-    if (witnessView.section == ImpactWitnessSectionDocument.FINDINGS) {
-        when (val findings = validateFindingReferences(witnessView, witnessItems, accounting.originalPathCount.value)) {
-            is Refinement.Refined -> Unit
-            is Refinement.Rejected -> return findings
-        }
+    when (val specific = accounting.validateWitnessSection(witnessView, witnessItems)) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return specific
     }
     return witnessView.validateWitnessOrdinals(witnessItems)
 }
+
+private fun ImpactAccountingDocument.Investigated.validateWitnessSection(
+    view: ImpactAccountingViewDocument.Witness,
+    items: List<QueryResultItemDocument.ImpactWitness>,
+): Refinement<Unit, ImpactAccountingFailure> =
+    when (view.section) {
+        ImpactWitnessSectionDocument.FINDINGS -> validateFindingReferences(view, items, originalPathCount.value)
+        ImpactWitnessSectionDocument.SITE_ACCOUNTING -> validateSiteAccounting(view, items)
+        ImpactWitnessSectionDocument.PRODUCERS,
+        ImpactWitnessSectionDocument.MODELS,
+        ImpactWitnessSectionDocument.NATIVE_READS,
+        ImpactWitnessSectionDocument.READ_REJECTIONS -> Refinement.Refined(Unit)
+    }
 
 private fun validateFindingReferences(
     view: ImpactAccountingViewDocument.Witness,
@@ -101,6 +116,8 @@ private fun ImpactAccountingDocument.Investigated.validateInvestigation(
         is Refinement.Rejected -> return count
     }
     if (originalPathCount.value < pathCount) return Refinement.Rejected(ImpactAccountingFailure.ORIGINAL_COUNT_UNDERRUN)
+    if (requestedSites.values.distinct().size != requestedSites.values.size)
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
     if (seeds.values.isEmpty()) return Refinement.Rejected(ImpactAccountingFailure.EMPTY_SEEDS)
     if (seeds.values.distinct().size != seeds.values.size)
         return Refinement.Rejected(ImpactAccountingFailure.DUPLICATE_SEED)
@@ -151,6 +168,7 @@ fun QueryRunResult.validateImpactCompletion(): Refinement<Unit, ImpactAccounting
 
 private fun ImpactWitnessDocument.section(): ImpactWitnessSectionDocument =
     when (this) {
+        is ImpactWitnessDocument.SiteAccounting -> ImpactWitnessSectionDocument.SITE_ACCOUNTING
         is ImpactWitnessDocument.Finding -> ImpactWitnessSectionDocument.FINDINGS
         is ImpactWitnessDocument.Producer,
         is ImpactWitnessDocument.ProducerSiteOnly -> ImpactWitnessSectionDocument.PRODUCERS

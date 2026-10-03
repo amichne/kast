@@ -327,7 +327,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
                     object_body.append(f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')
                 modifier = 'override ' if prop == 'verbose' and key in roots else ''
                 comma = '' if key.startswith('Impact') and len(props) == 1 else ','
-                object_body.append(f'    {modifier}val {parameter}: {field_type}{default}{comma}\n')
+                declaration = f'    {modifier}val {parameter}: {field_type}{default}{comma}\n'
+                if len(declaration.rstrip()) > 120 and default == ' = null':
+                    object_body.append(f'    {modifier}val {parameter}:\n        {field_type} =\n        null{comma}\n')
+                else:
+                    object_body.append(declaration)
             object_body.append(')' + suffix + '\n\n')
     for key, values in enums.items():
         lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')

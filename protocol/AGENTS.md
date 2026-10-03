@@ -45,6 +45,7 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [QueryImpactSourceDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImpactSourceDocument.kt) - producer, domain, flow, and reviewed model request documents.
 - [ImpactAccountingDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt) - conservation and unresolved obligation accounting.
 - [ImpactWitnessDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactWitnessDocuments.kt) - retained producer, model, native-read, rejected-read, and compact finding presentation; finding links expand original path evidence.
+- [ImpactSiteAccountingDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactSiteAccountingDocuments.kt) - independently requested native sites, admission receipts, original path and scope-exit links, and finite unresolved relationships.
 - [CanonicalQueryCliDocuments.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt) - typed CLI query envelopes and serializer owners for installed schemas.
 
 ## Subdirectories

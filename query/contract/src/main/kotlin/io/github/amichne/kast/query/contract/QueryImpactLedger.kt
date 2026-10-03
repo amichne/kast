@@ -34,6 +34,8 @@ enum class QueryImpactLedgerFailure {
     UNPROVEN_TERMINAL,
     UNACCOUNTED_NATIVE_READ,
     PRODUCER_IDENTITY_MISMATCH,
+    DUPLICATE_REQUESTED_SITE,
+    FOREIGN_REQUESTED_SITE,
 }
 
 enum class QueryImpactRequiredObligation {
@@ -42,6 +44,7 @@ enum class QueryImpactRequiredObligation {
     REPRESENTATION_STATE,
     EXECUTION_BOUNDARY,
     PRODUCER_IDENTITY,
+    REQUESTED_SITE_RELATIONSHIP,
 }
 
 sealed interface QueryImpactClosure {
@@ -66,6 +69,8 @@ private constructor(
     val readRejections: List<QueryImpactReadRejection>,
     val paths: List<QueryImpactPath>,
     val closure: QueryImpactClosure,
+    val requestedSites: List<QueryImpactRequestedSite>,
+    val siteAccounting: List<QueryImpactSiteAccounting>,
 ) {
     companion object {
         fun fromEvidence(
@@ -78,6 +83,7 @@ private constructor(
             paths: List<QueryImpactPath>,
             readRejections: List<QueryImpactReadRejection> = emptyList(),
             originalProducers: List<QueryImpactProducer> = emptyList(),
+            requestedSites: List<QueryImpactRequestedSite> = emptyList(),
         ): Refinement<QueryImpactLedger, QueryImpactLedgerFailure> {
             val validation =
                 QueryImpactLedgerValidation(
@@ -94,11 +100,16 @@ private constructor(
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
-            val producers =
-                if (originalProducers.isEmpty()) seeds.map(QueryImpactProducerEvidence::SiteOnly)
-                else originalProducers.map(QueryImpactProducerEvidence::Invocation)
+            val accounting =
+                when (val admitted = requestedSiteAccounting(requestedSites, seeds, paths, domain)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
+            val relationship = accounting.relationshipRequirements()
+            val producers = producerEvidence(originalProducers, seeds)
             val required =
                 (paths.flatMap { it.requiredObligations() } +
+                        relationship +
                         if (producers.any { it is QueryImpactProducerEvidence.SiteOnly })
                             listOf(QueryImpactRequiredObligation.PRODUCER_IDENTITY)
                         else emptyList())
@@ -118,6 +129,8 @@ private constructor(
                     snapshot(readRejections),
                     snapshot(paths),
                     closure,
+                    snapshot(requestedSites),
+                    accounting,
                 )
             )
         }
@@ -226,3 +239,28 @@ private fun QueryImpactTerminal.requiredObligations(): List<QueryImpactRequiredO
         is QueryImpactTerminal.SupportedDomainEnd,
         is QueryImpactTerminal.ExplicitScopeExclusion -> emptyList()
     }
+
+private fun requestedSiteAccounting(
+    requestedSites: List<QueryImpactRequestedSite>,
+    seeds: List<ValueSite>,
+    paths: List<QueryImpactPath>,
+    domain: RelationSearchBoundary,
+): Refinement<List<QueryImpactSiteAccounting>, QueryImpactLedgerFailure> {
+    if (requestedSites.map { it.site }.distinct().size != requestedSites.size)
+        return Refinement.Rejected(QueryImpactLedgerFailure.DUPLICATE_REQUESTED_SITE)
+    if (requestedSites.any { it.site.hasForeignBasis(seeds.first().enclosing.lease) })
+        return Refinement.Rejected(QueryImpactLedgerFailure.FOREIGN_REQUESTED_SITE)
+    return QueryImpactSiteAccounting.fromRequestedSites(requestedSites, paths, domain)
+}
+
+private fun List<QueryImpactSiteAccounting>.relationshipRequirements(): List<QueryImpactRequiredObligation> =
+    if (any { it.outcome == QueryImpactSiteOutcome.RelationshipUnproven })
+        listOf(QueryImpactRequiredObligation.REQUESTED_SITE_RELATIONSHIP)
+    else emptyList()
+
+private fun producerEvidence(
+    original: List<QueryImpactProducer>,
+    seeds: List<ValueSite>,
+): List<QueryImpactProducerEvidence> =
+    if (original.isEmpty()) seeds.map(QueryImpactProducerEvidence::SiteOnly)
+    else original.map(QueryImpactProducerEvidence::Invocation)

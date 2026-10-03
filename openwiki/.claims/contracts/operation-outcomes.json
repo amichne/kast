@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cb43790790f382a0f1e185c33419b8d9b40c9c5a6c7616a48862aae9184bd810",
+  "pageVersion": "sha256:154aaf1fb4b926fa3735b1d17954867c833c03a826fe0fa497ca7d5bcc72ef02",
   "claims": [
     {
       "id": "claim_55bbe06398c44272b3f13d3df179d4ee",
@@ -51,8 +51,8 @@
       "statement": "Impact ledger construction accounts for every admitted seed, observed native branch and applicable reviewed model alternative before deriving closure; native branch accounting preserves exact origin history and preceding model steps, while required path obligations or weaker producer identity retain unresolved closure.",
       "evidence": [
         {
-          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt#L70-L122",
-          "version": "repo-lines-v1:sha256:9cb6a1b84de2afd9d2a8da8f6ce53d4cecfcffdc6c934bbd789b8896d0fbfe76:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMzMwMjdiYzIwYjViY2M0YjEzOTBiNjM2YjJhY2E4YjA4NTNiZjUwMjA0YjAyMDlhMTdiOGY0ODQwN2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmYzliNmU0NmQ4MTdjOGU0OWZkYmNmMDNjNDgwNzc3NTc1ZTgxMWJhNWY0YThmOTUyMTdkYTY3OGZlOGNjYTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
+          "version": "repo-file-v1:sha256:aa2594402c36da1e046d533409953fd47a5ad6ada46bc8b45775d58ddb1508f6"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt",
@@ -63,10 +63,24 @@
           "version": "repo-file-v1:sha256:de381996cf6633b5749deefba6d23b24aa00313a6edbef311404c7ebece2025a"
         }
       ]
+    },
+    {
+      "id": "claim_47becf179c554e15bc0216134e4a4848",
+      "statement": "Every independently native-admitted requested site retains reached original paths, exact site and domain exclusions, or an unproven relationship; unmatched requested sites add a required relationship obligation that prevents semantic completion.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
+          "version": "repo-file-v1:sha256:aa2594402c36da1e046d533409953fd47a5ad6ada46bc8b45775d58ddb1508f6"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt",
+          "version": "repo-file-v1:sha256:bf434da0a104f53da1983e4a112ca111a142cda769158cbc2fc1d18ab3814048"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T05:39:07.082Z"
+    "at": "2026-10-03T14:16:26.318Z"
   }
 }

@@ -16,6 +16,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 
 internal fun ImpactWitnessSectionDocument.witnessSection(): QueryImpactWitnessSection =
     when (this) {
+        ImpactWitnessSectionDocument.SITE_ACCOUNTING -> QueryImpactWitnessSection.SITE_ACCOUNTING
         ImpactWitnessSectionDocument.FINDINGS -> QueryImpactWitnessSection.FINDINGS
         ImpactWitnessSectionDocument.PRODUCERS -> QueryImpactWitnessSection.PRODUCERS
         ImpactWitnessSectionDocument.MODELS -> QueryImpactWitnessSection.MODELS
@@ -25,6 +26,7 @@ internal fun ImpactWitnessSectionDocument.witnessSection(): QueryImpactWitnessSe
 
 internal fun QueryImpactWitnessSection.witnessDocument(): ImpactWitnessSectionDocument =
     when (this) {
+        QueryImpactWitnessSection.SITE_ACCOUNTING -> ImpactWitnessSectionDocument.SITE_ACCOUNTING
         QueryImpactWitnessSection.FINDINGS -> ImpactWitnessSectionDocument.FINDINGS
         QueryImpactWitnessSection.PRODUCERS -> ImpactWitnessSectionDocument.PRODUCERS
         QueryImpactWitnessSection.MODELS -> ImpactWitnessSectionDocument.MODELS
@@ -33,13 +35,16 @@ internal fun QueryImpactWitnessSection.witnessDocument(): ImpactWitnessSectionDo
     }
 
 internal fun QueryRows.ImpactWitness.projectWitnessItems(
-    originalRowIds: List<QueryResultRowReference>? = null
+    originalRowIds: List<QueryResultRowReference>? = null,
+    originalPathRowIds: List<QueryResultRowReference>? = null,
 ): QueryProjection<QueryResultItemDocument> {
     if (view.section == QueryImpactWitnessSection.FINDINGS && !hasOriginalFindingLinks(originalRowIds))
         return QueryProjection.Rejected
+    if (view.section == QueryImpactWitnessSection.SITE_ACCOUNTING && !hasOriginalSiteLinks(originalPathRowIds))
+        return QueryProjection.Rejected
     val result = mutableListOf<QueryResultItemDocument>()
     for ((index, record) in values.withIndex()) {
-        val document = record.evidence.impactDocument(originalRowIds?.getOrNull(index))
+        val document = record.evidence.impactDocument(originalRowIds?.getOrNull(index), originalPathRowIds)
         val projected =
             count(record.ordinal.value).impactZip(document).impactMap { (ordinal, witness) ->
                 QueryResultItemDocument.ImpactWitness(
@@ -54,6 +59,16 @@ internal fun QueryRows.ImpactWitness.projectWitnessItems(
     return QueryProjection.Projected(result)
 }
 
+private fun QueryRows.ImpactWitness.hasOriginalSiteLinks(rowIds: List<QueryResultRowReference>?): Boolean {
+    if (rowIds == null || rowIds.size != view.ledger.paths.size || rowIds.distinct().size != rowIds.size) return false
+    return values.all { record ->
+        val evidence = record.evidence
+        evidence is QueryImpactWitnessEntry.SiteAccounting &&
+            evidence.accounting.requestedSiteOrdinal == record.ordinal &&
+            view.ledger.siteAccounting.getOrNull(record.ordinal.value) === evidence.accounting
+    }
+}
+
 private fun QueryRows.ImpactWitness.hasOriginalFindingLinks(rowIds: List<QueryResultRowReference>?): Boolean {
     if (rowIds == null || rowIds.size != values.size) return false
     return values.withIndex().all { (index, record) ->
@@ -66,9 +81,12 @@ private fun QueryRows.ImpactWitness.hasOriginalFindingLinks(rowIds: List<QueryRe
 }
 
 private fun QueryImpactWitnessEntry.impactDocument(
-    originalRowId: QueryResultRowReference?
+    originalRowId: QueryResultRowReference?,
+    originalPathRowIds: List<QueryResultRowReference>?,
 ): ImpactProjected<ImpactWitnessDocument> =
     when (this) {
+        is QueryImpactWitnessEntry.SiteAccounting ->
+            accounting.siteAccountingDocument(originalPathRowIds).impactMap(ImpactWitnessDocument::SiteAccounting)
         is QueryImpactWitnessEntry.Finding ->
             if (originalRowId == null) Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
             else finding.findingDocument(originalRowId).impactMap(ImpactWitnessDocument::Finding)

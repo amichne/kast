@@ -576,6 +576,75 @@
           "retention": "RETAIN"
         }
       }
+    },
+    "representationImpactRequestedSite": {
+      "summary": "Illustrative exact site claims only: native admission revalidates every requested range and role on the current basis. Unlinked sites remain RELATIONSHIP_UNPROVEN; they do not prove absence or inferred routes.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "IMPACT",
+            "seeds": [
+              {
+                "enclosing": "exact:v5:illustrative-enclosing-handle",
+                "callable": "exact:v5:illustrative-producer-handle",
+                "anchor": {
+                  "start": 120,
+                  "end": 136
+                }
+              }
+            ],
+            "declarations": [],
+            "domain": {
+              "type": "WORKSPACE"
+            },
+            "flow": "KOTLIN_FORWARD_V1",
+            "models": [],
+            "requestedSites": [
+              {
+                "enclosing": {
+                  "basis": {
+                    "type": "PUBLISHED",
+                    "root": "/illustrative",
+                    "generation": 7
+                  },
+                  "file": "/illustrative/File.kt",
+                  "range": {
+                    "start": 0,
+                    "end": 200
+                  },
+                  "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "range": {
+                  "start": 160,
+                  "end": 165
+                },
+                "role": {
+                  "type": "LOCAL_READ"
+                }
+              }
+            ]
+          },
+          "steps": [],
+          "output": {
+            "type": "VALUE_PATHS"
+          },
+          "retention": "RETAIN"
+        }
+      }
+    },
+    "readImpactSiteAccounting": {
+      "summary": "Read accounting for the original native-admitted requested-site universe from an illustrative retained result. Reached and excluded rows link exact original paths; unmatched rows preserve required relationship obligations.",
+      "value": {
+        "request": {
+          "type": "READ_RESULT",
+          "result": "result:v1:00000000-0000-4000-8000-000000000001",
+          "output": {
+            "type": "IMPACT_WITNESS",
+            "section": "SITE_ACCOUNTING"
+          }
+        }
+      }
     }
   },
   "invalidExamples": {

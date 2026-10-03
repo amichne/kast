@@ -1,5 +1,6 @@
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -33,11 +34,18 @@ data class QueryImpactSourceDocument(
     val domain: QueryExpansionScopeDocument,
     val flow: QueryImpactFlowDocument,
     @ProtocolCollectionConstraint(maximumItems = 32) val models: BoundedProtocolList<ImpactModelDocument>,
+    @ProtocolCollectionConstraint(maximumItems = 128)
+    val requestedSites: BoundedProtocolList<ImpactValueSiteReferenceDocument> = EmptyImpactRequestedSites,
 )
 
 @Serializable
 enum class QueryImpactSourceFailureCode(internal val recoveryAction: ReadRecoveryAction) {
     EMPTY_PRODUCERS(ReadRecoveryAction.CORRECT_REQUEST),
+    DUPLICATE_REQUESTED_SITE(ReadRecoveryAction.CORRECT_REQUEST),
+    STALE_REQUESTED_SITE(ReadRecoveryAction.REACQUIRE_AUTHORITY),
+    UNSUPPORTED_REQUESTED_SITE(ReadRecoveryAction.CORRECT_REQUEST),
+    UNRESOLVED_REQUESTED_SITE(ReadRecoveryAction.CORRECT_REQUEST),
+    TOO_MANY_REQUESTED_SITES(ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE),
     DUPLICATE_PRODUCER(ReadRecoveryAction.CORRECT_REQUEST),
     TOO_MANY_PRODUCERS(ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE),
     TOO_MANY_DECLARATIONS(ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE),
@@ -136,3 +144,7 @@ sealed interface QueryImpactSourceFailureDocument {
     data class Reference(val reason: QueryReferenceRejectionReason, val position: ProtocolOffset) :
         QueryImpactSourceFailureDocument
 }
+
+/** Omitted target selection means an empty universe, never inferred targets. */
+val EmptyImpactRequestedSites: BoundedProtocolList<ImpactValueSiteReferenceDocument> =
+    (BoundedProtocolList.create(emptyList<ImpactValueSiteReferenceDocument>()) as Refinement.Refined).value

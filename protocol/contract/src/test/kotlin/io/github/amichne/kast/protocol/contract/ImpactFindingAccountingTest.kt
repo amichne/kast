@@ -154,5 +154,6 @@ class ImpactFindingAccountingTest {
                     nextOrdinal = fixture.count(next),
                     sectionCount = fixture.count(sectionCount),
                 ),
+            requestedSites = fixture.bounded(emptyList()),
         )
 }

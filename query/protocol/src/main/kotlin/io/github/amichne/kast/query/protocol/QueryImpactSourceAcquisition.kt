@@ -14,6 +14,8 @@ import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryImpactProducer
+import io.github.amichne.kast.query.contract.QueryImpactRequestedSite
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.query.contract.QueryImpactSourceFailure
 import io.github.amichne.kast.relation.contract.BoundaryPosition
@@ -21,15 +23,12 @@ import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
-import io.github.amichne.kast.relation.contract.RevalidatedValueSite
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
-import io.github.amichne.kast.relation.contract.ValueModelSiteRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeed
 import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequestFailure
-import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -48,7 +47,8 @@ internal class QueryImpactSourceAcquisition(
     private val current = mutableListOf<RevalidatedRelationEndpoint>()
     private val currentSelectors = mutableListOf<SymbolSelector>()
     private val currentPositions = mutableListOf<BoundaryPosition>()
-    private val sites = mutableMapOf<ImpactValueSiteReferenceDocument, ValueSite>()
+    private val sites = mutableMapOf<ImpactValueSiteReferenceDocument, QueryImpactRequestedSite>()
+    private val requestedSites = mutableListOf<QueryImpactRequestedSite>()
 
     private suspend fun remaining(position: Int): Refinement<RelationBudget, QueryRunRejection> {
         val current =
@@ -179,6 +179,8 @@ internal class QueryImpactSourceAcquisition(
             is Refinement.Rejected ->
                 return impactFailure(
                     when (retained.failure) {
+                        QueryImpactSourceFailure.DUPLICATE_REQUESTED_SITE ->
+                            QueryImpactSourceFailureCode.DUPLICATE_REQUESTED_SITE
                         QueryImpactSourceFailure.EMPTY_PRODUCERS -> QueryImpactSourceFailureCode.EMPTY_PRODUCERS
                         QueryImpactSourceFailure.DUPLICATE_PRODUCER -> QueryImpactSourceFailureCode.DUPLICATE_PRODUCER
                         QueryImpactSourceFailure.DUPLICATE_MODEL ->
@@ -252,13 +254,16 @@ internal class QueryImpactSourceAcquisition(
             val site =
                 when (val cached = sites[declared.site]) {
                     null ->
-                        when (val admitted = acquireSite(declared.site, position)) {
+                        when (
+                            val admitted =
+                                acquireSite(declared.site, position, ImpactSiteAdmissionOrigin.BOUNDARY_MODEL)
+                        ) {
                             is Refinement.Refined -> admitted.value.also { sites[declared.site] = it }
                             is Refinement.Rejected -> return admitted
                         }
                     else -> cached
                 }
-            when (val admitted = declared.attachToNative(site)) {
+            when (val admitted = declared.attachToNative(site.site)) {
                 is Refinement.Refined -> currentPositions += admitted.value
                 is Refinement.Rejected -> return impactFailure(admitted.failure.impactFailure(), position)
             }
@@ -266,10 +271,31 @@ internal class QueryImpactSourceAcquisition(
         return Refinement.Refined(Unit)
     }
 
+    suspend fun acquireRequestedSites(
+        declaredSites: List<ImpactValueSiteReferenceDocument>
+    ): Refinement<Unit, QueryRunRejection> {
+        for ((position, declared) in declaredSites.withIndex()) {
+            val proof =
+                when (val cached = sites[declared]) {
+                    null ->
+                        when (
+                            val admitted = acquireSite(declared, position, ImpactSiteAdmissionOrigin.REQUESTED_SITE)
+                        ) {
+                            is Refinement.Refined -> admitted.value.also { sites[declared] = it }
+                            is Refinement.Rejected -> return admitted
+                        }
+                    else -> cached
+                }
+            requestedSites += proof
+        }
+        return Refinement.Refined(Unit)
+    }
+
     private suspend fun acquireSite(
         declared: ImpactValueSiteReferenceDocument,
         position: Int,
-    ): Refinement<ValueSite, QueryRunRejection> {
+        origin: ImpactSiteAdmissionOrigin,
+    ): Refinement<QueryImpactRequestedSite, QueryRunRejection> {
         val grant =
             when (val admitted = remaining(position)) {
                 is Refinement.Refined -> admitted.value
@@ -280,26 +306,20 @@ internal class QueryImpactSourceAcquisition(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return impactFailure(admitted.failure, position)
             }
-        val read =
-            when (val observed = compiler.revalidateSite(request)) {
-                is ValueModelSiteRead.Revalidated -> observed
-                is ValueModelSiteRead.Rejected -> return impactFailure(observed.cause.boundaryFailure(), position)
-                is ValueModelSiteRead.ContractRejected -> return impactFailure(observed.cause.impactFailure(), position)
-                is ValueModelSiteRead.Unsupported -> return impactFailure(observed.cause.boundaryFailure(), position)
-                is ValueModelSiteRead.Limited -> return impactFailure(observed.cause.impactFailure(), position)
+        val proof =
+            when (val admitted = revalidateImpactSite(request, compiler, grant, origin, position)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
             }
-        if (read.examinedWorkUnits.value > grant.resources.workUnitLimit.value)
-            return impactFailure(QueryImpactSourceFailureCode.WORK_RECEIPT_EXCEEDS_GRANT, position)
-        examinedWork += read.examinedWorkUnits.value
-        val actual =
-            when (val admitted = RevalidatedValueSite.fromCompiler(request, read.position.site)) {
-                is Refinement.Refined -> admitted.value.site
-                is Refinement.Rejected -> return impactFailure(admitted.failure.impactFailure(), position)
+        examinedWork += proof.examinedWorkUnits.value
+        retainedBytes +=
+            when (origin) {
+                ImpactSiteAdmissionOrigin.BOUNDARY_MODEL -> proof.site.retainedBytes
+                ImpactSiteAdmissionOrigin.REQUESTED_SITE -> QueryImpactRetainedGraph().site(proof.site)
             }
-        retainedBytes += actual.retainedBytes
         if (retainedBytes > budget.checkpointBytes.value)
             return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED, position)
-        return Refinement.Refined(actual)
+        return Refinement.Refined(proof)
     }
 
     fun bindSource(
@@ -307,7 +327,13 @@ internal class QueryImpactSourceAcquisition(
         flow: QueryImpactFlowDocument,
     ): Refinement<QueryImpactSourceAdmission, QueryRunRejection> =
         bindImpactSourceModels(
-            ImpactSourceModelEvidence(producers.toList(), current.toList(), currentPositions.toList(), examinedWork),
+            ImpactSourceModelEvidence(
+                producers.toList(),
+                current.toList(),
+                currentPositions.toList(),
+                examinedWork,
+                requestedSites.toList(),
+            ),
             modelSyntax,
             domain,
             flow,

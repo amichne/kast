@@ -46,7 +46,7 @@ internal fun RelationEndpoint.storageBytes(g: QueryImpactRetainedGraph): Long =
             )
     }
 
-private fun CanonicalCompilerSignature.storageBytes(g: QueryImpactRetainedGraph): Long =
+internal fun CanonicalCompilerSignature.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         g.text(qualifiedIdentity.value)
             .saturatedAdd(
@@ -93,7 +93,7 @@ internal fun SymbolSearchScope.storageBytes(g: QueryImpactRetainedGraph): Long =
         }
     }
 
-private fun SymbolDiscoveryConstraints.storageBytes(g: QueryImpactRetainedGraph): Long =
+internal fun SymbolDiscoveryConstraints.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         (directory?.let { g.node(it) { g.text(it.directory.value) } } ?: 0L)
             .saturatedAdd(packageName?.let { g.node(it) { g.text(it.packageName.value) } } ?: 0L)

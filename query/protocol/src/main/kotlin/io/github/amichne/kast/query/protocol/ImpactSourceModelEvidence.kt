@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryImpactFlowSemantics
 import io.github.amichne.kast.query.contract.QueryImpactProducer
+import io.github.amichne.kast.query.contract.QueryImpactRequestedSite
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.query.contract.QueryImpactSourceFailure
 import io.github.amichne.kast.relation.contract.BoundaryModel
@@ -22,6 +23,7 @@ internal data class ImpactSourceModelEvidence(
     val declarations: List<RevalidatedRelationEndpoint>,
     val positions: List<BoundaryPosition>,
     val examinedWork: Long,
+    val requestedSites: List<QueryImpactRequestedSite>,
 )
 
 private data class ImpactSourceModels(val representation: List<RepresentationRule>, val boundaries: List<BoundaryModel>)
@@ -49,12 +51,15 @@ internal fun bindImpactSourceModels(
                     when (flow) {
                         QueryImpactFlowDocument.KOTLIN_FORWARD_V1 -> QueryImpactFlowSemantics.KOTLIN_FORWARD_V1
                     },
+                    evidence.requestedSites,
                 )
         ) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected ->
                 return impactFailure(
                     when (admitted.failure) {
+                        QueryImpactSourceFailure.DUPLICATE_REQUESTED_SITE ->
+                            QueryImpactSourceFailureCode.DUPLICATE_REQUESTED_SITE
                         QueryImpactSourceFailure.EMPTY_PRODUCERS -> QueryImpactSourceFailureCode.EMPTY_PRODUCERS
                         QueryImpactSourceFailure.DUPLICATE_PRODUCER -> QueryImpactSourceFailureCode.DUPLICATE_PRODUCER
                         QueryImpactSourceFailure.DUPLICATE_MODEL ->

@@ -26,6 +26,8 @@ internal class QueryOutcomeProjection(
     private val state: QueryStateStore,
     private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
 ) {
+    private val presentation = QueryResultPresentation(state, retentionObservation)
+
     fun projectExecution(
         request: QueryRunRequest.Run,
         lease: SemanticReadAuthority,
@@ -89,6 +91,7 @@ internal class QueryOutcomeProjection(
             output = request.output,
             presentedRetention = QueryResultRetention.Retained(request.result),
             presentedRowIds = presentation.rowIds,
+            originalPathRowIds = presentation.originalPathRowIds,
             protectedResult = request.result,
             presentationWindow = presentation.window,
             progressOrigin = QueryProgressOrigin.RETAINED_RESULT,
@@ -110,6 +113,7 @@ internal class QueryOutcomeProjection(
         retainedExecution: QueryExecutionResult? = null,
         presentedRetention: QueryResultRetention? = null,
         presentedRowIds: List<QueryResultRowReference>? = null,
+        originalPathRowIds: List<QueryResultRowReference>? = null,
         protectedResult: QueryResultReference? = null,
         presentationWindow: QueryRetainedPresentationWindow? = null,
         progressOrigin: QueryProgressOrigin = QueryProgressOrigin.EXECUTION,
@@ -117,7 +121,7 @@ internal class QueryOutcomeProjection(
         publicationOwner: QueryExecutionClaim? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val evidence =
-            when (val projected = QueryProjectedEvidence.from(result, output, authority, presentedRowIds)) {
+            when (val projected = projectEvidence(result, output, presentedRowIds, originalPathRowIds)) {
                 is Refinement.Refined -> projected.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
             }
@@ -139,17 +143,16 @@ internal class QueryOutcomeProjection(
         val presented =
             when (
                 val projected =
-                    QueryResultPresentation(state, retentionObservation)
-                        .present(
-                            request,
-                            lease,
-                            evidence.items,
-                            retainedExecution,
-                            qualification?.progress,
-                            presentedRetention,
-                            presentedRowIds,
-                            publicationOwner,
-                        )
+                    presentation.present(
+                        request,
+                        lease,
+                        evidence.items,
+                        retainedExecution,
+                        qualification?.progress,
+                        presentedRetention,
+                        presentedRowIds,
+                        publicationOwner,
+                    )
             ) {
                 is Refinement.Refined -> projected.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
@@ -164,6 +167,13 @@ internal class QueryOutcomeProjection(
             presentationOrigin,
         )
     }
+
+    private fun projectEvidence(
+        result: QueryResult,
+        output: QueryOutputDocument,
+        rowIds: List<QueryResultRowReference>?,
+        originalPathRowIds: List<QueryResultRowReference>?,
+    ) = QueryProjectedEvidence.from(result, output, authority, rowIds, originalPathRowIds)
 
     private fun finishProjection(
         lease: SemanticReadAuthority,

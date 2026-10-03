@@ -134,7 +134,7 @@ class QueryImpactBoundarySourceAdmissionTest {
         assertEquals(listOf(f.range(20, 35)), native.positions)
     }
 
-    private class Fixture {
+    internal class Fixture {
         val owner = endpoint("investigate", 0, 200)
         private val callable = endpoint("produce", 210, 250)
         val references = CanonicalQueryReferences()

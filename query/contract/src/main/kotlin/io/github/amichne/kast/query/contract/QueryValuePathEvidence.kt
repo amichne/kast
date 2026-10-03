@@ -3,6 +3,9 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.ConsumerRepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueSiteRoleClaim
+import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 
 /** Conservative storage of the retained object graph, preserving shared proof references. */
 fun QueryImpactPath.retainedStorageBytes(): Long = QueryImpactRetainedGraph().path(this)
@@ -82,6 +85,8 @@ internal fun QueryImpactLedger.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.collection(readRejections) { it.storageBytes(g) })
             .saturatedAdd(g.collection(observations) { it.storageBytes(g) })
             .saturatedAdd(g.collection(paths) { it.storageBytes(g) })
+            .saturatedAdd(g.collection(requestedSites) { it.storageBytes(g) })
+            .saturatedAdd(g.collection(siteAccounting) { it.storageBytes(g) })
             .saturatedAdd(
                 g.node(closure) {
                     when (val current = closure) {
@@ -99,6 +104,7 @@ internal fun QueryImpactSource.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.collection(boundaryModels) { it.storageBytes(g) })
             .saturatedAdd(domain.storageBytes(g))
             .saturatedAdd(g.node(lease) { 0L })
+            .saturatedAdd(g.collection(requestedSites) { it.storageBytes(g) })
     }
 
 internal fun QueryImpactProducer.storageBytes(g: QueryImpactRetainedGraph): Long =
@@ -129,6 +135,75 @@ private fun QueryImpactExecutionStop.storageBytes(g: QueryImpactRetainedGraph): 
                     is QueryImpactExecutionStop.Cycle ->
                         producer.storageBytes(g).saturatedAdd(g.collection(prefix) { it.storageBytes(g) })
                     is QueryImpactExecutionStop.CheckpointCapacity -> 0L
+                }
+            )
+    }
+
+internal fun QueryImpactRequestedSite.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        g.node(proof) { site.storageBytes(g) }
+            .saturatedAdd(
+                g.node(request) {
+                    request.enclosing
+                        .storageBytes(g)
+                        .saturatedAdd(g.node(request.anchor) { 0L })
+                        .saturatedAdd(
+                            g.node(request.role) {
+                                when (val role = request.role) {
+                                    is ValueSiteRoleClaim.Argument ->
+                                        role.expectedCallable
+                                            .storageBytes(g)
+                                            .saturatedAdd(g.node(role.invocationAnchor) { 0L })
+                                    ValueSiteRoleClaim.ExpressionResult,
+                                    ValueSiteRoleClaim.LocalBinding,
+                                    ValueSiteRoleClaim.LocalRead,
+                                    ValueSiteRoleClaim.Return,
+                                    ValueSiteRoleClaim.PropertyAssignment -> 0L
+                                }
+                            }
+                        )
+                        .saturatedAdd(g.node(request.budget) { g.node(request.budget.resources) { 0L } })
+                }
+            )
+    }
+
+internal fun QueryImpactSiteAccounting.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        requested
+            .storageBytes(g)
+            .saturatedAdd(
+                g.node(outcome) {
+                    when (val current = outcome) {
+                        is QueryImpactSiteOutcome.Reached ->
+                            g.collection(current.pathOrdinals) { g.node(it) { 0L } }
+                                .saturatedAdd(g.collection(current.exclusions) { it.storageBytes(g) })
+                        is QueryImpactSiteOutcome.Excluded -> g.collection(current.exclusions) { it.storageBytes(g) }
+                        QueryImpactSiteOutcome.RelationshipUnproven -> 0L
+                    }
+                }
+            )
+    }
+
+private fun QueryImpactSiteExclusion.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) { g.node(exclusion) { exclusion.site.storageBytes(g).saturatedAdd(exclusion.domain.storageBytes(g)) } }
+
+private fun SymbolSelector.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        g.node(lease) { 0L }
+            .saturatedAdd(g.node(file) { g.text(file.stableValue) })
+            .saturatedAdd(g.node(range) { 0L })
+            .saturatedAdd(g.text(name.value))
+            .saturatedAdd(g.text(compilerIdentity.value))
+            .saturatedAdd(g.text(fingerprint.value))
+            .saturatedAdd(scope.storageBytes(g))
+            .saturatedAdd(constraints.storageBytes(g))
+            .saturatedAdd(signature.storageBytes(g))
+            .saturatedAdd(
+                g.node(qualifiedIdentity) {
+                    when (val identity = qualifiedIdentity) {
+                        is ExactDeclarationQualifiedIdentity.Available -> g.text(identity.value)
+                        ExactDeclarationQualifiedIdentity.Unavailable -> 0L
+                    }
                 }
             )
     }

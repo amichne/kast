@@ -75,7 +75,9 @@ private fun QueryImpactLedger.impactDocument(
                                 count(readRejections.size)
                                     .impactZip(count(observations.size))
                                     .impactZip(count(paths.size))
-                                    .impactMap { (counts, paths) ->
+                                    .impactZip(requestedSites.impactEach { it.site.impactDocument() })
+                                    .impactMap { (totals, requested) ->
+                                        val (counts, paths) = totals
                                         ImpactAccountingDocument.Investigated(
                                             seeds,
                                             requestedDomain,
@@ -91,6 +93,7 @@ private fun QueryImpactLedger.impactDocument(
                                             pageCount,
                                             status,
                                             view,
+                                            requested,
                                         )
                                     }
                             }
@@ -121,6 +124,8 @@ private fun Set<QueryImpactRequiredObligation>.impactRequirements():
 }
     .map {
         when (it) {
+            QueryImpactRequiredObligation.REQUESTED_SITE_RELATIONSHIP ->
+                ImpactRequiredObligationDocument.REQUESTED_SITE_RELATIONSHIP
             QueryImpactRequiredObligation.PRODUCER_IDENTITY -> ImpactRequiredObligationDocument.PRODUCER_IDENTITY
             QueryImpactRequiredObligation.EXECUTION_BOUNDARY -> ImpactRequiredObligationDocument.EXECUTION_BOUNDARY
             QueryImpactRequiredObligation.NATIVE_FLOW -> ImpactRequiredObligationDocument.NATIVE_FLOW

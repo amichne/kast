@@ -106,9 +106,6 @@ code_sources:
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionObservation.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-03T10:31:14.639Z
 sources:
   - id: openwiki-source-368288aea315bf5b4628a899
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
@@ -118,8 +115,14 @@ sources:
     resource: repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/ImpactFindingAccountingTest.kt
   - id: openwiki-source-927d5002042f13cac9db37f1
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
+  - id: openwiki-source-9fcd90db4b894268639790f3
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
+  - id: openwiki-source-8f4d7aa8b32709ae3dfa417b
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRequestedSite.kt
   - id: openwiki-source-ceaa6e4a1cc8af84eede173b
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt
+  - id: openwiki-source-8abcd99add0585ea126a3883
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
   - id: openwiki-source-47b84d48b89b57b3b1609484
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
@@ -128,8 +131,14 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
   - id: openwiki-source-37ab3b1971d180b6eee551f9
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
+  - id: openwiki-source-3c2b2f675cf9e1f0d4b1d01c
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactSiteAccountingProjection.kt
+  - id: openwiki-source-9b416e3e9536841d04ef9780
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactSiteRevalidation.kt
   - id: openwiki-source-584136874e8bed46fcb3def2
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
+  - id: openwiki-source-473a965ca24f2431cb51317a
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAcquisition.kt
   - id: openwiki-source-da029c0f3804840096380efa
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt
   - id: openwiki-source-b51014e0385264d1b67f03cd
@@ -162,7 +171,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-generated: { by: "codex", at: "2026-10-03T10:31:14.639Z" }
+generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T14:16:26.318Z
 ---
 
 # Query protocol
@@ -371,3 +383,11 @@ The compact DTO keeps producer and destination sites, current representation alt
 `QueryResultRetentionSource` admits finalized investigated accounting for original-ledger capture, independent of the first page selection. It admits evidence-only impact accounting only for an empty qualified result with a resumable checkpoint. That pending snapshot retains the existing checkpoint rather than supplying original investigation ordinals. Terminal or nonempty evidence-only impact output rejects with the exact selection cause `INCONSISTENT_COVERAGE`. Ordinary queries retain their presented membership.
 
 Presentation protects the advertised upstream checkpoint during result issuance. Pending path reads remain qualified and witness reads reject with `RESULT_FIELD_UNAVAILABLE`, without executing semantics or consuming the checkpoint. Explicit retention observations distinguish source choice, capture outcome and issuance outcome. The hosted adapter supplies the effect boundary; protocol ownership and the query-state lifetime remain unchanged.
+
+## Requested-site relationship accounting
+
+The source may name a bounded, ordered requested-site universe independently of its producers. Count, duplicate, basis and declaration-inventory checks precede native effects. The existing site revalidation port proves each exact role and invocation claim once, with reused admitted model-site proofs where available. The immutable requested-site value retains the actual request, compiler proof and observed work; substituted requests, foreign bases and work beyond the child grant reject.
+
+Native admission shares the source's aggregate work and checkpoint-storage grants. Its site byte grant is remaining checkpoint capacity, independently of encoded output bytes. The source and final ledger retain these proofs through the existing storage visitor and checkpoint owner.
+
+The ledger derives one finite outcome per requested site from original paths. Reached links preserve original ordinals and row IDs alongside any separate exact site and domain exclusions. An unmatched site retains a required `REQUESTED_SITE_RELATIONSHIP` obligation. `SITE_ACCOUNTING` presents those outcomes and native admission receipts through the existing retained witness window and byte fitter; it performs no new flow traversal or site revalidation. These local contracts require separate installed qualification.

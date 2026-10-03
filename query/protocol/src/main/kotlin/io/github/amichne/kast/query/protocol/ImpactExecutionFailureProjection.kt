@@ -53,6 +53,8 @@ private fun QueryImpactPathFailure.executionCauseDocument(): ImpactExecutionPath
 
 private fun QueryImpactLedgerFailure.executionCauseDocument(): ImpactExecutionLedgerCause =
     when (this) {
+        QueryImpactLedgerFailure.DUPLICATE_REQUESTED_SITE -> ImpactExecutionLedgerCause.DUPLICATE_REQUESTED_SITE
+        QueryImpactLedgerFailure.FOREIGN_REQUESTED_SITE -> ImpactExecutionLedgerCause.FOREIGN_REQUESTED_SITE
         QueryImpactLedgerFailure.EMPTY_SEEDS -> ImpactExecutionLedgerCause.EMPTY_SEEDS
         QueryImpactLedgerFailure.DUPLICATE_SEED -> ImpactExecutionLedgerCause.DUPLICATE_SEED
         QueryImpactLedgerFailure.DUPLICATE_PATH -> ImpactExecutionLedgerCause.DUPLICATE_PATH

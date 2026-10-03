@@ -18,6 +18,7 @@ enum class ImpactRequiredObligationDocument {
     REPRESENTATION_STATE,
     EXECUTION_BOUNDARY,
     PRODUCER_IDENTITY,
+    REQUESTED_SITE_RELATIONSHIP,
 }
 
 /** A qualification projected from retained investigation evidence, never a separate completion authority. */
@@ -44,6 +45,8 @@ sealed interface ImpactAccountingDocument {
         val pagePathCount: QueryDiscoveryCountDocument,
         val status: ImpactAccountingStatusDocument,
         val view: ImpactAccountingViewDocument,
+        @ProtocolCollectionConstraint(maximumItems = 128)
+        val requestedSites: BoundedProtocolList<ImpactValueSiteReferenceDocument>,
     ) : ImpactAccountingDocument
 }
 

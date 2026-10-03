@@ -31,9 +31,10 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
         output: QueryOutputDocument,
         rows: QueryRows,
         originalRowIds: List<QueryResultRowReference>? = null,
+        originalPathRowIds: List<QueryResultRowReference>? = null,
     ): QueryProjection<QueryResultItemDocument> {
         return when (rows) {
-            is QueryRows.ImpactWitness -> projectWitnessRows(output, rows, originalRowIds)
+            is QueryRows.ImpactWitness -> projectWitnessRows(output, rows, originalRowIds, originalPathRowIds)
             is QueryRows.Symbols -> projectSymbolRows(output, rows)
             is QueryRows.Occurrences ->
                 if (output == QueryOutputDocument.Occurrences) rows.values.mapProjected(::projectOccurrence)
@@ -50,9 +51,10 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
         output: QueryOutputDocument,
         rows: QueryRows.ImpactWitness,
         originalRowIds: List<QueryResultRowReference>?,
+        originalPathRowIds: List<QueryResultRowReference>?,
     ): QueryProjection<QueryResultItemDocument> =
         if (output is QueryOutputDocument.ImpactWitness && output.section.witnessSection() == rows.view.section)
-            rows.projectWitnessItems(originalRowIds)
+            rows.projectWitnessItems(originalRowIds, originalPathRowIds)
         else QueryProjection.Rejected
 
     private fun projectSymbolRows(

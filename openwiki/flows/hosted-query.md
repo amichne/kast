@@ -193,9 +193,6 @@ code_sources:
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-03T10:31:14.639Z
 sources:
   - id: openwiki-source-57bcbe3766714342dda0682a
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt
@@ -213,6 +210,10 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
   - id: openwiki-source-47b84d48b89b57b3b1609484
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt
+  - id: openwiki-source-dfd865ab52ce8eea1b519c4e
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  - id: openwiki-source-584136874e8bed46fcb3def2
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
   - id: openwiki-source-b51014e0385264d1b67f03cd
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - id: openwiki-source-4e38a945b050af72c2343f02
@@ -237,7 +238,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-03T10:31:14.639Z" }
+generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T14:16:26.318Z
 ---
 
 # Existing-IDE semantic query
@@ -800,3 +804,5 @@ Compact impact `FINDINGS` follows this same retained presentation path. The exis
 Pending impact retention distinguishes a qualified empty evidence-only snapshot from a finalized original investigation. The existing upstream checkpoint owns unfinished routes and remains protected when the snapshot is issued. Finalized ledgers keep original path ordinals. Inconsistent scope retains the finite impact selection failure instead of becoming an internal-contract rejection.
 
 The hosted retention adapter records finite source-choice, capture, and issuance outcomes through the existing `RETENTION` phase and counter vocabulary. Its exhaustive mappings carry no payloads, paths, anchors, or handles and supply runtime observation only.
+
+Requested-site accounting follows the existing retained presentation branch. Before projecting `SITE_ACCOUNTING`, the restored path list and row count must agree with the original ledger. The projector receives all original path row IDs, validates each target's original ordinal and ledger ownership, and constructs links for reached paths and scope exclusions. `READ_RESULT` uses the projection owner without invoking query operations; its original closure and native admission receipts remain captured evidence.

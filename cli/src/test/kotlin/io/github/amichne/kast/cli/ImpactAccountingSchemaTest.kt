@@ -48,6 +48,10 @@ class ImpactAccountingSchemaTest {
         val examples = examples()
         for (example in examples) {
             val raw = Json.encodeToString(ImpactAccountingDocument.serializer(), example)
+            if (example is ImpactAccountingDocument.Investigated) {
+                assertEquals(0, Json.parseToJsonElement(raw).jsonObject.getValue("requestedSites").jsonArray.size)
+                assertTrue(schema.validate(raw.replace(",\"requestedSites\":[]", ""), InputFormat.JSON).isNotEmpty())
+            }
             assertTrue(schema.validate(raw, InputFormat.JSON).isEmpty(), raw)
             assertTrue(schema.validate(raw.dropLast(1) + ",\"complete\":true}", InputFormat.JSON).isNotEmpty())
             assertTrue(
@@ -125,6 +129,7 @@ class ImpactAccountingSchemaTest {
                         count(1),
                         status,
                         ImpactAccountingViewDocument.Paths,
+                        bounded(emptyList()),
                     )
                 }
         return examples
@@ -153,6 +158,7 @@ class ImpactAccountingSchemaTest {
                 .map { it.jsonPrimitive.content }
                 .containsAll(
                     listOf(
+                        "requestedSites",
                         "seeds",
                         "requestedDomain",
                         "semantics",

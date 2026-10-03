@@ -117,7 +117,8 @@ private fun QueryImpactTerminal.hasForeignBasis(lease: SemanticReadAuthority): B
 
 /** Even unused admitted model declarations and native observations remain authority-bearing retained state. */
 internal fun QueryImpactLedger.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    seeds.any { it.hasForeignBasis(lease) } ||
+    requestedSites.any { it.site.hasForeignBasis(lease) } ||
+        seeds.any { it.hasForeignBasis(lease) } ||
         producerEvidence.any { producer ->
             when (producer) {
                 is QueryImpactProducerEvidence.Invocation ->

@@ -14,6 +14,8 @@ import io.github.amichne.kast.protocol.contract.ImpactModelVersionDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -132,10 +134,81 @@ class PublicImpactSourceContractTest {
         }
     }
 
+    @Test
+    fun `optional requested sites preserve exact native role claims and null omission means empty universe`() {
+        val target =
+            ImpactValueSiteReferenceDocument(declarationReference(), range(10, 20), ImpactValueRoleDocument.LocalRead)
+        for (targets in listOf(null, bounded(listOf(target)))) {
+            val source =
+                PublicToolImpactSource(
+                    seeds = producerSeeds(),
+                    declarations = bounded(emptyList()),
+                    domain = PublicToolImpactWorkspaceDomain,
+                    flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+                    models = bounded(emptyList()),
+                    requestedSites = targets,
+                )
+            val encoded =
+                json.encodeToJsonElement(
+                    PublicToolQuerySymbols.serializer(),
+                    PublicToolQuerySymbols(PublicToolRunAction(source, output = PublicToolValuePathsOutput)),
+                )
+            val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded).refined()
+            val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+            assertEquals(
+                targets?.values ?: emptyList<ImpactValueSiteReferenceDocument>(),
+                (run.from as QueryFromDocument.Impact).investigation.requestedSites.values,
+            )
+        }
+    }
+
+    @Test
+    fun `omitted requested universe uses empty default and unknown target role fails schema admission`() {
+        val target =
+            ImpactValueSiteReferenceDocument(declarationReference(), range(10, 20), ImpactValueRoleDocument.LocalRead)
+        val source =
+            PublicToolImpactSource(
+                seeds = producerSeeds(),
+                declarations = bounded(emptyList()),
+                models = bounded(emptyList()),
+                domain = PublicToolImpactWorkspaceDomain,
+                flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+            )
+        val request = PublicToolQuerySymbols(PublicToolRunAction(source, output = PublicToolValuePathsOutput))
+        val omitted = Json {
+            encodeDefaults = false
+            explicitNulls = false
+        }
+            .encodeToJsonElement(PublicToolQuerySymbols.serializer(), request)
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, omitted).refined()
+        assertEquals(
+            emptyList<ImpactValueSiteReferenceDocument>(),
+            (((admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run).from
+                    as QueryFromDocument.Impact)
+                .investigation
+                .requestedSites
+                .values,
+        )
+        val selected =
+            request.copy(
+                request =
+                    PublicToolRunAction(
+                        source.copy(requestedSites = bounded(listOf(target))),
+                        output = PublicToolValuePathsOutput,
+                    )
+            )
+        val malformed =
+            json.encodeToString(PublicToolQuerySymbols.serializer(), selected).replace("LOCAL_READ", "ABSENT")
+        assertEquals(
+            Refinement.Rejected(PublicToolInputFailure.SchemaRejected),
+            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(malformed)),
+        )
+    }
+
     private fun assertEncodedQuestion(run: QueryRunRequest.Run) {
         val encoded = json.encodeToJsonElement(QueryRunRequest.serializer(), run).jsonObject
         val retained = encoded.getValue("from").jsonObject.getValue("investigation").jsonObject
-        assertEquals(setOf("seeds", "declarations", "domain", "flow", "models"), retained.keys)
+        assertEquals(setOf("seeds", "declarations", "domain", "flow", "models", "requestedSites"), retained.keys)
         assertEquals("KOTLIN_FORWARD_V1", retained.getValue("flow").jsonPrimitive.content)
         assertEquals(
             "custom-encryption",

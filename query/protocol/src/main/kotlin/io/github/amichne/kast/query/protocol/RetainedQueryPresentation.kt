@@ -27,6 +27,7 @@ private constructor(
     val producerProgress: QueryContinuationState?,
     val rowIds: List<QueryResultRowReference>,
     val window: QueryRetainedPresentationWindow,
+    val originalPathRowIds: List<QueryResultRowReference> = emptyList(),
 ) {
     companion object {
         fun create(
@@ -122,18 +123,27 @@ private constructor(
                         ?: QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
                     rowIds,
                     window,
+                    originalSiteRowIds(section, restored),
                 )
             )
         }
+
+        private fun originalSiteRowIds(section: QueryImpactWitnessSection, restored: QueryResultRestoration.Restored) =
+            if (section == QueryImpactWitnessSection.SITE_ACCOUNTING) restored.rowIds else emptyList()
 
         private fun originalWitnessRowIds(
             restored: QueryResultRestoration.Restored,
             retained: QueryRetainedResult.ValuePaths,
             view: QueryImpactWitnessView,
         ): Refinement<List<QueryResultRowReference>, QueryExecutionRejectionDocument> {
-            if (view.section != QueryImpactWitnessSection.FINDINGS) return Refinement.Refined(emptyList())
+            if (
+                view.section != QueryImpactWitnessSection.FINDINGS &&
+                    view.section != QueryImpactWitnessSection.SITE_ACCOUNTING
+            )
+                return Refinement.Refined(emptyList())
             if (restored.rowIds.size != view.ledger.paths.size || retained.valuePaths != view.ledger.paths)
                 return contractRejected()
+            if (view.section == QueryImpactWitnessSection.SITE_ACCOUNTING) return Refinement.Refined(emptyList())
             return Refinement.Refined(restored.rowIds.subList(view.firstOrdinal.value, view.nextOrdinal.value))
         }
 

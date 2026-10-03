@@ -59,6 +59,12 @@ class PublicQueryGenerationTest(unittest.TestCase):
         self.assertLessEqual(len(discovery.splitlines()), 400)
         self.assertLessEqual(len(ingress.splitlines()), 400)
 
+    def test_requested_site_optional_collection_emits_formatter_stable_layout(self):
+        generated = generator.render_tools(self.authority)
+        source = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt"]
+        self.assertIn("val requestedSites:\n        BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument>? =\n        null,", source)
+        self.assertTrue(all(len(line) <= 120 for line in source.splitlines()), source)
+
     def test_missing_and_invalid_control_defaults_reject(self):
         for replacement in (None, 0, 1001):
             with self.subTest(replacement=replacement):

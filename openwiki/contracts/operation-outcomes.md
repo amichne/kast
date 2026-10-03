@@ -39,10 +39,12 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt
   - id: openwiki-source-02b2e37271b094bf49925843
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt
-generated: { by: "codex", at: "2026-10-03T05:39:07.082Z" }
+  - id: openwiki-source-8abcd99add0585ea126a3883
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
+generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T05:39:07.082Z
+    at: 2026-10-03T14:16:26.318Z
 ---
 
 # Operation outcomes
@@ -124,3 +126,5 @@ Impact completion additionally requires the conserved investigation ledger. Ever
 Ledger construction also checks every applicable reviewed origin, transfer, transformation, consumer expectation and boundary alternative. Native branch accounting keeps each route's exact origin history and preceding model steps, so one modeled route cannot supply another route's missing branch. Omission rejects with `MISSING_BRANCH`. Nonmatching or unvisited models remain retained without creating a route; an explicit execution cutoff retains its unresolved obligation.
 
 Impact source admission has closed reference and admission failures. Each admission cause owns its recovery direction, while execution and presentation failures retain their finite owner-specific shapes. These failures do not become empty successful results.
+
+Requested sites form an independent, native-admitted target universe. Each target retains one accounting outcome derived from the original ledger paths: reached paths, exact site and domain scope exclusions, or an unproven relationship. A reached target also retains any separate proven exclusions. Native site admission proves the selected site identity; it does not prove a relationship to a producer. An unmatched target adds the required `REQUESTED_SITE_RELATIONSHIP` obligation, so a drained investigation cannot report semantic completion while that relationship remains unproven.

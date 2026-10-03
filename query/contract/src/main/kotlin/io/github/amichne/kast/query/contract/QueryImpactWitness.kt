@@ -10,6 +10,7 @@ import java.util.Collections
 
 enum class QueryImpactWitnessSection {
     FINDINGS,
+    SITE_ACCOUNTING,
     PRODUCERS,
     MODELS,
     NATIVE_READS,
@@ -33,6 +34,8 @@ value class QueryImpactWitnessOrdinal private constructor(val value: Int) {
 }
 
 sealed interface QueryImpactWitnessEntry {
+    data class SiteAccounting(val accounting: QueryImpactSiteAccounting) : QueryImpactWitnessEntry
+
     data class Finding(val finding: QueryImpactFinding) : QueryImpactWitnessEntry
 
     data class Producer(val evidence: QueryImpactProducerEvidence) : QueryImpactWitnessEntry
@@ -121,6 +124,7 @@ private constructor(
         ): Refinement<QueryImpactWitnessOrdinal, QueryImpactWitnessFailure> {
             val total =
                 when (section) {
+                    QueryImpactWitnessSection.SITE_ACCOUNTING -> ledger.siteAccounting.size.toLong()
                     QueryImpactWitnessSection.FINDINGS -> ledger.paths.size.toLong()
                     QueryImpactWitnessSection.PRODUCERS -> ledger.producerEvidence.size.toLong()
                     QueryImpactWitnessSection.MODELS ->
@@ -157,6 +161,8 @@ private fun entriesForSection(
 ): Refinement<List<QueryImpactWitnessEntry>, QueryImpactWitnessFailure> =
     when (section) {
         QueryImpactWitnessSection.FINDINGS -> findingEntries(ledger)
+        QueryImpactWitnessSection.SITE_ACCOUNTING ->
+            Refinement.Refined(ledger.siteAccounting.map(QueryImpactWitnessEntry::SiteAccounting))
         QueryImpactWitnessSection.PRODUCERS ->
             Refinement.Refined(ledger.producerEvidence.map(QueryImpactWitnessEntry::Producer))
         QueryImpactWitnessSection.MODELS ->

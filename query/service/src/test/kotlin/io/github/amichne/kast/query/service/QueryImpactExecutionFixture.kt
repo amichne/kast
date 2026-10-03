@@ -12,6 +12,7 @@ import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryImpactProducer
+import io.github.amichne.kast.query.contract.QueryImpactRequestedSite
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryPlanAdmission
@@ -115,8 +116,11 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
         models: List<RepresentationRule> = emptyList(),
         boundaries: List<BoundaryModel> = emptyList(),
         domain: RelationSearchBoundary = RelationSearchBoundary.WORKSPACE_EXPANSION,
+        requestedSites: List<QueryImpactRequestedSite> = emptyList(),
     ): AdmittedQueryPlan {
-        val source = QueryImpactSource.admit(listOf(producer), models, boundaries, domain).value()
+        val source =
+            QueryImpactSource.admit(listOf(producer), models, boundaries, domain, requestedSites = requestedSites)
+                .value()
         return (QueryPlanCompiler.admit(
                 QueryPlanSyntax(QuerySourceSyntax.Impact(source), emptyList(), QueryOutputSyntax.ValuePaths)
             ) as QueryPlanAdmission.Admitted)

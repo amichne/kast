@@ -111,6 +111,7 @@ class QueryImpactOutputSchemaTest {
                     nextOrdinal = count(1),
                     sectionCount = count(1),
                 ),
+                bounded(emptyList()),
             )
         val document = qualified(result(item, accounting))
         assertEquals(

@@ -1,0 +1,44 @@
+[
+  {
+    "type": "REACHED",
+    "paths": [
+      {
+        "pathOrdinal": 0,
+        "pathRowId": "result-row:v1:00000000-0000-0000-0000-000000000001"
+      },
+      {
+        "pathOrdinal": 1,
+        "pathRowId": "result-row:v1:00000000-0000-0000-0000-000000000002"
+      }
+    ],
+    "exclusions": []
+  },
+  {
+    "type": "EXCLUDED",
+    "exclusions": [
+      {
+        "path": {
+          "pathOrdinal": 1,
+          "pathRowId": "result-row:v1:00000000-0000-0000-0000-000000000002"
+        },
+        "domain": {
+          "type": "SOURCE_DOMAIN",
+          "domain": {
+            "scope": {"type": "WORKSPACE"},
+            "source_policy": "production-only",
+            "generated_sources": "exclude",
+            "libraries": "exclude",
+            "source_sets": {"kind": "all"},
+            "directory": {"path": "selected", "containment": "direct"},
+            "package_name": null,
+            "declaration_kinds": []
+          }
+        },
+        "cause": "OUTSIDE_DIRECTORY"
+      }
+    ]
+  },
+  {
+    "type": "RELATIONSHIP_UNPROVEN"
+  }
+]

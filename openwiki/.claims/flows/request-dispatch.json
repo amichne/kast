@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:22b323d2168045a40d554c8538b1be1e94565b8bdc5691a8435b10466f94cb71",
+  "pageVersion": "sha256:b7db5ebcea1af05738ce1b01dfbc813943a371885978a682f9f60979eab27d02",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -56,7 +56,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt",
-          "version": "repo-file-v1:sha256:66f1457c79c19a2a1b4233d60c8ed2d891ebbb25525617ca2bd12492ee3d9e02"
+          "version": "repo-file-v1:sha256:630c9a7e3a62ab0be5718e60b2d0c681621f21517eaec6dc9011bf1d791e13c8"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt#L49-L101",
@@ -81,10 +81,24 @@
           "version": "repo-file-v1:sha256:13a2782a9244e0d4c863d2cbb468e17a9cdc5969e6c0fa1a8b6e9f4c0e486542"
         }
       ]
+    },
+    {
+      "id": "claim_539175c666cc441998a58c5fd98134db",
+      "statement": "Public impact lowering preserves supplied requested-site claims in order and lowers omitted or null requestedSites to the canonical empty list; SITE_ACCOUNTING uses the existing retained witness request and does not create semantic facts.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt",
+          "version": "repo-file-v1:sha256:630c9a7e3a62ab0be5718e60b2d0c681621f21517eaec6dc9011bf1d791e13c8"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
+          "version": "repo-file-v1:sha256:2ee7913c194b83f27079fa6d97324412ac32cc7435b89f8d892cf78a682512f1"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T08:10:55.203Z"
+    "at": "2026-10-03T14:16:26.318Z"
   }
 }

@@ -30,6 +30,9 @@ internal data class PublicToolImpactSource(
     val models: BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactModelDocument>,
     val domain: PublicToolExpansionScope,
     val flow: io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument,
+    val requestedSites:
+        BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument>? =
+        null,
 ) : PublicToolSource
 
 @Serializable
