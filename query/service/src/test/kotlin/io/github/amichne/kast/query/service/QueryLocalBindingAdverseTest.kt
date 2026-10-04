@@ -41,6 +41,31 @@ import org.junit.jupiter.api.Test
 
 class QueryLocalBindingAdverseTest {
     @Test
+    fun `timeout while replaying the consumed prefix retains a resumable remainder`() = runTest {
+        val s = ScanFixture()
+        val first = s.service.run(s.f.request(work = 5)) as QueryExecutionResult.Qualified
+        val predecessor = (first.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
+        val remainder = predecessor.impact!!.remainders.getValue(s.binding)
+        var visits = 0
+        s.elapsedMillis = { if (++visits >= 2) 10000L else 0L }
+        val timed = s.service.run(s.f.request(checkpoint = predecessor)) as QueryExecutionResult.Qualified
+        assertTrue(timed.continuation is QueryContinuationState.Resumable)
+        val checkpoint = (timed.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
+        val snapshot = requireNotNull(checkpoint.impact)
+        assertEquals(remainder.consumed, snapshot.remainders.getValue(s.binding).consumed)
+        assertEquals(remainder.emitted, snapshot.remainders.getValue(s.binding).emitted)
+        assertTrue(snapshot.readRejections.isEmpty())
+        assertEquals(listOf(0, 1), s.confirmed)
+        assertEquals(listOf(4L, 2L), snapshot.receipts.getValue(s.binding).map { it.examinedWorkUnits.value })
+        s.elapsedMillis = { 0L }
+        val drained = s.service.run(s.f.request(checkpoint = checkpoint)) as QueryExecutionResult.Qualified
+        assertTrue(drained.continuation is QueryContinuationState.Terminal)
+        assertEquals(s.destination, (drained.result.rows as QueryRows.ValuePaths).values.single().destination)
+        assertEquals(listOf(0, 1, 2, 3, 4), s.confirmed)
+        s.native.assertConsumed()
+    }
+
+    @Test
     fun `elapsed suspension resumes the consumed prefix without confirming it again`() = runTest {
         val s = ScanFixture()
         s.elapsedMillis = { if (s.confirmed.size < 2) 0L else 10000L }
@@ -53,6 +78,29 @@ class QueryLocalBindingAdverseTest {
         assertTrue(last.continuation is QueryContinuationState.Terminal)
         assertEquals(listOf(0, 1, 2, 3, 4), s.confirmed)
         assertEquals(s.destination, (last.result.rows as QueryRows.ValuePaths).values.single().destination)
+        s.native.assertConsumed()
+    }
+
+    @Test
+    fun `repeated time suspensions before any candidate yield finitely and drain later`() = runTest {
+        val s = ScanFixture()
+        s.elapsedMillis = { 10000L }
+        var checkpoint: QueryCheckpoint? = null
+        repeat(3) {
+            val timed = s.service.run(s.f.request(checkpoint = checkpoint)) as QueryExecutionResult.Qualified
+            assertTrue(timed.continuation is QueryContinuationState.Resumable)
+            checkpoint = (timed.continuation as QueryContinuationState.Resumable).checkpoint
+            val snapshot = (checkpoint as PipelineCheckpoint).impact!!
+            assertTrue(snapshot.remainders.getValue(s.binding).consumed.isEmpty())
+            assertTrue(snapshot.readRejections.isEmpty())
+            assertEquals(it + 1, snapshot.receipts.getValue(s.binding).size)
+            assertTrue(s.confirmed.isEmpty())
+        }
+        s.elapsedMillis = { 0L }
+        val drained = s.service.run(s.f.request(checkpoint = checkpoint)) as QueryExecutionResult.Qualified
+        assertTrue(drained.continuation is QueryContinuationState.Terminal)
+        assertEquals(s.destination, (drained.result.rows as QueryRows.ValuePaths).values.single().destination)
+        assertEquals(listOf(0, 1, 2, 3, 4), s.confirmed)
         s.native.assertConsumed()
     }
 

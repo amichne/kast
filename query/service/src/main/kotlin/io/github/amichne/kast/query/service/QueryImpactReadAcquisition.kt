@@ -101,7 +101,10 @@ private fun validSuspension(read: ValueFlowRead.Suspended, request: ValueFlowReq
         next.source.enclosing.lease == request.source.enclosing.lease &&
         next.boundary == request.boundary &&
         next.consumed.containsAll(previous?.consumed.orEmpty()) &&
-        next.consumed.size > (previous?.consumed?.size ?: 0) &&
+        (next.consumed.size > (previous?.consumed?.size ?: 0) ||
+            read.cause == ValueFlowSuspensionCause.TIME_LIMIT_REACHED &&
+                read.step.transfers.isEmpty() &&
+                read.step.obligations.isEmpty()) &&
         next.emitted == previous?.emitted.orEmpty() + read.step.transfers.map { it.target.identity } &&
         read.step.transfers.none { it.target.identity in previous?.emitted.orEmpty() }
 }

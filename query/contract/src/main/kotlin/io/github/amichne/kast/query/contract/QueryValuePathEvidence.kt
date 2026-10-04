@@ -87,7 +87,6 @@ internal fun QueryImpactLedger.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.collection(readRejections) { it.storageBytes(g) })
             .saturatedAdd(g.collection(observations) { it.storageBytes(g) })
             .saturatedAdd(g.collection(readReceipts.values) { g.receiptStorage(it) })
-            .saturatedAdd(g.collection(readReceipts.values) { g.receiptStorage(it) })
             .saturatedAdd(g.collection(paths) { it.storageBytes(g) })
             .saturatedAdd(g.collection(requestedSites) { it.storageBytes(g) })
             .saturatedAdd(g.collection(siteAccounting) { it.storageBytes(g) })

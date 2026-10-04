@@ -14,6 +14,7 @@ import io.github.amichne.kast.query.contract.QueryImpactWitnessEntry
 import io.github.amichne.kast.query.contract.QueryImpactWitnessSection
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
+import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 
 internal fun ImpactWitnessSectionDocument.witnessSection(): QueryImpactWitnessSection =
     when (this) {
@@ -110,8 +111,7 @@ private fun QueryImpactWitnessEntry.impactDocument(
             model.reference.impactDocument().impactZip(model.impactDocument()).impactMap { (reference, rule) ->
                 ImpactWitnessDocument.BoundaryModel(reference, rule)
             }
-        is QueryImpactWitnessEntry.ReadRejected ->
-            rejection.impactDocument().impactMap(ImpactWitnessDocument::ReadRejection)
+        is QueryImpactWitnessEntry.ReadRejected -> projectReadRejection()
         is QueryImpactWitnessEntry.CompilerTransfer ->
             count(observationOrdinal.value)
                 .impactZip(count(transferOrdinal.value))
@@ -139,18 +139,15 @@ private fun count(raw: Int) = count(raw.toLong())
 private fun count(raw: Long): ImpactProjected<QueryDiscoveryCountDocument> =
     QueryDiscoveryCountDocument.parse(raw).impactFailure(ImpactPathProjectionFailure::Count)
 
+private fun QueryImpactWitnessEntry.ReadRejected.projectReadRejection(): ImpactProjected<ImpactWitnessDocument> =
+    rejection.impactDocument().impactZip(receipts.impactEach { it.receiptDocument() }).impactMap { (rejection, receipts)
+        ->
+        ImpactWitnessDocument.ReadRejection(rejection, receipts)
+    }
+
 private fun QueryImpactWitnessEntry.NativeRead.projectNativeRead(): ImpactProjected<ImpactWitnessDocument> =
     observation.receipts
-        .impactEach { receipt ->
-            receipt.domain
-                .impactDocument()
-                .impactZip(count(receipt.examinedWorkUnits.value))
-                .impactZip(count(receipt.returnedResults.value))
-                .impactZip(count(receipt.returnedBytes.value))
-                .impactMap { (counts, bytes) ->
-                    ImpactNativeReadReceiptDocument(counts.first.first, counts.first.second, counts.second, bytes)
-                }
-        }
+        .impactEach { it.receiptDocument() }
         .impactThen { receipts ->
             observation.source.impactDocument().impactZip(observation.domain.impactDocument()).impactThen {
                 (source, domain) ->
@@ -179,4 +176,14 @@ private fun QueryImpactWitnessEntry.NativeRead.projectNativeRead(): ImpactProjec
                         )
                     }
             }
+        }
+
+private fun ValueFlowWorkReceipt.receiptDocument(): ImpactProjected<ImpactNativeReadReceiptDocument> =
+    domain
+        .impactDocument()
+        .impactZip(count(examinedWorkUnits.value))
+        .impactZip(count(returnedResults.value))
+        .impactZip(count(returnedBytes.value))
+        .impactMap { (counts, bytes) ->
+            ImpactNativeReadReceiptDocument(counts.first.first, counts.first.second, counts.second, bytes)
         }

@@ -97,7 +97,11 @@ sealed interface ImpactWitnessDocument {
 
     @Serializable
     @SerialName("READ_REJECTION")
-    data class ReadRejection(val rejection: ImpactReadRejectionDocument) : ImpactWitnessDocument
+    data class ReadRejection(
+        val rejection: ImpactReadRejectionDocument,
+        val receipts: BoundedProtocolList<ImpactNativeReadReceiptDocument> =
+            (BoundedProtocolList.create(emptyList<ImpactNativeReadReceiptDocument>()) as Refinement.Refined).value,
+    ) : ImpactWitnessDocument
 }
 
 /** Compact projection of an original retained path; its reference expands the unchanged full evidence. */

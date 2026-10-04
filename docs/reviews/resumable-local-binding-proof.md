@@ -132,6 +132,63 @@ for the two documentation files. From `docs/public`,
 Mintlify validation runtime because its update requires an internet connection.
 The PR's documentation job remains the rendering check for the regenerated file.
 
+## Validated review observations
+
+All four open review observations were checked against production behavior before
+changing it. Conservation, rejected-receipt projection and replay timeout regressions
+failed against the preceding implementation and passed after their fixes:
+
+- A rejected resume no longer bypasses conservation of the suspended prefix's
+  transfers and obligations. The constructor rejects missing branches and missing
+  qualifications while accepting the complete authored ledger.
+- Rejected-read witnesses encode the actual failed read's grant, work, results and
+  bytes, both with and without a confirmed prefix. Successful receipts remain on
+  the native observation; projection does not duplicate them in the rejection.
+- Inspection confirmed that retention visited `readReceipts.values` twice. The
+  second visit charged another incoming reference (64 conservatively scaled bytes)
+  even though its contents were already visited. Removing it leaves the existing
+  retention visitor, expansion factor and admission owners in place.
+- A time grant expiring while replaying consumed input preserves the detached
+  remainder. Repeated time suspensions before the first candidate each return
+  finitely; a later grant drains the scan without reconfirming consumed input.
+  Nonviable work and byte grants still reject through the existing owner.
+
+An additional negative contract test exposed receipt domains with a foreign peer
+authority being accepted. The source-basis guard now validates both successful and
+rejected receipt domains; the test failed before that guard and passed afterward.
+
+The failing regression invocations were:
+
+```sh
+./gradlew :query:contract:test --tests '*QueryImpactLedgerTest' :query:service:test --tests '*QueryLocalBindingAdverseTest' --continue --console=plain
+./gradlew :query:protocol:test --tests '*ImpactWitnessPresentationTest' --console=plain
+./gradlew :protocol:contract:test --tests '*ImpactPeerNativeWitnessValidationTest' :query:service:test --tests '*QueryLocalBindingAdverseTest' --continue --console=plain
+```
+
+The rejected-receipt test was subsequently extracted to
+`ImpactRejectedReadReceiptTest`, sharing the existing presentation fixture to keep
+the repository's class and function size guards intact. The final focused invocation
+passed, including the authored grant matrix and storage-admission cases:
+
+```sh
+./gradlew :query:contract:test --tests '*QueryImpactLedgerTest' :query:service:test --tests '*QueryLocalBinding*' --tests '*QueryImpactStorageAdmissionTest' :query:protocol:test --tests '*ImpactWitnessPresentationTest' --tests '*ImpactRejectedReadReceiptTest' :protocol:contract:test --tests '*ImpactPeerNativeWitnessValidationTest' --continue --console=plain
+```
+
+The complete affected checks and regenerated-reference verification also passed:
+
+```sh
+./gradlew :relation:contract:check :relation:service:check :query:contract:check :query:service:check :query:protocol:check :protocol:contract:check :protocol:wire:check :cli:generateMintlifyCallableReference :cli:verifyMintlifyCallableReference :cli:test --tests '*ImpactWitnessSchemaTest' --tests '*MintlifyCallableReferenceTest' verifyJsonContracts verifyKnowledgeBase knowledgeImpact verifyConfigurationIngress --continue --console=plain
+git diff --check
+```
+
+JUnit reports record 548 tests in the six relation/query/protocol contract and service
+modules, 110 protocol-wire tests and 11 selected CLI schema/reference tests, with zero
+failures or skips. JSON verification checked 690 fingerprints with zero violations;
+knowledge verification checked 28 concepts with zero issues; configuration ingress
+reported no findings. OpenWiki impact identifies five generated concepts for the
+scheduled owner. The generated OpenAPI change adds rejected receipts to the two
+query result-item components.
+
 This evidence establishes offline progress and detached contract behavior. Native
 reference enumeration semantics, PSI/K2 integration and runtime performance remain
 unverified. Adapter compilation and the compiled architecture guard are established

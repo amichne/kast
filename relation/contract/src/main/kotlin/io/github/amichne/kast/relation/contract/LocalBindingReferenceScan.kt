@@ -40,7 +40,12 @@ class LocalBindingReferenceScan<C>(
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
         spend() // role admission, after the adapter's authority/owner unit
         enumerate(::visit)
-        if (suspension != null && consumed.size == (request.remainder?.consumed?.size ?: 0))
+        // Replay can consume the time grant before reaching new input; a later grant may still advance it.
+        if (
+            suspension != null &&
+                suspension != ValueFlowSuspensionCause.TIME_LIMIT_REACHED &&
+                consumed.size == (request.remainder?.consumed?.size ?: 0)
+        )
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
         return finish()
     }

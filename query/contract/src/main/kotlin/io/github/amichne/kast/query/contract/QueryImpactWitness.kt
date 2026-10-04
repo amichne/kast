@@ -5,6 +5,7 @@ import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import java.util.Collections
 
@@ -62,7 +63,10 @@ sealed interface QueryImpactWitnessEntry {
         val obligation: ValueFlowObligation,
     ) : QueryImpactWitnessEntry
 
-    data class ReadRejected(val rejection: QueryImpactReadRejection) : QueryImpactWitnessEntry
+    data class ReadRejected(
+        val rejection: QueryImpactReadRejection,
+        val receipts: List<ValueFlowWorkReceipt> = emptyList(),
+    ) : QueryImpactWitnessEntry
 }
 
 data class QueryImpactWitnessRecord(val ordinal: QueryImpactWitnessOrdinal, val evidence: QueryImpactWitnessEntry)
@@ -177,7 +181,14 @@ private fun entriesForSection(
                     }
             )
         QueryImpactWitnessSection.READ_REJECTIONS ->
-            Refinement.Refined(ledger.readRejections.map(QueryImpactWitnessEntry::ReadRejected))
+            Refinement.Refined(
+                ledger.readRejections.map { rejection ->
+                    val observedCount =
+                        ledger.observations.singleOrNull { it.source == rejection.source }?.receipts?.size ?: 0
+                    val rejectedReceipts = ledger.readReceipts[rejection.source].orEmpty().drop(observedCount)
+                    QueryImpactWitnessEntry.ReadRejected(rejection, Collections.unmodifiableList(rejectedReceipts))
+                }
+            )
         QueryImpactWitnessSection.NATIVE_READS -> nativeEntries(ledger.observations)
     }
 

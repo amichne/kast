@@ -1,11 +1,8 @@
 package io.github.amichne.kast.query.protocol
 
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactAccountingDocument
 import io.github.amichne.kast.protocol.contract.ImpactAccountingFailure
@@ -16,56 +13,26 @@ import io.github.amichne.kast.protocol.contract.ImpactRequiredObligationDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
-import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
-import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
-import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
-import io.github.amichne.kast.protocol.contract.QueryFromDocument
-import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
-import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
-import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.presentationPrefix
 import io.github.amichne.kast.protocol.contract.presentationSuffix
 import io.github.amichne.kast.protocol.contract.validateImpactAccounting
 import io.github.amichne.kast.protocol.contract.validateImpactCompletion
-import io.github.amichne.kast.query.contract.QueryBudget
-import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
-import io.github.amichne.kast.query.contract.QueryImpactFlowSemantics
-import io.github.amichne.kast.query.contract.QueryImpactLedger
-import io.github.amichne.kast.query.contract.QueryImpactPath
-import io.github.amichne.kast.query.contract.QueryImpactProducer
-import io.github.amichne.kast.query.contract.QueryImpactRepresentation
-import io.github.amichne.kast.query.contract.QueryImpactStep
-import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryImpactWitnessRecord
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
-import io.github.amichne.kast.relation.contract.RelationBudget
-import io.github.amichne.kast.relation.contract.RelationByteLimit
-import io.github.amichne.kast.relation.contract.RelationMeaning
-import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.relation.contract.RelationSearchBoundary
-import io.github.amichne.kast.relation.contract.RelationWorkCount
-import io.github.amichne.kast.relation.contract.ValueFlowStep
-import io.github.amichne.kast.relation.contract.ValueFlowTerminal
-import io.github.amichne.kast.relation.contract.ValueInvocation
-import io.github.amichne.kast.relation.contract.ValueRole
-import io.github.amichne.kast.relation.contract.ValueSite
-import io.github.amichne.kast.relation.contract.ValueTransfer
-import io.github.amichne.kast.relation.contract.ValueTransferKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -81,7 +48,7 @@ import org.junit.jupiter.api.Test
 class ImpactWitnessPresentationTest {
     @Test
     fun `read result exposes original producer invocation and flattened native records without replay`() = runTest {
-        val fixture = Fixture()
+        val fixture = ImpactWitnessPresentationFixture()
         var executions = 0
         val protocol =
             CanonicalQueryProtocol(
@@ -125,7 +92,7 @@ class ImpactWitnessPresentationTest {
 
     @Test
     fun `same retained result and section preserve stable ordinals empty sections and cursor bounds`() {
-        val fixture = Fixture()
+        val fixture = ImpactWitnessPresentationFixture()
         val restored =
             fixture.store.restoreResult(fixture.reference, fixture.symbols.authority) as QueryResultRestoration.Restored
         val request =
@@ -176,7 +143,7 @@ class ImpactWitnessPresentationTest {
 
     @Test
     fun `connectivity only retained paths cannot manufacture original witness ledger`() {
-        val fixture = Fixture()
+        val fixture = ImpactWitnessPresentationFixture()
         val weak =
             QueryRetainedResult.capture(
                     fixture.symbols.authority,
@@ -205,7 +172,7 @@ class ImpactWitnessPresentationTest {
 
     @Test
     fun `path fitting keeps original closure and counts while weakening sliced completion`() = runTest {
-        val fixture = Fixture()
+        val fixture = ImpactWitnessPresentationFixture()
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { error("Unexpected semantic replay") },
@@ -249,7 +216,7 @@ class ImpactWitnessPresentationTest {
 
     @Test
     fun `witness fitting preserves ledger counts and section ordinals across prefix and suffix`() = runTest {
-        val fixture = Fixture()
+        val fixture = ImpactWitnessPresentationFixture()
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { error("Unexpected semantic replay") },
@@ -299,7 +266,7 @@ class ImpactWitnessPresentationTest {
 
     @Test
     fun `resumed native witness exposes each actual grant separately from accumulated work`() = runTest {
-        val fixture = Fixture(resumedBinding = true)
+        val fixture = ImpactWitnessPresentationFixture(resumedBinding = true)
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { error("Unexpected semantic replay") },
@@ -346,7 +313,7 @@ class ImpactWitnessPresentationTest {
         }
     }
 
-    private fun assertRejectedWitnessAccounting(original: QueryRunResult, fixture: Fixture) {
+    private fun assertRejectedWitnessAccounting(original: QueryRunResult, fixture: ImpactWitnessPresentationFixture) {
         assertEquals(
             Refinement.Rejected(ImpactAccountingFailure.MISSING_VALUE_ACCOUNTING),
             original.copy(impactAccounting = ImpactAccountingDocument.NotApplicable).validateImpactAccounting(),
@@ -364,159 +331,6 @@ class ImpactWitnessPresentationTest {
             Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH),
             mixed.validateImpactAccounting(),
         )
-    }
-
-    private class Fixture(resumedBinding: Boolean = false) {
-        val symbols = RelationPagingFixture.published()
-        val budget =
-            QueryBudget(
-                ResourceBudget(
-                    ResultLimit.parse(10).value(),
-                    WorkUnitLimit.parse(100).value(),
-                    ElapsedTimeLimitMillis.parse(1000).value(),
-                ),
-                QueryByteLimit.parse(100000).value(),
-            )
-
-        suspend fun readWitness(
-            protocol: CanonicalQueryProtocol,
-            section: ImpactWitnessSectionDocument,
-            cursor: Int = 0,
-        ): OperationOutcome.Qualified<QueryRunResult, QueryRunQualification> =
-            protocol
-                .execute(
-                    QueryRunRequest.ReadResult.impactWitness(
-                        reference,
-                        section,
-                        QueryResultCursor.parse(cursor).value(),
-                    ),
-                    symbols.authority,
-                    budget,
-                )
-                .also { assertInstanceOf(OperationOutcome.Qualified::class.java, it, it.toString()) }
-                as OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>
-
-        private val domain =
-            RelationRequest.start(
-                symbols.selector,
-                RelationMeaning.References,
-                RelationBudget(budget.resources, RelationByteLimit.parse(100000).value()),
-                RelationSearchBoundary.WORKSPACE_EXPANSION,
-            )
-        private val site =
-            ValueSite.fromCompiler(
-                    domain.subject,
-                    ExactDeclarationTextRange.parse(1, 2).value(),
-                    ValueRole.ExpressionResult,
-                )
-                .value()
-        val producer =
-            QueryImpactProducer.admit(
-                    site,
-                    ValueInvocation.fromCompiler(site.enclosing, site.range, site.enclosing).value(),
-                )
-                .value()
-        private val target =
-            ValueSite.fromCompiler(
-                    domain.subject,
-                    ExactDeclarationTextRange.parse(3, 4).value(),
-                    if (resumedBinding) ValueRole.LocalBinding else ValueRole.ExpressionResult,
-                )
-                .value()
-        private val transfer =
-            ValueTransfer.fromCompiler(
-                    site,
-                    target,
-                    if (resumedBinding) ValueTransferKind.LOCAL_BINDING else ValueTransferKind.BRANCH_ALTERNATIVE,
-                )
-                .value()
-        private val first =
-            ValueFlowStep.fromCompiler(
-                    site,
-                    listOf(transfer),
-                    emptyList(),
-                    ValueFlowTerminal.SupportedDomainExhausted,
-                    domain,
-                    RelationWorkCount.parse(2).value(),
-                )
-                .value()
-        private val last =
-            if (resumedBinding) {
-                fun page(work: Long, terminal: ValueFlowTerminal): ValueFlowStep {
-                    val budget =
-                        RelationBudget(
-                            ResourceBudget(
-                                ResultLimit.parse(1).value(),
-                                WorkUnitLimit.parse(work).value(),
-                                ElapsedTimeLimitMillis.parse(1000).value(),
-                            ),
-                            RelationByteLimit.parse(100000).value(),
-                        )
-                    val domain =
-                        RelationRequest.start(
-                            symbols.selector,
-                            RelationMeaning.References,
-                            budget,
-                            RelationSearchBoundary.WORKSPACE_EXPANSION,
-                        )
-                    return ValueFlowStep.fromCompiler(
-                            target,
-                            emptyList(),
-                            emptyList(),
-                            terminal,
-                            domain,
-                            RelationWorkCount.parse(work).value(),
-                        )
-                        .value()
-                }
-                page(3, ValueFlowTerminal.ResourceSuspended)
-                    .append(page(4, ValueFlowTerminal.SupportedDomainExhausted))
-                    .value()
-            } else
-                ValueFlowStep.fromCompiler(
-                        target,
-                        emptyList(),
-                        emptyList(),
-                        ValueFlowTerminal.SupportedDomainExhausted,
-                        domain,
-                        RelationWorkCount.parse(1).value(),
-                    )
-                    .value()
-        private val path =
-            QueryImpactPath.fromEvidence(
-                    site,
-                    listOf(QueryImpactStep.Compiler(transfer)),
-                    QueryImpactRepresentation.NotModeled,
-                    QueryImpactTerminal.SupportedDomainEnd.admit(last).value(),
-                )
-                .value()
-        val ledger =
-            QueryImpactLedger.fromEvidence(
-                    listOf(site),
-                    RelationSearchBoundary.WORKSPACE_EXPANSION,
-                    QueryImpactFlowSemantics.KOTLIN_FORWARD_V1,
-                    emptyList(),
-                    emptyList(),
-                    listOf(first, last),
-                    listOf(path),
-                    originalProducers = listOf(producer),
-                )
-                .value()
-        val request =
-            QueryRunRequest.Run(
-                QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(symbols.exact)))),
-                bounded(emptyList()),
-                QueryOutputDocument.ValuePaths,
-                QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            )
-        val store = QueryStateStore(clock = { 0 })
-        private val execution =
-            QueryExecutionResult.Complete.create(
-                QueryResult(QueryRows.ValuePaths.fromInvestigation(ledger).value(), emptyList()),
-                QueryCoverage.Complete(QueryCount.parse(1).value()),
-            )
-        private val retained = QueryRetainedResult.capture(symbols.authority, execution).value()
-        val reference = (store.issueResult(request, retained) as QueryResultIssuance.Issued).reference
     }
 
     private fun count(raw: Long) = QueryDiscoveryCountDocument.parse(raw).value()
