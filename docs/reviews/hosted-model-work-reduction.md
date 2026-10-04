@@ -108,6 +108,15 @@ classes: `HostedQueryService`
 `9320bba20e87230d42a46b3a86244041acdc18e5ccafe7d7a947183fa45081c7`.
 The candidate is the baseline plus the local source diff, not a published release.
 
+The native candidate corresponds to PR revision `06c587806438d99873beda86e19b301fce12717a`.
+A review follow-up permits `restartAfterMovedRead` at `EPOCH_OBSERVATION`:
+epoch authority admission now precedes model capture and can reject movement at
+that stage. A focused replay regression fails before the fix and passes afterward,
+proving a rejected first admission can restart and only the fresh attempt evaluates.
+The retention rule and canonical single-evaluation flow are unchanged. The hashes
+and native comparison above qualify the measured revision; they do not establish
+native qualification of the follow-up or published release bytes.
+
 Private raw receipts are retained under the owned `kast-main-work-92u5imz5`
 directory. They include source paths and issued opaque handles and are excluded
 from Git. `baseline-a` retains a freshness-rejected warmup; `baseline-c` retains

@@ -14,6 +14,42 @@ import org.junit.jupiter.api.Test
 
 class HostedReadReplayTest {
     @Test
+    fun `movement during epoch authority admission restarts before model capture`() = runTest {
+        val progress = HostedQueryProgress()
+        var admissions = 0
+        var evaluations = 0
+        var pauses = 0
+        val result =
+            retryMovedHostedRead(
+                HostedReadReplayPolicy.RETRY_MOVED_READ,
+                IntellijReadObservation.None,
+                onRetry = progress::restartAfterMovedRead,
+                pause = {
+                    assertEquals(HostedQueryStage.REQUEST_ADMISSION, progress.stage)
+                    pauses++
+                },
+            ) {
+                progress.advance(HostedQueryStage.PROJECT_ADMISSION)
+                progress.advance(HostedQueryStage.EPOCH_OBSERVATION)
+                if (++admissions == 1)
+                    HostedSemanticRead.Rejected(HostedQueryFailure.Freshness(VfsPassiveReadAdmissionFailure.Moved))
+                else {
+                    progress.advance(HostedQueryStage.MODEL_CAPTURE)
+                    progress.advance(HostedQueryStage.SEMANTIC_READ)
+                    evaluations++
+                    progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
+                    progress.advance(HostedQueryStage.RESULT_DETACHED)
+                    HostedSemanticRead.Resolved(42)
+                }
+            }
+        assertEquals(HostedSemanticRead.Resolved(42), result)
+        assertEquals(2, admissions)
+        assertEquals(1, evaluations)
+        assertEquals(1, pauses)
+        assertEquals(HostedQueryStage.RESULT_DETACHED, progress.stage)
+    }
+
+    @Test
     fun `moved read is discarded and fresh evaluation is published`() = runTest {
         var calls = 0
         var pauses = 0

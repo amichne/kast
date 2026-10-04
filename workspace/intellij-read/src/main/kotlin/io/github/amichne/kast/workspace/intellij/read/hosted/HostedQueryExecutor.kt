@@ -223,7 +223,11 @@ internal class HostedQueryProgress(
 
     @Synchronized
     fun restartAfterMovedRead() {
-        check(stage == HostedQueryStage.MODEL_CAPTURE || stage == HostedQueryStage.CONTENT_REVALIDATION)
+        check(
+            stage == HostedQueryStage.EPOCH_OBSERVATION ||
+                stage == HostedQueryStage.MODEL_CAPTURE ||
+                stage == HostedQueryStage.CONTENT_REVALIDATION
+        )
         publicationEffects.restart()
         stage = HostedQueryStage.REQUEST_ADMISSION
     }
