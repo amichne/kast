@@ -96,8 +96,12 @@ private constructor(
     val obligations: List<ValueFlowObligation>,
     val terminal: ValueFlowTerminal,
     val examinedWorkUnits: RelationWorkCount,
+    val receipts: List<ValueFlowWorkReceipt>,
 ) {
-    val retainedBytes: Long = detachedByteCount(source, domain, transfers, obligations).value
+    val retainedBytes: Long =
+        detachedByteCount(source, domain, transfers, obligations)
+            .value
+            .addBytes((receipts.size - 1L).multiplyBytes(4096L))
 
     /**
      * Physically shares equal, already admitted callable proofs with retained reads. No invocation, role, range, branch
@@ -133,6 +137,38 @@ private constructor(
             java.util.Collections.unmodifiableList(sharedObligations),
             terminal,
             examinedWorkUnits,
+            receipts,
+        )
+    }
+
+    /** Only a retained unfinished read can accumulate a freshly validated page; receipts stay page-local. */
+    fun append(page: ValueFlowStep): Refinement<ValueFlowStep, ValueFlowStepFailure> {
+        if (terminal != ValueFlowTerminal.ResourceSuspended || page.receipts.size != 1)
+            return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
+        if (page.source != source) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
+        if (page.domain.boundary != domain.boundary) return Refinement.Rejected(ValueFlowStepFailure.DOMAIN_MISMATCH)
+        if (page.transfers.any { it in transfers }) return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
+        val allReceipts = Collections.unmodifiableList(receipts + page.receipts)
+        val work =
+            allReceipts.fold(0L) { total, receipt ->
+                if (receipt.examinedWorkUnits.value > Long.MAX_VALUE - total) Long.MAX_VALUE
+                else total + receipt.examinedWorkUnits.value
+            }
+        val allObligations = (obligations + page.obligations).distinct()
+        val end =
+            if (page.terminal == ValueFlowTerminal.ResourceSuspended) page.terminal
+            else if (allObligations.isEmpty()) ValueFlowTerminal.SupportedDomainExhausted
+            else ValueFlowTerminal.Unresolved
+        return Refinement.Refined(
+            ValueFlowStep(
+                source,
+                domain,
+                Collections.unmodifiableList(transfers + page.transfers),
+                Collections.unmodifiableList(allObligations),
+                end,
+                (RelationWorkCount.parse(work) as Refinement.Refined).value,
+                allReceipts,
+            )
         )
     }
 
@@ -152,10 +188,16 @@ private constructor(
             terminal: ValueFlowTerminal,
             domain: RelationRequest,
             examinedWorkUnits: RelationWorkCount,
+            remainderBytes: RelationByteCount = (RelationByteCount.parse(0) as Refinement.Refined).value,
         ): Refinement<ValueFlowStep, ValueFlowStepFailure> {
+            if (!validProgress(source, transfers, terminal))
+                return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
             if (transfers.size > domain.budget.resources.resultLimit.value)
                 return Refinement.Rejected(ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED)
-            if (detachedByteCount(source, domain, transfers, obligations).value > domain.budget.returnedBytes.value)
+            if (
+                detachedByteCount(source, domain, transfers, obligations).value >
+                    domain.budget.returnedBytes.value - remainderBytes.value
+            )
                 return Refinement.Rejected(ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED)
             if (examinedWorkUnits.value > domain.budget.resources.workUnitLimit.value)
                 return Refinement.Rejected(ValueFlowStepFailure.WORK_LIMIT_EXCEEDED)
@@ -184,18 +226,39 @@ private constructor(
                     Collections.unmodifiableList(obligations.toList()),
                     terminal,
                     examinedWorkUnits,
+                    listOf(receipt(source, domain, transfers, obligations, examinedWorkUnits, remainderBytes)),
                 )
             )
         }
+
+        private fun receipt(
+            source: ValueSite,
+            domain: RelationRequest,
+            transfers: List<ValueTransfer>,
+            obligations: List<ValueFlowObligation>,
+            work: RelationWorkCount,
+            remainderBytes: RelationByteCount,
+        ): ValueFlowWorkReceipt =
+            ValueFlowWorkReceipt(
+                domain,
+                work,
+                (RelationResultCount.parse(transfers.size) as Refinement.Refined).value,
+                (RelationByteCount.parse(
+                        detachedByteCount(source, domain, transfers, obligations).value + remainderBytes.value
+                    ) as Refinement.Refined)
+                    .value,
+            )
     }
 }
 
 enum class ValueFlowTerminal {
     SupportedDomainExhausted,
     Unresolved,
+    ResourceSuspended,
 }
 
 enum class ValueFlowStepFailure {
+    INVALID_PROGRESS,
     WORK_LIMIT_EXCEEDED,
     RESULT_LIMIT_EXCEEDED,
     DETACHED_CAPACITY_EXCEEDED,
@@ -221,6 +284,12 @@ enum class ValueFlowRejection {
 sealed interface ValueFlowRead {
     data class Observed(val step: ValueFlowStep) : ValueFlowRead
 
+    data class Suspended(
+        val step: ValueFlowStep,
+        val remainder: LocalBindingReadRemainder,
+        val cause: ValueFlowSuspensionCause,
+    ) : ValueFlowRead
+
     data class Rejected(val cause: ValueFlowRejection, val examinedWorkUnits: RelationWorkCount) : ValueFlowRead
 
     /** A failed detached invariant retains its exact finite cause instead of becoming native unavailability. */
@@ -234,12 +303,18 @@ fun interface ValueFlowCompilerPort {
 }
 
 /** Carries the native grant and semantic expansion domain together with the exact input value. */
-data class ValueFlowRequest(val source: ValueSite, val budget: RelationBudget, val boundary: RelationSearchBoundary)
+data class ValueFlowRequest(
+    val source: ValueSite,
+    val budget: RelationBudget,
+    val boundary: RelationSearchBoundary,
+    val remainder: LocalBindingReadRemainder? = null,
+)
 
 private fun ValueFlowTerminal.validateObligations(
     obligations: List<ValueFlowObligation>
 ): Refinement<Unit, ValueFlowStepFailure> =
     when (this) {
+        ValueFlowTerminal.ResourceSuspended -> Refinement.Refined(Unit)
         ValueFlowTerminal.SupportedDomainExhausted ->
             if (obligations.isEmpty()) Refinement.Refined(Unit)
             else Refinement.Rejected(ValueFlowStepFailure.UNRESOLVED_OBLIGATIONS)
@@ -247,3 +322,7 @@ private fun ValueFlowTerminal.validateObligations(
             if (obligations.isNotEmpty()) Refinement.Refined(Unit)
             else Refinement.Rejected(ValueFlowStepFailure.MISSING_OBLIGATION)
     }
+
+private fun validProgress(source: ValueSite, transfers: List<ValueTransfer>, terminal: ValueFlowTerminal): Boolean =
+    transfers.distinct().size == transfers.size &&
+        (terminal != ValueFlowTerminal.ResourceSuspended || source.role == ValueRole.LocalBinding)

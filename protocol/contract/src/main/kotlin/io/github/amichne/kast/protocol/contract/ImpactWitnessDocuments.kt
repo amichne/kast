@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -73,6 +74,8 @@ sealed interface ImpactWitnessDocument {
         val terminal: ImpactNativeObservationTerminalDocument,
         val transferCount: QueryDiscoveryCountDocument,
         val obligationCount: QueryDiscoveryCountDocument,
+        val receipts: BoundedProtocolList<ImpactNativeReadReceiptDocument> =
+            (BoundedProtocolList.create(emptyList<ImpactNativeReadReceiptDocument>()) as Refinement.Refined).value,
     ) : ImpactWitnessDocument
 
     @Serializable
@@ -234,6 +237,7 @@ sealed interface ImpactFindingExecutionStopDocument {
 enum class ImpactNativeObservationTerminalDocument {
     SUPPORTED_DOMAIN_EXHAUSTED,
     UNRESOLVED,
+    RESOURCE_SUSPENDED,
 }
 
 @Serializable
@@ -250,3 +254,12 @@ sealed interface ImpactAccountingViewDocument {
         val sectionCount: QueryDiscoveryCountDocument,
     ) : ImpactAccountingViewDocument
 }
+
+/** Actual per-call authority and detached work/output receipt, separate from accumulated native evidence. */
+@Serializable
+data class ImpactNativeReadReceiptDocument(
+    val domain: ImpactFlowDomainDocument,
+    val examinedWorkUnits: QueryDiscoveryCountDocument,
+    val returnedResults: QueryDiscoveryCountDocument,
+    val returnedBytes: QueryDiscoveryCountDocument,
+)

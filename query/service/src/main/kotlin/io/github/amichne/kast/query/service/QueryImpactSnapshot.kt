@@ -6,20 +6,24 @@ import io.github.amichne.kast.query.contract.QueryImpactLedger
 import io.github.amichne.kast.query.contract.QueryImpactPath
 import io.github.amichne.kast.query.contract.QueryImpactPathFailure
 import io.github.amichne.kast.query.contract.QueryImpactProducer
+import io.github.amichne.kast.query.contract.QueryImpactReadRejection
 import io.github.amichne.kast.query.contract.QueryImpactRepresentation
 import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.query.contract.QueryImpactStep
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.relation.contract.LocalBindingReadRemainder
 import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
 
 private const val IMPACT_CONTAINER_STORAGE_BYTES = 512L
+private const val IMPACT_REJECTION_STORAGE_BYTES = 4096L
 
 /** Detached routes are tasks in the one query interpreter, never independent continuation tokens. */
 internal data class QueryImpactRoute(
@@ -77,6 +81,9 @@ internal data class QueryImpactSnapshot(
     val reads: Map<ValueSite, ValueFlowRead> = emptyMap(),
     val paths: List<QueryImpactPath> = emptyList(),
     val ledger: QueryImpactLedger? = null,
+    val remainders: Map<ValueSite, LocalBindingReadRemainder> = emptyMap(),
+    val readRejections: Map<ValueSite, QueryImpactReadRejection> = emptyMap(),
+    val receipts: Map<ValueSite, List<ValueFlowWorkReceipt>> = emptyMap(),
 ) {
     val retainedBytes: Long
         get() = retainedBytes(QueryImpactRetainedGraph())
@@ -94,7 +101,18 @@ internal data class QueryImpactSnapshot(
                         ),
                     )
                 },
-                ledger?.let(graph::ledger) ?: 0L,
+                saturatedAdd(
+                    saturatedAdd(
+                        ledger?.let(graph::ledger) ?: 0L,
+                        receipts.values.fold(0L) { bytes, values -> saturatedAdd(bytes, graph.receipts(values)) },
+                    ),
+                    saturatedAdd(
+                        remainders.values.fold(0L) { bytes, value -> saturatedAdd(bytes, graph.remainder(value)) },
+                        readRejections.entries.fold(0L) { bytes, entry ->
+                            saturatedAdd(bytes, saturatedAdd(graph.site(entry.key), IMPACT_REJECTION_STORAGE_BYTES))
+                        },
+                    ),
+                ),
             ),
         )
 }

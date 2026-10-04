@@ -67,6 +67,10 @@ import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -293,6 +297,55 @@ class ImpactWitnessPresentationTest {
         )
     }
 
+    @Test
+    fun `resumed native witness exposes each actual grant separately from accumulated work`() = runTest {
+        val fixture = Fixture(resumedBinding = true)
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { error("Unexpected semantic replay") },
+                fixture.symbols.references,
+                fixture.store,
+            )
+        val output = fixture.readWitness(protocol, ImpactWitnessSectionDocument.NATIVE_READS)
+        val native =
+            output.evidence.payload.items.values
+                .map { (it as QueryResultItemDocument.ImpactWitness).item.witness }
+                .filterIsInstance<ImpactWitnessDocument.NativeRead>()
+                .last()
+        assertEquals(7L, native.examinedWorkUnits.value)
+        assertEquals(3L, native.domain.budget.maxWorkUnits.value)
+        assertEquals(listOf(3L, 4L), native.receipts.values.map { it.domain.budget.maxWorkUnits.value })
+        assertEquals(listOf(3L, 4L), native.receipts.values.map { it.examinedWorkUnits.value })
+        val encoded = Json.encodeToJsonElement(ImpactWitnessDocument.serializer(), native).jsonObject
+        assertEquals(
+            setOf(
+                "type",
+                "observationOrdinal",
+                "source",
+                "domain",
+                "examinedWorkUnits",
+                "retainedBytes",
+                "terminal",
+                "transferCount",
+                "obligationCount",
+                "receipts",
+            ),
+            encoded.keys,
+        )
+        val receipts = encoded.getValue("receipts").jsonArray
+        assertEquals(2, receipts.size)
+        receipts.forEachIndexed { index, receipt ->
+            val item = receipt.jsonObject
+            assertEquals(setOf("domain", "examinedWorkUnits", "returnedResults", "returnedBytes"), item.keys)
+            assertEquals((index + 3).toString(), item.getValue("examinedWorkUnits").jsonPrimitive.content)
+            assertEquals("0", item.getValue("returnedResults").jsonPrimitive.content)
+            val grant = item.getValue("domain").jsonObject.getValue("budget").jsonObject
+            assertEquals((index + 3).toString(), grant.getValue("maxWorkUnits").jsonPrimitive.content)
+            assertEquals("1", grant.getValue("maxResults").jsonPrimitive.content)
+            assertEquals("100000", grant.getValue("maxReturnedBytes").jsonPrimitive.content)
+        }
+    }
+
     private fun assertRejectedWitnessAccounting(original: QueryRunResult, fixture: Fixture) {
         assertEquals(
             Refinement.Rejected(ImpactAccountingFailure.MISSING_VALUE_ACCOUNTING),
@@ -313,7 +366,7 @@ class ImpactWitnessPresentationTest {
         )
     }
 
-    private class Fixture {
+    private class Fixture(resumedBinding: Boolean = false) {
         val symbols = RelationPagingFixture.published()
         val budget =
             QueryBudget(
@@ -367,10 +420,16 @@ class ImpactWitnessPresentationTest {
             ValueSite.fromCompiler(
                     domain.subject,
                     ExactDeclarationTextRange.parse(3, 4).value(),
-                    ValueRole.ExpressionResult,
+                    if (resumedBinding) ValueRole.LocalBinding else ValueRole.ExpressionResult,
                 )
                 .value()
-        private val transfer = ValueTransfer.fromCompiler(site, target, ValueTransferKind.BRANCH_ALTERNATIVE).value()
+        private val transfer =
+            ValueTransfer.fromCompiler(
+                    site,
+                    target,
+                    if (resumedBinding) ValueTransferKind.LOCAL_BINDING else ValueTransferKind.BRANCH_ALTERNATIVE,
+                )
+                .value()
         private val first =
             ValueFlowStep.fromCompiler(
                     site,
@@ -382,15 +441,47 @@ class ImpactWitnessPresentationTest {
                 )
                 .value()
         private val last =
-            ValueFlowStep.fromCompiler(
-                    target,
-                    emptyList(),
-                    emptyList(),
-                    ValueFlowTerminal.SupportedDomainExhausted,
-                    domain,
-                    RelationWorkCount.parse(1).value(),
-                )
-                .value()
+            if (resumedBinding) {
+                fun page(work: Long, terminal: ValueFlowTerminal): ValueFlowStep {
+                    val budget =
+                        RelationBudget(
+                            ResourceBudget(
+                                ResultLimit.parse(1).value(),
+                                WorkUnitLimit.parse(work).value(),
+                                ElapsedTimeLimitMillis.parse(1000).value(),
+                            ),
+                            RelationByteLimit.parse(100000).value(),
+                        )
+                    val domain =
+                        RelationRequest.start(
+                            symbols.selector,
+                            RelationMeaning.References,
+                            budget,
+                            RelationSearchBoundary.WORKSPACE_EXPANSION,
+                        )
+                    return ValueFlowStep.fromCompiler(
+                            target,
+                            emptyList(),
+                            emptyList(),
+                            terminal,
+                            domain,
+                            RelationWorkCount.parse(work).value(),
+                        )
+                        .value()
+                }
+                page(3, ValueFlowTerminal.ResourceSuspended)
+                    .append(page(4, ValueFlowTerminal.SupportedDomainExhausted))
+                    .value()
+            } else
+                ValueFlowStep.fromCompiler(
+                        target,
+                        emptyList(),
+                        emptyList(),
+                        ValueFlowTerminal.SupportedDomainExhausted,
+                        domain,
+                        RelationWorkCount.parse(1).value(),
+                    )
+                    .value()
         private val path =
             QueryImpactPath.fromEvidence(
                     site,

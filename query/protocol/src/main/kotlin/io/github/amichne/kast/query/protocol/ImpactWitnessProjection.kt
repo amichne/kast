@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactNativeObservationTerminalDocument
+import io.github.amichne.kast.protocol.contract.ImpactNativeReadReceiptDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessItemDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
@@ -139,26 +140,43 @@ private fun count(raw: Long): ImpactProjected<QueryDiscoveryCountDocument> =
     QueryDiscoveryCountDocument.parse(raw).impactFailure(ImpactPathProjectionFailure::Count)
 
 private fun QueryImpactWitnessEntry.NativeRead.projectNativeRead(): ImpactProjected<ImpactWitnessDocument> =
-    observation.source.impactDocument().impactZip(observation.domain.impactDocument()).impactThen { (source, domain) ->
-        count(observationOrdinal.value)
-            .impactZip(count(observation.examinedWorkUnits.value))
-            .impactZip(count(observation.retainedBytes))
-            .impactZip(count(observation.transfers.size))
-            .impactZip(count(observation.obligations.size))
-            .impactMap { (counts, obligations) ->
-                ImpactWitnessDocument.NativeRead(
-                    counts.first.first.first,
-                    source,
-                    domain,
-                    counts.first.first.second,
-                    counts.first.second,
-                    when (observation.terminal) {
-                        ValueFlowTerminal.SupportedDomainExhausted ->
-                            ImpactNativeObservationTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED
-                        ValueFlowTerminal.Unresolved -> ImpactNativeObservationTerminalDocument.UNRESOLVED
-                    },
-                    counts.second,
-                    obligations,
-                )
+    observation.receipts
+        .impactEach { receipt ->
+            receipt.domain
+                .impactDocument()
+                .impactZip(count(receipt.examinedWorkUnits.value))
+                .impactZip(count(receipt.returnedResults.value))
+                .impactZip(count(receipt.returnedBytes.value))
+                .impactMap { (counts, bytes) ->
+                    ImpactNativeReadReceiptDocument(counts.first.first, counts.first.second, counts.second, bytes)
+                }
+        }
+        .impactThen { receipts ->
+            observation.source.impactDocument().impactZip(observation.domain.impactDocument()).impactThen {
+                (source, domain) ->
+                count(observationOrdinal.value)
+                    .impactZip(count(observation.examinedWorkUnits.value))
+                    .impactZip(count(observation.retainedBytes))
+                    .impactZip(count(observation.transfers.size))
+                    .impactZip(count(observation.obligations.size))
+                    .impactMap { (counts, obligations) ->
+                        ImpactWitnessDocument.NativeRead(
+                            counts.first.first.first,
+                            source,
+                            domain,
+                            counts.first.first.second,
+                            counts.first.second,
+                            when (observation.terminal) {
+                                ValueFlowTerminal.SupportedDomainExhausted ->
+                                    ImpactNativeObservationTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED
+                                ValueFlowTerminal.Unresolved -> ImpactNativeObservationTerminalDocument.UNRESOLVED
+                                ValueFlowTerminal.ResourceSuspended ->
+                                    ImpactNativeObservationTerminalDocument.RESOURCE_SUSPENDED
+                            },
+                            counts.second,
+                            obligations,
+                            receipts,
+                        )
+                    }
             }
-    }
+        }

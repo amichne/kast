@@ -46,6 +46,6 @@ internal fun valueFlowStorageBytes(
     }
 }
 
-private fun Long.addBytes(other: Long): Long = if (other > Long.MAX_VALUE - this) Long.MAX_VALUE else this + other
+internal fun Long.addBytes(other: Long): Long = if (other > Long.MAX_VALUE - this) Long.MAX_VALUE else this + other
 
-private fun Long.multiplyBytes(other: Long): Long = if (this > Long.MAX_VALUE / other) Long.MAX_VALUE else this * other
+internal fun Long.multiplyBytes(other: Long): Long = if (this > Long.MAX_VALUE / other) Long.MAX_VALUE else this * other

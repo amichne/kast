@@ -4,7 +4,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueSite
 
@@ -79,11 +81,14 @@ internal class QueryImpactLedgerValidation(
         if (
             native.values.any { it.size != 1 } ||
                 rejected.values.any { it.size != 1 } ||
-                native.keys.any { it in rejected }
+                native.keys.any(::hasConflictingRejection)
         )
             return reject(QueryImpactLedgerFailure.CONFLICTING_OBSERVATIONS)
         return Refinement.Refined(Unit)
     }
+
+    private fun hasConflictingRejection(site: ValueSite): Boolean =
+        site in rejected && native.getValue(site).singleOrNull()?.terminal != ValueFlowTerminal.ResourceSuspended
 
     private fun observedPaths(): Refinement<Unit, QueryImpactLedgerFailure> {
         for (path in paths) {
@@ -181,7 +186,7 @@ internal class QueryImpactLedgerValidation(
     }
 
     private fun obligationRetained(
-        obligation: io.github.amichne.kast.relation.contract.ValueFlowObligation,
+        obligation: ValueFlowObligation,
         source: ValueSite,
         siblings: List<QueryImpactPath>,
         index: Int,

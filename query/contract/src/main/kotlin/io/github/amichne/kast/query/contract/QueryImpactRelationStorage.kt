@@ -191,11 +191,12 @@ internal fun ValueFlowStep.storageBytes(g: QueryImpactRetainedGraph): Long =
         source
             .storageBytes(g)
             .saturatedAdd(domain.storageBytes(g))
+            .saturatedAdd(g.receiptStorage(receipts))
             .saturatedAdd(g.collection(transfers) { it.storageBytes(g) })
             .saturatedAdd(g.collection(obligations) { g.node(it) { it.site.storageBytes(g) } })
     }
 
-private fun RelationRequest.storageBytes(g: QueryImpactRetainedGraph): Long =
+internal fun RelationRequest.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         subject
             .storageBytes(g)

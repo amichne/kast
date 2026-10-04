@@ -3,12 +3,14 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.ConsumerRepresentationEvidence
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RepresentationCurrent
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 import io.github.amichne.kast.relation.contract.ValueSite
 import java.util.Collections
 
@@ -67,6 +69,7 @@ private constructor(
     val representationModels: List<RepresentationRule>,
     val boundaryModels: List<BoundaryModel>,
     val observations: List<ValueFlowStep>,
+    val readReceipts: Map<ValueSite, List<ValueFlowWorkReceipt>>,
     val readRejections: List<QueryImpactReadRejection>,
     val paths: List<QueryImpactPath>,
     val closure: QueryImpactClosure,
@@ -87,6 +90,9 @@ private constructor(
             originalProducers: List<QueryImpactProducer> = emptyList(),
             requestedSites: List<QueryImpactRequestedSite> = emptyList(),
             peerBoundaries: List<QueryImpactPeerBoundary> = emptyList(),
+            readReceipts: Map<ValueSite, List<ValueFlowWorkReceipt>> = observations.associate {
+                it.source to it.receipts
+            },
         ): Refinement<QueryImpactLedger, QueryImpactLedgerFailure> {
             val validation =
                 QueryImpactLedgerValidation(
@@ -101,6 +107,10 @@ private constructor(
                     peerBoundaries,
                 )
             when (val admitted = validation.validate()) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            when (val admitted = validateReadReceipts(readReceipts, observations, readRejections, domain)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
@@ -121,6 +131,7 @@ private constructor(
                     snapshot(representationModels),
                     snapshot(boundaryModels),
                     snapshot(observations),
+                    snapshotReceipts(readReceipts, observations),
                     snapshot(readRejections),
                     snapshot(paths),
                     closure,
@@ -278,3 +289,34 @@ private fun producerEvidence(
 ): List<QueryImpactProducerEvidence> =
     if (original.isEmpty()) seeds.map(QueryImpactProducerEvidence::SiteOnly)
     else original.map(QueryImpactProducerEvidence::Invocation)
+
+private fun validateReadReceipts(
+    receipts: Map<ValueSite, List<ValueFlowWorkReceipt>>,
+    observations: List<ValueFlowStep>,
+    rejections: List<QueryImpactReadRejection>,
+    domain: RelationSearchBoundary,
+): Refinement<Unit, QueryImpactLedgerFailure> {
+    if (receipts.keys.any { site -> observations.none { it.source == site } && rejections.none { it.source == site } })
+        return Refinement.Rejected(QueryImpactLedgerFailure.UNACCOUNTED_NATIVE_READ)
+    if (receipts.any { (site, values) -> values.any { !it.belongsTo(site, domain) } })
+        return Refinement.Rejected(QueryImpactLedgerFailure.DOMAIN_MISMATCH)
+    return Refinement.Refined(Unit)
+}
+
+private fun ValueFlowWorkReceipt.belongsTo(site: ValueSite, boundary: RelationSearchBoundary): Boolean =
+    domain.boundary == boundary && domain.subject.lease == site.enclosing.lease && domain.subject.hasOwner(site)
+
+private fun RelationEndpoint.hasOwner(site: ValueSite): Boolean =
+    compilerIdentity == site.identity.owner.compiler &&
+        file == site.identity.owner.file &&
+        range == site.identity.owner.range
+
+private fun snapshotReceipts(
+    receipts: Map<ValueSite, List<ValueFlowWorkReceipt>>,
+    observations: List<ValueFlowStep>,
+): Map<ValueSite, List<ValueFlowWorkReceipt>> =
+    Collections.unmodifiableMap(
+        receipts.mapValues { (site, values) ->
+            observations.firstOrNull { it.source == site && it.receipts == values }?.receipts ?: snapshot(values)
+        }
+    )
