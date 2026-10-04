@@ -1,6 +1,16 @@
 # Develop and validate Kast
 
 Use Java 25 or newer and the Python version in [`.python-version`](../.python-version).
+Native assembly requires a Java 25 toolchain with GraalVM Native Image. Gradle
+selects that toolchain independently of the shell's Java and provisions it through
+the configured Foojay resolver when no matching local installation is detected.
+Toolchain provisioning requires network access on its first use. For an existing
+local GraalVM that Gradle does not detect, pass its JDK home with
+`-Porg.gradle.java.installations.paths=/absolute/path/to/graalvm`.
+`GRAALVM_HOME` is also registered as a toolchain discovery input. If an older
+local GraalVM rejects the reachability metadata schema, update that installation
+to a current Java 25 patch or supply the newer JDK's path through these inputs.
+
 Read [AGENTS.md](../AGENTS.md) before making changes. The
 [OpenWiki guide](../openwiki/quickstart.md) maps architecture to source and tests.
 
