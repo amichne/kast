@@ -64,6 +64,7 @@ private constructor(
     private val liveAuthorities = HostedLiveReadAuthoritySession(hostLifetime)
     private val epochDiagnostics = HostedEpochVfsDiagnostics(project, owner, hostLifetime)
     private val freshnessOwner = HostedReadFreshnessOwner(project, owner, liveAuthorities)
+    private val namedSourceScope = HostedNamedGradleSourceScope()
     // A policy is retained admission authority, not just equal metadata. Reuse its
     // original proof for every request in this endpoint lifetime.
     private val packagedCompatibility by lazy(::packagedHostedCompatibility)
@@ -170,17 +171,6 @@ private constructor(
                             is Refinement.Rejected ->
                                 return@retryMovedHostedRead HostedSemanticRead.Rejected(observed.failure)
                         }
-                    progress.advance(HostedQueryStage.MODEL_CAPTURE)
-                    val sourceScope =
-                        when (
-                            val captured = admitted.captureNamedGradleSourceScope(progress.observation, progress.limits)
-                        ) {
-                            is Refinement.Refined -> captured.value
-                            is Refinement.Rejected ->
-                                return@retryMovedHostedRead HostedSemanticRead.Rejected(
-                                    HostedQueryFailure.NamedSourceScope(captured.failure)
-                                )
-                        }
                     val authority =
                         when (val current = freshnessOwner.admit(admitted, admittedEpoch.epoch)) {
                             is Refinement.Refined -> current.value
@@ -189,6 +179,16 @@ private constructor(
                         }
                     progress.diagnostics?.bind(authority.reference)
                     val freshnessCheck = freshnessOwner.capture(admitted, admittedEpoch.epoch, authority)
+                    progress.advance(HostedQueryStage.MODEL_CAPTURE)
+                    val sourceScope =
+                        when (
+                            val captured =
+                                namedSourceScope.capture(admitted, admittedEpoch.epoch, progress, freshnessCheck)
+                        ) {
+                            is Refinement.Refined -> captured.value
+                            is Refinement.Rejected ->
+                                return@retryMovedHostedRead HostedSemanticRead.Rejected(captured.failure)
+                        }
                     runHostedReadTransaction(progress, freshnessCheck.current) { timeAllowance ->
                         val context =
                             HostedSemanticReadContext(
