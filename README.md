@@ -148,6 +148,9 @@ and [how Kast works](https://kast.michne.com/concepts/architecture/).
 ## Develop
 
 Use Java 25 or newer and the Python version in [`.python-version`](.python-version).
+Native assembly uses a Java 25 toolchain with GraalVM Native Image, selected or
+provisioned by Gradle. Its first download requires network access; see the
+[development guide](docs/development.md) for local toolchain selection.
 
 ```shell
 ./gradlew build

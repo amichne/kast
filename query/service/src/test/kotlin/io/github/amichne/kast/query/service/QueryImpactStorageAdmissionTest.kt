@@ -1,5 +1,7 @@
 package io.github.amichne.kast.query.service
 
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryContinuationState
@@ -12,6 +14,7 @@ import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactStep
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryPresentationExecution
+import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.query.contract.QueryValuePathAccounting
@@ -20,14 +23,19 @@ import io.github.amichne.kast.relation.contract.ModelIdentifier
 import io.github.amichne.kast.relation.contract.ModelRuleReference
 import io.github.amichne.kast.relation.contract.ModelValuePosition
 import io.github.amichne.kast.relation.contract.ModelVersion
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RepresentationDomain
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -36,6 +44,107 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class QueryImpactStorageAdmissionTest {
+    @Test
+    fun `dense repeated callable evidence retains every flow obligation within default checkpoint capacity`() =
+        runTest {
+            val f = QueryImpactExecutionFixture()
+            val owner = RelationEndpoint.subject(SymbolSelector.issue(f.lease, f.scope, f.owner.evidence))
+            val binding = denseSite(owner, 30, 31, ValueRole.LocalBinding)
+            val locals = (0 until 150).map { denseSite(owner, 35 + it, 36 + it, ValueRole.LocalRead) }
+            val arguments = denseArguments(f, owner)
+            val expectations = denseExpectations(f, binding, locals, arguments)
+            val native = f.unorderedScript(expectations)
+            val result =
+                assertInstanceOf(
+                    QueryExecutionResult.Qualified::class.java,
+                    f.service(native.port)
+                        .run(
+                            f.request(
+                                work = 1000,
+                                results = 100,
+                                checkpointBytes = QueryByteLimit.DefaultCheckpoint.value,
+                                returnedBytes = 64000000,
+                            )
+                        ),
+                )
+            val captured =
+                (QueryRetainedResult.captureInvestigation(f.lease, result) as Refinement.Refined).value
+                    as QueryRetainedResult.ValuePaths
+            val rows = captured.rows
+            assertEquals(100, (result.result.rows as QueryRows.ValuePaths).values.size)
+            assertEquals(150, rows.values.size)
+            assertTrue(
+                rows.values.all {
+                    it.terminal is QueryImpactTerminal.Unresolved.Flow
+                }
+            )
+            assertEquals(arguments.map { it.identity }, rows.values.map { it.destination.identity })
+            native.assertConsumed()
+            assertDenseRetention(captured, result)
+        }
+
+    private fun assertDenseRetention(captured: QueryRetainedResult.ValuePaths, result: QueryExecutionResult.Qualified) {
+        val ledger = (captured.rows.accounting as QueryValuePathAccounting.Investigated).ledger
+        val ledgerBytes = QueryImpactRetainedGraph().ledger(ledger)
+        assertTrue(ledgerBytes <= QueryByteLimit.DefaultCheckpoint.value, "ledger=$ledgerBytes")
+        val checkpoint = (result.continuation as QueryContinuationState.Resumable).checkpoint
+        assertSame(checkpoint, (captured.producerProgress as QueryContinuationState.Resumable).checkpoint)
+        val terminal =
+            result.copy(continuation = QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE))
+        val withoutCheckpoint =
+            (QueryRetainedResult.captureInvestigation(captured.lease, terminal) as Refinement.Refined).value
+        assertEquals(
+            checkpoint.retainedBytes,
+            captured.retainedBytes - withoutCheckpoint.retainedBytes,
+            "A checkpoint carries its existing conservative charge through retention",
+        )
+        val pairedBytes = captured.retainedBytes + checkpoint.retainedBytes
+        val limit = ReadLimits.Default[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value
+        assertTrue(
+            pairedBytes <= limit,
+            "ledger=$ledgerBytes retained=${captured.retainedBytes} " +
+                "checkpoint=${checkpoint.retainedBytes} paired=$pairedBytes limit=$limit",
+        )
+    }
+
+    private fun denseSite(owner: RelationEndpoint, start: Int, end: Int, role: ValueRole): ValueSite =
+        (ValueSite.fromCompiler(owner, (ExactDeclarationTextRange.parse(start, end) as Refinement.Refined).value, role)
+                as Refinement.Refined)
+            .value
+
+    private fun denseArguments(f: QueryImpactExecutionFixture, owner: RelationEndpoint): List<ValueSite> =
+        (0 until 150).map {
+            val fresh = f.call("display", 34 + it, 39 + it)
+            val invocation =
+                (ValueInvocation.fromCompiler(owner, fresh.range, fresh.callable) as Refinement.Refined).value
+            denseSite(
+                owner,
+                35 + it,
+                36 + it,
+                ValueRole.Argument(invocation, (ValueArgumentPosition.parse(0) as Refinement.Refined).value),
+            )
+        }
+
+    private fun denseExpectations(
+        f: QueryImpactExecutionFixture,
+        binding: ValueSite,
+        locals: List<ValueSite>,
+        arguments: List<ValueSite>,
+    ): List<ImpactReadExpectation> =
+        listOf(
+            ImpactReadExpectation(
+                f.producer.site,
+                listOf(f.edge(f.producer.site, binding, ValueTransferKind.LOCAL_BINDING)),
+            ),
+            ImpactReadExpectation(binding, locals.map { f.edge(binding, it, ValueTransferKind.LOCAL_READ) }),
+        ) +
+            locals.zip(arguments).flatMap { (local, argument) ->
+                listOf(
+                    ImpactReadExpectation(local, listOf(f.edge(local, argument, ValueTransferKind.ARGUMENT))),
+                    ImpactReadExpectation(argument, causes = listOf(ValueFlowUnsupportedCause.UNMODELED_CALL)),
+                )
+            }
+
     @Test
     fun `storage distinguishes shared proof objects from physically distinct equal declarations`() {
         val first = QueryImpactExecutionFixture()

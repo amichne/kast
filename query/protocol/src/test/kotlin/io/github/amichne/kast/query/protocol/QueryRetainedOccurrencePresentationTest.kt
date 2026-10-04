@@ -79,6 +79,44 @@ class QueryRetainedOccurrencePresentationTest {
         )
 
     @Test
+    fun `small occurrence pages preserve complete producer coverage without semantic replay`() = runTest {
+        val issued = issueOccurrences((0 until 3).map(::confirmedOccurrence))
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { error("Small occurrence pages must not execute semantic work") },
+                fixture.references,
+                store,
+            )
+        val smallBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
+        val pages =
+            (0 until 3).map { cursor ->
+                val pageRequest =
+                    QueryRunRequest.ReadResult.occurrences(issued.reference, QueryResultCursor.parse(cursor).refined())
+                val page = protocol.execute(pageRequest, fixture.authority, smallBudget) as OperationOutcome.Complete
+                val replay = protocol.execute(pageRequest, fixture.authority, smallBudget) as OperationOutcome.Complete
+                assertEquals(page.evidence.payload, replay.evidence.payload)
+                assertEquals(1, page.evidence.payload.items.values.size)
+                assertEquals(if (cursor < 2) cursor + 1 else null, page.evidence.payload.nextCursor?.value)
+                page.evidence.payload
+            }
+        val items = pages.flatMap { it.items.values }.map { it as QueryResultItemDocument.ReferenceOccurrence }
+        assertEquals(issued.rowIds, items.map { it.rowId })
+        assertEquals(listOf(8, 10, 12), items.map { it.occurrence.occurrence.range.startInclusive.value })
+        assertFileScopedEvidence(items)
+        val empty =
+            protocol.execute(
+                QueryRunRequest.ReadResult.occurrences(issued.reference, QueryResultCursor.parse(3).refined()),
+                fixture.authority,
+                smallBudget,
+            ) as OperationOutcome.Complete
+        assertEquals(emptyList<QueryResultItemDocument>(), empty.evidence.payload.items.values)
+        assertNull(empty.evidence.payload.nextCursor)
+        val restored = store.restoreResult(issued.reference, fixture.authority) as QueryResultRestoration.Restored
+        assertEquals(QueryCoverage.Complete(QueryCount.parse(3).refined()), restored.result.coverage)
+        assertNull(restored.result.producerProgress)
+    }
+
+    @Test
     fun `reference admission bound contains every encoded row variant and repeated inline selectors`() = runTest {
         // Detached proofs are starting facts. The production codec establishes row bytes, not native performance.
         val admission = ReferenceAdmissionBoundFixture(fixture, budget, run())
@@ -162,7 +200,7 @@ class QueryRetainedOccurrencePresentationTest {
         val execution =
             QueryExecutionResult.Complete.create(
                 QueryResult(QueryRows.Occurrences.of(occurrences.map(QueryOccurrence::Reference)), emptyList()),
-                QueryCoverage.Complete(QueryCount.parse(101).refined()),
+                QueryCoverage.Complete(QueryCount.parse(occurrences.size).refined()),
             )
         val retained = QueryRetainedResult.capture(fixture.authority, execution).refined()
         return store.issueResult(run(), retained) as QueryResultIssuance.Issued

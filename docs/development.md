@@ -1,6 +1,16 @@
 # Develop and validate Kast
 
 Use Java 25 or newer and the Python version in [`.python-version`](../.python-version).
+Native assembly requires a Java 25 toolchain with GraalVM Native Image. Gradle
+selects that toolchain independently of the shell's Java and provisions it through
+the configured Foojay resolver when no matching local installation is detected.
+Toolchain provisioning requires network access on its first use. For an existing
+local GraalVM that Gradle does not detect, pass its JDK home with
+`-Porg.gradle.java.installations.paths=/absolute/path/to/graalvm`.
+`GRAALVM_HOME` is also registered as a toolchain discovery input. If an older
+local GraalVM rejects the reachability metadata schema, update that installation
+to a current Java 25 patch or supply the newer JDK's path through these inputs.
+
 Read [AGENTS.md](../AGENTS.md) before making changes. The
 [OpenWiki guide](../openwiki/quickstart.md) maps architecture to source and tests.
 
@@ -104,6 +114,26 @@ filesystem/process adapter, compiler/platform fixture or native composition. Nam
 skips and anything not verified. The [configuration and retirement verification
 record](reviews/behavior-sized-testing.md) contains a concrete migration inventory,
 complete selectors, resource reductions and observed limits.
+
+## Investigate bounded impact reads
+
+Retained result pages construct at most the admitted result grant, capped at 100
+items per page. Follow the returned cursor and retain the original impact closure;
+finishing a presentation does not close unresolved semantic obligations.
+
+The default query checkpoint is 32 MiB, within a 128 MiB total continuation
+retention budget. The total includes independently owned checkpoints, retained
+results and fitted output pages. Already conservative checkpoint byte charges
+are added once to each owner that retains them. The conservative storage accounting includes
+physically retained proof objects and references. Equal callable proofs can share
+storage only when their authority, scope, constraints and compiler evidence all
+match; independent paths, invocations and observations remain distinct.
+
+If a larger investigation reaches checkpoint capacity, inspect its typed stop and
+qualified findings. The configuration catalogue exposes
+`KAST_READ_QUERY_CHECKPOINT_BYTES` and its IDE property
+`kast.read.query.checkpoint.bytes`. A configured checkpoint must fit the total
+continuation retention grant. Increasing a result-page grant does not enlarge it.
 
 ## Build and install the checkout
 

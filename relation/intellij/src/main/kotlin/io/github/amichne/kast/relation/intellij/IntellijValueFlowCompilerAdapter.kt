@@ -162,14 +162,7 @@ class IntellijValueFlowCompilerAdapter(
                 val started = System.nanoTime()
                 observation.count(IntellijReadCounter.VALUE_FLOW_READS)
                 val owner = request.source.enclosing
-                val selector =
-                    when (owner) {
-                        is RelationEndpoint.Subject -> owner.selector
-                        is RelationEndpoint.Resolved ->
-                            SymbolSelector.issue(owner.lease, owner.scope, owner.evidence, owner.constraints)
-                    }
-                val domain =
-                    RelationRequest.start(selector, RelationMeaning.References, request.budget, request.boundary)
+                val domain = RelationRequest.start(owner, RelationMeaning.References, request.budget, request.boundary)
                 observedWork = flowWorkCount(1)
                 when (val prepared = prepare(project, domain, model)) {
                     is Prepared.Rejected -> ValueFlowRead.Rejected(prepared.cause, observedWork)
