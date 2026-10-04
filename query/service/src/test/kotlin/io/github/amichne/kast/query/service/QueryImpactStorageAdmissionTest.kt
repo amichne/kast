@@ -1,5 +1,7 @@
 package io.github.amichne.kast.query.service
 
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryContinuationState
@@ -12,6 +14,7 @@ import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactStep
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryPresentationExecution
+import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.query.contract.QueryValuePathAccounting
@@ -58,13 +61,17 @@ class QueryImpactStorageAdmissionTest {
                         .run(
                             f.request(
                                 work = 1000,
-                                results = 1000,
+                                results = 100,
                                 checkpointBytes = QueryByteLimit.DefaultCheckpoint.value,
                                 returnedBytes = 64000000,
                             )
                         ),
                 )
-            val rows = result.result.rows as QueryRows.ValuePaths
+            val captured =
+                (QueryRetainedResult.captureInvestigation(f.lease, result) as Refinement.Refined).value
+                    as QueryRetainedResult.ValuePaths
+            val rows = captured.rows
+            assertEquals(100, (result.result.rows as QueryRows.ValuePaths).values.size)
             assertEquals(150, rows.values.size)
             assertTrue(
                 rows.values.all {
@@ -73,10 +80,32 @@ class QueryImpactStorageAdmissionTest {
             )
             assertEquals(arguments.map { it.identity }, rows.values.map { it.destination.identity })
             native.assertConsumed()
-            val retained =
-                QueryImpactRetainedGraph().ledger((rows.accounting as QueryValuePathAccounting.Investigated).ledger)
-            assertTrue(retained <= QueryByteLimit.DefaultCheckpoint.value, "retained=$retained")
+            assertDenseRetention(captured, result)
         }
+
+    private fun assertDenseRetention(captured: QueryRetainedResult.ValuePaths, result: QueryExecutionResult.Qualified) {
+        val ledger = (captured.rows.accounting as QueryValuePathAccounting.Investigated).ledger
+        val ledgerBytes = QueryImpactRetainedGraph().ledger(ledger)
+        assertTrue(ledgerBytes <= QueryByteLimit.DefaultCheckpoint.value, "ledger=$ledgerBytes")
+        val checkpoint = (result.continuation as QueryContinuationState.Resumable).checkpoint
+        assertSame(checkpoint, (captured.producerProgress as QueryContinuationState.Resumable).checkpoint)
+        val terminal =
+            result.copy(continuation = QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE))
+        val withoutCheckpoint =
+            (QueryRetainedResult.captureInvestigation(captured.lease, terminal) as Refinement.Refined).value
+        assertEquals(
+            checkpoint.retainedBytes,
+            captured.retainedBytes - withoutCheckpoint.retainedBytes,
+            "A checkpoint carries its existing conservative charge through retention",
+        )
+        val pairedBytes = captured.retainedBytes + checkpoint.retainedBytes
+        val limit = ReadLimits.Default[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value
+        assertTrue(
+            pairedBytes <= limit,
+            "ledger=$ledgerBytes retained=${captured.retainedBytes} " +
+                "checkpoint=${checkpoint.retainedBytes} paired=$pairedBytes limit=$limit",
+        )
+    }
 
     private fun denseSite(owner: RelationEndpoint, start: Int, end: Int, role: ValueRole): ValueSite =
         (ValueSite.fromCompiler(owner, (ExactDeclarationTextRange.parse(start, end) as Refinement.Refined).value, role)

@@ -43,8 +43,12 @@ class ReadLimitsTest {
     @Test
     fun `a query checkpoint cannot exceed its continuation store byte authority`() {
         val rejected =
-            ReadLimits.resolve(mapOf(ReadLimitParameter.QUERY_CHECKPOINT_BYTES.environmentKey to "33554433"))
-                as Refinement.Rejected
+            ReadLimits.resolve(
+                mapOf(
+                    ReadLimitParameter.QUERY_CHECKPOINT_BYTES.environmentKey to "8193",
+                    ReadLimitParameter.QUERY_CONTINUATION_BYTES.environmentKey to "8192",
+                )
+            ) as Refinement.Rejected
         assertEquals(
             ReadLimitFailure.InconsistentBounds(
                 ReadLimitParameter.QUERY_CHECKPOINT_BYTES,
