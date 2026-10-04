@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.ImpactAccountingStatusDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
+import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
@@ -26,6 +27,57 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ImpactFindingPresentationTest {
+    @Test
+    fun `admitted one finding grant bounds construction before projection and preserves original links`() = runTest {
+        val fixture = ImpactFindingFixture()
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { error("Unexpected semantic replay") },
+                fixture.symbols.references,
+                fixture.store,
+            )
+        val budget =
+            fixture.budget.copy(
+                resources =
+                    fixture.budget.resources.copy(
+                        resultLimit = io.github.amichne.kast.kernel.ResultLimit.parse(1).value()
+                    )
+            )
+        val first =
+            protocol.execute(
+                QueryRunRequest.ReadResult.impactWitness(fixture.reference, ImpactWitnessSectionDocument.FINDINGS),
+                fixture.symbols.authority,
+                budget,
+            ) as OperationOutcome.Qualified
+        assertTrue(QueryLimitationDocument.RESULT_LIMIT_REACHED in first.qualification.limitations)
+        val original = fixture.readWitness(protocol, ImpactWitnessSectionDocument.FINDINGS).evidence.payload
+        val pages =
+            (0..1).map { cursor ->
+                protocol
+                    .execute(
+                        QueryRunRequest.ReadResult.impactWitness(
+                            fixture.reference,
+                            ImpactWitnessSectionDocument.FINDINGS,
+                            QueryResultCursor.parse(cursor).value(),
+                        ),
+                        fixture.symbols.authority,
+                        budget,
+                    )
+                    .payload()
+            }
+        assertEquals(listOf(1, 1), pages.map { it.items.values.size })
+        assertEquals(original.items.values, pages.flatMap { it.items.values })
+        assertEquals(1, pages.first().nextCursor!!.value)
+        assertEquals(null, pages.last().nextCursor)
+        for (page in pages) {
+            assertEquals(Refinement.Refined(Unit), page.validateImpactAccounting())
+            assertEquals(
+                (original.impactAccounting as ImpactAccountingDocument.Investigated).status,
+                (page.impactAccounting as ImpactAccountingDocument.Investigated).status,
+            )
+        }
+    }
+
     @Test
     fun `compact retained findings link both original routes to full path rows without semantic replay`() = runTest {
         val fixture = ImpactFindingFixture()
@@ -112,6 +164,7 @@ class ImpactFindingPresentationTest {
             RetainedQueryPresentation.create(
                     restored,
                     QueryRunRequest.ReadResult.impactWitness(fixture.reference, ImpactWitnessSectionDocument.FINDINGS),
+                    io.github.amichne.kast.kernel.ResultLimit.parse(100).value(),
                 )
                 .value()
         val projector = QueryItemProjector(fixture.symbols.references)

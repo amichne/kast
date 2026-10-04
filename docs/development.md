@@ -115,6 +115,24 @@ skips and anything not verified. The [configuration and retirement verification
 record](reviews/behavior-sized-testing.md) contains a concrete migration inventory,
 complete selectors, resource reductions and observed limits.
 
+## Investigate bounded impact reads
+
+Retained result pages construct at most the admitted result grant, capped at 100
+items per page. Follow the returned cursor and retain the original impact closure;
+finishing a presentation does not close unresolved semantic obligations.
+
+The default query checkpoint is 32 MiB, within the unchanged 32 MiB total
+continuation retention budget. The conservative storage accounting includes
+physically retained proof objects and references. Equal callable proofs can share
+storage only when their authority, scope, constraints and compiler evidence all
+match; independent paths, invocations and observations remain distinct.
+
+If a larger investigation reaches checkpoint capacity, inspect its typed stop and
+qualified findings. The configuration catalogue exposes
+`KAST_READ_QUERY_CHECKPOINT_BYTES` and its IDE property
+`kast.read.query.checkpoint.bytes`. A configured checkpoint must fit the total
+continuation retention grant. Increasing a result-page grant does not enlarge it.
+
 ## Build and install the checkout
 
 Gradle provisions the pinned Python dependencies for its schema tests in

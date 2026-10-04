@@ -25,6 +25,41 @@ import org.junit.jupiter.api.Test
 
 class ValueSiteContractTest {
     @Test
+    fun `callable sharing preserves invocation identity and excludes different scope file and authority`() {
+        val original = endpoint("submit", 210, 250, parameters = listOf("String")) as RelationEndpoint.Resolved
+        val copies =
+            listOf(
+                endpoint("submit", 210, 250, parameters = listOf("String")),
+                endpoint("submit", 210, 250, parameters = listOf("String"), fileName = "Other.kt"),
+                endpoint("submit", 210, 250, parameters = listOf("String"), generation = 2),
+                RelationEndpoint.resolve(
+                        original.lease,
+                        SymbolSearchScope.ExactFile(
+                            (original.file
+                                    as io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace)
+                                .path,
+                            SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                            SymbolGeneratedSourcePolicy.EXCLUDE,
+                        ),
+                        original.evidence,
+                    )
+                    .refined(),
+            )
+        for ((index, candidate) in copies.withIndex()) {
+            val owner = endpoint("investigate", 0, 200, generation = if (index == 2) 2 else 1)
+            val invocation = ValueInvocation.fromCompiler(owner, range(20, 50), candidate).refined()
+            val pool = linkedMapOf(original to original)
+            val shared = invocation.shareCallableEvidence(pool)
+            assertEquals(invocation.identity, shared.identity)
+            assertSame(owner, shared.enclosing)
+            assertSame(invocation.range, shared.range)
+            assertSame(if (index == 0) original else candidate, shared.callable)
+            assertSame(owner.valueIdentity, shared.identity.owner)
+            assertSame(shared.callable.valueIdentity, shared.identity.callable)
+        }
+    }
+
+    @Test
     fun `producer proof retains exact selected invocation and rejects same signature from another file`() {
         val owner = endpoint("investigate", 0, 200) as RelationEndpoint.Resolved
         val callable = endpoint("encrypt", 210, 250) as RelationEndpoint.Resolved
@@ -172,6 +207,42 @@ class ValueSiteContractTest {
 }
 
 class ValueFlowStepContractTest {
+    @Test
+    fun `read sharing keeps every obligation and its current domain and work evidence`() {
+        val owner = endpoint("investigate", 0, 200)
+        fun read(callable: RelationEndpoint, start: Int): ValueFlowStep {
+            val invocation = ValueInvocation.fromCompiler(owner, range(start, start + 20), callable).refined()
+            val site =
+                ValueSite.fromCompiler(
+                        owner,
+                        range(start + 5, start + 10),
+                        ValueRole.Argument(invocation, ValueArgumentPosition.parse(0).refined()),
+                    )
+                    .refined()
+            return ValueFlowStep.fromCompiler(
+                    site,
+                    emptyList(),
+                    listOf(ValueFlowObligation(site, ValueFlowUnsupportedCause.UNMODELED_CALL)),
+                    ValueFlowTerminal.Unresolved,
+                    domain(site),
+                    RelationWorkCount.parse(2).refined(),
+                )
+                .refined()
+        }
+        val first = read(endpoint("submit", 210, 250, parameters = listOf("String")), 20)
+        val second = read(endpoint("submit", 210, 250, parameters = listOf("String")), 60)
+        val shared = second.shareCallableEvidence(listOf(first))
+        assertSame(
+            (first.source.role as ValueRole.Argument).call.callable,
+            (shared.source.role as ValueRole.Argument).call.callable,
+        )
+        assertEquals(second.source.identity, shared.source.identity)
+        assertEquals(second.obligations, shared.obligations)
+        assertSame(second.domain, shared.domain)
+        assertEquals(second.examinedWorkUnits, shared.examinedWorkUnits)
+        assertEquals(second.terminal, shared.terminal)
+    }
+
     @Test
     fun `unsupported arrivals cannot be constructed as exhausted supported flow`() {
         val owner = endpoint("investigate", 0, 200)

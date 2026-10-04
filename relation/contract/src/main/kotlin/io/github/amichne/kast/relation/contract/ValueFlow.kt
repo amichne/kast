@@ -27,6 +27,15 @@ private constructor(
     val target: ValueSite,
     val kind: ValueTransferKind,
 ) {
+    internal fun shareCallableEvidence(
+        callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
+    ): ValueTransfer {
+        val sharedSource = source.shareCallableEvidence(callables)
+        val sharedTarget = target.shareCallableEvidence(callables)
+        return if (sharedSource === source && sharedTarget === target) this
+        else ValueTransfer(sharedSource, sharedTarget, kind)
+    }
+
     companion object {
         /** The native adapter owns semantic confirmation; this constructor preserves its detached invariants. */
         fun fromCompiler(
@@ -89,6 +98,43 @@ private constructor(
     val examinedWorkUnits: RelationWorkCount,
 ) {
     val retainedBytes: Long = detachedByteCount(source, domain, transfers, obligations).value
+
+    /**
+     * Physically shares equal, already admitted callable proofs with retained reads. No invocation, role, range, branch
+     * or read observation is deduplicated. The temporary lookup is local to this pure transformation.
+     */
+    fun shareCallableEvidence(previous: Collection<ValueFlowStep>): ValueFlowStep {
+        val callables = linkedMapOf<RelationEndpoint.Resolved, RelationEndpoint.Resolved>()
+        fun retain(site: ValueSite) {
+            val role = site.role as? ValueRole.Argument ?: return
+            val endpoint = role.call.callable as? RelationEndpoint.Resolved ?: return
+            callables.putIfAbsent(endpoint, endpoint)
+        }
+        for (step in previous) {
+            retain(step.source)
+            step.transfers.forEach { retain(it.target) }
+        }
+        val sharedSource = source.shareCallableEvidence(callables)
+        val sharedTransfers = transfers.map { it.shareCallableEvidence(callables) }
+        val sharedObligations = obligations.map { obligation ->
+            val sharedSite = obligation.site.shareCallableEvidence(callables)
+            if (sharedSite === obligation.site) obligation else ValueFlowObligation(sharedSite, obligation.cause)
+        }
+        if (
+            sharedSource === source &&
+                transfers.zip(sharedTransfers).all { (a, b) -> a === b } &&
+                obligations.zip(sharedObligations).all { (a, b) -> a === b }
+        )
+            return this
+        return ValueFlowStep(
+            sharedSource,
+            domain,
+            java.util.Collections.unmodifiableList(sharedTransfers),
+            java.util.Collections.unmodifiableList(sharedObligations),
+            terminal,
+            examinedWorkUnits,
+        )
+    }
 
     companion object {
         /** Conservative detached capacity; final wire bytes remain the query presentation owner's budget. */

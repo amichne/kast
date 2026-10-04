@@ -22,6 +22,7 @@ internal fun RelationEndpoint.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         // Strong authority and opaque imported model belong to the admitted epoch owner, not each detached endpoint.
         g.node(lease) { 0L }
+            .saturatedAdd(valueIdentity.storageBytes(g))
             .saturatedAdd(g.node(file) { g.text(file.stableValue) })
             .saturatedAdd(g.text(name.value))
             .saturatedAdd(g.text(compilerIdentity.value))

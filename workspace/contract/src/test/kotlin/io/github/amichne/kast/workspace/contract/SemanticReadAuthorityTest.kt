@@ -21,6 +21,8 @@ class SemanticReadAuthorityTest {
         val authority: SemanticReadAuthority = published
         assertSame(published, assertInstanceOf(SemanticReadLease::class.java, authority))
         assertEquals(7L, published.generation.value)
+        assertSame(authority.identity, authority.identity)
+        assertEquals(SemanticReadIdentity.Published(published), authority.identity)
     }
 
     @Test
@@ -28,6 +30,8 @@ class SemanticReadAuthorityTest {
         val original = admit()
         val current = admit()
         assertSame(original, current)
+        assertSame(original.identity, current.identity)
+        assertEquals(SemanticReadIdentity.Live(current.reference), current.identity)
         assertSame(current, owner.restore(original.reference) { VfsPassiveReadAdmission.Admitted(freshness()) }.value())
         assertEquals(IdeReadContentView.SAVED_PSI_COMMITTED, current.reference.contentView)
         assertEquals(root, current.workspaceRoot)

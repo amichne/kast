@@ -56,6 +56,15 @@ private constructor(
     /** The exact native-confirmed invocation carries its result anchor; deriving it performs no semantic work. */
     fun resultSite(): ValueSite = ValueSite.invocationResult(this)
 
+    internal fun shareCallableEvidence(
+        callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
+    ): ValueInvocation {
+        val resolved = callable as? RelationEndpoint.Resolved ?: return this
+        val shared = callables.getOrPut(resolved) { resolved }
+        // Full endpoint equality includes authority, scope, constraints and every compiler evidence field.
+        return if (shared === resolved) this else ValueInvocation(enclosing, range, shared)
+    }
+
     companion object {
         /** Only the native K2 boundary may supply resolved call and enclosing declaration evidence. */
         fun fromCompiler(
@@ -121,6 +130,22 @@ private constructor(
     val basis: SemanticReadIdentity = enclosing.lease.identity
     val identity = ValueSiteIdentity(enclosing.valueDeclarationIdentity(), basis, range, role)
 
+    internal fun shareCallableEvidence(
+        callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
+    ): ValueSite =
+        when (val current = role) {
+            is ValueRole.Argument -> {
+                val shared = current.call.shareCallableEvidence(callables)
+                if (shared === current.call) this
+                else ValueSite(enclosing, range, ValueRole.Argument(shared, current.position))
+            }
+            ValueRole.ExpressionResult,
+            ValueRole.LocalBinding,
+            ValueRole.LocalRead,
+            ValueRole.Return,
+            ValueRole.PropertyAssignment -> this
+        }
+
     companion object {
         internal fun invocationResult(invocation: ValueInvocation): ValueSite =
             ValueSite(invocation.enclosing, invocation.range, ValueRole.ExpressionResult)
@@ -165,5 +190,4 @@ internal fun ExactDeclarationTextRange.containsValueRange(other: ExactDeclaratio
     other.startInclusive >= startInclusive && other.endExclusive <= endExclusive
 
 /** Search policy qualifies coverage; it is never part of a declaration or invocation's identity. */
-private fun RelationEndpoint.valueDeclarationIdentity(): ValueDeclarationIdentity =
-    ValueDeclarationIdentity(compilerIdentity, file, range)
+private fun RelationEndpoint.valueDeclarationIdentity(): ValueDeclarationIdentity = valueIdentity
