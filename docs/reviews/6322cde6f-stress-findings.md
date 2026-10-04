@@ -118,6 +118,39 @@ Logs: `/tmp/kast-6322-fixes-guards.log`, `/tmp/kast-6322-retention-guards.log`,
 | Control `kast-control-v0.20261003.6324-macos-aarch64.tar.gz` | `5ce83e86c5fb549a1fa956f59f1185ebf2a50ab93e93e3c0c915a62c6a6f7aae` |
 | Host `kast-ide-hosted-v0.20261003.6324-idea-262.zip` | `e1be4f04580488fa6e3854206fbe23e4e43c0ae3db86d2bae1772ca4afbf1a67` |
 
+## Rebase onto main and combined-source qualification
+
+After PR #916 merged, the four follow-up commits were rebased onto
+`005cb5eb54e3b83599c547ad96150a44ae27e7c6`. The former tip remains at local
+`recovery/6322-stress-before-main-1938f1b5a`. `git range-diff` reported identical
+patches for all four commits; only these follow-up patches are included above main.
+The rebased source tested here is `822f64618100c2b87f1f4f9b0a5a1b3df184da89`.
+
+Focused finding/witness paging, dense storage admission, callable proof identity,
+authority identity and configuration-bound tests passed. Native control and host
+candidate `0.20261003.6325` were assembled from that exact source and installed with
+the regular installer. Verified IDEA PID 31134 exited after shell SIGTERM; IDEA was
+restarted before testing. Live `DESCRIBE` confirmed candidate `0.20261003.6325`,
+PID 40770, host `48a70459-06b1-4279-8c47-71a7a86f3df8` and the exact fixture root.
+
+The combined source again retained 150 original paths and 302 observations with
+zero read rejections or checkpoint stops. Grants 100, 37 and 1 drained identical
+findings, and all seven linked-path expansions matched. All 150 terminals remain
+`UNRESOLVED_FLOW/UNMODELED_CALL`, preserving `UNRESOLVED[NATIVE_FLOW]` closure.
+Past-end, unknown-result and previous-host-result rejections passed, followed by
+six complete searches at concurrency 3. Receipts are in
+`build/stress-6322/rebased-native/`, with artifacts in `rebased-assets/`.
+The earlier qualification sections retain their original source and artifact identities.
+
+| Rebased artifact | SHA-256 |
+| --- | --- |
+| Control `kast-control-v0.20261003.6325-macos-aarch64.tar.gz` | `07c4ab40a49c439012a64adde47a56c9a15c7298c3c64a1723f9772631ad0773` |
+| Host `kast-ide-hosted-v0.20261003.6325-idea-262.zip` | `cd068dbff9a2af461fd52c87af9a4434d4ca34fd036d145ec776ce121cee7b9e` |
+
+Logs: `/tmp/kast-6322-rebase-focused.log`, `/tmp/kast-6322-rebased-candidate-build.log`,
+`/tmp/kast-6322-rebased-install.log`, `/tmp/kast-6322-rebased-probe.log`,
+`/tmp/kast-6322-rebased-drain.log`, `/tmp/kast-6322-rebased-extra.log`.
+
 ## Executed baseline checks
 
 | Boundary | Result |
