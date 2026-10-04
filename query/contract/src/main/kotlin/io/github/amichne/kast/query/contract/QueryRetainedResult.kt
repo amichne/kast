@@ -4,40 +4,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.Collections
 
-enum class QueryRetainedResultFailure {
-    EXECUTION_REJECTED,
-    BASIS_MISMATCH,
-    INCONSISTENT_COVERAGE,
-    UNKNOWN_ROW,
-    DUPLICATE_ROW,
-}
-
-enum class QueryMembershipFailure {
-    INCOMPLETE
-}
-
-/** A proof bound to the exact retained input whose entire membership is known. */
-class QueryCompleteMembership private constructor(val source: QueryRetainedResult.Symbols) {
-    val lease: SemanticReadAuthority
-        get() = source.lease
-
-    val symbols: List<QuerySymbol>
-        get() = source.symbols
-
-    companion object {
-        fun from(result: QueryRetainedResult.Symbols): Refinement<QueryCompleteMembership, QueryMembershipFailure> =
-            if (result.coverage !is QueryCoverage.Complete) {
-                Refinement.Rejected(QueryMembershipFailure.INCOMPLETE)
-            } else if (
-                result.failures.isNotEmpty() || result.omissions.isNotEmpty() || result.producerProgress != null
-            ) {
-                Refinement.Rejected(QueryMembershipFailure.INCOMPLETE)
-            } else {
-                Refinement.Refined(QueryCompleteMembership(result))
-            }
-    }
-}
-
 /** Detached, immutable semantic rows from one read basis. Row kind survives retention and selection. */
 sealed class QueryRetainedResult
 protected constructor(
@@ -49,6 +15,7 @@ protected constructor(
     val producerProgress: QueryContinuationState?,
     referenceObservations: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence>,
     discoveryObservations: List<QueryDiscoveryObservation>,
+    relationObservations: List<QueryRelationObservation>,
 ) {
     private val itemFailures = Collections.unmodifiableList(itemFailures.toList())
     private val relationOmissions = Collections.unmodifiableList(relationOmissions.toList())
@@ -56,6 +23,7 @@ protected constructor(
     private val resultCoverage = resultCoverage.copyCoverage()
     val referenceObservations = Collections.unmodifiableList(referenceObservations.toList())
     val discoveryObservations = Collections.unmodifiableList(discoveryObservations.toList())
+    val relationObservations = Collections.unmodifiableList(relationObservations.toList())
 
     val failures: List<QueryItemFailure>
         get() = itemFailures
@@ -127,7 +95,19 @@ protected constructor(
         progress: QueryContinuationState?,
         references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
         discoveries: List<QueryDiscoveryObservation> = emptyList(),
-    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress, references, discoveries) {
+        relations: List<QueryRelationObservation> = emptyList(),
+    ) :
+        QueryRetainedResult(
+            lease,
+            failures,
+            omissions,
+            observations,
+            coverage,
+            progress,
+            references,
+            discoveries,
+            relations,
+        ) {
         private val rows = Collections.unmodifiableList(rows.map(QuerySymbol::detached))
 
         val symbols: List<QuerySymbol>
@@ -147,6 +127,7 @@ protected constructor(
                 lease,
                 references,
                 discoveries,
+                relations,
             )
 
         override fun selectRows(indices: List<Int>): Refinement<Symbols, QueryRetainedResultFailure> {
@@ -165,6 +146,7 @@ protected constructor(
                     selectedProgress,
                     referenceObservations,
                     discoveryObservations,
+                    relationObservations,
                 )
             )
         }
@@ -181,7 +163,19 @@ protected constructor(
         progress: QueryContinuationState?,
         references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
         discoveries: List<QueryDiscoveryObservation> = emptyList(),
-    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress, references, discoveries) {
+        relations: List<QueryRelationObservation> = emptyList(),
+    ) :
+        QueryRetainedResult(
+            lease,
+            failures,
+            omissions,
+            observations,
+            coverage,
+            progress,
+            references,
+            discoveries,
+            relations,
+        ) {
         private val rows = Collections.unmodifiableList(rows.map(QueryOccurrence::detached))
         val occurrences: List<QueryOccurrence>
             get() = rows
@@ -200,6 +194,7 @@ protected constructor(
                     lease,
                     references,
                     discoveries,
+                    relations,
                 )
                 .saturatedAdd(
                     rows.sumOf { occurrence ->
@@ -227,6 +222,90 @@ protected constructor(
                     selectedProgress,
                     referenceObservations,
                     discoveryObservations,
+                    relationObservations,
+                )
+            )
+        }
+    }
+
+    class ValuePaths
+    internal constructor(
+        lease: SemanticReadAuthority,
+        val rows: QueryRows.ValuePaths,
+        failures: List<QueryItemFailure>,
+        omissions: List<QueryRelationOmission>,
+        observations: List<QueryWalkObservation>,
+        coverage: QueryCoverage,
+        progress: QueryContinuationState?,
+        references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+        discoveries: List<QueryDiscoveryObservation> = emptyList(),
+        relations: List<QueryRelationObservation> = emptyList(),
+    ) :
+        QueryRetainedResult(
+            lease,
+            failures,
+            omissions,
+            observations,
+            coverage,
+            progress,
+            references,
+            discoveries,
+            relations,
+        ) {
+        val valuePaths: List<QueryImpactPath>
+            get() = rows.values
+
+        fun originalOrdinals(
+            selected: QueryRows.ValuePaths
+        ): Refinement<List<QueryRetainedRowOrdinal>, QueryRetainedResultFailure> =
+            originalInvestigationOrdinals(this, selected)
+
+        override val rowCount: Int
+            get() = rows.values.size
+
+        override val retainedBytes: Long =
+            retainedStorageBytes(
+                    emptyList(),
+                    failures,
+                    omissions,
+                    observations,
+                    coverage,
+                    progress,
+                    lease,
+                    references,
+                    discoveries,
+                    relations,
+                )
+                .saturatedAdd(
+                    when (val witness = rows.accounting) {
+                        QueryValuePathAccounting.EvidenceOnly ->
+                            rows.values.fold(0L) { bytes, path -> bytes.saturatedAdd(path.retainedStorageBytes()) }
+                        is QueryValuePathAccounting.Investigated -> witness.ledger.retainedStorageBytes()
+                    }
+                )
+
+        override fun selectRows(indices: List<Int>): Refinement<ValuePaths, QueryRetainedResultFailure> {
+            validateIndices(indices)?.let {
+                return Refinement.Rejected(it)
+            }
+            val (selectedCoverage, selectedProgress) = selectionCoverage(indices.size)
+            val selected =
+                when (val admitted = rows.selectRows(indices)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
+            return Refinement.Refined(
+                ValuePaths(
+                    lease,
+                    selected,
+                    failures,
+                    omissions,
+                    walkObservations,
+                    selectedCoverage,
+                    selectedProgress,
+                    referenceObservations,
+                    discoveryObservations,
+                    relationObservations,
                 )
             )
         }
@@ -244,7 +323,19 @@ protected constructor(
         progress: QueryContinuationState?,
         references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
         discoveries: List<QueryDiscoveryObservation> = emptyList(),
-    ) : QueryRetainedResult(lease, failures, omissions, observations, coverage, progress, references, discoveries) {
+        relations: List<QueryRelationObservation> = emptyList(),
+    ) :
+        QueryRetainedResult(
+            lease,
+            failures,
+            omissions,
+            observations,
+            coverage,
+            progress,
+            references,
+            discoveries,
+            relations,
+        ) {
         private val rows = Collections.unmodifiableList(rows.map(QueryBindingRow::detached))
 
         val bindingRows: List<QueryBindingRow>
@@ -264,6 +355,7 @@ protected constructor(
                     lease,
                     references,
                     discoveries,
+                    relations,
                 )
                 .saturatedAdd(rows.size.toLong().saturatedMultiply(RETAINED_STATE_BASE_BYTES))
 
@@ -284,92 +376,22 @@ protected constructor(
                     selectedProgress,
                     referenceObservations,
                     discoveryObservations,
+                    relationObservations,
                 )
             )
         }
     }
 
     companion object {
+        fun captureInvestigation(
+            lease: SemanticReadAuthority,
+            execution: QueryExecutionResult,
+        ): Refinement<QueryRetainedResult, QueryRetainedResultFailure> =
+            captureRetainedQueryResult(lease, execution, QueryRetainedCaptureRows.ORIGINAL_INVESTIGATION)
+
         fun capture(
             lease: SemanticReadAuthority,
             execution: QueryExecutionResult,
-        ): Refinement<QueryRetainedResult, QueryRetainedResultFailure> {
-            val result: QueryResult
-            val coverage: QueryCoverage
-            val progress: QueryContinuationState?
-            when (execution) {
-                is QueryExecutionResult.Complete -> {
-                    if (execution.result.failures.isNotEmpty() || execution.result.omissions.isNotEmpty()) {
-                        return Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
-                    }
-                    if (execution.result.walkObservations.any { it.coverage.isTerminallyIncomplete() }) {
-                        return Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
-                    }
-                    result = execution.result
-                    coverage = execution.coverage
-                    progress = null
-                }
-                is QueryExecutionResult.Qualified -> {
-                    result = execution.result
-                    coverage = execution.coverage
-                    progress = execution.continuation
-                }
-                is QueryExecutionResult.Rejected ->
-                    return Refinement.Rejected(QueryRetainedResultFailure.EXECUTION_REJECTED)
-            }
-            if (
-                result.hasForeignBasis(lease) ||
-                    (progress as? QueryContinuationState.Resumable)?.checkpoint?.lease?.let { it != lease } == true
-            ) {
-                return Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH)
-            }
-            return Refinement.Refined(captureRows(lease, result, coverage, progress))
-        }
-
-        private fun captureRows(
-            lease: SemanticReadAuthority,
-            result: QueryResult,
-            coverage: QueryCoverage,
-            progress: QueryContinuationState?,
-        ): QueryRetainedResult =
-            when (val rows = result.rows) {
-                is QueryRows.Symbols ->
-                    Symbols(
-                        lease,
-                        rows.values,
-                        result.failures,
-                        result.omissions,
-                        result.walkObservations,
-                        coverage,
-                        progress,
-                        result.referenceObservations,
-                        result.discoveryObservations,
-                    )
-                is QueryRows.Occurrences ->
-                    Occurrences(
-                        lease,
-                        rows.values,
-                        result.failures,
-                        result.omissions,
-                        result.walkObservations,
-                        coverage,
-                        progress,
-                        result.referenceObservations,
-                        result.discoveryObservations,
-                    )
-                is QueryRows.Bindings ->
-                    Bindings(
-                        lease,
-                        rows.values,
-                        rows.mode,
-                        result.failures,
-                        result.omissions,
-                        result.walkObservations,
-                        coverage,
-                        progress,
-                        result.referenceObservations,
-                        result.discoveryObservations,
-                    )
-            }
+        ): Refinement<QueryRetainedResult, QueryRetainedResultFailure> = captureRetainedQueryResult(lease, execution)
     }
 }

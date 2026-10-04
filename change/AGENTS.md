@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: 8fe5e439c71c -->
+<!-- generated: 2026-10-03 | hash: 8fe5e439c71c -->
 
 # change
 
@@ -8,6 +8,8 @@
 Implements proof-carrying source mutation as explicit planning, application, verification, and recovery phases.
 
 ## Key Files
+
+- [LiveAddDeclarationPlanCodec.kt](contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveAddDeclarationPlanCodec.kt) - versioned live plan encoding preserves typed query expansion domains and rejects incompatible historical documents.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt](contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt) - closed mutation intent boundary.
 - [contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationChangePlan.kt](contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationChangePlan.kt) - admitted add-declaration plan.

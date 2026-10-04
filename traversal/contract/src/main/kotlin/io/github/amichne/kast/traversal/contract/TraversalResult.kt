@@ -122,6 +122,7 @@ enum class TraversalPageFailure {
     FRONTIER_LIMIT_EXCEEDED,
     ENCODED_BYTE_COUNT_MISMATCH,
     PARTIAL_EXPANSION_MISMATCH,
+    SCOPE_EXCLUSION_MISMATCH,
 }
 
 @JvmInline value class TraversalByteCount internal constructor(val value: Long)
@@ -145,6 +146,7 @@ private constructor(
     val partialExpansions: List<TraversalPartialExpansion>,
     val inheritedOmissions: List<TraversalPartialExpansion>,
     val referenceOccurrences: List<TraversalReferenceObservation>,
+    val scopeExclusions: List<TraversalScopeExclusion>,
 ) {
     companion object {
         /**
@@ -167,6 +169,7 @@ private constructor(
             partialExpansions: List<TraversalPartialExpansion> = emptyList(),
             inheritedOmissions: List<TraversalPartialExpansion> = emptyList(),
             referenceOccurrences: List<TraversalReferenceObservation> = emptyList(),
+            scopeExclusions: List<TraversalScopeExclusion> = emptyList(),
         ): Refinement<TraversalPage, TraversalPageFailure> {
             when (
                 val measures = admitMeasures(plan, encodedBytes, examinedWorkUnits, elapsedMillis, expandedFrontier)
@@ -183,6 +186,7 @@ private constructor(
                         expandedFrontier,
                         partialExpansions,
                         referenceOccurrences,
+                        scopeExclusions,
                     )
             ) {
                 is Refinement.Rejected -> return contents
@@ -200,6 +204,7 @@ private constructor(
                     partialExpansions = partialExpansions.sortedBy { it.entry }.toList(),
                     inheritedOmissions = java.util.Collections.unmodifiableList(inheritedOmissions.distinct().toList()),
                     referenceOccurrences = java.util.Collections.unmodifiableList(referenceOccurrences.toList()),
+                    scopeExclusions = java.util.Collections.unmodifiableList(scopeExclusions.toList()),
                 )
             )
         }
@@ -230,7 +235,12 @@ private constructor(
             expandedFrontier: Int,
             partialExpansions: List<TraversalPartialExpansion>,
             referenceOccurrences: List<TraversalReferenceObservation>,
+            scopeExclusions: List<TraversalScopeExclusion>,
         ): Refinement<Unit, TraversalPageFailure> {
+            when (val admitted = admitScopeOutcomes(plan, records, referenceOccurrences, scopeExclusions)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
             if (records != records.sorted()) return Refinement.Rejected(TraversalPageFailure.NON_DETERMINISTIC_RECORDS)
             if (records.distinct().size != records.size)
                 return Refinement.Rejected(TraversalPageFailure.DUPLICATE_RECORD)
@@ -246,7 +256,7 @@ private constructor(
             if (
                 partialExpansions.any { partial ->
                     partial.entry.node.endpoint.lease != plan.start.lease ||
-                        partial.entry.node.endpoint.scope != plan.scope
+                        !plan.admitsEndpoint(partial.entry.node.endpoint)
                 }
             )
                 return Refinement.Rejected(TraversalPageFailure.PARTIAL_EXPANSION_MISMATCH)
@@ -256,8 +266,38 @@ private constructor(
                 } +
                     referenceOccurrences.sumOf {
                         it.reference.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+                    } +
+                    scopeExclusions.sumOf {
+                        it.exclusion.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
                     }
             return if (measured != encodedBytes) Refinement.Rejected(TraversalPageFailure.ENCODED_BYTE_COUNT_MISMATCH)
+            else Refinement.Refined(Unit)
+        }
+
+        private fun admitScopeOutcomes(
+            plan: TraversalPlan,
+            records: List<TraversalRecord>,
+            references: List<TraversalReferenceObservation>,
+            exclusions: List<TraversalScopeExclusion>,
+        ): Refinement<Unit, TraversalPageFailure> {
+            if (
+                exclusions != exclusions.distinct().sorted() ||
+                    exclusions.any {
+                        TraversalScopeExclusion.create(plan, it.entry, it.exclusion) !is Refinement.Refined
+                    }
+            )
+                return Refinement.Rejected(TraversalPageFailure.SCOPE_EXCLUSION_MISMATCH)
+            val outcomeCount =
+                records.size +
+                    references.count { reference ->
+                        records.none {
+                            it.fact.occurrence == reference.reference.occurrence &&
+                                it.fact.target == reference.reference.target
+                        }
+                    } +
+                    exclusions.size
+            return if (outcomeCount > plan.budget.records.value)
+                Refinement.Rejected(TraversalPageFailure.RECORD_LIMIT_EXCEEDED)
             else Refinement.Refined(Unit)
         }
 

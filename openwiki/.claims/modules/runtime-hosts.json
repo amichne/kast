@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:60a084d514b6df09dc70853cfcdae9f9322ef872128a0576b1942a6623674a4f",
+  "pageVersion": "sha256:098c03061533b4645b891efffdea3c5ff0f93e0dac2d9081e0b7878e89fbff0c",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -64,7 +64,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:9350377ffa5066250efbfeae97beb936f4a570442a51518e896ae625ac0c27cc"
+          "version": "repo-file-v1:sha256:fe22daf282425d4460b9515b86649415766b68f03231756b2d26d40a6c1e14b1"
         }
       ]
     },
@@ -159,10 +159,92 @@
           "version": "repo-file-v1:sha256:9fdf4094f4e77651c1101a0db2042f80fde7ab0d1b0c90edd8184d92992a8576"
         }
       ]
+    },
+    {
+      "id": "claim_701ef0942dd94ab7b41b64b441f699c0",
+      "statement": "Hosted value-flow and model-binding ports use one admitted project's K2 adapter and source model, while diagnostics explicitly initialize value provider counters and site rejection counts to zero so absence of observed work is distinguishable from absent measurement.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt",
+          "version": "repo-file-v1:sha256:4604c03c5fd925d62915b17871b6e04d69060a2cd513883e5456ec0f25c31cd6"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
+          "version": "repo-file-v1:sha256:07d837d3b7e28744731c78b1e8c53f4d2e990d84eb1a670fbe3023720a9eecd4"
+        }
+      ]
+    },
+    {
+      "id": "claim_e073644efa88452eb37b1a498f39049b",
+      "statement": "The existing client response boundary records bounded private typed frame, body and finite admission causes without logging payloads or opaque identities or changing public failure authority.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseCause.kt",
+          "version": "repo-file-v1:sha256:e6e5bfbc73b83099056a97f6eb45a9bd20e8268624862b354b91b59c1d3a8452"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
+          "version": "repo-file-v1:sha256:4d0894be4bea8b658b8f223fc61e6e5c99315d6132b8cd5217cb60a096a92c73"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
+          "version": "repo-file-v1:sha256:13a2782a9244e0d4c863d2cbb468e17a9cdc5969e6c0fa1a8b6e9f4c0e486542"
+        }
+      ]
+    },
+    {
+      "id": "claim_feb8a9cd000f4c5db0b8a680bc227c5b",
+      "statement": "Hosted traversal observes exclusive coordination intervals through the existing diagnostic clock and restores TRAVERSAL after relation reads while preserving native relation phase ownership.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt",
+          "version": "repo-file-v1:sha256:3038406976ed781f4bbdd941f0f0021afc0adcb4781a0687301ac262446addcd"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
+          "version": "repo-file-v1:sha256:07d837d3b7e28744731c78b1e8c53f4d2e990d84eb1a670fbe3023720a9eecd4"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt",
+          "version": "repo-file-v1:sha256:8697db10c5bd2f38c41e8565888b590bb9190980ca33e7742b017e03595d68ef"
+        }
+      ]
+    },
+    {
+      "id": "claim_26406fa4394d40c98e92ed0dd33f6010",
+      "statement": "Hosted canonical query supplies an explicit finite retention observer that maps presented, pending-impact and original-investigation capture and issuance outcomes into existing RETENTION diagnostics without source payloads, handles, new state ownership or semantic authority.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L74-L83",
+          "version": "repo-lines-v1:sha256:c2dc8390277bdedad21aeb187db7741d995bf20ef57e914cfd43d2d3d4e3067a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2NmI3NDEzMjYwNDY1MjNiZWNmZmE1NTE3Mjk1MWQwZjU0MmVjNDk0M2Y3Y2JhMDdlNzYxMzVhNDM2NGRmMTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNjczYWJkNDU3YTk3ZWVhMTdhNjAwNjJlYjBmYWVhNmJkZjA5NDg2OGNjNmI4ZjhjMGViZGEyZjYxZWQ0MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkYzZkNmRjODQ1Nzg1OTM3MDcyYzgwNjgxYWQxOTU5ZWUyZjc3NTM3OTczZmMyNzAxZmQyMGZkYTU0ZDhiMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzMzA5OWNmZDc2MzYyNGY2NDQyM2RmY2ZmNzk2NmRjOGZmNjYwYWI5OWI1N2EyMjljMGJlNWNiNjRhZWU2YmQifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt",
+          "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
+        }
+      ]
+    },
+    {
+      "id": "claim_802dafdc39524d2088afa63fdf08f388",
+      "statement": "Peer-site admission passively requires an already registered exact host and canonical root with a live project, then completes one independent single-evaluation read with target basis validation before token restoration and final freshness; over-granted or unproven child evidence rejects without opening the peer or traversing its flow.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteCompletion.kt",
+          "version": "repo-file-v1:sha256:b55bf9ecef56c0f9dfde4c0f022ea7e879cd40068a5a7a3974c296d3913479f9"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteReadPort.kt",
+          "version": "repo-file-v1:sha256:e0ffe62c5306edbf69344d154d4c1114b28e132fceced24820607f6cd17fef11"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/RegisteredPeerRead.kt",
+          "version": "repo-file-v1:sha256:64396179a9b1292df2b07ee9647f7b5b782c7d5ff34c52c54b85b676a6ec6927"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T13:53:38.453Z"
+    "at": "2026-10-03T17:08:58.136Z"
   }
 }

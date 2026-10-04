@@ -10,6 +10,7 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
@@ -22,6 +23,7 @@ import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
@@ -195,7 +197,7 @@ class HostedQueryRetainedPresentationTest {
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations {
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(QueryRows.Symbols.of(symbols), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(150).refined()),
                     )
@@ -247,6 +249,7 @@ class HostedQueryRetainedPresentationTest {
                 CanonicalOperationWireBindings.queryRun.operation.id,
                 EvidenceGeneration.parse(1).refined(),
                 QueryRunResult(
+                    fixtureQueryQuestion(),
                     bounded((start until end).map { item(it, longTokens) }),
                     bounded(emptyList()),
                     retention = QueryResultRetention.Retained(reference),
@@ -284,4 +287,20 @@ class HostedQueryRetainedPresentationTest {
             is Refinement.Refined -> value
             is Refinement.Rejected -> error(failure.toString())
         }
+}
+
+private fun fixtureQueryQuestion(): QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: Refinement<Value, Failure>): Value =
+        when (value) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return QueryQuestionDocument(
+        QueryFromDocument.Location(
+            fixtureValue(ProtocolText.parse("Fixture.kt")),
+            fixtureValue(ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(BoundedProtocolList.create(emptyList())),
+        QueryOutputDocument.Symbols(fixtureValue(BoundedProtocolList.create(listOf(QuerySymbolFieldDocument.NAME)))),
+    )
 }

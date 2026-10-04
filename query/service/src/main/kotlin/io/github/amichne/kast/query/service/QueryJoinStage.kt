@@ -35,7 +35,8 @@ internal class QueryJoinStage(
                 right.omissions.map(PipelineTask::Omission) +
                 right.walkObservations.map(PipelineTask::WalkObservation) +
                 right.referenceObservations.map(PipelineTask::ReferenceObservation) +
-                right.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) }
+                right.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
+                right.relationObservations.map(PipelineTask::RelationObservation)
         evidence.asReversed().forEach(tasks::addFirst)
         return true
     }

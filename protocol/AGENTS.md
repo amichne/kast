@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: d217066e0d36 -->
+<!-- generated: 2026-10-03 | hash: d217066e0d36 -->
 
 # protocol
 
@@ -38,6 +38,17 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryResultItemWireDocuments.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryResultItemWireDocuments.kt) - query item serialization and admission.
 
 - [registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt](registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt) - closed public tool identity vocabulary.
+
+- [QueryQuestionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryQuestionDocument.kt) - original source, steps, and output retained with results.
+- [QueryExpansionScopeDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt) - closed expansion policy independent of seed selection.
+- [QueryRelationObservationDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRelationObservationDocument.kt) - requested and effective domains with finite coverage witnesses.
+- [QueryImpactSourceDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImpactSourceDocument.kt) - producer, domain, flow, and reviewed model request documents.
+- [ImpactAccountingDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt) - conservation and unresolved obligation accounting.
+- [ImpactWitnessDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactWitnessDocuments.kt) - retained producer, model, native-read, rejected-read, and compact finding presentation; finding links expand original path evidence.
+- [ImpactPeerProofDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPeerProofDocuments.kt) - required completed peer authority, actual acquisition/site grants, work and elapsed receipts, fixed unresolved reason and finite proof failures.
+- [ImpactPeerAccountingValidation.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPeerAccountingValidation.kt) - raw envelope guards for source-basis ordinary claims and exact guarded final peer evidence.
+- [ImpactSiteAccountingDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactSiteAccountingDocuments.kt) - independently requested native sites, admission receipts, original path and scope-exit links, and finite unresolved relationships.
+- [CanonicalQueryCliDocuments.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt) - typed CLI query envelopes and serializer owners for installed schemas.
 
 ## Subdirectories
 

@@ -41,7 +41,7 @@ internal fun restoreLivePlanTarget(
             .valueOrNull() as? SymbolDiscoveryFileIdentity.Workspace
             ?: return rejected(LiveAddDeclarationPlanDecodeFailure.TARGET_MISMATCH)
     val restoredScope =
-        when (val restored = restoreScope(basis, scope)) {
+        when (val restored = restoreLivePlanScope(basis, scope)) {
             is Refinement.Refined -> restored.value
             is Refinement.Rejected -> return restored
         }
@@ -106,7 +106,7 @@ private fun LivePlanConstraintsDocument.restore():
     )
 }
 
-private fun restoreScope(
+internal fun restoreLivePlanScope(
     basis: LiveChangeBasis,
     scope: LivePlanScopeDocument,
 ): Refinement<SymbolSearchScope, LiveAddDeclarationPlanDecodeFailure> {

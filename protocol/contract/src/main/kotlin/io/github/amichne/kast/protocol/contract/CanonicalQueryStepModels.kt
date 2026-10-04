@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import kotlinx.serialization.SerialName
@@ -49,7 +51,14 @@ enum class QueryPrimitiveOperatorDocument {
 sealed interface QueryStepDocument {
     @Serializable @SerialName("where") data class Where(val predicate: QueryPredicateDocument) : QueryStepDocument
 
-    @Serializable @SerialName("related") data class Related(val relation: RelationKindDocument) : QueryStepDocument
+    @Serializable
+    @SerialName("related")
+    data class Related(
+        val relation: RelationKindDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("expansion_scope")
+        val expansionScope: QueryExpansionScopeDocument = QueryExpansionScopeDocument.Workspace,
+    ) : QueryStepDocument
 
     @Serializable
     @SerialName("walk")
@@ -57,6 +66,9 @@ sealed interface QueryStepDocument {
         val relation: RelationKindDocument,
         @SerialName("maximum_depth") val maximumDepth: ProtocolCount,
         val strategy: TraversalStrategyDocument = TraversalStrategyDocument.BreadthFirst,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("expansion_scope")
+        val expansionScope: QueryExpansionScopeDocument = QueryExpansionScopeDocument.RetainedSeed,
     ) : QueryStepDocument
 
     @Serializable @SerialName("distinct") data object Distinct : QueryStepDocument

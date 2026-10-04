@@ -177,7 +177,7 @@ class QuerySetCompositionTest {
             val selected = selector(selection())
             val failure = QueryItemFailure.ExactReference(selected, SymbolExactRejection.AMBIGUOUS_DECLARATION)
             val malformed =
-                QueryExecutionResult.Complete(
+                QueryExecutionResult.Complete.create(
                     QueryResult(
                         QueryRows.Symbols.of(listOf(QuerySymbol(SymbolDescription.from(selected), emptyList()))),
                         listOf(failure),
@@ -185,7 +185,7 @@ class QuerySetCompositionTest {
                     QueryCoverage.Complete(QueryCount.parse(1).refined()),
                 )
             val rejected = QueryRetainedResult.capture(selected.lease, malformed)
-            assertEquals(QueryRetainedResultFailure.INCONSISTENT_COVERAGE, (rejected as Refinement.Rejected).failure)
+            assertEquals(QueryRetainedResultFailure.EXECUTION_REJECTED, (rejected as Refinement.Rejected).failure)
         }
     }
 
@@ -428,7 +428,7 @@ private fun retainedRows(
     val result = QueryResult(QueryRows.Symbols.of(rows), failures)
     val execution =
         when (coverage) {
-            is QueryCoverage.Complete -> QueryExecutionResult.Complete(result, coverage)
+            is QueryCoverage.Complete -> QueryExecutionResult.Complete.create(result, coverage)
             is QueryCoverage.Qualified -> QueryExecutionResult.Qualified(result, coverage)
         }
     return (QueryRetainedResult.capture(owner.lease, execution).refined() as QueryRetainedResult.Symbols)
@@ -438,6 +438,7 @@ private fun QueryExecutionResult.rows(): List<QuerySymbol> =
     when (this) {
         is QueryExecutionResult.Complete -> result.symbolRows()
         is QueryExecutionResult.Qualified -> result.symbolRows()
+        is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
         is QueryExecutionResult.Rejected -> error("Unexpected rejection: $reason")
     }
 

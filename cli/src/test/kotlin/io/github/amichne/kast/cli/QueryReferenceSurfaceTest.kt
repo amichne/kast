@@ -91,12 +91,16 @@ class QueryReferenceSurfaceTest {
         val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
         val definitions = installedServerOutputSchema(CanonicalOperation.QUERY_RUN).getValue("\$defs").jsonObject
         val variants = definitions.getValue("queryResultItem").jsonObject.getValue("anyOf").jsonArray
-        assertEquals(5, variants.size)
+        assertEquals(7, variants.size)
         for (variant in variants) {
             val properties = variant.jsonObject.getValue("properties").jsonObject
             val discriminator = properties.getValue("type").jsonObject
             val kind =
                 (discriminator["const"] ?: discriminator.getValue("enum").jsonArray.single()).jsonPrimitive.content
+            if (kind == "IMPACT_WITNESS") {
+                assertEquals(false, "row_id" in properties)
+                continue
+            }
             val rowSchema = registry.getSchema(properties.getValue("row_id").toString())
             assertTrue(rowSchema.validate(encoded, InputFormat.JSON).isEmpty(), kind)
             assertTrue(rowSchema.validate(malformed, InputFormat.JSON).isNotEmpty(), kind)
@@ -238,7 +242,7 @@ class QueryReferenceSurfaceTest {
                     EvidenceEnvelope(
                         CanonicalOperation.QUERY_RUN.id,
                         EvidenceBasis.Published(EvidenceGeneration.parse(7).refined()),
-                        QueryRunResult(bounded(items), bounded(failures)),
+                        QueryRunResult(fixtureQueryQuestion(), bounded(items), bounded(failures)),
                     )
                 )
             )
@@ -282,4 +286,26 @@ class QueryReferenceSurfaceTest {
     )
 
     @Serializable private data class LegacyReference(val kind: String, val token: String)
+}
+
+private fun fixtureQueryQuestion(): io.github.amichne.kast.protocol.contract.QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: io.github.amichne.kast.kernel.Refinement<Value, Failure>): Value =
+        when (value) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return io.github.amichne.kast.protocol.contract.QueryQuestionDocument(
+        io.github.amichne.kast.protocol.contract.QueryFromDocument.Location(
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolText.parse("Fixture.kt")),
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(emptyList())),
+        io.github.amichne.kast.protocol.contract.QueryOutputDocument.Symbols(
+            fixtureValue(
+                io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                    listOf(io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument.NAME)
+                )
+            )
+        ),
+    )
 }

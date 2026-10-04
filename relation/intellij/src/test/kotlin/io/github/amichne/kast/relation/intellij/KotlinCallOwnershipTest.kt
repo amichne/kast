@@ -4,6 +4,8 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -30,6 +32,27 @@ import org.junit.jupiter.api.io.TempDir
 
 /** PSI-only lexical policy proof. K1 supplies the parser; this does not claim K2 resolution. */
 class KotlinCallOwnershipTest {
+    @Test
+    fun `exact identifier argument restores its Kotlin expression rather than its same range token`(
+        @TempDir home: Path
+    ) =
+        withParser(home) { factory ->
+            val text = "fun outer() { val first = \"x\"; persist(\"account\", first) }"
+            val file = factory.createFile(text)
+            val owner = file.declarations.filterIsInstance<KtNamedFunction>().single()
+            val call = PsiTreeUtil.findChildOfType(owner, KtCallExpression::class.java)!!
+            val expected = call.valueArguments[1].getArgumentExpression()!!
+            val start = text.indexOf("first)")
+            val range =
+                when (val admitted = ExactDeclarationTextRange.parse(start, start + "first".length)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> error("Fixture anchor must be valid")
+                }
+            assertEquals(range.startInclusive, expected.textRange.startOffset)
+            assertEquals(range.endExclusive, expected.textRange.endOffset)
+            assertSame(expected, owner.exactValueElement(range))
+        }
+
     @Test
     fun `nested imports and aliases have file context without a lexical declaration`(@TempDir home: Path) =
         withParser(home) { factory ->
@@ -288,7 +311,7 @@ class KotlinCallOwnershipTest {
         org.jetbrains.kotlin.K1Deprecation::class,
         org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi::class,
     )
-    private fun withParser(home: Path, assertion: (KtPsiFactory) -> Unit) {
+    internal fun withParser(home: Path, assertion: (KtPsiFactory) -> Unit) {
         val properties =
             listOf("idea.home.path", "idea.config.path", "idea.system.path").associateWith(System::getProperty)
         Files.createDirectories(home.resolve("bin"))

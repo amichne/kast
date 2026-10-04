@@ -263,7 +263,7 @@ class QueryPublicationAuthorityTest {
     }
 
     private fun complete() =
-        QueryExecutionResult.Complete(
+        QueryExecutionResult.Complete.create(
             QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(0).refined()),
         )

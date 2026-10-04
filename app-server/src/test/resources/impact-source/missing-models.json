@@ -1,0 +1,1 @@
+{"request":{"type":"RUN","source":{"type":"IMPACT","seeds":[{"enclosing":"seed","callable":"producer","anchor":{"start":0,"end":1}}],"declarations":[],"domain":{"type":"WORKSPACE"},"flow":"KOTLIN_FORWARD_V1"},"output":{"type":"VALUE_PATHS"}}}

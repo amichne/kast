@@ -5,7 +5,10 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationScopeFingerprint
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
@@ -121,8 +124,17 @@ private constructor(
     val position: TraversalPosition,
     val identity: TraversalIdentityFingerprint,
     val strategy: TraversalStrategy,
+    val expansion: RelationSearchBoundary,
 ) {
-    val scope: SymbolSearchScope = start.scope
+    val scope: SymbolSearchScope = expansion.effectiveScope(RelationEndpoint.subject(start))
+
+    fun admitsEndpoint(endpoint: RelationEndpoint): Boolean =
+        endpoint.lease == start.lease &&
+            ((endpoint.fingerprint == RelationEndpoint.subject(start).fingerprint &&
+                endpoint.scope == start.scope &&
+                endpoint.constraints == start.constraints) ||
+                (endpoint.scope == scope &&
+                    endpoint.constraints == expansion.effectiveConstraints(RelationEndpoint.subject(start))))
 
     companion object {
         /**
@@ -138,6 +150,7 @@ private constructor(
             meaning: RelationMeaning,
             budget: TraversalBudget,
             strategy: TraversalStrategy = TraversalStrategy.BreadthFirst,
+            expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
         ): Refinement<TraversalPlan, TraversalPlanFailure> =
             admit(
                 selector,
@@ -145,6 +158,7 @@ private constructor(
                 budget,
                 TraversalPosition.Start,
                 strategy,
+                expansion,
             )
 
         /**
@@ -161,8 +175,9 @@ private constructor(
             budget: TraversalBudget,
             continuation: TraversalContinuation,
             strategy: TraversalStrategy = continuation.strategy,
+            expansion: RelationSearchBoundary = continuation.expansion,
         ): Refinement<TraversalPlan, TraversalPlanResumeFailure> {
-            val identity = traversalIdentity(selector, meaning, budget, strategy)
+            val identity = traversalIdentity(selector, meaning, budget, strategy, expansion)
             val resumeFailure =
                 when {
                     selector.lease != continuation.start.lease -> TraversalResumeFailure.GENERATION_MISMATCH
@@ -185,6 +200,7 @@ private constructor(
                         budget,
                         TraversalPosition.Resume(continuation),
                         strategy,
+                        expansion,
                     )
             ) {
                 is Refinement.Refined -> Refinement.Refined(admitted.value)
@@ -205,6 +221,7 @@ private constructor(
             budget: TraversalBudget,
             position: TraversalPosition,
             strategy: TraversalStrategy,
+            expansion: RelationSearchBoundary,
         ): Refinement<TraversalPlan, TraversalPlanFailure> =
             when {
                 budget.oneHop.resources.resultLimit.value > budget.records.value ->
@@ -222,8 +239,9 @@ private constructor(
                             meaning,
                             budget,
                             position,
-                            traversalIdentity(selector, meaning, budget, strategy),
+                            traversalIdentity(selector, meaning, budget, strategy, expansion),
                             strategy,
+                            expansion,
                         )
                     )
             }
@@ -241,9 +259,11 @@ private fun traversalIdentity(
     meaning: RelationMeaning,
     budget: TraversalBudget,
     strategy: TraversalStrategy,
+    expansion: RelationSearchBoundary,
 ): TraversalIdentityFingerprint {
     val canonical = buildString {
         appendTraversalField(selector.fingerprint.value)
+        appendTraversalField(RelationScopeFingerprint.from(RelationEndpoint.subject(selector), expansion).value)
         appendTraversalField(meaning.canonicalName())
         appendTraversalField(budget.depth.value.toString())
         when (strategy) {

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.change.verify
 
 import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanCodec
+import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanDecodeFailure
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationByteCount
@@ -23,7 +24,7 @@ import org.junit.jupiter.api.assertInstanceOf
 class LiveVerificationReplayTest {
     private val plan =
         LiveAddDeclarationPlanCodec.decode(
-                checkNotNull(javaClass.getResource("/live-add-declaration-plan-v1.json")).readText()
+                checkNotNull(javaClass.getResource("/live-add-declaration-plan-v2.json")).readText()
             )
             .refined()
     // Historical selectors can exercise this pure request comparator; no live authority or source effect is created.
@@ -85,6 +86,34 @@ class LiveVerificationReplayTest {
         assertEquals(
             LiveVerificationFailure.RELATION_EVIDENCE_REJECTED,
             validateLiveReplayedRequests(scope, anchor, complete().copy(relations = listOf(expanded))).rejected(),
+        )
+    }
+
+    @Test
+    fun `changed traversal expansion cannot satisfy retained replay scope`() {
+        val original = scope.traversals.single()
+        val expanded =
+            traversal(
+                TraversalPlan.start(
+                        anchor,
+                        original.meaning,
+                        original.budget,
+                        expansion = RelationSearchBoundary.WORKSPACE_EXPANSION,
+                    )
+                    .refined()
+            )
+        assertEquals(
+            LiveVerificationFailure.TRAVERSAL_EVIDENCE_REJECTED,
+            validateLiveReplayedRequests(scope, anchor, complete().copy(traversals = listOf(expanded))).rejected(),
+        )
+    }
+
+    @Test
+    fun `historical v1 plan resource remains unsupported`() {
+        val historical = checkNotNull(javaClass.getResource("/live-add-declaration-plan-v1.json")).readText()
+        assertEquals(
+            LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED,
+            LiveAddDeclarationPlanCodec.decode(historical).rejected(),
         )
     }
 

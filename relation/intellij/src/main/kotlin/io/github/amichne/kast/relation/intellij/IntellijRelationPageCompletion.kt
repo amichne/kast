@@ -21,6 +21,7 @@ internal data class IntellijRelationPageCompletion(
     private val request: RelationRequest,
     private val facts: List<RelationFact>,
     private val occurrences: List<RelationReferenceOccurrence>,
+    private val scopeExclusions: List<io.github.amichne.kast.relation.contract.RelationScopeExclusion>,
     private val examined: Long,
     private val state: IntellijRelationCollectionState,
     private val pending: Boolean,
@@ -59,7 +60,12 @@ internal data class IntellijRelationPageCompletion(
         val orderedOccurrences = occurrences.distinct().sorted()
         val byteCount =
             orderedFacts.sumOf { it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() } +
-                orderedOccurrences.sumOf { it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() }
+                orderedOccurrences.sumOf {
+                    it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+                } +
+                scopeExclusions.distinct().sumOf {
+                    it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+                }
         val semanticCount =
             orderedOccurrences.size +
                 orderedFacts.count { fact ->
@@ -87,6 +93,7 @@ internal data class IntellijRelationPageCompletion(
                 examinedWorkUnits = work,
                 resultCount = results,
                 referenceOccurrences = orderedOccurrences,
+                scopeExclusions = scopeExclusions.distinct().sorted(),
             )
             .withObservedOmissions()
     }

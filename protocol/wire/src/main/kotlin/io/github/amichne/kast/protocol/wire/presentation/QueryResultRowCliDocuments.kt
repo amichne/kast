@@ -17,6 +17,21 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal sealed interface QueryResultItemCliDocument {
     @Serializable
+    @SerialName("IMPACT_WITNESS")
+    data class ImpactWitness(val item: io.github.amichne.kast.protocol.contract.ImpactWitnessItemDocument) :
+        QueryResultItemCliDocument
+
+    @Serializable
+    @SerialName("VALUE_PATH")
+    data class ValuePath(
+        val path: io.github.amichne.kast.protocol.contract.ImpactPathDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        @ProtocolStringConstraint(pattern = QueryResultRowReference.SERIALIZED_PATTERN)
+        val rowId: String? = null,
+    ) : QueryResultItemCliDocument
+
+    @Serializable
     @SerialName("exact-symbol")
     data class ExactSymbol(
         @ProtocolStringConstraint(pattern = "^exact:v[2345]:") val ref: String,
@@ -39,7 +54,7 @@ internal sealed interface QueryResultItemCliDocument {
     @Serializable
     @SerialName("occurrence")
     data class Occurrence(
-        val ref: String,
+        @ProtocolStringConstraint(pattern = "^exact:v[2345]:") val ref: String,
         val relation: RelationFactCliDocument,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
@@ -50,7 +65,7 @@ internal sealed interface QueryResultItemCliDocument {
     @Serializable
     @SerialName("reference-occurrence")
     data class ReferenceOccurrence(
-        val ref: String,
+        @ProtocolStringConstraint(pattern = "^exact:v[2345]:") val ref: String,
         val occurrence: RelationReferenceOccurrenceWireDocument,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
@@ -61,7 +76,7 @@ internal sealed interface QueryResultItemCliDocument {
     @Serializable
     @SerialName("traversal_record")
     data class TraversalRecord(
-        val ref: String,
+        @ProtocolStringConstraint(pattern = "^exact:v[2345]:") val ref: String,
         val record: QueryTraversalRecordCliDocument,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
@@ -102,14 +117,16 @@ internal sealed interface QueryBindingCellCliDocument {
 @Serializable
 internal data class QuerySourceWindowCliDocument(
     val text: String,
-    val startLine: Long,
-    val endLine: Long,
+    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 1) val startLine: Long,
+    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 1) val endLine: Long,
 )
 
 @Serializable internal data class QueryExactLocationCliDocument(val file: String, val range: SourceRangeCliDocument)
 
 internal fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument =
     when (this) {
+        is QueryResultItemDocument.ImpactWitness -> QueryResultItemCliDocument.ImpactWitness(item)
+        is QueryResultItemDocument.ValuePath -> QueryResultItemCliDocument.ValuePath(path, rowId?.value)
         is QueryResultItemDocument.ExactSymbol -> toExactCliDocument()
         is QueryResultItemDocument.Occurrence ->
             QueryResultItemCliDocument.Occurrence(ref.toCliDocument(), relation.toCliDocument(), rowId?.value)

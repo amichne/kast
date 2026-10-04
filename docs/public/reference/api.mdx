@@ -36,7 +36,9 @@ icon: "book-open"
     {"request":{"type":"READ_RESULT","result":"<issued result reference>"}}
     ```
 
-    Present stored rows without evaluating the query again. Omitted output reads retained symbols. Use `output: {"type":"OCCURRENCES"}`, `output: {"type":"TRAVERSAL_RECORDS"}`, or `output: {"type":"BINDING_ROWS"}` for the matching retained row type. Kast rejects an output that does not match the retained row type. A presentation cursor is not an execution continuation.
+    Present stored rows without evaluating the query again. Omitted output reads retained symbols. Choose `OCCURRENCES`, `TRAVERSAL_RECORDS`, `BINDING_ROWS`, or `VALUE_PATHS` for the matching retained row type. Kast rejects an output that does not match the retained row type. A presentation cursor is not an execution continuation.
+
+    For a retained impact investigation, `output: {"type":"IMPACT_WITNESS","section":"PRODUCERS"}` reads its producer evidence. The other sections are `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS`, and `SITE_ACCOUNTING`. Use `READ_RESULT` with the issued result reference and optional `cursor`; witness output is unavailable on `RUN`.
   </Tab>
 </Tabs>
 
@@ -52,12 +54,27 @@ Replace token placeholders with issued values. They are teaching labels, not val
 | `AT_LOCATION` | Supply a workspace-relative `file` and UTF-16 `offset` to find the nearest containing named declaration, not go-to-definition. |
 | `SYMBOL_REFS` | A previous result already identified the symbols. Copy its references unchanged. |
 | `RESULT` | You want to reuse retained rows, optionally selecting their issued row IDs. |
+| `IMPACT` | Follow values produced by exact invocation sites through supported Kotlin transfers and explicit reviewed models. |
 
 Discovery accepts a directory or package scope. Without a scope override, it searches the workspace recursively in source sets `main` and `test`. Source scope restricts discovery, not the destinations of later relationship steps.
 
 `SEARCH_TEXT` accepts an ASCII identifier word: a letter or underscore followed by letters, digits, or underscores. It rejects phrases, substrings, qualified literals, and regular expressions. A text match identifies a containing declaration; use a relationship step to establish callers or references. See [the text discovery example](/search#start-from-remembered-text).
 
 `ALL_DECLARATIONS` enumerates supported Kotlin classes, functions, properties, and type aliases, including eligible nested declarations. It covers Kotlin source in the requested scope. Direct enumeration that includes libraries is unsupported. Read the returned restrictions, progress, and blockers before claiming the search is complete.
+
+`IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models` inside `source`. Each seed names issued `enclosing` and expected producer `callable` references, plus an `anchor` with UTF-16 `start` and `end` offsets covering the whole invocation expression. Kast must confirm that exact invocation on the current semantic basis before execution.
+
+Set `flow` to `KOTLIN_FORWARD_V1`, choose the expansion `domain`, and supply the reviewed representation or boundary rules in `models`. Use `declarations` to pair each modeled callable's issued reference with its identity claim for fresh revalidation. Native checks establish invocation and site identity; the supplied model defines representation and boundary meaning. An explicit `models: []` supplies no model rules.
+
+Run an impact source with no transformation steps and `output: {"type":"VALUE_PATHS"}`. Add `retention: "RETAIN"` to inspect its paths and witnesses later. Unsupported transfers, rejected native reads, and unresolved obligations retain their qualifications. See the [generated request schema and examples](/reference/schemas#raw-json-schema) for the complete model forms.
+
+Before the impact ledger is finalized, a work-limited run can return a qualified, empty `VALUE_PATHS` page with `EVIDENCE_ONLY` accounting and a resumable execution checkpoint. Reading that retained page preserves the checkpoint and performs no semantic work. Witness sections, including `FINDINGS`, return `RESULT_FIELD_UNAVAILABLE` until the investigation ledger exists. Resume the execution checkpoint to continue the investigation.
+
+Read `IMPACT_WITNESS` with section `FINDINGS` for one compact row per original path. Each row retains the producer, destination, current representation, model provenance, terminal outcome, and boundary obligations. Its `path` contains `pathOrdinal` and `pathRowId`. To expand the original evidence, read the same result with `VALUE_PATHS`, set `cursor` to the path ordinal, and set `executionBudget.maxResults` to `1`; the expanded row has that same row ID. Paging findings preserves the original investigation’s unresolved obligations and performs no semantic reads. A compact finding is a presentation of retained evidence; it supplies no new compiler or model fact.
+
+Supply optional `requestedSites` inside the impact source to account for exact value sites independently of the producer paths. Each site includes its enclosing declaration identity, range, and role; argument sites also identify the whole invocation, callable, and formal parameter index. Pair their declaration claims with issued references in `declarations`. Kast revalidates these sites under the same acquisition grant. A valid site establishes its identity; it does not establish a relationship to a producer.
+
+Read section `SITE_ACCOUNTING` for one row per requested site in the original order. Each row retains its native admission grant and observed work. `REACHED` links to original paths by `pathOrdinal` and `pathRowId`, preserving any separate proven scope exits. `EXCLUDED` retains exact scope-exclusion witnesses from original paths. `RELATIONSHIP_UNPROVEN` preserves the site and adds the required `REQUESTED_SITE_RELATIONSHIP` obligation, which prevents semantic completion. Paging these rows uses the same retained result and performs no semantic reads.
 
 ## Apply only the steps you need
 
@@ -71,6 +88,12 @@ Discovery accepts a directory or package scope. Without a scope override, it sea
     `EXPAND_RELATION` makes one hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`.
 
     `WALK` follows a relation to a bounded depth. Its default depth is one and its default strategy is breadth-first. A fan-out limit can leave relationships unexplored; Kast reports that limitation.
+
+    Both relation steps accept `expansionScope`. Omission or `null` selects `WORKSPACE` for `EXPAND_RELATION` and `RETAINED_SEED` for `WALK`. `WORKSPACE` uses workspace expansion; `RETAINED_SEED` preserves the selected symbol's retained scope. You can choose either explicitly, independently of discovery scope and output filters. For an exact-file expansion domain, acquire the seed with `AT_LOCATION` and choose `RETAINED_SEED`.
+
+    `SOURCE_DOMAIN` requires exact imported `sourceSets` names, `sourcePolicy` (`PRODUCTION_ONLY`, `TEST_ONLY`, or `PRODUCTION_AND_TEST`), and `generatedSources` (`EXCLUDE` or `INCLUDE`). Its optional `directory` is workspace-relative; `includeSubdirectories` defaults to `true`. These restrictions apply before native enumeration. `IMPACT.domain` uses the same three scope forms and must be supplied explicitly.
+
+    Relation and walk observations preserve requested and effective domains, coverage, and proven scope exclusions. Interpret an empty result against that declared domain and its qualifications; rows removed by `WHERE` do not establish absence from the expansion domain.
 
     For `BREADTH_FIRST`, `maximumDepth` defines the requested graph. Results at that depth are included without expanding them. Coverage is complete when every required one-hop read below that depth is complete. Result, work, and time limits can pause execution; resume the issued continuation to finish retained work. A required one-hop read with terminal incomplete coverage keeps the walk incomplete.
   </Accordion>
@@ -96,8 +119,12 @@ Discovery accepts a directory or package scope. Without a scope override, it sea
 | `OCCURRENCES` | Individual relationship facts and compiler-confirmed use sites, including file-scoped imports and aliases. |
 | `TRAVERSAL_RECORDS` | Established relation facts with their hop depth. |
 | `BINDING_ROWS` | Named symbol cells from an inner join. |
+| `VALUE_PATHS` | Producer value sites, established transfers, model applications, representation history, terminals, and unresolved obligations. |
+| `IMPACT_WITNESS` | One retained impact evidence section, selected through `READ_RESULT`. |
 
 An omitted output selects symbols with name and location. An explicit symbol output uses a `fields` array; `[]` requests only mandatory identity and kind.
+
+For value paths, read `impact_accounting` and the reported qualifications before claiming closure. An `EVIDENCE_ONLY` accounting report carries no closed investigation claim. Witness pages report a selected-evidence qualification and preserve the investigation's retained limitations. Reading retained pages leaves the original semantic coverage unchanged. The [generated query item schema](/reference/models/query-item) describes the returned path and witness variants.
 
 ## Defaults and limits
 

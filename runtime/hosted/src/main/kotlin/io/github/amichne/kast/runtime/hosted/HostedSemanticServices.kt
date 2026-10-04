@@ -2,10 +2,26 @@ package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.diagnostic.intellij.ProjectBoundIntellijDiagnosticPorts
+import io.github.amichne.kast.diagnostic.service.DiagnosticScanService
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
+import io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding
+import io.github.amichne.kast.query.protocol.ExactReferenceReacquisition
+import io.github.amichne.kast.query.protocol.QueryReferenceTransport
+import io.github.amichne.kast.query.protocol.ReacquiringQueryReferences
 import io.github.amichne.kast.query.protocol.decodingFailure
+import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.relation.contract.ValueFlowCompilerPort
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
+import io.github.amichne.kast.relation.contract.ValueModelSiteRead
+import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
+import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
+import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
+import io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest
+import io.github.amichne.kast.relation.intellij.IntellijValueFlowCompilerAdapter
 import io.github.amichne.kast.relation.intellij.ProjectBoundIntellijRelationPort
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.source.contract.SourceReadContext
@@ -14,21 +30,31 @@ import io.github.amichne.kast.source.contract.SourceReadContinuationPort
 import io.github.amichne.kast.source.contract.SourceReadRejection
 import io.github.amichne.kast.source.intellij.ProjectBoundIntellijSourceReadPort
 import io.github.amichne.kast.source.service.SourceReadService
+import io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy
+import io.github.amichne.kast.symbol.contract.ExactRevalidationResult
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.symbol.intellij.IntellijExactRevalidationCapture
+import io.github.amichne.kast.symbol.intellij.ProjectBoundExactRevalidationPort
 import io.github.amichne.kast.symbol.intellij.ProjectBoundIntellijSymbolPorts
+import io.github.amichne.kast.symbol.service.ExactRevalidationService
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
+import io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadValidation
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
 
 /** Ports share one request's admitted authority, model, scope, policy and observation. Never retained across reads. */
 internal class HostedSemanticServices(
     private val project: Project,
     private val context: HostedSemanticReadContext,
-    transport: io.github.amichne.kast.query.protocol.QueryReferenceTransport,
+    transport: QueryReferenceTransport,
 ) {
     val budgets = HostedSemanticBudgets(context.limits, context.executionBudget)
     private val capture =
-        io.github.amichne.kast.symbol.intellij.IntellijExactRevalidationCapture(
+        IntellijExactRevalidationCapture(
             context.model,
             context.observation,
             context.executionBudget.work.effective.value,
@@ -37,9 +63,9 @@ internal class HostedSemanticServices(
     private val revalidationStore = project.getService(HostedExactRevalidationStore::class.java)
     val revalidationReferences = revalidationStore.references()
     val revalidation =
-        io.github.amichne.kast.symbol.service.ExactRevalidationService(
+        ExactRevalidationService(
             context.validation,
-            io.github.amichne.kast.symbol.intellij.ProjectBoundExactRevalidationPort(
+            ProjectBoundExactRevalidationPort(
                 project,
                 context.model,
                 context.sourceFiles,
@@ -85,65 +111,101 @@ internal class HostedSemanticServices(
                     }
                 context.observation.count(
                     when (retained) {
-                        is Refinement.Refined ->
-                            io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
-                                .REVALIDATION_LOCATORS_RETAINED
-                        is Refinement.Rejected ->
-                            io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
-                                .REVALIDATION_LOCATORS_REJECTED
+                        is Refinement.Refined -> IntellijReadCounter.REVALIDATION_LOCATORS_RETAINED
+                        is Refinement.Rejected -> IntellijReadCounter.REVALIDATION_LOCATORS_REJECTED
                     }
                 )
             },
         )
 
-    private val acquisitionAccounting = ReadAcquisitionAccounting()
+    val acquisitionAccounting = ReadAcquisitionAccounting()
+
+    fun acquisitionWork() = acquisitionAccounting.snapshot()
+
+    private val valueCompiler = IntellijValueFlowCompilerAdapter(context.observation, context.limits)
+    private val valueModel = WorkspaceSearchScopeModelCompilation.Compiled(context.model)
+    val valueFlow =
+        object : ValueFlowCompilerPort {
+            override suspend fun read(request: ValueFlowRequest) =
+                valueCompiler.read(project, context.authority, request, valueModel)
+        }
+    val producerSeeds =
+        object : ValueProducerSeedCompilerPort {
+            override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead {
+                val started = System.nanoTime()
+                val result = valueCompiler.seed(project, context.authority, request, valueModel)
+                if (result is ValueProducerSeedRead.Seeded)
+                    acquisitionAccounting.record(
+                        result.examinedWorkUnits.value,
+                        (System.nanoTime() - started).coerceAtLeast(0L),
+                    )
+                return result
+            }
+
+            override suspend fun revalidate(
+                selector: SymbolSelector,
+                budget: RelationBudget,
+            ): ValueModelDeclarationRead {
+                val started = System.nanoTime()
+                val result = valueCompiler.revalidate(project, context.authority, selector, budget, valueModel)
+                if (result is ValueModelDeclarationRead.Revalidated)
+                    acquisitionAccounting.record(
+                        result.examinedWorkUnits.value,
+                        (System.nanoTime() - started).coerceAtLeast(0L),
+                    )
+                return result
+            }
+
+            override suspend fun revalidateSite(request: ValueSiteRevalidationRequest): ValueModelSiteRead {
+                val started = System.nanoTime()
+                val result = valueCompiler.revalidateSite(project, context.authority, request, valueModel)
+                if (result is ValueModelSiteRead.Revalidated)
+                    acquisitionAccounting.record(
+                        result.examinedWorkUnits.value,
+                        (System.nanoTime() - started).coerceAtLeast(0L),
+                    )
+                return result
+            }
+        }
     val readReferences =
-        io.github.amichne.kast.query.protocol.ReacquiringQueryReferences(
+        ReacquiringQueryReferences(
             references,
-            io.github.amichne.kast.query.protocol.ExactReferenceReacquisition { token, current ->
+            ExactReferenceReacquisition { token, current ->
                 reacquireRead(token, current)
             },
             acquisitionAccounting::remaining,
         )
 
     private suspend fun reacquireRead(
-        token: io.github.amichne.kast.protocol.contract.ProtocolText,
-        current: io.github.amichne.kast.workspace.contract.SemanticReadAuthority,
-    ): io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding<
-        io.github.amichne.kast.symbol.contract.SymbolSelector
-    > {
+        token: ProtocolText,
+        current: SemanticReadAuthority,
+    ): CanonicalSelectorDecoding<SymbolSelector> {
         val budget =
             when (val remaining = acquisitionAccounting.remaining(context.executionBudget.resources)) {
                 is Refinement.Refined -> remaining.value
-                is Refinement.Rejected ->
-                    return io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding.Rejected(
-                        remaining.failure.decodingFailure()
-                    )
+                is Refinement.Rejected -> return CanonicalSelectorDecoding.Rejected(remaining.failure.decodingFailure())
             }
         val locator =
             when (val located = revalidationReferences.locate(token)) {
                 is Refinement.Refined -> located.value
-                is Refinement.Rejected ->
-                    return io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding.Rejected(
-                        located.failure.decodingFailure()
-                    )
+                is Refinement.Rejected -> return CanonicalSelectorDecoding.Rejected(located.failure.decodingFailure())
             }
         val port =
-            io.github.amichne.kast.symbol.intellij.ProjectBoundExactRevalidationPort(
+            ProjectBoundExactRevalidationPort(
                 project,
                 context.model,
                 context.sourceFiles,
                 capture,
                 context.observation,
                 context.limits,
-                io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.CURRENT_DECLARATION,
+                ExactRevalidationPolicy.CURRENT_DECLARATION,
                 budget,
             )
         val service =
-            io.github.amichne.kast.symbol.service.ExactRevalidationService(
+            ExactRevalidationService(
                 context.validation,
                 port,
-                io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.CURRENT_DECLARATION,
+                ExactRevalidationPolicy.CURRENT_DECLARATION,
             )
         val started = System.nanoTime()
         val capturedWork = capture.chargedWork
@@ -153,12 +215,8 @@ internal class HostedSemanticServices(
             (System.nanoTime() - started).coerceAtLeast(0L),
         )
         return when (result) {
-            is io.github.amichne.kast.symbol.contract.ExactRevalidationResult.Reacquired ->
-                io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding.Decoded(result.selector)
-            is io.github.amichne.kast.symbol.contract.ExactRevalidationResult.Rejected ->
-                io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding.Rejected(
-                    result.reason.decodingFailure()
-                )
+            is ExactRevalidationResult.Reacquired -> CanonicalSelectorDecoding.Decoded(result.selector)
+            is ExactRevalidationResult.Rejected -> CanonicalSelectorDecoding.Rejected(result.reason.decodingFailure())
         }
     }
 
@@ -197,7 +255,7 @@ internal class HostedSemanticServices(
     }
     val diagnostics by lazy { DiagnosticService(context.validation, diagnosticPorts.compiler) }
     val diagnosticScans by lazy {
-        io.github.amichne.kast.diagnostic.service.DiagnosticScanService(
+        DiagnosticScanService(
             context.validation,
             diagnosticPorts.enumeration,
             diagnostics,
@@ -208,7 +266,7 @@ internal class HostedSemanticServices(
 internal fun admitHostedSemanticServices(
     project: Project,
     context: HostedSemanticReadContext,
-): Refinement<HostedSemanticServices, io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure> =
+): Refinement<HostedSemanticServices, LiveSemanticReadFailure> =
     when (
         val admitted =
             project

@@ -53,6 +53,93 @@ import org.junit.jupiter.api.Test
 
 class QueryWalkCompositionTest {
     @Test
+    fun `presentation filtering hides B after the walk has retained the A B C expansion`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val expansion = RelationSearchBoundary.Explicit(selected.scope)
+            var retainedIntermediate: RelationEndpoint.Resolved? = null
+            val service =
+                walkService(
+                    traversal = { plan ->
+                        assertEquals(expansion, plan.expansion)
+                        val first = walkRecord(plan, 100, "B")
+                        retainedIntermediate = first.related
+                        val second = chainRecord(plan, selected, first, expansion)
+                        TraversalResult.complete(page(plan, listOf(first, second), 1))
+                    }
+                )
+            val plan =
+                admittedPlan(
+                    QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
+                    listOf(
+                        QueryStepSyntax.Walk(
+                            RelationMeaning.Callers,
+                            TraversalDepthLimit.parse(3).refined(),
+                            TraversalStrategy.BreadthFirst,
+                            expansion,
+                        ),
+                        QueryStepSyntax.Where(
+                            io.github.amichne.kast.query.contract.QueryPredicate.Primitive(
+                                io.github.amichne.kast.query.contract.QueryPrimitiveField.NAME,
+                                io.github.amichne.kast.query.contract.QueryPrimitiveOperator.EQUALS,
+                                io.github.amichne.kast.query.contract.QueryPrimitiveValue.parse("C").refined(),
+                            )
+                        ),
+                    ),
+                    QueryOutputSyntax.TraversalRecords,
+                )
+            val result = assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 30, 5)))
+            assertEquals(listOf("C"), result.result.symbolRows().map { it.selector.name.value })
+            val retained = (result.result.symbolRows().single().walkArrival as QueryWalkArrival.Proven).records.single()
+            assertEquals(retainedIntermediate?.fingerprint, retained.origin)
+            assertEquals(2, retained.depth.value)
+            assertEquals(2, result.result.walkObservations.single().progress.totalEdges)
+        }
+    }
+
+    private fun chainRecord(
+        plan: TraversalPlan,
+        selected: SymbolSelector,
+        first: TraversalRecord,
+        expansion: RelationSearchBoundary.Explicit,
+    ): TraversalRecord {
+        val target =
+            RelationEndpoint.resolve(
+                    selected.lease,
+                    plan.scope,
+                    CompilerGroundedSymbolEvidence.fromBoundary(
+                            selected.file,
+                            600,
+                            620,
+                            "C",
+                            "sample.C",
+                            selected.kind,
+                            CanonicalCompilerSignature.classLike("sample.C").refined(),
+                        )
+                        .refined(),
+                    expansion.effectiveConstraints(RelationEndpoint.subject(selected)),
+                )
+                .refined()
+        val read = RelationRequest.start(first.related, plan.meaning, plan.budget.oneHop, expansion)
+        val fact =
+            RelationFact.create(
+                    read,
+                    target,
+                    read.subject,
+                    RelationOccurrence.fromBoundary(selected.file, 110, 111).refined(),
+                    RelationProvenance.K2_AUTHORED_SOURCE,
+                )
+                .refined()
+        return TraversalRecord.create(
+                plan,
+                first.related.fingerprint,
+                TraversalDepth.parse(2).refined(),
+                fact,
+            )
+            .refined()
+    }
+
+    @Test
     fun `empty walk remains a complete retainable result with progress`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
@@ -271,22 +358,28 @@ private fun QueryServiceTest.walkService(
         clock = clock,
     )
 
-private fun walkRecord(plan: TraversalPlan, offset: Int): TraversalRecord {
+private fun walkRecord(plan: TraversalPlan, offset: Int, name: String = "Related"): TraversalRecord {
     val selected = plan.start
     val evidence =
         CompilerGroundedSymbolEvidence.fromBoundary(
                 selected.file,
                 500,
                 520,
-                "Related",
-                "sample.Related",
+                name,
+                "sample.$name",
                 selected.kind,
-                CanonicalCompilerSignature.classLike("sample.Related").refined(),
+                CanonicalCompilerSignature.classLike("sample.$name").refined(),
             )
             .refined()
-    val related = RelationEndpoint.resolve(selected.lease, selected.scope, evidence, selected.constraints).refined()
-    val read =
-        RelationRequest.start(selected, plan.meaning, plan.budget.oneHop, RelationSearchBoundary.WORKSPACE_EXPANSION)
+    val related =
+        RelationEndpoint.resolve(
+                selected.lease,
+                plan.scope,
+                evidence,
+                plan.expansion.effectiveConstraints(RelationEndpoint.subject(selected)),
+            )
+            .refined()
+    val read = RelationRequest.start(selected, plan.meaning, plan.budget.oneHop, plan.expansion)
     val fact =
         RelationFact.create(
                 read,
@@ -319,7 +412,13 @@ private fun page(
             elapsedMillis = 1,
             expandedFrontier = 1,
             progress =
-                TraversalProgress.restore(sequence, sequence, totalEdges, if (totalEdges == 0L) 0 else 1).refined(),
+                TraversalProgress.restore(
+                        sequence,
+                        sequence,
+                        totalEdges,
+                        if (totalEdges == 0L) 0 else records.maxOfOrNull { it.depth.value } ?: 1,
+                    )
+                    .refined(),
         )
         .refined()
 

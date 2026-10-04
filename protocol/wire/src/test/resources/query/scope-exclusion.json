@@ -1,0 +1,16 @@
+{
+  "occurrence": {"candidateSelector": "candidate:call", "file": "Seed.kt", "range": {"startInclusive": 4, "endExclusive": 18}},
+  "target": {
+    "file": "Other.kt", "range": {"startInclusive": 4, "endExclusive": 18}, "name": "Target", "kind": "classlike",
+    "compiler_evidence": {"identity": "canonical-signature-sha256-v1|c858cb6c96ff1e5acfb0450dd790e3ecee743eb9d586c003f345109a2ff560f2", "signature": {"type": "class-like", "qualifiedIdentity": "sample.Target"}}
+  },
+  "reason": "SOURCE_DOMAIN",
+  "membership_authority": "IMPORTED_MODEL_NATIVE_SCOPE",
+  "requested_domain": "SOURCE_DOMAIN",
+  "effective_domain": {
+    "scope": {"type": "EXACT_FILE", "file": "Seed.kt"},
+    "source_policy": "production-and-test", "generated_sources": "exclude", "libraries": "exclude",
+    "source_sets": {"kind": "all"}, "directory": null, "package_name": null, "declaration_kinds": []
+  },
+  "domain_fingerprint": "1111111111111111111111111111111111111111111111111111111111111111"
+}

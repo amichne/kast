@@ -31,7 +31,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadOperationModels.kt
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/QuerySourceWindowSchema.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QuerySourceWindowDocument.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QuerySourceWireDocuments.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt
@@ -48,10 +48,9 @@ code_sources:
     symbols: [CanonicalHostedContract]
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-request.schema.json
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-approval.schema.json
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T03:24:34.910Z
 sources:
+  - id: openwiki-source-1d64f9c2cdc32afac226c9c0
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
   - id: openwiki-source-207ff2d32f1b70dfee08054c
@@ -60,7 +59,12 @@ sources:
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
   - id: openwiki-source-73cd922b518ec220021f920f
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
-generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+  - id: openwiki-source-7e2e7b680c5aeef13789f9ff
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt
+generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T04:45:37.704Z
 ---
 
 # Protocol
@@ -160,3 +164,8 @@ application lifecycle exchanges. `HostedContractDocument` has a required
 that evidence and plugin provenance. Control management and agent presentation
 identities do not enter the tuple. A hosted behavior break requires a declared
 protocol identity change even without a JSON shape change.
+
+
+Impact documents retain exact value-site basis, callable identity, source range and role; reviewed model identity/version/provenance; compiler transfers; boundary positions and obligations; original question; and investigation accounting. Required discriminators and closed causes survive canonical wire and CLI projections. Complete projection validates conserved impact closure, while qualified projection validates accounting without discharging unresolved obligations.
+
+The installed query output schema is derived from the actual complete, qualified and rejected CLI serializers. Item, failure and qualification schemas reuse the same serializer owners. The former independent source-window/query field lists have been removed, so schema admission and typed encoded output share one owner. Encoded-shape, schema and generation checks remain distinct from native qualification.

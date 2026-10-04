@@ -2,14 +2,22 @@ package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 
-enum class QueryPresentationWindowFailure {
-    REVERSED_WINDOW,
-    OUTSIDE_RETAINED_RESULT,
-    INVALID_ITEM_COUNT,
-    MISSING_RETAINED_WINDOW,
-    WINDOW_WITHOUT_RETAINED_RESULT,
-    RESULT_REFERENCE_MISMATCH,
-    ITEM_WINDOW_MISMATCH,
+sealed interface QueryPresentationWindowFailure {
+    data object REVERSED_WINDOW : QueryPresentationWindowFailure
+
+    data object OUTSIDE_RETAINED_RESULT : QueryPresentationWindowFailure
+
+    data object INVALID_ITEM_COUNT : QueryPresentationWindowFailure
+
+    data object MISSING_RETAINED_WINDOW : QueryPresentationWindowFailure
+
+    data object WINDOW_WITHOUT_RETAINED_RESULT : QueryPresentationWindowFailure
+
+    data object RESULT_REFERENCE_MISMATCH : QueryPresentationWindowFailure
+
+    data object ITEM_WINDOW_MISMATCH : QueryPresentationWindowFailure
+
+    data class Accounting(val cause: ImpactAccountingFailure) : QueryPresentationWindowFailure
 }
 
 /** Admitted offsets within one still-retained result, carried through every detached output slice. */
@@ -20,20 +28,36 @@ private constructor(
     val start: QueryResultCursor,
     val end: QueryResultCursor,
     val resultEnd: QueryResultCursor,
+    private val cursorContinuity: CursorContinuity,
 ) {
+    private enum class CursorContinuity {
+        CONTIGUOUS,
+        NON_CONTIGUOUS,
+    }
+
     val itemCount: Int
         get() = end.value - start.value
 
     val nextCursor: QueryResultCursor?
-        get() = if (end == resultEnd) null else end
+        get() =
+            when (cursorContinuity) {
+                CursorContinuity.CONTIGUOUS -> if (end == resultEnd) null else end
+                CursorContinuity.NON_CONTIGUOUS -> null
+            }
 
     internal fun prefix(count: Int): Refinement<QueryRetainedPresentationWindow, QueryPresentationWindowFailure> =
         if (count !in 0..itemCount) Refinement.Rejected(QueryPresentationWindowFailure.INVALID_ITEM_COUNT)
-        else Refinement.Refined(QueryRetainedPresentationWindow(reference, start, split(count), resultEnd))
+        else
+            Refinement.Refined(
+                QueryRetainedPresentationWindow(reference, start, split(count), resultEnd, cursorContinuity)
+            )
 
     internal fun suffix(count: Int): Refinement<QueryRetainedPresentationWindow, QueryPresentationWindowFailure> =
         if (count !in 0..itemCount) Refinement.Rejected(QueryPresentationWindowFailure.INVALID_ITEM_COUNT)
-        else Refinement.Refined(QueryRetainedPresentationWindow(reference, split(count), end, resultEnd))
+        else
+            Refinement.Refined(
+                QueryRetainedPresentationWindow(reference, split(count), end, resultEnd, cursorContinuity)
+            )
 
     private fun split(count: Int): QueryResultCursor =
         when (val parsed = QueryResultCursor.parse(start.value + count)) {
@@ -42,6 +66,19 @@ private constructor(
         }
 
     companion object {
+        /** Selected row identities cannot imply an ordinal successor in the original result. */
+        fun nonContiguous(
+            reference: QueryResultReference,
+            itemCount: QueryResultCursor,
+        ): QueryRetainedPresentationWindow =
+            QueryRetainedPresentationWindow(
+                reference,
+                QueryResultCursor.Start,
+                itemCount,
+                itemCount,
+                CursorContinuity.NON_CONTIGUOUS,
+            )
+
         fun create(
             reference: QueryResultReference,
             start: QueryResultCursor,
@@ -52,7 +89,10 @@ private constructor(
                 start.value > end.value -> Refinement.Rejected(QueryPresentationWindowFailure.REVERSED_WINDOW)
                 end.value > resultEnd.value ->
                     Refinement.Rejected(QueryPresentationWindowFailure.OUTSIDE_RETAINED_RESULT)
-                else -> Refinement.Refined(QueryRetainedPresentationWindow(reference, start, end, resultEnd))
+                else ->
+                    Refinement.Refined(
+                        QueryRetainedPresentationWindow(reference, start, end, resultEnd, CursorContinuity.CONTIGUOUS)
+                    )
             }
     }
 }
@@ -75,7 +115,7 @@ private fun QueryRunResult.presentationSlice(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
-    val selected = if (suffix) items.values.drop(count) else items.values.take(count)
+    val selected = selectedItems(count, suffix)
     val bounded =
         when (val admitted = BoundedProtocolList.create(selected)) {
             is Refinement.Refined -> admitted.value
@@ -87,8 +127,19 @@ private fun QueryRunResult.presentationSlice(
             is Refinement.Refined -> selected.value
             is Refinement.Rejected -> return selected
         }
+    val accounting =
+        when (val selectedAccounting = selectedImpactAccounting(selected, if (suffix) count else 0)) {
+            is Refinement.Refined -> selectedAccounting.value
+            is Refinement.Rejected ->
+                return Refinement.Rejected(QueryPresentationWindowFailure.Accounting(selectedAccounting.failure))
+        }
     return Refinement.Refined(
-        copy(items = bounded, presentationWindow = selectedWindow, nextCursor = selectedWindow?.nextCursor)
+        copy(
+            items = bounded,
+            impactAccounting = accounting,
+            presentationWindow = selectedWindow,
+            nextCursor = selectedWindow?.nextCursor,
+        )
     )
 }
 
@@ -108,3 +159,6 @@ private fun QueryRunResult.admittedPresentationWindow():
     }
     return Refinement.Refined(window)
 }
+
+private fun QueryRunResult.selectedItems(count: Int, suffix: Boolean): List<QueryResultItemDocument> =
+    if (suffix) items.values.drop(count) else items.values.take(count)

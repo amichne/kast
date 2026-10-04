@@ -173,7 +173,7 @@ class QueryTextMatchCapacityTest {
     private fun retained(vararg rows: QuerySymbol): QueryRetainedResult.Symbols =
         QueryRetainedResult.capture(
                 rows.first().selector.lease,
-                QueryExecutionResult.Complete(
+                QueryExecutionResult.Complete.create(
                     QueryResult(QueryRows.Symbols.of(rows.toList()), emptyList()),
                     QueryCoverage.Complete(QueryCount.parse(rows.size).refined()),
                 ),

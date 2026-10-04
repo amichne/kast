@@ -623,6 +623,7 @@ class QueryServiceTest {
         when (this) {
             is QueryExecutionResult.Complete -> result.symbolRows().size
             is QueryExecutionResult.Qualified -> result.symbolRows().size
+            is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
             is QueryExecutionResult.Rejected -> error("Expected symbol result, got $reason")
         }
 

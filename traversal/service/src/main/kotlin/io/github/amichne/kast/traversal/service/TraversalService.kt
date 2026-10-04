@@ -19,6 +19,7 @@ import io.github.amichne.kast.traversal.contract.TraversalPosition
 import io.github.amichne.kast.traversal.contract.TraversalRecord
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
+import io.github.amichne.kast.traversal.contract.TraversalScopeExclusion
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
 
 /** Deterministic breadth-first engine behind the query walk stage. */
@@ -83,6 +84,7 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                     scope = plan.scope,
                     budget = readBudget,
                     position = work.position,
+                    expansion = plan.expansion,
                 )
             val read =
                 when (val outcome = reader.read(request)) {
@@ -146,6 +148,13 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                         )
                 ) {
                     is Refinement.Refined -> accounting.referenceOccurrences += observed.value
+                    is Refinement.Rejected ->
+                        return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
+                }
+            }
+            for (exclusion in batch.scopeExclusions) {
+                when (val observed = TraversalScopeExclusion.create(plan, entry, exclusion)) {
+                    is Refinement.Refined -> accounting.scopeExclusions += observed.value
                     is Refinement.Rejected ->
                         return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
                 }

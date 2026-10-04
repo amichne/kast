@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 415a0ae996a1 -->
+<!-- generated: 2026-10-03 | hash: 3cf4c6551236 -->
 
 # evidence
 
@@ -8,6 +8,8 @@
 Retains mutation plans, receipts, and recovery evidence in workspace-bound SQLite stores. A separate topology SQLite adapter retains complete graph snapshots for upcoming work; workspace publication implementation remains retired.
 
 ## Key Files
+
+- [SqliteLiveChangePlanStore.kt](sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt) - durable live plan storage validates its storage version independently of each embedded plan codec version.
 
 - [HostedWorkspaceStateLocation.kt](contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/HostedWorkspaceStateLocation.kt) - admitted workspace-bound state location.
 - [MutationRecoveryRecord.kt](contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/MutationRecoveryRecord.kt) - recovery evidence model.

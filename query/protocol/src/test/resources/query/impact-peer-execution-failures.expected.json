@@ -1,0 +1,42 @@
+[
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "WORK_RECEIPT_EXCEEDS_GRANT"
+  },
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "TIME_RECEIPT_EXCEEDS_GRANT"
+  },
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "SITE_WORK_EXCEEDS_ACQUISITION_WORK"
+  },
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "SITE_GRANT_EXCEEDS_ACQUISITION_GRANT"
+  },
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "TARGET_BASIS_MISMATCH"
+  },
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "TARGET_IDENTITY_MISMATCH"
+  },
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "SOURCE_BASIS_MISMATCH"
+  },
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "SAME_SOURCE_ROOT"
+  },
+  {
+    "type": "PEER_BOUNDARY",
+    "cause": "CONNECTION_MISMATCH"
+  },
+  {
+    "type": "LEDGER",
+    "cause": "FOREIGN_PEER_BASIS"
+  }
+]

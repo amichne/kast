@@ -1,6 +1,12 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import java.util.UUID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -16,6 +22,57 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 
 class LiveAddDeclarationPlanCodecTest {
+    @Test
+    fun `durable replay retains explicit expansion scope directory and source sets`() {
+        val plan = detachedLivePlan()
+        val explicit =
+            RelationSearchBoundary.Explicit(
+                plan.target.scope,
+                SymbolDiscoveryDirectoryConstraint(
+                    SymbolDiscoveryDirectory.parse("src").refined(),
+                    SymbolDiscoveryContainment.DESCENDANTS,
+                ),
+                SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("main").refined())).refined(),
+            )
+        val scope =
+            LiveAddDeclarationVerificationScope.restore(
+                    plan.verificationScope.relations.map { it.copy(boundary = explicit) },
+                    plan.verificationScope.traversals.map { it.copy(expansion = explicit) },
+                    plan.verificationScope.diagnostics,
+                    plan.evidence,
+                )
+                .refined()
+        val document = LiveVerificationScopeCodec.document(scope)
+        val encoded = Json.encodeToString(LiveVerificationScopeDocument.serializer(), document)
+        assertEquals(
+            "EXPLICIT",
+            Json.parseToJsonElement(encoded)
+                .jsonObject
+                .getValue("relations")
+                .jsonArray
+                .first()
+                .jsonObject
+                .getValue("boundary")
+                .jsonObject
+                .getValue("type")
+                .let {
+                    (it as JsonPrimitive).content
+                },
+        )
+        val restored = LiveVerificationScopeCodec.restore(document, plan.basis.observation, plan.evidence).refined()
+        assertEquals(explicit, restored.relations.first().boundary)
+        assertEquals(explicit, restored.traversals.first().expansion)
+    }
+
+    @Test
+    fun `historical string boundary codec version fails closed`() {
+        val encoded = LiveAddDeclarationPlanCodec.encode(detachedLivePlan())
+        assertEquals(
+            LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED,
+            rejected(encoded.replace("\"schemaVersion\":2", "\"schemaVersion\":1")),
+        )
+    }
+
     @Test
     fun `historical live plan round trip preserves complete model compiler identity constraints and obligations`() {
         val plan = detachedLivePlan()
@@ -82,7 +139,7 @@ class LiveAddDeclarationPlanCodecTest {
         val encoded = LiveAddDeclarationPlanCodec.encode(detachedLivePlan())
         assertEquals(
             LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED,
-            rejected(change(encoded, "schemaVersion", JsonPrimitive(2))),
+            rejected(change(encoded, "schemaVersion", JsonPrimitive(3))),
         )
         assertEquals(
             LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED,

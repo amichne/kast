@@ -10,6 +10,9 @@ enum class IntellijReadGauge {
     QUERY_RETAINED_ENTRIES,
     /** Detached bytes required by the observed native inventory attempt, including a rejected final locator. */
     RELATION_INVENTORY_RETAINED_BYTES,
+    /** Synchronous native provider preparation for this invocation, separately from retained confirmation. */
+    RELATION_PREPARATION_NANOS,
+    RELATION_CONFIRMATION_NANOS,
     SOURCE_RETAINED_BYTES,
     SOURCE_RETAINED_BYTES_HIGH_WATER,
     SOURCE_RETAINED_ENTRIES,
@@ -40,6 +43,8 @@ internal fun IntellijReadGauge.merge(
         IntellijReadGauge.QUERY_RETAINED_BYTES,
         IntellijReadGauge.QUERY_RETAINED_ENTRIES,
         IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES,
+        IntellijReadGauge.RELATION_PREPARATION_NANOS,
+        IntellijReadGauge.RELATION_CONFIRMATION_NANOS,
         IntellijReadGauge.SOURCE_RETAINED_BYTES,
         IntellijReadGauge.SOURCE_RETAINED_ENTRIES,
         IntellijReadGauge.DIAGNOSTIC_RETAINED_BYTES,

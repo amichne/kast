@@ -1,0 +1,400 @@
+[
+  {
+    "type": "CONSUMER",
+    "reference": {
+      "model": {
+        "id": "crypto",
+        "version": 1,
+        "provenance": "reviewed"
+      },
+      "rule": "rule"
+    },
+    "expectedState": {
+      "model": {
+        "id": "crypto",
+        "version": 1,
+        "provenance": "reviewed"
+      },
+      "domain": [
+        "HIPED",
+        "VOLTAGE"
+      ],
+      "state": "VOLTAGE"
+    },
+    "outcome": "SATISFIED"
+  },
+  {
+    "type": "CONSUMER",
+    "reference": {
+      "model": {
+        "id": "crypto",
+        "version": 1,
+        "provenance": "reviewed"
+      },
+      "rule": "rule"
+    },
+    "expectedState": {
+      "model": {
+        "id": "crypto",
+        "version": 1,
+        "provenance": "reviewed"
+      },
+      "domain": [
+        "HIPED",
+        "VOLTAGE"
+      ],
+      "state": "VOLTAGE"
+    },
+    "outcome": "DIFFERENT"
+  },
+  {
+    "type": "CONSUMER",
+    "reference": {
+      "model": {
+        "id": "crypto",
+        "version": 1,
+        "provenance": "reviewed"
+      },
+      "rule": "rule"
+    },
+    "expectedState": {
+      "model": {
+        "id": "crypto",
+        "version": 1,
+        "provenance": "reviewed"
+      },
+      "domain": [
+        "HIPED",
+        "VOLTAGE"
+      ],
+      "state": "VOLTAGE"
+    },
+    "outcome": "UNKNOWN"
+  },
+  {
+    "type": "MODELED_TERMINAL",
+    "reference": {
+      "model": {
+        "id": "crypto",
+        "version": 1,
+        "provenance": "reviewed"
+      },
+      "rule": "rule"
+    },
+    "source": {
+      "site": {
+        "enclosing": {
+          "basis": {
+            "type": "PUBLISHED",
+            "root": "/workspace",
+            "generation": 7
+          },
+          "file": "/workspace/File.kt",
+          "range": {
+            "start": 0,
+            "end": 100
+          },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "range": {
+          "start": 20,
+          "end": 21
+        },
+        "role": {
+          "type": "PROPERTY_ASSIGNMENT"
+        }
+      },
+      "kind": "PERSISTENCE",
+      "contract": {
+        "id": "storage",
+        "version": 1
+      },
+      "slot": "ciphertext"
+    },
+    "meaning": "REVIEWED_RETENTION",
+    "obligations": [
+      {
+        "position": {
+          "site": {
+            "enclosing": {
+              "basis": {
+                "type": "PUBLISHED",
+                "root": "/workspace",
+                "generation": 7
+              },
+              "file": "/workspace/File.kt",
+              "range": {
+                "start": 0,
+                "end": 100
+              },
+              "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "range": {
+              "start": 20,
+              "end": 21
+            },
+            "role": {
+              "type": "PROPERTY_ASSIGNMENT"
+            }
+          },
+          "kind": "PERSISTENCE",
+          "contract": {
+            "id": "storage",
+            "version": 1
+          },
+          "slot": "ciphertext"
+        },
+        "required": [
+          "RETENTION_POLICY",
+          "DECODING_COMPATIBILITY",
+          "MIGRATION_PROOF"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "UNRESOLVED_FLOW",
+    "cause": "MUTABLE_CONTROL_FLOW"
+  },
+  {
+    "type": "UNRESOLVED_READ",
+    "rejection": {
+      "type": "NATIVE",
+      "source": {
+        "enclosing": {
+          "basis": {
+            "type": "PUBLISHED",
+            "root": "/workspace",
+            "generation": 7
+          },
+          "file": "/workspace/File.kt",
+          "range": {
+            "start": 0,
+            "end": 100
+          },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "range": {
+          "start": 20,
+          "end": 21
+        },
+        "role": {
+          "type": "PROPERTY_ASSIGNMENT"
+        }
+      },
+      "domain": {
+        "type": "WORKSPACE"
+      },
+      "cause": "AUTHORITY_MOVED",
+      "examinedWorkUnits": 3
+    }
+  },
+  {
+    "type": "UNRESOLVED_READ",
+    "rejection": {
+      "type": "CONTRACT",
+      "source": {
+        "enclosing": {
+          "basis": {
+            "type": "PUBLISHED",
+            "root": "/workspace",
+            "generation": 7
+          },
+          "file": "/workspace/File.kt",
+          "range": {
+            "start": 0,
+            "end": 100
+          },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "range": {
+          "start": 20,
+          "end": 21
+        },
+        "role": {
+          "type": "PROPERTY_ASSIGNMENT"
+        }
+      },
+      "domain": {
+        "type": "WORKSPACE"
+      },
+      "cause": "DOMAIN_MISMATCH",
+      "examinedWorkUnits": 4
+    }
+  },
+  {
+    "type": "UNRESOLVED_BOUNDARY",
+    "source": {
+      "site": {
+        "enclosing": {
+          "basis": {
+            "type": "PUBLISHED",
+            "root": "/workspace",
+            "generation": 7
+          },
+          "file": "/workspace/File.kt",
+          "range": {
+            "start": 0,
+            "end": 100
+          },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "range": {
+          "start": 20,
+          "end": 21
+        },
+        "role": {
+          "type": "PROPERTY_ASSIGNMENT"
+        }
+      },
+      "kind": "PERSISTENCE",
+      "contract": {
+        "id": "storage",
+        "version": 1
+      },
+      "slot": "ciphertext"
+    },
+    "reason": "MISSING_MODEL",
+    "obligation": {
+      "position": {
+        "site": {
+          "enclosing": {
+            "basis": {
+              "type": "PUBLISHED",
+              "root": "/workspace",
+              "generation": 7
+            },
+            "file": "/workspace/File.kt",
+            "range": {
+              "start": 0,
+              "end": 100
+            },
+            "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "range": {
+            "start": 20,
+            "end": 21
+          },
+          "role": {
+            "type": "PROPERTY_ASSIGNMENT"
+          }
+        },
+        "kind": "PERSISTENCE",
+        "contract": {
+          "id": "storage",
+          "version": 1
+        },
+        "slot": "ciphertext"
+      },
+      "required": [
+        "RETENTION_POLICY",
+        "DECODING_COMPATIBILITY",
+        "MIGRATION_PROOF"
+      ]
+    }
+  },
+  {
+    "type": "EXECUTION_STOP",
+    "stop": {
+      "type": "CYCLE",
+      "repeatedAt": 2
+    }
+  },
+  {
+    "type": "EXECUTION_STOP",
+    "stop": {
+      "type": "CHECKPOINT_CAPACITY",
+      "requiredBytes": 20,
+      "availableBytes": 10
+    }
+  },
+  {
+    "type": "SUPPORTED_DOMAIN_END",
+    "observation": {
+      "source": {
+        "enclosing": {
+          "basis": {
+            "type": "PUBLISHED",
+            "root": "/workspace",
+            "generation": 7
+          },
+          "file": "/workspace/File.kt",
+          "range": {
+            "start": 0,
+            "end": 100
+          },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "range": {
+          "start": 20,
+          "end": 21
+        },
+        "role": {
+          "type": "PROPERTY_ASSIGNMENT"
+        }
+      },
+      "domain": {
+        "subject": {
+          "basis": {
+            "type": "PUBLISHED",
+            "root": "/workspace",
+            "generation": 7
+          },
+          "file": "/workspace/File.kt",
+          "range": {
+            "start": 0,
+            "end": 100
+          },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "meaning": "references",
+        "requestedDomain": "WORKSPACE",
+        "domain": {
+          "scope": {
+            "type": "WORKSPACE"
+          },
+          "source_policy": "production-only",
+          "generated_sources": "exclude",
+          "libraries": "exclude",
+          "source_sets": {
+            "kind": "all"
+          },
+          "directory": null,
+          "package_name": null,
+          "declaration_kinds": []
+        },
+        "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "budget": {
+          "maxElapsedMillis": 100,
+          "maxWorkUnits": 10,
+          "maxResults": 2,
+          "maxReturnedBytes": 10000
+        },
+        "position": {
+          "type": "START"
+        }
+      },
+      "examinedWorkUnits": 1,
+      "retainedBytes": 200,
+      "terminal": "SUPPORTED_DOMAIN_EXHAUSTED"
+    }
+  },
+  {
+    "type": "EXPLICIT_SCOPE_EXCLUSION",
+    "domain": {
+      "scope": {
+        "type": "WORKSPACE"
+      },
+      "source_policy": "production-only",
+      "generated_sources": "exclude",
+      "libraries": "exclude",
+      "source_sets": {
+        "kind": "all"
+      },
+      "directory": null,
+      "package_name": null,
+      "declaration_kinds": []
+    },
+    "cause": "OUTSIDE_DIRECTORY"
+  }
+]

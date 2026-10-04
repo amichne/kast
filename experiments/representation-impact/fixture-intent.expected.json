@@ -1,0 +1,182 @@
+{
+  "sourcePath": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+  "sourceSha256": "58509a615028343d7dd5f0b5c919d27d0b234f1cfa94d35c9c8f2fe4fb7a7be2",
+  "seedAnchors": [
+    {
+      "name": "first-voltage",
+      "startInclusive": 876,
+      "endExclusive": 901,
+      "text": "Voltage.encrypt(accountA)",
+      "intent": "Distinct producer invocation P1"
+    },
+    {
+      "name": "second-voltage",
+      "startInclusive": 919,
+      "endExclusive": 944,
+      "text": "Voltage.encrypt(accountB)",
+      "intent": "Distinct producer invocation P2"
+    },
+    {
+      "name": "hiped-origin",
+      "startInclusive": 1296,
+      "endExclusive": 1319,
+      "text": "Hiped.encrypt(accountA)",
+      "intent": "Bridge origin intent"
+    },
+    {
+      "name": "voltage-bridge",
+      "startInclusive": 1385,
+      "endExclusive": 1411,
+      "text": "Voltage.encrypt(plaintext)",
+      "intent": "Post-decryption producer intent"
+    }
+  ],
+  "namedUses": [
+    {
+      "name": "misleading-name-consumer",
+      "startInclusive": 985,
+      "endExclusive": 1020,
+      "text": "submit(misleadingHipedName, second)",
+      "intent": "P1 slot0 and P2 slot1 intent; variable names prove no representation"
+    },
+    {
+      "name": "second-display",
+      "startInclusive": 1025,
+      "endExclusive": 1040,
+      "text": "display(second)",
+      "intent": "P2 use intent"
+    },
+    {
+      "name": "wrapper",
+      "startInclusive": 1059,
+      "endExclusive": 1073,
+      "text": "wrapper(first)",
+      "intent": "Review required for compiler wrapper return support"
+    },
+    {
+      "name": "wrapped-consumer",
+      "startInclusive": 1078,
+      "endExclusive": 1101,
+      "text": "submit(wrapped, second)",
+      "intent": "Wrapped slot0 and separate P2 slot1 intent"
+    },
+    {
+      "name": "first-assignment-read",
+      "startInclusive": 1133,
+      "endExclusive": 1152,
+      "text": "display(reassigned)",
+      "intent": "Read before reassignment intent"
+    },
+    {
+      "name": "second-assignment-read",
+      "startInclusive": 1181,
+      "endExclusive": 1200,
+      "text": "display(reassigned)",
+      "intent": "Read after reassignment intent"
+    },
+    {
+      "name": "branch-alternatives",
+      "startInclusive": 1205,
+      "endExclusive": 1253,
+      "text": "val alternatives = if (choose) first else second",
+      "intent": "Alternative producers remain separate intent"
+    },
+    {
+      "name": "hiped-decrypt",
+      "startInclusive": 1340,
+      "endExclusive": 1360,
+      "text": "Hiped.decrypt(hiped)",
+      "intent": "HIPED to plaintext reviewed transformation intent"
+    },
+    {
+      "name": "bridge-display",
+      "startInclusive": 1416,
+      "endExclusive": 1438,
+      "text": "display(voltageBridge)",
+      "intent": "Current Voltage with retained HIPED origin history intent"
+    },
+    {
+      "name": "unknown-transformation",
+      "startInclusive": 1457,
+      "endExclusive": 1473,
+      "text": "unmodeled(first)",
+      "intent": "Unknown transformation cannot preserve known current representation"
+    },
+    {
+      "name": "same-simple-name",
+      "startInclusive": 1515,
+      "endExclusive": 1539,
+      "text": "Unrelated.decrypt(first)",
+      "intent": "Must not admit Hiped.decrypt model by simple name"
+    },
+    {
+      "name": "response-constructor",
+      "startInclusive": 1582,
+      "endExclusive": 1597,
+      "text": "Response(first)",
+      "intent": "Exact class/callable identity intent"
+    },
+    {
+      "name": "response-send",
+      "startInclusive": 1602,
+      "endExclusive": 1616,
+      "text": "send(response)",
+      "intent": "Boundary model and retention obligations require separate proof"
+    },
+    {
+      "name": "unrelated-response",
+      "startInclusive": 1645,
+      "endExclusive": 1670,
+      "text": "UnrelatedResponse(second)",
+      "intent": "Must not reuse Response identity"
+    },
+    {
+      "name": "persistence-slot",
+      "startInclusive": 1717,
+      "endExclusive": 1742,
+      "text": "persist(\"account\", first)",
+      "intent": "Exact argument slot1 intent, retention obligations remain unresolved"
+    }
+  ],
+  "modelIntent": [
+    {
+      "rule": "voltage-origin",
+      "namedCallable": "representation.fixture.Voltage.encrypt",
+      "position": "RESULT",
+      "meaning": "Origin representation VOLTAGE",
+      "qualification": "REQUIRES_REVIEWED_MODEL_AND_EXACT_K2_BINDING"
+    },
+    {
+      "rule": "hiped-origin",
+      "namedCallable": "representation.fixture.Hiped.encrypt",
+      "position": "RESULT",
+      "meaning": "Origin representation HIPED",
+      "qualification": "REQUIRES_REVIEWED_MODEL_AND_EXACT_K2_BINDING"
+    },
+    {
+      "rule": "hiped-decrypt",
+      "namedCallable": "representation.fixture.Hiped.decrypt",
+      "position": "ARGUMENT_0_TO_RESULT",
+      "meaning": "HIPED to PLAINTEXT",
+      "qualification": "REQUIRES_REVIEWED_MODEL_AND_EXACT_K2_BINDING"
+    },
+    {
+      "rule": "voltage-encrypt",
+      "namedCallable": "representation.fixture.Voltage.encrypt",
+      "position": "ARGUMENT_0_TO_RESULT",
+      "meaning": "PLAINTEXT to VOLTAGE",
+      "qualification": "REQUIRES_REVIEWED_MODEL_AND_EXACT_K2_BINDING"
+    },
+    {
+      "rule": "plaintext-consumer",
+      "namedCallable": "representation.fixture.display",
+      "position": "ARGUMENT_0",
+      "meaning": "Expected PLAINTEXT is reviewed model data",
+      "qualification": "REQUIRES_REVIEWED_MODEL_AND_EXACT_K2_BINDING"
+    }
+  ],
+  "type": "SOURCE_TEXT_INTENT",
+  "offsetUnit": "UTF16_ASCII_FIXTURE",
+  "qualification": "ACTUAL_K2_MUST_REVALIDATE_CALLABLE_SITE_POSITION_AND_BASIS",
+  "schemaVersion": 1
+}

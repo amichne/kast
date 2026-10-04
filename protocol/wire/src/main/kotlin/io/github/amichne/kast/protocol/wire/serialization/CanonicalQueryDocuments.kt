@@ -3,9 +3,35 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ImpactExecutionFailureDocument
+import io.github.amichne.kast.protocol.contract.ImpactPresentationFailureDocument
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
+import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
+import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
+import io.github.amichne.kast.protocol.contract.QueryPredicateFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason
+import io.github.amichne.kast.protocol.contract.QueryRefinementLocationDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
+import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
+import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.QuerySourceFailureDocument
+import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
+import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.reason
+import io.github.amichne.kast.protocol.contract.validateImpactAccounting
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -92,6 +118,24 @@ internal enum class QueryRelationFailureWireDocument {
 
 @Serializable
 internal sealed interface QueryRunRejectionWireDocument {
+    @Serializable
+    @SerialName("IMPACT_EXECUTION_REJECTED")
+    data class ImpactExecutionRejected(
+        val cause: io.github.amichne.kast.protocol.contract.ImpactExecutionFailureDocument
+    ) : QueryRunRejectionWireDocument
+
+    @Serializable
+    @SerialName("IMPACT_SOURCE_REJECTED")
+    data class ImpactSourceRejected(
+        val cause: io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
+    ) : QueryRunRejectionWireDocument
+
+    @Serializable
+    @SerialName("IMPACT_PRESENTATION_REJECTED")
+    data class ImpactPresentationRejected(
+        val cause: io.github.amichne.kast.protocol.contract.ImpactPresentationFailureDocument
+    ) : QueryRunRejectionWireDocument
+
     @Serializable @SerialName("workspace-not-ready") data object WorkspaceNotReady : QueryRunRejectionWireDocument
 
     @Serializable
@@ -134,6 +178,12 @@ internal object CanonicalQuerySerializers {
             QueryRunResultWireDocument.serializer(),
             QueryRunResult::toQueryWireDocument,
             QueryRunResultWireDocument::toContract,
+            validateValue = { value ->
+                when (val admitted = value.validateImpactAccounting()) {
+                    is Refinement.Refined -> admitted
+                    is Refinement.Rejected -> Refinement.Rejected(WireFailure.InvalidImpactAccounting(admitted.failure))
+                }
+            },
         )
     val qualification =
         factory.create(
@@ -156,12 +206,15 @@ private fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
 
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
+        question = question,
+        impactAccounting = impactAccounting,
         items = items.values.map(QueryResultItemDocument::toWire),
         failures = failures.values.map(QueryItemFailureDocument::toWire),
         omissions = omissions.values.map(QueryRelationOmissionDocument::toWire),
         walkObservations = walkObservations.values.map(QueryWalkObservationDocument::toWireDocument),
         referenceObservations = referenceObservations.values.map { it.toWireDocument() },
         discoveryObservations = discoveryObservations.values,
+        relationObservations = relationObservations.values.map { it.toWireDocument() },
         retention = retention,
         nextCursor = nextCursor,
         executionBudget = executionBudget,
@@ -183,19 +236,30 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                                             .convertEach(RelationReferenceOccurrenceWireDocument::toContract)
                                             .flatMapConverted { references ->
                                                 references.bounded().flatMapConverted { boundedReferences ->
-                                                    discoveryObservations.bounded().mapConverted { boundedDiscoveries ->
-                                                        QueryRunResult(
-                                                            items = boundedItems,
-                                                            failures = boundedFailures,
-                                                            omissions = boundedOmissions,
-                                                            walkObservations = boundedObservations,
-                                                            referenceObservations = boundedReferences,
-                                                            discoveryObservations = boundedDiscoveries,
-                                                            retention = retention,
-                                                            nextCursor = nextCursor,
-                                                            executionBudget = executionBudget,
-                                                            referenceAcquisitions = referenceAcquisitions,
-                                                        )
+                                                    discoveryObservations.bounded().flatMapConverted {
+                                                        boundedDiscoveries ->
+                                                        relationObservations
+                                                            .convertEach { it.toContract() }
+                                                            .flatMapConverted { convertedRelations ->
+                                                                convertedRelations.bounded().mapConverted {
+                                                                    boundedRelations ->
+                                                                    QueryRunResult(
+                                                                        question = question,
+                                                                        impactAccounting = impactAccounting,
+                                                                        items = boundedItems,
+                                                                        failures = boundedFailures,
+                                                                        omissions = boundedOmissions,
+                                                                        walkObservations = boundedObservations,
+                                                                        referenceObservations = boundedReferences,
+                                                                        discoveryObservations = boundedDiscoveries,
+                                                                        relationObservations = boundedRelations,
+                                                                        retention = retention,
+                                                                        nextCursor = nextCursor,
+                                                                        executionBudget = executionBudget,
+                                                                        referenceAcquisitions = referenceAcquisitions,
+                                                                    )
+                                                                }
+                                                            }
                                                     }
                                                 }
                                             }
@@ -323,6 +387,10 @@ private fun QueryRunQualificationWireDocument.toContract(): WireDocumentConversi
 
 private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocument =
     when (this) {
+        is QueryRunRejection.ImpactSourceRejected -> QueryRunRejectionWireDocument.ImpactSourceRejected(cause)
+        is QueryRunRejection.ImpactExecutionRejected -> QueryRunRejectionWireDocument.ImpactExecutionRejected(cause)
+        is QueryRunRejection.ImpactPresentationRejected ->
+            QueryRunRejectionWireDocument.ImpactPresentationRejected(cause)
         QueryRunRejection.WorkspaceNotReady -> QueryRunRejectionWireDocument.WorkspaceNotReady
         is QueryRunRejection.ReferenceRejected ->
             QueryRunRejectionWireDocument.ReferenceRejected(
@@ -346,6 +414,12 @@ private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocume
 
 private fun QueryRunRejectionWireDocument.toContract(): WireDocumentConversion<QueryRunRejection> =
     when (this) {
+        is QueryRunRejectionWireDocument.ImpactSourceRejected ->
+            WireDocumentConversion.Converted(QueryRunRejection.ImpactSourceRejected(cause))
+        is QueryRunRejectionWireDocument.ImpactExecutionRejected ->
+            WireDocumentConversion.Converted(QueryRunRejection.ImpactExecutionRejected(cause))
+        is QueryRunRejectionWireDocument.ImpactPresentationRejected ->
+            WireDocumentConversion.Converted(QueryRunRejection.ImpactPresentationRejected(cause))
         QueryRunRejectionWireDocument.WorkspaceNotReady ->
             WireDocumentConversion.Converted(QueryRunRejection.WorkspaceNotReady)
         is QueryRunRejectionWireDocument.ReferenceRejected ->

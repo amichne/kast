@@ -58,7 +58,7 @@ class ReferenceProgressTest {
             retained = continuation.providerState
             request =
                 RelationRequest.resume(
-                        (initial.subject as RelationEndpoint.Subject).selector,
+                        (initial.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector,
                         initial.meaning,
                         initial.budget,
                         continuation,
@@ -117,7 +117,13 @@ class ReferenceProgressTest {
     private fun occurrence(request: RelationRequest, locator: RelationProviderLocator): RelationReferenceOccurrence =
         RelationReferenceOccurrence.confirmed(
                 request,
-                RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity)
+                RelationConfirmedReferenceTarget.fromCompiler(
+                        request.subject,
+                        io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromSelector(
+                            (request.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject)
+                                .selector
+                        ),
+                    )
                     .value(),
                 RelationOccurrence.fromBoundary(locator.file, locator.range.startInclusive, locator.range.endExclusive)
                     .value(),
@@ -154,7 +160,13 @@ class ReferenceProgressTest {
         collector.retainProviderState(retained, preparedPartition = true)
         collector.beginProviderItem(locators.first().descriptor)
         val target =
-            RelationConfirmedReferenceTarget.fromCompiler(request.subject, request.subject.compilerIdentity).value()
+            RelationConfirmedReferenceTarget.fromCompiler(
+                    request.subject,
+                    io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromSelector(
+                        (request.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector
+                    ),
+                )
+                .value()
         val occurrence =
             RelationReferenceOccurrence.confirmed(
                     request,

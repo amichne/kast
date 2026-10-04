@@ -236,6 +236,11 @@ internal object KastObserverFixtures {
             strategy = TraversalStrategyDocument.BreadthFirst,
             partialExpansions = bounded(emptyList()),
             coverage = coverage,
+            requestedDomain = io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument.WORKSPACE,
+            effectiveDomain = fixtureWalkDomain(),
+            domainFingerprint =
+                io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint.parse("1".repeat(64))
+                    .required(),
         )
     }
 
@@ -247,6 +252,7 @@ internal object KastObserverFixtures {
     ): String {
         val result =
             QueryRunResult(
+                fixtureQueryQuestion(),
                 bounded(items),
                 bounded(emptyList()),
                 bounded(emptyList()),
@@ -376,3 +382,40 @@ internal object KastObserverFixtures {
             is Refinement.Rejected -> error("Invalid typed observer fixture: $failure")
         }
 }
+
+private fun fixtureQueryQuestion(): io.github.amichne.kast.protocol.contract.QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: io.github.amichne.kast.kernel.Refinement<Value, Failure>): Value =
+        when (value) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return io.github.amichne.kast.protocol.contract.QueryQuestionDocument(
+        io.github.amichne.kast.protocol.contract.QueryFromDocument.Location(
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolText.parse("Fixture.kt")),
+            fixtureValue(io.github.amichne.kast.protocol.contract.ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(emptyList())),
+        io.github.amichne.kast.protocol.contract.QueryOutputDocument.Symbols(
+            fixtureValue(
+                io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                    listOf(io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument.NAME)
+                )
+            )
+        ),
+    )
+}
+
+private fun fixtureWalkDomain(): io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument =
+    io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument(
+        io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument.Workspace,
+        io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument.PRODUCTION_AND_TEST,
+        io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument.All,
+        null,
+        null,
+        (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                emptyList<io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument>()
+            ) as io.github.amichne.kast.kernel.Refinement.Refined)
+            .value,
+    )

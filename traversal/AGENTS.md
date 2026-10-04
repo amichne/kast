@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-29 | hash: 040393c2bd3c -->
+<!-- generated: 2026-10-03 | hash: 040393c2bd3c -->
 
 # traversal
 
@@ -9,11 +9,13 @@ Defines bounded multi-hop traversal plans/results and executes them over relatio
 
 ## Key Files
 
+- [TraversalScopeExclusion.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalScopeExclusion.kt) - admitted relation exclusions retain exact frontier subject, depth, authority, and requested expansion domain.
+
 - [TraversalContinuation.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt) - authority-bound detached frontier and remainder integrity.
 - [TraversalReferenceObservation.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalReferenceObservation.kt) - proven file-level occurrences preserved without fabricated graph endpoints.
 - [TraversalProgress.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalProgress.kt) - cumulative progressing checkpoint evidence.
 - [TraversalPartialExpansion.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt) - page-local partially expanded subjects and remainder evidence.
-- [contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt) - traversal plan and limits.
+- [contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt) - traversal plans and limits preserve expansion domains through identity and continuation binding.
 - [contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt) - retained state.
 - [contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalResult.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalResult.kt) - result model.
 - [service/src/main/kotlin/io/github/amichne/kast/traversal/service/TraversalService.kt](service/src/main/kotlin/io/github/amichne/kast/traversal/service/TraversalService.kt) - orchestration.

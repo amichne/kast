@@ -31,7 +31,8 @@ enum class PublicToolIdentity(
             "ounts, coverage and unfinished input. Reference occurrence rows retain compiler target identity an" +
             "d explicit declaration-owned, file-scoped or unavailable ownership. A published execution page rep" +
             "lays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its" +
-            " owner publishes or drains.",
+            " owner publishes or drains. Set steps[].expansionScope to WORKSPACE, RETAINED_SEED, or SOURCE_DOMA" +
+            "IN to control native relation destinations separately from source discovery and output predicates.",
         HostedToolLoading.EAGER,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

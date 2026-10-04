@@ -17,7 +17,6 @@ import io.github.amichne.kast.relation.contract.RelationOmissionMeasurement
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 
 internal sealed interface QueryRelationStageResult {
@@ -32,6 +31,7 @@ internal sealed interface QueryRelationStageResult {
         val occurrences: List<QueryOccurrence> = emptyList(),
         val referenceObservations: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> =
             emptyList(),
+        val observation: io.github.amichne.kast.query.contract.QueryRelationObservation? = null,
     ) : QueryRelationStageResult
 }
 
@@ -40,6 +40,7 @@ internal fun QueryRelationStageResult.Read.nextTasks(task: PipelineTask.Related)
         occurrences.map(PipelineTask::Occurrence) +
         referenceObservations.map(PipelineTask::ReferenceObservation) +
         omissions.map(PipelineTask::Omission) +
+        observation?.evidenceUnits().orEmpty().map(PipelineTask::RelationObservation) +
         listOfNotNull(continuation?.let { task.copy(cursor = it) })
 
 /** One bounded query hop delegates semantic discovery and cursor validation to the relation domain. */
@@ -84,6 +85,13 @@ internal class QueryRelationStage(private val relations: RelationOperations) {
             omissions,
             if (independentOccurrences) references.map(QueryOccurrence::Reference) else emptyList(),
             if (independentOccurrences) emptyList() else references,
+            when (result) {
+                is RelationReadResult.Complete ->
+                    io.github.amichne.kast.query.contract.QueryRelationObservation.from(result)
+                is RelationReadResult.Qualified ->
+                    io.github.amichne.kast.query.contract.QueryRelationObservation.from(result)
+                is RelationReadResult.Rejected -> null
+            },
         )
     }
 
@@ -136,16 +144,14 @@ private fun PipelineTask.Related.relationRequest(
     budget: io.github.amichne.kast.relation.contract.RelationBudget
 ): Refinement<RelationRequest, io.github.amichne.kast.relation.contract.RelationResumeFailure> =
     if (cursor == null)
-        Refinement.Refined(
-            RelationRequest.start(value.selector, stage.meaning, budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
-        )
+        Refinement.Refined(RelationRequest.start(value.selector, stage.meaning, budget, stage.expansion))
     else
         RelationRequest.resume(
             value.selector,
             stage.meaning,
             budget,
             cursor,
-            RelationSearchBoundary.WORKSPACE_EXPANSION,
+            stage.expansion,
         )
 
 /** Page limits clear after continuation; permanent omitted evidence and terminal limits stay query-visible. */

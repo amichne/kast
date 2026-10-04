@@ -15,6 +15,8 @@ import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGaugeValue
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 
@@ -152,40 +154,63 @@ internal fun readRelationInventory(
     confirm: (RelationProviderState, RelationProviderLocator) -> Boolean,
     cancellationCheck: () -> Unit,
     observation: IntellijReadObservation = IntellijReadObservation.None,
+    clockNanoseconds: () -> Long = System::nanoTime,
 ): ProviderTermination {
     var retained =
-        when (val inventory = request.inventoryForInvocation(collector, prepare)) {
+        when (val inventory = request.inventoryForInvocation(collector, prepare, observation, clockNanoseconds)) {
             is RelationInventoryPreparation.Prepared -> inventory.state
             RelationInventoryPreparation.Unavailable -> return ProviderTermination.HALTED
         }
-    if (retained.provider == RelationProviderKind.PUBLISHED_TOPOLOGY_V1) {
-        collector.blockPartition(RelationLimitation.UNSUPPORTED_ITEM)
-        return ProviderTermination.HALTED
-    }
-    observation.count(IntellijReadCounter.RELATION_REPLAYED_PREFIX, amount = 0)
-    while (retained.hasUnfinishedWork) {
-        cancellationCheck()
-        val locator = retained.prepared.first()
-        if (collector.beginProviderItem(locator.descriptor) != IntellijRelationProviderItemAdmission.READY)
+    val confirmationStarted = clockNanoseconds()
+    try {
+        if (retained.provider == RelationProviderKind.PUBLISHED_TOPOLOGY_V1) {
+            collector.blockPartition(RelationLimitation.UNSUPPORTED_ITEM)
             return ProviderTermination.HALTED
-        val continued = confirm(retained, locator)
-        if (collector.providerItemConsumed) {
-            retained = retained.consume(collector.providerConsumption)
-            if (!collector.retainProviderState(retained)) return ProviderTermination.HALTED
         }
-        if (!continued) return ProviderTermination.HALTED
+        observation.count(IntellijReadCounter.RELATION_REPLAYED_PREFIX, amount = 0)
+        while (retained.hasUnfinishedWork) {
+            cancellationCheck()
+            val locator = retained.prepared.first()
+            if (collector.beginProviderItem(locator.descriptor) != IntellijRelationProviderItemAdmission.READY)
+                return ProviderTermination.HALTED
+            when (val consumed = consumeRelationLocator(retained, locator, collector, confirm)) {
+                is RelationLocatorConsumption.Continue -> retained = consumed.state
+                RelationLocatorConsumption.Halted -> return ProviderTermination.HALTED
+            }
+        }
+        return ProviderTermination.TERMINAL
+    } finally {
+        observeRelationElapsed(
+            IntellijReadGauge.RELATION_CONFIRMATION_NANOS,
+            confirmationStarted,
+            clockNanoseconds,
+            observation,
+        )
     }
-    return ProviderTermination.TERMINAL
 }
 
 private fun RelationRequest.inventoryForInvocation(
     collector: IntellijRelationCollector,
     prepare: () -> RelationInventoryPreparation,
+    observation: IntellijReadObservation,
+    clockNanoseconds: () -> Long,
 ): RelationInventoryPreparation {
     if (collector.admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY)
         return RelationInventoryPreparation.Unavailable
     return when (val selected = position) {
-        RelationReadPosition.Start -> prepare()
+        RelationReadPosition.Start -> {
+            val started = clockNanoseconds()
+            try {
+                prepare()
+            } finally {
+                observeRelationElapsed(
+                    IntellijReadGauge.RELATION_PREPARATION_NANOS,
+                    started,
+                    clockNanoseconds,
+                    observation,
+                )
+            }
+        }
         is RelationReadPosition.Resume -> RelationInventoryPreparation.Prepared(selected.continuation.providerState)
     }
 }
@@ -202,4 +227,38 @@ internal fun observeRelationLocatorRestoration(
             is RelationReadPosition.Resume -> position.continuation.providerState.consumedLocatorCount
         }
     if (restoredOrdinal.value < admitted.value) observation.count(IntellijReadCounter.RELATION_REPLAYED_PREFIX)
+}
+
+private fun observeRelationElapsed(
+    gauge: IntellijReadGauge,
+    started: Long,
+    clockNanoseconds: () -> Long,
+    observation: IntellijReadObservation,
+) {
+    when (val elapsed = IntellijReadGaugeValue.parse((clockNanoseconds() - started).coerceAtLeast(0L))) {
+        is Refinement.Refined -> observation.measure(gauge, elapsed.value)
+        is Refinement.Rejected -> error("Monotone elapsed measurement cannot be negative")
+    }
+}
+
+private sealed interface RelationLocatorConsumption {
+    data class Continue(val state: RelationProviderState) : RelationLocatorConsumption
+
+    data object Halted : RelationLocatorConsumption
+}
+
+private fun consumeRelationLocator(
+    retained: RelationProviderState,
+    locator: RelationProviderLocator,
+    collector: IntellijRelationCollector,
+    confirm: (RelationProviderState, RelationProviderLocator) -> Boolean,
+): RelationLocatorConsumption {
+    val continued = confirm(retained, locator)
+    val next =
+        if (collector.providerItemConsumed) {
+            val consumed = retained.consume(collector.providerConsumption)
+            if (!collector.retainProviderState(consumed)) return RelationLocatorConsumption.Halted
+            consumed
+        } else retained
+    return if (continued) RelationLocatorConsumption.Continue(next) else RelationLocatorConsumption.Halted
 }

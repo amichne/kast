@@ -9,6 +9,7 @@ import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoveryObservation
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
+import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryJoinMode
@@ -23,7 +24,17 @@ import io.github.amichne.kast.query.contract.QuerySymbolFields
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ResolvedSymbol
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBlockCause
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryProgress
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -31,6 +42,45 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class QueryDiscoveryEvidenceTest {
+    @Test
+    fun `every blocked discovery cause prevents complete empty evidence at construction`() = runTest {
+        val fixture = DiscoveryEvidenceFixture()
+        for (cause in SymbolDiscoveryBlockCause.entries) {
+            val discovery = SymbolDiscoveryOperations { request ->
+                val batch =
+                    SymbolDiscoveryBatch.create(
+                            request,
+                            emptyList(),
+                            SymbolDiscoveryByteCount.parse(0L).refinedEvidence(),
+                            SymbolDiscoveryWorkCount.Zero,
+                            SymbolDiscoveryTimings(
+                                SymbolDiscoveryElapsedNanoseconds.Zero,
+                                SymbolDiscoveryElapsedNanoseconds.Zero,
+                            ),
+                        )
+                        .refinedEvidence()
+                io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult.Discovered(
+                    SymbolDiscoveryOutcome.Qualified(
+                        batch,
+                        SymbolDiscoveryQualifications.from(setOf(SymbolDiscoveryQualification.PROVIDER_FAILURE))
+                            .refinedEvidence(),
+                        SymbolDiscoveryProgress.Blocked(cause),
+                    )
+                )
+            }
+            val request = fixture.scope.request(fixture.discoveryPlan(), 100L)
+            val page = fixture.scope.service(discovery = discovery).run(request) as QueryExecutionResult.Qualified
+            assertEquals(
+                QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION),
+                QueryExecutionResult.Complete.create(
+                    page.result,
+                    QueryCoverage.Complete(QueryCount.parse(0).refinedEvidence()),
+                ),
+                "blocked cause $cause remains unresolved",
+            )
+        }
+    }
+
     @Test
     fun `retained discovery witnesses survive every composition without double counting`() = runTest {
         val fixture = DiscoveryEvidenceFixture()
@@ -111,6 +161,8 @@ private class DiscoveryEvidenceFixture {
             QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refinedEvidence()),
         )
 
+    fun discoveryPlan(): AdmittedQueryPlan = plan(setOf(CompilerSymbolKind.CLASSLIKE))
+
     suspend fun read(
         kinds: Set<CompilerSymbolKind> = setOf(CompilerSymbolKind.CLASSLIKE),
         discovery: SymbolDiscoveryOperations =
@@ -134,7 +186,7 @@ private class DiscoveryEvidenceFixture {
     ): QueryRetainedResult.Symbols =
         QueryRetainedResult.capture(
                 read.request.lease,
-                QueryExecutionResult.Complete(
+                QueryExecutionResult.Complete.create(
                     read.execution.result.copy(
                         rows = QueryRows.Symbols.of(emptyList()),
                         discoveryObservations = observations,

@@ -24,7 +24,10 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 internal class QueryOutcomeProjection(
     private val authority: QueryReferenceAuthority,
     private val state: QueryStateStore,
+    private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
 ) {
+    private val presentation = QueryResultPresentation(state, retentionObservation)
+
     fun projectExecution(
         request: QueryRunRequest.Run,
         lease: SemanticReadAuthority,
@@ -32,6 +35,8 @@ internal class QueryOutcomeProjection(
         publicationOwner: QueryExecutionClaim? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> =
         when (result) {
+            is QueryExecutionResult.ImpactRejected ->
+                OperationOutcome.Rejected(QueryRunRejection.ImpactExecutionRejected(result.failure.executionDocument()))
             is QueryExecutionResult.Complete ->
                 project(
                     request = request,
@@ -82,10 +87,11 @@ internal class QueryOutcomeProjection(
             lease = lease,
             result = presentation.result,
             coverage = presentation.coverage,
-            continuationState = restored.result.producerProgress,
+            continuationState = presentation.producerProgress,
             output = request.output,
             presentedRetention = QueryResultRetention.Retained(request.result),
             presentedRowIds = presentation.rowIds,
+            originalPathRowIds = presentation.originalPathRowIds,
             protectedResult = request.result,
             presentationWindow = presentation.window,
             progressOrigin = QueryProgressOrigin.RETAINED_RESULT,
@@ -107,6 +113,7 @@ internal class QueryOutcomeProjection(
         retainedExecution: QueryExecutionResult? = null,
         presentedRetention: QueryResultRetention? = null,
         presentedRowIds: List<QueryResultRowReference>? = null,
+        originalPathRowIds: List<QueryResultRowReference>? = null,
         protectedResult: QueryResultReference? = null,
         presentationWindow: QueryRetainedPresentationWindow? = null,
         progressOrigin: QueryProgressOrigin = QueryProgressOrigin.EXECUTION,
@@ -114,9 +121,9 @@ internal class QueryOutcomeProjection(
         publicationOwner: QueryExecutionClaim? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val evidence =
-            when (val projected = QueryProjectedEvidence.from(result, output, authority)) {
+            when (val projected = projectEvidence(result, output, presentedRowIds, originalPathRowIds)) {
                 is Refinement.Refined -> projected.value
-                is Refinement.Rejected -> return contractRejected()
+                is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
             }
         val qualification =
             when (
@@ -136,26 +143,41 @@ internal class QueryOutcomeProjection(
         val presented =
             when (
                 val projected =
-                    QueryResultPresentation(state)
-                        .present(
-                            request,
-                            lease,
-                            evidence.items,
-                            retainedExecution,
-                            qualification?.progress,
-                            presentedRetention,
-                            presentedRowIds,
-                            publicationOwner,
-                        )
+                    presentation.present(
+                        request,
+                        lease,
+                        evidence.items,
+                        retainedExecution,
+                        qualification?.progress,
+                        presentedRetention,
+                        presentedRowIds,
+                        publicationOwner,
+                    )
             ) {
                 is Refinement.Refined -> projected.value
-                is Refinement.Rejected -> return contractRejected()
+                is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
             }
-        return finishProjection(lease, evidence, presented, qualification, presentationWindow, presentationOrigin)
+        return finishProjection(
+            lease,
+            io.github.amichne.kast.protocol.contract.QueryQuestionDocument.from(request),
+            evidence,
+            presented,
+            qualification,
+            presentationWindow,
+            presentationOrigin,
+        )
     }
+
+    private fun projectEvidence(
+        result: QueryResult,
+        output: QueryOutputDocument,
+        rowIds: List<QueryResultRowReference>?,
+        originalPathRowIds: List<QueryResultRowReference>?,
+    ) = QueryProjectedEvidence.from(result, output, authority, rowIds, originalPathRowIds)
 
     private fun finishProjection(
         lease: SemanticReadAuthority,
+        question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
         evidence: QueryProjectedEvidence,
         presented: PresentedQueryRows,
         qualification: QueryRunQualification?,
@@ -166,13 +188,25 @@ internal class QueryOutcomeProjection(
             QueryKnownMinimum.parse(it).refinedForQueryOrNull() ?: return contractRejected()
         }
         val fittedWindow =
-            when (val admitted = presented.retention.presentationWindow(window, presented.items.values.size)) {
+            when (
+                val admitted =
+                    presented.retention.presentationWindow(
+                        window
+                            ?: when (val selection = presented.selection) {
+                                is QueryPresentedWindowSelection.Contiguous -> selection.window
+                                is QueryPresentedWindowSelection.NonContiguous -> selection.window
+                                QueryPresentedWindowSelection.NotRetained -> null
+                            },
+                        presented.items.values.size,
+                    )
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return contractRejected()
             }
         val envelope =
             authority.resultEnvelope(
                 lease,
+                question,
                 presented,
                 evidence,
                 fittedWindow,

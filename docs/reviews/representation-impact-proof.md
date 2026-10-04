@@ -1,0 +1,312 @@
+# Installed representation-impact proof
+
+The installed candidate 9 returns **19 qualified paths from four exact producers**, with explicit accounting for all five independently requested sites. Every admitted path retains a consumer result, reviewed persistence boundary, or explicit unresolved terminal. Required obligations remain `NATIVE_FLOW`, `BOUNDARY`, `REPRESENTATION_STATE` and `REQUESTED_SITE_RELATIONSHIP`; the investigation cannot claim semantic `Complete`. Separate reviewed peer models preserve source and target bases and end at an unresolved peer-flow boundary. These are different questions with different models.
+
+The current tested artifact is commit **`7595554f20802c1d9849f0b38f6ff7f7b1c40bcd`**, including independent-peer implementation `a79b1184e0134cd730d46634292c73c3f965141b`, candidate version `0.1.9`. This is local installed qualification on macOS arm64, IntelliJ IDEA 2026.2.3 / JBR 25.0.4. Later receipt edits do not change the tested artifact identity. It is not a published release, deployed compatibility proof, or evidence that the six issues are closed.
+
+The earlier sections retain the completed candidate-5 checkpoint at `8bd9bf5db3701368f6cd10895065393fa24244a6`, including implementation `5d338edda`, version `0.1.5`. Independent audits cover the #909 regressions, larger-domain counterfactual, local rename, actual foreign-basis admission rejection and same-basis serialization continuation. Candidate 7, 8 and 9 observations follow separately. Counts and timings from different questions, artifacts or profiles are not combined into performance comparisons.
+
+## Candidate-5 question and authority
+
+The [capture adapter and reacquisition recipe](../../experiments/representation-impact/README.md) invoke schema-admitted public Tool RPC. The [authored fixture intent](../../experiments/representation-impact/fixture-intent.expected.json) provides source anchors, not compiler facts. The copied ASCII fixture has SHA-256 `58509a615028343d7dd5f0b5c919d27d0b234f1cfa94d35c9c8f2fe4fb7a7be2`.
+
+| Component | Actual investigation |
+| --- | --- |
+| Basis B | One `LIVE` root/content view/reference version, host `bb4f885c-d0a1-4f76-9928-23a8a1048d17`, epoch 1, owned IDEA PID 84164. Compiler identities were reacquired on this basis. |
+| Producers P | Four exact invocation results at UTF-16 ranges `876–901`, `919–944`, `1296–1319`, `1385–1411`, enclosed by the current `investigate` declaration. Same callable does not merge roots. |
+| Domain D | `WORKSPACE` on the admitted imported model, with native source ownership and explicit qualifications. Filtering does not narrow the investigation ledger. |
+| Flow F | `KOTLIN_FORWARD_V1`; detached native value sites, ordered compiler transfers, wrapper evidence, and finite unsupported terminals. K2 remains semantic authority. |
+| Models M | Five reviewed representation rules and one reviewed persistence rule, bound to exact current callable/invocation/slot evidence. Representation names and compatibility assumptions are supplied model facts. |
+
+Full acquisition records 57 native flow observations, 55 compiler transfers, 14 flow obligations, five wrapper observations, six model witnesses, and zero read rejection records. Zero read rejections does not discharge unresolved flow obligations. Original seed accounting is `8/6/4/1`, totaling 19.
+
+## Before and resulting behavior
+
+| Installed artifact | Observed behavior |
+| --- | --- |
+| Baseline `825dfbae1f0033a35250ed367b39be713780272f` | Public `IMPACT` request rejects with `INVALID_ARGUMENTS`. Direct Voltage/Hiped searches complete with 3/1 results, but provide no equivalent value-flow/provenance/boundary investigation. |
+| Candidate 2 `dd093f217d878677ad68e6336c1cb6b5cb09ebe1` | Qualified 11-path execution stop. Checkpoint accounting requires 8393486–8675898 bytes against an 8388608-byte (8 MiB) bound. This is a preserved resource failure. |
+| Candidate 3 `93a47e83bbfaca148428b4d4061d42bc7ee8f4b1` | Qualified 19-path ledger and retained evidence; exact identity/accounting refinement removes the checkpoint capacity failure. |
+| Candidate 4 `6ce78b633468adae74fe2986b0978221082d08b6` | Full ledger and compact findings work, but a real work-30 `RUN` fails at retention with generic `internal-contract-violation`, erasing the valid pending checkpoint. |
+| Candidate 5 `8bd9bf5db3701368f6cd10895065393fa24244a6` | Work-30 pending result is retained with its exact checkpoint. Pending paths preserve it; findings finitely reject until the original ledger exists. Full 19-path and compact presentation proofs remain unchanged. |
+
+The final change uses the existing result store and continuation owner. [QueryResultRetentionSource](../../query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt) distinguishes presented results, pending impact, and original investigation capture. Only an empty qualified evidence-only impact result with a resumable checkpoint admits pending capture. Other inconsistent combinations preserve `INCONSISTENT_COVERAGE`. [Finite retention observations](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt) expose capture, issuance, and rejection at the hosted effect boundary without recording source payloads or handles. No second semantic engine, investigation store, or continuation authority was added.
+
+## Original terminal accounting
+
+Ranges identify the exact fixture; they have no authority without the retained compiler basis and enclosing declaration. `DIFFERENT`, `SATISFIED`, and `UNKNOWN` are separate consumer verdicts. Current representation remains distinct from origin and transformation history.
+
+| Ordinal | Producer range | Terminal and destination | Current representation |
+| ---: | --- | --- | --- |
+| 0 | 876–901 | Unmodeled call 992–1011 | Voltage |
+| 1 | 876–901 | Unmodeled call 1085–1092 | Voltage |
+| 2 | 876–901 | Mutable control flow 1106–1128 | Voltage |
+| 3 | 876–901 | Consumer `DIFFERENT` 1266–1278 | Voltage |
+| 4 | 876–901 | Consumer `DIFFERENT` 1486–1493 | Voltage |
+| 5 | 876–901 | Consumer `DIFFERENT` 1552–1561 | Voltage |
+| 6 | 876–901 | Unresolved reference 1591–1596 | Voltage |
+| 7 | 876–901 | Reviewed persistence argument 1736–1741 | Voltage |
+| 8 | 919–944 | Unmodeled call 1013–1019 | Voltage |
+| 9 | 919–944 | Consumer `DIFFERENT` 1033–1039 | Voltage |
+| 10 | 919–944 | Unmodeled call 1094–1100 | Voltage |
+| 11 | 919–944 | Unsupported expression 1170–1176 | Voltage |
+| 12 | 919–944 | Consumer `DIFFERENT` 1266–1278 | Voltage |
+| 13 | 919–944 | Unresolved reference 1663–1669 | Voltage |
+| 14 | 1296–1319 | Consumer `DIFFERENT` 1424–1437 | Hiped |
+| 15 | 1296–1319 | Consumer `UNKNOWN` 1424–1437 | Unknown: `INPUT_STATE_NOT_ESTABLISHED` |
+| 16 | 1296–1319 | Consumer `SATISFIED` 1424–1437 | Plaintext |
+| 17 | 1296–1319 | Consumer `DIFFERENT` 1424–1437 | Voltage |
+| 18 | 1385–1411 | Consumer `DIFFERENT` 1424–1437 | Voltage |
+
+Totals: ten consumers (eight different, one satisfied, one unknown), eight unresolved flow terminals, and one reviewed persistence terminal. Persistence keeps `RETENTION_POLICY`, `DECODING_COMPATIBILITY`, and `MIGRATION_PROOF` obligations. The four alternatives from producer `1296–1319` retain their separate ordered histories.
+
+Three authored downstream sites remain outside compiler reach: assignment display `1133–1152`, later assignment `1181–1200`, and response send `1602–1616`. Their associations with upstream mutable/unsupported/reference cuts are authored context, not proven edges or proof of absence. They remain explicit unknowns in the named-site audit.
+
+## Retention, continuation, and adverse cases
+
+Candidate 5 full acquisition has 171 actual captures, including 163 investigated retained reads. Every retained page matches the original basis, question, row IDs, accounting, closure, and effective grants; six selected native query counters are explicitly zero under matched correlation. Wide and one-row drains reconstruct the same ledger. Compact findings add 45 captures: wide 19 rows, 19 one-row pages, five 32768-byte pages with counts `[5,3,5,4,2]`, and 19 exact original-path expansions. The independent compact audit has 11 passing checks and one pending equivalent full-path 32768-byte comparison.
+
+An actual work-30 `RUN` issues a pending retained result and checkpoint after two native flow reads. One exact `RESUME` performs 40 further flow reads with zero seed/model/site admission. The final witness set contains 42 unique exact sources; no successful recorded native flow read is duplicated. Fifteen full-run paths remain exact. Four unenumerated branches are replaced by one explicit `WORK_LIMIT_REACHED` path, producing 16 qualified paths. The finite native read at a local binding used grant 6/examined 6 and retained four ordered transfers; the larger initial run used examined 10 and observed eight transfers. The cache preserves this partial observation. Increasing a resume grant advances queued routes without rescanning it. A new larger initial `RUN` is required to investigate the unobserved branches.
+
+The frozen recipe's 19-versus-16 equality assertion fails and remains preserved. This demonstrates a truthful resource cut, not convergence or completeness. Three retained reads of the continued result and one retained read of the original 19-path result remain matched with zero selected native work. Initial pending accounting has no investigated seed basis, so the harness reports `UNAVAILABLE`; its separate raw bound receipt is not promoted to matched semantic correlation.
+
+On the second owned IDEA incarnation (PID 88188, host `df532bca-fb64-49f7-8fb9-607d467717ac`), pending `VALUE_PATHS` is qualified and empty with identical question, accounting, result reference, and upstream checkpoint. Pending `FINDINGS` returns the existing `execution-rejected` / `result-field-unavailable` variant. An independent lookup observes the same host/PID moving epoch 1→2 after an exact owned fixture addition. The unconsumed unfinished checkpoint then rejects as `execution-rejected` / `continuation-unavailable`, with `restart_read`. Five actual requests and five actual semantic documents validate against current canonical schemas. Six selected raw counters are zero on the two pending reads and the stale rejection, but public harness correlation remains `UNAVAILABLE` on all five calls. The observed token file age (74052 ms) and TTL (600000 ms) do not isolate epoch retirement from expiration or another unavailable cause. Local epoch owners separately retire old query state.
+
+Earlier installed probes retain evidence for unrelated declaration growth and exact-file/source-domain scope, duplicate names, different invocations, reassignment, opaque transformation stops, supported wrapper return, immediate return/property assignment, missing models, wrong callable, synthetic and actual stale model bases, and restart. The unrelated-growth case used three owned files and 16 unrelated declarations; it is not large-domain preparation scaling proof. All source effects were restored exactly.
+
+## Local rename
+
+Nine exact five-byte identifiers change `first`→`clear`, leaving all source offsets stable. Fresh identities are acquired before and after the edit on owned PID 91659 / host `23343c5c-7ac8-40cc-9c1c-f3e9c014a7f1`, epochs 1→2. Each cohort contains 15 actual captures, including seven retained reads. The independent audit passes 43 direct checks and nine detached adverse-auditor checks; all 30 actual request envelopes and response documents validate against current canonical schemas.
+
+All 19 full path payloads remain equal after normalizing only the independently verified live host/epoch and excluding the outer request-local row ID across results. Exact ranges, compiler identities, steps, current representation, ordered history, models, terminal variants, obligations, and closure remain compared. Within each result, row IDs/order/payload remain exact. Both cohorts retain `8/6/4/1` paths, four producers, six models, 57 native headers, 55 transfers, 14 obligations, 126 native witnesses, and zero read rejection records. Fifty-seven native elapsed allowances differ and remain recorded; there is no blanket byte-equivalence claim.
+
+All seven retained reads per cohort have `MATCHED` correlation and six explicit zero counters. Six ordinary lookups retain `UNAVAILABLE` correlation. Native witness pages contain `100+26` rows under exact requested/effective max-results 128, with no clamping. The original 1745-byte source is restored exactly to SHA-256 `58509a615028343d7dd5f0b5c919d27d0b234f1cfa94d35c9c8f2fe4fb7a7be2`; reconstruction of the nine edits yields renamed SHA `5f7e9765c778c417dc88c26629853050dfbcd878d6b7d4965c8d24afa267b71d`. Rename stability preserves qualified evidence, including its unresolved obligations.
+
+## Scoped preparation under unrelated growth
+
+The third owned IDEA incarnation, PID 91659 / host `23343c5c`, captures baseline, larger-domain, and restored cohorts at epochs 3, 4, and 5. Growth adds 64 exact files, 1126720 bytes, and 8192 authored self-call sites to the existing imported `core/main` module. It does not change build settings or add an imported root. The narrow domain remains the direct `logging/main` fixture directory; the comparison domain is `WORKSPACE`.
+
+An independent audit enumerates 38 actual captures: one preserved first harness attempt, then 12 baseline, 13 large, and 12 restored captures. All three original K2 reference facts, their compiler identities and source anchors, domain fingerprints, and 4746-byte inventories stay unchanged. Both domains' one-row drains return `[1,1,1]`, with exact fact sets equal to each wide repetition. Wide and drained output orders differ; the final retained delta is one. A native lookup establishes one representative decoy as a distinct callable. The 8192 authored self-calls are fixture intent, not 8192 individually compiler-confirmed facts.
+
+| Domain | Baseline preparation median ms | Large median ms | Restored median ms |
+| --- | ---: | ---: | ---: |
+| `SOURCE_DOMAIN` | 2.987 | 4.355 | 2.735 |
+| `WORKSPACE` | 3.241 | 3.897 | 3.264 |
+
+Each median has three actual observations. First source-domain preparations after epoch changes reach 50.820 ms and 47.627 ms. The records separate preparation, confirmation, RPC time, bytes, gauges, and counter vectors; they establish no flat-cost, speedup, CPU/heap, or provider-internal index-hit claim. Scoped eligibility precedes candidate capacity and detached locator inventory in production source. Retained resumes show no new preparation gauge or inventory phase, with recorded prefix replay zero.
+
+All 37 verbose captures retain exact requested/effective grants without clamping. Public harness correlation remains `UNAVAILABLE`; actual verbose public live bases separately match the raw PID/host/epoch receipts. The first successful product query returned three facts, but its harness stopped at `GRANT_MISMATCH` because verbose budget metadata was omitted. That capture and executed runner remain unchanged. The corrected runner explicitly requests verbose output and counts the prior attempt against the shared 80-capture bound. All 64 files and two newly created parents were removed by exact restoration, preserving five original input hashes.
+
+## Reviewed serialization continuation
+
+All five variants execute on the second host's epoch 2: 113 captures, 96 retained pages, 87 independent passing checks. Two exact modeled edges connect argument 0 to result: response writer→client reader, then later-request sender→server reader. Both use reviewed serialization slot `ciphertext` and explicit contract assumptions `CONTRACT_COMPATIBLE` and `REPRESENTATION_PRESERVED` on one compiler root/basis.
+
+| Variant | Actual result |
+| --- | --- |
+| Full reviewed models | One `Complete`/conserved supported path; 12 native flow reads, nine compiler transfers, two modeled boundary steps, final satisfied Voltage consumer. |
+| Missing boundary models | One qualified `UNMODELED_CALL` path with `NATIVE_FLOW` obligation. No inferred typed missing-boundary recognition. |
+| Reviewed version 1→2 | One complete conserved modeled path. Both versions remain visible; compatibility is still a caller-supplied reviewed assumption. |
+| Wrong same-name writer | Finite `CALLABLE_MISMATCH`; no retained result. |
+| Synthetic stale outer model basis | Finite `MODEL_INVALID_INVOCATION`; no retained result. Distinct from the actual epoch-change checkpoint experiment. |
+
+All six retained sections preserve exact rows, ordinal chains, original accounting, and closure under wide/one-row grants with matched zero selected native work. This is same-root modeled continuation; it proves no real network, deployed compatibility, runtime cryptography, or foreign enrolled compiler authority.
+
+## Independently acquired peer basis
+
+The fourth owned IDEA incarnation, PID 98064, opens and imports a separate seven-file peer fixture through the public workspace-preparation path. Native producer acquisition uses peer-first, source-second reads, fresh declaration references, and current canonical schemas. Nine actual calls acquire the two producer witnesses and submit one combined boundary request:
+
+| Endpoint | Actual acquired live basis |
+| --- | --- |
+| Source fixture | Host `0288dfb4-664d-408c-a5d5-8680b0f05372`, epoch 1, original canonical fixture root |
+| Peer fixture | Host `af905a1b-877d-4edd-b027-ade7478cbbc3`, epoch 2, `/private/tmp/ka-2osfg1j9-v5/peer-fixture-0` |
+
+Both witnesses identify exact invocation-result range `876–901` within their own compiler-resolved enclosing/callable declarations. Equal names and ranges do not combine their roots or authorities. The source-root request supplies one reviewed continuation with these actual positions; its contract vocabulary and compatibility assumptions remain caller-supplied model facts. Production rejects `IMPACT_SOURCE_REJECTED` / `ADMISSION` / `BOUNDARY_BASIS_MISMATCH`, position 1. It creates no combined retained result or positive cross-repository edge.
+
+Public correlation on that rejection is `UNAVAILABLE`. One separate raw receipt matches the source host/epoch and PID and records six selected query counters as zero; it is not response-correlated semantic proof. Earlier attempts remain captured: one `TRUST_REQUIRED` prerequisite, then one `FRESHNESS_REJECTED` / `MOVED` at `CONTENT_REVALIDATION` after native import, requesting `restart_read`. The successful fresh retry counts both prior captures: 11 total against a shared bound of 24. Private registration separately rejects `SERVICE_IDENTITY_REJECTED`; native public preparation and producer acquisition are established independently.
+
+The independent audit passes 13 direct checks and six detached adverse-auditor checks. All 11 actual request envelopes and their appropriate semantic, hosted, or runtime diagnostic documents pass canonical validation. Four fresh lookups and the final rejection retain `UNAVAILABLE` correlation; two bootstrap runs and two retained producer reads have `MATCHED` correlation. Both retained producer reads report six selected counters as zero. The audit verifies source/grant/basis/ref conservation and exact trust/retirement receipt authority; it creates no additional native observations.
+
+The peer is created from seven exact owned fixture/wrapper files; native import subsequently writes its own metadata. Standard IDE per-root trust configuration is verified against the installed vendor persistence contract, applied offline after exact owned retirement, and later restored. Trust-all flags and product admission bypasses are not used. Both third and fourth IDE processes have exact ownership-checked retirement, PID absence, and new native shutdown records. The IDE reordered the two trust entries on shutdown; the first exact-byte restoration rejected before any effect. A fresh helper requires the actual reordered preimage SHA `50f001d5709cd66a661d5a9ee3086294136d2bb90023d08622ac51380486a83c` and restores original 297 bytes / SHA `764eaf28492b8030918a6043ccf2e124d3520839e32cf2a23cda9dc17e9ab5d7`, removing only the peer entry. Protected user PID 5961 remains present.
+
+This establishes the public one-basis admission limit against separately acquired native authority. Positive cross-repository modeled evidence remains an implementation requirement: both endpoint proofs must retain their own bases, with an explicit peer proof boundary and unresolved obligations. A decoded peer claim alone cannot become current native authority.
+
+## Measurements and checks
+
+Equivalent presentations use the same retained result, basis, and effective grants. Bytes are actual public stdout, including metadata.
+
+| Presentation | Full paths | Compact findings |
+| --- | ---: | ---: |
+| Wide bytes / pages | 499213 / 1 | 79686 / 1 |
+| Wide RPC nanoseconds | 1609941708 | 1524957208 |
+| Wide hosted nanoseconds | 4790041 | 12580375 |
+| One-row bytes / pages | 804623 / 19 | 386411 / 19 |
+| One-row RPC nanoseconds | 29182928629 | 29043414706 |
+| One-row hosted nanoseconds | 170357710 | 150825790 |
+
+Compact bytes decrease in these cohorts; hosted wide time increases. There is no CPU, heap, latency speedup, or equivalent full-path 32768-byte drain claim. Candidate 2→3 retained quota high-water accounting decreases 27477980→13182772 bytes under a 33554432-byte continuation quota, while paths/work/closure and existing retained entries differ; this is neither heap measurement nor a performance comparison on equivalent semantics. No equivalent manual baseline exists.
+
+Focused pending retention first fails in three behavior cases, then passes eight retention cases, twelve instrumentation cases, and one pending retained-read case. Final affected checks cover 676 tests with zero failures/errors/skips. Global `productBuildGate knowledgeImpact verifyKnowledgeBase` with GraalVM 25 and explicit candidate versions passes: 2775 report tests, zero failures/errors, three documented Codex prerequisite skips; ten owners execute and 35 are up to date. Retained up-to-date reports are not fresh execution. Mintlify validation and broken-link checks pass. JSON contracts, architecture, formatting, detekt, and 28 knowledge concepts pass.
+
+The independent #909 audit traces merged PR commit `9173f9464aea46d2390ffc31a5b0a2cbfd99bdd7` and source commit `fbfe4c874e3e603315fa5a5cc267972d07da6c55`. Nineteen named test classes contain 96 passing cases, zero failures/errors/skips: 71 #909 regression cases and 25 coverage/identity cases. Exact selectors, inspected source bytes, report digests, and executed/up-to-date gate states are retained. Inspected source and test bytes match the installed candidate. This resolves the prior regression-audit gap; it does not turn retained reports into fresh execution or prove every issue criterion.
+
+```sh
+./gradlew :query:protocol:check :query:service:test :runtime:hosted:check :workspace:intellij-read:check
+JAVA_HOME=/Users/amichne/.local/share/mise/installs/java/oracle-graalvm-25.0.2 \
+GRAALVM_HOME=/Users/amichne/.local/share/mise/installs/java/oracle-graalvm-25.0.2 \
+./gradlew productBuildGate knowledgeImpact verifyKnowledgeBase \
+  -PcontrolVersion=0.1.5 -PhostedPluginVersion=0.1.5 --continue
+```
+
+The three skips require `KAST_CODEX_ALIAS_ACCEPTANCE_EXECUTABLE` (two installed Codex cases) or `KAST_CODEX_SCHEMA_DIRECTORY` (one protocol schema case). The initial candidate-5 global build omitted version properties and failed host-release generation; the corrected invocation above passes. Expected broken-registry negative-fixture output does not indicate installed-product success or failure.
+
+Exact artifact assembly uses the tested source revision. Public fresh installation takes 13283050083 ns. Physical archive parity verifies 10906 control files and 36 hosted files. SHA-256: control archive `a54d9756d91a214bf483a66736f8aae324eabb7aaed4991c0bc45fd6173a3641`; hosted archive `61de70bc513d629b5261736102fd66a8f65117b005bf4ac0bc2e5c265682151f`; host release `82c6eec1a7f432ab3adf205e112c81750f5114e4b825f05c4abc6ea4d7cd19ee`. Saved client/host response limits are both 524288 bytes; the exact wrapper SHA is `610da6431d4261477f34a9011f991a091224e16ceeba1bcf53f68084322a77c7`. Fresh installation is not upgrade proof; an earlier failed upgrade is preserved.
+
+## Evidence and remaining scope
+
+Raw captures are local historical evidence, not portable live handles. Candidate-5 captures are beneath `/private/tmp/ka-2osfg1j9-v5`; audits are beneath `/private/tmp/ka-2osfg1j9/evidence`. The checked-in recipe reacquires authority instead of reusing these handles. Audit SHA-256 values pin the reviewed local records:
+
+| Record | SHA-256 |
+| --- | --- |
+| `local-test-reports-v5-verified.json` | `30939147fe3fbfa97ee0d10a4c1410192fbf264cd3939f98429b46c08bc32f92` |
+| `compact-native-comparison-final-v5.json` | `731e2ae95c5feb11e02887100ab13f171dbca2042c720ecd6db8cd2ec17ca3c6` |
+| `flow-continuation-resource-cut-v5.json` | `dd8ebdb9d0df7fe8f49df9636d0e132c4295baad324ccbc418c721cc083b170c` |
+| `stale-pending-native-audit-v5.json` | `e9723bb5ba44687df446e30d57c74065d43e2ed9cd5de6a7930d3d34500926f0` |
+| `two-side-candidate5-audit-final.json` | `da73763ee2f0b6af24b30b4cfeda4b86de45ce874f67228c7fc309b0d15666dd` |
+| `pr909-issue910-regression-audit-v5.json` | `c404af0a4bb91cbc6871350eb7c8389dde2e99f20ed895f92901cd125a3eb4f3` |
+| `large-domain-native-audit-sealed-v5.json` | `1f31e140264d30eafce5335ce5d65bc54ea5ec5dbb249bd2d9cf6488c8594064` |
+| `local-rename-native-audit-v5-final.json` | `3ead6fd29d9c2854357ed1313a7e478497b2ee15028b096d593656183ff8aa4d` |
+| `vendor-trust-contract-audit-v5.json` | `509b0b532c48ca43c7e9e7cc7d613b6a8758462a3991c465cfa77ae4b5090a1c` |
+| `enrolled-peer-native-audit-v5-sealed.json` | `d2300b5374bd6688592395919dfdc51468957c215d69199998a1724d252c2953` |
+| `current-acceptance-assessment-v5-sealed.json` | `f767d6d8efbde9dd433bdbcf19441785dc390f47de0378da8e49d1dc571289b5` |
+| `issue915-named-site-preflight-v5.json` | `e657a2467f874763eaed0a91f58d4429093106bcf0f019c6ecc6501a8eda27ed` |
+| `issue-closure-assessment-v5-after.json` | `39ecce814e9ad298a0d265b52f2f71ccfbd186035db639d5288993f97e59b123` |
+
+Preserved harness failures include the original work-30 equality assertion, a final-only reference helper rejecting pending metadata before any native call, and a stale planner expecting the wrong discriminator despite schema-valid actual rejection. The full drain helper's scalar `retainedPageCount=-1222` is defective; physical enumeration establishes 171 total/163 retained captures. Executed scripts and captures were not rewritten to manufacture success. Candidate-4 lifecycle capacity rejection remains historical evidence; a fresh owned IDEA incarnation permits all candidate-5 serialization variants without changing that limit.
+
+The owned serialization file SHA `13ce1ae82eaca664fd4833a1ee5a0ae2938a679ab12747d42ee456cb9f3909ff` and its previously absent parent were removed after capture; the original fixture hash remains unchanged. All four candidate-5 IDEA incarnations received one ownership-checked SIGTERM and have observed PID absence plus native `IDE SHUTDOWN` records. The first two retirement helpers fail closed when process identity disappears during exit; separate observations establish shutdown. Later helpers retain the shutdown observation directly. Protected user PID 5961 remains present. The isolated candidate's public `stop` rejects `unsupported-private-installer-command`; private service stop rejects `SERVICE_OWNERSHIP_UNPROVEN` / `READINESS_REJECTED`. Coordinator retirement is unverified and was not forced. These cleanup failures do not become semantic success claims.
+
+At the candidate-5 checkpoint, the independent issue assessment covered 56 literal criteria and 35 hashed source/capture receipts. Its #910 regression-audit, #911 large-domain measurement, and #913 rename gaps were addressed by the later candidate-5 records above; #912's bounded forward-slice criteria were locally demonstrated. Positive independent-peer evidence for #914 and production accounting for the three independently named unreached sites in #915 were still pending at that checkpoint. Candidate 9 establishes those bounded after-conditions below. The unavailable #911 historical before-code measurement and #915 equivalent manual-before measurement remain limitations. All six issues remain open; no issue comments, closures, pushes, or pull requests were made by this qualification.
+
+## Requested-site accounting: initial local proof
+
+The subsequent #915 change admits an independent, bounded requested-site universe through the existing native site port. Each immutable target retains its actual request, compiler proof, admission grant and observed work. The original ledger derives one `REACHED`, `EXCLUDED` or `RELATIONSHIP_UNPROVEN` outcome per target. Reached links retain original path ordinals and row IDs alongside separate proven scope exits. An unmatched target adds the required `REQUESTED_SITE_RELATIONSHIP` obligation, preventing semantic completion. `SITE_ACCOUNTING` pages use the existing result store, cursor and byte fitter without repeating semantic reads. Public omission or null selects an empty universe; investigated output requires the original universe even when empty.
+
+Focused local proof covers 39 cases in 13 classes with no failures, errors or skips. The affected checks report 1,382 cases, no failures or errors and three existing Codex prerequisite skips. JSON contracts, generated-public parity, architecture, formatting and detekt pass. The independent review finds no concrete defect in the bounded admission, accounting and retained presentation paths. The sealed local receipt `/private/tmp/ka-2osfg1j9/evidence/requested-site-local-proof-0/receipt.json` has SHA-256 `3d6210976c6f9dfff94e4ccebf39f36d73f1e4db2785e3d491fc4ce7901de362` and retains exact source digests, commands, logs and test reports.
+
+These checks established local contracts. At that checkpoint, candidate 5 remained the installed authority and candidate 6 qualification was planned for five exact call-argument targets: three previously unreached sites and two sites linked by the original paths. The later candidate observations below preserve the partial attempts and establish candidate 9's production after-tracer, original-path preservation, retained-page work and actual configuration identity. Equivalent historical performance measurements remain unavailable.
+
+The candidate-6 global product gate passes with GraalVM 25 and explicit control/host versions `0.1.6`: 570 tasks, 214 executed and 356 up to date, in 129 seconds. The 709 available JUnit reports contain 2,797 cases, no failures or errors and three Codex prerequisite skips. These report totals include up-to-date tasks. Native control compilation, release runtime admission and disposable installed-product artifact/launcher/staging checks pass; they do not establish the live requested-site investigation. Mintlify validation and broken-link checks pass after regeneration. Exact reports and logs are retained under `/private/tmp/ka-2osfg1j9/evidence/requested-site-global-proof-0`.
+
+The first candidate-6 native cohort uses artifact source `bab2ce209064f859c65b485d0eb8d11a25ebf46e`, following tested implementation `760bd8a8e`. Control staging reports `not-requested` activation; host installation runs separately. Archive parity verifies 10,946 control and 36 host files. Both saved response limits are 524288 bytes before the owned IDEA launch, PID 21287. Nine actual public captures reacquire seven declarations, a six-producer model-free bootstrap and its retained producer witnesses on host `117eda01-b100-4983-85c2-32e7f044151a`, epoch 1. All nine semantic documents pass the extracted installed query-result schema.
+
+The cohort stops before the final requested-site investigation because the retained producer receipt omits `VALUE_MODEL_SITE_REVALIDATIONS_REJECTED`. Site attempts are measured zero, and correlation is `MATCHED`; absent rejection measurement is not presented as measured zero. The raw captures and finite `RETAINED_NATIVE_WORK_NOT_ZERO` workflow stop remain under `/private/tmp/ka-2osfg1j9-v6/requested-sites-native-0`. No accounting pagination or final five-target result is claimed for this cohort. The subsequent change initializes that counter explicitly and must be qualified in a fresh installed candidate.
+
+The instrumentation regression first reproduces the absent rejection counter. Eleven focused diagnostics cases, 209 workspace cases and 180 hosted consumer cases pass with no failures, errors or skips. The final dedicated counter test owner resolves an initial test-class length rejection without changing a baseline or suppressing a guard. The candidate-7 product gate passes in 99 seconds: 196 executed and 374 up-to-date tasks. Available reports contain 2,799 cases, no failures or errors and the three existing Codex prerequisite skips. Exact logs and reports are retained under `/private/tmp/ka-2osfg1j9/evidence/site-counter-global-proof-0`.
+
+Candidate-6 retirement uses one ownership-checked SIGTERM. The first executable guard rejects before effects because macOS truncates the combined process column; a distinct corrected guard verifies full command and start time separately. Its post-signal observation remains uncertain when the exiting command changes. A separate fresh observation then establishes PID absence and native shutdown count 0→1, retaining both prior outcomes. Protected PID 5961 and unrelated IDEA PID 33093 remain present. The independent first-cohort audit validates the nine schema-admitted responses, native identities, grants and installed archive parity. One audit assertion incorrectly compared selected witness status with original closure; its preserved corrective receipt verifies unresolved original closure and all 49 observations/13 paths. This remains a partial native cohort.
+
+## Requested-site accounting: candidate 7 and 8 installed observations
+
+Candidate 7 uses source `d0878293aba16af93be8c024ed702dc3e062a825`, control/host version `0.1.7`, and owned IDEA PID 33225. Its retained producer read has matched correlation and an explicit zero site-rejection counter. The final five-target request stops before semantic dispatch with `HOST_REQUEST_TOO_LARGE` under the 16384-byte host request limit. The public pretty-printed request is 29873 bytes; that size is not an exact transport-envelope measurement. The cohort makes ten actual calls and establishes no final requested-site ledger. Its independent 22-check audit passes. One ownership-checked SIGTERM, observed PID absence, and native shutdown count 0→1 retire that IDEA process; protected PID 5961 and unrelated IDEA PID 33093 remain present. The retirement receipt SHA-256 is `0a811284a91e8ae230a91637a311ee92a5813af83b8cbead6a991035e363bbe5`.
+
+Candidate 8 installs the same `d0878293aba16af93be8c024ed702dc3e062a825` archives and `0.1.7` version into a separate owned root. Control and IDE host request limits are explicitly 65536 bytes; response limits remain 524288 bytes and the query checkpoint limit remains 8388608 bytes. The saved client profile precedes the coordinator launch. Physical parity verifies 10946 control and 36 host files. Actual source-fixture authority is host `4abf69c5-d854-42a4-8fd8-769a56020d14`, epoch 1, on owned IDEA PID 34702. The control archive SHA-256 is `066c34c98c9a5d47f7c686399fe5278b1039a1d0e8694db0d507ffee44ac6ed8`; hosted archive SHA-256 is `c66ce9efd61881236ba6760a3ba59a57842119370a3e0a5755337f93180b4785`.
+
+The first candidate-8 lookup rejects `FRESHNESS_REJECTED` / `MOVED` at `MODEL_CAPTURE`; semantic entry is `NOT_ENTERED`. A fresh 16-call cohort then admits all five requested sites, producing a qualified ledger with 18 paths, 54 observations, one native `GRANT_TOO_SMALL` read rejection, 53 compiler transfers, and 13 flow obligations. The historical recipe stops at its required 19-path equality assertion. Two paths independently retain checkpoint-capacity requirements above the actual 8388608-byte ceiling. The rejected native child's exact grant is unexposed; the preceding observed read's grant is not substituted. This is neither historical 19-path equivalence nor semantic completion. A later one-call retained read returns `RESULT_UNAVAILABLE` / `restart_read`; no isolated TTL cause is claimed. These executed helpers and captures remain unchanged.
+
+A separate fresh, bounded combined cohort reacquires the same five targets and immediately expands its actual qualified result. Its 27 public calls preserve all 18 original paths and accounting. The five ordered site rows are identical under all three presentations:
+
+| Presentation grant | Actual pages | Ordered site rows | Public response bytes |
+| --- | ---: | ---: | --- |
+| 128 rows / 524288 bytes | 1 | 5 | 39083 |
+| 1 row / 524288 bytes | 5 | 5 | 32595, 32595, 32595, 32690, 32368 |
+| 128 rows / 32768 bytes | 5 | 5 | 32595, 32595, 32595, 32690, 32370 |
+
+Every row retains its native selection grant and three examined work units. Requested site ordinal 3 is `REACHED` by original path ordinal 9 and its original row ID; the other four sites are `RELATIONSHIP_UNPROVEN`. No missing-path inference upgrades them to exclusion. Original required obligations remain `NATIVE_FLOW`, `BOUNDARY`, `REPRESENTATION_STATE`, `EXECUTION_BOUNDARY`, and `REQUESTED_SITE_RELATIONSHIP`. All 18 retained reads have `MATCHED` correlation and measured zero selected value, reference, and revalidation work; seven lexical lookups have unavailable correlation and are not counted as matched zero.
+
+The combined cohort's independent audit passes 150 checks and three adverse-auditor checks. All public documents pass schemas extracted from the installed archives. It pins every actual request, stdout, stderr, and capture receipt, independently verifies archive/install/source-record correspondence, and retains the original paths, row IDs, grants, qualifiers and closure. It does not assume the changing #914 working tree still matches the installed artifact. The audit is `/private/tmp/ka-2osfg1j9-v8/evidence/candidate8-combined-partial-independent-audit.json`, SHA-256 `33c26d997e8805fcc3bb7f327910ba371af46e2f3f6a8246c84fe233660fbbcd`. These observations establish installed requested-site accounting and retained expansion for this qualified 18-path cohort. At the candidate-8 checkpoint, positive independent-peer continuation was pending; candidate 9 establishes it below. Equivalent historical performance measurements remain unavailable, and publication and issue closure have not occurred.
+
+## Guarded independent peer admission: local source proof
+
+The #914 extension retains the source basis and independently completed peer basis separately. Pure selection identifies only exact reviewed continuation targets with a complete declaration inventory. The hosted path passively looks up an already registered live peer, validates its full basis before restoring tokens, and completes one child read with final freshness validation. It does not open, import or trust a root as part of the query. The original parent accounting owner debits child aggregate work and whole elapsed time once; source admission reserves the retained peer payload before source native effects.
+
+Only the final reviewed model edge and guarded terminal may carry the peer basis. Producers, compiler prefix, ordinary models, requested sites and representation history remain on the source basis. The terminal retains `PEER_FLOW_NOT_INVESTIGATED` and the original required `BOUNDARY` obligation; no peer flow task is scheduled. `MODELS` retains the guarded rule at its original ordinal, with the same completed acquisition/site receipts used by the terminal. The target receipt is historical completed evidence, not a shared atomic epoch or current-peer guarantee at later source publication.
+
+Local before checks exposed four concrete failures: foreign target selection rejected by the former single-basis admission; interpreter attempted an extra peer flow read; a returned child grant exceeding its parent offer was admitted; and two valid aggregate work receipts wrapped to `Long.MIN_VALUE`. The corresponding source, service, runtime and saturated-count regressions now pass. Raw-envelope before checks also accepted a foreign second seed and foreign requested site; both are now rejected without weakening the accepted peer terminal. The independent encoded golden exposed an omitted `CONTINUATION` discriminator; the sealed rule DTO fixes the actual encoding while preserving the expected shape.
+
+| Local boundary | Final affected checks | Evidence |
+| --- | --- | --- |
+| Query contract/service | 214 cases, no failures/errors/skips | `/tmp/kast-peer-query-check-2.log`; sealed receipt `ee0367013cf103cef25201e68ed82c4526bdbf911c3e77bc1555ad4538d0ee96` |
+| Hosted/workspace adapters | 407 cases, no failures/errors/skips | `/tmp/kast-peer-runtime-owned-final-2.log` |
+| Public contract/query protocol | 254 cases, no failures/errors/skips | `/tmp/kast-peer-public-affected-check4.log`; includes 76 contract and 178 protocol cases |
+| Root selection/source/canonical/aggregate receipt | 12 focused cases, no failures/errors/skips | `/tmp/kast-peer-root-focused-green.log`; final public protocol checks rerun after structural cleanup |
+
+Formatting, static analysis and class/file-length guards pass on the affected source. Canonical contract/catalog generation and 22 generated public artifact parity checks pass. Explicit peer admission stage and started/completed/rejected counters retain success and finite failure signals, including explicit zero on retained reads. No quota, storage scaling factor, suppression or baseline was changed. These are local contract and scripted effect-boundary proofs. The installed Native8 candidate remains the older `d0878293aba16af93be8c024ed702dc3e062a825` artifact; it does not qualify this source change. At this local checkpoint, Native9 qualification was pending a clean exact-source artifact and separately recorded 16 MiB checkpoint profile; the completed installed observations follow below.
+
+The complete product gate passes through the repository's release-authority wrapper with freshly observed stable version `0.50.0`: `/tmp/kast-peer-product-gate-v9-2.log` records 51 seconds, 569 tasks (115 executed, four from cache, 450 up to date). The XML inventory contains 2,874 cases, zero failures/errors and three existing Codex prerequisite skips. The original version-readiness failure and three CLI schema-consumer failures remain in the sealed logs. The CLI consumer fix adds required peer proof-field, discriminator and finite-cause assertions; its full check passes 323 JVM and four native cases. Global evidence is sealed under `/private/tmp/ka-2osfg1j9/evidence/positive-peer-global-proof-0/receipt.json`, including copied XML, source digests and executed/up-to-date qualifications. Mintlify build and link checks pass; seven OpenWiki pages complete Claims reconciliation and the subsequent consumer-change audit reports no stale Claims.
+
+Native8 retirement is now separately observed: one guarded SIGTERM targets owned PID 34702; PID absence and `IDE SHUTDOWN` count 0→1 close retirement, while protected PIDs 5961 and 33093 remain present. This observation permits a new owned installation; it is not Native9 launch or peer qualification.
+
+## Candidate 9: fresh requested-site investigation
+
+Candidate 9 installs exact clean source `7595554f20802c1d9849f0b38f6ff7f7b1c40bcd`, including implementation `a79b1184e0134cd730d46634292c73c3f965141b`, as version `0.1.9`. Physical parity verifies all 11,055 archive-member files. The control archive SHA-256 is `00b12c050cd498b33e45e43fe1b1333313bd011e53739e5419177a7f97d199e8`; the hosted archive is `06ceaf4447de2006f160e7c3d0a4b6679ff2f098cc5c81b3a23c98d2aec5731f`. Both release records retain the source revision and component digests. Owned IDEA PID 67082 runs with a separately recorded 16 MiB query checkpoint profile. Request, response, provider and process-input limits remain 65536, 524288, 524288 and 4194304 bytes respectively. This is a separate source/profile cohort from candidate 8; no performance equivalence is claimed.
+
+The fresh combined investigation completes 27 captures on source host `0f08e2db-e674-42d1-84b6-a49cf02b9590`, epoch 1. It retains four exact producers, six reviewed model witnesses, 19 paths, 57 native observations, 55 compiler transfers, 14 flow obligations, 126 native witnesses and zero read rejections. Every one of the five independently requested sites has its own admitted selection and terminal accounting:
+
+| Requested site ordinal | Outcome | Original path ordinals |
+| ---: | --- | --- |
+| 0 | `RELATIONSHIP_UNPROVEN` | None |
+| 1 | `RELATIONSHIP_UNPROVEN` | None |
+| 2 | `RELATIONSHIP_UNPROVEN` | None |
+| 3 | `REACHED` | 9 |
+| 4 | `REACHED` | 14, 15, 16, 17, 18 |
+
+Each site records three examined native selection work units. The original closure remains `UNRESOLVED`, with required `NATIVE_FLOW`, `BOUNDARY`, `REPRESENTATION_STATE` and `REQUESTED_SITE_RELATIONSHIP` obligations. The three unproven relationships cannot become exclusions or negative findings merely because no path was observed.
+
+Wide, one-row and actual 32 KiB retained drains return the same five ordered rows, original path row IDs, admissions, outcomes and closure in 1, 5 and 5 pages. All 18 retained reads have `MATCHED` correlation and explicit zero selected value, model, site, peer, reference and revalidation work. Seven lexical lookups have `UNAVAILABLE` correlation and are not counted as matched zero evidence. The wide canonical document is 39466 bytes. One-row documents are 32542, 32542, 32542, 32637 and 32747 bytes; 32 KiB documents are 32542, 32542, 32542, 32637 and 32749 bytes. The outer Tool RPC envelope adds 33 bytes. Its final 32782-byte response fits the separately configured transport bound; the semantic document fits its 32768-byte grant.
+
+The independent audit passes 153 checks and three adverse-auditor cases, pins all 108 files in the 27 capture bundles, validates public documents against the installed schemas and verifies archive, release-record, installation, launch and saved-profile correspondence. Receipt: `/private/tmp/ka-2osfg1j9-v9/evidence/candidate9-combined-requested-site-independent-audit-v2.json`, SHA-256 `942496b996f71eb8fbd68345194fde72508b4e988399e6459bfdd762e12483b8`. The first audit's failed outer-envelope assumption and interpreter readiness failures remain preserved separately. They are observer failures, not product behavior failures.
+
+Before peer IMPACT, ordinary public `query_symbols` lookups separately prepare the two exact trusted roots. The peer records `OPENING`, `IMPORTING` and completed preparation; the already imported source records `OPENING` and completed preparation. Both return exact `investigate` declarations on distinct live hosts. The earlier attempt to invoke `workspace_lifecycle` through complete Tool RPC returns `UNKNOWN_TOOL` because that surface does not expose the operation; it is preserved as a setup-surface rejection. Preparation uses the existing direct session route and does not widen the tool catalog or make peer query children open, import or trust projects.
+
+## Candidate 9: completed independent peer site
+
+The fresh peer tracer captures 40 calls with source basis host `0f08e2db-e674-42d1-84b6-a49cf02b9590` and independently acquired peer host `801fe042-28d4-4834-9557-738916752b99`, each at epoch 1 on its own root. The original exact-seed model returns nine paths with one peer continuation. A separate model at source invocation `985–1020`, argument 0 `992–1011`, returns eight paths with one peer continuation after an actual compiler prefix. These are separate questions, each retaining every original path.
+
+Each continuation ends in `UNRESOLVED_PEER_CONTINUATION`, with the exact independently admitted target, completed child acquisition receipt and `PEER_FLOW_NOT_INVESTIGATED` reason. The last modeled edge carries the peer basis; the original producer, compiler prefix, ordinary evidence and representation history retain the source basis. Supplied `VOLTAGE` state survives the modeled transfer with its reviewed origin and boundary provenance. This is modeled serialization evidence, not observed wire transport or runtime cryptographic behavior. The completed peer-site read does not investigate peer flow, and required `BOUNDARY` closure remains unresolved. Completion is historical evidence from that child read, not an atomic cross-root snapshot or a promise that the peer epoch remains current at publication.
+
+Both variants preserve identical ordered path and model rows under wide and one-row retained reads. Initial public correlation is `AMBIGUOUS`; separately bound raw source and child receipts retain actual peer started/completed/rejected counts `1/1/0` and child `VALUE_FLOW_READS=0`. These raw observations are kept separate from response correlation. Retained expansion requires `MATCHED` correlation and explicit zero native, model, site, peer and locator work; unavailable or missing counters cannot supply zero evidence.
+
+The actual wrong-callee request rejects with `IMPACT_SOURCE_REJECTED / ADMISSION / CALLABLE_MISMATCH`, position 1. A separately constructed mismatched peer-epoch claim rejects with `LIVE_AUTHORITY_REJECTED / EPOCH_MOVED` at `CONTENT_REVALIDATION`, with `restart_read` recovery. That latter case changes a claim; it does not establish observed peer epoch movement or isolate TTL expiry.
+
+The first 12-call cohort stopped on an observer defect that assumed a 128-row grant for a one-row read. Its actual response correctly retained requested/effective row grant 1. A new helper binds the grant check to each typed request; nine pure checks pass, including the preserved actual response and altered-grant rejections. The fresh 40-call cohort completes both positive variants and the wrong-callee check, then stops because the observer expected `FRESHNESS_REJECTED` instead of the existing owner's `LIVE_AUTHORITY_REJECTED`. The executed native tracers, requests, responses and failed workflow receipts remain unchanged; independent auditing classifies the actual source-defined failure rather than rewriting the workflow or rerunning semantic work to repair an observer.
+
+The final independent audit validates all 40 captures against the installed canonical document union, preserves selected-subset presentation wrappers and original closure, and verifies 28 retained reads with `MATCHED` correlation and twelve unique explicit zero counters. Thirteen pure auditor checks pass. Receipt: `/private/tmp/ka-2osfg1j9-v9/evidence/positive-peer-independent-audit-native1-final.json`, SHA-256 `46be744ecf0fbf30f53acfa5ed967f591474368246928100a206da93eacaee21`. The frozen auditor, workflow, acquisitions and source oracle are pinned before and after the audit. Early unsealed auditor drafts were edited between failed attempts without contemporaneous byte snapshots; their raw failure receipts survive, but exact old draft images are unproven. The provenance supplement records that limitation at SHA-256 `6db1b38120f795165fe13461c89395e0289e69ea3b816f42a7d50c7e48e22950`. Native captures and the final sealed auditor are unaffected.
+
+## Candidate 9: actual peer epoch movement
+
+A separate eight-capture probe changes only the owned peer fixture by an exact trailing comment, then restores its original 1745 bytes and SHA-256 `58509a615028343d7dd5f0b5c919d27d0b234f1cfa94d35c9c8f2fe4fb7a7be2`. Native peer lookups observe the same root and host at epoch 2 under the changed bytes and epoch 3 after restoration. All seven authored peer files and the protected source fixture retain their exact original digests afterward. Epoch values come from emitted native results.
+
+Fresh source acquisition retains source epoch 1. A schema-admitted reviewed model using the historical, independently completed peer epoch 1 rejects with `LIVE_AUTHORITY_REJECTED / EPOCH_MOVED` at `CONTENT_REVALIDATION`, with `restart_read` recovery. This demonstrates actual peer movement separately from the earlier synthetic claim mismatch. The optional retained read of the original peer report returns `execution-rejected / result-unavailable` with unavailable correlation. It supplies neither zero-work proof nor an isolated epoch-versus-TTL explanation.
+
+The probe workflow is `/private/tmp/ka-2osfg1j9-v9/actual-peer-epoch-native-0/workflow.json`, SHA-256 `4c9cf40ace4e19b8a4fe5f0122a90dbd67abeab9d037d21f6e44bea5407a805e`. Its shared twelve-call cap covers both peer lookups, fresh source acquisition, rejection and historical read. An earlier helper preflight refused the audit's versioned receipt type before any fixture effect; a new frozen helper accepts that exact version and passes seven pure checks. No audit union or product contract was widened.
+
+The independent epoch audit validates all eight actual captures, the completed historical peer receipt, fresh source basis, observed peer epochs 2 and 3, and exact restoration. The stale rejection records peer started/completed/rejected counts `1/0/1`; its separate raw child receipt has seven explicit zero selection, locator and flow counters, with no value-site restoration phase. Public correlation remains `AMBIGUOUS`, so these raw observations do not become matched response evidence. Receipt: `/private/tmp/ka-2osfg1j9-v9/evidence/actual-peer-epoch-independent-audit-final.json`, SHA-256 `82d1f358247726ffa4b9792f571d39cbd33f1d663df42a66c05c8049f16bce42`. Four pure auditor checks pass; the preserved first auditor failure and exact one-selector correction are pinned by the check receipt, SHA-256 `37d86936fe2a080a32206259624749bdb91163ec5ae6a2f0bcab6f4707de6913`.
+
+## Candidate 9: restoration and acceptance limits
+
+One ownership-checked SIGTERM retires owned IDEA PID 67082. The retirement receipt observes PID absence and native `IDE SHUTDOWN` count 0→1 while protected PID 5961 and unrelated IDEA PID 33093 remain present. Receipt: `/private/tmp/ka-2osfg1j9-v9/evidence/candidate9-retirement.json`, SHA-256 `eb07e94c511e349ef47f7c4a82534f7a3be599d9f2171a17d35a255586ef1a28`. Only after that observation does the trust helper remove the exact owned peer entry and restore the original 297-byte trust file, SHA-256 `764eaf28492b8030918a6043ccf2e124d3520839e32cf2a23cda9dc17e9ab5d7`. Restoration receipt: `/private/tmp/ka-2osfg1j9-v9/evidence/peer-trust-restore-v9.json`, SHA-256 `4255823aa2e9ef8f5ef27a3bacb8122de1b4bfe390d10cdc8f3259c3610b16bd`. All seven authored peer files and the source fixture are restored exactly. Earlier coordinator retirement remains unverified and was not forced.
+
+The final acceptance assessment maps all 56 named issue checkbox criteria to bounded local or installed evidence, with seven additional conditions assessed separately. It retains each criterion's authority and qualifications rather than treating a checked implementation criterion as an unqualified semantic result. The assessment is `/private/tmp/ka-2osfg1j9-v9/evidence/current-acceptance-assessment-final-v9.json`, SHA-256 `8194dbf6044b6940ac70fd21792d12df3ba9a34714c159fc6f1d0e7ef6a164fd`. That immutable assessment predates the independent epoch audit and final restoration. The new completion supplement supplies those later observations: `/private/tmp/ka-2osfg1j9-v9/evidence/acceptance-completion-supplement-v9.json`, SHA-256 `388bf6eea50fbab0b3332ff1412c080396c1d7e1f2739c017a1ea874924c0c5b`. Its eight checks pass, preserving all 63 prior criteria and their qualifications while independently verifying the epoch audit inputs, exact owned retirement, current trust bytes and seven authored peer-file hashes.
+
+| Issue | Demonstrated after-condition | Remaining limit |
+| --- | --- | --- |
+| #910 coverage | Exact admitted seed/path accounting, finite unsupported cuts, explicit requested-site relationships, preserved unresolved closure and #909 regressions | Unproven requested-site relationships remain required obligations |
+| #911 expansion scope | Cheap source/name/kind constraints precede capacity and compiler refinement; native unrelated-growth cohorts preserve qualified findings | The original historical before-code measurement is unavailable; no flat-cost or CPU/heap claim |
+| #912 exact value flow | Exact invocation/value identities and ordered compiler transfers survive multiple invocations, reassignment and unsupported transformations | Bounded Kotlin forward flow retains unsupported and unresolved terminals |
+| #913 provenance | Current representation, origin and ordered history retain compiler/model distinctions; exact local rename preserves qualified paths | Supplied representation and compatibility assumptions remain model facts |
+| #914 boundaries | Same-root reviewed serialization and independent peer-site acquisition retain distinct bases, finite stale rejection and modeled state | No peer flow, deployed transport, cryptographic behavior or atomic cross-root snapshot proof |
+| #915 retained report | Original ledger, requested sites, models, path IDs and qualifications survive retained pagination with matched zero selected semantic work | No equivalent manual-before performance baseline; unresolved obligations prevent semantic `Complete` |
+
+The final product gate contains 2,874 report cases, zero failures/errors and three existing Codex prerequisite skips; up-to-date reports are explicitly distinguished from fresh execution. Independent installed audits cover requested-site accounting, both positive peer variants and actual peer epoch movement. Local compiler and scripted adapter checks prove aggregate parent debit and finite rejection rules; the native response does not expose a direct aggregate once-debit arithmetic witness. Timings and storage observations remain cohort-specific. No latency speedup, CPU/heap reduction or equivalence between the 8 MiB and 16 MiB profiles is claimed. All six issues remain open and this work remains local and unpublished.
+
+Receipt-only verification runs `./gradlew --max-workers=2 knowledgeImpact verifyKnowledgeBase` successfully: seven knowledge tests, one changed file, zero impacted concepts, and zero citation issues across 28 concepts and five reserved files. `mint validate` and `mint broken-links` from `docs/public` pass. Local Markdown targets exist and `git diff --check` passes. Logs are `/tmp/kast-peer-final-receipt-knowledge.log`, `/tmp/kast-peer-final-receipt-mint.log` and `/tmp/kast-peer-final-receipt-links.log`; these checks add no native observations.

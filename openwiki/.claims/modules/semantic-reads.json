@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f8ecefcbfdbbc991d8b805345087d40bd0cc5363071d0d38ed54885bfae866e7",
+  "pageVersion": "sha256:ac856c06a87c167e2cb1331d5cc2a736d77d8c0a1d85823bad418f1a256e8d88",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -21,10 +21,136 @@
           "version": "repo-lines-v1:sha256:529ae3ad395da555444e4c628dde846bff1a12df1b247597040c6605cff061bb:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYTdjMjA2OWY4ZDZkYThkYmUzNzMzZThjNmZjZGE1M2RmOTgzNTJiY2ZiYWI3Y2ZmNTEzODkxZmUyZDU3OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxN2MwM2UxOTk4YjliNGI1Mzc5YTdiMWM0NzA1YWFlZGYyNDU1MGNjNzU0MDY0MzVhMjE3ZTJmM2RkOTNjOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_106cc7265e5a450abc1bd930596ead7d",
+      "statement": "Exact value invocation identity includes enclosing declaration, basis, source anchor and callable identity; argument roles retain the actual call and formal parameter position rather than conflating separate calls of the same declaration.",
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt#L24-L102",
+          "version": "repo-lines-v1:sha256:94507e79b154205e90dca0edea191035b95803ed8921da1e24f3bd0dd53ed24b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0YmNlNzE3Yjc0NThiN2Y0ZGZjNWRmMGY1MTI2MGNkZjU3YTIxZjJmOGI1YmUxYWI2OWYwNzgxZTIwZjgwMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4YWY4NzM5MGY5ZWE5NTQ3YmQ0ODZkNTdmODdmNzY3Y2MwNDYyNjQzNDUxYmM1NjY3OWViNGE4MTQ1ZTkxMzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8128c8d8bb5a4c2f9ad8fc0e6a619f2a",
+      "statement": "The forward native adapter retains compiler transfers and finite unsupported obligations, while representation current state/history and boundary compatibility meanings belong to explicit reviewed model owners.",
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt",
+          "version": "repo-file-v1:sha256:ae770d213a28482a5ef5843602d62d4fab3cf0b7eb534a604fe5ba842251d67e"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueBoundary.kt",
+          "version": "repo-file-v1:sha256:9f0f99644b8282324e7040104f1582e609476cce4876fc1f05d9dabe003f3307"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt",
+          "version": "repo-file-v1:sha256:57f248851a32832d59ab8b97f8511896ea4a611d4116162e2eb881752a124924"
+        }
+      ]
+    },
+    {
+      "id": "claim_2a99fea2c7024ae49fb03b30ab55abc8",
+      "statement": "Exact Kotlin value-site restoration filters same-range lexer tokens and argument containers before selecting an exact-range Kotlin expression within the declaration; role-shape and anchor failures remain finite, and later lexical ownership and K2 binding checks retain semantic authority.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt#L293-L302",
+          "version": "repo-lines-v1:sha256:c8d4594368f0e0a139c8f2286a52c199ad7d84b7f7758fa90619e3971bf5109c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMTFmYzNjOTlhYjUyNTNhZDIwZWVkNWQ1NTVhOGM0ODU3OTA1Y2I0YmUxZjc2OTcyM2JhNjQ4YmJhMmZhMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiNzM4YmRmY2ZlMzU1ODZkNGMxMTAxZGUyMGJjMzE1ZDViMThkODdhYzJhYjMxZGEyMzU5YWM3MTc0MWM1NDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzMDkwNTgxNWM4ODgxM2M0NzcwY2ZiOGJhMzQ0MWIxZmJiYjI3NmRhMTc1ODM2NDBiNGUyMmNmMDVjOWEyM2QifQ"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt#L188-L219",
+          "version": "repo-lines-v1:sha256:aaee1a0f2927bbe298626a879530b5d090cabafe255a51b89bad10bf8c36cb44:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyOGI4MjBjOTg0NjA2M2I4MDJmMjcyZWQyNzQyN2ZmNTdjOGVhZTQ4YmMzNmMwOWZjN2YxYWY1MjhlZTBmOWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MGFjYzAxM2U4Yzg2YmRkZTVhODY3NDNlNjNhYTlkNTZlNDcwZGU2MzQ1OGQ0ZGUxM2IyOWU3MTYxYTZkMTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlmZTQyYzgyMzVkNDdlYTkzY2Q2ZjVjNjY1NmY0MGUxNDJmNDlhOGNhMmM5ZTEyZWJiYjMxNDE3ZDBmYTY0YzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlZDM0OTFjODk1NTVhZTAyNzBlZWEyMTlkNDg5OTYzZThjNjM1ODJkYzYzMTY3M2M2MmQ1ZGRlMDU2NGI2NmYifQ"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt#L87-L141",
+          "version": "repo-lines-v1:sha256:ea6a2f3c020faf4290fca9f56bedfdd2ac6f51b23d03c5b9d423b87cfe06c576:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2ZTRlM2NlYmQyMWFiNTU3ODY0YTYyNjE1ZDI4Y2I4ZmFhOTNkMGI1NDFjMmY2YjA3MTBkZGYzYjI1ZDM2YzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyNWY5YWRmM2JmYTMzNDU5MDE0OTJiNmEwZjQwNWY0ODE5YmQyNWU0MWJkMjFhOWZhMTA2ZDFhYTIwMmU5N2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmZDJlYzE5YzhjYWMxMGUwZWI0NmNkYzg5ZTJmZWM4OTE0Y2Y5ZTYyNjQ2N2JlOTFjYzI0NTFiOWFmODkzYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt#L15-L49",
+          "version": "repo-lines-v1:sha256:a40b94d8083046332f62f324236cb580f474b9844d33015508e4f9f986b08553:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3ZGU1NjhiZDkzNjA5NDQ0OWEyNTEzNDlmOTMzODZmMzg1MDdiNGFmMDBiYjFhZTUxZWFkNjRlZTQ0MjE5ZmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNmZmNjczNGQ5ZjdkNWQ0NTEwMmMyNjk3YWJjZDhhYjg2MjFkOWQxYWFmZGJmMDI2Mzk3ZDU4NzE5NzI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt#L26-L100",
+          "version": "repo-lines-v1:sha256:5f5f379c72157fa2e9ab29497ee55a907ac8c3f311227f88797f506689329895:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiZmFhZjIzMjQ0NjM1N2M2ZjU0NjcxYzY4YTAwMGRlNmU5NzFlNzIxNWY5OGNlOTZiMWQwOTVmZmU5N2JlN2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVhMjc5NTlmNTk2NGFlYmFkYmFiM2FmZGE3MDViNWU2ZWNmN2JjNTg1ODQ0NTQzOGQ3NDQ5MGIzNzkwZmIzYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2NjI0NGQwNTk4MzgzNjc1NDI2NGUzMmNjYTU5NTJmNmE0Zjc5YWIxZGJkNGYxNDZlYzQyNTg1MTMxYTEwNmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bf4a65e88f994cd599359d0e5c9d062c",
+      "statement": "Producer seed admission restores the enclosing and expected callable declarations under their retained authorities, checks the exact invocation expression and ownership, and requires compiler confirmation separately from the investigation expansion domain.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt#L137-L158",
+          "version": "repo-lines-v1:sha256:1befd993ee786ff4401d6a51cf8548578fa0806ed1ff4928f47a493b6c9de88d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwYTRiZjJjNzc2NzU2NjhhOGY2NGVhM2FlYmEzMzBiOGFiYWUwZmE3YjM0MzM5OWUyZDFlZmJlZDEyZmQxZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3MDhlNmJiYWQ2ODk0NDg3MTgzZjY3NzFiYjg0ZjhlNzBhMmUxNjFiYTZhZTJmZWMyNDcyNmI3Mzc1MmUyNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkMjQ4NTJmZDIxMmViOTA1OTBkMTlkMDJkMWUzYmJjMTg1NDA0ZTllNTNlOTQ2MGIxY2M3NTkzNTdjNDc1ZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3MTEyYTNhYmZhMzRjYTdjZDAzYzgzNDJkNGViYWQ0MTY4YTM0NWNkYWIwZGEyZGRmOTZhNDVhMWRkODE0NjYifQ"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt#L218-L251",
+          "version": "repo-lines-v1:sha256:2198c57e403e5e8591a5be7aee0b155a167b7246800acc4c4fbcf00396f56253:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2N2ZiZjIxMzg2YzFmZTk2ZTJjYzg3NTM0ZmM4ZjljMjE1YjYwMjhhNzFhMmNhMGExNmYzN2EwNTZkZGNlOWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5YWIzYmZlNzVhYzBlMThkYWY1ODQ4YWQzMzgzMjMwMTNkYTEwN2IzNjIwZDVhZjkxNGYwMzA0YjBmNWM4OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIwY2IzYjZiNjE5MWNkOWIyMjkxZTE1MjBkMmZlMDU2MzUyZGZiZWE5ODVmY2RmMjQzNWY4NzlmY2Q1Mzg4N2EifQ"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt#L67-L114",
+          "version": "repo-lines-v1:sha256:9f45b6d17c575de89c12fcb6b07dd63a3f90dc1dd0b229367892b33e513f24f1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3ZGJlMTRiMjBlNzVkNzc3ZDM5ZTk4YzlmYjgzNDBmY2Y4N2IyNDdiZjUxZGMzOTE0NDJkNTNkZWU0NjJlNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjZTcyZDg2N2UzNzMyYjViY2M2YjBiMzIzMWVmNWFkYzkwNDBiOGQzMjNmYTkyYzM2ODI0MjhhMTE2OTMyMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0Mjc5YzY3ZGU1ZDc3MGMxOWFmZjE3NDU4YzYyMGFjZTY4ODE2NTZiNjFkM2I2MWIyODg0ZmZjZmU0M2JkODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4Zjk4MjJmMjQ3ODk0MGYyMDhmODEwZTY3YmVmMTJhN2RiNGNmYmZhNWYwMWE1MmFlMGZmOTFlYzBjZTI5OGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a60e53048e6a4cd9b3c98d3e85d906d4",
+      "statement": "Request-local value-site diagnostics add a restoration phase and finite shape or anchor outcome counters to the bounded hosted receipt; schema-6 serialization preserves additive observations and explicit provider zeros after completion or rejection without claiming K2 authority or complete flow coverage.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt",
+          "version": "repo-file-v1:sha256:217516f7598d8c011a4e9dcfd8ddf990b9b8c163d9ebdfadfd4afe6e200c4478"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
+          "version": "repo-file-v1:sha256:07d837d3b7e28744731c78b1e8c53f4d2e990d84eb1a670fbe3023720a9eecd4"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt",
+          "version": "repo-file-v1:sha256:c402fd4f86a7d18e90a4871d893298a06e355190c8f1019399fd972e3df6b9ef"
+        }
+      ]
+    },
+    {
+      "id": "claim_aec873a6792b40b3a3c17789af889a00",
+      "statement": "Hosted traversal observation records exclusive TRAVERSAL coordination intervals through the existing phase owner, preserving native relation authority and the original plan, requests and outcomes.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt",
+          "version": "repo-file-v1:sha256:3038406976ed781f4bbdd941f0f0021afc0adcb4781a0687301ac262446addcd"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt",
+          "version": "repo-file-v1:sha256:2c7ca12a6e5f02c1d376a07c974c7453ca6a8bc8b224267fc506114e01ae15ea"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
+          "version": "repo-file-v1:sha256:0fd8e97ab306246e6ecf03f69430847068d7b2aac8a2ab500852535a356f5e45"
+        }
+      ]
+    },
+    {
+      "id": "claim_c05a3da0a7d348c8864f218d995b7733",
+      "statement": "Existing native-read diagnostics encode finite query-retention source, capture-failure and issuance counters in the RETENTION phase; actual success and rejection receipt serialization is golden-tested without source payloads or handles and supplies observation rather than semantic proof.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt",
+          "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L83-L104",
+          "version": "repo-lines-v1:sha256:b549f7448349e17615d6d5320cf7a300cd42e81ee77cce41d82d04db20f55066:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNzI4MmEzMzY1N2ZjNmIxOTE0MmFmMGE0ZjdhNzg5ZGY0YWRkYzQ5YmUzZGFkODljYzAxNzM1YWI4MTgwZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzMWNlMDBiMjZkMTlhMTg0M2JhY2Y4YTBmZTJiZDE5OWE1YjkyMTA2NTViNTdiNGZiNThkODQ4N2ZlMjY2NWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3MTRlMzY4ZWU4NWZmMWE2NjJlYmViMzAyNThjNmQyOTJjNTI2MGFjYWFmNmUwM2E0OTJiZDU5ZWU2ODZhMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0YzE1NGM2OWRiMjRhNDExNmI3Y2VmNDMxY2IyODg5ZTkyMzhkYmQxOTljNDI0NmIwZDhhNjhiZGNmMjA1MGMifQ"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt",
+          "version": "repo-file-v1:sha256:d355abfe98fab7dc5cb8a4e88c158576d3cffb500127a442f43e29945a73e8b2"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-10-03T17:08:58.136Z"
   }
 }

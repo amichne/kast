@@ -118,6 +118,7 @@ class QueryIncrementalDiscoveryTest {
             when (result) {
                 is QueryExecutionResult.Complete -> result.result.symbolRows()
                 is QueryExecutionResult.Qualified -> result.result.symbolRows()
+                is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                 is QueryExecutionResult.Rejected -> error("Unexpected rejection ${result.reason}")
             }.map { it.description.name.value },
         )
@@ -195,6 +196,7 @@ class QueryIncrementalDiscoveryTest {
                             )
                             .refined()
                 }
+                is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                 is QueryExecutionResult.Rejected -> error("Unexpected rejection ${result.reason}")
             }
         }

@@ -112,25 +112,36 @@ object ExistingIdeDocuments {
         root: CanonicalRoot,
         operation: ExistingIdeOperation,
         descriptor: ExistingIdeDescriptor,
-    ): ExistingIdeExchange {
+    ): ExistingIdeExchange = responseWithEvidence(raw, root, operation, descriptor).exchange
+
+    internal fun responseWithEvidence(
+        raw: ByteArray,
+        root: CanonicalRoot,
+        operation: ExistingIdeOperation,
+        descriptor: ExistingIdeDescriptor,
+    ): ExistingIdeDecodedResponse {
         // Duplicate fields and trailing documents fail before either schema or operation decoding.
         try {
             mapper.readTree(raw)
         } catch (_: RuntimeException) {
-            return responseRejected()
+            return ExistingIdeDecodedResponse.rejected(ExistingIdeResponseDecodeFailure.StrictJson)
         } catch (_: java.io.IOException) {
-            return responseRejected()
+            return ExistingIdeDecodedResponse.rejected(ExistingIdeResponseDecodeFailure.StrictJson)
         }
         val context = ResponseContext(root, descriptor)
         val host = read(raw, "hosted-endpoint.schema.json")
-        if (host is Refinement.Refined) return hostResponse(host.value, operation, context)
+        if (host is Refinement.Refined)
+            return ExistingIdeDecodedResponse.fromExchange(hostResponse(host.value, operation, context))
         return when (operation) {
-            ExistingIdeOperation.Status -> responseRejected()
-            is ExistingIdeOperation.ApprovalPreparation -> preparationResponse(raw, operation, context)
-            is ExistingIdeOperation.Change -> changeResponse(raw, operation, context)
             is ExistingIdeOperation.Read -> readResponse(raw, operation, context)
+            ExistingIdeOperation.Status -> ExistingIdeDecodedResponse.fromExchange(responseRejected())
+            is ExistingIdeOperation.ApprovalPreparation ->
+                ExistingIdeDecodedResponse.fromExchange(preparationResponse(raw, operation, context))
+            is ExistingIdeOperation.Change ->
+                ExistingIdeDecodedResponse.fromExchange(changeResponse(raw, operation, context))
             is ExistingIdeOperation.Classes,
-            is ExistingIdeOperation.Supertype -> legacyResponse(raw, operation, root)
+            is ExistingIdeOperation.Supertype ->
+                ExistingIdeDecodedResponse.fromExchange(legacyResponse(raw, operation, root))
         }
     }
 
@@ -218,21 +229,32 @@ object ExistingIdeDocuments {
         raw: ByteArray,
         operation: ExistingIdeOperation.Read,
         context: ResponseContext,
-    ): ExistingIdeExchange {
+    ): ExistingIdeDecodedResponse {
         val document = raw.toString(Charsets.UTF_8)
-        return when (val admitted = operation.kind.admitOutcome(document, context.root, context.descriptor)) {
-            is Refinement.Refined -> completeResponse(operation.request, document)
-            is Refinement.Rejected -> operationRejection(raw, admitted.failure)
+        return when (val admitted = operation.kind.admitResponse(document, context.root, context.descriptor)) {
+            is Refinement.Refined -> completeResponseWithEvidence(operation.request, document)
+            is Refinement.Rejected ->
+                ExistingIdeDecodedResponse.withExchange(
+                    operationRejection(raw, admitted.failure.failure),
+                    admitted.failure,
+                )
         }
     }
 
     private fun completeResponse(
-        request: io.github.amichne.kast.protocol.wire.presentation.PreparedOperationRequest,
+        request: PreparedOperationRequest,
         document: String,
-    ): ExistingIdeExchange =
+    ): ExistingIdeExchange = completeResponseWithEvidence(request, document).exchange
+
+    private fun completeResponseWithEvidence(
+        request: PreparedOperationRequest,
+        document: String,
+    ): ExistingIdeDecodedResponse =
         when (val completed = request.complete(document)) {
-            is OperationCompletion.Completed -> ExistingIdeExchange.Semantic(completed.outcome)
-            is OperationCompletion.Rejected -> responseRejected()
+            is OperationCompletion.Completed ->
+                ExistingIdeDecodedResponse.fromExchange(ExistingIdeExchange.Semantic(completed.outcome))
+            is OperationCompletion.Rejected ->
+                ExistingIdeDecodedResponse.rejected(ExistingIdeResponseDecodeFailure.Completion(completed.failure))
         }
 
     /** Only a schema-admitted rejection can cross the boundary before operation authority exists. */
@@ -294,24 +316,11 @@ fun ExistingIdeReadOperation.admitOutcome(
     raw: String,
     root: CanonicalRoot,
     descriptor: ExistingIdeDescriptor,
-): Refinement<Unit, ExistingIdeFailure> {
-    val decoded =
-        when (this) {
-            ExistingIdeReadOperation.QUERY_RUN -> CanonicalOperationWireBindings.queryRun.decodeOutcome(raw)
-            ExistingIdeReadOperation.SOURCE_READ -> CanonicalOperationWireBindings.sourceRead.decodeOutcome(raw)
-            ExistingIdeReadOperation.DIAGNOSTIC_CHECK ->
-                CanonicalOperationWireBindings.diagnosticCheck.decodeOutcome(raw)
-        }
-    return when (decoded) {
-        is WireDecoding.Rejected -> Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
-        is WireDecoding.Decoded ->
-            when (val outcome = decoded.value) {
-                is OperationOutcome.Complete -> admitLiveEvidence(outcome.evidence.basis, root, descriptor)
-                is OperationOutcome.Qualified -> admitLiveEvidence(outcome.evidence.basis, root, descriptor)
-                is OperationOutcome.Rejected -> Refinement.Refined(Unit)
-            }
+): Refinement<Unit, ExistingIdeFailure> =
+    when (val admitted = admitResponse(raw, root, descriptor)) {
+        is Refinement.Refined -> admitted
+        is Refinement.Rejected -> Refinement.Rejected(admitted.failure.failure)
     }
-}
 
 /** A well-formed wire outcome still must belong to this exact admitted live host. */
 fun admitLiveEvidence(
@@ -319,10 +328,7 @@ fun admitLiveEvidence(
     root: CanonicalRoot,
     descriptor: ExistingIdeDescriptor,
 ): Refinement<Unit, ExistingIdeFailure> =
-    when (basis) {
-        is EvidenceBasis.Published -> Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
-        is EvidenceBasis.Live ->
-            if (basis.evidence.workspaceRoot == root.path.toString() && basis.evidence.host == descriptor.host) {
-                Refinement.Refined(Unit)
-            } else Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+    when (val admitted = admitResponseBasis(basis, root, descriptor)) {
+        is Refinement.Refined -> admitted
+        is Refinement.Rejected -> Refinement.Rejected(admitted.failure.failure)
     }

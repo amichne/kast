@@ -90,7 +90,7 @@ value class RelationScopeFingerprint private constructor(val value: String) {
             boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
         ): RelationScopeFingerprint =
             RelationScopeFingerprint(
-                (subject.selectorScopeCanonical() + "\u0000" + boundary.name)
+                (subject.selectorScopeCanonical() + "\u0000" + boundary.canonical(subject))
                     .toByteArray(StandardCharsets.UTF_8)
                     .sha256()
             )
@@ -244,10 +244,49 @@ enum class RelationResumeFailure {
     PROVIDER_MISMATCH,
 }
 
-/** Discovery restrictions select a subject; workspace expansion retains that proof separately. */
-enum class RelationSearchBoundary {
-    RETAINED_SUBJECT,
-    WORKSPACE_EXPANSION,
+/** Seed selection, expansion domain, and output predicates have separate owners. */
+sealed interface RelationSearchBoundary {
+    data object RETAINED_SUBJECT : RelationSearchBoundary
+
+    data object WORKSPACE_EXPANSION : RelationSearchBoundary
+
+    /** Only native source ownership restrictions may constrain expansion; no presentation predicate can enter. */
+    data class Explicit(
+        val scope: SymbolSearchScope,
+        val directory: io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint? = null,
+        val sourceSets: io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets =
+            io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets.All,
+    ) : RelationSearchBoundary
+
+    fun effectiveScope(subject: RelationEndpoint): SymbolSearchScope =
+        when (this) {
+            RETAINED_SUBJECT -> subject.scope
+            WORKSPACE_EXPANSION ->
+                SymbolSearchScope.Workspace(
+                    subject.scope.sourceKinds,
+                    subject.scope.generatedSources,
+                    (subject.scope as? SymbolSearchScope.Workspace)?.libraries ?: SymbolLibraryPolicy.EXCLUDE,
+                )
+            is Explicit -> scope
+        }
+
+    fun effectiveConstraints(subject: RelationEndpoint): SymbolDiscoveryConstraints =
+        when (this) {
+            RETAINED_SUBJECT -> subject.constraints
+            WORKSPACE_EXPANSION -> SymbolDiscoveryConstraints.None
+            is Explicit -> SymbolDiscoveryConstraints(directory, null, sourceSets = sourceSets)
+        }
+
+    fun canonical(subject: RelationEndpoint): String = buildString {
+        appendContinuationField(
+            when (this@RelationSearchBoundary) {
+                RETAINED_SUBJECT -> "RETAINED_SUBJECT"
+                WORKSPACE_EXPANSION -> "WORKSPACE_EXPANSION"
+                is Explicit -> "EXPLICIT"
+            }
+        )
+        appendContinuationField(scopeCanonical(effectiveScope(subject), effectiveConstraints(subject)))
+    }
 }
 
 /** Exact one-hop request; construction admits either the first page or a bound continuation. */
@@ -260,21 +299,8 @@ private constructor(
     val boundary: RelationSearchBoundary,
 ) {
     val scopeFingerprint: RelationScopeFingerprint = RelationScopeFingerprint.from(subject, boundary)
-    val searchScope: SymbolSearchScope =
-        when (boundary) {
-            RelationSearchBoundary.RETAINED_SUBJECT -> subject.scope
-            RelationSearchBoundary.WORKSPACE_EXPANSION ->
-                SymbolSearchScope.Workspace(
-                    subject.scope.sourceKinds,
-                    subject.scope.generatedSources,
-                    (subject.scope as? SymbolSearchScope.Workspace)?.libraries ?: SymbolLibraryPolicy.EXCLUDE,
-                )
-        }
-    val searchConstraints: SymbolDiscoveryConstraints =
-        when (boundary) {
-            RelationSearchBoundary.RETAINED_SUBJECT -> subject.constraints
-            RelationSearchBoundary.WORKSPACE_EXPANSION -> SymbolDiscoveryConstraints.None
-        }
+    val searchScope: SymbolSearchScope = boundary.effectiveScope(subject)
+    val searchConstraints: SymbolDiscoveryConstraints = boundary.effectiveConstraints(subject)
 
     fun admitsEndpoint(endpoint: RelationEndpoint): Boolean =
         endpoint === subject ||
@@ -457,7 +483,9 @@ private fun relationContinuationFingerprint(
     return RelationContinuationFingerprint.digest(canonical)
 }
 
-private fun RelationEndpoint.selectorScopeCanonical(): String {
+private fun RelationEndpoint.selectorScopeCanonical(): String = scopeCanonical(scope, constraints)
+
+private fun scopeCanonical(scope: SymbolSearchScope, constraints: SymbolDiscoveryConstraints): String {
     val snapshot = io.github.amichne.kast.symbol.contract.SymbolSearchScope.snapshot(scope)
     return buildString {
         appendContinuationField(snapshot.kind.name)

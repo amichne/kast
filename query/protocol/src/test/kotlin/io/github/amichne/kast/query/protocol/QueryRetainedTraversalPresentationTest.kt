@@ -76,7 +76,7 @@ class QueryRetainedTraversalPresentationTest {
             )
         }
         val execution =
-            QueryExecutionResult.Complete(
+            QueryExecutionResult.Complete.create(
                 QueryResult(QueryRows.Symbols.of(rows), emptyList()),
                 QueryCoverage.Complete(QueryCount.parse(101).refined()),
             )
@@ -126,7 +126,7 @@ class QueryRetainedTraversalPresentationTest {
                 store,
             )
         val unproven =
-            QueryExecutionResult.Complete(
+            QueryExecutionResult.Complete.create(
                 QueryResult(
                     QueryRows.Symbols.of(listOf(QuerySymbol(SymbolDescription.from(fixture.selector), emptyList()))),
                     emptyList(),
@@ -148,6 +148,114 @@ class QueryRetainedTraversalPresentationTest {
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE),
             rejected.reason,
         )
+    }
+
+    @Test
+    fun `retained complete empty walk projects its actual effective domain and exact seed`() = runTest {
+        // Exhausted native traversal is the starting evidence; this proves retained public projection.
+        val observation = emptyWalkObservation()
+        val original = run(QueryOutputDocument.Symbols(bounded(emptyList())))
+        val issued = issueEmptyWalk(observation, original)
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { error("Retained empty walk must not execute semantic work") },
+                fixture.references,
+                store,
+            )
+        val first =
+            protocol.execute(
+                QueryRunRequest.ReadResult.symbols(
+                    issued.reference,
+                    output = QueryOutputDocument.Symbols(bounded(emptyList())),
+                ),
+                fixture.authority,
+                budget,
+            ) as OperationOutcome.Complete
+        val replay =
+            protocol.execute(
+                QueryRunRequest.ReadResult.symbols(
+                    issued.reference,
+                    output = QueryOutputDocument.Symbols(bounded(emptyList())),
+                ),
+                fixture.authority,
+                budget,
+            ) as OperationOutcome.Complete
+        assertEquals(0, first.evidence.payload.items.values.size)
+        val projected = first.evidence.payload.walkObservations.values.single()
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument.SOURCE_DOMAIN,
+            projected.requestedDomain,
+        )
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument.Workspace,
+            projected.effectiveDomain.scope,
+        )
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument.TEST_ONLY,
+            projected.effectiveDomain.sourcePolicy,
+        )
+        assertEquals(observation.question.domainFingerprint.value, projected.domainFingerprint.value)
+        assertEquals(io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument.Complete, projected.coverage)
+        assertEquals(first.evidence.payload.walkObservations, replay.evidence.payload.walkObservations)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryQuestionDocument.from(original),
+            first.evidence.payload.question,
+        )
+    }
+
+    private fun issueEmptyWalk(
+        observation: io.github.amichne.kast.query.contract.QueryWalkObservation,
+        original: QueryRunRequest.Run,
+    ): QueryResultIssuance.Issued {
+        val execution =
+            QueryExecutionResult.Complete.create(
+                QueryResult(
+                    QueryRows.Symbols.of(emptyList()),
+                    emptyList(),
+                    walkObservations = listOf(observation),
+                ),
+                QueryCoverage.Complete(QueryCount.parse(0).refined()),
+            )
+        return store.issueResult(original, QueryRetainedResult.capture(fixture.authority, execution).refined())
+            as QueryResultIssuance.Issued
+    }
+
+    private fun emptyWalkObservation(): io.github.amichne.kast.query.contract.QueryWalkObservation {
+        val domain =
+            io.github.amichne.kast.symbol.contract.SymbolSearchScope.Workspace(
+                io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy.TEST_ONLY,
+                io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy.EXCLUDE,
+                io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy.EXCLUDE,
+            )
+        val expansion = io.github.amichne.kast.relation.contract.RelationSearchBoundary.Explicit(domain)
+        val traversalBudget =
+            TraversalBudget(
+                ResultLimit.parse(100).refined(),
+                TraversalByteLimit.parse(100_000).refined(),
+                fixture.budget.resources.workUnitLimit,
+                fixture.budget.resources.elapsedTimeLimit,
+                TraversalDepthLimit.parse(2).refined(),
+                TraversalFrontierLimit.parse(100).refined(),
+                fixture.budget,
+            )
+        val plan =
+            TraversalPlan.start(fixture.selector, RelationMeaning.References, traversalBudget, expansion = expansion)
+                .refined()
+        val page =
+            io.github.amichne.kast.traversal.contract.TraversalPage.fromBoundary(
+                    plan,
+                    emptyList(),
+                    0L,
+                    1L,
+                    0L,
+                    1,
+                    io.github.amichne.kast.traversal.contract.TraversalProgress.restore(1L, 1L, 0L, 0).refined(),
+                )
+                .refined()
+        val complete =
+            io.github.amichne.kast.traversal.contract.TraversalResult.complete(page)
+                as io.github.amichne.kast.traversal.contract.TraversalResult.Complete
+        return io.github.amichne.kast.query.contract.QueryWalkObservation.from(complete)
     }
 
     private fun traversalRecord(index: Int): TraversalRecord {

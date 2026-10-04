@@ -102,6 +102,7 @@ private fun QueryExecutionResult.selectors() =
     when (this) {
         is QueryExecutionResult.Complete -> result.symbolRows().map { it.selector }
         is QueryExecutionResult.Qualified -> result.symbolRows().map { it.selector }
+        is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
         is QueryExecutionResult.Rejected -> error("Unexpected rejection: $reason")
     }
 

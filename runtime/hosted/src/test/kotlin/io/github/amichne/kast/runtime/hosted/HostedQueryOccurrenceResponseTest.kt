@@ -5,20 +5,29 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
+import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionDocument
+import io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionMeasurementDocument
 import io.github.amichne.kast.protocol.contract.RelationOmissionSamplesDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
@@ -59,7 +68,7 @@ class HostedQueryOccurrenceResponseTest {
             val response =
                 encodeHostedQueryResponse(
                     pending,
-                    maximumResults = io.github.amichne.kast.kernel.ResultLimit.parse(1).refined(),
+                    maximumResults = ResultLimit.parse(1).refined(),
                 ) { suffix ->
                     remainder = suffix
                     HostedOutputRetention.Retained(
@@ -96,12 +105,7 @@ class HostedQueryOccurrenceResponseTest {
                     RelationLimitationDocument.PROVIDER_FAILURE,
                     RelationOmissionMeasurementDocument.UnmeasuredOnPage,
                     RelationOmissionSamplesDocument.complete(
-                            BoundedProtocolList.create(
-                                    emptyList<
-                                        io.github.amichne.kast.protocol.contract.RelationOmissionLocationDocument
-                                    >()
-                                )
-                                .refined()
+                            BoundedProtocolList.create(emptyList<RelationOmissionLocationDocument>()).refined()
                         )
                         .refined(),
                 )
@@ -118,6 +122,7 @@ class HostedQueryOccurrenceResponseTest {
                 CanonicalOperationWireBindings.queryRun.operation.id,
                 fixture.authority.evidenceBasis(),
                 QueryRunResult(
+                    fixtureQueryQuestion(),
                     BoundedProtocolList.create(items).refined(),
                     BoundedProtocolList.create(emptyList<QueryItemFailureDocument>()).refined(),
                     BoundedProtocolList.create(listOf(omission)).refined(),
@@ -126,9 +131,7 @@ class HostedQueryOccurrenceResponseTest {
             QueryRunQualification.create(
                     QueryKnownMinimum.parse(items.size).refined(),
                     listOf(QueryLimitationDocument.RELATION_INCOMPLETE),
-                    io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.TerminalIncomplete(
-                        io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
-                    ),
+                    QueryQualifiedProgressDocument.TerminalIncomplete(QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE),
                 )
                 .refined(),
         )
@@ -138,4 +141,20 @@ class HostedQueryOccurrenceResponseTest {
             is Refinement.Refined -> value
             is Refinement.Rejected -> error("Fixture rejection: $failure")
         }
+}
+
+private fun fixtureQueryQuestion(): QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: Refinement<Value, Failure>): Value =
+        when (value) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return QueryQuestionDocument(
+        QueryFromDocument.Location(
+            fixtureValue(ProtocolText.parse("Fixture.kt")),
+            fixtureValue(ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(BoundedProtocolList.create(emptyList())),
+        QueryOutputDocument.Symbols(fixtureValue(BoundedProtocolList.create(listOf(QuerySymbolFieldDocument.NAME)))),
+    )
 }

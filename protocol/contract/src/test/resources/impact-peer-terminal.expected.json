@@ -1,0 +1,66 @@
+{
+  "type": "UNRESOLVED_PEER_CONTINUATION",
+  "reference": {
+    "model": {
+      "id": "crypto",
+      "version": 1,
+      "provenance": "reviewed"
+    },
+    "rule": "rule"
+  },
+  "target": {
+    "enclosing": {
+      "basis": {
+        "type": "LIVE",
+        "root": "/peer",
+        "host": "00000000-0000-0000-0000-000000000009",
+        "epoch": 9,
+        "contentView": "SAVED_PSI_COMMITTED",
+        "referenceVersion": 1
+      },
+      "file": "/peer/File.kt",
+      "range": {
+        "start": 0,
+        "end": 100
+      },
+      "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "range": {
+      "start": 10,
+      "end": 11
+    },
+    "role": {
+      "type": "EXPRESSION_RESULT"
+    }
+  },
+  "admission": {
+    "acquisition": {
+      "completedBasis": {
+        "type": "LIVE",
+        "root": "/peer",
+        "host": "00000000-0000-0000-0000-000000000009",
+        "epoch": 9,
+        "contentView": "SAVED_PSI_COMMITTED",
+        "referenceVersion": 1
+      },
+      "budget": {
+        "maxElapsedMillis": 100,
+        "maxWorkUnits": 10,
+        "maxResults": 2,
+        "maxReturnedBytes": 10000
+      },
+      "examinedWorkUnits": 4,
+      "elapsedNanos": 1500000
+    },
+    "selection": {
+      "budget": {
+        "maxElapsedMillis": 100,
+        "maxWorkUnits": 10,
+        "maxResults": 2,
+        "maxReturnedBytes": 10000
+      },
+      "examinedWorkUnits": 2
+    }
+  },
+  "reason": "PEER_FLOW_NOT_INVESTIGATED"
+}

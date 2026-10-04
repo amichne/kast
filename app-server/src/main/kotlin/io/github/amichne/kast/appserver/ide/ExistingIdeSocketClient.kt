@@ -253,14 +253,13 @@ internal constructor(
         operation: ExistingIdeOperation,
         descriptor: ExistingIdeDescriptor,
     ): ExistingIdeExchange {
-        val input = java.io.DataInputStream(Channels.newInputStream(channel))
-        val size = input.readInt()
-        if (size !in 1..limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value) {
-            return ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+        return readExistingIdeResponse(
+            input = java.io.DataInputStream(Channels.newInputStream(channel)),
+            limits = limits,
+            observer = JsonLineExistingIdeResponseObserver(descriptor, operation, System.err),
+        ) { bytes ->
+            ExistingIdeDocuments.responseWithEvidence(bytes, root, operation, descriptor)
         }
-        val bytes = input.readNBytes(size)
-        return if (bytes.size != size) ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
-        else ExistingIdeDocuments.response(raw = bytes, root = root, operation = operation, descriptor = descriptor)
     }
 }
 

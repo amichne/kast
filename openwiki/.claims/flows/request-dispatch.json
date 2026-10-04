@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:afc22afe039808648411ae5036100a8cabfa62160b6d0643f22146627c23289b",
+  "pageVersion": "sha256:b7db5ebcea1af05738ce1b01dfbc813943a371885978a682f9f60979eab27d02",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -32,7 +32,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
+          "version": "repo-file-v1:sha256:765b717ab5737a4fc9326ffa1555ba7f9bfa9d480cc2d5b3ae0a2031176eed9d"
         }
       ]
     },
@@ -42,17 +42,63 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:8ecd01e50af365049771b58ccc980f147a7e65377475b1057126432d8bd62c52"
+          "version": "repo-file-v1:sha256:765b717ab5737a4fc9326ffa1555ba7f9bfa9d480cc2d5b3ae0a2031176eed9d"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
           "version": "repo-file-v1:sha256:1bc674ddac85e827aee47a29008f03f1914327512fa7e65a74ac1f496a41da02"
         }
       ]
+    },
+    {
+      "id": "claim_75690a8adc3449aebe1b53c1016d6601",
+      "statement": "Public impact and retained witness requests lower into the existing canonical query run/read-result constructors, preserving source, cursor, output kind and execution budget without creating semantic facts.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt",
+          "version": "repo-file-v1:sha256:630c9a7e3a62ab0be5718e60b2d0c681621f21517eaec6dc9011bf1d791e13c8"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt#L49-L101",
+          "version": "repo-lines-v1:sha256:c377a261740512a32b5164ad4298e08a0d4e712010a30e0f133cbb1c3cce3c03:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhYzNhYTAwOWQzNzUzMjZiYmVkN2MzOTc3ZTI2MmY0MTljNTQ1ZjQ2YmUxYTdjZGVhNmIzYWFjZDYxZjY5OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3NGY2ZmUzYzM2ZTVhZGM0Y2EwODRlMWJhOGE5YTgxYTY0OWU1ZjA2NGUxYmI3ODJiMjg0YjdjYjdmNTdjNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2OWJlNTUyNGI3MTBiZDQ5YThjMTAzMzYyYTQ1ODAwZDM5MTQwNTZkNmU3NTdlNTRlZGZiNDM3YThjODVmZDQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_94a73b3385e448fbb2429d1da6274423",
+      "statement": "The existing-IDE client emits bounded private response activity for frame, body, strict JSON, canonical wire, live-basis and prepared-completion admission while preserving existing finite public rejections.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseAdmission.kt",
+          "version": "repo-file-v1:sha256:0320736139cbf7b23db460ae1240ee1d80d4d4b47a3b67569aa31318b0c0d0cf"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
+          "version": "repo-file-v1:sha256:4d0894be4bea8b658b8f223fc61e6e5c99315d6132b8cd5217cb60a096a92c73"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
+          "version": "repo-file-v1:sha256:13a2782a9244e0d4c863d2cbb468e17a9cdc5969e6c0fa1a8b6e9f4c0e486542"
+        }
+      ]
+    },
+    {
+      "id": "claim_539175c666cc441998a58c5fd98134db",
+      "statement": "Public impact lowering preserves supplied requested-site claims in order and lowers omitted or null requestedSites to the canonical empty list; SITE_ACCOUNTING uses the existing retained witness request and does not create semantic facts.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt",
+          "version": "repo-file-v1:sha256:630c9a7e3a62ab0be5718e60b2d0c681621f21517eaec6dc9011bf1d791e13c8"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
+          "version": "repo-file-v1:sha256:2ee7913c194b83f27079fa6d97324412ac32cc7435b89f8d892cf78a682512f1"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T14:11:27.469Z"
+    "at": "2026-10-03T14:16:26.318Z"
   }
 }

@@ -19,7 +19,7 @@ import org.junit.jupiter.api.assertInstanceOf
 internal class HostedApprovalFixture {
     val plan =
         LiveAddDeclarationPlanCodec.decode(
-                checkNotNull(javaClass.getResource("/live-add-declaration-plan-v1.json")).readText()
+                checkNotNull(javaClass.getResource("/live-add-declaration-plan-v2.json")).readText()
             )
             .approvalRefined()
     val owner = plan.basis.observation.reference.host

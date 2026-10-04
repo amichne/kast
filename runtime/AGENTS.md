@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-29 | hash: 9b6ab7c209f5 -->
+<!-- generated: 2026-10-03 | hash: 9b6ab7c209f5 -->
 
 # runtime
 
@@ -32,8 +32,12 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 - [HostedEndpointService.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt) - project endpoint ownership.
 - [HostedCompatibilityMetadata.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt) - packaged Host version and provided contract exposed through live describe.
 - [hosted/native/README.md](hosted/native/README.md) - real mixed-version installation and ordinary IntelliJ lifecycle qualification.
-- [HostedSemanticServices.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt) - request-scoped semantic service composition.
-- [HostedCanonicalQuery.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) - bounded canonical read dispatch.
+- [HostedSemanticServices.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt) - request-scoped semantic service composition, including bounded value-flow reads, producer seeds, and model revalidation under shared acquisition accounting.
+- [HostedPeerSiteReadPort.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteReadPort.kt) - passive registered-peer lookup and independently owned single-evaluation site read with final freshness validation.
+- [HostedPeerSiteAdmissions.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteAdmissions.kt) - completed child proof, original parent work/time debit and retained peer storage admission.
+- [HostedCanonicalQuery.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) - bounded canonical read dispatch, pairing value-path evaluation with the existing full-envelope fitter and publication session.
+- [HostedQueryResultRetentionObservation.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt) - maps finite query-retention source, capture, and issuance outcomes into existing bounded RETENTION diagnostics.
+- [HostedTraversalOperations.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt) - observational adapter around the existing traversal service, restoring coordination timing after native relation phases.
 - [HostedReadBudgetAdmission.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt) - necessary response-byte admission before semantic dispatch.
 - [HostedResponse.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt) - original semantic outcomes retained through encoding and transport.
 - [HostedChangeResources.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeResources.kt) - shared durable mutation stores.

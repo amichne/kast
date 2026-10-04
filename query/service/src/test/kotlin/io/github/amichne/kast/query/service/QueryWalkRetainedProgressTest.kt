@@ -322,6 +322,7 @@ private fun QueryExecutionResult.result() =
     when (this) {
         is QueryExecutionResult.Complete -> result
         is QueryExecutionResult.Qualified -> result
+        is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
         is QueryExecutionResult.Rejected -> error("Unexpected query rejection: $reason")
     }
 

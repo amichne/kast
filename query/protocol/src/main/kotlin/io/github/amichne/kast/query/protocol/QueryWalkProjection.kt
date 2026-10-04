@@ -47,8 +47,18 @@ internal fun QueryWalkObservation.projectWalkObservation(
         strategy = strategy.protocolDocument() ?: return null,
         partialExpansions = partials,
         coverage = projectedCoverage,
+        requestedDomain = question.requestedDomain.requestedDomainDocument(),
+        effectiveDomain = relationDomainDocument(question.effectiveScope, question.effectiveConstraints) ?: return null,
+        domainFingerprint =
+            io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint.parse(
+                    question.domainFingerprint.value
+                )
+                .refinedWalkOrNull() ?: return null,
         inheritedOmissions = inheritedOmissions.protocolDocuments(authority) ?: return null,
         referenceOccurrences = referenceOccurrences.protocolReferences(authority) ?: return null,
+        scopeExclusions =
+            scopeExclusions.mapProjected { it.projectScopeExclusion(authority) }.boundedProjectedOrNull()
+                ?: return null,
     )
 }
 

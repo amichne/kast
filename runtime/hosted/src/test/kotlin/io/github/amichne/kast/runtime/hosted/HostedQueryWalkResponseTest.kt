@@ -7,15 +7,29 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument
 import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
+import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
+import io.github.amichne.kast.protocol.contract.QueryPreparedCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
+import io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument
+import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
@@ -34,6 +48,7 @@ import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.query.protocol.QueryPublishedPage
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.query.protocol.evidenceBasis
 import io.github.amichne.kast.query.protocol.protocolDocument
@@ -86,7 +101,7 @@ class HostedQueryWalkResponseTest {
     @Test
     fun `retention capacity preserves a useful prefix and the original incomplete coverage`() = runTest {
         val (records, observation, outcome) = walkFixture()
-        var published: io.github.amichne.kast.query.protocol.QueryPublishedPage? = null
+        var published: QueryPublishedPage? = null
         val response =
             encodeHostedQueryResponse(
                 outcome,
@@ -103,9 +118,7 @@ class HostedQueryWalkResponseTest {
             (qualified.qualification as QueryRunQualification).progress
                 as QueryQualifiedProgressDocument.RetentionUnavailable
         assertEquals(
-            io.github.amichne.kast.protocol.contract.QueryPreparedCoverageDocument.TerminalIncomplete(
-                QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
-            ),
+            QueryPreparedCoverageDocument.TerminalIncomplete(QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE),
             progress.upstream,
         )
         assertEquals(
@@ -139,6 +152,7 @@ class HostedQueryWalkResponseTest {
                     CanonicalOperationWireBindings.queryRun.operation.id,
                     fixture.authority.evidenceBasis(),
                     QueryRunResult(
+                        fixtureQueryQuestion(),
                         bounded<QueryResultItemDocument>(records),
                         bounded(emptyList()),
                         walkObservations = bounded(listOf(observation)),
@@ -185,6 +199,9 @@ class HostedQueryWalkResponseTest {
                     listOf(RelationLimitationDocument.WORK_LIMIT_REACHED),
                 )
                 .refined(),
+            requestedDomain = QueryRelationRequestedDomainDocument.WORKSPACE,
+            effectiveDomain = fixtureWalkDomain(),
+            domainFingerprint = QueryRelationDomainFingerprint.parse("1".repeat(64)).refined(),
         )
     }
 
@@ -214,3 +231,31 @@ class HostedQueryWalkResponseTest {
             is Refinement.Rejected -> error("Fixture rejection: $failure")
         }
 }
+
+private fun fixtureQueryQuestion(): QueryQuestionDocument {
+    fun <Value, Failure> fixtureValue(value: Refinement<Value, Failure>): Value =
+        when (value) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> error("Invalid question fixture: ${value.failure}")
+        }
+    return QueryQuestionDocument(
+        QueryFromDocument.Location(
+            fixtureValue(ProtocolText.parse("Fixture.kt")),
+            fixtureValue(ProtocolOffset.parse(0)),
+        ),
+        fixtureValue(BoundedProtocolList.create(emptyList())),
+        QueryOutputDocument.Symbols(fixtureValue(BoundedProtocolList.create(listOf(QuerySymbolFieldDocument.NAME)))),
+    )
+}
+
+private fun fixtureWalkDomain(): QueryRelationDomainDocument =
+    QueryRelationDomainDocument(
+        QuerySemanticScopeDocument.Workspace,
+        QueryDiscoverySourcePolicyDocument.PRODUCTION_AND_TEST,
+        QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        QueryDiscoverySourceSetsDocument.All,
+        null,
+        null,
+        (BoundedProtocolList.create(emptyList<QueryDeclarationKindDocument>()) as Refinement.Refined).value,
+    )

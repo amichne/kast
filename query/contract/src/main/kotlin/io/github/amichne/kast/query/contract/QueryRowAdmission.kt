@@ -7,6 +7,8 @@ private sealed interface AdmittedRowKind {
 
     data object Occurrence : AdmittedRowKind
 
+    data object ValuePath : AdmittedRowKind
+
     data class Binding(val mode: QueryJoinMode.Inner) : AdmittedRowKind
 }
 
@@ -16,6 +18,8 @@ internal fun admitQueryRows(
     steps: List<QueryStepSyntax>,
     output: QueryOutputSyntax,
 ): Refinement<Unit, QueryPlanAdmissionFailure> {
+    if (output is QueryOutputSyntax.ImpactWitness)
+        return Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)
     if (steps.any(::hasIncompleteRight)) return Refinement.Rejected(QueryPlanAdmissionFailure.IncompleteRightInput)
     var rowKind = source.rowKind()
     for (step in steps) {
@@ -28,7 +32,8 @@ internal fun admitQueryRows(
     val compatible =
         when (rowKind) {
             AdmittedRowKind.Occurrence -> output == QueryOutputSyntax.Occurrences
-            AdmittedRowKind.Symbol -> output != QueryOutputSyntax.BindingRows
+            AdmittedRowKind.ValuePath -> output == QueryOutputSyntax.ValuePaths
+            AdmittedRowKind.Symbol -> output != QueryOutputSyntax.BindingRows && output != QueryOutputSyntax.ValuePaths
             is AdmittedRowKind.Binding -> output == QueryOutputSyntax.BindingRows
         }
     return if (compatible) Refinement.Refined(Unit)
@@ -37,6 +42,7 @@ internal fun admitQueryRows(
 
 private fun QuerySourceSyntax.rowKind(): AdmittedRowKind =
     when (this) {
+        is QuerySourceSyntax.Impact -> AdmittedRowKind.ValuePath
         is QuerySourceSyntax.Symbols,
         is QuerySourceSyntax.Text,
         is QuerySourceSyntax.Location,
@@ -45,13 +51,15 @@ private fun QuerySourceSyntax.rowKind(): AdmittedRowKind =
             when (val retained = result) {
                 is QueryRetainedResult.Symbols -> AdmittedRowKind.Symbol
                 is QueryRetainedResult.Occurrences -> AdmittedRowKind.Occurrence
+                is QueryRetainedResult.ValuePaths -> AdmittedRowKind.ValuePath
                 is QueryRetainedResult.Bindings -> AdmittedRowKind.Binding(retained.mode)
             }
     }
 
 private fun AdmittedRowKind.admit(step: QueryStepSyntax): Refinement<AdmittedRowKind, QueryPlanAdmissionFailure> =
     when (this) {
-        AdmittedRowKind.Occurrence -> Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)
+        AdmittedRowKind.Occurrence,
+        AdmittedRowKind.ValuePath -> Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)
         AdmittedRowKind.Symbol ->
             when (step) {
                 is QueryStepSyntax.ProjectBinding -> Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)

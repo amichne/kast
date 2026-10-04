@@ -108,9 +108,11 @@ internal class GeneratedWireCodecFactory(private val json: Json) {
         serializer: KSerializer<Document>,
         toDocument: (Value) -> Document,
         toValue: (Document) -> WireDocumentConversion<Value>,
+        validateValue: (Value) -> Refinement<Unit, WireFailure> = { Refinement.Refined(Unit) },
     ): WireValueCodec<Value> =
         WireValueCodec(
             descriptors = listOf(serializer.descriptor),
+            validateValue = validateValue,
             encodeValue = { value -> json.encodeToJsonElement(serializer, toDocument(value)) },
             decodeValue = { element -> toValue(json.decodeFromJsonElement(serializer, element)) },
         )
@@ -130,13 +132,19 @@ internal constructor(
     val descriptors: List<kotlinx.serialization.descriptors.SerialDescriptor>,
     private val encodeValue: (Value) -> JsonElement,
     private val decodeValue: (JsonElement) -> WireDocumentConversion<Value>,
+    private val validateValue: (Value) -> Refinement<Unit, WireFailure> = { Refinement.Refined(Unit) },
 ) {
-    fun encode(value: Value, role: WireValueRole): WireValueEncoding =
-        try {
+    fun encode(value: Value, role: WireValueRole): WireValueEncoding {
+        when (val validation = validateValue(value)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return WireValueEncoding.Rejected(validation.failure)
+        }
+        return try {
             WireValueEncoding.Encoded(encodeValue(value))
         } catch (_: SerializationException) {
             WireValueEncoding.Rejected(WireFailure.PayloadEncodingFailed(role))
         }
+    }
 
     /**
      * Proof transition: `JsonElement -> WireDecoding<Value>`.
@@ -154,7 +162,11 @@ internal constructor(
                 return WireDecoding.Rejected(WireFailure.InvalidPayload(role))
             }
         return when (conversion) {
-            is WireDocumentConversion.Converted -> WireDecoding.Decoded(conversion.value)
+            is WireDocumentConversion.Converted ->
+                when (val validation = validateValue(conversion.value)) {
+                    is Refinement.Refined -> WireDecoding.Decoded(conversion.value)
+                    is Refinement.Rejected -> WireDecoding.Rejected(validation.failure)
+                }
             is WireDocumentConversion.Rejected -> WireDecoding.Rejected(WireFailure.InvalidPayload(role))
         }
     }

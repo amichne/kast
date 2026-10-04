@@ -50,13 +50,15 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
+    at: 2026-10-03T04:57:02.812Z
 sources:
   - id: openwiki-source-432d05143d371dfe54d7f30d
     resource: repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
+  - id: openwiki-source-42e44e88cc264dc00c12ebc2
+    resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt
   - id: openwiki-source-c664f45de26537caea2696fb
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-03T04:57:02.812Z" }
 ---
 
 # Semantic change lifecycle
@@ -203,3 +205,5 @@ cancellation, overflow and child failure, retain only bounded phase/plan evidenc
 and report unknown mutation state when no response proves the outcome. They do
 not replay a write. Compact and inline references keep their existing authority
 checks; durable receipts retain canonical reference material.
+
+Durable live-plan row envelopes use storage version 1 independently of each embedded plan document codec. Issuance and reload check the same storage owner before checksum, document decoding and exact plan identity checks. Add-declaration plan codec version 2 retains explicit traversal expansion scope; replacement-body codec version 1 remains independently supported. A current embedded plan does not admit an unknown storage-row version, and an old embedded add-declaration plan does not become valid merely because its row envelope is supported.

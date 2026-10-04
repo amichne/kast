@@ -153,6 +153,29 @@ The recorded join (`06-join-c`) retains one pair as **C**, with exhaustive cover
 
 Kast does not expose a general-purpose `MAP` operator or arbitrary-field join. `PROJECT_BINDING` selects a named symbol from each row; later steps operate on those symbols.
 
+## Choose the relationship search domain
+
+Current `EXPAND_RELATION` and `WALK` steps accept `expansionScope`. It controls the sources searched for relationships independently of the query that selected the seeds. A later `WHERE` step filters returned rows.
+
+`EXPAND_RELATION` defaults to `WORKSPACE`. `WALK` defaults to `RETAINED_SEED`, which uses the source scope carried by each seed reference. Set either choice explicitly, or use `SOURCE_DOMAIN` to select source sets, directory containment, production or test sources, and generated-source inclusion:
+
+```json
+{
+  "type": "EXPAND_RELATION",
+  "relation": "REFERENCES",
+  "expansionScope": {
+    "type": "SOURCE_DOMAIN",
+    "sourceSets": ["main"],
+    "directory": "query/contract",
+    "includeSubdirectories": true,
+    "sourcePolicy": "PRODUCTION_ONLY",
+    "generatedSources": "EXCLUDE"
+  }
+}
+```
+
+Use this object as a query step. Coverage applies to the selected search domain; a narrow domain cannot establish absence in excluded sources. These options describe current requests and do not change the historical counts above.
+
 ## Resume work or inspect retained rows
 
 > If this query reports resumable work, resume its issued continuation. Do not rerun its completed steps. To inspect retained rows without advancing execution, read the retained result instead.

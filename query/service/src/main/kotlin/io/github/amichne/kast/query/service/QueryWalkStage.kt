@@ -50,7 +50,13 @@ internal class QueryWalkStage(
             if (task.cursor == null) {
                 when (
                     val admitted =
-                        TraversalPlan.start(task.value.selector, task.stage.meaning, budget, task.stage.strategy)
+                        TraversalPlan.start(
+                            task.value.selector,
+                            task.stage.meaning,
+                            budget,
+                            task.stage.strategy,
+                            task.stage.expansion,
+                        )
                 ) {
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return QueryWalkStageResult.ContractRejected
@@ -64,6 +70,7 @@ internal class QueryWalkStage(
                             budget,
                             task.cursor,
                             task.stage.strategy,
+                            task.stage.expansion,
                         )
                 ) {
                     is Refinement.Refined -> admitted.value

@@ -88,7 +88,10 @@ object LiveAddDeclarationVerificationReplay {
         val traversals =
             plan.verificationScope.traversals.map { replay ->
                 val request =
-                    when (val admitted = TraversalPlan.start(anchor, replay.meaning, replay.budget)) {
+                    when (
+                        val admitted =
+                            TraversalPlan.start(anchor, replay.meaning, replay.budget, expansion = replay.expansion)
+                    ) {
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected ->
                             return Refinement.Rejected(LiveVerificationFailure.TRAVERSAL_EVIDENCE_REJECTED)
@@ -357,5 +360,7 @@ private fun matchesTraversalReplay(
     if (result !is TraversalResult.Complete) return false
     val request = result.page.plan
     if (request.start != anchor || request.meaning != expected.meaning) return false
-    return request.budget == expected.budget && request.position == TraversalPosition.Start
+    return request.budget == expected.budget &&
+        request.expansion == expected.expansion &&
+        request.position == TraversalPosition.Start
 }

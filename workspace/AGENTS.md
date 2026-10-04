@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: 516f677d4d3b -->
+<!-- generated: 2026-10-03 | hash: ba0248f76aa7 -->
 
 # workspace
 
@@ -8,6 +8,8 @@
 Defines canonical workspace identity and read evidence, and admits bounded semantic reads from projects already open in IntelliJ. IDEA owns project import, indexing, and lifetime.
 
 ## Key Files
+
+- [IntellijReadObservation.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt) - bounded stage and counter vocabulary covers exclusive traversal coordination, native relation preparation, producer seeds, model revalidation, value-flow outcomes, and finite query-retention capture and issuance outcomes without source payloads.
 
 - [HostedQueryLifetime.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryLifetime.kt) - bounded concurrent permits with exact invocation ownership.
 - [HostedReadFreshnessOwner.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt) - native freshness reobservation within short semantic authority transitions.

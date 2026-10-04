@@ -67,7 +67,10 @@ class QueryWalkEvidencePaginationTest {
         )
         assertTrue(
             observations.all {
-                it.progress == original.progress && it.coverage == original.coverage && it.subject == original.subject
+                it.progress == original.progress &&
+                    it.coverage == original.coverage &&
+                    it.subject == original.subject &&
+                    it.question == original.question
             }
         )
     }
@@ -118,7 +121,13 @@ private class WalkEvidenceFixture {
                 RelationSearchBoundary.WORKSPACE_EXPANSION,
             )
         val target =
-            RelationConfirmedReferenceTarget.fromCompiler(child.subject, child.subject.compilerIdentity).refinedWalk()
+            RelationConfirmedReferenceTarget.fromCompiler(
+                    child.subject,
+                    io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromSelector(
+                        (child.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector
+                    ),
+                )
+                .refinedWalk()
         val entry =
             TraversalFrontierEntry.create(plan, TraversalNode.start(selected), TraversalDepth.parse(0).refinedWalk())
                 .refinedWalk()
@@ -176,6 +185,7 @@ private class WalkEvidenceFixture {
                     observations += page.result.walkObservations
                     next = assertInstanceOf(QueryContinuationState.Resumable::class.java, page.continuation).checkpoint
                 }
+                is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                 is QueryExecutionResult.Rejected -> fail("Unexpected rejection: ${page.reason}")
             }
         }

@@ -1,0 +1,11 @@
+[
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"PATH","cause":"TERMINAL_UNPROVEN"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"LEDGER","cause":"MISSING_BRANCH"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"ACCOUNTING","cause":"DUPLICATE_PATH"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"REPRESENTATION","cause":"CALLABLE_MISMATCH"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"BOUNDARY","cause":"KIND_MISMATCH"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"MODEL_HISTORY","cause":"MISSING_APPLICATION"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"SELECTION","cause":"PRESENTATION_ONLY_ROWS"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"ROW_IDENTITY","cause":"CHANGED_RETAINED_ROWS"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"PRESENTATION_ONLY"}}
+]

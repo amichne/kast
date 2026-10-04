@@ -19,6 +19,20 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal sealed interface QueryResultItemWireDocument {
     @Serializable
+    @SerialName("IMPACT_WITNESS")
+    data class ImpactWitness(val item: io.github.amichne.kast.protocol.contract.ImpactWitnessItemDocument) :
+        QueryResultItemWireDocument
+
+    @Serializable
+    @SerialName("VALUE_PATH")
+    data class ValuePath(
+        val path: io.github.amichne.kast.protocol.contract.ImpactPathDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        val rowId: String? = null,
+    ) : QueryResultItemWireDocument
+
+    @Serializable
     @SerialName("exact-symbol")
     data class ExactSymbol(
         val ref: QueryReferenceWireDocument.ExactSymbol,
@@ -101,6 +115,8 @@ internal sealed interface QueryBindingCellWireDocument {
 
 internal fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
     when (this) {
+        is QueryResultItemDocument.ImpactWitness -> QueryResultItemWireDocument.ImpactWitness(item)
+        is QueryResultItemDocument.ValuePath -> QueryResultItemWireDocument.ValuePath(path, rowId?.value)
         is QueryResultItemDocument.ExactSymbol -> toExactWire()
         is QueryResultItemDocument.Occurrence ->
             QueryResultItemWireDocument.Occurrence(
@@ -156,6 +172,10 @@ private fun QueryBindingCellDocument.toWire(): QueryBindingCellWireDocument =
 
 internal fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<QueryResultItemDocument> =
     when (this) {
+        is QueryResultItemWireDocument.ImpactWitness ->
+            WireDocumentConversion.Converted(QueryResultItemDocument.ImpactWitness(item))
+        is QueryResultItemWireDocument.ValuePath ->
+            optionalRowId(rowId).mapConverted { QueryResultItemDocument.ValuePath(path, it) }
         is QueryResultItemWireDocument.ExactSymbol -> toExactContract()
         is QueryResultItemWireDocument.Occurrence ->
             ref.token.queryItemText().flatMapConverted { token ->

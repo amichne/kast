@@ -17,7 +17,12 @@ internal constructor(
     val boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
 )
 
-data class LivePlannedTraversal internal constructor(val meaning: RelationMeaning, val budget: TraversalBudget)
+data class LivePlannedTraversal
+internal constructor(
+    val meaning: RelationMeaning,
+    val budget: TraversalBudget,
+    val expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
+)
 
 class LivePlannedDiagnosticScope private constructor(files: List<CanonicalWorkspaceFilePath>) {
     val files: List<CanonicalWorkspaceFilePath> = files.toList()
@@ -89,7 +94,9 @@ private constructor(
                             relation.batch.request.boundary,
                         )
                     },
-                    evidence.traversals.map { LivePlannedTraversal(it.page.plan.meaning, it.page.plan.budget) },
+                    evidence.traversals.map {
+                        LivePlannedTraversal(it.page.plan.meaning, it.page.plan.budget, it.page.plan.expansion)
+                    },
                     diagnostics,
                 )
             )

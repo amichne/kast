@@ -22,6 +22,7 @@ private constructor(
     val fingerprint: TraversalContinuationFingerprint,
     val strategy: TraversalStrategy,
     val maximumDepth: TraversalDepthLimit,
+    val expansion: io.github.amichne.kast.relation.contract.RelationSearchBoundary,
 ) {
     companion object {
         /**
@@ -78,6 +79,7 @@ private constructor(
                     TraversalContinuationFingerprint.established(java.util.HexFormat.of().formatHex(digest)),
                     plan.strategy,
                     plan.budget.depth,
+                    plan.expansion,
                 )
             )
         }

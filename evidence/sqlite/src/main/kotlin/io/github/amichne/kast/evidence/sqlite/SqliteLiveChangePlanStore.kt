@@ -93,7 +93,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                     .use { statement ->
                         statement.setString(1, identity.value)
                         statement.setString(2, plan.planId.value)
-                        statement.setInt(PLAN_VERSION_PARAMETER, 1)
+                        statement.setInt(PLAN_VERSION_PARAMETER, LIVE_PLAN_STORAGE_VERSION)
                         statement.setString(PLAN_DOCUMENT_PARAMETER, document)
                         statement.setString(PLAN_DIGEST_PARAMETER, digest)
                         statement.executeUpdate()
@@ -101,7 +101,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                 val expected =
                     LivePlanRow(
                         planId = plan.planId.value,
-                        version = 1,
+                        version = LIVE_PLAN_STORAGE_VERSION.toLong(),
                         document = document,
                         digest = digest,
                     )
@@ -187,7 +187,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
 private data class LivePlanRow(val planId: String, val version: Long, val document: String, val digest: String)
 
 private fun LivePlanRow.decode(expected: ChangePlanIdentity): LiveChangePlanLookup {
-    if (version != LiveAddDeclarationPlanCodec.VERSION.toLong()) {
+    if (version != LIVE_PLAN_STORAGE_VERSION.toLong()) {
         return LiveChangePlanLookup.Rejected(LiveChangePlanStoreFailure.VERSION_UNSUPPORTED)
     }
     if (digest(document) != digest) {
@@ -276,3 +276,6 @@ private inline fun <T> storage(rejected: (LiveChangePlanStoreFailure) -> T, oper
 private const val PLAN_VERSION_PARAMETER = 3
 private const val PLAN_DOCUMENT_PARAMETER = 4
 private const val PLAN_DIGEST_PARAMETER = 5
+
+/** Row envelope version is independent of each embedded plan document codec. */
+private const val LIVE_PLAN_STORAGE_VERSION = 1

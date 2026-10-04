@@ -98,6 +98,10 @@ sealed interface QueryReferenceDocument {
 
 @Serializable
 sealed interface QueryFromDocument {
+    @Serializable
+    @SerialName("IMPACT")
+    data class Impact(val investigation: QueryImpactSourceDocument) : QueryFromDocument
+
     /** Case-sensitive indexed whole-word discovery projected to exact containing declarations. */
     @Serializable
     @SerialName("TEXT_WORD")
@@ -154,29 +158,6 @@ sealed interface QueryFromDocument {
         @SerialName("row_ids")
         val rowIds: BoundedProtocolList<QueryResultRowReference>? = null,
     ) : QueryFromDocument, QueryCompositionInputDocument
-}
-
-@Serializable
-enum class QuerySymbolFieldDocument {
-    @SerialName("name") NAME,
-    @SerialName("location") LOCATION,
-    @SerialName("signature") SIGNATURE,
-    @SerialName("source") SOURCE,
-}
-
-@Serializable
-sealed interface QueryOutputDocument {
-    @Serializable
-    @SerialName("symbols")
-    data class Symbols(
-        @ProtocolCollectionConstraint(uniqueItems = true) val fields: BoundedProtocolList<QuerySymbolFieldDocument>
-    ) : QueryOutputDocument
-
-    @Serializable @SerialName("occurrences") data object Occurrences : QueryOutputDocument
-
-    @Serializable @SerialName("traversal_records") data object TraversalRecords : QueryOutputDocument
-
-    @Serializable @SerialName("binding_rows") data object BindingRows : QueryOutputDocument
 }
 
 @Serializable
@@ -268,6 +249,19 @@ sealed interface QueryRunRequest : OperationRequest {
                 cursor: QueryResultCursor = QueryResultCursor.Start,
                 executionBudget: ExecutionBudgetDocument? = null,
             ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.BindingRows, executionBudget)
+
+            fun impactWitness(
+                result: QueryResultReference,
+                section: ImpactWitnessSectionDocument,
+                cursor: QueryResultCursor = QueryResultCursor.Start,
+                executionBudget: ExecutionBudgetDocument? = null,
+            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.ImpactWitness(section), executionBudget)
+
+            fun valuePaths(
+                result: QueryResultReference,
+                cursor: QueryResultCursor = QueryResultCursor.Start,
+                executionBudget: ExecutionBudgetDocument? = null,
+            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.ValuePaths, executionBudget)
         }
     }
 }
@@ -292,6 +286,7 @@ private fun QueryRunRequest.Run.requireCanonicalSyntax(): QueryRunRequest.Run =
 private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
     val sourceIsCanonical =
         when (val source = from) {
+            is QueryFromDocument.Impact -> true
             is QueryFromDocument.Location -> source.file.value.isCanonicalQueryFile()
             is QueryFromDocument.Symbols ->
                 source.match !is QueryMatchDocument.TextWord && source.discovery.isCanonical()
@@ -313,6 +308,8 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
         QueryOutputDocument.Occurrences -> true
         QueryOutputDocument.TraversalRecords -> true
         QueryOutputDocument.BindingRows -> true
+        QueryOutputDocument.ValuePaths -> true
+        is QueryOutputDocument.ImpactWitness -> false
     }
 }
 
@@ -432,6 +429,7 @@ enum class QueryRelationFailureDocument {
 }
 
 data class QueryRunResult(
+    val question: QueryQuestionDocument,
     val items: BoundedProtocolList<QueryResultItemDocument>,
     val failures: BoundedProtocolList<QueryItemFailureDocument>,
     val omissions: BoundedProtocolList<QueryRelationOmissionDocument> = QueryRelationOmissionDocument.Empty,
@@ -439,6 +437,8 @@ data class QueryRunResult(
     val referenceObservations: BoundedProtocolList<RelationReferenceOccurrenceDocument> = EmptyReferenceObservations,
     val discoveryObservations: BoundedProtocolList<QueryDiscoveryObservationDocument> =
         QueryDiscoveryObservationDocument.Empty,
+    val relationObservations: BoundedProtocolList<QueryRelationObservationDocument> =
+        QueryRelationObservationDocument.Empty,
     val retention: QueryResultRetention = QueryResultRetention.NotRequested,
     val nextCursor: QueryResultCursor? = null,
     val executionBudget: ExecutionBudgetReport? = null,
@@ -447,6 +447,7 @@ data class QueryRunResult(
     val presentationOrigin: QueryKnownMinimum? = null,
     /** Offset proof for a retained presentation; never serialized or inferred from a successor cursor. */
     val presentationWindow: QueryRetainedPresentationWindow? = null,
+    val impactAccounting: ImpactAccountingDocument = ImpactAccountingDocument.NotApplicable,
 ) : OperationResult
 
 enum class QuerySourceRejectionReason {
@@ -481,26 +482,4 @@ enum class QueryReferenceRejectionReason {
     STALE_AUTHORITY,
     INCOMPATIBLE_AUTHORITY,
     INCOMPATIBLE_REFERENCE_VERSION,
-}
-
-sealed interface QueryRunRejection : QueryRunFailure {
-    data object WorkspaceNotReady : QueryRunRejection
-
-    data class ReferenceRejected(
-        val position: ProtocolOffset,
-        val reason: QueryReferenceRejectionReason,
-    ) : QueryRunRejection
-
-    data class StepReferenceRejected(
-        val stepPosition: ProtocolOffset,
-        val referencePosition: ProtocolOffset,
-        val reason: QueryReferenceRejectionReason,
-    ) : QueryRunRejection
-
-    data class SourceRejected(
-        val kind: QueryDeclarationKindDocument,
-        val reason: QuerySourceRejectionReason,
-    ) : QueryRunRejection
-
-    data class ExecutionRejected(val reason: QueryExecutionRejectionDocument) : QueryRunRejection
 }

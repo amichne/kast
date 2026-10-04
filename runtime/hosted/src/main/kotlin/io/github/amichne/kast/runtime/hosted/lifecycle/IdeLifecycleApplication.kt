@@ -7,6 +7,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ProjectManagerListener
 import io.github.amichne.kast.kernel.Refinement
@@ -14,6 +15,7 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
+import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.runtime.hosted.HostedEndpointAdvertisement
 import io.github.amichne.kast.runtime.hosted.HostedEndpointObserver
 import io.github.amichne.kast.runtime.hosted.HostedFrames
@@ -21,6 +23,7 @@ import io.github.amichne.kast.runtime.hosted.OwnedHostedEndpoint
 import io.github.amichne.kast.runtime.hosted.acceptHostedConnection
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 import java.nio.channels.Channels
 import java.nio.file.Path
 import java.util.UUID
@@ -45,6 +48,12 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     private val json = Json { encodeDefaults = true }
     private val state = IdeLifecycleState(UUID.randomUUID())
     private val native = IdeLifecycleNative(state)
+
+    internal suspend fun <Value> withRegisteredPeer(
+        expected: ImpactSemanticBasisDocument.Live,
+        action: suspend (Project, CanonicalWorkspaceRoot) -> HostedSemanticReadResult<Value>,
+    ): HostedSemanticReadResult<Value> = native.withRegisteredPeer(expected, action)
+
     private val home = Path.of(PathManager.getHomePath()).toRealPath()
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
     private val job =

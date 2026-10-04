@@ -141,6 +141,7 @@ class QueryDenseReferenceRetentionTest {
                 is QueryExecutionResult.Qualified ->
                     checkpoint =
                         assertInstanceOf(QueryContinuationState.Resumable::class.java, page.continuation).checkpoint
+                is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                 is QueryExecutionResult.Rejected -> error("Generous detached checkpoint rejected: ${page.reason}")
             }
         }
@@ -170,6 +171,7 @@ class QueryDenseReferenceRetentionTest {
                         next =
                             assertInstanceOf(QueryContinuationState.Resumable::class.java, page.continuation).checkpoint
                     }
+                    is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                     is QueryExecutionResult.Rejected -> error("Dense checkpoint rejected: ${page.reason}")
                 }
             }
@@ -246,7 +248,13 @@ class QueryDenseReferenceRetentionTest {
     private fun reference(read: RelationRequest, locator: RelationProviderLocator): RelationReferenceOccurrence =
         RelationReferenceOccurrence.confirmed(
                 read,
-                RelationConfirmedReferenceTarget.fromCompiler(read.subject, read.subject.compilerIdentity).value(),
+                RelationConfirmedReferenceTarget.fromCompiler(
+                        read.subject,
+                        io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromSelector(
+                            (read.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector
+                        ),
+                    )
+                    .value(),
                 RelationOccurrence.fromBoundary(
                         locator.file,
                         locator.range.startInclusive,
@@ -288,6 +296,7 @@ class QueryDenseReferenceRetentionTest {
             when (page) {
                 is QueryExecutionResult.Complete -> page.result
                 is QueryExecutionResult.Qualified -> page.result
+                is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                 is QueryExecutionResult.Rejected -> error("Expected reference page")
             }
         return (result.rows as QueryRows.Occurrences)

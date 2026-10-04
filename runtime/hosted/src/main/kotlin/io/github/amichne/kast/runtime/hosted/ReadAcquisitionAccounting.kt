@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.query.protocol.ReadReacquisitionBudgetFailure
+import io.github.amichne.kast.relation.contract.RelationWorkCount
 
 /** Request-local effect accounting; reacquisition and semantic execution share the original grant. */
 internal class ReadAcquisitionAccounting {
@@ -20,6 +21,13 @@ internal class ReadAcquisitionAccounting {
                 elapsedNanos / NANOS_PER_MILLISECOND + if (elapsedNanos % NANOS_PER_MILLISECOND == 0L) 0L else 1L,
             )
     }
+
+    /** Detached work accounting; elapsed native calls are not whole-child wall time. */
+    fun snapshot(): RelationWorkCount =
+        when (val admitted = RelationWorkCount.parse(work)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error("Nonnegative acquisition work lost its proof")
+        }
 
     fun remaining(budget: ResourceBudget): Refinement<ResourceBudget, ReadReacquisitionBudgetFailure> {
         val remainingWork =

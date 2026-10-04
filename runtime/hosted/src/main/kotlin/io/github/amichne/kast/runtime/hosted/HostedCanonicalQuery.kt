@@ -2,14 +2,22 @@ package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.protocol.contract.QueryFromDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.query.contract.QueryPresentationExecution
 import io.github.amichne.kast.query.protocol.CanonicalDiagnosticCheckProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.SourceProtocolBudget
+import io.github.amichne.kast.query.protocol.peerRejection
+import io.github.amichne.kast.query.protocol.selectPeerSites
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -18,7 +26,6 @@ import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
-import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
 
 /** Only the admitted project's pure query service and its bounded read ports enter this graph. */
@@ -45,40 +52,119 @@ private suspend fun evaluateHostedQuery(
     context: HostedSemanticReadContext,
     request: HostedRequest.Query,
 ): HostedResponse {
+    val peerAdmissions =
+        when (val admitted = prepareHostedPeerSites(request.request, services, context)) {
+            is HostedPeerSiteAdmissions.Admitted -> admitted.values
+            is HostedPeerSiteAdmissions.HostedRejected -> return admitted.response
+            is HostedPeerSiteAdmissions.QueryRejected -> return rejectedPeerQuery(admitted.cause, context)
+            is HostedPeerSiteAdmissions.ProofRejected ->
+                return rejectedPeerQuery(
+                    admitted.cause.peerRejection(admitted.position),
+                    context,
+                )
+        }
     val queryContinuations =
         when (val admitted = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
         }
     val publication = HostedQueryPublicationSession(context, request.request)
-    val outcome =
-        CanonicalQueryProtocol(
-                QueryService(
-                    discovery = services.discovery,
-                    exact = services.exact,
-                    source =
-                        services.source(io.github.amichne.kast.source.contract.SourceReadContinuationPort.Cursorless),
-                    relations = services.relations,
-                    traversal = traversalOperations(services.relations),
-                    traversalCeiling = services.budgets.hostedTraversalBudget,
-                ),
-                services.readReferences,
-                queryContinuations.queryState,
-                publication,
+    return QueryPresentationExecution.evaluateAndFit(
+        evaluate = { presentationOwner ->
+            hostedCanonicalQueryProtocol(
+                    services,
+                    context,
+                    queryContinuations,
+                    publication,
+                    presentationOwner,
+                    peerAdmissions,
+                )
+                .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
+        },
+        fit = { outcome ->
+            context.observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.ENCODING)
+            encodeHostedQueryResponse(
+                semantic =
+                    outcome.withQueryBudget(
+                        io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
+                    ),
+                limits = context.limits,
+                observation = context.observation,
+                maximumResults = context.executionBudget.results.effective,
+                maximumBytes = context.executionBudget.returnedBytes.effective,
+                published = publication::fitted,
+                retain = publication::retain,
             )
-            .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
-    context.observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.ENCODING)
-    return encodeHostedQueryResponse(
-        semantic =
-            outcome.withQueryBudget(
-                io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
-            ),
-        limits = context.limits,
+        },
+    )
+}
+
+private suspend fun prepareHostedPeerSites(
+    request: QueryRunRequest,
+    services: HostedSemanticServices,
+    context: HostedSemanticReadContext,
+): HostedPeerSiteAdmissions {
+    val selections =
+        when (val admitted = request.hostedPeerSelections(context.authority)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return HostedPeerSiteAdmissions.QueryRejected(admitted.failure)
+        }
+    return acquireHostedPeerSites(
+        selections,
+        services.budgets.hostedQueryBudget,
+        services.acquisitionAccounting,
         observation = context.observation,
-        maximumResults = context.executionBudget.results.effective,
-        maximumBytes = context.executionBudget.returnedBytes.effective,
-        published = publication::fitted,
-        retain = publication::retain,
+    )
+}
+
+private fun hostedCanonicalQueryProtocol(
+    services: HostedSemanticServices,
+    context: HostedSemanticReadContext,
+    continuations: HostedQueryContinuations.Active,
+    publication: HostedQueryPublicationSession,
+    presentation: QueryPresentationExecution,
+    peers: List<io.github.amichne.kast.query.contract.QueryImpactPeerSiteAdmission>,
+): CanonicalQueryProtocol =
+    CanonicalQueryProtocol(
+        QueryService(
+            discovery = services.discovery,
+            exact = services.exact,
+            source = services.source(io.github.amichne.kast.source.contract.SourceReadContinuationPort.Cursorless),
+            relations = services.relations,
+            traversal = hostedTraversalOperations(services.relations, context.observation),
+            traversalCeiling = services.budgets.hostedTraversalBudget,
+            valueFlow = services.valueFlow,
+            presentation = presentation,
+        ),
+        services.readReferences,
+        continuations.queryState,
+        publication,
+        services.producerSeeds,
+        hostedQueryResultRetentionObservation(context.observation),
+        peerSiteAdmissions = peers,
+    )
+
+internal fun QueryRunRequest.hostedPeerSelections(
+    authority: io.github.amichne.kast.workspace.contract.SemanticReadAuthority
+): Refinement<List<io.github.amichne.kast.query.protocol.QueryImpactPeerSelection>, QueryRunRejection> =
+    when (this) {
+        is QueryRunRequest.Run ->
+            when (val source = from) {
+                is QueryFromDocument.Impact -> source.investigation.selectPeerSites(authority)
+                else -> Refinement.Refined(emptyList())
+            }
+        is QueryRunRequest.Resume,
+        is QueryRunRequest.ReadResult -> Refinement.Refined(emptyList())
+    }
+
+private fun rejectedPeerQuery(cause: QueryRunRejection, context: HostedSemanticReadContext): HostedResponse {
+    val rejected: HostedQueryOutcome = OperationOutcome.Rejected(cause)
+    return encodeHostedQueryResponse(
+        rejected.withQueryBudget(ExecutionBudgetReport.from(context.executionBudget)),
+        context.limits,
+        context.observation,
+        context.executionBudget.results.effective,
+        context.executionBudget.returnedBytes.effective,
     )
 }
 
@@ -170,7 +256,7 @@ private fun <Value> fixed(value: Refinement<Value, *>): Value =
 
 internal fun rejectedHostedEpoch(
     failure: io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure
-): HostedResponse =
+): HostedResponse.ReadRejected =
     HostedResponse.ReadRejected(
         io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure.LiveAuthority(failure),
         io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryStage.CONTENT_REVALIDATION,

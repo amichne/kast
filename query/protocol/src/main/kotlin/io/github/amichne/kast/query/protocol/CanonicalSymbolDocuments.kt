@@ -83,34 +83,10 @@ private fun symbolDocument(
         .refinedOrNull()
 }
 
-private fun CanonicalCompilerSignature.protocolDocument(): CompilerSignatureDocument? {
+internal fun CanonicalCompilerSignature.protocolDocument(): CompilerSignatureDocument? {
     return when (this) {
-        is CanonicalCompilerSignature.Function ->
-            CompilerSignatureDocument.Function(
-                qualifiedIdentity = text(qualifiedIdentity.value) ?: return null,
-                receiver =
-                    when (val compilerReceiver = receiver) {
-                        CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
-                        is CanonicalCompilerReceiver.Present ->
-                            CompilerReceiverDocument.Present(text(compilerReceiver.type.value) ?: return null)
-                    },
-                contextReceivers = contextReceivers.protocolTypes() ?: return null,
-                valueParameters = valueParameters.protocolTypes() ?: return null,
-                typeParameterCount =
-                    CompilerTypeParameterCountDocument.parse(typeParameterCount.value).refinedOrNull() ?: return null,
-            )
-        is CanonicalCompilerSignature.Property ->
-            CompilerSignatureDocument.Property(
-                qualifiedIdentity = text(qualifiedIdentity.value) ?: return null,
-                receiver =
-                    when (val compilerReceiver = receiver) {
-                        CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
-                        is CanonicalCompilerReceiver.Present ->
-                            CompilerReceiverDocument.Present(text(compilerReceiver.type.value) ?: return null)
-                    },
-                contextReceivers = contextReceivers.protocolTypes() ?: return null,
-                returnType = text(returnType.value) ?: return null,
-            )
+        is CanonicalCompilerSignature.Function -> protocolFunction()
+        is CanonicalCompilerSignature.Property -> protocolProperty()
         is CanonicalCompilerSignature.TypeAlias ->
             CompilerSignatureDocument.TypeAlias(qualifiedIdentity = text(qualifiedIdentity.value) ?: return null)
         is CanonicalCompilerSignature.ClassLike ->
@@ -118,12 +94,42 @@ private fun CanonicalCompilerSignature.protocolDocument(): CompilerSignatureDocu
     }
 }
 
+private fun CanonicalCompilerSignature.Function.protocolFunction(): CompilerSignatureDocument.Function? {
+    return CompilerSignatureDocument.Function(
+        qualifiedIdentity = text(qualifiedIdentity.value) ?: return null,
+        receiver =
+            when (val compilerReceiver = receiver) {
+                CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+                is CanonicalCompilerReceiver.Present ->
+                    CompilerReceiverDocument.Present(text(compilerReceiver.type.value) ?: return null)
+            },
+        contextReceivers = contextReceivers.protocolTypes() ?: return null,
+        valueParameters = valueParameters.protocolTypes() ?: return null,
+        typeParameterCount =
+            CompilerTypeParameterCountDocument.parse(typeParameterCount.value).refinedOrNull() ?: return null,
+    )
+}
+
+private fun CanonicalCompilerSignature.Property.protocolProperty(): CompilerSignatureDocument.Property? {
+    return CompilerSignatureDocument.Property(
+        qualifiedIdentity = text(qualifiedIdentity.value) ?: return null,
+        receiver =
+            when (val compilerReceiver = receiver) {
+                CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+                is CanonicalCompilerReceiver.Present ->
+                    CompilerReceiverDocument.Present(text(compilerReceiver.type.value) ?: return null)
+            },
+        contextReceivers = contextReceivers.protocolTypes() ?: return null,
+        returnType = text(returnType.value) ?: return null,
+    )
+}
+
 private fun List<CanonicalCompilerType>.protocolTypes(): BoundedProtocolList<ProtocolText>? {
     val projected = map { compilerType -> text(compilerType.value) ?: return null }
     return BoundedProtocolList.create(projected).refinedOrNull()
 }
 
-private fun CompilerSymbolKind.protocolKind(): SymbolKindDocument =
+internal fun CompilerSymbolKind.protocolKind(): SymbolKindDocument =
     when (this) {
         CompilerSymbolKind.CLASSLIKE -> SymbolKindDocument.CLASSLIKE
         CompilerSymbolKind.CONSTRUCTOR -> SymbolKindDocument.CONSTRUCTOR

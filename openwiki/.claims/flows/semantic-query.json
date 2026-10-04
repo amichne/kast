@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5ef35e95303ebef825134cb0ae6c6ff56b0526968bee199b3350964be5d4c843",
+  "pageVersion": "sha256:47da53ac8a2c55145a1b28a0df5072e03b45bfde380350673014f884880cc827",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -17,8 +17,8 @@
       "statement": "Complete membership needed to prove absence is admitted only when retained coverage is complete and there are no failures, omissions, or unfinished producer progress.",
       "evidence": [
         {
-          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt#L19-L38",
-          "version": "repo-lines-v1:sha256:77da2a6e4ee618dc3ff39477217e08cb182aed61b93e3ff17f37bc9ce898101c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwZDEwMTAyM2NiMDNmMjFlNWQ1MTczOGYxYzNhZTY1ODI3MDgzMTQwZGQ5NzFjM2RlN2Y3MTU0ZmI4MmI2NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA2YjIyZDEwYzliY2UxMDA0N2QzZDNjYjBkY2UwZDYzYjNjNThlMmFmYjIzNTU1NTQ0YWEyZDllZWE0ODE2NzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQzNzdlOWY4MzY1YjNiNmE3NjIyNWNlYTgyNzNhNjQ3OGI3YzI1YWM2NTJlYWZhOWJlMjc3MzcwMjIxYTE3MGEifQ"
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt#L18-L29",
+          "version": "repo-lines-v1:sha256:fba9f9449a80c2c0f65f64b16b33adfea3709e747d592432124afec804df2c4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMzMwMjdiYzIwYjViY2M0YjEzOTBiNjM2YjJhY2E4YjA4NTNiZjUwMjA0YjAyMDlhMTdiOGY0ODQwN2M3OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1YTFhNWU4NjM5YWM4ZTJlNTljZGFkMTNiOTVmMjg2MzMwMjUzNDYyN2RiYjc0MjcxNjE4ODc3N2UxOTQ1M2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
         }
       ]
     },
@@ -27,14 +27,130 @@
       "statement": "Pipeline checkpoints preserve ordered detached work and observations, including failure, omission, discovery, revalidation, set, distinct, and join tasks.",
       "evidence": [
         {
-          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt#L44-L85",
-          "version": "repo-lines-v1:sha256:5d306b950f0265037b728f8f052a2fce1eec4a685a5f5d488cd1982b9d9b82f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1NzA0YmUyNjFlYmJjNTRjZmM2MWVlNWMzY2Y3YWI1ZWViMmMzNWUxZGY1NmJhZjUzNDI5NGY2YTYwYjNiOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNzZjYTFiYjBlM2YwMjhhZDFkZTA2ZmZmYzllYTM4N2JjZjk3MzczOGU1Y2ZlNzdhMDg1NDRiZmQ3ZjExNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEwM2ViMTNmYzRjYTE3YmE1OTBkNDY4MDg1MzM0MmJmNGYwZjNlODBkMmU3Zjg0MmYzNzEwZGRjMjU1Y2U1NjUifQ"
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
+          "version": "repo-file-v1:sha256:b54dd6c0a274aa68280608e30ba8995a5f40535db3f8d3d03e637077e0f559fa"
+        }
+      ]
+    },
+    {
+      "id": "claim_4f880dc775d94628907ce450b6a3e9d4",
+      "statement": "Impact execution caches detached native reads by exact site and queues compiler/model arrivals in the existing pipeline; rejected reads and required unsupported, cycle or capacity obligations remain typed path terminals before ledger conservation validation.",
+      "evidence": [
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactObservedArrivals.kt",
+          "version": "repo-file-v1:sha256:eb4464f9c6aa6e7685b0dbe6db097e9135cb1546c3794780d82d828873546279"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactSnapshot.kt",
+          "version": "repo-file-v1:sha256:cf45629758a131a08cd530ae25a9aa7a4b750ffae84ea9a08b63d9e9c3f69242"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
+          "version": "repo-file-v1:sha256:5c894f6057812da949acae4590b004f91b44c62259300252fbc1ae9c59dd6145"
+        }
+      ]
+    },
+    {
+      "id": "claim_40f794eeea9347739f4011436356ab92",
+      "statement": "Impact checkpoint quota arithmetic shares a request-local JVM-identity visitor across retained evidence and reserves prospective route storage without changing quotas or semantic identity.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
+          "version": "repo-file-v1:sha256:05cc451b4a089777b49f9ebd71bf0ddc3ecef6be9a508edc9dea37e27fd0f0c3"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
+          "version": "repo-file-v1:sha256:b54dd6c0a274aa68280608e30ba8995a5f40535db3f8d3d03e637077e0f559fa"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactCapacity.kt",
+          "version": "repo-file-v1:sha256:f501f4f2638fee23e1dc6ce303c3289d09e0a0b566c05fab77b1320bf37b80a8"
+        }
+      ]
+    },
+    {
+      "id": "claim_073fb1b711524b17ae9d704d845af722",
+      "statement": "FINDINGS derives one record from each original ledger path without grouping equal destinations, binds the admitted original ordinal and existing row ID, and projects current representation alternatives, ordered model provenance, finite terminals and boundary obligations; omitted compiler/model history remains on the linked full path and original unresolved closure is preserved.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt",
+          "version": "repo-file-v1:sha256:0e21faff90688e0ee11981c10b6c2aa24e680ec4421710e9ab9377537f1bcea2"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt",
+          "version": "repo-file-v1:sha256:beebaae7876320f25d512f5a4d9b328cc789a9f331337b4e08347090b407737f"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt",
+          "version": "repo-file-v1:sha256:e3284555a9c13118f23fb065595d36ce6c359e32e32bb57c14a13fc1f23c2dbb"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt",
+          "version": "repo-file-v1:sha256:ba07b79657961d918536f0ea3a110af2f878f5faeb861d8050ae93771d14a78f"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt",
+          "version": "repo-file-v1:sha256:b44f1268e6873e74e0bade219119d8d0d4bb61dda440aebc5a52097872582928"
+        }
+      ]
+    },
+    {
+      "id": "claim_2d12226c67fb41fb9f19ab4057521653",
+      "statement": "Before impact finalization, only a qualified resumable empty evidence-only snapshot is admitted for retention; its exact existing checkpoint retains unfinished execution, while original investigation ordinals and witness sections require a finalized ledger.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt#L18-L81",
+          "version": "repo-lines-v1:sha256:fe37925ea4facf1ff73f0696f9f1db3820ca9ac5dc7c290f9f2f5f9fd5858cee:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlOGE2YmI5YzBjYmEyY2YyOGQ5ZTg0ZGJhZTBhMGU5MjI4MDJiMGUxMDdjMDMzMjBjZjkyMzliZWI3MmExNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJiZTkzNmU1N2E5N2JkNDE0N2FjMjEzM2E1MDU5YjE4YmIyMDY1MTA1NDg4ODNiNjMxOTM2ZTExYTZiYTdlMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt#L24-L73",
+          "version": "repo-lines-v1:sha256:dae70d29fbbfe5194d08d63334e2247669fdeef0a5eab6bb37ad2cc7c77a2a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NzVkNGFhYTdmZmM3MjQwZTBkOGRkYTMzZDlhZDVjMmRiMjJjNjI2NTg4NTc1OGI2NGNiZTVlNWRiNmM4NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YTJmYjA1ZDEzNGNiZmQxZmRiYTlhZDJiMzQ5ZTVjODEzZTRhZjE2YTg1ZGUxMTE5ZDk0NzE4MWZlM2JjNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0MDU4OTk5MTY3ZjE5N2EyM2NjZjY0NjQyMTM3NDI4MzQxZWU3YzgwODdhNmY4N2M3YmFlZjBiZjE3YTBhNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmODcyNDA2ZTY1ZTY1ZDdkMDcxZWVkMzRlMjhkZjU1YjlmZmRlZWNlZDNmNjhkYmFkMzZjYTkxYTFiYjdkYjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_39341d970b0d4f27bb029093c7d909d2",
+      "statement": "The existing impact interpreter passes requested targets into final ledger construction without scheduling extra value-flow exploration; exact original path accounting preserves path order and adds required unresolved closure for unmatched targets.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
+          "version": "repo-file-v1:sha256:79dd9f8cf43e78c8b14af5102fd0dca571c00497ce01c51aff7f701b251f8f8b"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt",
+          "version": "repo-file-v1:sha256:bf434da0a104f53da1983e4a112ca111a142cda769158cbc2fc1d18ab3814048"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
+          "version": "repo-file-v1:sha256:5c894f6057812da949acae4590b004f91b44c62259300252fbc1ae9c59dd6145"
+        }
+      ]
+    },
+    {
+      "id": "claim_d155c4a50e184eecbb94ebf952b00c01",
+      "statement": "An admitted peer continuation terminates the reviewed modeled branch at its exact target without scheduling target flow; the producer, compiler prefix and representation history remain on the source basis, and the completed peer proof is retained at the original model ordinal under the existing storage accounting.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
+          "version": "repo-file-v1:sha256:05cc451b4a089777b49f9ebd71bf0ddc3ecef6be9a508edc9dea37e27fd0f0c3"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt",
+          "version": "repo-file-v1:sha256:beebaae7876320f25d512f5a4d9b328cc789a9f331337b4e08347090b407737f"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryValuePathBasis.kt",
+          "version": "repo-file-v1:sha256:0d2f1fd7277f3fa51e00ed293ae3e0b05dcd5838fb8b78bf3e43a96397a37b89"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactModelArrivals.kt",
+          "version": "repo-file-v1:sha256:27b6221ce46d68e9d3e522538b214ae4b35af0aaf2e096c40afe97a07590b256"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-10-03T17:08:58.136Z"
   }
 }

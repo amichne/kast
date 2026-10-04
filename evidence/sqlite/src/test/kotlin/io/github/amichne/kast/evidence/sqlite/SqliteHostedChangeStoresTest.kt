@@ -31,7 +31,7 @@ class SqliteHostedChangeStoresTest {
         val plan =
             assertInstanceOf<Refinement.Refined<LiveAddDeclarationChangePlan>>(
                     LiveAddDeclarationPlanCodec.decode(
-                        checkNotNull(javaClass.getResource("/live-add-declaration-plan-v1.json")).readText()
+                        checkNotNull(javaClass.getResource("/live-add-declaration-plan-v2.json")).readText()
                     )
                 )
                 .value

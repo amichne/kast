@@ -1,0 +1,18 @@
+[
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_FRAME","announcedBytes":3,"maximumBytes":65536,"outcome":"ADMITTED"}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_FRAME","announcedBytes":0,"maximumBytes":65536,"outcome":"NONPOSITIVE"}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_FRAME","announcedBytes":80342,"maximumBytes":65536,"outcome":"OVER_LIMIT"}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_BODY","announcedBytes":3,"drainedBytes":3,"outcome":"DRAINED"}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_BODY","announcedBytes":3,"drainedBytes":1,"outcome":"TRUNCATED"}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_DECODED","outcome":"RECEIVED"}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_DECODED","outcome":"SEMANTIC"}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_DECODED","outcome":"HOST_REJECTED"}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_REJECTED","stage":"STRICT_JSON","failure":"RESPONSE_REJECTED","cause":{"type":"STRICT_JSON"}}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_REJECTED","stage":"CANONICAL_WIRE","failure":"RESPONSE_REJECTED","cause":{"type":"MALFORMED_ENVELOPE"}}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_REJECTED","stage":"LIVE_BASIS","failure":"RESPONSE_REJECTED","cause":{"type":"LIVE_BASIS","reason":"PUBLISHED"}}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_REJECTED","stage":"LIVE_BASIS","failure":"RESPONSE_REJECTED","cause":{"type":"LIVE_BASIS","reason":"ROOT_MISMATCH"}}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_REJECTED","stage":"LIVE_BASIS","failure":"RESPONSE_REJECTED","cause":{"type":"LIVE_BASIS","reason":"HOST_MISMATCH"}}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_REJECTED","stage":"PREPARED_COMPLETION","failure":"RESPONSE_REJECTED","cause":{"type":"PREPARED_COMPLETION","operation":"QUERY_RUN","kind":"REQUEST_ENCODING_FAILED","cause":{"type":"INVALID_PAYLOAD","role":"REQUEST"}}}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_REJECTED","stage":"PREPARED_COMPLETION","failure":"RESPONSE_REJECTED","cause":{"type":"PREPARED_COMPLETION","operation":"DIAGNOSTIC_CHECK","kind":"RESPONSE_DECODING_FAILED","cause":{"type":"INVALID_IMPACT_ACCOUNTING","cause":"MISSING_VALUE_ACCOUNTING"}}}},
+  {"hostPid":123,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_REJECTED","stage":"RESPONSE_ADMISSION","failure":"SCHEMA_UNAVAILABLE","cause":{"type":"ADMISSION","failure":"SCHEMA_UNAVAILABLE"}}}
+]

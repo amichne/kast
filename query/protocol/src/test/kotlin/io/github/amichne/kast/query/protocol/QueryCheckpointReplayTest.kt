@@ -96,7 +96,7 @@ class QueryCheckpointReplayTest {
                             override val lease = admitted.lease
                             override val retainedBytes = 1024L
                         }
-                    QueryExecutionResult.Complete(
+                    QueryExecutionResult.Complete.create(
                         QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
                         QueryCoverage.Complete(QueryCount.parse(0).refined()),
                     )
@@ -211,7 +211,7 @@ class QueryCheckpointReplayTest {
     }
 
     private fun complete() =
-        QueryExecutionResult.Complete(
+        QueryExecutionResult.Complete.create(
             QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(0).refined()),
         )

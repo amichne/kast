@@ -11,8 +11,13 @@ class CanonicalQueryProtocol(
     private val authority: QueryReferenceAuthority,
     private val state: QueryStateStore = QueryStateStore(),
     private val publication: QueryExecutionPublication = QueryExecutionPublication.Immediate,
+    private val producerSeeds: io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort =
+        UnavailableValueProducerSeeds,
+    private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
+    peerSiteAdmissions: List<QueryImpactPeerSiteAdmission> = emptyList(),
 ) {
-    private val projection = QueryOutcomeProjection(authority, state)
+    private val peerSiteAdmissions = java.util.Collections.unmodifiableList(peerSiteAdmissions.toList())
+    private val projection = QueryOutcomeProjection(authority, state, retentionObservation)
 
     suspend fun execute(
         request: QueryRunRequest,
@@ -114,17 +119,17 @@ class CanonicalQueryProtocol(
         checkpoint: QueryCheckpoint?,
         publicationOwner: QueryExecutionClaim? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
-        val plan =
+        val acquired =
             when (
                 val admission =
-                    if (checkpoint == null) admitPlan(request, lease, publicationOwner)
-                    else Refinement.Refined(checkpoint.plan)
+                    if (checkpoint == null) admitPlan(request, lease, publicationOwner, budget)
+                    else Refinement.Refined(QueryPlanAcquisition(checkpoint.plan, 0L))
             ) {
                 is Refinement.Refined -> admission.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(admission.failure)
             }
         val resources =
-            when (val remaining = remainingResources(budget)) {
+            when (val remaining = remainingResources(budget, acquired.examinedWork)) {
                 is Refinement.Refined -> remaining.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(remaining.failure)
             }
@@ -132,7 +137,7 @@ class CanonicalQueryProtocol(
             when (
                 val admitted =
                     QueryExecutionRequest.create(
-                        plan = plan,
+                        plan = acquired.plan,
                         lease = lease,
                         budget = if (resources == budget.resources) budget else budget.copy(resources = resources),
                         checkpoint = checkpoint,
@@ -152,38 +157,57 @@ class CanonicalQueryProtocol(
         request: QueryRunRequest.Run,
         lease: SemanticReadAuthority,
         publicationOwner: QueryExecutionClaim?,
-    ): Refinement<AdmittedQueryPlan, QueryRunRejection> {
+        budget: QueryBudget,
+    ): Refinement<QueryPlanAcquisition, QueryRunRejection> {
         val retained =
             when (val restored = restoreInputs(request, lease, publicationOwner)) {
                 is Refinement.Refined -> restored.value
                 is Refinement.Rejected -> return restored
             }
-        val admissionAuthority = admissionAuthority(request, lease)
+        val source = request.from
+        val peerSelections =
+            when (val selected = source.peerSelections(lease)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return selected
+            }
+        val admissionAuthority = admissionAuthority(request, lease, peerSelections)
+        val impact =
+            when (val admitted = admitImpactSource(source, lease, admissionAuthority, budget)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
         val syntax =
-            when (val admission = request.admitSyntax(lease, admissionAuthority, retained)) {
-                is QuerySyntaxAdmission.Admitted -> admission.syntax
-                is QuerySyntaxAdmission.ReferenceRejected ->
-                    return Refinement.Rejected(
-                        QueryRunRejection.ReferenceRejected(queryPosition(admission.position), admission.reason)
-                    )
-                is QuerySyntaxAdmission.StepReferenceRejected ->
-                    return Refinement.Rejected(
-                        QueryRunRejection.StepReferenceRejected(
-                            queryPosition(admission.stepPosition),
-                            queryPosition(admission.referencePosition),
-                            admission.reason,
+            when (
+                val admitted =
+                    request
+                        .admitSyntax(
+                            lease,
+                            admissionAuthority,
+                            retained,
+                            if (source is QueryFromDocument.Impact && impact != null) mapOf(source to impact.source)
+                            else emptyMap(),
                         )
-                    )
-                QuerySyntaxAdmission.RequestRejected ->
-                    return Refinement.Rejected(
-                        QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.REQUEST_REJECTED)
-                    )
+                        .refinePlanSyntax()
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
             }
         return when (val admitted = QueryPlanCompiler.admit(syntax)) {
-            is QueryPlanAdmission.Admitted -> Refinement.Refined(admitted.plan)
+            is QueryPlanAdmission.Admitted ->
+                Refinement.Refined(QueryPlanAcquisition(admitted.plan, impact?.examinedWork ?: 0L))
             is QueryPlanAdmission.Rejected -> Refinement.Rejected(admitted.failure.protocolRejection())
         }
     }
+
+    private suspend fun admitImpactSource(
+        source: QueryFromDocument,
+        lease: SemanticReadAuthority,
+        admissionAuthority: QueryReferenceAuthority,
+        budget: QueryBudget,
+    ): Refinement<QueryImpactSourceAdmission?, QueryRunRejection> =
+        if (source is QueryFromDocument.Impact)
+            source.investigation.admitImpact(lease, admissionAuthority, producerSeeds, budget, peerSiteAdmissions)
+        else Refinement.Refined(null)
 
     private fun restoreInputs(
         request: QueryRunRequest.Run,
@@ -213,10 +237,31 @@ class CanonicalQueryProtocol(
         Refinement.Rejected(QueryRunRejection.ExecutionRejected(reason))
 
     private fun remainingResources(
-        budget: QueryBudget
+        budget: QueryBudget,
+        examinedWork: Long = 0L,
     ): Refinement<io.github.amichne.kast.kernel.ResourceBudget, QueryRunRejection> =
         when (val remaining = authority.remainingReadBudget(budget.resources)) {
-            is Refinement.Refined -> remaining
+            is Refinement.Refined ->
+                when (
+                    val work =
+                        WorkUnitLimit.parse(
+                            minOf(
+                                remaining.value.workUnitLimit.value,
+                                budget.resources.workUnitLimit.value - examinedWork,
+                            )
+                        )
+                ) {
+                    is Refinement.Refined -> Refinement.Refined(remaining.value.copy(workUnitLimit = work.value))
+                    is Refinement.Rejected ->
+                        Refinement.Rejected(
+                            QueryRunRejection.ImpactSourceRejected(
+                                QueryImpactSourceFailureDocument.Admission(
+                                    QueryImpactSourceFailureCode.WORK_LIMIT_REACHED,
+                                    queryPosition(0),
+                                )
+                            )
+                        )
+                }
             is Refinement.Rejected ->
                 Refinement.Rejected(
                     QueryRunRejection.ReferenceRejected(
@@ -234,6 +279,7 @@ class CanonicalQueryProtocol(
     private suspend fun admissionAuthority(
         request: QueryRunRequest.Run,
         lease: SemanticReadAuthority,
+        peers: List<QueryImpactPeerSelection>,
     ): QueryReferenceAuthority {
         val sourceReferences =
             (request.from as? QueryFromDocument.References)
@@ -247,13 +293,25 @@ class CanonicalQueryProtocol(
                 .filterIsInstance<QueryStepDocument.Concat>()
                 .mapNotNull { it.input as? QueryFromDocument.References }
                 .flatMap { it.values.values.map(QueryReferenceDocument.ExactSymbol::token) }
-        val references = sourceReferences + concatenatedReferences
+        val impactReferences =
+            (request.from as? QueryFromDocument.Impact)
+                ?.investigation
+                ?.let {
+                    it.seeds.values.flatMap { seed -> listOf(seed.enclosing, seed.callable) } +
+                        it.declarations.values
+                            .filter { declaration -> peers.none { declaration in it.declarations } }
+                            .map { declaration -> declaration.reference }
+                }
+                .orEmpty()
+        val references = sourceReferences + concatenatedReferences + impactReferences
         return if (references.isEmpty()) authority else authority.admitReadReferences(references, lease)
     }
 
     private fun rejected(reason: QueryExecutionRejectionDocument): OperationOutcome.Rejected<QueryRunRejection> =
         OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))
 }
+
+private data class QueryPlanAcquisition(val plan: AdmittedQueryPlan, val examinedWork: Long)
 
 private fun QueryRunRequest.Run.resultInputs(): List<QueryFromDocument.Result> = buildList {
     (from as? QueryFromDocument.Result)?.let(::add)
@@ -281,3 +339,8 @@ private fun QueryResultRestoration.Restored.selectRows(
         is Refinement.Rejected -> null
     }
 }
+
+private fun QueryFromDocument.peerSelections(
+    lease: SemanticReadAuthority
+): Refinement<List<QueryImpactPeerSelection>, QueryRunRejection> =
+    if (this is QueryFromDocument.Impact) investigation.selectPeerSites(lease) else Refinement.Refined(emptyList())

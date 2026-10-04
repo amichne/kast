@@ -26,7 +26,7 @@ internal fun admitTraversalRead(
     next: TraversalFrontierEntry,
     accounting: TraversalAccounting,
 ): TraversalReadAdmission {
-    val remainingRecords = plan.budget.records.value - accounting.semanticResultCount
+    val remainingRecords = plan.budget.records.value - accounting.retainedResultCount
     val remainingBytes = plan.budget.returnedBytes.value - accounting.encodedBytes
     val remainingWork = plan.budget.workUnits.value - accounting.examinedWorkUnits
     val remainingTime = plan.budget.elapsedTime.value - accounting.elapsedMillis
@@ -104,7 +104,8 @@ internal fun admitTraversalBatch(
     val matches =
         relationRequest.subject.fingerprint == request.node.fingerprint &&
             relationRequest.subject.lease == request.node.endpoint.lease &&
-            relationRequest.subject.scope == request.scope &&
+            relationRequest.searchScope == request.scope &&
+            relationRequest.boundary == request.expansion &&
             relationRequest.meaning == request.meaning &&
             relationRequest.budget == request.budget &&
             positionMatches

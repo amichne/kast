@@ -66,18 +66,28 @@ code_sources:
 sources:
   - id: openwiki-source-55c5b1c6b24fca5ce9444ac5
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/ProviderFailureCode.kt
+  - id: openwiki-source-4c5e6b173c3019b41db49cec
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseAdmission.kt
+  - id: openwiki-source-2c3b08dc9c41e6f8d4b897ec
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt
+  - id: openwiki-source-14d52fd94b27c13881cd2d4d
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt
   - id: openwiki-source-7c05e12b47d08ef75636350e
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-e8970cbf92e81dc4000b50e4
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
+  - id: openwiki-source-e750eea4b9efa673ce4df938
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt
+  - id: openwiki-source-6699d194831006a24f8c790c
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
   - id: openwiki-source-473526fe1b8c21a06df3f01f
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-02T13:53:38.453Z" }
+generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T14:11:27.469Z
+    at: 2026-10-03T14:16:26.318Z
 ---
 
 # Request dispatch
@@ -133,6 +143,13 @@ operation-specific decoders, rejects published evidence, and checks a successful
 live envelope against the requested root and admitted descriptor host. A typed host
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
+
+Private client response activity distinguishes frame admission, body draining,
+strict JSON decoding, canonical wire decoding, live-basis admission and prepared
+completion admission. The finite cause remains diagnostic data alongside the
+existing finite public rejection. Announced lengths are checked against the
+configured client limit before reading or decoding a body. The activity records
+host process and operation without payloads, paths or opaque handles.
 
 App Server reads `share/kast/provider-catalog.json` and qualifies projection version 16
 against the canonical registry, packaged operation schemas, and declared default budgets.
@@ -260,3 +277,7 @@ these checks do not replace connection-time admission.
 The project socket client retains successfully loaded packaged Control requirements
 for its own lifetime. Failed loads remain retryable. Every exchange still obtains
 and admits a fresh live describe before dispatching the requested operation.
+
+Public impact syntax uses the same `query.run` dispatch. Typed facade lowering preserves seeds, model declarations, expansion domain and forward-flow semantics in the canonical request. Read-result lowering selects the existing typed constructors for value paths or impact witness sections, retaining the result, cursor and admitted execution budget. Model syntax and native source revalidation remain separate steps; lowering alone establishes no compiler or representation facts.
+
+Optional requested-site claims follow that same lowering path. Omitted or null `requestedSites` becomes the canonical empty requested-site list; supplied claims remain in original order for canonical admission. The facade does not infer a relationship from the claim. `SITE_ACCOUNTING` is another section of the existing retained witness output, so its dispatch carries the original result reference and presentation cursor rather than starting a second query.

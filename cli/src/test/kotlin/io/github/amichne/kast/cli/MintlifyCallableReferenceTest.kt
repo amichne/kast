@@ -225,7 +225,9 @@ class MintlifyCallableReferenceTest {
                     .jsonObject
                     .getValue("type")
                     .jsonObject
-                    .getValue("const")
+                    .getValue("enum")
+                    .jsonArray
+                    .single()
                     .jsonPrimitive
                     .content == "exact-symbol"
             }
@@ -237,7 +239,9 @@ class MintlifyCallableReferenceTest {
                     .jsonObject
                     .getValue("type")
                     .jsonObject
-                    .getValue("const")
+                    .getValue("enum")
+                    .jsonArray
+                    .single()
                     .jsonPrimitive
                     .content == "occurrence"
             }
@@ -250,7 +254,7 @@ class MintlifyCallableReferenceTest {
     }
 
     @Test
-    fun `live outcomes carry distinct navigation labels`() {
+    fun `query outcome navigation labels follow the actual closed serializers`() {
         val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
         val response = components.getValue("query_symbolsResponse").jsonObject
@@ -264,12 +268,10 @@ class MintlifyCallableReferenceTest {
                 .jsonObject
                 .getValue("document")
                 .jsonObject
-        val outcomes = document.getValue("anyOf").jsonArray.first().jsonObject.getValue("anyOf").jsonArray.take(2)
+        val outcomes = document.getValue("anyOf").jsonArray.first().jsonObject.getValue("anyOf").jsonArray
         assertEquals(
-            listOf("complete", "complete · live", "qualified", "qualified · live"),
-            outcomes
-                .flatMap { it.jsonObject.getValue("oneOf").jsonArray }
-                .map { it.jsonObject.getValue("title").jsonPrimitive.content },
+            listOf("complete", "qualified", "rejected"),
+            outcomes.map { it.jsonObject.getValue("title").jsonPrimitive.content },
         )
     }
 

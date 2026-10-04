@@ -1,0 +1,77 @@
+[
+  {
+    "counter": "QUERY_RETENTION_PRESENTED_CAPTURE_STARTED",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_PENDING_IMPACT_CAPTURE_STARTED",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_ORIGINAL_CAPTURE_STARTED",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_PRESENTED_CAPTURED",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_PENDING_IMPACT_CAPTURED",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_ORIGINAL_CAPTURED",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_CAPTURE_EXECUTION_REJECTED",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_CAPTURE_PRESENTATION_ONLY_ROWS",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_CAPTURE_BASIS_MISMATCH",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_CAPTURE_INCONSISTENT_COVERAGE",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_CAPTURE_UNKNOWN_ROW",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_CAPTURE_DUPLICATE_ROW",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_RESULT_ISSUED",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_RESULT_UNAVAILABLE",
+    "contributor": "NONE",
+    "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_RESULT_CAPACITY_EXCEEDED",
+    "contributor": "NONE",
+    "count": 1
+  }
+]

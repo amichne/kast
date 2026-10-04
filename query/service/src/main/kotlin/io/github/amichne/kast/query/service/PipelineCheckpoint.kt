@@ -3,28 +3,18 @@ package io.github.amichne.kast.query.service
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryArrivalEvidence
-import io.github.amichne.kast.query.contract.QueryBindingRow
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryCompositionInput
-import io.github.amichne.kast.query.contract.QueryContainingDeclaration
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
-import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
-import io.github.amichne.kast.query.contract.QueryItemFailure
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryJoinMode
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
-import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QuerySymbol
-import io.github.amichne.kast.query.contract.QueryTextDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryWalkArrival
-import io.github.amichne.kast.query.contract.QueryWalkObservation
-import io.github.amichne.kast.relation.contract.RelationContinuation
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import io.github.amichne.kast.symbol.contract.SymbolDescription
-import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
-import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.traversal.contract.TraversalContinuation
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
@@ -43,89 +33,6 @@ internal val pageLimits =
         QueryLimitation.TIME_LIMIT_REACHED,
     )
 
-/** A detached depth-first ordered pipeline. Stage identity retains each distinct operator's own history. */
-internal sealed interface PipelineTask {
-    data class Failure(val value: QueryItemFailure) : PipelineTask
-
-    data class Omission(val value: QueryRelationOmission) : PipelineTask
-
-    data class WalkObservation(val value: QueryWalkObservation) : PipelineTask
-
-    data class Occurrence(val value: io.github.amichne.kast.query.contract.QueryOccurrence) : PipelineTask
-
-    data class ReferenceObservation(val value: io.github.amichne.kast.relation.contract.RelationReferenceOccurrence) :
-        PipelineTask
-
-    data class DiscoveryObservation(
-        val value: io.github.amichne.kast.query.contract.QueryDiscoveryObservation,
-        val origin: DiscoveryObservationOrigin = DiscoveryObservationOrigin.RETAINED_EVIDENCE,
-    ) : PipelineTask
-
-    data class WalkRecord(val value: QuerySymbol) : PipelineTask
-
-    data class Discover(
-        val syntax: QueryDiscoverySyntax,
-        val next: ExactQueryStage,
-        val remainder: io.github.amichne.kast.symbol.contract.SymbolDiscoveryRemainder? = null,
-    ) : PipelineTask
-
-    data class DiscoverLocation(val target: QueryContainingDeclaration, val next: ExactQueryStage) : PipelineTask
-
-    data class DiscoverText(val syntax: QueryTextDiscoverySyntax, val next: ExactQueryStage) : PipelineTask
-
-    data class Revalidate(val selector: SymbolSelector, val next: ExactQueryStage) : PipelineTask
-
-    data class Feed(val stage: ExactQueryStage.Concat) : PipelineTask
-
-    data class FlushSet(val stage: ExactQueryStage.Set) : PipelineTask
-
-    data class FlushDistinct(val stage: ExactQueryStage.Distinct) : PipelineTask
-
-    data class JoinEvidence(val stage: ExactQueryStage.Join) : PipelineTask
-
-    data class Candidate(val value: SymbolDiscoverySelection, val stage: ExactQueryStage) : PipelineTask
-
-    data class Symbol(val value: QuerySymbol, val stage: ExactQueryStage) : PipelineTask
-
-    data class Binding(val value: QueryBindingRow, val stage: ExactQueryStage) : PipelineTask
-
-    data class Related(val value: QuerySymbol, val stage: ExactQueryStage.Related, val cursor: RelationContinuation?) :
-        PipelineTask
-
-    data class Walk(val value: QuerySymbol, val stage: ExactQueryStage.Walk, val cursor: TraversalContinuation?) :
-        PipelineTask
-
-    data class Join(val value: QuerySymbol, val stage: ExactQueryStage.Join, val cursor: QueryJoinCursor) : PipelineTask
-}
-
-internal enum class DiscoveryObservationOrigin {
-    SEQUENTIAL_EXECUTION,
-    RETAINED_EVIDENCE,
-}
-
-internal sealed interface QueryJoinCursor {
-    data object Build : QueryJoinCursor
-
-    data class Inner(val nextMatch: Int) : QueryJoinCursor
-
-    data class Semi(val nextMatch: Int, val accumulated: QuerySymbol) : QueryJoinCursor
-
-    data object Anti : QueryJoinCursor
-}
-
-internal fun PipelineTask.needsWork(): Boolean =
-    when (this) {
-        is PipelineTask.Discover,
-        is PipelineTask.DiscoverText,
-        is PipelineTask.DiscoverLocation,
-        is PipelineTask.Revalidate,
-        is PipelineTask.Related,
-        is PipelineTask.Walk,
-        is PipelineTask.Join -> true
-        is PipelineTask.Binding -> false
-        else -> false
-    }
-
 internal data class PipelineCheckpoint(
     override val plan: AdmittedQueryPlan,
     override val lease: SemanticReadAuthority,
@@ -134,11 +41,15 @@ internal data class PipelineCheckpoint(
     val joinState: QueryJoinSnapshot,
     val limitations: Set<QueryLimitation>,
     val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
+    val impact: QueryImpactSnapshot? = null,
 ) : QueryCheckpoint {
-    override val retainedBytes: Long =
+    override val retainedBytes: Long
+        get() = retainedBytes(QueryImpactRetainedGraph())
+
+    fun retainedBytes(graph: QueryImpactRetainedGraph): Long =
         saturatedAdd(
-            (initialTasks(plan) + tasks).fold(0L) { total, task ->
-                saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes()))
+            (if (plan is AdmittedQueryPlan.Impact) tasks else initialTasks(plan) + tasks).fold(0L) { total, task ->
+                saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes(graph)))
             },
             saturatedAdd(
                 identityRows.values.fold(0L) { total, rows ->
@@ -146,15 +57,22 @@ internal data class PipelineCheckpoint(
                         saturatedAdd(size, saturatedMultiply(row.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER))
                     }
                 },
-                saturatedAdd(plan.retainedInputBytes(), QueryJoins(joinState).retainedBytes()),
+                saturatedAdd(
+                    saturatedAdd(plan.retainedInputBytes(graph), impact?.retainedBytes(graph) ?: 0L),
+                    QueryJoins(joinState).retainedBytes(),
+                ),
             ),
         )
 }
 
-private fun PipelineTask.retainedBytes(): Long =
+private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
     when (this) {
+        is PipelineTask.ImpactExplore -> route.retainedBytes(graph)
+        PipelineTask.ImpactFinalize -> TASK_OVERHEAD_BYTES
+        is PipelineTask.ValuePath -> graph.path(value)
         is PipelineTask.Failure -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Omission -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
+        is PipelineTask.RelationObservation -> value.retainedBytes
         is PipelineTask.WalkObservation -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.Occurrence -> saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER)
         is PipelineTask.ReferenceObservation -> saturatedMultiply(value.retainedBytes, RETAINED_EVIDENCE_MULTIPLIER)
@@ -213,7 +131,8 @@ internal fun PipelineTask.Feed.expand(): List<PipelineTask> =
                 input.result.omissions.map(PipelineTask::Omission) +
                 input.result.walkObservations.map(PipelineTask::WalkObservation) +
                 input.result.referenceObservations.map(PipelineTask::ReferenceObservation) +
-                input.result.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) }
+                input.result.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
+                input.result.relationObservations.map(PipelineTask::RelationObservation)
     }
 
 /** A record output keeps each established occurrence as a separate retained row. */
@@ -233,11 +152,17 @@ internal fun PipelineTask.Symbol.expandOutput(output: QueryOutputSyntax): List<P
                 PipelineTask.WalkRecord(value.copy(walkArrival = QueryWalkArrival.Proven.one(record)))
             }
         QueryOutputSyntax.BindingRows -> null
+        QueryOutputSyntax.ValuePaths -> null
+        is QueryOutputSyntax.ImpactWitness -> null
         is QueryOutputSyntax.Symbols -> null
     }
 
 private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
     when (plan) {
+        is AdmittedQueryPlan.Impact ->
+            plan.source.producers.flatMap {
+                QueryImpactRoute.initial(it, plan.source).map(PipelineTask::ImpactExplore)
+            } + PipelineTask.ImpactFinalize
         is AdmittedQueryPlan.Symbols -> listOf(PipelineTask.Discover(plan.source, plan.stage))
         is AdmittedQueryPlan.Text -> listOf(PipelineTask.DiscoverText(plan.source, plan.stage))
         is AdmittedQueryPlan.Location -> listOf(PipelineTask.DiscoverLocation(plan.source, plan.stage))
@@ -247,16 +172,19 @@ private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
                 is QueryRetainedResult.Symbols -> source.symbols.map { PipelineTask.Symbol(it, plan.stage) }
                 is QueryRetainedResult.Bindings -> source.bindingRows.map { PipelineTask.Binding(it, plan.stage) }
                 is QueryRetainedResult.Occurrences -> source.occurrences.map(PipelineTask::Occurrence)
+                is QueryRetainedResult.ValuePaths -> source.valuePaths.map(PipelineTask::ValuePath)
             }) +
                 plan.source.failures.map(PipelineTask::Failure) +
                 plan.source.omissions.map(PipelineTask::Omission) +
                 plan.source.walkObservations.map(PipelineTask::WalkObservation) +
                 plan.source.referenceObservations.map(PipelineTask::ReferenceObservation) +
-                plan.source.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) }
+                plan.source.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
+                plan.source.relationObservations.map(PipelineTask::RelationObservation)
     }
 
 private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
     when (plan) {
+        is AdmittedQueryPlan.Impact -> emptyList()
         is AdmittedQueryPlan.Symbols -> boundaryTasks(plan.stage)
         is AdmittedQueryPlan.Text -> boundaryTasks(plan.stage)
         is AdmittedQueryPlan.Location -> boundaryTasks(plan.stage)
@@ -280,6 +208,7 @@ private fun boundaryTasks(stage: ExactQueryStage): List<PipelineTask> =
 internal fun AdmittedQueryPlan.retainedInputs(): List<QueryRetainedResult> {
     val stage =
         when (this) {
+            is AdmittedQueryPlan.Impact -> stage
             is AdmittedQueryPlan.Symbols -> stage
             is AdmittedQueryPlan.Text -> stage
             is AdmittedQueryPlan.Location -> stage
@@ -292,6 +221,7 @@ internal fun AdmittedQueryPlan.retainedInputs(): List<QueryRetainedResult> {
 
 internal fun AdmittedQueryPlan.outputSyntax(): QueryOutputSyntax =
     when (this) {
+        is AdmittedQueryPlan.Impact -> stage.outputSyntax()
         is AdmittedQueryPlan.Symbols -> stage.outputSyntax()
         is AdmittedQueryPlan.Text -> stage.outputSyntax()
         is AdmittedQueryPlan.Location -> stage.outputSyntax()
@@ -303,6 +233,7 @@ internal fun AdmittedQueryPlan.bindingMode(): QueryJoinMode.Inner {
     var mode = ((this as? AdmittedQueryPlan.Retained)?.source as? QueryRetainedResult.Bindings)?.mode
     var stage =
         when (this) {
+            is AdmittedQueryPlan.Impact -> stage
             is AdmittedQueryPlan.Symbols -> stage
             is AdmittedQueryPlan.Text -> stage
             is AdmittedQueryPlan.Location -> stage
@@ -347,6 +278,7 @@ private fun ExactQueryStage.outputSyntax(): QueryOutputSyntax =
 
 internal fun AdmittedQueryPlan.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
     when (this) {
+        is AdmittedQueryPlan.Impact -> false
         is AdmittedQueryPlan.Symbols -> stage.exceedsTraversalDepth(ceiling)
         is AdmittedQueryPlan.Text -> stage.exceedsTraversalDepth(ceiling)
         is AdmittedQueryPlan.Location -> stage.exceedsTraversalDepth(ceiling)
@@ -381,13 +313,16 @@ private fun ExactQueryStage.retainedInputs(): List<QueryRetainedResult> =
         is ExactQueryStage.Emit -> emptyList()
     }
 
-private fun AdmittedQueryPlan.retainedInputBytes(): Long =
-    retainedInputs().fold(0L) { size, result -> saturatedAdd(size, result.retainedBytes) }
+private fun AdmittedQueryPlan.retainedInputBytes(graph: QueryImpactRetainedGraph): Long =
+    retainedInputs().fold((this as? AdmittedQueryPlan.Impact)?.source?.let(graph::source) ?: 0L) { size, result ->
+        saturatedAdd(size, result.retainedBytes)
+    }
 
 internal fun discoveryDeclarationKinds(plan: AdmittedQueryPlan): QueryDeclarationKinds? =
     when (plan) {
         is AdmittedQueryPlan.Symbols -> plan.source.declarationKinds
         is AdmittedQueryPlan.Text -> plan.source.declarationKinds
+        is AdmittedQueryPlan.Impact -> null
         is AdmittedQueryPlan.Location -> null
         is AdmittedQueryPlan.ExactReferences,
         is AdmittedQueryPlan.Retained -> null

@@ -130,18 +130,6 @@ class RelationReadTest {
     }
 
     @Test
-    fun `relation source policy requires a deepest readable owner`() {
-        val parent = Path.of("/workspace/src")
-        val nested = parent.resolve("test")
-        val authored = parent.resolve("Main.kt")
-        val foreign = nested.resolve("Test.kt")
-        val parentOnly = RelationPathPolicy.SourceRoots(listOf(parent), listOf(parent, nested))
-        val both = RelationPathPolicy.SourceRoots(listOf(parent, nested), listOf(parent, nested))
-        assertEquals(listOf(true, false), listOf(authored, foreign).map(parentOnly::contains))
-        assertEquals(listOf(true, true), listOf(authored, foreign).map(both::contains))
-    }
-
-    @Test
     fun `only classlike callers select constructor ownership confirmation`() {
         assertEquals(
             IntellijRelationPlanKind.ClassConstructionCallers,

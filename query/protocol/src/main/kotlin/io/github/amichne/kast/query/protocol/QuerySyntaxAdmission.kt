@@ -71,9 +71,10 @@ internal fun QueryRunRequest.Run.admitSyntax(
     lease: SemanticReadAuthority,
     authority: QueryReferenceAuthority,
     retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
+    impact: Map<QueryFromDocument.Impact, io.github.amichne.kast.query.contract.QueryImpactSource> = emptyMap(),
 ): QuerySyntaxAdmission {
     val source =
-        when (val admitted = from.admitSource(lease, authority, retained)) {
+        when (val admitted = from.admitSource(lease, authority, retained, impact)) {
             is QueryReferenceSourceAdmission.Admitted -> admitted.source
             is QueryReferenceSourceAdmission.Rejected ->
                 return QuerySyntaxAdmission.ReferenceRejected(admitted.position, admitted.reason)
@@ -96,8 +97,13 @@ private fun QueryFromDocument.admitSource(
     lease: SemanticReadAuthority,
     authority: QueryReferenceAuthority,
     retained: Map<QueryFromDocument.Result, QueryRetainedResult>,
+    impact: Map<QueryFromDocument.Impact, io.github.amichne.kast.query.contract.QueryImpactSource>,
 ): QueryReferenceSourceAdmission =
     when (this) {
+        is QueryFromDocument.Impact ->
+            impact[this]?.let {
+                QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Impact(it))
+            } ?: QueryReferenceSourceAdmission.RequestRejected
         is QueryFromDocument.Location ->
             when (val admitted = admitLocation(lease)) {
                 is Refinement.Refined ->

@@ -71,9 +71,9 @@ class QueryTextDiscoveryRetentionTest {
         val bare = row.copy(textMatches = QueryTextMatches.Empty)
         assertTrue(row.projectedUtf8Size() > bare.projectedUtf8Size())
         val bareResult =
-            result.copy(
-                result =
-                    result.result.copy(rows = io.github.amichne.kast.query.contract.QueryRows.Symbols.of(listOf(bare)))
+            QueryExecutionResult.Complete.create(
+                result.result.copy(rows = io.github.amichne.kast.query.contract.QueryRows.Symbols.of(listOf(bare))),
+                result.coverage,
             )
         val retained = QueryRetainedResult.capture(request.lease, result).refined()
         val bareRetained = QueryRetainedResult.capture(request.lease, bareResult).refined()

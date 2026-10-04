@@ -120,6 +120,15 @@ internal fun QueryBindingRow.detached(): QueryBindingRow {
 
 /** The result kind is closed so joined rows cannot be read as an empty symbol stream. */
 sealed interface QueryRows {
+    class ImpactWitness private constructor(val view: QueryImpactWitnessView) : QueryRows {
+        val values: List<QueryImpactWitnessRecord>
+            get() = view.entries
+
+        companion object {
+            fun of(view: QueryImpactWitnessView): ImpactWitness = ImpactWitness(view)
+        }
+    }
+
     class Symbols private constructor(private val snapshot: List<QuerySymbol>) : QueryRows {
         val values: List<QuerySymbol>
             get() = snapshot
@@ -146,6 +155,55 @@ sealed interface QueryRows {
         override fun equals(other: Any?): Boolean = other is Occurrences && values == other.values
 
         override fun hashCode(): Int = values.hashCode()
+    }
+
+    /** Each row already proves exact path connectivity; investigation completeness remains separately guarded. */
+    class ValuePaths
+    private constructor(
+        private val snapshot: List<QueryImpactPath>,
+        val accounting: QueryValuePathAccounting,
+    ) : QueryRows {
+        val values: List<QueryImpactPath>
+            get() = snapshot
+
+        companion object {
+            fun of(values: List<QueryImpactPath>): ValuePaths =
+                ValuePaths(Collections.unmodifiableList(values.toList()), QueryValuePathAccounting.EvidenceOnly)
+
+            fun fromInvestigation(ledger: QueryImpactLedger): Refinement<ValuePaths, QueryValuePathAccountingFailure> =
+                if (ledger.paths.distinct().size != ledger.paths.size) {
+                    Refinement.Rejected(QueryValuePathAccountingFailure.DUPLICATE_PATH)
+                } else {
+                    Refinement.Refined(
+                        ValuePaths(
+                            Collections.unmodifiableList(ledger.paths.toList()),
+                            QueryValuePathAccounting.Investigated(ledger),
+                        )
+                    )
+                }
+        }
+
+        fun selectRows(indices: List<Int>): Refinement<ValuePaths, QueryRetainedResultFailure> =
+            when {
+                indices.any { it !in values.indices } -> Refinement.Rejected(QueryRetainedResultFailure.UNKNOWN_ROW)
+                indices.distinct().size != indices.size -> Refinement.Rejected(QueryRetainedResultFailure.DUPLICATE_ROW)
+                else ->
+                    Refinement.Refined(ValuePaths(Collections.unmodifiableList(indices.map(values::get)), accounting))
+            }
+
+        /** The original immutable ledger was admitted before any presentation selection. */
+        internal fun originalInvestigationRows(): Refinement<ValuePaths, QueryRetainedResultFailure> =
+            when (val witness = accounting) {
+                QueryValuePathAccounting.EvidenceOnly ->
+                    Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
+                is QueryValuePathAccounting.Investigated ->
+                    Refinement.Refined(ValuePaths(witness.ledger.paths, witness))
+            }
+
+        override fun equals(other: Any?): Boolean =
+            other is ValuePaths && values == other.values && accounting == other.accounting
+
+        override fun hashCode(): Int = 31 * values.hashCode() + accounting.hashCode()
     }
 
     class Bindings private constructor(private val snapshot: List<QueryBindingRow>, val mode: QueryJoinMode.Inner) :

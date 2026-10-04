@@ -1,145 +1,210 @@
 ---
 type: Kotlin Module Group
 title: Semantic read domains
-description: Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
+description: Domain contracts refine discovery into exact compiler identity and compose
+  source, relation, traversal, diagnostics, and queries without erasing evidence.
 resource: file://query
-tags: [kotlin, semantic, query, compiler]
+tags:
+- kotlin
+- semantic
+- query
+- compiler
 code_sources:
-  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
-  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticAnalysisAttempt.kt
-  - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticNativePhaseTest.kt
-  - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedDiagnosticNativePhaseTest.kt
-  - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttemptTest.kt
-  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt
-  - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt
-  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/BoundedDiagnosticEnumeration.kt
-  - path: diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceCompilerProjection.kt
-  - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityReadTest.kt
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadCursor.kt
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDetachedRetention.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyGraph.kt
-    symbols: [sourceDependencyClosure, sourceExpiredEntries]
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
-  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyExpiryTest.kt
-  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
-  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadOutcome.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservation.kt
-  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryKindAdmissionTest.kt
-  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservationTest.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedNativeDiscoveryCollector.kt
-  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedDeclarationDiscoveryTest.kt
-  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryPlanningTest.kt
-  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolDiscoveryProgress.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdapter.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdmission.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationDiscoveryState.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationPartitionScanner.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationFileScanner.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryLeafDeclaration.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationDiscoveryAllowance.kt
-  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscoveryTest.kt
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryDiscoveryObservation.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryConstraintAdmission.kt
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
-  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
-  - path: docs/reviews/live-semantic-read-acceptance.md
-  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt
-    symbols: [ExactDeclarationSelector]
-  - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt
-    symbols: [SymbolDiscoveryService]
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSnapshot.kt
-    symbols: [SourceSnapshot]
-  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt
-    symbols: [RelationFact]
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt
-    symbols: [sourceBoundCallableIdentity]
-  - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt
-    symbols: [TraversalPlan]
-  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
-    symbols: [QueryPlanCompiler, AdmittedQueryPlan]
-  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
-    symbols: [QueryService]
-  - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-    symbols: [SemanticReadAuthority, SemanticReadValidationPort]
-  - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
-  - path: source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDeclarationVisibility.kt
-    symbols: [SourceDeclarationVisibility]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijSearchScopeCompiler.kt
-    symbols: [CompiledIntellijSearchScope, IntellijScopePopulation]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt
-    symbols: [discoverNative]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryQuery.kt
-    symbols: [IntellijNativeDiscoveryQuery]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryAdapter.kt
-    symbols: [isAdmittedContributor, isAdmittedContributorName]
-  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijNativeDiscoveryTest.kt
-    symbols: [SymbolDiscoveryTest]
-  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijSearchScopeSourceRootPolicyTest.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijDiscoveryPackageAdmission.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijSupplementalDiscoveryQuery.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextDeclarationDiscoveryQuery.kt
-    symbols: [IntellijTextDeclarationDiscoveryQuery]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextOccurrenceCollector.kt
-    symbols: [collectTextDiscoveryOccurrences]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextDeclarationProjector.kt
-    symbols: [IntellijTextDeclarationProjector]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedWordContext.kt
-  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolTextMatch.kt
-    symbols: [SymbolDiscoveryWord, SymbolTextMatch]
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPackageAdmission.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2CallOwnership.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationProjection.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPlan.kt
-    symbols: [IntellijRelationPlanKind]
-  - path: relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt
-  - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
-  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceEntityTraversalState.kt
-  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceTraversal.kt
-  - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/SourceCursorReadTest.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/DiagnosticProgressDocument.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateContracts.kt
-  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/DiagnosticPublicationTest.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionMeasurements.kt
-  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadGauge.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateRecords.kt
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
-  - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
-  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt
-  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderState.kt
-  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderLocator.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationInventory.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventory.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijDefinitionInventory.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCalleeInventory.kt
-  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRetainedRelationRead.kt
-  - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
+- path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
+- path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticAnalysisAttempt.kt
+- path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticNativePhaseTest.kt
+- path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedDiagnosticNativePhaseTest.kt
+- path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttemptTest.kt
+- path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt
+- path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt
+- path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/BoundedDiagnosticEnumeration.kt
+- path: diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt
+- path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
+- path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
+- path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceCompilerProjection.kt
+- path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityReadTest.kt
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadCursor.kt
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDetachedRetention.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyGraph.kt
+  symbols:
+  - sourceDependencyClosure
+  - sourceExpiredEntries
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
+- path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyExpiryTest.kt
+- path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
+- path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
+- path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadOutcome.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservation.kt
+- path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryKindAdmissionTest.kt
+- path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservationTest.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedNativeDiscoveryCollector.kt
+- path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedDeclarationDiscoveryTest.kt
+- path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryPlanningTest.kt
+- path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolDiscoveryProgress.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdapter.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdmission.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationDiscoveryState.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationPartitionScanner.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationFileScanner.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryLeafDeclaration.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationDiscoveryAllowance.kt
+- path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscoveryTest.kt
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryDiscoveryObservation.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryConstraintAdmission.kt
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
+- path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
+- path: docs/reviews/live-semantic-read-acceptance.md
+- path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt
+  symbols:
+  - ExactDeclarationSelector
+- path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt
+  symbols:
+  - SymbolDiscoveryService
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSnapshot.kt
+  symbols:
+  - SourceSnapshot
+- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt
+  symbols:
+  - RelationFact
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt
+  symbols:
+  - sourceBoundCallableIdentity
+- path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt
+  symbols:
+  - TraversalPlan
+- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
+  symbols:
+  - QueryPlanCompiler
+  - AdmittedQueryPlan
+- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
+  symbols:
+  - QueryService
+- path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
+  symbols:
+  - SemanticReadAuthority
+  - SemanticReadValidationPort
+- path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
+- path: source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDeclarationVisibility.kt
+  symbols:
+  - SourceDeclarationVisibility
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijSearchScopeCompiler.kt
+  symbols:
+  - CompiledIntellijSearchScope
+  - IntellijScopePopulation
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt
+  symbols:
+  - discoverNative
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryQuery.kt
+  symbols:
+  - IntellijNativeDiscoveryQuery
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryAdapter.kt
+  symbols:
+  - isAdmittedContributor
+  - isAdmittedContributorName
+- path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijNativeDiscoveryTest.kt
+  symbols:
+  - SymbolDiscoveryTest
+- path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijSearchScopeSourceRootPolicyTest.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijDiscoveryPackageAdmission.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijSupplementalDiscoveryQuery.kt
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextDeclarationDiscoveryQuery.kt
+  symbols:
+  - IntellijTextDeclarationDiscoveryQuery
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextOccurrenceCollector.kt
+  symbols:
+  - collectTextDiscoveryOccurrences
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijTextDeclarationProjector.kt
+  symbols:
+  - IntellijTextDeclarationProjector
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedWordContext.kt
+- path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolTextMatch.kt
+  symbols:
+  - SymbolDiscoveryWord
+  - SymbolTextMatch
+- path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPackageAdmission.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2CallOwnership.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationProjection.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPlan.kt
+  symbols:
+  - IntellijRelationPlanKind
+- path: relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt
+- path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticService.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+- path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceEntityTraversalState.kt
+- path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceTraversal.kt
+- path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/SourceCursorReadTest.kt
+- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/DiagnosticProgressDocument.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateContracts.kt
+- path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/DiagnosticPublicationTest.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionMeasurements.kt
+- path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadGauge.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateRecords.kt
+- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
+- path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
+- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt
+- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderState.kt
+- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationProviderLocator.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationInventory.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventory.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijDefinitionInventory.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCalleeInventory.kt
+- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRetainedRelationRead.kt
+- path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt
+- path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
 sources:
+  - id: openwiki-source-c5f0a7cc49121c1f25d33773
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt
+  - id: openwiki-source-6226241beb5c7447a86b663f
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueBoundary.kt
+  - id: openwiki-source-d3f0d7e24d35ed4b47aff3d5
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt
+  - id: openwiki-source-b237fe55f86308ccb96d0596
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt
+  - id: openwiki-source-eeb2af1b330e389cae564042
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt
+  - id: openwiki-source-e67ae8e62f9893feb962d771
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt
+  - id: openwiki-source-5e4eb99eb5fd7a5dcae4b5eb
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt
+  - id: openwiki-source-24e2e528bd8a607e4d35c899
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt
+  - id: openwiki-source-b8e3c573182d699252496925
+    resource: repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt
+  - id: openwiki-source-9d98513f38a6f5a6f98d8cdc
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
+  - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
+  - id: openwiki-source-5ea9f19dac1745ee97dffee2
+    resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
   - id: openwiki-source-ca4cb79efb8948231564ac6f
     resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+  - id: openwiki-source-738d50046b5f0d1312b7fcb7
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+  - id: openwiki-source-76dc60162dca56e35a6ed9ac
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
+  - id: openwiki-source-08d8bbce5989f3afa7c532a7
+    resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
+  - id: openwiki-source-8d15fa1e67cdc054e05e2796
+    resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
+generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-03T17:08:58.136Z
 ---
 
 # Semantic read domains
@@ -503,3 +568,55 @@ addition to existing work counters and phase observations. Each hosted request
 initializes both page counters to an observed zero; only a returned native page
 increments its counter. These measurements stay outside model-facing output and
 do not equate page quantity with CPU cost or complete semantic coverage.
+
+## Exact value sites and reviewed models
+
+`ValueInvocation` retains the enclosing compiler declaration, exact invocation range, callable compiler identity and semantic basis. Its result site is distinct from another call of the same function. Value sites add a closed expression, local binding/read, formal argument, return or property-assignment role; an argument retains the actual invocation and resolved formal position.
+
+The current forward adapter handles bounded local immutable bindings and reads, immediate arguments, direct transparent wrapper returns and supported value-producing branch alternatives. Mutable control flow, unsupported expressions, unresolved references, external calls and exhausted grants remain named obligations. All PSI and K2 observations stay inside the native read boundary; retained sites and transfers are detached data.
+
+Reviewed representation rules establish origins, transfers, transformations and consumer expectations. Current state and history are separate: a transformation replaces current representation while retaining its prior evidence. Boundary models bind exact proven source/target positions, contract identity/version and supplied compatibility assumptions. A modeled terminal differs from an unresolved boundary; persistence retains retention/decoding/migration obligations. Compiler identity and flow do not establish runtime encryption or deployment compatibility.
+
+### Exact Kotlin restoration and diagnostics
+
+Value-site restoration starts at the exact source offset, follows PSI ancestors
+within the selected declaration range, and selects an exact-range Kotlin
+expression. It filters out same-range lexer tokens and argument containers
+before selection. A local binding restores its property declaration; an argument
+restores the argument expression. A partial identifier range cannot become an
+expression, and a property cannot satisfy an argument shape claim. Missing
+anchors and unsupported role shapes remain distinct finite restoration failures.
+Native admission then checks lexical execution ownership and the required K2
+role, callable and argument binding. Structural PSI restoration cannot establish
+those compiler facts by itself.
+
+Producer selection restores its enclosing and expected callable declarations
+under their retained authorities. The exact invocation expression must belong
+to that owner and pass current compiler confirmation. The investigation's
+expansion domain limits later flow work; it does not replace the producer's
+declaration authority. Physical PSI regressions exercise exact argument and
+property restoration, wrong role shapes and partial anchors. They establish
+restoration and instrumentation behavior without claiming an executed K2 binding
+or installed IDE result.
+
+The restoration boundary adds `VALUE_SITE_RESTORATION` phase evidence and one
+`VALUE_SITE_RESTORATIONS` counter with a finite restored-shape, rejected-shape or
+unavailable-anchor outcome. Request-local hosted diagnostics accumulate those
+bounded counters and phase evidence beside the existing receipt. The schema-6
+receipt also initializes explicit zero counters for producer seed reads, model
+declaration revalidation, model-site revalidation, model-site revalidation rejection and value-flow reads; entered
+providers add their actual observations. Completion or rejection finalizes one
+immutable receipt, and later count calls cannot alter it. Typed serialization
+retains the closed counter and phase identities without source payloads,
+declaration names, opaque handles or compiler objects. These diagnostics expose
+effect entry and outcomes; they do not establish compiler identity, branch
+conservation or complete investigation coverage. Installed qualification still
+requires the exact candidate, current semantic basis and native observations.
+
+The hosted traversal observation adapter adds `TRAVERSAL` to the existing phase
+owner. It records exclusive coordination intervals and restores that phase after
+native relation reads. Native inventory and compiler confirmation keep their own
+intervals and authority. The adapter preserves the existing traversal plan,
+relation requests and outcomes; phase timing grants no semantic coverage.
+
+The existing read counter vocabulary also distinguishes presented, pending-impact and original-investigation retention capture, each finite capture failure, and result issuance outcomes. The hosted adapter records them in the existing `RETENTION` phase. An encoded diagnostic golden verifies actual success and rejection receipt shapes; these observations carry no source payload or handles and cannot establish compiler proof or investigation closure.

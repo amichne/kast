@@ -22,7 +22,8 @@ import io.github.amichne.kast.traversal.contract.TraversalStrategy
 
 internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
     when (this) {
-        is QueryStepDocument.Related -> QueryStepSyntax.Related(relation.meaning())
+        is QueryStepDocument.Related ->
+            QueryStepSyntax.Related(relation.meaning(), expansionScope.boundary().refinedOrNull() ?: return null)
         is QueryStepDocument.Walk ->
             QueryStepSyntax.Walk(
                 relation.meaning(),
@@ -35,6 +36,7 @@ internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
                                 .refinedOrNull() ?: return null
                         )
                 },
+                expansionScope.boundary().refinedOrNull() ?: return null,
             )
         QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
         is QueryStepDocument.Concat,
@@ -77,6 +79,8 @@ internal fun QueryOutputDocument.syntax(): QueryOutputSyntax? =
         QueryOutputDocument.Occurrences -> QueryOutputSyntax.Occurrences
         QueryOutputDocument.TraversalRecords -> QueryOutputSyntax.TraversalRecords
         QueryOutputDocument.BindingRows -> QueryOutputSyntax.BindingRows
+        QueryOutputDocument.ValuePaths -> QueryOutputSyntax.ValuePaths
+        is QueryOutputDocument.ImpactWitness -> QueryOutputSyntax.ImpactWitness(section.witnessSection())
     }
 
 private fun RelationKindDocument.meaning(): RelationMeaning =

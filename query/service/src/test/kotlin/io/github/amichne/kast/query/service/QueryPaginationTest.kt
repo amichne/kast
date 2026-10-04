@@ -194,6 +194,7 @@ class QueryPaginationTest {
                     when (page) {
                         is QueryExecutionResult.Complete -> page.coverage.resultCount.value
                         is QueryExecutionResult.Qualified -> page.coverage.knownMinimum.value
+                        is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
                         is QueryExecutionResult.Rejected -> error("Unexpected rejection")
                     }
                 assertEquals(count, minimum)

@@ -219,7 +219,12 @@ internal fun QueryRelationOmission.projectedUtf8Size(): Long {
 }
 
 internal fun QueryWalkObservation.projectedUtf8Size(): Long =
-    saturatedSum(List(WALK_OBSERVATION_PROJECTION_MULTIPLIER.toInt()) { toString().utf8Size() })
+    saturatedAdd(
+        saturatedSum(List(WALK_OBSERVATION_PROJECTION_MULTIPLIER.toInt()) { toString().utf8Size() }),
+        scopeExclusions.sumOf {
+            it.exclusion.canonicalProjection().utf8Size() * WALK_OBSERVATION_PROJECTION_MULTIPLIER
+        },
+    )
 
 private fun SymbolSelector.projectedUtf8Size(): Long = buildString {
     append(lease.workspaceRoot.value)

@@ -20,6 +20,8 @@ internal data class OneHopRelationRequest(
     val scope: SymbolSearchScope,
     val budget: RelationBudget,
     val position: OneHopRelationPosition,
+    val expansion: io.github.amichne.kast.relation.contract.RelationSearchBoundary =
+        io.github.amichne.kast.relation.contract.RelationSearchBoundary.RETAINED_SUBJECT,
 )
 
 internal enum class OneHopElapsedFailure {

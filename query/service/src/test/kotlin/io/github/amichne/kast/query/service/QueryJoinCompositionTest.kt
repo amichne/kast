@@ -362,7 +362,7 @@ private fun retained(
     val result = QueryResult(QueryRows.Symbols.of(rows), failures, omissions)
     val execution =
         when (coverage) {
-            is QueryCoverage.Complete -> QueryExecutionResult.Complete(result, coverage)
+            is QueryCoverage.Complete -> QueryExecutionResult.Complete.create(result, coverage)
             is QueryCoverage.Qualified -> QueryExecutionResult.Qualified(result, coverage)
         }
     return assertInstanceOf(
@@ -429,6 +429,7 @@ private fun QueryExecutionResult.bindingRows(): List<QueryBindingRow> =
     when (this) {
         is QueryExecutionResult.Complete -> result.bindingRows()
         is QueryExecutionResult.Qualified -> result.bindingRows()
+        is QueryExecutionResult.ImpactRejected -> error("Unexpected impact rejection")
         is QueryExecutionResult.Rejected -> error("Unexpected rejection: $reason")
     }
 

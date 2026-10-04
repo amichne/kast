@@ -1,5 +1,7 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.validateImpactCompletion
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import io.github.amichne.kast.protocol.registry.OperationRegistryArtifact
 import kotlinx.serialization.Serializable
@@ -96,6 +98,13 @@ object CanonicalOperationWireBindings {
                 CanonicalQuerySerializers.qualification,
                 CanonicalQuerySerializers.rejection,
                 ReadRejectionBudgets.query,
+                validateComplete = { result ->
+                    when (val admission = result.validateImpactCompletion()) {
+                        is Refinement.Refined -> Refinement.Refined(Unit)
+                        is Refinement.Rejected ->
+                            Refinement.Rejected(WireFailure.InvalidImpactAccounting(admission.failure))
+                    }
+                },
             ),
         )
     val diagnosticCheck =
