@@ -4,9 +4,6 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.search.LocalSearchScope
-import com.intellij.psi.search.searches.ReferencesSearch
-import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
@@ -26,7 +23,6 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
-import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtContainerNodeForControlStructureBody
 import org.jetbrains.kotlin.psi.KtExpression
@@ -54,6 +50,9 @@ internal class IntellijValueFlowNative(
     private var examined = 1L
 
     fun read(element: PsiElement): ValueFlowRead {
+        if (request.source.role == ValueRole.LocalBinding && element is KtProperty && element.isImmutableLocal())
+            return IntellijLocalBindingReads(request, owner, scope, observation, started, onWork).read(element)
+
         val base = ValueFlowStep.detachedByteCount(request.source, scope.request, emptyList(), emptyList()).value
         val reserved = reservedObligationBytes()
         if (base > request.budget.returnedBytes.value || reserved > request.budget.returnedBytes.value - base)
@@ -160,27 +159,7 @@ internal class IntellijValueFlowNative(
             unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
             return
         }
-        ReferencesSearch.search(property, LocalSearchScope(owner))
-            .forEach(
-                Processor { reference ->
-                    when (permitted()) {
-                        Allowance.READY -> Unit
-                        Allowance.EXHAUSTED -> return@Processor false
-                    }
-                    val native = reference as? KtReference
-                    if (native == null) {
-                        unresolved(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
-                        return@Processor true
-                    }
-                    val resolution = analyze(native.element) { native.resolveToSymbol()?.psi }
-                    when {
-                        resolution == null -> unresolved(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
-                        resolution === property ->
-                            emit(native.element, ValueRole.LocalRead, ValueTransferKind.LOCAL_READ)
-                    }
-                    true
-                }
-            )
+        error("Immutable local binding must use the production reference scan")
     }
 
     private fun transferExpression(expression: KtExpression) {
@@ -329,3 +308,5 @@ internal class IntellijValueFlowNative(
 }
 
 private const val VALUE_OBLIGATION_OVERHEAD_BYTES = 2048L
+
+private fun KtProperty.isImmutableLocal(): Boolean = !isVar && isLocal

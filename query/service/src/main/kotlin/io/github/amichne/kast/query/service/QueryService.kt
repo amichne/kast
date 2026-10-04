@@ -162,6 +162,10 @@ class QueryService(
             when (transition) {
                 QueryImpactTaskTransition.Advanced -> true
                 QueryImpactTaskTransition.NotStarted -> false
+                QueryImpactTaskTransition.Suspended -> {
+                    progressed = true
+                    false
+                }
                 is QueryImpactTaskTransition.Rejected -> {
                     rejection = QueryExecutionResult.ImpactRejected(transition.failure)
                     false

@@ -44,6 +44,7 @@ enum class ImpactNativeReadRejectionDocument {
 
 @Serializable
 enum class ImpactReadContractRejectionDocument {
+    INVALID_PROGRESS,
     WORK_LIMIT_EXCEEDED,
     RESULT_LIMIT_EXCEEDED,
     DETACHED_CAPACITY_EXCEEDED,

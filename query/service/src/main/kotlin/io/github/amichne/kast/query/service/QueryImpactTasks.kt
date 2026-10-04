@@ -11,6 +11,7 @@ import io.github.amichne.kast.query.contract.QueryImpactReadRejection
 import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactScopeExclusion
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
+import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
@@ -19,11 +20,15 @@ import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowSuspensionCause
+import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 
 internal sealed interface QueryImpactTaskTransition {
     data object Advanced : QueryImpactTaskTransition
 
     data object NotStarted : QueryImpactTaskTransition
+
+    data object Suspended : QueryImpactTaskTransition
 
     data class Rejected(val failure: QueryImpactExecutionFailure) : QueryImpactTaskTransition
 }
@@ -37,6 +42,9 @@ internal class QueryImpactTasks(
     checkpoint: QueryImpactSnapshot?,
 ) {
     private val reads = checkpoint?.reads?.toMutableMap() ?: linkedMapOf()
+    private val receipts = checkpoint?.receipts?.toMutableMap() ?: linkedMapOf()
+    private val remainders = checkpoint?.remainders?.toMutableMap() ?: linkedMapOf()
+    private val readRejections = checkpoint?.readRejections?.toMutableMap() ?: linkedMapOf()
     private val paths = checkpoint?.paths?.toMutableList() ?: mutableListOf()
     private var ledger = checkpoint?.ledger
     private val source
@@ -47,6 +55,9 @@ internal class QueryImpactTasks(
             java.util.Collections.unmodifiableMap(reads.toMap()),
             java.util.Collections.unmodifiableList(paths.toList()),
             ledger,
+            java.util.Collections.unmodifiableMap(remainders.toMap()),
+            java.util.Collections.unmodifiableMap(readRejections.toMap()),
+            java.util.Collections.unmodifiableMap(receipts.toMap()),
         )
 
     fun rowsState(): QueryImpactRowsState {
@@ -76,6 +87,17 @@ internal class QueryImpactTasks(
         val read =
             when (val acquired = acquireRead(route, retainedBytes)) {
                 QueryImpactReadAcquisition.NotStarted -> return QueryImpactTaskTransition.NotStarted
+                is QueryImpactReadAcquisition.Suspended -> {
+                    state.limit(
+                        when (acquired.cause) {
+                            ValueFlowSuspensionCause.WORK_LIMIT_REACHED -> QueryLimitation.WORK_LIMIT_REACHED
+                            ValueFlowSuspensionCause.RESULT_LIMIT_REACHED -> QueryLimitation.RESULT_LIMIT_REACHED
+                            ValueFlowSuspensionCause.BYTE_LIMIT_REACHED -> QueryLimitation.BYTE_LIMIT_REACHED
+                            ValueFlowSuspensionCause.TIME_LIMIT_REACHED -> QueryLimitation.TIME_LIMIT_REACHED
+                        }
+                    )
+                    return QueryImpactTaskTransition.Suspended
+                }
                 is QueryImpactReadAcquisition.Cutoff ->
                     return finishRoute(route, QueryImpactTerminal.Unresolved.ExecutionStop(acquired.stop))
                 is QueryImpactReadAcquisition.Ready -> acquired.read
@@ -96,6 +118,7 @@ internal class QueryImpactTasks(
                     ),
                 )
             is ValueFlowRead.Observed -> observed(route, read.step, retainedBytes)
+            is ValueFlowRead.Suspended -> error("Suspension is acquired before route expansion")
         }
     }
 
@@ -103,6 +126,7 @@ internal class QueryImpactTasks(
         val rejections = reads.mapNotNull { (site, read) ->
             when (read) {
                 is ValueFlowRead.Observed -> null
+                is ValueFlowRead.Suspended -> error("Finalization cannot retain a native suspension")
                 is ValueFlowRead.Rejected ->
                     QueryImpactReadRejection.Native(site, source.domain, read.cause, read.examinedWorkUnits)
                 is ValueFlowRead.ContractRejected ->
@@ -118,10 +142,11 @@ internal class QueryImpactTasks(
                 source.boundaryModels,
                 reads.values.filterIsInstance<ValueFlowRead.Observed>().map { it.step },
                 paths,
-                rejections,
+                rejections + readRejections.values,
                 source.producers,
                 source.requestedSites,
                 source.peerBoundaries,
+                receipts,
             )
         if (admitted is Refinement.Rejected)
             return QueryImpactTaskTransition.Rejected(QueryImpactExecutionFailure.Ledger(admitted.failure))
@@ -155,7 +180,17 @@ internal class QueryImpactTasks(
                 is Refinement.Refined -> admitted.value
             }
         val next = compilerTasks + arrivals.tasks
-        (arrivals.paths + terminals).forEach(::record)
+        val rejected =
+            readRejections[route.site]
+                ?.let { rejection ->
+                    when (val path = route.path(QueryImpactTerminal.Unresolved.ReadRejected(rejection))) {
+                        is Refinement.Refined -> listOf(path.value)
+                        is Refinement.Rejected ->
+                            return QueryImpactTaskTransition.Rejected(QueryImpactExecutionFailure.Path(path.failure))
+                    }
+                }
+                .orEmpty()
+        (arrivals.paths + terminals + rejected).forEach(::record)
         tasks.removeFirst()
         next.asReversed().forEach(tasks::addFirst)
         return QueryImpactTaskTransition.Advanced
@@ -180,7 +215,7 @@ internal class QueryImpactTasks(
         retainedBytes: (QueryImpactRetainedGraph) -> Long,
     ): QueryImpactReadAcquisition {
         val cached = reads[route.site]
-        if (cached != null) return QueryImpactReadAcquisition.Ready(cached)
+        if (cached != null && route.site !in remainders) return QueryImpactReadAcquisition.Ready(cached)
         val graph = QueryImpactRetainedGraph()
         val current = retainedBytes(graph)
         val remaining = (request.budget.checkpointBytes.value - current).coerceAtLeast(0L)
@@ -191,22 +226,99 @@ internal class QueryImpactTasks(
                 impactCapacityStop(route, saturatedAdd(current, reserve), request.budget.checkpointBytes.value)
             )
         val budget = state.impactBudget(remaining / 2L, itemBytes) ?: return QueryImpactReadAcquisition.NotStarted
-        val requested = ValueFlowRequest(route.site, budget, source.domain)
-        val admitted = validateImpactRead(port.read(requested), requested, source)
-        val read =
-            when (admitted) {
-                is ValueFlowRead.Observed ->
-                    ValueFlowRead.Observed(
-                        admitted.step.shareCallableEvidence(
-                            reads.values.filterIsInstance<ValueFlowRead.Observed>().map { it.step }
-                        )
-                    )
-                is ValueFlowRead.Rejected,
-                is ValueFlowRead.ContractRejected -> admitted
-            }
+        val requested = ValueFlowRequest(route.site, budget, source.domain, remainders[route.site])
+        val read = shareRead(validateImpactRead(port.read(requested), requested, source))
+        recordReceipt(route, requested, read)
         state.consume(read.examinedImpactWork().value)
-        reads[route.site] = read
-        return QueryImpactReadAcquisition.Ready(read)
+        return retainRead(route, read, cached)
+    }
+
+    private fun shareRead(read: ValueFlowRead): ValueFlowRead {
+        val previous = reads.values.filterIsInstance<ValueFlowRead.Observed>().map { it.step }
+        return when (read) {
+            is ValueFlowRead.Observed -> ValueFlowRead.Observed(read.step.shareCallableEvidence(previous))
+            is ValueFlowRead.Suspended -> read.copy(step = read.step.shareCallableEvidence(previous))
+            is ValueFlowRead.Rejected,
+            is ValueFlowRead.ContractRejected -> read
+        }
+    }
+
+    private fun recordReceipt(route: QueryImpactRoute, request: ValueFlowRequest, read: ValueFlowRead) {
+        val actual =
+            when (read) {
+                is ValueFlowRead.Observed -> read.step.receipts
+                is ValueFlowRead.Suspended -> read.step.receipts
+                is ValueFlowRead.Rejected -> listOf(ValueFlowWorkReceipt.rejected(request, read.examinedWorkUnits))
+                is ValueFlowRead.ContractRejected ->
+                    listOf(ValueFlowWorkReceipt.rejected(request, read.examinedWorkUnits))
+            }
+        val prior = receipts[route.site]
+        receipts[route.site] = if (prior == null) actual else java.util.Collections.unmodifiableList(prior + actual)
+    }
+
+    private fun retainRead(
+        route: QueryImpactRoute,
+        read: ValueFlowRead,
+        cached: ValueFlowRead?,
+    ): QueryImpactReadAcquisition {
+        val page =
+            when (read) {
+                is ValueFlowRead.Observed -> read.step
+                is ValueFlowRead.Suspended -> read.step
+                is ValueFlowRead.Rejected,
+                is ValueFlowRead.ContractRejected -> return retainRejection(route, read, cached)
+            }
+        val accumulated =
+            when (
+                val next = if (cached is ValueFlowRead.Observed) cached.step.append(page) else Refinement.Refined(page)
+            ) {
+                is Refinement.Refined -> next.value
+                is Refinement.Rejected ->
+                    return retainRejection(
+                        route,
+                        ValueFlowRead.ContractRejected(next.failure, page.examinedWorkUnits),
+                        cached,
+                    )
+            }
+        reads[route.site] = ValueFlowRead.Observed(accumulated)
+        receipts[route.site] = accumulated.receipts
+        if (read is ValueFlowRead.Suspended) {
+            remainders[route.site] = read.remainder
+            return QueryImpactReadAcquisition.Suspended(read.cause)
+        }
+        remainders.remove(route.site)
+        return QueryImpactReadAcquisition.Ready(reads.getValue(route.site))
+    }
+
+    private fun retainRejection(
+        route: QueryImpactRoute,
+        read: ValueFlowRead,
+        cached: ValueFlowRead?,
+    ): QueryImpactReadAcquisition {
+        remainders.remove(route.site)
+        if (cached !is ValueFlowRead.Observed) {
+            reads[route.site] = read
+            return QueryImpactReadAcquisition.Ready(read)
+        }
+        readRejections[route.site] =
+            when (read) {
+                is ValueFlowRead.Rejected ->
+                    QueryImpactReadRejection.Native(
+                        route.site,
+                        source.domain,
+                        read.cause,
+                        read.examinedWorkUnits,
+                    )
+                is ValueFlowRead.ContractRejected ->
+                    QueryImpactReadRejection.Contract(
+                        route.site,
+                        source.domain,
+                        read.cause,
+                        read.examinedWorkUnits,
+                    )
+                else -> error("Only rejected reads can qualify an unfinished prefix")
+            }
+        return QueryImpactReadAcquisition.Ready(cached)
     }
 }
 

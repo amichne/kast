@@ -1,8 +1,10 @@
 package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.relation.contract.BoundaryModel
+import io.github.amichne.kast.relation.contract.LocalBindingReadRemainder
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 import io.github.amichne.kast.relation.contract.ValueSite
 import java.util.IdentityHashMap
 
@@ -47,11 +49,37 @@ class QueryImpactRetainedGraph {
         node(value) {
                 when (value) {
                     is ValueFlowRead.Observed -> value.step.storageBytes(this)
+                    is ValueFlowRead.Suspended ->
+                        value.step.storageBytes(this).saturatedAdd(remainderStorage(value.remainder))
                     is ValueFlowRead.Rejected,
                     is ValueFlowRead.ContractRejected -> 0L
                 }
             }
             .scaledStorage()
+
+    fun remainder(value: LocalBindingReadRemainder): Long = remainderStorage(value).scaledStorage()
+
+    private fun remainderStorage(value: LocalBindingReadRemainder): Long =
+        node(value) {
+            value.source
+                .storageBytes(this)
+                .saturatedAdd(value.boundary.storageBytes(this))
+                .saturatedAdd(
+                    collection(value.consumed) { key ->
+                        node(key) {
+                            node(key.element) { 0L }
+                                .saturatedAdd(node(key.reference) { 0L })
+                                .saturatedAdd(text(key.kind.value))
+                        }
+                    }
+                )
+                .saturatedAdd(collection(value.emitted) { it.storageBytes(this) })
+        }
+
+    fun receipts(values: List<ValueFlowWorkReceipt>): Long = receiptStorage(values).scaledStorage()
+
+    internal fun receiptStorage(values: List<ValueFlowWorkReceipt>): Long =
+        collection(values) { node(it) { it.domain.storageBytes(this) } }
 
     fun step(value: QueryImpactStep): Long = value.storageBytes(this).scaledStorage()
 

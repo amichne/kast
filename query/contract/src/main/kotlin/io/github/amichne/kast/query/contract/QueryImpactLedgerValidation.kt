@@ -4,7 +4,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueSite
 
@@ -79,11 +81,14 @@ internal class QueryImpactLedgerValidation(
         if (
             native.values.any { it.size != 1 } ||
                 rejected.values.any { it.size != 1 } ||
-                native.keys.any { it in rejected }
+                native.keys.any(::hasConflictingRejection)
         )
             return reject(QueryImpactLedgerFailure.CONFLICTING_OBSERVATIONS)
         return Refinement.Refined(Unit)
     }
+
+    private fun hasConflictingRejection(site: ValueSite): Boolean =
+        site in rejected && native.getValue(site).singleOrNull()?.terminal != ValueFlowTerminal.ResourceSuspended
 
     private fun observedPaths(): Refinement<Unit, QueryImpactLedgerFailure> {
         for (path in paths) {
@@ -106,6 +111,7 @@ internal class QueryImpactLedgerValidation(
                 when (val proof = admitted.value) {
                     PositionWitness.Accounted -> Refinement.Refined(Unit)
                     is PositionWitness.Native -> branches(path, index, proof.observation)
+                    is PositionWitness.RejectedPrefix -> conservedBranches(path, index, proof.observation)
                 }
         }
 
@@ -113,6 +119,8 @@ internal class QueryImpactLedgerValidation(
         data object Accounted : PositionWitness
 
         data class Native(val observation: ValueFlowStep) : PositionWitness
+
+        data class RejectedPrefix(val observation: ValueFlowStep) : PositionWitness
     }
 
     private fun witness(path: QueryImpactPath, index: Int): Refinement<PositionWitness, QueryImpactLedgerFailure> {
@@ -120,9 +128,7 @@ internal class QueryImpactLedgerValidation(
         if (index == path.steps.size) {
             when (val end = path.terminal) {
                 is QueryImpactTerminal.Unresolved.ExecutionStop -> return accounted()
-                is QueryImpactTerminal.Unresolved.ReadRejected ->
-                    return if (end.rejection in rejected[source].orEmpty()) accounted()
-                    else reject(QueryImpactLedgerFailure.UNPROVEN_TERMINAL)
+                is QueryImpactTerminal.Unresolved.ReadRejected -> return rejectedPrefix(source, end)
                 is QueryImpactTerminal.ExplicitScopeExclusion -> return exclusion(source, end)
                 is QueryImpactTerminal.Unresolved.PeerContinuation -> return peerWitness(path, source, end)
                 is QueryImpactTerminal.Consumer,
@@ -135,6 +141,15 @@ internal class QueryImpactLedgerValidation(
         val observed =
             native[source]?.singleOrNull() ?: return reject(QueryImpactLedgerFailure.MISSING_NATIVE_OBSERVATION)
         return Refinement.Refined(PositionWitness.Native(observed))
+    }
+
+    private fun rejectedPrefix(
+        source: ValueSite,
+        end: QueryImpactTerminal.Unresolved.ReadRejected,
+    ): Refinement<PositionWitness, QueryImpactLedgerFailure> {
+        if (end.rejection !in rejected[source].orEmpty()) return reject(QueryImpactLedgerFailure.UNPROVEN_TERMINAL)
+        val observed = native[source]?.singleOrNull() ?: return accounted()
+        return Refinement.Refined(PositionWitness.RejectedPrefix(observed))
     }
 
     private fun peerWitness(
@@ -163,6 +178,20 @@ internal class QueryImpactLedgerValidation(
         index: Int,
         observed: ValueFlowStep,
     ): Refinement<Unit, QueryImpactLedgerFailure> {
+        when (val conserved = conservedBranches(path, index, observed)) {
+            is Refinement.Rejected -> return conserved
+            is Refinement.Refined -> Unit
+        }
+        if (index == path.steps.size && !path.terminal.isEstablishedBy(observed))
+            return reject(QueryImpactLedgerFailure.UNPROVEN_TERMINAL)
+        return Refinement.Refined(Unit)
+    }
+
+    private fun conservedBranches(
+        path: QueryImpactPath,
+        index: Int,
+        observed: ValueFlowStep,
+    ): Refinement<Unit, QueryImpactLedgerFailure> {
         val siblings = paths.filter { it.sameModeledPrefix(path, index) }
         val step = path.steps.getOrNull(index)
         if (step is QueryImpactStep.Compiler && step.transfer !in observed.transfers)
@@ -175,13 +204,11 @@ internal class QueryImpactLedgerValidation(
             return reject(QueryImpactLedgerFailure.MISSING_BRANCH)
         if (observed.obligations.any { !obligationRetained(it, observed.source, siblings, index) })
             return reject(QueryImpactLedgerFailure.MISSING_OBLIGATION)
-        if (index == path.steps.size && !path.terminal.isEstablishedBy(observed))
-            return reject(QueryImpactLedgerFailure.UNPROVEN_TERMINAL)
         return Refinement.Refined(Unit)
     }
 
     private fun obligationRetained(
-        obligation: io.github.amichne.kast.relation.contract.ValueFlowObligation,
+        obligation: ValueFlowObligation,
         source: ValueSite,
         siblings: List<QueryImpactPath>,
         index: Int,

@@ -5,6 +5,7 @@ import io.github.amichne.kast.query.contract.QueryImpactExecutionFailure
 import io.github.amichne.kast.query.contract.QueryImpactPath
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 
 internal fun compilerImpactArrivals(
@@ -27,8 +28,7 @@ internal fun observedImpactTerminals(
     observation: ValueFlowStep,
     modeled: Boolean,
 ): Refinement<List<QueryImpactPath>, QueryImpactExecutionFailure> {
-    if (observation.transfers.isEmpty() && observation.obligations.isEmpty() && !modeled)
-        return supportedEndPath(route, observation)
+    if (!modeled && observation.isSupportedEnd()) return supportedEndPath(route, observation)
     val paths = mutableListOf<QueryImpactPath>()
     for (obligation in observation.obligations) {
         if (obligation.cause == ValueFlowUnsupportedCause.UNMODELED_CALL && modeled) continue
@@ -54,3 +54,6 @@ private fun supportedEndPath(
         is Refinement.Refined -> Refinement.Refined(listOf(path.value))
     }
 }
+
+private fun ValueFlowStep.isSupportedEnd(): Boolean =
+    transfers.isEmpty() && obligations.isEmpty() && terminal == ValueFlowTerminal.SupportedDomainExhausted

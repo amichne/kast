@@ -35,6 +35,41 @@ class ImpactPeerNativeWitnessValidationTest {
         )
     }
 
+    @Test
+    fun `native and rejected read receipts cannot hide a foreign authority`() {
+        val receipt =
+            ImpactNativeReadReceiptDocument(
+                values.flowDomain,
+                values.count(1),
+                values.count(0),
+                values.count(0),
+            )
+        val native = sourceNativeRead().copy(receipts = values.bounded(listOf(receipt)))
+        val rejected =
+            ImpactWitnessDocument.ReadRejection(
+                ImpactReadRejectionDocument.Native(
+                    fixture.source,
+                    ImpactRequestedBoundaryDocument.Workspace,
+                    ImpactNativeReadRejectionDocument.AUTHORITY_MOVED,
+                    values.count(1),
+                ),
+                values.bounded(listOf(receipt)),
+            )
+        val foreign = receipt.copy(domain = values.flowDomain.copy(subject = fixture.target.enclosing))
+        for (witness in listOf(native, rejected)) assertEquals(
+            Refinement.Refined(Unit),
+            result(witness).validateImpactAccounting(),
+        )
+        for (witness in
+            listOf(
+                native.copy(receipts = values.bounded(listOf(foreign))),
+                rejected.copy(receipts = values.bounded(listOf(foreign))),
+            )) assertEquals(
+            Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH),
+            result(witness).validateImpactAccounting(),
+        )
+    }
+
     private fun sourceNativeRead() =
         ImpactWitnessDocument.NativeRead(
             values.count(0),

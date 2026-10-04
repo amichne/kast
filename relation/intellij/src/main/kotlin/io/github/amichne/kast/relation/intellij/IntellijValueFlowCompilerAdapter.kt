@@ -169,14 +169,17 @@ class IntellijValueFlowCompilerAdapter(
                     is Prepared.Ready -> readPrepared(prepared, request, started) { observedWork = it }
                 }
             }
-            .also { if (it !is ValueFlowRead.Observed) observation.count(IntellijReadCounter.VALUE_FLOW_REJECTIONS) }
+            .also {
+                if (it is ValueFlowRead.Rejected || it is ValueFlowRead.ContractRejected)
+                    observation.count(IntellijReadCounter.VALUE_FLOW_REJECTIONS)
+            }
     }
 
     private fun readPrepared(
         prepared: Prepared.Ready,
         request: ValueFlowRequest,
         started: Long,
-        onWork: (io.github.amichne.kast.relation.contract.RelationWorkCount) -> Unit,
+        onWork: (RelationWorkCount) -> Unit,
     ): ValueFlowRead {
         val source =
             prepared.owner.exactValueElement(request.source.range)

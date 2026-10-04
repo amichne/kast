@@ -9,13 +9,18 @@ internal fun ImpactWitnessDocument.hasSourceBasis(basis: ImpactSemanticBasisDocu
         is ImpactWitnessDocument.ProducerSiteOnly -> site.isOnBasis(basis)
         is ImpactWitnessDocument.RepresentationModel -> rule.isOnBasis(basis)
         is ImpactWitnessDocument.BoundaryModel -> rule.isOnBasis(basis)
-        is ImpactWitnessDocument.NativeRead -> source.isOnBasis(basis) && domain.subject.basis == basis
+        is ImpactWitnessDocument.NativeRead ->
+            source.isOnBasis(basis) && domain.subject.basis == basis && receipts.hasSourceBasis(basis)
         is ImpactWitnessDocument.CompilerTransfer ->
             transfer.source.isOnBasis(basis) && transfer.target.isOnBasis(basis)
         is ImpactWitnessDocument.FlowObligation -> site.isOnBasis(basis)
-        is ImpactWitnessDocument.ReadRejection -> rejection.hasSourceBasis(basis)
+        is ImpactWitnessDocument.ReadRejection -> rejection.hasSourceBasis(basis) && receipts.hasSourceBasis(basis)
         is ImpactWitnessDocument.SiteAccounting -> accounting.site.isOnBasis(basis)
     }
+
+private fun BoundedProtocolList<ImpactNativeReadReceiptDocument>.hasSourceBasis(
+    basis: ImpactSemanticBasisDocument
+): Boolean = values.all { it.domain.subject.basis == basis }
 
 private fun ImpactFindingDocument.hasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     producer.isOnBasis(basis) &&

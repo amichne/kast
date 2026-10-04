@@ -15,6 +15,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
+import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
@@ -45,6 +46,61 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class QueryImpactLedgerTest {
+    @Test
+    fun `a rejected resume must conserve every transfer and obligation from its suspended prefix`() {
+        val f = Fixture()
+        val obligation = ValueFlowObligation(f.first, ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+        val suspended =
+            ValueFlowStep.fromCompiler(
+                    f.first,
+                    listOf(f.edges[2]),
+                    listOf(obligation),
+                    ValueFlowTerminal.ResourceSuspended,
+                    f.domain,
+                    RelationWorkCount.parse(3).value(),
+                )
+                .value()
+        val rejection =
+            QueryImpactReadRejection.Native(
+                f.first,
+                f.domain.boundary,
+                ValueFlowRejection.AUTHORITY_MOVED,
+                RelationWorkCount.parse(1).value(),
+            )
+        val prefix = listOf(QueryImpactStep.Compiler(f.edges[0]))
+        fun path(steps: List<QueryImpactStep>, terminal: QueryImpactTerminal) =
+            QueryImpactPath.fromEvidence(
+                    f.producer,
+                    steps,
+                    QueryImpactRepresentation.NotModeled,
+                    terminal,
+                )
+                .value()
+        val rejected = path(prefix, QueryImpactTerminal.Unresolved.ReadRejected(rejection))
+        val transferred = path(prefix + QueryImpactStep.Compiler(f.edges[2]), f.terminal)
+        val qualified = path(prefix, QueryImpactTerminal.Unresolved.Flow(obligation))
+        fun ledger(paths: List<QueryImpactPath>) =
+            QueryImpactLedger.fromEvidence(
+                listOf(f.producer),
+                f.domain.boundary,
+                QueryImpactFlowSemantics.KOTLIN_FORWARD_V1,
+                emptyList(),
+                emptyList(),
+                listOf(f.observe(f.producer, listOf(f.edges[0])), suspended) +
+                    if (transferred in paths) listOf(f.observations.last()) else emptyList(),
+                paths,
+                listOf(rejection),
+                listOf(f.producerWitness),
+            )
+        assertEquals(Refinement.Rejected(QueryImpactLedgerFailure.MISSING_BRANCH), ledger(listOf(rejected)))
+        assertEquals(
+            Refinement.Rejected(QueryImpactLedgerFailure.MISSING_OBLIGATION),
+            ledger(listOf(rejected, transferred)),
+        )
+        assertEquals(Refinement.Rejected(QueryImpactLedgerFailure.MISSING_BRANCH), ledger(listOf(rejected, qualified)))
+        assertInstanceOf(Refinement.Refined::class.java, ledger(listOf(rejected, transferred, qualified)))
+    }
+
     @Test
     fun `rejected read retains exact cause and cannot discharge native coverage`() {
         val fixture = Fixture()

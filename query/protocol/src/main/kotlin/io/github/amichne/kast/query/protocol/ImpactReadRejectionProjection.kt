@@ -22,40 +22,42 @@ internal fun QueryImpactReadRejection.impactDocument(): ImpactProjected<ImpactRe
                     ImpactReadRejectionDocument.Native(
                         site,
                         requestedDomain,
-                        when (cause) {
-                            ValueFlowRejection.STALE_SITE -> ImpactNativeReadRejectionDocument.STALE_SITE
-                            ValueFlowRejection.OUTSIDE_DOMAIN -> ImpactNativeReadRejectionDocument.OUTSIDE_DOMAIN
-                            ValueFlowRejection.OWNER_UNAVAILABLE -> ImpactNativeReadRejectionDocument.OWNER_UNAVAILABLE
-                            ValueFlowRejection.AUTHORITY_MOVED -> ImpactNativeReadRejectionDocument.AUTHORITY_MOVED
-                            ValueFlowRejection.UNSUPPORTED_SEED -> ImpactNativeReadRejectionDocument.UNSUPPORTED_SEED
-                            ValueFlowRejection.UNRESOLVED_SEED -> ImpactNativeReadRejectionDocument.UNRESOLVED_SEED
-                            ValueFlowRejection.NATIVE_UNAVAILABLE ->
-                                ImpactNativeReadRejectionDocument.NATIVE_UNAVAILABLE
-                            ValueFlowRejection.GRANT_TOO_SMALL -> ImpactNativeReadRejectionDocument.GRANT_TOO_SMALL
-                            ValueFlowRejection.NESTED_EXECUTION -> ImpactNativeReadRejectionDocument.NESTED_EXECUTION
-                        },
+                        cause.impactDocument(),
                         work,
                     )
                 is QueryImpactReadRejection.Contract ->
                     ImpactReadRejectionDocument.Contract(
                         site,
                         requestedDomain,
-                        when (cause) {
-                            ValueFlowStepFailure.WORK_LIMIT_EXCEEDED ->
-                                ImpactReadContractRejectionDocument.WORK_LIMIT_EXCEEDED
-                            ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED ->
-                                ImpactReadContractRejectionDocument.RESULT_LIMIT_EXCEEDED
-                            ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED ->
-                                ImpactReadContractRejectionDocument.DETACHED_CAPACITY_EXCEEDED
-                            ValueFlowStepFailure.DOMAIN_MISMATCH -> ImpactReadContractRejectionDocument.DOMAIN_MISMATCH
-                            ValueFlowStepFailure.SOURCE_MISMATCH -> ImpactReadContractRejectionDocument.SOURCE_MISMATCH
-                            ValueFlowStepFailure.BASIS_MISMATCH -> ImpactReadContractRejectionDocument.BASIS_MISMATCH
-                            ValueFlowStepFailure.UNRESOLVED_OBLIGATIONS ->
-                                ImpactReadContractRejectionDocument.UNRESOLVED_OBLIGATIONS
-                            ValueFlowStepFailure.MISSING_OBLIGATION ->
-                                ImpactReadContractRejectionDocument.MISSING_OBLIGATION
-                        },
+                        cause.impactDocument(),
                         work,
                     )
             }
         }
+
+private fun ValueFlowRejection.impactDocument(): ImpactNativeReadRejectionDocument =
+    when (this) {
+        ValueFlowRejection.STALE_SITE -> ImpactNativeReadRejectionDocument.STALE_SITE
+        ValueFlowRejection.OUTSIDE_DOMAIN -> ImpactNativeReadRejectionDocument.OUTSIDE_DOMAIN
+        ValueFlowRejection.OWNER_UNAVAILABLE -> ImpactNativeReadRejectionDocument.OWNER_UNAVAILABLE
+        ValueFlowRejection.AUTHORITY_MOVED -> ImpactNativeReadRejectionDocument.AUTHORITY_MOVED
+        ValueFlowRejection.UNSUPPORTED_SEED -> ImpactNativeReadRejectionDocument.UNSUPPORTED_SEED
+        ValueFlowRejection.UNRESOLVED_SEED -> ImpactNativeReadRejectionDocument.UNRESOLVED_SEED
+        ValueFlowRejection.NATIVE_UNAVAILABLE -> ImpactNativeReadRejectionDocument.NATIVE_UNAVAILABLE
+        ValueFlowRejection.GRANT_TOO_SMALL -> ImpactNativeReadRejectionDocument.GRANT_TOO_SMALL
+        ValueFlowRejection.NESTED_EXECUTION -> ImpactNativeReadRejectionDocument.NESTED_EXECUTION
+    }
+
+private fun ValueFlowStepFailure.impactDocument(): ImpactReadContractRejectionDocument =
+    when (this) {
+        ValueFlowStepFailure.INVALID_PROGRESS -> ImpactReadContractRejectionDocument.INVALID_PROGRESS
+        ValueFlowStepFailure.WORK_LIMIT_EXCEEDED -> ImpactReadContractRejectionDocument.WORK_LIMIT_EXCEEDED
+        ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED -> ImpactReadContractRejectionDocument.RESULT_LIMIT_EXCEEDED
+        ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED ->
+            ImpactReadContractRejectionDocument.DETACHED_CAPACITY_EXCEEDED
+        ValueFlowStepFailure.DOMAIN_MISMATCH -> ImpactReadContractRejectionDocument.DOMAIN_MISMATCH
+        ValueFlowStepFailure.SOURCE_MISMATCH -> ImpactReadContractRejectionDocument.SOURCE_MISMATCH
+        ValueFlowStepFailure.BASIS_MISMATCH -> ImpactReadContractRejectionDocument.BASIS_MISMATCH
+        ValueFlowStepFailure.UNRESOLVED_OBLIGATIONS -> ImpactReadContractRejectionDocument.UNRESOLVED_OBLIGATIONS
+        ValueFlowStepFailure.MISSING_OBLIGATION -> ImpactReadContractRejectionDocument.MISSING_OBLIGATION
+    }
