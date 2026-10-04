@@ -121,8 +121,10 @@ Retained result pages construct at most the admitted result grant, capped at 100
 items per page. Follow the returned cursor and retain the original impact closure;
 finishing a presentation does not close unresolved semantic obligations.
 
-The default query checkpoint is 32 MiB, within the unchanged 32 MiB total
-continuation retention budget. The conservative storage accounting includes
+The default query checkpoint is 32 MiB, within a 128 MiB total continuation
+retention budget. The total includes independently owned checkpoints, retained
+results and fitted output pages. Already conservative checkpoint byte charges
+are added once to each owner that retains them. The conservative storage accounting includes
 physically retained proof objects and references. Equal callable proofs can share
 storage only when their authority, scope, constraints and compiler evidence all
 match; independent paths, invocations and observations remain distinct.

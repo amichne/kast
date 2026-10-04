@@ -125,9 +125,10 @@ internal fun retainedStorageBytes(
         .saturatedAdd(references.sumOf { it.retainedBytes })
         .saturatedAdd(discoveries.sumOf { it.retainedBytes })
         .saturatedAdd(relations.sumOf { it.retainedBytes })
+        .saturatedMultiply(RETAINED_STATE_OVERHEAD_MULTIPLIER)
+        // These owners already provide conservative byte charges; retain them without scaling their proof again.
         .saturatedAdd(checkpoint?.retainedBytes ?: 0L)
         .saturatedAdd(priorRetainedSource)
-        .saturatedMultiply(RETAINED_STATE_OVERHEAD_MULTIPLIER)
 }
 
 internal fun String.utf8UpperBound(): Long = length.toLong().saturatedMultiply(MAX_UTF8_BYTES_PER_UTF16_CODE_UNIT)
