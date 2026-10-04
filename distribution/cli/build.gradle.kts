@@ -44,7 +44,12 @@ kotlin.sourceSets.main {
 tasks.named("compileKotlin") { dependsOn(generateVersion) }
 
 graalvmNative {
+    val nativeImageLauncher = javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(25))
+        nativeImageCapable.set(true)
+    }
     binaries {
+        configureEach { javaLauncher.set(nativeImageLauncher) }
         named("main") {
             imageName.set("kast")
             mainClass.set(application.mainClass)
