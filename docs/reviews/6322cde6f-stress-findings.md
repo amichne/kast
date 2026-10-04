@@ -1,6 +1,6 @@
 # Stress findings at 6322cde6f
 
-Tested source: `6322cde6fe6859f6df04d599f8a32ac7f617afdf`, checked out detached on 2026-10-03. The original clean detached HEAD was `f58c2277bdce9eb2b9aaf2abf795d31c5fb0cf20`; the remote was fetched before switching. The exact baseline control and host were assembled and installed before making the separate build configuration fix described below. Changes remain uncommitted.
+Tested source: `6322cde6fe6859f6df04d599f8a32ac7f617afdf`, checked out detached on 2026-10-03. The original clean detached HEAD was `f58c2277bdce9eb2b9aaf2abf795d31c5fb0cf20`; the remote was fetched before switching. The exact baseline control and host were assembled and installed before making the separate build configuration fix described below. The initial build fix and baseline catalog were committed and pushed as `fa9b751e5`. The implementation and live follow-up are recorded below.
 
 The bounded checks passed, including native compiler-backed searches, 150-path finding drains at grants 1, 37 and 100, seven linked-path expansions, concurrent searches and typed failure probes. IDEA was killed through the shell and restarted, as requested. No finding identity or ordering regression was observed. The investigation remains qualified because it exceeded checkpoint capacity and encountered unmodeled flow. These checks do not establish native allocation improvement, a baseline latency comparison or release qualification.
 
@@ -8,15 +8,15 @@ The bounded checks passed, including native compiler-backed searches, 150-path f
 
 ### F1 — Public small-page requests still construct and encode a larger window
 
-Status: confirmed from production source; native cost unmeasured. This is a remaining performance limitation, not a demonstrated correctness regression introduced by this commit.
+Status: fixed in `189808732`; production-budget regression and installed drain/expansion checks passed. Native allocation and latency improvement remain unmeasured.
 
-[RetainedQueryPresentation](../../query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt) selects `minOf(cursor + 100, sectionCount)` for finding reads. The `READ_RESULT` branch in [CanonicalQueryProtocol](../../query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) does not pass the request's admitted execution budget into retained presentation. [HostedQueryResponse](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt) encodes the original page before checking the result grant and fitting a smaller prefix.
+At the tested baseline, [RetainedQueryPresentation](../../query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt) selects `minOf(cursor + 100, sectionCount)` for finding reads. The `READ_RESULT` branch in [CanonicalQueryProtocol](../../query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) does not pass the request's admitted execution budget into retained presentation. [HostedQueryResponse](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt) encodes the original page before checking the result grant and fitting a smaller prefix.
 
 Consequently, a public `READ_RESULT` for `FINDINGS` with `executionBudget.maxResults: 1` can construct up to 100 findings before fitting its returned page. The fix bounds construction by the internal presentation window, rather than the caller's smaller result grant. Its factory-only one-row allocation measurement must not be presented as allocation for that public request.
 
 Native check: a retained 150-path investigation drained at grants 1, 37 and 100 with identical finding values, original ordinals, linked row IDs and unresolved qualification. Seven linked paths expanded correctly across the 100-row boundary. Byte fitting reduced the larger grants to five public calls each; grant 1 required 150 calls. Timings are observations, not a controlled comparison.
 
-Proposed bounded fix: pass the admitted result grant into retained presentation and construct at most `min(100, maxResults, remaining)` finding entries. Preserve the original section count and ordinals, then retain byte fitting for the encoded page. Add a production presentation test proving a one-result grant constructs one finding, plus existing drain/expansion checks. This was not implemented here. The separate full-path-order equality check in `originalWitnessRowIds` also remains outside the factory allocation measurement.
+Implemented follow-up: retained presentation receives the admitted result grant and constructs at most `min(100, maxResults, remaining)` entries. Original section counts, ordinals, linked row IDs and closure survive. Result-limit qualifications remain explicit, and hosted byte fitting still applies. The new production protocol test failed against the old implementation (`[2, 1]` items instead of `[1, 1]`) and passed after the fix. The separate full-path-order equality check in `originalWitnessRowIds` remains outside the factory allocation measurement.
 
 ### F2 — Native assembly inherits a shell JDK without Native Image
 
@@ -32,11 +32,11 @@ Logs: `/tmp/kast-6322-stress-build.log`, `/tmp/kast-6322-stress-build-graal.log`
 
 ### F3 — Dense impact reaches the default checkpoint capacity
 
-Status: observed natively; qualified resource limit, not a finding-page corruption.
+Status: baseline checkpoint stops reproduced; removed for this 150-branch workload in the installed follow-up. Larger workloads remain bounded and may still reach capacity.
 
 The fixture's single producer feeds 150 `display(value)` calls. The investigation retained all 150 original paths, 25 observations and five read rejections, but required native-flow and execution-boundary obligations stayed unresolved. Expanded checkpoint stops report `requiredBytes: 8487400` against `availableBytes: 8388608`. Increasing a public result grant does not enlarge that checkpoint budget. The public result preserved `checkpoint-capacity-exceeded`, selected-subset qualifications and the original closure through every drain and expansion.
 
-Immediate handling: consume the qualified findings and linked path obligations as returned; do not treat a drained presentation as proof of complete semantic flow. For a performance follow-up, measure detached checkpoint storage at its existing owner and determine whether common route prefixes can share immutable storage while preserving independent branch and model evidence. Raising the default cap without that measurement is not established as a general solution. No checkpoint policy or semantic model was changed here.
+Implemented follow-up: stable authority and declaration identities retain their immutable proof objects; native reads reuse the admitted enclosing endpoint, and fully equal callable proofs share physical storage. Equality includes authority, scope, constraints and compiler evidence. Independent invocation ranges, paths, branches, observations and obligations remain distinct. The existing graph still charges physically distinct equal objects separately with its unchanged conservative factor. The dense test measured a ledger charge of 28,871,104 bytes; the checkpoint default is now 32 MiB. Small-cap rejection remains covered. No native-flow or semantic model was widened.
 
 ## Setup observations and recovery
 
@@ -47,7 +47,78 @@ Immediate handling: consume the qualified findings and linked path obligations a
 - Temporary expansion assertions initially assumed `rowId` instead of `row_id` and compared full terminals directly with compact finding terminals. Corrected checks assert original row identity, producer, destination and variant-specific obligations independently. Those harness errors are retained in local receipts and are not product findings.
 - Supplied thread instructions referred to retired session installations and the previous `knowledge/` tree. This checkout's authored instructions use persistent installation and `openwiki/`. The mismatch is outside the tested production change.
 
-## Executed checks
+## Implemented follow-up and live qualification
+
+Production fixes: `189808732fbbcbf4140c90cc1cb1c011f9364d26` and
+`78e84e776e433d8b3b89c88f5ed3cab5893ab15c`.
+Installed candidate: `0.20261003.6324`; its host release record binds the artifacts
+to the second commit. Both candidate testing rounds killed the verified IDEA
+process through shell SIGTERM and restarted the application. Final live `DESCRIBE`
+reported plugin `0.20261003.6324`, IDEA build `262.10968.63`, PID 31134,
+host `b48e034f-085b-4f63-a68c-5c980ec2851a` and the exact fixture root.
+
+### F4 — Retention scaled an already conservative checkpoint charge again
+
+Status: discovered while qualifying F3; fixed in `78e84e776` and verified natively.
+
+The first follow-up candidate completed the dense native investigation but returned
+`retention.kind: capacity_exceeded`. Its complete ledger had 302 observations and
+no read rejections. A 100-result producer page still retains a checkpoint for its
+remaining output. `QueryRetainedEvidence` multiplied that checkpoint's already
+conservative byte charge again, then added the original ledger separately.
+
+The service regression with a 100-result grant measured a 30,376,960-byte
+checkpoint, a 271,895,416-byte retained-result charge and a 302,272,376-byte paired
+reservation before the fix. It now proves that capture adds the checkpoint's
+existing charge once, preserves that exact checkpoint object, and retains all 150
+original paths within the configured total budget. The total query retention
+default is 128 MiB, covering independently charged checkpoints, retained results
+and fitted output pages; the checkpoint cap is 32 MiB. Capacity rejection and
+configuration cross-bounds remain enforced. These are conservative reservations,
+not measured JVM heap use. The larger default permits more retained memory per
+workspace; operators can retain smaller limits and receive typed capacity outcomes.
+
+| Follow-up boundary | Verified result |
+| --- | --- |
+| Affected module checks | 482 cases across query protocol/service/contract, relation contract/IntelliJ, workspace contract and kernel; zero failures, errors or skips. Focused RED/GREEN cases cover admitted one-finding construction and paired checkpoint/result retention. |
+| Required guards | JSON contracts, configuration ingress, architecture and knowledge validation passed. Knowledge impact identified source-bound concepts; generated OpenWiki pages were left for the scheduled refresh. |
+| Exact candidate assembly and install | Control and host assembled with Oracle GraalVM 25.0.2; regular persistent installer succeeded. Live `DESCRIBE` independently confirmed the candidate host after restart. |
+| Dense native investigation | Retained all 150 original paths and 302 observations, with zero read rejections or checkpoint stops. Original closure is `UNRESOLVED[NATIVE_FLOW]`; all 150 findings carry `UNRESOLVED_FLOW/UNMODELED_CALL`. |
+| Public findings and links | Grants 100, 37 and 1 drained all 150 findings in 6, 6 and 150 calls. Full finding values, original ordinals, row IDs and closure matched. Seven linked-path expansions passed at 0, 24, 25, 74, 99, 100 and 149. Byte fitting still bounds larger pages. |
+| Rejections and concurrency | Past-end cursor rejected with `correct_request`; unknown and previous-host results rejected with `restart_read`. One earlier concurrency-3 round returned typed `BUSY` at `REQUEST_ADMISSION` with `wait_for_capacity`, consistent with two configured read slots. A subsequent round completed all six root-scoped searches at concurrency 3. No automatic retry behavior is claimed. |
+
+The final native receipts are under `build/stress-6322/final-native/`: the impact
+reply, host description, drain/expansion summary, findings, rejection summary and
+concurrency summary. Original baseline assets remain in `assets/`; the intermediate
+candidate remains in `candidate-assets/`; final assets and checksum sidecars are in
+`final-assets/`. Native heap, allocation improvement and controlled latency
+comparison remain unmeasured. Draining findings does not discharge unmodeled flow.
+
+Final candidate checks:
+
+```sh
+./gradlew --console=plain --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g \
+  :query:protocol:check :query:service:check :query:contract:check \
+  :relation:contract:check :relation:intellij:check :workspace:contract:check :kernel:check \
+  verifyJsonContracts verifyKastArchitecture verifyConfigurationIngress \
+  knowledgeImpact verifyKnowledgeBase
+build/python-tests/env/bin/python3 build/stress-6322/final_probe.py
+build/python-tests/env/bin/python3 build/stress-6322/final_drain.py
+build/python-tests/env/bin/python3 build/stress-6322/final_extra.py
+```
+
+Logs: `/tmp/kast-6322-fixes-guards.log`, `/tmp/kast-6322-retention-guards.log`,
+`/tmp/kast-6322-paired-retention-red.log`, `/tmp/kast-6322-paired-retention-green.log`,
+`/tmp/kast-6322-final-candidate-build.log`, `/tmp/kast-6322-final-install.log`,
+`/tmp/kast-6322-final-probe.log`, `/tmp/kast-6322-final-drain.log`,
+`/tmp/kast-6322-final-extra.log`.
+
+| Final artifact | SHA-256 |
+| --- | --- |
+| Control `kast-control-v0.20261003.6324-macos-aarch64.tar.gz` | `5ce83e86c5fb549a1fa956f59f1185ebf2a50ab93e93e3c0c915a62c6a6f7aae` |
+| Host `kast-ide-hosted-v0.20261003.6324-idea-262.zip` | `e1be4f04580488fa6e3854206fbe23e4e43c0ae3db86d2bae1772ca4afbf1a67` |
+
+## Executed baseline checks
 
 | Boundary | Result |
 | --- | --- |
@@ -124,4 +195,4 @@ Native/install and fix logs: `/tmp/kast-6322-stress-install.log`, `/tmp/kast-632
 | Control `kast-control-v0.20261003.6322-macos-aarch64.tar.gz` | `6c4939a1115dc12941eb4ec39de802e563c1e27cb6b2c54ab5837a0adab73e70` |
 | Host `kast-ide-hosted-v0.20261003.6322-idea-262.zip` | `8ca4567c54bb6cd38bd09d7dc3dd52b996ff659dd0bf7b57bba998da152a1b2e` |
 
-The host release record identifies the full tested source SHA. The allocation assertion proves transient allocation in the pure finding factory, not hosted heap, CPU, latency, retention cost or semantic work. No baseline comparison or release qualification was performed. The installed baseline remains exact `6322cde6f`; the separate build configuration and prerequisite documentation fix, plus this catalog, are left uncommitted. No semantic production code or repository test was changed.
+The host release record identifies the full tested source SHA. The allocation assertion proves transient allocation in the pure finding factory, not hosted heap, CPU, latency, retention cost or semantic work. No baseline comparison or release qualification was performed. The baseline qualification used exact `6322cde6f` artifacts before the follow-up implementation. The current installed candidate and production changes are identified separately above.
