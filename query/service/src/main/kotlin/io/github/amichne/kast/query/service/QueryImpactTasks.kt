@@ -192,7 +192,18 @@ internal class QueryImpactTasks(
             )
         val budget = state.impactBudget(remaining / 2L, itemBytes) ?: return QueryImpactReadAcquisition.NotStarted
         val requested = ValueFlowRequest(route.site, budget, source.domain)
-        val read = validateImpactRead(port.read(requested), requested, source)
+        val admitted = validateImpactRead(port.read(requested), requested, source)
+        val read =
+            when (admitted) {
+                is ValueFlowRead.Observed ->
+                    ValueFlowRead.Observed(
+                        admitted.step.shareCallableEvidence(
+                            reads.values.filterIsInstance<ValueFlowRead.Observed>().map { it.step }
+                        )
+                    )
+                is ValueFlowRead.Rejected,
+                is ValueFlowRead.ContractRejected -> admitted
+            }
         state.consume(read.examinedImpactWork().value)
         reads[route.site] = read
         return QueryImpactReadAcquisition.Ready(read)

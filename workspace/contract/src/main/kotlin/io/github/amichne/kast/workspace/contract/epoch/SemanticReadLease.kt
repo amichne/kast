@@ -35,7 +35,9 @@ value class CanonicalWorkspaceRoot private constructor(val value: String) {
 data class SemanticReadLease(
     override val workspaceRoot: CanonicalWorkspaceRoot,
     val generation: EvidenceGeneration,
-) : SemanticReadAuthority
+) : SemanticReadAuthority {
+    override val identity: SemanticReadIdentity = SemanticReadIdentity.Published(this)
+}
 
 /**
  * Exact in-process serialization boundary shared by source invalidation and workspace publication.

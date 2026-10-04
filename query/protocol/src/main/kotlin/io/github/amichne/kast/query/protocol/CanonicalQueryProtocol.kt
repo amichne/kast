@@ -41,7 +41,9 @@ class CanonicalQueryProtocol(
             is QueryRunRequest.ReadResult ->
                 when (val acquired = state.acquireInitial(lease, setOf(request.result))) {
                     is QueryInitialAcquisition.Acquired ->
-                        executePage(acquired.claim) { projection.readRetained(request, lease, acquired.claim) }
+                        executePage(acquired.claim) {
+                            projection.readRetained(request, lease, acquired.claim, budget.resources.resultLimit)
+                        }
                     QueryInitialAcquisition.Unavailable ->
                         rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
                     QueryInitialAcquisition.CapacityExceeded ->

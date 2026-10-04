@@ -56,7 +56,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
-import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -192,6 +191,7 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
         checkpoint: QueryCheckpoint? = null,
         plan: AdmittedQueryPlan = this.plan,
         checkpointBytes: Long = 10000000,
+        returnedBytes: Long = 10000000,
     ) =
         QueryExecutionRequest.create(
                 plan,
@@ -202,7 +202,7 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
                         WorkUnitLimit.parse(work).value(),
                         ElapsedTimeLimitMillis.parse(10000).value(),
                     ),
-                    QueryByteLimit.parse(10000000).value(),
+                    QueryByteLimit.parse(returnedBytes).value(),
                     QueryByteLimit.parse(checkpointBytes).value(),
                 ),
                 checkpoint,
@@ -227,24 +227,36 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
 
     fun script(reads: List<ImpactReadExpectation>) = Script(reads)
 
-    inner class Script(scripted: List<ImpactReadExpectation>) {
+    fun unorderedScript(reads: List<ImpactReadExpectation>) = Script(reads, ordered = false)
+
+    inner class Script(scripted: List<ImpactReadExpectation>, private val ordered: Boolean = true) {
         private val expected = ArrayDeque(scripted)
         val examined = mutableListOf<ValueSite>()
         val grants = mutableListOf<RelationBudget>()
         val port = ValueFlowCompilerPort { input ->
             check(expected.isNotEmpty()) { "Excess native read" }
-            val read = expected.removeFirst()
-            assertEquals(read.site, input.source)
+            val read =
+                if (ordered) expected.removeFirst()
+                else {
+                    val admitted = expected.firstOrNull { it.site == input.source } ?: error("Unexpected native site")
+                    expected.remove(admitted)
+                    admitted
+                }
+            assertEquals(
+                read.site,
+                input.source,
+                "expected ${read.site.range}/${read.site.role}, received ${input.source.range}/${input.source.role}",
+            )
             examined += input.source
             grants += input.budget
             val obligations = read.causes.map { ValueFlowObligation(read.site, it) }
             val domain =
-                RelationRequest.start(
-                    SymbolSelector.issue(lease, scope, proof),
-                    RelationMeaning.References,
-                    input.budget,
-                    input.boundary,
-                )
+                when (val enclosing = read.site.enclosing) {
+                    is RelationEndpoint.Subject ->
+                        RelationRequest.start(enclosing, RelationMeaning.References, input.budget, input.boundary)
+                    is RelationEndpoint.Resolved ->
+                        RelationRequest.start(enclosing, RelationMeaning.References, input.budget, input.boundary)
+                }
             ValueFlowRead.Observed(
                 ValueFlowStep.fromCompiler(
                         read.site,
@@ -265,4 +277,8 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
     }
 }
 
-private fun <V> Refinement<V, *>.value(): V = (this as Refinement.Refined).value
+private fun <V> Refinement<V, *>.value(): V =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Fixture refinement rejected: $failure")
+    }

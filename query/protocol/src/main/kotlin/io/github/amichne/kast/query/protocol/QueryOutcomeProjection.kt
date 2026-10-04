@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
@@ -69,6 +70,7 @@ internal class QueryOutcomeProjection(
         request: QueryRunRequest.ReadResult,
         lease: SemanticReadAuthority,
         publicationOwner: QueryExecutionClaim,
+        maximumResults: ResultLimit,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val restored =
             when (val value = state.restoreResult(request.result, lease, publicationOwner)) {
@@ -78,7 +80,7 @@ internal class QueryOutcomeProjection(
                 QueryResultRestoration.StaleBasis -> return rejected(QueryExecutionRejectionDocument.RESULT_STALE_BASIS)
             }
         val presentation =
-            when (val admitted = RetainedQueryPresentation.create(restored, request)) {
+            when (val admitted = RetainedQueryPresentation.create(restored, request, maximumResults)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return rejected(admitted.failure)
             }

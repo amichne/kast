@@ -92,6 +92,7 @@ class QueryValuePathStateTest {
             RetainedQueryPresentation.create(
                     restored,
                     QueryRunRequest.ReadResult.valuePaths(issued.reference, QueryResultCursor.parse(1).refined()),
+                    (io.github.amichne.kast.kernel.ResultLimit.parse(100) as Refinement.Refined).value,
                 )
                 .refined()
         assertSame(paths[1], (presentation.result.rows as QueryRows.ValuePaths).values.single())
@@ -139,6 +140,7 @@ class QueryValuePathStateTest {
             RetainedQueryPresentation.create(
                     restored,
                     QueryRunRequest.ReadResult.valuePaths(issued.reference, QueryResultCursor.parse(1).refined()),
+                    (io.github.amichne.kast.kernel.ResultLimit.parse(100) as Refinement.Refined).value,
                 )
                 .refined()
         assertSame(

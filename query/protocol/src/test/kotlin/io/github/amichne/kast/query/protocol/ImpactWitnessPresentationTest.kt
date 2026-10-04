@@ -126,8 +126,20 @@ class ImpactWitnessPresentationTest {
             fixture.store.restoreResult(fixture.reference, fixture.symbols.authority) as QueryResultRestoration.Restored
         val request =
             QueryRunRequest.ReadResult.impactWitness(fixture.reference, ImpactWitnessSectionDocument.NATIVE_READS)
-        val first = RetainedQueryPresentation.create(restored, request).value()
-        val second = RetainedQueryPresentation.create(restored, request).value()
+        val first =
+            RetainedQueryPresentation.create(
+                    restored,
+                    request,
+                    io.github.amichne.kast.kernel.ResultLimit.parse(100).value(),
+                )
+                .value()
+        val second =
+            RetainedQueryPresentation.create(
+                    restored,
+                    request,
+                    io.github.amichne.kast.kernel.ResultLimit.parse(100).value(),
+                )
+                .value()
         assertSame(fixture.ledger, (first.result.rows as QueryRows.ImpactWitness).view.ledger)
         assertEquals(
             (first.result.rows as QueryRows.ImpactWitness).values,
@@ -139,6 +151,7 @@ class ImpactWitnessPresentationTest {
             RetainedQueryPresentation.create(
                     restored,
                     QueryRunRequest.ReadResult.impactWitness(fixture.reference, ImpactWitnessSectionDocument.MODELS),
+                    io.github.amichne.kast.kernel.ResultLimit.parse(100).value(),
                 )
                 .value()
         assertEquals(emptyList<QueryImpactWitnessRecord>(), (empty.result.rows as QueryRows.ImpactWitness).values)
@@ -152,6 +165,7 @@ class ImpactWitnessPresentationTest {
                     ImpactWitnessSectionDocument.NATIVE_READS,
                     QueryResultCursor.parse(4).value(),
                 ),
+                io.github.amichne.kast.kernel.ResultLimit.parse(100).value(),
             ),
         )
     }
@@ -180,6 +194,7 @@ class ImpactWitnessPresentationTest {
             RetainedQueryPresentation.create(
                 restored,
                 QueryRunRequest.ReadResult.impactWitness(issued.reference, ImpactWitnessSectionDocument.PRODUCERS),
+                io.github.amichne.kast.kernel.ResultLimit.parse(100).value(),
             ),
         )
     }

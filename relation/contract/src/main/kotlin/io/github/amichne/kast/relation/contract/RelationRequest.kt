@@ -344,14 +344,14 @@ private constructor(
             )
 
         /**
-         * Proof transition: `(RelationEndpoint.Resolved, RelationMeaning, RelationBudget) -> RelationRequest`.
+         * Proof transition: `(RelationEndpoint, RelationMeaning, RelationBudget) -> RelationRequest`.
          *
-         * Establishes the initial page of the next closed semantic hop from an already exact, compiler-grounded related
-         * endpoint. The endpoint's root, authority, scope, declaration, and compiler identity remain sealed; primitive
-         * reconstruction is not permitted.
+         * Establishes the initial page of the next closed semantic hop from an already exact, compiler-grounded subject
+         * or related endpoint. The endpoint's root, authority, scope, declaration, and compiler identity remain sealed;
+         * primitive reconstruction is not permitted.
          */
         fun start(
-            subject: RelationEndpoint.Resolved,
+            subject: RelationEndpoint,
             meaning: RelationMeaning,
             budget: RelationBudget,
             boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
