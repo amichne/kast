@@ -99,11 +99,40 @@ git diff --check
 ```
 
 `git diff --check` passed. Adapter compilation and the full compiled architecture
-guard did not run: required IntelliJ 262.9437.185 artifacts returned HTTP 403 from
+guard did not run locally: required IntelliJ 262.9437.185 artifacts returned HTTP 403 from
 `repo.gradle.org`, `packages.jetbrains.team` and `www.jetbrains.com`. The active cloud
-environment still has an empty allowed-host list. Those required checks remain open.
+environment still has an empty allowed-host list.
+
+## Pull-request check repair
+
+[CI run 37222531834](https://github.com/amichne/kast/actions/runs/37222531834)
+compiled `:relation:intellij:compileKotlin` and passed `verifyKastArchitecture`.
+Its Kotlin product job failed only at `:cli:verifyMintlifyCallableReference`:
+the checked-in generated OpenAPI reference lacked the new receipt fields,
+`RESOURCE_SUSPENDED` terminal and `INVALID_PROGRESS` rejection values.
+
+The exact reference verification reproduced that failure locally. Regeneration
+through the repository's task, reference comparison and all six focused projection
+tests then passed:
+
+```sh
+./gradlew :cli:verifyMintlifyCallableReference --console=plain
+./gradlew :cli:generateMintlifyCallableReference :cli:verifyMintlifyCallableReference :cli:test --tests '*MintlifyCallableReferenceTest' --console=plain
+```
+
+The first command is the expected pre-regeneration failure; the second is the
+successful repair check. The generated diff changes only the two query result-item
+schema components. The native adapter and compiled architecture evidence comes
+from CI; the local environment's dependency restriction remains unchanged.
+
+`./gradlew verifyJsonContracts verifyKnowledgeBase knowledgeImpact --console=plain`
+also passed: zero JSON violations, zero knowledge issues and zero impacted concepts
+for the two documentation files. From `docs/public`,
+`PUPPETEER_SKIP_DOWNLOAD=true npx --yes mint@4.2.841 validate` could not run the
+Mintlify validation runtime because its update requires an internet connection.
+The PR's documentation job remains the rendering check for the regenerated file.
 
 This evidence establishes offline progress and detached contract behavior. Native
 reference enumeration semantics, PSI/K2 integration and runtime performance remain
-unverified. Full completion additionally requires adapter compilation and the compiled
-architecture guard once dependency access is available.
+unverified. Adapter compilation and the compiled architecture guard are established
+by CI and do not qualify native runtime behavior.
