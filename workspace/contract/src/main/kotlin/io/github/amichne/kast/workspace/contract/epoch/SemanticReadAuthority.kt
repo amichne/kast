@@ -8,11 +8,6 @@ sealed interface SemanticReadAuthority {
     val workspaceRoot: CanonicalWorkspaceRoot
 
     val identity: SemanticReadIdentity
-        get() =
-            when (this) {
-                is SemanticReadLease -> SemanticReadIdentity.Published(this)
-                is LiveSemanticReadAuthority -> SemanticReadIdentity.Live(reference)
-            }
 
     fun requirePublished(): Refinement<SemanticReadLease, PublishedReadAuthorityFailure> =
         when (this) {
@@ -69,6 +64,7 @@ private constructor(
     val admittedEpoch: ProjectReadEpoch<*>,
     private val owner: LiveSemanticReadOwner,
 ) : SemanticReadAuthority {
+    override val identity: SemanticReadIdentity = SemanticReadIdentity.Live(reference)
     override val workspaceRoot: CanonicalWorkspaceRoot
         get() = reference.workspaceRoot
 

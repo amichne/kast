@@ -66,6 +66,7 @@ sealed interface RelationEndpoint {
     val signature: CanonicalCompilerSignature
     val compilerIdentity: CompilerSymbolIdentity
     val fingerprint: RelationEndpointFingerprint
+    val valueIdentity: ValueDeclarationIdentity
 
     @ConsistentCopyVisibility
     data class Subject internal constructor(val selector: SymbolSelector) : RelationEndpoint {
@@ -81,6 +82,7 @@ sealed interface RelationEndpoint {
         override val compilerIdentity: CompilerSymbolIdentity = SymbolDescription.from(selector).compilerIdentity
         override val fingerprint: RelationEndpointFingerprint =
             RelationEndpointFingerprint.established(selector.fingerprint.value)
+        override val valueIdentity = ValueDeclarationIdentity(compilerIdentity, file, range)
     }
 
     @ConsistentCopyVisibility
@@ -99,6 +101,7 @@ sealed interface RelationEndpoint {
         override val kind: CompilerSymbolKind = evidence.kind
         override val signature: CanonicalCompilerSignature = evidence.signature
         override val compilerIdentity: CompilerSymbolIdentity = evidence.compilerIdentity
+        override val valueIdentity = ValueDeclarationIdentity(compilerIdentity, file, range)
 
         companion object {
             internal fun create(

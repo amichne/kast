@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
@@ -33,13 +34,15 @@ private constructor(
         fun create(
             restored: QueryResultRestoration.Restored,
             request: QueryRunRequest.ReadResult,
+            maximumResults: ResultLimit,
         ): Refinement<RetainedQueryPresentation, QueryExecutionRejectionDocument> {
             val output = request.output
-            if (output is QueryOutputDocument.ImpactWitness) return witnessPresentation(restored, request, output)
+            if (output is QueryOutputDocument.ImpactWitness)
+                return witnessPresentation(restored, request, output, maximumResults)
             val rowCount = restored.result.rowCount
             val start = request.cursor.value
             if (start > rowCount) return Refinement.Rejected(QueryExecutionRejectionDocument.RESULT_CURSOR_OUT_OF_RANGE)
-            val end = minOf(start + RESULT_PAGE_SIZE, rowCount)
+            val end = minOf(start.toLong() + minOf(RESULT_PAGE_SIZE, maximumResults.value), rowCount.toLong()).toInt()
             val selected =
                 if (restored.result is QueryRetainedResult.ValuePaths) {
                     restored.result.selectRows((start until end).toList()).refinedForQueryOrNull()
@@ -60,20 +63,14 @@ private constructor(
                         QueryResultCursor.parse(rowCount).refinedForQueryOrNull() ?: return contractRejected(),
                     )
                     .refinedForQueryOrNull() ?: return contractRejected()
-            val result =
-                QueryResult(
-                    rows,
-                    restored.result.failures,
-                    restored.result.omissions,
-                    restored.result.walkObservations,
-                    referenceObservations = restored.result.referenceObservations,
-                    discoveryObservations = restored.result.discoveryObservations,
-                    relationObservations = restored.result.relationObservations,
-                )
+            val result = retainedResult(restored.result, rows)
+            val coverage =
+                pageCoverage(selected.coverage, start, rowCount, maximumResults).refinedForQueryOrNull()
+                    ?: return contractRejected()
             return Refinement.Refined(
                 RetainedQueryPresentation(
                     result,
-                    selected.coverage as? QueryCoverage.Qualified,
+                    coverage as? QueryCoverage.Qualified,
                     selected.producerProgress,
                     restored.rowIds.subList(start, end),
                     window,
@@ -85,6 +82,7 @@ private constructor(
             restored: QueryResultRestoration.Restored,
             request: QueryRunRequest.ReadResult,
             output: QueryOutputDocument.ImpactWitness,
+            maximumResults: ResultLimit,
         ): Refinement<RetainedQueryPresentation, QueryExecutionRejectionDocument> {
             val retained =
                 restored.result as? QueryRetainedResult.ValuePaths
@@ -99,7 +97,8 @@ private constructor(
             val start = request.cursor.value
             if (start > count.value)
                 return Refinement.Rejected(QueryExecutionRejectionDocument.RESULT_CURSOR_OUT_OF_RANGE)
-            val end = minOf(start.toLong() + RESULT_PAGE_SIZE, count.value.toLong()).toInt()
+            val end =
+                minOf(start.toLong() + minOf(RESULT_PAGE_SIZE, maximumResults.value), count.value.toLong()).toInt()
             val view =
                 QueryImpactWitnessView.create(accounting.ledger, section, start, end).refinedForQueryOrNull()
                     ?: return contractRejected()
@@ -113,12 +112,14 @@ private constructor(
                     .refinedForQueryOrNull() ?: return contractRejected()
             val rowIds =
                 originalWitnessRowIds(restored, retained, view).refinedForQueryOrNull() ?: return contractRejected()
-            val coverage = witnessCoverage(retained).refinedForQueryOrNull() ?: return contractRejected()
-            val result = witnessResult(retained, view)
+            val coverage =
+                witnessCoverage(retained, start, count.value, maximumResults).refinedForQueryOrNull()
+                    ?: return contractRejected()
+            val result = retainedResult(retained, QueryRows.ImpactWitness.of(view))
             return Refinement.Refined(
                 RetainedQueryPresentation(
                     result,
-                    coverage,
+                    coverage as? QueryCoverage.Qualified,
                     retained.producerProgress
                         ?: QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
                     rowIds,
@@ -147,9 +148,33 @@ private constructor(
             return Refinement.Refined(restored.rowIds.subList(view.firstOrdinal.value, view.nextOrdinal.value))
         }
 
+        private fun pageCoverage(
+            original: QueryCoverage,
+            start: Int,
+            count: Int,
+            maximumResults: ResultLimit,
+        ): Refinement<QueryCoverage, QueryExecutionRejectionDocument> {
+            if (maximumResults.value >= minOf(RESULT_PAGE_SIZE, count - start)) return Refinement.Refined(original)
+            val known =
+                when (original) {
+                    is QueryCoverage.Complete -> original.resultCount
+                    is QueryCoverage.Qualified -> original.knownMinimum
+                }
+            val limitations =
+                ((original as? QueryCoverage.Qualified)?.limitations?.toSet() ?: emptySet()) +
+                    QueryLimitation.RESULT_LIMIT_REACHED
+            return when (val admitted = QueryCoverage.Qualified.create(known, limitations)) {
+                is Refinement.Refined -> admitted
+                is Refinement.Rejected -> contractRejected()
+            }
+        }
+
         private fun witnessCoverage(
-            retained: QueryRetainedResult.ValuePaths
-        ): Refinement<QueryCoverage.Qualified, QueryExecutionRejectionDocument> {
+            retained: QueryRetainedResult.ValuePaths,
+            start: Int,
+            count: Int,
+            maximumResults: ResultLimit,
+        ): Refinement<QueryCoverage, QueryExecutionRejectionDocument> {
             val known =
                 when (val coverage = retained.coverage) {
                     is QueryCoverage.Complete -> coverage.resultCount
@@ -159,14 +184,14 @@ private constructor(
                 ((retained.coverage as? QueryCoverage.Qualified)?.limitations?.toSet() ?: emptySet()) +
                     QueryLimitation.ROW_SELECTION_INCOMPLETE
             return when (val admitted = QueryCoverage.Qualified.create(known, limitations)) {
-                is Refinement.Refined -> admitted
+                is Refinement.Refined -> pageCoverage(admitted.value, start, count, maximumResults)
                 is Refinement.Rejected -> contractRejected()
             }
         }
 
-        private fun witnessResult(retained: QueryRetainedResult.ValuePaths, view: QueryImpactWitnessView): QueryResult =
+        private fun retainedResult(retained: QueryRetainedResult, rows: QueryRows): QueryResult =
             QueryResult(
-                QueryRows.ImpactWitness.of(view),
+                rows,
                 retained.failures,
                 retained.omissions,
                 retained.walkObservations,
