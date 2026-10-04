@@ -18,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
+import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
@@ -46,6 +47,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
@@ -65,6 +67,55 @@ class QueryRetainedRowAdmissionTest {
     private val output = QueryOutputDocument.Symbols(bounded(emptyList()))
     private val execution =
         QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE)
+
+    @Test
+    fun `small symbol pages preserve complete producer coverage and stable row identities`() = runTest {
+        val issued = retainedTwoRows()
+        assertCompleteSmallPages(issued) { QueryRunRequest.ReadResult.symbols(issued.reference, it, output) }
+    }
+
+    @Test
+    fun `small binding pages preserve complete producer coverage and stable row identities`() = runTest {
+        val issued = retainedBindingPairs()
+        assertCompleteSmallPages(issued) { QueryRunRequest.ReadResult.bindingRows(issued.reference, it) }
+    }
+
+    private suspend fun assertCompleteSmallPages(
+        issued: QueryResultIssuance.Issued,
+        requestAt: (QueryResultCursor) -> QueryRunRequest.ReadResult,
+    ) {
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { error("Small retained pages must not execute semantic work") },
+                CanonicalQueryReferences(),
+                store,
+            )
+        val smallBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
+        val request = requestAt(QueryResultCursor.Start)
+        val first = protocol.execute(request, fixture.authority, smallBudget) as OperationOutcome.Complete
+        val replay = protocol.execute(request, fixture.authority, smallBudget) as OperationOutcome.Complete
+        val last =
+            protocol.execute(requestAt(QueryResultCursor.parse(1).refined()), fixture.authority, smallBudget)
+                as OperationOutcome.Complete
+        assertEquals(1, first.evidence.payload.items.values.size)
+        assertEquals(first.evidence.payload, replay.evidence.payload)
+        assertEquals(1, first.evidence.payload.nextCursor?.value)
+        assertEquals(1, last.evidence.payload.items.values.size)
+        assertNull(last.evidence.payload.nextCursor)
+        val ids =
+            (first.evidence.payload.items.values + last.evidence.payload.items.values).map {
+                when (it) {
+                    is QueryResultItemDocument.ExactSymbol -> it.rowId
+                    is QueryResultItemDocument.BindingRow -> it.rowId
+                    else -> error("Unexpected retained row: $it")
+                }
+            }
+        assertEquals(issued.rowIds, ids)
+        val restored = store.restoreResult(issued.reference, fixture.authority) as QueryResultRestoration.Restored
+        assertEquals(QueryCoverage.Complete(QueryCount.parse(2).refined()), restored.result.coverage)
+        assertNull(restored.result.producerProgress)
+        assertEquals(issued.rowIds, restored.rowIds)
+    }
 
     @Test
     fun `retained binding pairs page with row IDs and reject symbol presentation`() = runTest {

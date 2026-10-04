@@ -154,16 +154,15 @@ private constructor(
             count: Int,
             maximumResults: ResultLimit,
         ): Refinement<QueryCoverage, QueryExecutionRejectionDocument> {
-            if (maximumResults.value >= minOf(RESULT_PAGE_SIZE, count - start)) return Refinement.Refined(original)
-            val known =
+            // The retained window carries presentation progress; paging cannot erase producer completeness.
+            val qualified =
                 when (original) {
-                    is QueryCoverage.Complete -> original.resultCount
-                    is QueryCoverage.Qualified -> original.knownMinimum
+                    is QueryCoverage.Complete -> return Refinement.Refined(original)
+                    is QueryCoverage.Qualified -> original
                 }
-            val limitations =
-                ((original as? QueryCoverage.Qualified)?.limitations?.toSet() ?: emptySet()) +
-                    QueryLimitation.RESULT_LIMIT_REACHED
-            return when (val admitted = QueryCoverage.Qualified.create(known, limitations)) {
+            if (maximumResults.value >= minOf(RESULT_PAGE_SIZE, count - start)) return Refinement.Refined(original)
+            val limitations = qualified.limitations.toSet() + QueryLimitation.RESULT_LIMIT_REACHED
+            return when (val admitted = QueryCoverage.Qualified.create(qualified.knownMinimum, limitations)) {
                 is Refinement.Refined -> admitted
                 is Refinement.Rejected -> contractRejected()
             }
