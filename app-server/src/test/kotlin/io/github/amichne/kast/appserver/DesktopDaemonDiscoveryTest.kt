@@ -93,7 +93,10 @@ class DesktopDaemonDiscoveryTest {
         val script =
             Script(Home, Read(DesktopDaemonSetting.ABSENT), FailedEnable(DesktopDiscoveryFailure.COMMAND_REJECTED))
         assertEquals(
-            DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED),
+            DesktopDiscoveryOutcome.Rejected(
+                DesktopDiscoveryFailure.COMMAND_REJECTED,
+                DesktopDiscoveryRollback.REQUIRED,
+            ),
             DesktopDaemonDiscovery(script).enable(target),
         )
         assertTrue(Files.exists(record(target)))
@@ -105,7 +108,10 @@ class DesktopDaemonDiscoveryTest {
         val target = target(temporary)
         val script = Script(Home, Read(DesktopDaemonSetting.ABSENT), Enable, Read(DesktopDaemonSetting.ABSENT))
         assertEquals(
-            DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.READ_BACK_REJECTED),
+            DesktopDiscoveryOutcome.Rejected(
+                DesktopDiscoveryFailure.READ_BACK_REJECTED,
+                DesktopDiscoveryRollback.REQUIRED,
+            ),
             DesktopDaemonDiscovery(script).enable(target),
         )
         assertTrue(Files.exists(record(target)))
@@ -234,8 +240,6 @@ class DesktopDaemonDiscoveryTest {
                     BrokerStartupStage.DESKTOP_DISCOVERY,
                     BrokerStartupRejection.DesktopDiscovery(DesktopDiscoveryFailure.ENVIRONMENT_CONFLICT),
                 ),
-                BrokerStartupActivity.Started(BrokerStartupStage.DESKTOP_DISCOVERY_CLEANUP),
-                BrokerStartupActivity.Completed(BrokerStartupStage.DESKTOP_DISCOVERY_CLEANUP),
             ),
             events,
         )

@@ -301,9 +301,13 @@ private constructor(
                         BrokerStartupStage.DESKTOP_DISCOVERY,
                         BrokerStartupRejection.DesktopDiscovery(outcome.failure),
                     )
-                    when (val cleanup = CoordinatorReadinessPublisher.rollback(target, discovery, activity)) {
-                        DesktopDiscoveryOutcome.Ready -> outcome
-                        is DesktopDiscoveryOutcome.Rejected -> cleanup
+                    when (outcome.rollback) {
+                        DesktopDiscoveryRollback.NOT_REQUIRED -> outcome
+                        DesktopDiscoveryRollback.REQUIRED ->
+                            when (val cleanup = CoordinatorReadinessPublisher.rollback(target, discovery, activity)) {
+                                DesktopDiscoveryOutcome.Ready -> outcome
+                                is DesktopDiscoveryOutcome.Rejected -> cleanup
+                            }
                     }
                 }
             }
