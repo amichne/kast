@@ -87,7 +87,7 @@ sources:
 generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T14:16:26.318Z
+    at: 2026-10-05T19:11:53.820Z
 ---
 
 # Request dispatch

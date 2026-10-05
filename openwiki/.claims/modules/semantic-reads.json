@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ac856c06a87c167e2cb1331d5cc2a736d77d8c0a1d85823bad418f1a256e8d88",
+  "pageVersion": "sha256:c38727dff772209ce22f5b69a4e2c69090ee31a902fa73dd60a673cadbd2b4b0",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -27,8 +27,8 @@
       "statement": "Exact value invocation identity includes enclosing declaration, basis, source anchor and callable identity; argument roles retain the actual call and formal parameter position rather than conflating separate calls of the same declaration.",
       "evidence": [
         {
-          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt#L24-L102",
-          "version": "repo-lines-v1:sha256:94507e79b154205e90dca0edea191035b95803ed8921da1e24f3bd0dd53ed24b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0YmNlNzE3Yjc0NThiN2Y0ZGZjNWRmMGY1MTI2MGNkZjU3YTIxZjJmOGI1YmUxYWI2OWYwNzgxZTIwZjgwMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4YWY4NzM5MGY5ZWE5NTQ3YmQ0ODZkNTdmODdmNzY3Y2MwNDYyNjQzNDUxYmM1NjY3OWViNGE4MTQ1ZTkxMzIifQ"
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt#L24-L111",
+          "version": "repo-lines-v1:sha256:bedab322dc5fdd5ae19c614f730c612782965eb1bc0ce444ae2718d7ed34ce1a:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0YmNlNzE3Yjc0NThiN2Y0ZGZjNWRmMGY1MTI2MGNkZjU3YTIxZjJmOGI1YmUxYWI2OWYwNzgxZTIwZjgwMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4YWY4NzM5MGY5ZWE5NTQ3YmQ0ODZkNTdmODdmNzY3Y2MwNDYyNjQzNDUxYmM1NjY3OWViNGE4MTQ1ZTkxMzIifQ"
         }
       ]
     },
@@ -46,7 +46,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt",
-          "version": "repo-file-v1:sha256:57f248851a32832d59ab8b97f8511896ea4a611d4116162e2eb881752a124924"
+          "version": "repo-file-v1:sha256:9bde3120be954e7050a3f46c707c2e733fa8b52b732d17945c667df2c5104adb"
         }
       ]
     },
@@ -55,7 +55,7 @@
       "statement": "Exact Kotlin value-site restoration filters same-range lexer tokens and argument containers before selecting an exact-range Kotlin expression within the declaration; role-shape and anchor failures remain finite, and later lexical ownership and K2 binding checks retain semantic authority.",
       "evidence": [
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt#L293-L302",
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt#L289-L298",
           "version": "repo-lines-v1:sha256:c8d4594368f0e0a139c8f2286a52c199ad7d84b7f7758fa90619e3971bf5109c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMTFmYzNjOTlhYjUyNTNhZDIwZWVkNWQ1NTVhOGM0ODU3OTA1Y2I0YmUxZjc2OTcyM2JhNjQ4YmJhMmZhMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiNzM4YmRmY2ZlMzU1ODZkNGMxMTAxZGUyMGJjMzE1ZDViMThkODdhYzJhYjMxZGEyMzU5YWM3MTc0MWM1NDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzMDkwNTgxNWM4ODgxM2M0NzcwY2ZiOGJhMzQ0MWIxZmJiYjI3NmRhMTc1ODM2NDBiNGUyMmNmMDVjOWEyM2QifQ"
         },
         {
@@ -151,6 +151,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T17:08:58.136Z"
+    "at": "2026-10-05T19:11:53.820Z"
   }
 }

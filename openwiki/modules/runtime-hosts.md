@@ -11,6 +11,13 @@ tags:
 - indexer
 - cli
 code_sources:
+- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt
+  symbols: [BrokerJavaRuntime]
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt
+  symbols: [DirectToolRegistration]
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  symbols: [KastDirectToolSession]
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
   symbols:
   - observeHostedEntries
@@ -180,6 +187,8 @@ code_sources:
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
 sources:
+  - id: openwiki-source-d042914045998ac241003506
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt
   - id: openwiki-source-4497996830a7e09fc6368cb3
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/HostedServiceStatusProjection.kt
   - id: openwiki-source-c14bf8abf46d0827988ea4e4
@@ -198,6 +207,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
   - id: openwiki-source-88f09847a1cc4b4d806ffe37
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
+  - id: openwiki-source-f60c4760fc0979d7f2c54537
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
   - id: openwiki-source-d0f22f03abacc7b6ee9cd104
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
   - id: openwiki-source-8ece5abae2f9aab84f07b127
@@ -208,8 +219,14 @@ sources:
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
   - id: openwiki-source-3adda3013ad0805c51b3ac26
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt
+  - id: openwiki-source-aa73ce5eea589b2954d82387
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt
   - id: openwiki-source-c58b3f38ca46d44dd30a8771
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+  - id: openwiki-source-7685e27063adfdefffa21252
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  - id: openwiki-source-1d161f3eb7933044519fd33a
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - id: openwiki-source-51fd272ea7471c9e42b84369
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
   - id: openwiki-source-a0efdefba63982f6209d2b1d
@@ -242,10 +259,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
+generated: { by: "codex", at: "2026-10-05T19:11:53.820Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T17:08:58.136Z
+    at: 2026-10-05T19:11:53.820Z
 ---
 
 # Runtime and process hosts
@@ -278,7 +295,7 @@ Installation lifecycle admission fences automatic coordinator startup while deta
 
 App Server owns persistent sessions, the invocation journal, project-close controller approval, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; internal change challenges use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
-Installed service admission derives the Java runtime from the saved IDEA selection, so a caller's ambient `JAVA_HOME` cannot change broker identity. When no IDE was selected, the ambient runtime remains the fallback and invalid paths reject. A managed upstream socket alias is admitted only when its resolved socket is open in the launched Codex process; the alias and target identities are retained and rechecked before and after later connections. A successful WebSocket probe alone does not prove ownership. Unproven aliases reject with `SOCKET_ALIAS_OWNER_UNPROVEN`.
+Installed service admission uses the existing explicitly owned Java candidate when supplied, otherwise the saved IDEA selection's bundled JBR. It admits canonical executable paths and a bounded Java release declaration with feature 25 or newer into `BrokerJavaRuntime`, which command construction retains. An absent selection or incompatible runtime rejects with `JAVA_RUNTIME_UNAVAILABLE`; ambient `JAVA_HOME` supplies no fallback. A managed upstream socket alias is admitted only when its resolved socket is open in the launched Codex process; the alias and target identities are retained and rechecked before and after later connections. A successful WebSocket probe alone does not prove ownership. Unproven aliases reject with `SOCKET_ALIAS_OWNER_UNPROVEN`.
 
 Planning stores immutable live plans; applying and recovering require the exact controller-approved plan and current native admission. Installation owns automatic trust enrollment and preserves existing valid keys. Isolated acceptance fixtures can use the private installed control to enroll trust. Apply never creates trust. Read [request dispatch](../flows/request-dispatch.md) and [change lifecycle](../flows/change-lifecycle.md) for the complete boundaries.
 
@@ -512,3 +529,9 @@ intervals are not inclusive traversal duration or CPU measurements.
 `HostedCanonicalQuery` supplies an explicit retention observation callback to the canonical protocol. The adapter maps presented, pending-impact and original-investigation capture starts and successes, each closed capture failure, and issuance outcomes into existing bounded `RETENTION` diagnostics. It records no source payload or handles and creates no new state or semantic authority. Typed adapter tests and the actual diagnostic serializer golden cover success and rejection signals.
 
 The peer-site adapter uses the already created lifecycle application's registry without activating it. Exact registered host, canonical root and non-disposed project must agree before an independently owned child read is allowed. That read revalidates the complete target basis before restoring declaration tokens, uses single evaluation and final freshness validation, and binds the actual admitted grant, aggregate work and whole elapsed time into a completed receipt. An over-granted child or missing/changed authority fails closed. It neither opens the peer nor traverses target flow.
+
+One-shot Tool RPC invocation checks compiled `AgentToolName` registrations without
+constructing discovery schemas. The complete hosted and direct catalogs are projected
+lazily on discovery, with exact name and count checks against the same registration
+owner. Canonical public request admission and installation shutdown admission still
+precede workspace preparation and execution.

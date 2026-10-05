@@ -23,8 +23,8 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 
 - [hosted-read-configuration.md](hosted-read-configuration.md) - hosted read grants, retention configuration, and reported limitations.
 - [reviews/representation-impact-proof.md](reviews/representation-impact-proof.md) - exact installed representation-impact qualification, retained evidence, and proof limits.
-- [reviews/direct-tool-startup-2026-10-05.md](reviews/direct-tool-startup-2026-10-05.md) - paired synthetic startup measurements, avoided discovery work, and timing limits.
-- [reviews/selected-jbr-startup-2026-10-05.md](reviews/selected-jbr-startup-2026-10-05.md) - selected IDEA JBR admission, regression coverage, and knowledge refresh limit.
+- [reviews/direct-tool-startup-2026-10-05.md](reviews/direct-tool-startup-2026-10-05.md) - paired synthetic and final-byte startup measurements, avoided discovery work, and timing limits.
+- [reviews/selected-jbr-startup-2026-10-05.md](reviews/selected-jbr-startup-2026-10-05.md) - selected IDEA JBR admission, regression coverage, and completed Claim refresh.
 - [public/reference/schemas.mdx](public/reference/schemas.mdx) - generated schema and authored sample entry points.
 - [public/reference/models/query-item.mdx](public/reference/models/query-item.mdx) - query item documentation backed by generated canonical schema.
 

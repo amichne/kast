@@ -13,15 +13,15 @@ code_sources:
     symbols: [WorkspacePublicationCommit]
   - path: settings.gradle.kts
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
   - id: openwiki-source-edb3a41dbc90e44dedf87643
     resource: repo://evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/WorkspacePublication.kt
   - id: openwiki-source-2bfd7835755c09f5e5d91344
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadLease.kt
 generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-05T19:11:53.820Z
 ---
 
 # Historical workspace publication

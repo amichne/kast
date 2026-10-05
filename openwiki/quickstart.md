@@ -3,15 +3,15 @@ type: Repository Guide
 title: Kast repository guide
 description: Find Kast architecture, semantic contracts, runtime flows, installation and focused verification through source-bound OpenWiki concepts.
 tags: [kast, navigation, architecture, verification]
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
   - id: openwiki-source-096cb7b190932815f87b4a1d
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
 generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-05T19:11:53.820Z
 ---
 
 # Kast repository guide
