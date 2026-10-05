@@ -1,156 +1,145 @@
 # Kast
 
-Kast lets coding agents query the Kotlin project in IntelliJ IDEA. Its results
-carry compiler-backed symbol references, source locations, and coverage so an
-agent can tell what the answer proves.
+Kast gives coding agents compiler-grounded Kotlin declarations, relationships,
+diagnostics, and targeted source changes through IntelliJ IDEA.
+
+**Kast is the deterministic structure around a probabilistic system.** The agent
+chooses the question. Kast establishes identity and reports evidence limits.
+
+```mermaid
+flowchart TB
+  accTitle: Program authority determines what an agent can conclude
+  accDescr: Workspace checks precede IDEA analysis. Results distinguish complete coverage, qualified facts, and rejection.
+  A["Agent chooses a question"] --> B["Kast checks workspace and input"]
+  B --> I["IDEA Kotlin analysis"]
+  B -->|Rejected| R["Report blocker"]
+  I --> C["Complete: declared scope covered"]
+  I --> Q["Qualified: facts with limits"]
+  I -->|Unavailable| R
+  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
+  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
+  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
+  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
+  class B,I authority;
+  class C evidence;
+  class Q limited;
+  class R rejected;
+```
+
+A confirmed caller does not establish every caller. Empty qualified results do
+not prove absence. References require current workspace and source-state checks.
 
 ## Install
 
-Kast currently supports macOS on Apple silicon, a Kotlin Gradle repository,
-and IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+You need Apple silicon macOS, a Kotlin Gradle repository, and IntelliJ IDEA
+`262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
 ```shell
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer publishes the native `kast` management command. If its directory
-is not on `PATH`, it prints the absolute command path and the directory to add.
-When `XDG_CONFIG_HOME` is nonempty, the command is `$XDG_CONFIG_HOME/kast`;
-otherwise it is `$HOME/.local/bin/kast`. Upgrades retain the original location.
-Use `kast status` to inspect the installation and `kast connect` to choose
-Codex, Copilot, or Pi. Restart IDEA after installation and restart a harness
-after connecting it. See [install and connect](https://kast.michne.com/start/).
+Restart IDEA to load the plugin. Use `kast status` to inspect the installation.
+The command is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty, otherwise
+`$HOME/.local/bin/kast`. Upgrades preserve that location. If needed, add its directory to `PATH` using
+the printed absolute path.
 
-To install the Codex plugin with its MCP connection, query skill, and examples:
+For Codex tools, the query skill, and examples:
 
 ```shell
 kast plugin codex
 ```
 
-Restart Codex and select the exact repository or worktree. Codex manages this
-plugin; remove it with `codex plugin remove kast@kast`. Each Control release also includes
-standalone skill, plugin, and marketplace ZIPs with SHA-256 checksums. See the
-[agent tools package](agent-tools/README.md) for independent skill installation
-and manual marketplace setup. After upgrading Kast, rerun `kast plugin codex`
-to load the matching skill and examples.
+Restart Codex and select the exact repository or worktree. After a Kast upgrade,
+rerun `kast plugin codex`. Codex owns the plugin. Remove it with
+`codex plugin remove kast@kast`.
 
-Installer output shows progress and readable failure reasons. Pass `--verbose`
-after the downloaded command's `--` separator to include structured diagnostic
-reports.
+Use [connection commands](https://kast.michne.com/agent-harnesses/) for Copilot,
+Pi, or alternate Codex transports. Restart connected agents. For structured installer diagnostics, append `-- --verbose` to the
+installation command.
 
-Kast Control and Kast Host have independent release versions. Control owns the
-management executable, coordinator, adapters and sessions. Host is the IntelliJ
-plugin and contains its own semantic runtime dependencies.
-
-Use `kast upgrade --control-only` to install the latest control release and reuse
-a running compatible host. The candidate checks the live host before stopping
-control, then checks it again after activation. An unavailable or incompatible
-host leaves the previous control in place. Failure after replacement restores
-and verifies the previous control, or reports recovery required. Control sessions
-may be interrupted; IntelliJ and its plugin files are preserved.
-
-Use the public installer with `--host-only --version <host-version>` to install
-a host release, then restart IntelliJ through its ordinary lifecycle. This leaves
-control in place. Fresh installation composes the two component installers and
-checks the selected pair's contract.
-
-`kast status` distinguishes installed control, running control and each observed
-host's loaded version and compatibility. Compatibility requires exact protocol,
-operation registry, wire schema and capability identities, plus the existing
-IntelliJ/Kotlin release-line admission. A missing live observation is unavailable.
-A baseline host with this evidence must be installed and loaded once before
-control-only upgrades can reuse it.
-
-Use `kast upgrade` to install both components on the selected channel.
-The upgrade interrupts existing calls and sessions. Kast keeps one ordinary
-installation at `$HOME/.local/share/kast/installation`.
-It replaces that directory after admitting and stopping the previous payload;
-a successful upgrade removes its temporary recovery copy. Installation does
-not create selector links or selectable historical versions.
-To migrate from a release that uses `current`, run the published installer
-above once; the old release’s upgrade command predates this layout.
-For older Kast processes, login items, plugin backups, install directories, or
-manifest-listed anchors whose ownership is incomplete, the installer shows
-each exact item and asks before removing it. Answer `yes` for an individual
-item; every other answer keeps it. A noninteractive upgrade keeps uncertain
-items and reports them.
-
-Use `kast stop` to fence new calls and automatic restart, disable the coordinator,
-and wait up to 30 seconds for recorded direct calls and MCP sessions to exit.
-`kast stop --force` uses the same shutdown sequence but forcibly terminates only processes
-whose recorded PID, start time, main class, and installed library digests match.
-Neither command signals the shared IDEA process. A running selected IDEA rejects
-with `HOST_RESTART_REQUIRED`; quit it and repeat the command. Shutdown success
-retains the installation, saved configuration, and harness registrations.
-
-Use `kast reinstall` after closing IDEA and the affected harness connections.
-It first verifies shutdown, then reinstalls the exact installed release using the
-existing installer, activates the coordinator, and restores recorded registrations.
-An unverified shutdown prevents replacement. Failed activation restores the shutdown
-fence, retires any partially started coordinator, and reports installation pending recovery. Reload the affected harness after
-success; existing sessions and writes are never replayed.
-
-For a destructive reset, use `kast uninstall --force` or `kast reinstall --force`.
-Both bypass old payload and receipt ownership checks and remove the entire selected
-Kast directory, including arbitrary files, settings, caches, and registration history.
-They unlink symlinks without deleting their targets. Filesystem roots, HOME, and
-ancestors of HOME cannot be selected for deletion.
-
-Reset holds a lock and startup fence beside the selected directory, so replacing
-that directory cannot remove the fence. It records a recovery location before
-atomically moving the old directory aside. It unloads the installation's launchd
-jobs, removes its exact login entries, and forcibly retires its scoped Kast processes
-within a bounded deadline. Process identity is rechecked before signaling; shared
-IDEA and Gradle processes remain under your control. Deletion requires verified
-retirement. A rejected retirement retains the old bytes and reports their recovery path.
-
-Force reinstall uses the embedded installer to stage the latest stable release
-without starting its daemon, then verifies the fresh payload before activation.
-The exterior journal stays present during activation. Only an `ACTIVATING` journal
-with a live exclusive reset lock admits daemon startup; tool calls remain fenced
-until the fresh version and service generation are verified.
-`RESET_REINSTALLED` requires the replacement's version and service generation to
-match verified readiness. The new command is `<kast-directory>/bin/kast`; use that
-reported path and `kast connect` to repair integrations. Restart IDEA to load the
-plugin, then reload affected harnesses. Other harness registrations remain outside
-reset scope; the selected installation's exact login entries are removed.
-
-Failed staging or activation restores the fence and retires partially started Kast
-services. A failure to complete that recovery reports both finite causes. Permissions,
-downloads, or OS refusal can prevent completion; success is reported only after the
-required proofs. Erased data has no rollback. The stable reset lock remains beside
-the directory to serialize later resets.
-Force commands accept `--json`, with `REMOVED`, `RESET_REINSTALLED`,
-`RESET_REINSTALLATION_PENDING`, `RESET_RETAINED`, `RESET_RECOVERY_REQUIRED`, or
-`RESET_REJECTED` outcomes. All unsuccessful outcomes exit with code 1.
-
-Verified stop/reinstall accept `--json`: stdout contains one result with a required
-`type` discriminator (`STOPPED`, `REINSTALLED`, `REJECTED`, or
-`REINSTALLATION_PENDING`). Bounded stage observations go to stderr. Rejected and
-pending results exit with code 1. These commands require a payload containing the
-lifecycle fence capability; older installations reject before shutdown effects.
-
-Use `kast uninstall` to stop Kast-owned services and remove the owned
-installation and registrations.
+For checksummed skill, plugin, and marketplace ZIPs, see
+[agent tools](agent-tools/README.md).
 
 ## Ask a question
 
-Start your agent from the Kotlin repository or worktree, then ask:
+Start your agent from the intended repository or worktree, then ask:
 
 > Use Kast to query declarations in this workspace. Show one compiler-backed
 > symbol with its signature, source location, exact `ref`, and the result's
 > coverage. If there is no proven match, report the limit or failure.
 
-The query works without knowing a project-specific class name. You can pass
-the returned `ref` to a later Kast read. See [query examples](https://kast.michne.com/search/)
-and [how Kast works](https://kast.michne.com/concepts/architecture/).
+Queries prepare IDEA automatically. Reuse issued references unchanged. For stale
+or unavailable state, query again. See [query examples](https://kast.michne.com/search/)
+and [evidence boundaries](https://kast.michne.com/concepts/evidence-boundaries/).
+
+## Upgrade and recover
+
+Control owns the command, coordinator, adapters, and sessions. Host owns the IDEA
+plugin and semantic runtime. Their release versions are independent.
+
+```mermaid
+flowchart TB
+  accTitle: Contract equality permits independent Control upgrades
+  accDescr: Matching contract and IDEA admission permit independent Control activation. Missing or incompatible Host evidence preserves previous Control.
+  C["Candidate Control requirements"] --> M{"Contract and IDEA admission match?"}
+  H["Running Host evidence"] --> M
+  M -->|Yes| A["Activate Control; reuse Host"]
+  M -->|No or unavailable| K["Keep previous Control"]
+  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
+  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
+  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
+  class C,H,M authority;
+  class A evidence;
+  class K rejected;
+```
+
+Compatibility requires exact protocol, operation registry, wire schema, and
+capability identities, plus IDEA/Kotlin release-line admission. Version equality
+is not compatibility. `kast status` distinguishes installed Control, running Control, and observed Hosts.
+Missing live evidence remains unavailable.
+
+| Command | Effect |
+| --- | --- |
+| `kast upgrade --control-only` | Upgrade Control against a running compatible Host. Preserve IDEA and its plugin files. |
+| `kast upgrade` | Upgrade both components on the selected channel. Interrupt active calls and sessions. |
+| `kast stop` | Fence new calls and automatic restart, disable the coordinator, and wait up to 30 seconds for recorded calls. |
+| `kast reinstall` | Verify shutdown, reinstall the recorded release, activate services, and restore registrations. |
+| `kast uninstall` | Stop owned services and remove the owned installation and registrations. |
+
+Control-only upgrade checks Host before shutdown and after activation. Failure
+restores and verifies previous Control or reports recovery required. Control
+sessions can be interrupted. Load a compatible Host first.
+
+For Host-only installation, use the public installer with
+`--host-only --version <host-version>`, then restart IDEA. Control stays in place.
+
+Before stop or reinstall, close IDEA and affected agent connections. Running IDEA
+returns `HOST_RESTART_REQUIRED`. Failed shutdown prevents replacement. Failed
+activation preserves the fence and reports recovery. Sessions and writes are never
+replayed. `kast stop --force` signals only processes whose recorded identity still matches.
+
+**Destructive reset:** `kast uninstall --force` and `kast reinstall --force` erase
+the selected Kast directory, including configuration, arbitrary files, and
+registration history. Erased data has no rollback. Reset verifies process retirement
+before deletion. Shared IDEA and Gradle processes remain under your control.
+
+Force reinstall verifies replacement readiness and reports the new command at
+`<kast-directory>/bin/kast`. Reconnect integrations, restart IDEA, and reload agents.
+Preserve recovery paths and causes before retrying.
+
+Lifecycle commands accept `--json`: one typed stdout result, stage observations on
+stderr, and exit code 1 for unsuccessful outcomes. Unsupported fence capability
+rejects before effects. See [management and recovery](https://kast.michne.com/workspaces/).
+
+Kast uses `$HOME/.local/share/kast/installation`. For older `current` layouts, rerun
+the published installer. Uncertain legacy removal requires `yes` per item.
+Noninteractive upgrades keep and report those items.
 
 ## Develop
 
-Use Java 25 or newer and the Python version in [`.python-version`](.python-version).
-Native assembly uses a Java 25 toolchain with GraalVM Native Image, selected or
-provisioned by Gradle. Its first download requires network access; see the
-[development guide](docs/development.md) for local toolchain selection.
+Use Java 25 or newer and Python from [`.python-version`](.python-version).
+Native assembly uses Gradle-selected Java 25 with GraalVM Native Image.
+Toolchain downloads require network access.
 
 ```shell
 ./gradlew build
@@ -160,8 +149,8 @@ provisioned by Gradle. Its first download requires network access; see the
 ./gradlew assembleHostRelease -PhostedPluginVersion=0.49.0
 ```
 
-The [development guide](docs/development.md) covers local installation and
-testing. The [OpenWiki guide](openwiki/quickstart.md) maps architecture to source.
+See [development](docs/development.md) for toolchains, installation, and testing,
+or [OpenWiki](openwiki/quickstart.md) for source-bound architecture.
 
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).
 Kast is under the [MIT License](LICENSE).
