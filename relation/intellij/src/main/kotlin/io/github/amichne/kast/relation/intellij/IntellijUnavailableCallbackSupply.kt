@@ -31,7 +31,7 @@ internal fun unavailableCallbackSupply(
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(read.failure)
         }
-    when (val retained = CallbackFlowRetention(context.scope.request.budget).admit(owner.retainedBytes, 0)) {
+    when (val retained = CallbackFlowRetention(context.scope.request.budget).admit(owner.retainedBytes)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected ->
             return context.observed(
