@@ -40,6 +40,15 @@ done
 
 case "$idea_home" in *.app) idea_home="$idea_home/Contents" ;; esac
 [[ -n "$idea_home" && -f "$idea_home/Resources/product-info.json" ]] || fail 'an admitted IDEA home is required'
+idea_home="$(CDPATH='' cd -- "$idea_home" && pwd -P)"
+java_home="$idea_home/jbr/Contents/Home"
+[[ -x "$java_home/bin/java" && -f "$java_home/release" ]] ||
+  fail 'selected IDEA has no bundled JBR; repair the IDEA installation before building Kast'
+java_feature="$(sed -nE 's/^JAVA_VERSION="([0-9]+).*/\1/p' "$java_home/release" | awk 'NR == 1 { print; exit }')"
+[[ "$java_feature" =~ ^[0-9]+$ ]] && (( java_feature >= 25 )) ||
+  fail 'selected IDEA bundled JBR requires Java 25 or newer; select a supported IDEA installation'
+# Scope the runtime choice to this installer and its children, before Gradle starts.
+export JAVA_HOME="$java_home" JAVA="$java_home/bin/java" KAST_INSTALL_JAVA_HOME="$java_home"
 idea_build=$(python3 - "$idea_home/Resources/product-info.json" <<'PYTHON'
 import json, re, sys
 value = json.load(open(sys.argv[1])).get("buildNumber")

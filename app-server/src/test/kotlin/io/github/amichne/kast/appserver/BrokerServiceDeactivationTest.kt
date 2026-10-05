@@ -116,8 +116,11 @@ class BrokerServiceDeactivationTest {
         val next = executable(tools.resolve("codex-next"))
         val home = Files.createDirectories(temporary.resolve("home")).toRealPath()
         fun command(overrides: Map<String, String> = emptyMap()) =
-            (BrokerServiceLaunchCommand.resolveCoordinator(kast, home, mapOf("PATH" to tools.toString()) + overrides)
-                    as BrokerServiceLaunchCommandResolution.Resolved)
+            (BrokerServiceLaunchCommand.resolveCoordinator(
+                    kast,
+                    home,
+                    mapOf("PATH" to tools.toString()) + selectedBrokerJbr(temporary) + overrides,
+                ) as BrokerServiceLaunchCommandResolution.Resolved)
                 .command
         val initial = command()
         val requested = command(mapOf("CODEX_EXECUTABLE" to next.toString()))

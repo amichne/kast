@@ -10,6 +10,8 @@ legacy command graph retained for migration, and hosted output projections.
 
 ## Key Files
 
+- [InstallationJavaRuntime.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt) - installed launcher admission of the selected IDEA JBR before starting its child JVM.
+
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - private managed daemon entry point with exact login admission outside the public command graph.
 - [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installation service control with typed rejection output.
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - installed Kast stdio MCP transport and session tool dispatch.

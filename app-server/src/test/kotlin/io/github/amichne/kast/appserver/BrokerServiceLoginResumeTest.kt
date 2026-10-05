@@ -60,8 +60,11 @@ class BrokerServiceLoginResumeTest {
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val search = Files.createDirectory(temporary.resolve("empty-bin"))
         val command =
-            (BrokerServiceLaunchCommand.resolveCoordinator(kast, home, mapOf("PATH" to search.toString()))
-                    as BrokerServiceLaunchCommandResolution.Resolved)
+            (BrokerServiceLaunchCommand.resolveCoordinator(
+                    kast,
+                    home,
+                    mapOf("PATH" to search.toString()) + selectedBrokerJbr(temporary),
+                ) as BrokerServiceLaunchCommandResolution.Resolved)
                 .command
         Files.createDirectories(command.stateDirectory)
         val receipt = command.stateDirectory.resolve("service.plist")

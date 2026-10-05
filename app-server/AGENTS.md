@@ -9,6 +9,8 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Key Files
 
+- [BrokerJavaRuntime.kt](src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt) - retained canonical Java home/executable and bounded Java 25 compatibility proof for broker launch.
+
 - [DaemonUpgradeGate.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt) - shared session, lazy frontend and management admission; `DaemonUpgradeAdmission` owns pending/sealed/committed transitions.
 
 - [FileThreadCatalogStore.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt) - lazy thread-binding shards and legacy conversation migration; `ThreadBindingDocuments` owns stored identities and refinement.

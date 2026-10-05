@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.BrokerServiceLaunchCommand
 import io.github.amichne.kast.appserver.BrokerServiceLaunchCommandResolution
 import io.github.amichne.kast.appserver.PersistentBrokerServiceAdmission
 import io.github.amichne.kast.appserver.PersistentBrokerServiceHost
+import io.github.amichne.kast.appserver.selectedBrokerJbr
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
@@ -28,16 +29,17 @@ class InstalledCodexClientLauncherTest {
         val output = ByteArrayOutputStream()
         val launcher =
             InstalledCodexClientLauncher(
-                kast,
-                home,
-                mapOf("PATH" to bin.toString(), "KAST_DEBUG" to "1"),
-                CapturedProcessLauncher(),
-                ReadyServiceHost(),
-                CodexLaunchPreparer { workspace ->
-                    prepared.add(workspace)
-                    CodexLaunchPreparation.Prepared
-                },
-                PrintStream(output, true, Charsets.UTF_8),
+                kastExecutable = kast,
+                userHome = home,
+                environment = mapOf("PATH" to bin.toString(), "KAST_DEBUG" to "1") + selectedBrokerJbr(home),
+                processLauncher = CapturedProcessLauncher(),
+                serviceHost = ReadyServiceHost(),
+                preparer =
+                    CodexLaunchPreparer { workspace ->
+                        prepared.add(workspace)
+                        CodexLaunchPreparation.Prepared
+                    },
+                debugOutput = PrintStream(output, true, Charsets.UTF_8),
             )
 
         assertEquals(CodexClientLaunchRun.Completed(0), launcher.launch(CodexClientLaunch.Cli))
@@ -65,14 +67,15 @@ class InstalledCodexClientLauncherTest {
         val processLauncher = CapturedProcessLauncher()
         val launcher =
             InstalledCodexClientLauncher(
-                kast,
-                home,
-                mapOf(
-                    "CODEX_EXECUTABLE" to upstream.toString(),
-                    "KAST_CONFIGURATION_FILE" to saved.toString(),
-                ),
-                processLauncher,
-                ReadyServiceHost(),
+                kastExecutable = kast,
+                userHome = home,
+                environment =
+                    mapOf(
+                        "CODEX_EXECUTABLE" to upstream.toString(),
+                        "KAST_CONFIGURATION_FILE" to saved.toString(),
+                    ) + selectedBrokerJbr(home),
+                processLauncher = processLauncher,
+                serviceHost = ReadyServiceHost(),
             )
         assertEquals(CodexClientLaunchRun.Completed(0), launcher.launch(CodexClientLaunch.Desktop))
         val request = assertInstanceOf(CodexClientProcessRequest.Desktop::class.java, processLauncher.request)
@@ -107,13 +110,14 @@ class InstalledCodexClientLauncherTest {
         val serviceHost = ReadyServiceHost()
         val launcher =
             InstalledCodexClientLauncher(
-                kast,
-                home,
-                mapOf(
-                    "PATH" to bin.toString(),
-                    "CODEX_EXECUTABLE" to upstream.toString(),
-                    "KAST_CODEX_DESKTOP_EXECUTABLE" to desktop.toString(),
-                ),
+                kastExecutable = kast,
+                userHome = home,
+                environment =
+                    mapOf(
+                        "PATH" to bin.toString(),
+                        "CODEX_EXECUTABLE" to upstream.toString(),
+                        "KAST_CODEX_DESKTOP_EXECUTABLE" to desktop.toString(),
+                    ) + selectedBrokerJbr(home),
                 serviceHost = serviceHost,
             )
 
@@ -137,7 +141,7 @@ class InstalledCodexClientLauncherTest {
                 mapOf(
                     "CODEX_EXECUTABLE" to Files.readAllLines(capture)[3],
                     "CODEX_HOME" to home.resolve(".codex").toString(),
-                ),
+                ) + selectedBrokerJbr(home),
             ) as BrokerServiceLaunchCommandResolution.Resolved
         assertEquals(serviceHost.command.identity, attached.command.identity)
     }
@@ -154,15 +158,16 @@ class InstalledCodexClientLauncherTest {
         val serviceHost = ReadyServiceHost()
         val launcher =
             InstalledCodexClientLauncher(
-                kast,
-                home,
-                mapOf(
-                    "PATH" to bin.toString(),
-                    "CODEX_EXECUTABLE" to upstream.toString(),
-                    "KAST_CODEX_DESKTOP_EXECUTABLE" to desktop.toString(),
-                ),
-                processLauncher,
-                serviceHost,
+                kastExecutable = kast,
+                userHome = home,
+                environment =
+                    mapOf(
+                        "PATH" to bin.toString(),
+                        "CODEX_EXECUTABLE" to upstream.toString(),
+                        "KAST_CODEX_DESKTOP_EXECUTABLE" to desktop.toString(),
+                    ) + selectedBrokerJbr(home),
+                processLauncher = processLauncher,
+                serviceHost = serviceHost,
             )
 
         assertEquals(
@@ -189,11 +194,11 @@ class InstalledCodexClientLauncherTest {
         val serviceHost = ReadyServiceHost()
         val launcher =
             InstalledCodexClientLauncher(
-                kast,
-                home,
-                mapOf("PATH" to bin.toString()),
-                processLauncher,
-                serviceHost,
+                kastExecutable = kast,
+                userHome = home,
+                environment = mapOf("PATH" to bin.toString()) + selectedBrokerJbr(home),
+                processLauncher = processLauncher,
+                serviceHost = serviceHost,
             )
 
         assertEquals(
@@ -227,9 +232,9 @@ class InstalledCodexClientLauncherTest {
         Files.setPosixFilePermissions(codex, PosixFilePermissions.fromString("rwx------"))
         val launcher =
             InstalledCodexClientLauncher(
-                kast,
-                home,
-                mapOf("PATH" to bin.toString()),
+                kastExecutable = kast,
+                userHome = home,
+                environment = mapOf("PATH" to bin.toString()) + selectedBrokerJbr(home),
                 serviceHost = ReadyServiceHost(),
             )
         val result = AtomicReference<CodexClientLaunchRun>()
@@ -266,14 +271,15 @@ class InstalledCodexClientLauncherTest {
         assertEquals(
             CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_CONFIGURATION_REJECTED),
             InstalledCodexClientLauncher(
-                    kast,
-                    home,
-                    mapOf(
-                        "PATH" to bin.toString(),
-                        "KAST_ENABLE_APP_SERVER" to "0",
-                    ),
-                    processLauncher,
-                    ReadyServiceHost(),
+                    kastExecutable = kast,
+                    userHome = home,
+                    environment =
+                        mapOf(
+                            "PATH" to bin.toString(),
+                            "KAST_ENABLE_APP_SERVER" to "0",
+                        ),
+                    processLauncher = processLauncher,
+                    serviceHost = ReadyServiceHost(),
                 )
                 .launch(CodexClientLaunch.Cli),
         )
@@ -289,14 +295,15 @@ class InstalledCodexClientLauncherTest {
         val processLauncher = CapturedProcessLauncher()
         val result =
             InstalledCodexClientLauncher(
-                    kast,
-                    home,
-                    mapOf(
-                        "CODEX_EXECUTABLE" to upstream.toString(),
-                        "KAST_CODEX_DESKTOP_EXECUTABLE" to desktop.toString(),
-                    ),
-                    processLauncher,
-                    PersistentBrokerServiceHost { error("No service effect before facade admission") },
+                    kastExecutable = kast,
+                    userHome = home,
+                    environment =
+                        mapOf(
+                            "CODEX_EXECUTABLE" to upstream.toString(),
+                            "KAST_CODEX_DESKTOP_EXECUTABLE" to desktop.toString(),
+                        ) + selectedBrokerJbr(home),
+                    processLauncher = processLauncher,
+                    serviceHost = PersistentBrokerServiceHost { error("No service effect before facade admission") },
                 )
                 .launch(CodexClientLaunch.Desktop)
         assertEquals(CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.FACADE_UNAVAILABLE), result)

@@ -27,7 +27,7 @@ class AppServerStatusTest {
                     (BrokerServiceLaunchCommand.resolveCoordinator(
                             kast,
                             root,
-                            mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
+                            mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private") + selectedBrokerJbr(root),
                         ) as BrokerServiceLaunchCommandResolution.Resolved)
                         .command
                 val environment =
@@ -46,7 +46,11 @@ class AppServerStatusTest {
                 val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
                 try {
                     val result =
-                        InstalledAppServerManager(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"))
+                        InstalledAppServerManager(
+                                kast,
+                                root,
+                                mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private") + selectedBrokerJbr(root),
+                            )
                             .execute(AppServerAction.Status, workspace)
                     assertTrue(result is AppServerManagementResult.Completed, result.toString())
                     val document = (result as AppServerManagementResult.Completed).document
@@ -117,7 +121,11 @@ class AppServerStatusTest {
     fun `passive status reports absent service and empty registry without creating state`() =
         withPayload { root, kast ->
             val result =
-                InstalledAppServerManager(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"))
+                InstalledAppServerManager(
+                        kast,
+                        root,
+                        mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private") + selectedBrokerJbr(root),
+                    )
                     .execute(AppServerAction.Status, root)
             assertTrue(result is AppServerManagementResult.Completed, result.toString())
             val document = (result as AppServerManagementResult.Completed).document
@@ -141,7 +149,10 @@ class AppServerStatusTest {
                         "KAST_READ_HOST_REFERENCE_ENTRIES=32768\n",
                     )
                 val environment =
-                    mapOf("KAST_CONFIGURATION_FILE" to saved.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")
+                    mapOf(
+                        "KAST_CONFIGURATION_FILE" to saved.toString(),
+                        "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
+                    ) + selectedBrokerJbr(root)
                 val command =
                     (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
                             as BrokerServiceLaunchCommandResolution.Resolved)

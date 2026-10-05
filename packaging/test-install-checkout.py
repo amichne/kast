@@ -115,6 +115,7 @@ class CheckoutInstallTest(IsolatedInstallerTest):
         (self.checkout / "build.gradle.kts").touch()
         self.write_script(self.checkout / "gradlew", '''#!/usr/bin/env bash
 set -eu
+[[ "$JAVA_HOME" == "$EXPECTED_JBR" && "$JAVA" == "$EXPECTED_JBR/bin/java" ]] || exit 73
 echo build >> "$TEST_LOG"
 for arg in "$@"; do case "$arg" in -PcontrolVersion=*|-PhostedPluginVersion=*) version=${arg#*=} ;; esac; done
 mkdir -p build/distributions
@@ -129,9 +130,14 @@ for arg in "$@"; do
   fi
 done
 ''')
-        self.idea = self.root / "IDEA.app/Contents"
+        self.idea = self.root / "IDEA With Spaces.app/Contents"
         (self.idea / "Resources").mkdir(parents=True)
         (self.idea / "Resources/product-info.json").write_text(json.dumps({"buildNumber": "262.1"}))
+        self.java_home = self.idea / "jbr/Contents/Home"
+        (self.java_home / "bin").mkdir(parents=True)
+        self.write_script(self.java_home / "bin/java", "#!/bin/sh\nexit 0\n")
+        (self.java_home / "release").write_text('JAVA_VERSION="25.0.1"\n')
+        self.env["EXPECTED_JBR"] = str(self.java_home)
         self.env["KAST_INSTALL_IDEA_HOME"] = str(self.idea)
         self.installer = self.checkout / "install.sh"
         self.checkout_installer = self.checkout / "packaging/install-checkout.sh"
@@ -164,6 +170,24 @@ fi
             capture_output=True,
             text=True,
         )
+
+    def test_selected_jbr_precedes_ambient_java_and_paths_with_spaces(self):
+        self.env.update(JAVA="/usr/bin/java", JAVA_HOME="/wrong/ambient-java")
+        result = self.run_install("persistent", "--idea-home", str(self.idea.parent))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("build", (self.root / "calls").read_text())
+
+    def test_missing_or_incompatible_jbr_rejects_before_build_or_state(self):
+        for release in (None, 'JAVA_VERSION="24.0.2"\n', 'JAVA_VERSION="invalid"\n'):
+            with self.subTest(release=release):
+                path = self.java_home / "release"
+                if release is None: path.unlink(missing_ok=True)
+                else: path.write_text(release)
+                result = self.run_install("persistent")
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("bundled JBR", result.stderr)
+                self.assertFalse((self.root / "calls").exists())
+                self.assertFalse((self.root / ".local").exists())
 
     def test_session_is_rejected_before_build_or_state_creation(self):
         result = self.run_install("session")

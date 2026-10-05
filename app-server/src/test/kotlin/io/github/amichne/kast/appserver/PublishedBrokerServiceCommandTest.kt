@@ -21,7 +21,7 @@ class PublishedBrokerServiceCommandTest {
                     "HOME" to root.toString(),
                     "PATH" to root.resolve("tools").toString(),
                     "CODEX_HOME" to root.resolve("codex").toString(),
-                )
+                ) + selectedBrokerJbr(root)
             val command =
                 (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
                         as BrokerServiceLaunchCommandResolution.Resolved)
@@ -66,7 +66,7 @@ class PublishedBrokerServiceCommandTest {
                     "HOME" to root.toString(),
                     "PATH" to "/usr/bin:/bin",
                     "CODEX_HOME" to root.resolve("codex").toString(),
-                )
+                ) + selectedBrokerJbr(root)
             val command =
                 (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
                         as BrokerServiceLaunchCommandResolution.Resolved)

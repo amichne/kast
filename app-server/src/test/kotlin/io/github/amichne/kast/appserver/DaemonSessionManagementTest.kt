@@ -20,7 +20,7 @@ class DaemonSessionManagementTest {
         for (directory in listOf("bin", "lib", "share")) Files.createDirectory(root.resolve(directory))
         val kast = Files.writeString(root.resolve("bin/kast"), "fixture")
         Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
-        val environment = mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")
+        val environment = mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private") + selectedBrokerJbr(root)
         val command =
             (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
                     as BrokerServiceLaunchCommandResolution.Resolved)
