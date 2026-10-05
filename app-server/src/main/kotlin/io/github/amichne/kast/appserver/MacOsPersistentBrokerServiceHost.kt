@@ -581,7 +581,7 @@ internal class MacOsPersistentBrokerServiceHost(
                     }
                     return try {
                         Files.deleteIfExists(command.readinessFile)
-                        submitAndAwait(command)
+                        submitRetired(command, published.identity)
                     } catch (_: IOException) {
                         rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
                     } catch (_: SecurityException) {
@@ -634,7 +634,7 @@ internal class MacOsPersistentBrokerServiceHost(
                                 ) {
                                     rejected(readiness.failure.persistentServiceFailure())
                                 } else {
-                                    submitAndAwait(command)
+                                    submitRetired(command, readiness.identity)
                                 }
                             BrokerReadinessRetirement.Rejected ->
                                 rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
@@ -670,7 +670,7 @@ internal class MacOsPersistentBrokerServiceHost(
         when (retireService(command)) {
             BrokerLaunchdServiceRetirement.Retired ->
                 when (awaitRetirement(command, readiness)) {
-                    BrokerLaunchdServiceRetirement.Retired -> submitAndAwait(command)
+                    BrokerLaunchdServiceRetirement.Retired -> submitRetired(command, readiness.identity)
                     BrokerLaunchdServiceRetirement.Interrupted -> rejected(PersistentBrokerServiceFailure.INTERRUPTED)
                     BrokerLaunchdServiceRetirement.Rejected ->
                         rejected(PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED)
@@ -718,12 +718,35 @@ internal class MacOsPersistentBrokerServiceHost(
             BrokerLaunchdServiceObservation.TimedOut -> rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
         }
 
+    /** Consume the proven retired predecessor before replacing its command or readiness identity. */
+    private fun submitRetired(
+        command: BrokerServiceLaunchCommand,
+        predecessor: BrokerServiceIdentity,
+    ): PersistentBrokerServiceAdmission =
+        when (desktopDiscovery.release(DesktopDiscoveryTarget.Managed(command.stateDirectory, predecessor))) {
+            DesktopDiscoveryOutcome.Ready -> submitAndAwait(command)
+            is DesktopDiscoveryOutcome.Rejected -> rejected(PersistentBrokerServiceFailure.DESKTOP_DISCOVERY_REJECTED)
+        }
+
     private fun submitAndAwait(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         if (
             command.publicEndpoint is BrokerPublicEndpoint.CodexControl &&
                 Files.exists(command.publicSocket, LinkOption.NOFOLLOW_LINKS)
         ) {
             return rejected(PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED)
+        }
+        // A prior owned receipt survives crashes and failed cleanup. Consume it before overwriting it.
+        val predecessor = PublishedBrokerServiceCommand.recover(command)
+        if (predecessor != null) {
+            when (
+                desktopDiscovery.release(
+                    DesktopDiscoveryTarget.Managed(predecessor.stateDirectory, predecessor.identity)
+                )
+            ) {
+                DesktopDiscoveryOutcome.Ready -> Unit
+                is DesktopDiscoveryOutcome.Rejected ->
+                    return rejected(PersistentBrokerServiceFailure.DESKTOP_DISCOVERY_REJECTED)
+            }
         }
         return when (submit(command)) {
             BrokerLaunchdServiceSubmission.Submitted,

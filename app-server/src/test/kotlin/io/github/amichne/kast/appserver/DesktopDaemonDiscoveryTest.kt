@@ -159,6 +159,7 @@ class DesktopDaemonDiscoveryTest {
         val rejected = DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.OWNER_MISMATCH)
         val before = Files.readString(record(target))
         assertEquals(rejected, discovery.enable(foreign))
+        assertEquals(rejected, discovery.enable(DesktopDiscoveryTarget.CleanupOnly(foreign)))
         assertEquals(rejected, discovery.release(foreign))
         assertEquals(before, Files.readString(record(target)))
         script.exhausted()
@@ -175,6 +176,7 @@ class DesktopDaemonDiscoveryTest {
         val discovery = DesktopDaemonDiscovery(script)
         val rejected = DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.RECORD_MALFORMED)
         assertEquals(rejected, discovery.enable(target))
+        assertEquals(rejected, discovery.enable(DesktopDiscoveryTarget.CleanupOnly(target)))
         assertEquals(rejected, discovery.release(target))
         assertEquals("not-json", Files.readString(record(target)))
         script.exhausted()
@@ -249,6 +251,28 @@ class DesktopDaemonDiscoveryTest {
             DesktopDaemonEnvironmentRead.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED),
             LaunchdDesktopDaemonEnvironment.interpretRead(exitCode, ""),
         )
+    }
+
+    @Test
+    fun `cleanup only target withdraws owned discovery without republishing`(@TempDir temporary: Path) {
+        val target = target(temporary)
+        val script =
+            Script(
+                Read(DesktopDaemonSetting.ABSENT),
+                Enable,
+                Read(DesktopDaemonSetting.ENABLED),
+                Read(DesktopDaemonSetting.ENABLED),
+                Remove,
+                Read(DesktopDaemonSetting.ABSENT),
+            )
+        val discovery = DesktopDaemonDiscovery(script)
+        assertEquals(DesktopDiscoveryOutcome.Ready, discovery.enable(target))
+        val cleanup = DesktopDiscoveryTarget.CleanupOnly(target)
+        assertEquals(DesktopDiscoveryOutcome.Ready, discovery.enable(cleanup))
+        assertFalse(Files.exists(record(target)))
+        assertEquals(DesktopDiscoveryOutcome.Ready, discovery.enable(cleanup))
+        assertEquals(DesktopDiscoveryOutcome.Ready, discovery.release(cleanup))
+        script.exhausted()
     }
 
     private fun target(temporary: Path): DesktopDiscoveryTarget.Managed {

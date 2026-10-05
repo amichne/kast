@@ -16,21 +16,24 @@ internal sealed interface DesktopDiscoveryTarget {
 
     data class Managed(val directory: Path, val identity: BrokerServiceIdentity) : DesktopDiscoveryTarget
 
+    /** Private managed services may withdraw existing ownership but cannot publish a flag. */
+    data class CleanupOnly(val owner: Managed) : DesktopDiscoveryTarget
+
     companion object {
         fun from(options: InstalledCoordinatorOptions): DesktopDiscoveryTarget =
-            when (options.publicEndpoint) {
-                is BrokerPublicEndpoint.Private -> NotRequired
-                is BrokerPublicEndpoint.CodexControl ->
-                    when (val readiness = options.readiness) {
-                        BrokerServiceReadiness.Standalone -> NotRequired
-                        is BrokerServiceReadiness.Managed -> Managed(options.serviceDirectory, readiness.identity)
-                    }
+            when (val readiness = options.readiness) {
+                BrokerServiceReadiness.Standalone -> NotRequired
+                is BrokerServiceReadiness.Managed ->
+                    from(options.publicEndpoint, Managed(options.serviceDirectory, readiness.identity))
             }
 
         fun from(command: BrokerServiceLaunchCommand): DesktopDiscoveryTarget =
-            when (command.publicEndpoint) {
-                is BrokerPublicEndpoint.Private -> NotRequired
-                is BrokerPublicEndpoint.CodexControl -> Managed(command.stateDirectory, command.identity)
+            from(command.publicEndpoint, Managed(command.stateDirectory, command.identity))
+
+        private fun from(endpoint: BrokerPublicEndpoint, owner: Managed): DesktopDiscoveryTarget =
+            when (endpoint) {
+                is BrokerPublicEndpoint.Private -> CleanupOnly(owner)
+                is BrokerPublicEndpoint.CodexControl -> owner
             }
     }
 }
@@ -119,6 +122,7 @@ internal class DesktopDaemonDiscovery(
     fun enable(target: DesktopDiscoveryTarget): DesktopDiscoveryOutcome =
         when (target) {
             DesktopDiscoveryTarget.NotRequired -> DesktopDiscoveryOutcome.Ready
+            is DesktopDiscoveryTarget.CleanupOnly -> release(target.owner)
             is DesktopDiscoveryTarget.Managed ->
                 withRecord(target) { files, path -> enableManaged(files, path, target) }
         }
@@ -172,6 +176,7 @@ internal class DesktopDaemonDiscovery(
     fun release(target: DesktopDiscoveryTarget): DesktopDiscoveryOutcome =
         when (target) {
             DesktopDiscoveryTarget.NotRequired -> DesktopDiscoveryOutcome.Ready
+            is DesktopDiscoveryTarget.CleanupOnly -> release(target.owner)
             is DesktopDiscoveryTarget.Managed -> {
                 val path = target.directory.resolve(RECORD_DIRECTORY).resolve(RECORD_NAME)
                 // An older installation owns no flag. Do not create state or query launchd on its teardown.

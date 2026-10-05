@@ -47,6 +47,10 @@ A pre-existing `1` or a subsequently changed value is preserved. Conflicting
 values, malformed records, foreign identities and failed command/read-back
 proofs reject activation or cleanup with a finite discovery failure. A service
 stop retains discovery for the existing login job; disablement removes it.
+A replacement retires the proven predecessor’s discovery before publishing its
+new identity, including when switching to private mode. An owned launch receipt
+permits cleanup recovery when predecessor readiness is already absent; failed
+cleanup blocks replacement and preserves the receipt for retry.
 
 Already running desktop processes retain their launch environment. Quit and
 reopen the app after installation to obtain the flag. An already existing
