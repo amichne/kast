@@ -21,7 +21,9 @@ internal class BrokerJavaRuntime private constructor(val home: Path, val executa
                     return rejected()
                 }
             if (raw.size > MAXIMUM_RELEASE_BYTES) return rejected()
-            val versions = VERSION.findAll(raw.toString(Charsets.UTF_8)).toList()
+            val metadata = raw.toString(Charsets.UTF_8)
+            if (DECLARATION.findAll(metadata).count() != 1) return rejected()
+            val versions = VERSION.findAll(metadata).toList()
             if (versions.size != 1) return rejected()
             val feature = versions.single().groupValues[1].toIntOrNull() ?: return rejected()
             if (feature < MINIMUM_JAVA_FEATURE) return rejected()
@@ -31,6 +33,7 @@ internal class BrokerJavaRuntime private constructor(val home: Path, val executa
         private fun rejected() = Refinement.Rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
 
         private val VERSION = Regex("^JAVA_VERSION=\"([0-9]+)(?:[^\"\\r\\n]*)\"$", RegexOption.MULTILINE)
+        private val DECLARATION = Regex("^JAVA_VERSION=", RegexOption.MULTILINE)
         private const val MINIMUM_JAVA_FEATURE = 25
         private const val MAXIMUM_RELEASE_BYTES = 16 * 1_024
     }

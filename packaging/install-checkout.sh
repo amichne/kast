@@ -44,7 +44,17 @@ idea_home="$(CDPATH='' cd -- "$idea_home" && pwd -P)"
 java_home="$idea_home/jbr/Contents/Home"
 [[ -x "$java_home/bin/java" && -f "$java_home/release" ]] ||
   fail 'selected IDEA has no bundled JBR; repair the IDEA installation before building Kast'
-java_feature="$(sed -nE 's/^JAVA_VERSION="([0-9]+).*/\1/p' "$java_home/release" | awk 'NR == 1 { print; exit }')"
+java_feature="$(/usr/bin/awk '
+  /^JAVA_VERSION=/ {
+    declarations++
+    if ($0 ~ /^JAVA_VERSION="[0-9]+[^"\r]*"\r?$/) {
+      feature = $0
+      sub(/^JAVA_VERSION="/, "", feature)
+      sub(/[^0-9].*$/, "", feature)
+    }
+  }
+  END { if (declarations == 1 && feature != "") print feature }
+' "$java_home/release")"
 [[ "$java_feature" =~ ^[0-9]+$ ]] && (( java_feature >= 25 )) ||
   fail 'selected IDEA bundled JBR requires Java 25 or newer; select a supported IDEA installation'
 # Scope the runtime choice to this installer and its children, before Gradle starts.

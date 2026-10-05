@@ -66,6 +66,10 @@ class BrokerServiceJavaRuntimeTest {
                 "JAVA_VERSION=\"24.0.2\"\n",
                 "JAVA_VERSION=\"bad\"\n",
                 "JAVA_VERSION=\"25\"\nJAVA_VERSION=\"24\"\n",
+                "JAVA_VERSION=\"25.0.2\n",
+                "JAVA_VERSION=\"25\"trailing\n",
+                "JAVA_VERSION=\"25\"\nJAVA_VERSION=invalid\n",
+                "JAVA_VERSION=invalid\nJAVA_VERSION=\"25\"\n",
             )) {
             Files.writeString(javaHome.resolve("release"), release)
             assertEquals(

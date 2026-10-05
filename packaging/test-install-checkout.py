@@ -189,6 +189,34 @@ fi
                 self.assertFalse((self.root / "calls").exists())
                 self.assertFalse((self.root / ".local").exists())
 
+    def test_ambiguous_or_incomplete_jbr_rejects_before_build_or_state(self):
+        for release in (
+            'JAVA_VERSION="25.0.2"\nJAVA_VERSION="26"\n',
+            'JAVA_VERSION="25"\nJAVA_VERSION="25"\n',
+            'JAVA_VERSION="25.0.2\n',
+            'JAVA_VERSION="25"trailing\n',
+            'JAVA_VERSION="25"\nJAVA_VERSION=invalid\n',
+            'JAVA_VERSION=invalid\nJAVA_VERSION="25"\n',
+        ):
+            with self.subTest(release=release):
+                (self.java_home / "release").write_text(release)
+                result = self.run_install("persistent")
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("bundled JBR", result.stderr)
+                self.assertEqual("", result.stdout)
+                self.assertFalse((self.root / "calls").exists())
+                self.assertFalse((self.root / ".local").exists())
+
+    def test_single_compatible_declaration_with_surrounding_metadata(self):
+        for version in ("25", "25.0.2", "26-ea"):
+            with self.subTest(version=version):
+                (self.java_home / "release").write_text(
+                    f'OS_ARCH="aarch64"\nJAVA_VERSION="{version}"\nIMPLEMENTOR="JetBrains"\n'
+                )
+                result = self.run_install("persistent")
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("build", (self.root / "calls").read_text())
+
     def test_session_is_rejected_before_build_or_state_creation(self):
         result = self.run_install("session")
         self.assertNotEqual(0, result.returncode)
