@@ -40,17 +40,25 @@ installation-private at `state/run/u.sock`. An occupied canonical endpoint never
 grants Kast authority to replace an unknown incumbent. Client closure does not
 stop the persistent service.
 
+Desktop publication verifies the GUI launchd `CODEX_HOME` route against the
+served canonical socket. An unset GUI home selects the user’s `.codex` directory;
+a custom home must already match. Kast reads this routing context and does not
+change it. Unknown or mismatched routing rejects publication before flag effects.
+
 Discovery ownership is recorded before publication in a private, locked record
 bound to the admitted service identity. Disablement, uninstall and destructive
 repair remove a flag introduced by Kast only while its value is still `1`.
-A pre-existing `1` or a subsequently changed value is preserved. Conflicting
+A pre-existing `1` or a subsequently changed value is preserved. A vanished
+pre-existing flag rejects re-publication instead of discarding its ownership. Conflicting
 values, malformed records, foreign identities and failed command/read-back
 proofs reject activation or cleanup with a finite discovery failure. A service
 stop retains discovery for the existing login job; disablement removes it.
 A replacement retires the proven predecessor’s discovery before publishing its
 new identity, including when switching to private mode. An owned launch receipt
 permits cleanup recovery when predecessor readiness is already absent; failed
-cleanup blocks replacement and preserves the receipt for retry.
+cleanup blocks replacement and preserves the receipt for retry. Rejected final
+readiness rolls back published discovery; a failed rollback retains its exact
+cleanup cause and ownership record.
 
 Already running desktop processes retain their launch environment. Quit and
 reopen the app after installation to obtain the flag. An already existing

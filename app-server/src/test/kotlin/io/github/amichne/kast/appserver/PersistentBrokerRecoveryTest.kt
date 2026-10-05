@@ -59,8 +59,14 @@ class PersistentBrokerRecoveryTest {
             java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"),
         )
         var reads = 0
+        var homeReads = 0
         val environment =
             object : DesktopDaemonEnvironment {
+                override fun readHome(): DesktopDaemonHomeRead {
+                    assertEquals(0, homeReads++)
+                    return DesktopDaemonHomeRead.Default
+                }
+
                 override fun read(): DesktopDaemonEnvironmentRead {
                     assertEquals(0, reads++)
                     return DesktopDaemonEnvironmentRead.Observed(DesktopDaemonSetting.ENABLED)
@@ -93,6 +99,7 @@ class PersistentBrokerRecoveryTest {
         )
         assertEquals(3, observations)
         assertEquals(1, reads)
+        assertEquals(1, homeReads)
         assertEquals("not-json", Files.readString(record))
         assertTrue(Files.exists(command.stateDirectory))
     }

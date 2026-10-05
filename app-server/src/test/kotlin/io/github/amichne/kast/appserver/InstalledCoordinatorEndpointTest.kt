@@ -53,6 +53,9 @@ class InstalledCoordinatorEndpointTest {
             val discovery =
                 DesktopDaemonDiscovery(
                     object : DesktopDaemonEnvironment {
+                        override fun readHome(): DesktopDaemonHomeRead =
+                            throw AssertionError("Unexpected home observation before native readiness")
+
                         override fun read(): DesktopDaemonEnvironmentRead =
                             throw AssertionError("Unexpected discovery observation before native readiness")
 

@@ -83,14 +83,23 @@ The default endpoint is now the standard
 launcher, app packaging or signing change is required. After native protocol
 readiness, the existing macOS managed service publishes
 `CODEX_APP_SERVER_USE_LOCAL_DAEMON=1` using `launchctl setenv`; its existing login
-job executes the same startup path and restores discovery after login.
+job executes the same startup path and restores discovery after login. Publication
+first reads the GUI launchd `CODEX_HOME` and requires its canonical socket to
+match the served endpoint. An absent GUI value means the user’s `.codex` home.
+Kast does not mutate `CODEX_HOME`; a mismatched or unavailable route rejects
+publication before flag effects.
 
 A private locked ownership record retains the service identity and whether the
 flag was absent or already enabled. Startup rejects a conflicting value before
 mutation. Disablement, the uninstall path's existing disable call, and destructive
 repair remove an owned flag only if it is still `1`; a pre-existing enabled flag
 or a subsequent change is preserved. Unknown ownership and failed read-back proof
-fail closed. Stopping the service retains the record and flag for later startup.
+fail closed. A vanished pre-existing flag is not republished with discarded
+ownership. Rejected final readiness rolls discovery back and preserves both
+readiness and cleanup rejection evidence if rollback fails. Replacement retires
+the admitted predecessor’s discovery before changing identity or switching to
+private mode, with recovery through the exact prior launch receipt. Stopping
+the service retains the record and flag for later startup.
 Explicit `KAST_APP_SERVER_PUBLIC_ENDPOINT=private` remains available and publishes
 no desktop flag. Saved explicit selections are preserved across upgrades.
 

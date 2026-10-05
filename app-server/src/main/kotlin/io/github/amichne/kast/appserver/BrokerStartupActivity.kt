@@ -20,6 +20,7 @@ internal enum class BrokerStartupStage {
     PUBLIC_SERVER,
     NATIVE_PROTOCOL,
     DESKTOP_DISCOVERY,
+    DESKTOP_DISCOVERY_CLEANUP,
     READINESS_PUBLICATION,
 }
 

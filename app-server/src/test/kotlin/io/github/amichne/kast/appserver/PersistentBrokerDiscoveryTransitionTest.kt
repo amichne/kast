@@ -50,6 +50,7 @@ class PersistentBrokerDiscoveryTransitionTest {
         val environment =
             EnvironmentScript(
                 listOf(
+                    "home",
                     "read:ABSENT",
                     "enable",
                     "read:ENABLED",
@@ -92,9 +93,9 @@ class PersistentBrokerDiscoveryTransitionTest {
         Files.setPosixFilePermissions(initial.stateDirectory, PosixFilePermissions.fromString("rwx------"))
         val environment =
             EnvironmentScript(
-                listOf("read:ABSENT", "enable", "read:ENABLED", "read:ENABLED", "remove", "read:ABSENT") +
+                listOf("home", "read:ABSENT", "enable", "read:ENABLED", "read:ENABLED", "remove", "read:ABSENT") +
                     if (republishes)
-                        listOf("read:ABSENT", "enable", "read:ENABLED", "read:ENABLED", "remove", "read:ABSENT")
+                        listOf("home", "read:ABSENT", "enable", "read:ENABLED", "read:ENABLED", "remove", "read:ABSENT")
                     else emptyList()
             )
         val discovery = DesktopDaemonDiscovery(environment)
@@ -205,6 +206,11 @@ class PersistentBrokerDiscoveryTransitionTest {
 
     private class EnvironmentScript(steps: List<String>) : DesktopDaemonEnvironment {
         private val remaining = ArrayDeque(steps)
+
+        override fun readHome(): DesktopDaemonHomeRead {
+            assertEquals("home", remaining.removeFirstOrNull(), "Unexpected home observation")
+            return DesktopDaemonHomeRead.Default
+        }
 
         override fun read(): DesktopDaemonEnvironmentRead {
             val step = remaining.removeFirstOrNull() ?: throw AssertionError("Unexpected environment observation")

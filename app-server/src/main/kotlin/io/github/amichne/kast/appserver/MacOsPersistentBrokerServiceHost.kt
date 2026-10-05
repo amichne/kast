@@ -723,7 +723,7 @@ internal class MacOsPersistentBrokerServiceHost(
         command: BrokerServiceLaunchCommand,
         predecessor: BrokerServiceIdentity,
     ): PersistentBrokerServiceAdmission =
-        when (desktopDiscovery.release(DesktopDiscoveryTarget.Managed(command.stateDirectory, predecessor))) {
+        when (desktopDiscovery.release(DesktopDiscoveryOwner(command.stateDirectory, predecessor))) {
             DesktopDiscoveryOutcome.Ready -> submitAndAwait(command)
             is DesktopDiscoveryOutcome.Rejected -> rejected(PersistentBrokerServiceFailure.DESKTOP_DISCOVERY_REJECTED)
         }
@@ -738,11 +738,7 @@ internal class MacOsPersistentBrokerServiceHost(
         // A prior owned receipt survives crashes and failed cleanup. Consume it before overwriting it.
         val predecessor = PublishedBrokerServiceCommand.recover(command)
         if (predecessor != null) {
-            when (
-                desktopDiscovery.release(
-                    DesktopDiscoveryTarget.Managed(predecessor.stateDirectory, predecessor.identity)
-                )
-            ) {
+            when (desktopDiscovery.release(DesktopDiscoveryOwner(predecessor.stateDirectory, predecessor.identity))) {
                 DesktopDiscoveryOutcome.Ready -> Unit
                 is DesktopDiscoveryOutcome.Rejected ->
                     return rejected(PersistentBrokerServiceFailure.DESKTOP_DISCOVERY_REJECTED)

@@ -18,6 +18,7 @@ class DesktopDaemonDiscoveryTest {
         val target = target(temporary)
         val script =
             Script(
+                Home,
                 Read(DesktopDaemonSetting.ABSENT),
                 Enable,
                 Read(DesktopDaemonSetting.ENABLED),
@@ -30,7 +31,7 @@ class DesktopDaemonDiscoveryTest {
         val record = record(target)
         val document = Json.parseToJsonElement(Files.readString(record)).jsonObject
         assertEquals(setOf("serviceIdentity", "previous", "type"), document.keys)
-        assertEquals(target.identity.value, document.getValue("serviceIdentity").jsonPrimitive.content)
+        assertEquals(target.owner.identity.value, document.getValue("serviceIdentity").jsonPrimitive.content)
         assertEquals("ABSENT", document.getValue("previous").jsonPrimitive.content)
         assertEquals("DESKTOP_DAEMON_DISCOVERY", document.getValue("type").jsonPrimitive.content)
         assertEquals(PosixFilePermissions.fromString("rw-------"), Files.getPosixFilePermissions(record))
@@ -42,7 +43,7 @@ class DesktopDaemonDiscoveryTest {
     @Test
     fun `preexisting flag is preserved without claiming its effect`(@TempDir temporary: Path) {
         val target = target(temporary)
-        val script = Script(Read(DesktopDaemonSetting.ENABLED), Read(DesktopDaemonSetting.ENABLED))
+        val script = Script(Home, Read(DesktopDaemonSetting.ENABLED), Home, Read(DesktopDaemonSetting.ENABLED))
         val discovery = DesktopDaemonDiscovery(script)
         assertEquals(DesktopDiscoveryOutcome.Ready, discovery.enable(target))
         val before = Files.readString(record(target))
@@ -57,9 +58,11 @@ class DesktopDaemonDiscoveryTest {
         val target = target(temporary)
         val script =
             Script(
+                Home,
                 Read(DesktopDaemonSetting.ABSENT),
                 Enable,
                 Read(DesktopDaemonSetting.ENABLED),
+                Home,
                 Read(DesktopDaemonSetting.ABSENT),
                 Enable,
                 Read(DesktopDaemonSetting.ENABLED),
@@ -75,7 +78,7 @@ class DesktopDaemonDiscoveryTest {
     @Test
     fun `conflicting flag is rejected without ownership or mutation`(@TempDir temporary: Path) {
         val target = target(temporary)
-        val script = Script(Read(DesktopDaemonSetting.CONFLICTING))
+        val script = Script(Home, Read(DesktopDaemonSetting.CONFLICTING))
         assertEquals(
             DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.ENVIRONMENT_CONFLICT),
             DesktopDaemonDiscovery(script).enable(target),
@@ -87,7 +90,8 @@ class DesktopDaemonDiscoveryTest {
     @Test
     fun `failed publication retains starting fact for recovery`(@TempDir temporary: Path) {
         val target = target(temporary)
-        val script = Script(Read(DesktopDaemonSetting.ABSENT), FailedEnable(DesktopDiscoveryFailure.COMMAND_REJECTED))
+        val script =
+            Script(Home, Read(DesktopDaemonSetting.ABSENT), FailedEnable(DesktopDiscoveryFailure.COMMAND_REJECTED))
         assertEquals(
             DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED),
             DesktopDaemonDiscovery(script).enable(target),
@@ -99,7 +103,7 @@ class DesktopDaemonDiscoveryTest {
     @Test
     fun `publication requires read back proof`(@TempDir temporary: Path) {
         val target = target(temporary)
-        val script = Script(Read(DesktopDaemonSetting.ABSENT), Enable, Read(DesktopDaemonSetting.ABSENT))
+        val script = Script(Home, Read(DesktopDaemonSetting.ABSENT), Enable, Read(DesktopDaemonSetting.ABSENT))
         assertEquals(
             DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.READ_BACK_REJECTED),
             DesktopDaemonDiscovery(script).enable(target),
@@ -113,6 +117,7 @@ class DesktopDaemonDiscoveryTest {
         val target = target(temporary)
         val script =
             Script(
+                Home,
                 Read(DesktopDaemonSetting.ABSENT),
                 Enable,
                 Read(DesktopDaemonSetting.ENABLED),
@@ -130,6 +135,7 @@ class DesktopDaemonDiscoveryTest {
         val target = target(temporary)
         val script =
             Script(
+                Home,
                 Read(DesktopDaemonSetting.ABSENT),
                 Enable,
                 Read(DesktopDaemonSetting.ENABLED),
@@ -150,16 +156,16 @@ class DesktopDaemonDiscoveryTest {
     @Test
     fun `foreign ownership rejects before querying launchd`(@TempDir temporary: Path) {
         val target = target(temporary)
-        val setup = Script(Read(DesktopDaemonSetting.ENABLED))
+        val setup = Script(Home, Read(DesktopDaemonSetting.ENABLED))
         assertEquals(DesktopDiscoveryOutcome.Ready, DesktopDaemonDiscovery(setup).enable(target))
         setup.exhausted()
-        val foreign = target.copy(identity = identity('b'))
+        val foreign = target.copy(owner = target.owner.copy(identity = identity('b')))
         val script = Script()
         val discovery = DesktopDaemonDiscovery(script)
         val rejected = DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.OWNER_MISMATCH)
         val before = Files.readString(record(target))
         assertEquals(rejected, discovery.enable(foreign))
-        assertEquals(rejected, discovery.enable(DesktopDiscoveryTarget.CleanupOnly(foreign)))
+        assertEquals(rejected, discovery.enable(DesktopDiscoveryTarget.CleanupOnly(foreign.owner)))
         assertEquals(rejected, discovery.release(foreign))
         assertEquals(before, Files.readString(record(target)))
         script.exhausted()
@@ -168,7 +174,7 @@ class DesktopDaemonDiscoveryTest {
     @Test
     fun `malformed ownership rejects before querying launchd`(@TempDir temporary: Path) {
         val target = target(temporary)
-        val setup = Script(Read(DesktopDaemonSetting.ENABLED))
+        val setup = Script(Home, Read(DesktopDaemonSetting.ENABLED))
         assertEquals(DesktopDiscoveryOutcome.Ready, DesktopDaemonDiscovery(setup).enable(target))
         setup.exhausted()
         Files.writeString(record(target), "not-json")
@@ -176,7 +182,7 @@ class DesktopDaemonDiscoveryTest {
         val discovery = DesktopDaemonDiscovery(script)
         val rejected = DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.RECORD_MALFORMED)
         assertEquals(rejected, discovery.enable(target))
-        assertEquals(rejected, discovery.enable(DesktopDiscoveryTarget.CleanupOnly(target)))
+        assertEquals(rejected, discovery.enable(DesktopDiscoveryTarget.CleanupOnly(target.owner)))
         assertEquals(rejected, discovery.release(target))
         assertEquals("not-json", Files.readString(record(target)))
         script.exhausted()
@@ -190,7 +196,7 @@ class DesktopDaemonDiscoveryTest {
         assertEquals(DesktopDiscoveryOutcome.Ready, discovery.release(DesktopDiscoveryTarget.NotRequired))
         val target = target(temporary)
         assertEquals(DesktopDiscoveryOutcome.Ready, discovery.release(target))
-        assertFalse(Files.exists(target.directory.resolve("desktop-discovery")))
+        assertFalse(Files.exists(target.owner.directory.resolve("desktop-discovery")))
         script.exhausted()
     }
 
@@ -201,7 +207,7 @@ class DesktopDaemonDiscoveryTest {
             events += it
             BrokerStartupActivityPublication.PUBLISHED
         }
-        val ready = Script(Read(DesktopDaemonSetting.ENABLED))
+        val ready = Script(Home, Read(DesktopDaemonSetting.ENABLED))
         assertEquals(
             DesktopDiscoveryOutcome.Ready,
             InstalledCoordinator.publishDesktopDiscovery(target(temporary), publisher, DesktopDaemonDiscovery(ready)),
@@ -215,7 +221,7 @@ class DesktopDaemonDiscoveryTest {
             events,
         )
         events.clear()
-        val failed = Script(Read(DesktopDaemonSetting.CONFLICTING))
+        val failed = Script(Home, Read(DesktopDaemonSetting.CONFLICTING))
         assertEquals(
             DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.ENVIRONMENT_CONFLICT),
             InstalledCoordinator.publishDesktopDiscovery(target(temporary), publisher, DesktopDaemonDiscovery(failed)),
@@ -258,6 +264,7 @@ class DesktopDaemonDiscoveryTest {
         val target = target(temporary)
         val script =
             Script(
+                Home,
                 Read(DesktopDaemonSetting.ABSENT),
                 Enable,
                 Read(DesktopDaemonSetting.ENABLED),
@@ -267,7 +274,7 @@ class DesktopDaemonDiscoveryTest {
             )
         val discovery = DesktopDaemonDiscovery(script)
         assertEquals(DesktopDiscoveryOutcome.Ready, discovery.enable(target))
-        val cleanup = DesktopDiscoveryTarget.CleanupOnly(target)
+        val cleanup = DesktopDiscoveryTarget.CleanupOnly(target.owner)
         assertEquals(DesktopDiscoveryOutcome.Ready, discovery.enable(cleanup))
         assertFalse(Files.exists(record(target)))
         assertEquals(DesktopDiscoveryOutcome.Ready, discovery.enable(cleanup))
@@ -275,21 +282,27 @@ class DesktopDaemonDiscoveryTest {
         script.exhausted()
     }
 
-    private fun target(temporary: Path): DesktopDiscoveryTarget.Managed {
+    private fun target(temporary: Path): DesktopDiscoveryTarget.Publish {
         val directory = temporary.toRealPath()
         Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
-        return DesktopDiscoveryTarget.Managed(directory, identity('a'))
+        return DesktopDiscoveryTarget.Publish(
+            DesktopDiscoveryOwner(directory, identity('a')),
+            CodexControlSocketPath.from(directory.resolve(".codex")),
+            CodexControlSocketPath.from(directory.resolve(".codex")),
+        )
     }
 
     private fun identity(digit: Char): BrokerServiceIdentity =
         checkNotNull(BrokerServiceIdentity.admit("sha256:" + digit.toString().repeat(64)))
 
-    private fun record(target: DesktopDiscoveryTarget.Managed): Path =
-        target.directory.resolve("desktop-discovery/ownership.json")
+    private fun record(target: DesktopDiscoveryTarget.Publish): Path =
+        target.owner.directory.resolve("desktop-discovery/ownership.json")
 
     private sealed interface Step
 
     private data class Read(val setting: DesktopDaemonSetting) : Step
+
+    private data object Home : Step
 
     private data object Enable : Step
 
@@ -299,6 +312,11 @@ class DesktopDaemonDiscoveryTest {
 
     private class Script(vararg steps: Step) : DesktopDaemonEnvironment {
         private val remaining = ArrayDeque(steps.toList())
+
+        override fun readHome(): DesktopDaemonHomeRead {
+            assertEquals(Home, remaining.removeFirstOrNull(), "Unexpected home observation")
+            return DesktopDaemonHomeRead.Default
+        }
 
         override fun read(): DesktopDaemonEnvironmentRead {
             val next = remaining.removeFirstOrNull()

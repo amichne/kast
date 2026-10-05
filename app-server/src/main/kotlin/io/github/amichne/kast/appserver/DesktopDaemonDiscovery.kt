@@ -3,43 +3,69 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.storage.PrivateRecordFailure
 import io.github.amichne.kast.appserver.storage.PrivateRecordFiles
 import io.github.amichne.kast.kernel.Refinement
-import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 import kotlinx.serialization.Serializable
 
-/** Only a managed canonical service may publish desktop discovery into its GUI launchd domain. */
+/** Only a managed canonical service with matching desktop routing may publish discovery. */
+internal data class DesktopDiscoveryOwner(val directory: Path, val identity: BrokerServiceIdentity)
+
 internal sealed interface DesktopDiscoveryTarget {
     data object NotRequired : DesktopDiscoveryTarget
 
-    data class Managed(val directory: Path, val identity: BrokerServiceIdentity) : DesktopDiscoveryTarget
+    data class Publish(
+        val owner: DesktopDiscoveryOwner,
+        val socket: CodexControlSocketPath,
+        val defaultSocket: CodexControlSocketPath,
+    ) : DesktopDiscoveryTarget
 
-    /** Private managed services may withdraw existing ownership but cannot publish a flag. */
-    data class CleanupOnly(val owner: Managed) : DesktopDiscoveryTarget
+    data class CleanupOnly(val owner: DesktopDiscoveryOwner) : DesktopDiscoveryTarget
 
     companion object {
         fun from(options: InstalledCoordinatorOptions): DesktopDiscoveryTarget =
             when (val readiness = options.readiness) {
                 BrokerServiceReadiness.Standalone -> NotRequired
                 is BrokerServiceReadiness.Managed ->
-                    from(options.publicEndpoint, Managed(options.serviceDirectory, readiness.identity))
+                    from(
+                        options.publicEndpoint,
+                        options.userHome,
+                        DesktopDiscoveryOwner(options.serviceDirectory, readiness.identity),
+                    )
             }
 
         fun from(command: BrokerServiceLaunchCommand): DesktopDiscoveryTarget =
-            from(command.publicEndpoint, Managed(command.stateDirectory, command.identity))
+            from(
+                command.publicEndpoint,
+                command.userHome,
+                DesktopDiscoveryOwner(command.stateDirectory, command.identity),
+            )
 
-        private fun from(endpoint: BrokerPublicEndpoint, owner: Managed): DesktopDiscoveryTarget =
+        private fun from(
+            endpoint: BrokerPublicEndpoint,
+            userHome: Path,
+            owner: DesktopDiscoveryOwner,
+        ): DesktopDiscoveryTarget =
             when (endpoint) {
                 is BrokerPublicEndpoint.Private -> CleanupOnly(owner)
-                is BrokerPublicEndpoint.CodexControl -> owner
+                is BrokerPublicEndpoint.CodexControl ->
+                    Publish(owner, endpoint.socket, CodexControlSocketPath.from(userHome.resolve(".codex")))
             }
     }
 }
 
+internal sealed interface DesktopDaemonHomeRead {
+    data object Default : DesktopDaemonHomeRead
+
+    data class Configured(val socket: CodexControlSocketPath) : DesktopDaemonHomeRead
+
+    data class Rejected(val failure: DesktopDiscoveryFailure) : DesktopDaemonHomeRead
+}
+
 internal enum class DesktopDiscoveryFailure {
     ENVIRONMENT_CONFLICT,
+    HOME_MISMATCH,
+    HOME_REJECTED,
     COMMAND_REJECTED,
     COMMAND_TIMED_OUT,
     INTERRUPTED,
@@ -70,6 +96,8 @@ internal sealed interface DesktopDaemonEnvironmentRead {
 
 /** The entire external capability concerns one fixed flag; arbitrary environment edits are excluded. */
 internal interface DesktopDaemonEnvironment {
+    fun readHome(): DesktopDaemonHomeRead
+
     fun read(): DesktopDaemonEnvironmentRead
 
     fun enable(): DesktopDiscoveryOutcome
@@ -123,33 +151,40 @@ internal class DesktopDaemonDiscovery(
         when (target) {
             DesktopDiscoveryTarget.NotRequired -> DesktopDiscoveryOutcome.Ready
             is DesktopDiscoveryTarget.CleanupOnly -> release(target.owner)
-            is DesktopDiscoveryTarget.Managed ->
-                withRecord(target) { files, path -> enableManaged(files, path, target) }
+            is DesktopDiscoveryTarget.Publish ->
+                withRecord(target.owner) { files, path -> enableManaged(files, path, target) }
         }
 
     private fun enableManaged(
         files: PrivateRecordFiles<DesktopDiscoveryFailure>,
         path: Path,
-        target: DesktopDiscoveryTarget.Managed,
+        target: DesktopDiscoveryTarget.Publish,
     ): Refinement<Unit, DesktopDiscoveryFailure> {
         val existing = Files.exists(path, NOFOLLOW_LINKS)
-        if (existing) {
-            when (val record = readOwnedRecord(files, path, target)) {
-                is Refinement.Refined -> Unit
-                is Refinement.Rejected -> return record
-            }
+        val retained =
+            if (existing) {
+                when (val record = readOwnedRecord(files, path, target.owner)) {
+                    is Refinement.Refined -> record.value
+                    is Refinement.Rejected -> return record
+                }
+            } else null
+        when (val route = qualifyHome(target)) {
+            DesktopDiscoveryOutcome.Ready -> Unit
+            is DesktopDiscoveryOutcome.Rejected -> return Refinement.Rejected(route.failure)
         }
         val current =
             when (val read = readStartingSetting()) {
                 is Refinement.Refined -> read.value
                 is Refinement.Rejected -> return read
             }
+        if (retained?.previous == PriorDesktopDaemonSetting.ENABLED && current == PriorDesktopDaemonSetting.ABSENT)
+            return Refinement.Rejected(DesktopDiscoveryFailure.ENVIRONMENT_CONFLICT)
         if (!existing)
             files.write(
                 path,
                 DesktopDiscoveryRecord.serializer(),
                 DesktopDiscoveryRecord(
-                    target.identity.value,
+                    target.owner.identity.value,
                     current,
                     DesktopDiscoveryRecordType.DESKTOP_DAEMON_DISCOVERY,
                 ),
@@ -173,22 +208,34 @@ internal class DesktopDaemonDiscovery(
                 }
         }
 
+    private fun qualifyHome(target: DesktopDiscoveryTarget.Publish): DesktopDiscoveryOutcome {
+        val observed =
+            when (val read = environment.readHome()) {
+                DesktopDaemonHomeRead.Default -> target.defaultSocket
+                is DesktopDaemonHomeRead.Configured -> read.socket
+                is DesktopDaemonHomeRead.Rejected -> return DesktopDiscoveryOutcome.Rejected(read.failure)
+            }
+        return if (observed.path == target.socket.path) DesktopDiscoveryOutcome.Ready
+        else DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.HOME_MISMATCH)
+    }
+
     fun release(target: DesktopDiscoveryTarget): DesktopDiscoveryOutcome =
         when (target) {
             DesktopDiscoveryTarget.NotRequired -> DesktopDiscoveryOutcome.Ready
             is DesktopDiscoveryTarget.CleanupOnly -> release(target.owner)
-            is DesktopDiscoveryTarget.Managed -> {
-                val path = target.directory.resolve(RECORD_DIRECTORY).resolve(RECORD_NAME)
-                // An older installation owns no flag. Do not create state or query launchd on its teardown.
-                if (Files.notExists(path, NOFOLLOW_LINKS)) DesktopDiscoveryOutcome.Ready
-                else withRecord(target) { files, recordPath -> releaseManaged(files, recordPath, target) }
-            }
+            is DesktopDiscoveryTarget.Publish -> release(target.owner)
         }
+
+    fun release(owner: DesktopDiscoveryOwner): DesktopDiscoveryOutcome {
+        val path = owner.directory.resolve(RECORD_DIRECTORY).resolve(RECORD_NAME)
+        if (Files.notExists(path, NOFOLLOW_LINKS)) return DesktopDiscoveryOutcome.Ready
+        return withRecord(owner) { files, recordPath -> releaseManaged(files, recordPath, owner) }
+    }
 
     private fun releaseManaged(
         files: PrivateRecordFiles<DesktopDiscoveryFailure>,
         path: Path,
-        target: DesktopDiscoveryTarget.Managed,
+        target: DesktopDiscoveryOwner,
     ): Refinement<Unit, DesktopDiscoveryFailure> {
         val record =
             when (val read = readOwnedRecord(files, path, target)) {
@@ -208,7 +255,7 @@ internal class DesktopDaemonDiscovery(
     private fun readOwnedRecord(
         files: PrivateRecordFiles<DesktopDiscoveryFailure>,
         path: Path,
-        target: DesktopDiscoveryTarget.Managed,
+        target: DesktopDiscoveryOwner,
     ): Refinement<DesktopDiscoveryOwnership, DesktopDiscoveryFailure> {
         val record = files.read(path, DesktopDiscoveryRecord.serializer(), MAXIMUM_RECORD_BYTES)
         return DesktopDiscoveryOwnership.admit(record, target.identity)
@@ -242,7 +289,7 @@ internal class DesktopDaemonDiscovery(
     }
 
     private fun withRecord(
-        target: DesktopDiscoveryTarget.Managed,
+        target: DesktopDiscoveryOwner,
         action: (PrivateRecordFiles<DesktopDiscoveryFailure>, Path) -> Refinement<Unit, DesktopDiscoveryFailure>,
     ): DesktopDiscoveryOutcome {
         val files =
@@ -267,71 +314,5 @@ internal class DesktopDaemonDiscovery(
         private const val RECORD_DIRECTORY = "desktop-discovery"
         private const val RECORD_NAME = "ownership.json"
         private const val MAXIMUM_RECORD_BYTES = 512
-    }
-}
-
-/** Called by the existing GUI-domain service; this does not launch or modify ChatGPT. */
-internal object LaunchdDesktopDaemonEnvironment : DesktopDaemonEnvironment {
-    override fun read(): DesktopDaemonEnvironmentRead =
-        when (val result = run("getenv")) {
-            is CommandResult.Rejected -> DesktopDaemonEnvironmentRead.Rejected(result.failure)
-            is CommandResult.Completed -> interpretRead(result.exitCode, result.output)
-        }
-
-    internal fun interpretRead(exitCode: Int, output: String): DesktopDaemonEnvironmentRead =
-        when {
-            exitCode != 0 -> DesktopDaemonEnvironmentRead.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED)
-            output.isEmpty() -> DesktopDaemonEnvironmentRead.Observed(DesktopDaemonSetting.ABSENT)
-            output == "1\n" -> DesktopDaemonEnvironmentRead.Observed(DesktopDaemonSetting.ENABLED)
-            else -> DesktopDaemonEnvironmentRead.Observed(DesktopDaemonSetting.CONFLICTING)
-        }
-
-    override fun enable(): DesktopDiscoveryOutcome = mutation("setenv", "1")
-
-    override fun remove(): DesktopDiscoveryOutcome = mutation("unsetenv")
-
-    private fun mutation(operation: String, vararg values: String): DesktopDiscoveryOutcome =
-        when (val result = run(operation, *values)) {
-            is CommandResult.Rejected -> DesktopDiscoveryOutcome.Rejected(result.failure)
-            is CommandResult.Completed ->
-                if (result.exitCode == 0 && result.output.isEmpty()) DesktopDiscoveryOutcome.Ready
-                else DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED)
-        }
-
-    private fun run(operation: String, vararg values: String): CommandResult {
-        val process =
-            try {
-                ProcessBuilder(listOf("/bin/launchctl", operation, "CODEX_APP_SERVER_USE_LOCAL_DAEMON") + values)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start()
-            } catch (_: IOException) {
-                return CommandResult.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED)
-            } catch (_: SecurityException) {
-                return CommandResult.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED)
-            }
-        return try {
-            if (!process.waitFor(BrokerOperationalLimits.desktopInspection.value, TimeUnit.MILLISECONDS))
-                CommandResult.Rejected(DesktopDiscoveryFailure.COMMAND_TIMED_OUT)
-            else {
-                val bytes =
-                    process.inputStream.use { it.readNBytes(BrokerOperationalLimits.maximumDesktopInspectionBytes + 1) }
-                if (bytes.size > BrokerOperationalLimits.maximumDesktopInspectionBytes)
-                    CommandResult.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED)
-                else CommandResult.Completed(process.exitValue(), bytes.toString(Charsets.UTF_8))
-            }
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-            CommandResult.Rejected(DesktopDiscoveryFailure.INTERRUPTED)
-        } catch (_: IOException) {
-            CommandResult.Rejected(DesktopDiscoveryFailure.COMMAND_REJECTED)
-        } finally {
-            if (process.isAlive) process.destroyForcibly()
-        }
-    }
-
-    private sealed interface CommandResult {
-        data class Completed(val exitCode: Int, val output: String) : CommandResult
-
-        data class Rejected(val failure: DesktopDiscoveryFailure) : CommandResult
     }
 }

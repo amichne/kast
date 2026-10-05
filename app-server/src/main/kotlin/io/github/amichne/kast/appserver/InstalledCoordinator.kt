@@ -281,7 +281,7 @@ private constructor(
                     return InstalledCoordinatorStart.Rejected(BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED)
                 }
             }
-            return publishReadiness(server, readiness, activity)
+            return publishReadiness(server, readiness, activity, DesktopDiscoveryTarget.from(options), desktopDiscovery)
         }
 
         internal fun publishDesktopDiscovery(
@@ -322,18 +322,17 @@ private constructor(
             server: KtorBrokerServer,
             readiness: OwnedBrokerServiceReadiness?,
             activity: BrokerStartupActivityPublisher,
-        ): InstalledCoordinatorStart {
-            val stage = BrokerStartupStage.READINESS_PUBLICATION
-            activity.started(stage)
-            if (readiness?.ready() == BrokerReadinessTransition.Rejected) {
-                server.close()
-                activity.rejected(stage, BrokerStartupRejection.Coordinator(BrokerServerFailure.READINESS_REJECTED))
-                readiness.reject(BrokerServerFailure.READINESS_REJECTED)
-                return InstalledCoordinatorStart.Rejected(BrokerServerFailure.READINESS_REJECTED)
+            target: DesktopDiscoveryTarget,
+            discovery: DesktopDaemonDiscovery,
+        ): InstalledCoordinatorStart =
+            when (val outcome = CoordinatorReadinessPublisher.publish(readiness, target, discovery, activity)) {
+                CoordinatorReadinessPublication.Ready ->
+                    InstalledCoordinatorStart.Started(InstalledCoordinator(server, readiness))
+                is CoordinatorReadinessPublication.Rejected -> {
+                    server.close()
+                    InstalledCoordinatorStart.Rejected(outcome.failure)
+                }
             }
-            activity.completed(stage)
-            return InstalledCoordinatorStart.Started(InstalledCoordinator(server, readiness))
-        }
     }
 }
 
