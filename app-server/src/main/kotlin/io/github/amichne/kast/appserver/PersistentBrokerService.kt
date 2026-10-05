@@ -13,7 +13,6 @@ import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.nio.file.InvalidPathException
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -316,11 +315,7 @@ private constructor(
                     ?: when (val idea = configuration.selectedIdeHome) {
                         is ConfigurationPathSelection.Selected -> idea.path.resolve("jbr/Contents/Home")
                         ConfigurationPathSelection.OwnerDefault ->
-                            try {
-                                Path.of(environment["JAVA_HOME"] ?: System.getProperty("java.home"))
-                            } catch (_: InvalidPathException) {
-                                return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
-                            }
+                            return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
                     }
             val javaHome =
                 canonicalDirectoryTarget(selectedJavaHome)
@@ -330,6 +325,11 @@ private constructor(
                     javaHome.resolve("bin/java"),
                     BrokerSymbolicLinkPolicy.CANONICAL_TARGET,
                 ) ?: return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
+            val runtime =
+                when (val admitted = BrokerJavaRuntime.admit(javaHome, javaExecutable)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return rejected(admitted.failure)
+                }
             val searchPath = environment["PATH"].orEmpty()
             val codexSelection =
                 if (ownerInputs.containsKey("CODEX_EXECUTABLE")) {
@@ -392,16 +392,16 @@ private constructor(
             val kastDigest = sha256(kast) ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
             val identity =
                 BrokerServiceIdentity.derive(
-                    kastDigest,
-                    host,
-                    kast,
-                    userHome,
-                    javaHome,
-                    javaExecutable,
-                    codexHome,
-                    executableSearchPath,
-                    childEnvironment,
-                    publicEndpoint,
+                    kastDigest = kastDigest,
+                    host = host,
+                    kast = kast,
+                    userHome = userHome,
+                    javaHome = runtime.home,
+                    javaExecutable = runtime.executable,
+                    codexHome = codexHome,
+                    executableSearchPath = executableSearchPath,
+                    childEnvironment = childEnvironment,
+                    publicEndpoint = publicEndpoint,
                 )
             return BrokerServiceLaunchCommandResolution.Resolved(
                 BrokerServiceLaunchCommand(
@@ -409,8 +409,8 @@ private constructor(
                     kast,
                     executableSearchPath,
                     userHome,
-                    javaHome,
-                    javaExecutable,
+                    runtime.home,
+                    runtime.executable,
                     jvmUserHomeOption,
                     codexHome,
                     stateDirectory,

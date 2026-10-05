@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-03 | hash: b6f38faa3135 -->
+<!-- generated: 2026-10-05 | hash: 626bfa30e216 -->
 
 # app-server
 
@@ -8,6 +8,8 @@
 Owns the persistent broker/coordinator, host attachment, existing-IDE invocation routing, and Codex protocol projection.
 
 ## Key Files
+
+- [BrokerJavaRuntime.kt](src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt) - retained canonical Java home/executable and bounded Java 25 compatibility proof for broker launch.
 
 - [DaemonUpgradeGate.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt) - shared session, lazy frontend and management admission; `DaemonUpgradeAdmission` owns pending/sealed/committed transitions.
 
@@ -22,6 +24,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [ExistingIdeDocuments.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt) - strict raw descriptor validation and retained process-owner proof.
 - [ExistingIdeResponseFrame.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt) - existing socket frame/body admission with bounded typed byte evidence.
 - [ExistingIdeResponseEvidence.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt) - private response stage/outcome records; pure decoder causes stay separate from semantic authority.
+- [ExistingIdeStageObservation.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeStageObservation.kt) - opt-in bounded JFR lifecycle and exact-socket exchange stages.
 - [McpWorkspaceOperationClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt) - session-owned preparation of an exact Gradle root for the Codex MCP process.
 - [KastSingleChangeInvocation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt) - one broker call that plans, signs the exact host challenge, applies, and attempts recovery.
 - [WorkspaceRecoverySettlement.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceRecoverySettlement.kt) - typed proof that a cancelled change recovered before the workspace lane settles.

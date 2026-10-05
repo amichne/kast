@@ -492,8 +492,7 @@ internal object InstallationWorkflow {
             |fi
             |control_executable="${'$'}script_dir/$executable"
             |[ -x "${'$'}control_executable" ] || { printf '%s\n' 'kast: installed payload is incomplete' >&2; exit 1; }
-            |export JAVA=${shellQuote(plan.request.javaHome.value.resolve("bin/java").toString())}
-            |export JAVA_HOME=${shellQuote(plan.request.javaHome.value.toString())}
+            |${installationJavaRuntimeEnvironment(plan.request.javaHome)}
             |unset KAST_SESSION_ROOT
             |if [ -e "${'$'}installation_root/.recovery-detached" ]; then
             |  case "${'$'}{1-} ${'$'}{2-}" in
@@ -1033,8 +1032,6 @@ internal fun deleteTree(root: Path) {
         },
     )
 }
-
-private fun shellQuote(value: String): String = "'${value.replace("'", "'\"'\"'")}'"
 
 internal val installationManifestJson = Json {
     encodeDefaults = true

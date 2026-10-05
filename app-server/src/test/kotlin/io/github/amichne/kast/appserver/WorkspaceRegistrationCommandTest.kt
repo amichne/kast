@@ -20,7 +20,7 @@ class WorkspaceRegistrationCommandTest {
             val kast = installedExecutable(installation)
             val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
             val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
-            val environment = mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")
+            val environment = mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private") + selectedBrokerJbr(temporary)
             val command =
                 (BrokerServiceLaunchCommand.resolveCoordinator(kast, home, environment)
                         as BrokerServiceLaunchCommandResolution.Resolved)
@@ -69,7 +69,9 @@ class WorkspaceRegistrationCommandTest {
         val installation = Files.createDirectories(temporary.resolve("installation/bin")).parent.toRealPath()
         val kast = installedExecutable(installation)
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
-        val result = InstalledAppServerManager(kast, home, emptyMap()).execute(AppServerAction.Register, Path.of("."))
+        val result =
+            InstalledAppServerManager(kast, home, mapOf(selectedBrokerJbr(temporary)))
+                .execute(AppServerAction.Register, Path.of("."))
         assertEquals(
             AppServerManagementResult.DaemonRejected(
                 DaemonManagementRejection.Enrollment(EnrollmentFailure.PATH_REJECTED)
@@ -94,7 +96,9 @@ class WorkspaceRegistrationCommandTest {
         Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
         val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
-        val result = InstalledAppServerManager(kast, home, emptyMap()).execute(AppServerAction.Register, workspace)
+        val result =
+            InstalledAppServerManager(kast, home, mapOf(selectedBrokerJbr(temporary)))
+                .execute(AppServerAction.Register, workspace)
         assertTrue(result is AppServerManagementResult.DaemonRejected, result.toString())
         assertEquals(
             DaemonManagementRejection.Coordinator(WorkerControlFailure.IDENTITY_REJECTED),

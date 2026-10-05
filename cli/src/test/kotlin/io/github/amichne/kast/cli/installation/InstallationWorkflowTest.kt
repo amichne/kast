@@ -369,6 +369,7 @@ private fun writeIdeaFixture(fixture: Path): Pair<Path, Path> {
     Files.createDirectories(idea.resolve("Resources"))
     Files.createDirectories(idea.resolve("plugins/Kotlin"))
     val javaHome = Files.createDirectories(idea.resolve("jbr/Contents/Home"))
+    Files.writeString(javaHome.resolve("release"), "JAVA_VERSION=\"25.0.1\"\n")
     val java = Files.createDirectories(javaHome.resolve("bin")).resolve("java")
     if (!Files.exists(java)) {
         Files.writeString(java, "#!/bin/sh\nexit 0\n")

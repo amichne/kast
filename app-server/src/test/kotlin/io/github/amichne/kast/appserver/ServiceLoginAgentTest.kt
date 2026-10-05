@@ -64,7 +64,8 @@ class ServiceLoginAgentTest {
         return (BrokerServiceLaunchCommand.resolveCoordinator(
                 kast,
                 home,
-                mapOf("PATH" to emptyBin.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
+                mapOf("PATH" to emptyBin.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private") +
+                    selectedBrokerJbr(temporary),
             ) as BrokerServiceLaunchCommandResolution.Resolved)
             .command
     }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6be23344ef618a79bc447d092770dd11e2b9a5a8adec3c0f653d520666f2609b",
+  "pageVersion": "sha256:f6d68838587eea5c3bb9748f5dc25cbb31558684f4b69fc20527e1ccc1732c5d",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -104,7 +104,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:95091e11c7945f7f8e89c0d82568b1fa0bbd96c08b4946aa82478c28481f013d"
+          "version": "repo-file-v1:sha256:7d5d580a5875381a9e76389d9232beb5baee3699a164cfa5b121e181042eb266"
         }
       ]
     },
@@ -114,7 +114,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:95091e11c7945f7f8e89c0d82568b1fa0bbd96c08b4946aa82478c28481f013d"
+          "version": "repo-file-v1:sha256:7d5d580a5875381a9e76389d9232beb5baee3699a164cfa5b121e181042eb266"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
@@ -149,7 +149,7 @@
       "statement": "The existing installation and reset effect owners reject symlinked ancestors before directory creation or root detachment; public executable publication separately rejects aliased destination parents before writing.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L950-L968",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L949-L967",
           "version": "repo-lines-v1:sha256:5fb91fbe67679114dbc2cc07a1ee59663734a36dfdd618581ceb11c3be3fc11f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODMzMTE3ODE4OTMzYWMxNTA4MThkZjMxZTQ3ZWZjYmE2ZGE2ZjNjMDNkYmIzOTExZmQ2NmYzYjYxZTk0OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMTRmYTBlZjIyMmY5OGZhZDg4ODAxMDcwOWE0NzgxOGVjMTVmMTVmNDkxMjFiZGI1NzI1OWI0YzBkNjNiNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzOTJmZTM3MTljNzFiNzdkZGU2YzAzMDFmYTNlYmNiNTVjYjNlZTExYzBhNWEyY2E3NTc1ZWUxNzkzMTQ5OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMjBmYzYxMTc3N2M4OWRkYjlmZmJhMDE5ODk1YmI3NzVjMmVhMTg4ZmJkNzhmYjUwYzFjOGZiNThlMzFjNjYifQ"
         },
         {
@@ -247,8 +247,8 @@
           "version": "repo-lines-v1:sha256:6be3d9ba98a1d559ddc67c5bfae38c81d8d2dcf712b530b31af6c2e81b61d766:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMjY4YzllYTNlNjJhYzY4ZmRjNjViNWU1MTE5NDFlNmMxNGIwZTM0MDlhMDNiNjAwNjAxZjM0MDcxNWUxZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0Y2RlMWJhYTU3YTc1MTI0OGRjYjZiOGM4OGE2MTY4YjhhZTFjMmU0ODUzOWNlM2U2OTg1NDc3NzMxNGJiODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWVjMzQwMTg3MDQyMTU2NGI1OWJkOTBjZjRhNTY4OGI4ZmM3YjYzZmE2NWFkODA2Y2NjMjE4NmVhODc5NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNzY0MzNiMzA3MTNmMDRkYjI3YjM1NTMxMTI3MGI4NDc5YWYxYjg4NWY4YmU0YTkzMmQxNTc3ZDI4OWZiYzYifQ"
         },
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L224-L229",
-          "version": "repo-lines-v1:sha256:89fd2f8d287854473a04b092919047c5ce3105760b33a0170720d4e60ded1aa7:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjExODZjYmQwZjJlMWU3MmFjMGNiN2IwMGY4MmJjOGMxOTQ4N2JiNGJmODFmYWQzMmEyNDFkNDcxNzY3MGUxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjFjODFmYTljNDEyMDM1MjhlMGE4N2ZjZTMzYjViODllYzRkYjExMWYxNDMwMGQ0NGM2NGY0MmM2OGEyMDUyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTU0MTJjNzQ5NGUwODFiZDNkODg3ZDM1ZTllMTc3MmNhMWZlYWE1ZmFkZDYxNzgxZjkwNDA5YTUzMmRmYmEyOCJ9"
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L224-L233",
+          "version": "repo-lines-v1:sha256:d811038e2cba936aa0ecce9441c55f0d5f33324348177499340e667efd462fcd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMTg2Y2JkMGYyZTFlNzJhYzBjYjdiMDBmODJiYzhjMTk0ODdiYjRiZjgxZmFkMzJhMjQxZDQ3MTc2NzBlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxYzgxZmE5YzQxMjAzNTI4ZTBhODdmY2UzM2I1Yjg5ZWM0ZGIxMTFmMTQzMDBkNDRjNjRmNDJjNjhhMjA1MmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1NDEyYzc0OTRlMDgxYmQzZDg4N2QzNWU5ZTE3NzJjYTFmZWFhNWZhZGQ2MTc4MWY5MDQwOWE1MzJkZmJhMjgifQ"
         }
       ]
     },
@@ -277,10 +277,24 @@
           "version": "repo-lines-v1:sha256:6a32dcf5347bc25e747fba0380d53804b1f51c13b332c37f45842e44925a8185:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2NzgzZWU1MjlkNzc5YmUwNmRmOGJjMzQ4MjFiYTkzODI1MzRlYzliY2Q1YmJjMGMwYmQzNTFjZjMyNGUzNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MjIyODkzYzlmNTU4ODg0OTNmNDlhMzFiNmRlNTU0NTgyYTk3NTU2NmJjN2E0ZjY4NmVlOWIxZDZhNjVjYWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAzNjk5MWJhMGJkZmY5MjhjOTA2OTIwZDAzY2FhOWNjMGQxN2FhOTM4NWIxNGNjYWNiZDE5OWJiODgyZDAzODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5YzZmNzVhZTdmMTFhNTgwNjNlN2JmODdiMDNkNGY3NzE4NDdmODg0Y2JhOGM1NzYyOTMzNTZkNDkwYzZiYjcifQ"
         }
       ]
+    },
+    {
+      "id": "claim_fc2e6da4c90e48b38aef801aa45c09fd",
+      "statement": "Checkout installation requires the selected IDEA bundled executable JBR with Java 25 or newer before Gradle or staging and scopes its runtime to child processes; installed launchers retain and recheck that runtime without an ambient Java fallback. Both require exactly one fully quoted JAVA_VERSION declaration and reject duplicates and incomplete declarations before execution, including a valid declaration beside a malformed duplicate.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt#L3-L27",
+          "version": "repo-lines-v1:sha256:7b8fc97d7b46afba6e4fd3e86884c06ba0e3db885bb552d3ea7961e55dd28f7b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0NDIxZmE3NDg4OGY2MmViOWM1NjhlYWRjNmYwMTBjZGIxZmE5MmVjNTA5NzVjMjE4MzI3ODlkYTgzNzVhMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1NTY5NjJlYzY1YmI1NzJjNGJjY2VkNWQzMzVjODI0YWYzNjZjOWVkNWMyZjE1ZTdkNzQwZmM3NjJkZTk0NWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packaging/install-checkout.sh#L41-L61",
+          "version": "repo-lines-v1:sha256:4d776884372669a52a70e958b3d78c4f8478612446d82e3ba4071243cb74edf6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyOGNiZDIxNzcxYTc0ODAwZGU2NmY2MzMxYThiNWY1YTc3OTY3OTJkMDQyMWQ1N2ZiMjBjYjA4NjI2YzBmMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNmRjNGQxNTAzNGY0YzRiM2RhOTk5MGVkOTdlMTM0ZmJiODExMzJmNWM0Njk0ZWI4M2Q1ZDlkNzFmMjJkZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmZjk4ZDcyZDlmZjllNTYzZGQ1Y2UyNjExMGFiOWZkNzFkOGRiZTQ1YzJkNGVlZWZiY2E3NDY3Yzg1Zjg3YzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmYWVkYWZhZDNjOTgzYWY0ZDJmYThjMmNjYjAwYjI2ODkxOTE4OWNjNjBiMDI2ODcwMTM3ZmI0OTRiYzA0NjYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T13:22:01.032Z"
+    "at": "2026-10-05T20:36:23.129Z"
   }
 }

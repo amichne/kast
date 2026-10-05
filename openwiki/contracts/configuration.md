@@ -16,6 +16,7 @@ code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationValidation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerOperationalLimits.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastSchemaOutputBudgetTest.kt
@@ -47,7 +48,7 @@ code_sources:
   - path: build.gradle.kts
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T13:22:01.032Z
+    at: 2026-10-05T20:36:23.129Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
@@ -55,6 +56,8 @@ sources:
     resource: repo://build.gradle.kts
   - id: openwiki-source-b5958cf441728188e2493589
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
+  - id: openwiki-source-82001d1847d4403e8e24787a
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
   - id: openwiki-source-211f90f77f217ad3273b0d4f
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
@@ -75,7 +78,7 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-10-02T12:55:44.549Z" }
+generated: { by: "codex", at: "2026-10-05T20:36:23.129Z" }
 ---
 
 # Installation configuration
@@ -185,3 +188,5 @@ and `KAST_LOCAL_JAVA_HOME` are removed from the catalogue and reject as
 `UNKNOWN_KEY` through every configuration source. `installLocal` supplies
 neither input. The assembled-product acceptance runner retains its separate
 `KAST_ACCEPTANCE_JAVA_EXECUTABLE` binding.
+
+The checkout installer admits the selected IDEA bundled JBR with executable and Java release feature >=25 before Gradle, setting Java only for its own children. Installed launchers recheck their recorded selected JBR before child startup. Both require exactly one `JAVA_VERSION` declaration with a fully quoted numeric feature; duplicate declarations, missing quotes and trailing text reject before execution, including a valid declaration beside a malformed duplicate. Missing or incompatible runtime rejects with repair guidance. Ambient Java does not select either runtime.

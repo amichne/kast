@@ -196,7 +196,7 @@ class PersistentBrokerDiscoveryTransitionTest {
                     BrokerServiceLaunchCommand.resolveCoordinator(
                         kast,
                         home,
-                        mapOf("PATH" to tools.toString()) + overrides,
+                        mapOf("PATH" to tools.toString()) + selectedBrokerJbr(home) + overrides,
                     )
             ) {
                 is BrokerServiceLaunchCommandResolution.Resolved -> result.command

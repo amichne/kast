@@ -31,7 +31,7 @@ class CoordinatorStatusCapacityTest {
             val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
             Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
             val command =
-                (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, emptyMap())
+                (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, mapOf(selectedBrokerJbr(root)))
                         as BrokerServiceLaunchCommandResolution.Resolved)
                     .command
             val owner = (BrokerInstallationState.admit(root) as Refinement.Refined).value

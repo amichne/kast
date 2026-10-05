@@ -112,7 +112,8 @@ class PersistentBrokerRecoveryTest {
         executable(tools.resolve("codex"))
         val home = Files.createDirectories(temporary.resolve("home")).toRealPath()
         val environment =
-            mapOf("PATH" to tools.toString(), "KAST_RUNTIME_DIRECTORY" to home.resolve("runtime").toString())
+            mapOf("PATH" to tools.toString(), "KAST_RUNTIME_DIRECTORY" to home.resolve("runtime").toString()) +
+                selectedBrokerJbr(temporary)
         return when (val resolution = BrokerServiceLaunchCommand.resolve(kast, home, environment)) {
             is BrokerServiceLaunchCommandResolution.Resolved -> resolution.command
             is BrokerServiceLaunchCommandResolution.Rejected -> throw AssertionError(resolution.failure)

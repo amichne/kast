@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-03 | hash: 163a8b30c3c8 -->
+<!-- generated: 2026-10-05 | hash: 7ccf277f0a6a -->
 
 # packaging
 
@@ -12,7 +12,7 @@ qualification requires separate runtime evidence.
 
 ## Key Files
 
-- [install-checkout.sh](install-checkout.sh) and [install-local.sh](install-local.sh) - checkout and staged-product adapters for the sole persistent installation.
+- [install-checkout.sh](install-checkout.sh) and [install-local.sh](install-local.sh) - checkout and staged-product adapters for the sole persistent installation; checkout selects and admits the IDEA JBR before Gradle.
 - [installation-lifecycle.py](installation-lifecycle.py) - selected installation removal and prior retirement when the normal runtime is unavailable.
 - [installation-recovery.py](installation-recovery.py) - Control-only recovery and upgrade sealing, with explicit historical paired-receipt maintenance.
 - [host-installation.py](host-installation.py) and [test-host-installation.py](test-host-installation.py) - independent Host plugin installation and effect-ownership proof.

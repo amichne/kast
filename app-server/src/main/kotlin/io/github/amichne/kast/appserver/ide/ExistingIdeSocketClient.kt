@@ -97,7 +97,12 @@ internal constructor(
                         .joinToString("") { "%02x".format(it) }
                 val directory = home.resolve(".kast/ide-hosted/$digest")
                 val socket = directory.resolve("host.sock")
-                when (val descriptor = descriptor(directory, root, socket)) {
+                when (
+                    val descriptor =
+                        observeExistingIdeStage(ExistingIdeStage.DESCRIPTOR_ADMISSION) {
+                            descriptor(directory, root, socket)
+                        }
+                ) {
                     is Refinement.Refined -> exchange(target, operation, descriptor.value, socket)
                     is Refinement.Rejected -> ExistingIdeExchange.Rejected(descriptor.failure)
                 }
@@ -126,22 +131,40 @@ internal constructor(
                 Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS).fileKey()
                     ?: return ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
             )
-        val described = exchange(target.root, ExistingIdeOperation.Status, descriptor, socket, incarnation)
+        val described =
+            observeExistingIdeStage(ExistingIdeStage.STATUS_EXCHANGE) {
+                exchange(target.root, ExistingIdeOperation.Status, descriptor, socket, incarnation)
+            }
         if (described !is ExistingIdeExchange.Received) return described
+        when (val admitted = admitCompatibility(target.root, descriptor, described)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return ExistingIdeExchange.Rejected(admitted.failure)
+        }
+        return if (operation == ExistingIdeOperation.Status) described
+        else
+            observeExistingIdeStage(ExistingIdeStage.OPERATION_EXCHANGE) {
+                exchange(target.root, operation, descriptor, socket, incarnation)
+            }
+    }
+
+    private fun admitCompatibility(
+        root: CanonicalRoot,
+        descriptor: ExistingIdeDescriptor,
+        described: ExistingIdeExchange.Received,
+    ): Refinement<Unit, ExistingIdeFailure> {
         val metadata =
             when (val parsed = ExistingIdeDocuments.compatibility(described.document.value)) {
                 is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return ExistingIdeExchange.Rejected(parsed.failure)
+                is Refinement.Rejected -> return parsed
             }
         val policy =
             when (val defined = requiredHostedPolicy()) {
                 is Refinement.Refined -> defined.value
-                is Refinement.Rejected -> return ExistingIdeExchange.Rejected(defined.failure)
+                is Refinement.Rejected -> return defined
             }
         when (val admission = policy.admit(metadata)) {
             is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission.Admitted ->
-                observations[target.root] =
-                    HostedServiceObservation.Compatible(target.root, descriptor, admission.compatibility)
+                observations[root] = HostedServiceObservation.Compatible(root, descriptor, admission.compatibility)
             is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission.Rejected -> {
                 val version =
                     when (
@@ -151,21 +174,19 @@ internal constructor(
                             )
                     ) {
                         is Refinement.Refined -> parsed.value
-                        is Refinement.Rejected ->
-                            return ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+                        is Refinement.Rejected -> return Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
                     }
-                observations[target.root] =
+                observations[root] =
                     HostedServiceObservation.Incompatible(
-                        target.root,
+                        root,
                         descriptor,
                         admission.failure,
                         io.github.amichne.kast.protocol.contract.HostProvenance(version),
                     )
-                return ExistingIdeExchange.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED)
+                return Refinement.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED)
             }
         }
-        return if (operation == ExistingIdeOperation.Status) described
-        else exchange(target.root, operation, descriptor, socket, incarnation)
+        return Refinement.Refined(Unit)
     }
 
     private fun descriptor(

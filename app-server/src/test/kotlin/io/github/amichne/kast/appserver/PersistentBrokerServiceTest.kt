@@ -26,7 +26,7 @@ class PersistentBrokerServiceTest {
             BrokerServiceLaunchCommand.resolveCoordinator(
                 fixture.kast,
                 fixture.userHome,
-                mapOf("PATH" to "/usr/bin:/bin"),
+                mapOf("PATH" to "/usr/bin:/bin") + selectedBrokerJbr(temporary),
             )
         assertTrue(result is BrokerServiceLaunchCommandResolution.Resolved, result.toString())
         assertFalse(Files.exists(fixture.kast.parent.parent.resolve("state")))
@@ -246,7 +246,7 @@ class PersistentBrokerServiceTest {
             BrokerServiceLaunchCommand.resolve(
                 fixture.kast,
                 fixture.userHome,
-                mapOf("PATH" to links.toString()),
+                mapOf("PATH" to links.toString()) + selectedBrokerJbr(temporary),
             ) as BrokerServiceLaunchCommandResolution.Resolved
 
         assertEquals(
@@ -272,13 +272,13 @@ class PersistentBrokerServiceTest {
             BrokerServiceLaunchCommand.resolve(
                 fixture.kast,
                 fixture.userHome,
-                mapOf("PATH" to firstLinks.toString()),
+                mapOf("PATH" to firstLinks.toString()) + selectedBrokerJbr(temporary),
             ) as BrokerServiceLaunchCommandResolution.Resolved
         val second =
             BrokerServiceLaunchCommand.resolve(
                 fixture.kast,
                 fixture.userHome,
-                mapOf("PATH" to secondLinks.toString()),
+                mapOf("PATH" to secondLinks.toString()) + selectedBrokerJbr(temporary),
             ) as BrokerServiceLaunchCommandResolution.Resolved
 
         assertNotEquals(first.command.identity, second.command.identity)
@@ -723,7 +723,7 @@ class PersistentBrokerServiceTest {
                 "PATH" to tools.toString(),
                 "KAST_RUNTIME_DIRECTORY" to userHome.resolve("runtime").toString(),
                 "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
-            ),
+            ) + selectedBrokerJbr(temporary),
         )
     }
 

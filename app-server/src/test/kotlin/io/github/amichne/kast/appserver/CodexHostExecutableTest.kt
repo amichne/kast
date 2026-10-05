@@ -56,7 +56,7 @@ class CodexHostExecutableTest {
                     "PATH" to "/usr/bin:/bin",
                     "CODEX_CLI_PATH" to facade.toString(),
                     "CODEX_EXECUTABLE" to upstream.toString(),
-                ),
+                ) + selectedBrokerJbr(temporary),
             )
 
         val command =
@@ -85,7 +85,7 @@ class CodexHostExecutableTest {
                     "PATH" to "/usr/bin:/bin",
                     "CODEX_CLI_PATH" to configuredFacade.toString(),
                     "CODEX_EXECUTABLE" to installedFacade.toString(),
-                ),
+                ) + selectedBrokerJbr(temporary),
             ),
         )
     }
