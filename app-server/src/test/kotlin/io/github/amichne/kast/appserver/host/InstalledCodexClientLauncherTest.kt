@@ -207,7 +207,7 @@ class InstalledCodexClientLauncherTest {
             )
         assertEquals(upstream, request.upstream.path)
         assertEquals(serviceHost.command.publicSocket, request.publicSocket)
-        assertEquals("c.sock", request.publicSocket.fileName.toString())
+        assertEquals(home.resolve(".codex/app-server-control/app-server-control.sock"), request.publicSocket)
         assertEquals(home.resolve(".codex"), request.codexHome)
         assertEquals(Path.of(System.getProperty("user.dir")).toRealPath(), request.workingDirectory.path)
         assertEquals(request.publicSocket, serviceHost.command.publicSocket)

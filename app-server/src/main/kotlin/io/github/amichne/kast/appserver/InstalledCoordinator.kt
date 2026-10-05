@@ -141,7 +141,10 @@ private constructor(
     }
 
     companion object {
-        suspend fun start(options: InstalledCoordinatorOptions): InstalledCoordinatorStart {
+        suspend fun start(
+            options: InstalledCoordinatorOptions,
+            desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
+        ): InstalledCoordinatorStart {
             val activity = BrokerStartupActivityPublisher(options.activitySink)
             var stage = BrokerStartupStage.READINESS_ACQUISITION
             activity.started(stage)
@@ -251,12 +254,53 @@ private constructor(
                     }
                 }
             activity.completed(stage)
-            stage = BrokerStartupStage.NATIVE_PROTOCOL
+            return completeStartup(options, server, readiness, activity, desktopDiscovery)
+        }
+
+        private suspend fun completeStartup(
+            options: InstalledCoordinatorOptions,
+            server: KtorBrokerServer,
+            readiness: OwnedBrokerServiceReadiness?,
+            activity: BrokerStartupActivityPublisher,
+            desktopDiscovery: DesktopDaemonDiscovery,
+        ): InstalledCoordinatorStart {
             if (provePublicReadiness(options, activity) == PublicReadinessGate.REJECTED) {
                 server.close()
-                return reject(BrokerServerFailure.NATIVE_PROTOCOL_REJECTED)
+                activity.rejected(
+                    BrokerStartupStage.NATIVE_PROTOCOL,
+                    BrokerStartupRejection.Coordinator(BrokerServerFailure.NATIVE_PROTOCOL_REJECTED),
+                )
+                readiness?.reject(BrokerServerFailure.NATIVE_PROTOCOL_REJECTED)
+                return InstalledCoordinatorStart.Rejected(BrokerServerFailure.NATIVE_PROTOCOL_REJECTED)
+            }
+            when (publishDesktopDiscovery(DesktopDiscoveryTarget.from(options), activity, desktopDiscovery)) {
+                DesktopDiscoveryOutcome.Ready -> Unit
+                is DesktopDiscoveryOutcome.Rejected -> {
+                    server.close()
+                    readiness?.reject(BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED)
+                    return InstalledCoordinatorStart.Rejected(BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED)
+                }
             }
             return publishReadiness(server, readiness, activity)
+        }
+
+        internal fun publishDesktopDiscovery(
+            target: DesktopDiscoveryTarget,
+            activity: BrokerStartupActivityPublisher,
+            discovery: DesktopDaemonDiscovery,
+        ): DesktopDiscoveryOutcome {
+            if (target == DesktopDiscoveryTarget.NotRequired) return DesktopDiscoveryOutcome.Ready
+            activity.started(BrokerStartupStage.DESKTOP_DISCOVERY)
+            return discovery.enable(target).also { outcome ->
+                when (outcome) {
+                    DesktopDiscoveryOutcome.Ready -> activity.completed(BrokerStartupStage.DESKTOP_DISCOVERY)
+                    is DesktopDiscoveryOutcome.Rejected ->
+                        activity.rejected(
+                            BrokerStartupStage.DESKTOP_DISCOVERY,
+                            BrokerStartupRejection.DesktopDiscovery(outcome.failure),
+                        )
+                }
+            }
         }
 
         private suspend fun provePublicReadiness(

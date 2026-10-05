@@ -33,7 +33,11 @@ icon: "plug"
     </Accordion>
 
     <Accordion title="App Server transport">
-      Use this path with a client that runs Kast’s App Server launcher:
+      New persistent installations publish Kast's broker at the standard Codex control socket. Ordinary managed `codex` invocations can discover it automatically. The existing macOS service also publishes the desktop daemon-selection flag, so compatible desktop builds can use the broker on a normal fresh launch. Quit and reopen an already running desktop app after installation.
+
+      No desktop launch wrapper, app bundle edit or signing change is involved. An existing saved `private` endpoint stays explicit, and client overrides can bypass discovery. Desktop UI tool exposure needs qualification against the installed client version; see the [App Server compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
+
+      The owned launcher remains available for an explicit attachment:
 
       ```shell
       kast connect codex app-server
@@ -41,9 +45,7 @@ icon: "plug"
       kast-codex
       ```
 
-      This installs an owned launcher at `~/.local/bin/kast-codex`. It attaches the client to Kast's persistent broker and existing IDEA host. Start a fresh thread to load the dynamic tools.
-
-      The launcher does not redirect an ordinary Codex Desktop session. An App Server client can use `kast-codex app-server` for JSONL stdio. See the [App Server compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
+      This installs `~/.local/bin/kast-codex` and attaches it to Kast's persistent broker and existing IDEA host. Start a fresh thread to load the dynamic tools. An App Server client can use `kast-codex app-server` for JSONL stdio.
     </Accordion>
   </Tab>
   <Tab title="Copilot">

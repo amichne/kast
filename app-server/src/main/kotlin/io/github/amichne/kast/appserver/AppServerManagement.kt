@@ -80,6 +80,7 @@ enum class AppServerManagementFailure {
     DESKTOP_VERSION_UNSUPPORTED,
     DESKTOP_UNAVAILABLE,
     DESKTOP_INSPECTION_REJECTED,
+    DESKTOP_DISCOVERY_REJECTED,
     ENROLLMENT_REJECTED,
     SERVICE_UNAVAILABLE,
     SERVICE_OWNERSHIP_UNPROVEN,
@@ -231,6 +232,11 @@ class InstalledAppServerManager(
                         )
                     }
                     if (action == AppServerAction.Disable) {
+                        when (DesktopDaemonDiscovery().release(DesktopDiscoveryTarget.from(command))) {
+                            DesktopDiscoveryOutcome.Ready -> Unit
+                            is DesktopDiscoveryOutcome.Rejected ->
+                                return reject(AppServerManagementFailure.DESKTOP_DISCOVERY_REJECTED)
+                        }
                         if (ServiceLoginAgent.remove(command) == ServiceLoginAgentChange.REJECTED)
                             return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     }

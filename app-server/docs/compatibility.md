@@ -36,7 +36,7 @@ implementation notes were updated on 2026-09-11 UTC. This record is owned by
 On the current macOS host, a force installation of 0.43.2 retired the prior
 0.42.4 service and enrolled `/Users/amichne/code/konditional`. The installed
 IDEA 262 instance opened that workspace. The canonical endpoint was explicitly
-selected; the installation default remains private to avoid claiming another
+selected; the installation default was private at that release to avoid claiming another
 Codex daemon's socket. The managed upstream was pinned to installed Codex
 0.154.0 because 0.156.0 published a symbolic-link socket alias that Kast could
 not prove belonged to the launched process. The broker now distinguishes this
@@ -76,30 +76,48 @@ The same checkout service was enabled and disabled from an ambient Temurin
 and both controls completed. This is native evidence that caller Java drift no
 longer changes service identity in the checkout build.
 
-## Availability in independently started Codex sessions
+## Default managed-client discovery — 2026-10-04 implementation
 
-`kast connect codex app-server` publishes the owned `kast-codex` launcher for
-the selected installation's `kast-codex-complete` facade. Launching `kast-codex`
-starts a client attached to Kast's private
-broker. Repository registration persists across tasks, but it does not inject
-Kast's broker-owned `dynamicTools` into an independently started Codex thread.
-The canonical Codex control socket can be selected only when Kast proves that
-the endpoint is free or already its own; its use still depends on the stock
-client choosing that daemon. Neither choice establishes tool availability in
-every Desktop session. The current [Codex App Server contract](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md)
-places dynamic tool registration at thread start.
+The default endpoint is now the standard
+`<CODEX_HOME>/app-server-control/app-server-control.sock`. No new socket protocol,
+launcher, app packaging or signing change is required. After native protocol
+readiness, the existing macOS managed service publishes
+`CODEX_APP_SERVER_USE_LOCAL_DAEMON=1` using `launchctl setenv`; its existing login
+job executes the same startup path and restores discovery after login.
 
-The App Server-only route is to select Kast's canonical control endpoint for a
-verified installation and have stock clients connect to that persistent broker.
-Installation must reject an incumbent it cannot prove it owns. An implicit CLI
-launch can fall back to an embedded server when discovery fails, so socket
-publication alone cannot establish tool availability. Desktop builds may choose
-their own stdio App Server; Kast cannot inject thread-start tools into such a
-session. The supported launcher is `kast-codex`, with `kast-codex desktop`
-requiring its separate build-specific UI gate. Broader claims need fresh CLI and
-Desktop sessions, resumed threads, concurrent sessions, absent IDEA,
-unregistered roots, and mutation approval tested against the same installed
-provider. A client that bypasses the broker cannot receive its dynamic tools.
+A private locked ownership record retains the service identity and whether the
+flag was absent or already enabled. Startup rejects a conflicting value before
+mutation. Disablement, the uninstall path's existing disable call, and destructive
+repair remove an owned flag only if it is still `1`; a pre-existing enabled flag
+or a subsequent change is preserved. Unknown ownership and failed read-back proof
+fail closed. Stopping the service retains the record and flag for later startup.
+Explicit `KAST_APP_SERVER_PUBLIC_ENDPOINT=private` remains available and publishes
+no desktop flag. Saved explicit selections are preserved across upgrades.
+
+The implementation targets the daemon-selection behavior inspected in the
+managed Codex CLI 0.160.0 and ChatGPT desktop 26.930.31730. That desktop build's
+local daemon route requires the flag and no overriding CLI executable/command,
+host configuration, force-CLI setting or bundled-Git selection. A normal fresh
+launch inherits the user launchd environment; an existing process needs to be
+quit and reopened. Kast does not relaunch or modify ChatGPT. This internal client
+selection is version-sensitive, rather than an enterprise policy guarantee.
+
+Focused module tests prove default endpoint selection, private-mode isolation,
+publication ownership, repeat/login startup, conflicts, command/read-back failures
+and teardown preservation. A read-only native `launchctl getenv` observation
+confirmed absent-variable decoding on this host. These do not establish fresh
+Desktop UI dynamic-tool discovery or invocation. No new Desktop UI acceptance
+receipt is claimed by this change.
+
+`kast connect codex app-server` and the owned `kast-codex` launcher remain a
+fallback attachment route. Dynamic tools are broker-owned at thread start;
+clients that bypass the broker do not receive them. Implicit CLI discovery can
+fall back to an embedded server. Existing protocol/version, canonical socket
+ownership, workspace enrollment, host readiness and mutation approval gates
+remain in force. Fresh CLI and Desktop sessions, resumed and concurrent sessions,
+absent IDEA, unregistered roots and mutation approval still require installed
+client qualification against the exact release before broader compatibility
+claims.
 
 ## Canonical endpoint migration — 2026-09-15
 

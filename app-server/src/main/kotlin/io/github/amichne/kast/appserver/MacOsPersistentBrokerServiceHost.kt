@@ -305,6 +305,7 @@ internal class MacOsPersistentBrokerServiceHost(
     private val sleeper: BrokerServiceSleeper = ThreadBrokerServiceSleeper,
     private val startupTimeoutNanos: Long = DEFAULT_STARTUP_TIMEOUT_NANOS,
     private val retirementTimeoutNanos: Long = DEFAULT_RETIREMENT_TIMEOUT_NANOS,
+    private val desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
 ) : PersistentBrokerServiceHost {
     internal fun observeLifecycle(command: BrokerServiceLaunchCommand): BrokerLifecycleObservation =
         when (observeService(command.serviceLabel)) {
@@ -508,6 +509,11 @@ internal class MacOsPersistentBrokerServiceHost(
         }
         if (observeService(command.serviceLabel) != BrokerLaunchdServiceObservation.Absent) {
             return rejected(PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED)
+        }
+        when (desktopDiscovery.release(DesktopDiscoveryTarget.from(command))) {
+            DesktopDiscoveryOutcome.Ready -> Unit
+            is DesktopDiscoveryOutcome.Rejected ->
+                return rejected(PersistentBrokerServiceFailure.DESKTOP_DISCOVERY_REJECTED)
         }
         return when {
             admittedTrees.all { it.delete() == ManagedInstallationOwnedTreeDeletion.Deleted } ->

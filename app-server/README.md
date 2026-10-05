@@ -13,8 +13,15 @@ schema qualification retain their existing owners.
 
 ## Enable and attach
 
-Persistent installation enables the service with an installation-private App
-Server endpoint by default. Register each repository or worktree explicitly
+Persistent installation enables the service at the standard Codex control socket,
+`<CODEX_HOME>/app-server-control/app-server-control.sock`, by default. After native
+protocol readiness succeeds, the existing macOS service publishes
+`CODEX_APP_SERVER_USE_LOCAL_DAEMON=1` into its user launchd environment. The existing
+login job republishes it after login. New ordinary managed Codex CLI invocations
+can discover this socket; compatible desktop builds can select it on normal
+launch. ChatGPT's bundle, signature, executable and launch command remain unchanged.
+Set `KAST_APP_SERVER_PUBLIC_ENDPOINT=private` explicitly to retain an
+installation-private endpoint without publishing desktop discovery. Register each repository or worktree explicitly
 before attaching a compatible client:
 
 ```sh
@@ -25,12 +32,27 @@ Registration is handled by the daemon management RPC. The private entry point
 also accepts `enable`, `disable`, `stop`, `repair --destructive`, and
 `enroll-trust`. A rejected registration retains its finite daemon reason.
 
-The broker's coordinator endpoint is installation-owned at `state/run/c.sock`
+The canonical public socket remains installation-owned and is never taken over
+from an unproven incumbent. Explicit private mode instead uses `state/run/c.sock`
 (with an owned short-path transport when needed). The CLI connection command is
 documented in [Install and connect](../docs/public/start.mdx). The real Codex upstream remains
 installation-private at `state/run/u.sock`. An occupied canonical endpoint never
 grants Kast authority to replace an unknown incumbent. Client closure does not
 stop the persistent service.
+
+Discovery ownership is recorded before publication in a private, locked record
+bound to the admitted service identity. Disablement, uninstall and destructive
+repair remove a flag introduced by Kast only while its value is still `1`.
+A pre-existing `1` or a subsequently changed value is preserved. Conflicting
+values, malformed records, foreign identities and failed command/read-back
+proofs reject activation or cleanup with a finite discovery failure. A service
+stop retains discovery for the existing login job; disablement removes it.
+
+Already running desktop processes retain their launch environment. Quit and
+reopen the app after installation to obtain the flag. An already existing
+installation's saved `private` selection remains explicit and is preserved;
+the new default applies when no selection is saved. Client overrides can bypass
+the daemon, and CLI discovery may fall back to its embedded server.
 
 Desktop UI behavior is outside module-test evidence; see the
 [compatibility and blocker record](docs/compatibility.md) for historical
