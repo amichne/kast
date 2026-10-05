@@ -4,62 +4,44 @@ description: "Recover from missing tools, an IDEA readiness blocker, or an incom
 icon: "life-buoy"
 ---
 
-Start with the reported failure and check your installation:
+Start with the reported failure:
 
 ```shell
 kast status
 ```
 
-Look for the installed version, installation path, and recorded connections. Registration alone does not prove that your agent loaded the tools; repeat the [first query](/agent-harnesses#check-that-the-tools-work) after resolving the blocker.
+Inspect the version, installation path, and connections. After recovery, repeat the [first query](/agent-harnesses#check-that-the-tools-work) to verify loaded tools.
 
 ## Choose the symptom
 
-| Symptom | First check |
+| Symptom | Action |
 | --- | --- |
-| No Kast tools | Confirm your [chosen integration](/agent-harnesses), then restart the agent and repeat its first query. |
-| Installer reports no matching plugin | Check the [IDEA build and bundled runtime](/start#before-you-install), then [compatibility](/reference/compatibility). |
-| Project trust, import, or indexing blocker | Resolve the reported IDEA state, then repeat the read. |
+| No Kast tools | Verify the [integration](/agent-harnesses) and restart the agent. |
+| No matching plugin | Verify the [IDEA build and JBR](/start#before-you-install), then [compatibility](/reference/compatibility). |
+| Trust, import, or indexing blocker | Resolve the reported state in the selected IDEA project. Repeat the read. |
 | Wrong workspace | Start the client from the intended Gradle repository or worktree. |
-| Qualified query | Keep returned facts and limitations. Resume if progress is resumable; otherwise follow the reported terminal reason. |
-| Stale `ref` | Search again and use the newly returned reference unchanged. |
-| Uncertain change | Keep the plan and recovery evidence; see [change](/change). |
+| Qualified query | Resume issued work, or preserve facts with the terminal reason. |
+| Stale reference or unavailable state | Search again and pass fresh handles unchanged. |
+| Uncertain write | Inspect source and [recovery evidence](/change#read-the-receipt) before retrying. |
 
-## IDEA is not ready
+`health_check`, where available, reports workspace binding and readiness. A scoped query establishes the declaration or relationship you need.
 
-Resolve the reported trust, Gradle import, or indexing blocker in the selected IDEA project, then repeat the read from the intended repository or worktree. If available in your integration, ask the agent to run `health_check` to report the bound workspace and IDEA readiness. Readiness does not prove that every semantic query will succeed; the scoped query checks the declaration or relationship you need.
+<AccordionGroup>
+  <Accordion title="Connection conflicts and version or catalog failures">
+    Compare expected and observed contracts and the selected executable. Install compatible payloads, restart IDEA and the agent, then rediscover tools.
 
-## The query is incomplete or stale
+    Codex requires `mcp` or `app-server`. The latter installs `kast-codex`. A fresh thread must admit the generated namespace and bind its workspace. Preserve any failing stage, binding, or schema reason.
 
-Keep confirmed facts with their limitations. Continue when Kast reports resumable work; if it reports a terminal limit, follow that reason. An empty qualified or rejected result does not prove that a symbol is absent.
+    Use `--force` only for deliberate replacement of a harness's Kast slot. If rollback reports a backup, preserve it and restore the named destination. Force connection does not repair live thread ownership or resume sessions across upgrades.
+  </Accordion>
 
-For a stale reference or unavailable saved state, start a fresh query and use its new references unchanged. [What an answer proves](/concepts/evidence-boundaries) explains these decisions.
+  <Accordion title="Continuation failure details">
+    Failures distinguish expiration, owner retirement, dependency loss, eviction, stale basis, and incompatible identity. Restart the read when authority or retained state is unavailable.
 
-<Accordion title="Connection conflicts and version or catalog failures">
-For catalog admission failures, compare the reported expected and observed
-contract versions and the selected executable. Upgrade the matched payloads and
-restart IDEA and the harness. `kast connect codex` requires `mcp` or `app-server`.
-The MCP transport records the MCP entry. The App Server transport installs the
-owned `kast-codex` launcher; use `kast-codex` or `kast-codex app-server` to start
-that route. App Server startup must admit the generated namespace and bind
-the thread to its workspace. Preserve the reported failing stage and binding or
-schema reason when diagnosing that route.
-
-Use `kast connect codex <mcp|app-server> --force`, or
-`kast connect <copilot|pi> --force`, only for deliberate takeover of that
-harness's Kast slot. If rollback reports a recovery backup, preserve it and
-restore the named destination before retrying. The flag does not repair live
-thread ownership or resume sessions across upgrades.
-
-
-</Accordion>
-
-<Accordion title="Continuation failure details">
-Copy execution continuations unchanged and use their reported next action. Known failures distinguish expiration, owner retirement, dependency loss, eviction, stale basis, and incompatible continuation identity. Restart the read when the original authority or retained state no longer admits the continuation. A budget failure retains the exhausted dimension and stage; increasing a grant does not recover missing state.
-
-Continuation revocation receipts use the existing bounded retention budget. The oldest receipts can be reclaimed to preserve live state. Once a receipt is gone, an unavailable token cannot establish its historical eviction or expiration cause.
-
-</Accordion>
+    Budget failures retain the exhausted dimension and stage. A larger grant cannot recover missing state. Revocation receipts have bounded retention. Reclaimed receipts cannot establish a token's historical eviction or expiry cause.
+  </Accordion>
+</AccordionGroup>
 
 ## A write has an uncertain outcome
 
-A subprocess timeout, cancellation, output overflow, or nonzero exit does not prove rollback. Preserve the plan identity and bounded phase evidence, inspect the source, and follow [change recovery guidance](/change#read-the-receipt) before another write. Avoid automatic retries.
+Timeout, cancellation, output overflow, and nonzero exit do not prove rollback. Preserve the plan identity and phase evidence. Read the source and follow [change recovery](/change#read-the-receipt) before another write.

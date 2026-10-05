@@ -4,7 +4,7 @@ description: "Inspect, stop, reinstall, upgrade, connect, disconnect, or uninsta
 icon: "folder-open"
 ---
 
-Use the native `kast` command to inspect the installation and manage its bundled integrations. Ask code questions through your agent; the management command is not a second semantic query interface.
+Use `kast` to manage the installation. Ask semantic questions through your agent.
 
 ## Inspect the installation
 
@@ -12,53 +12,67 @@ Use the native `kast` command to inspect the installation and manage its bundled
 kast status
 ```
 
-Status separates recorded installation and connection information from available live observations. A registered integration is not proof that its process is running or its workspace is ready.
+Status distinguishes recorded registrations from live observations. Registration does not establish a running process or ready workspace.
 
 ## Upgrade
 
-Save your work and finish active Kast calls before upgrading:
+Save your work and finish active calls:
 
 ```shell
 kast upgrade
 ```
 
-Upgrade stops Kast-owned services and interrupts existing calls and sessions. Restart IDEA and your connected harnesses to load the matched release. Existing sessions are not resumed across this stop-the-world upgrade.
+Upgrade stops owned services and interrupts sessions. Restart IDEA and connected agents. Existing calls and sessions do not resume across upgrade.
 
 ## Stop and reinstall
 
-Close the selected IDEA and affected harness connections, then run:
+Close the selected IDEA and affected agent connections. Then run:
 
 ```shell
 kast stop --json
 kast reinstall --json
 ```
 
-`stop` fences new calls and automatic restart, disables the coordinator, and waits up to 30 seconds for recorded direct calls and MCP sessions to retire. It preserves the payload, saved configuration, and registrations. Use `kast stop --force --json` when you need to forcibly retire recorded tool processes. `stop --force` checks each PID's start time, main class, and installed library digests before signaling it.
+`stop` fences calls and automatic restart, disables the coordinator, and waits up to 30 seconds for recorded calls and MCP sessions. It preserves payload, configuration, and registrations.
 
-Kast leaves the shared IDEA process under your control. If it is running, the command returns `REJECTED` with `HOST_RESTART_REQUIRED`. Quit the selected IDEA and repeat the command. A shutdown rejection keeps the fence and prevents reinstall from replacing the payload.
+For forced retirement of recorded tool processes, use `kast stop --force --json`. Kast verifies PID start time, main class, and installed library digests before signaling.
 
-`reinstall` repeats verified shutdown, installs the exact recorded version through the existing installer, activates the coordinator, and restores recorded integrations. It returns `REINSTALLED` only after those steps succeed. Failed activation restores the fence, retires any partially started coordinator, and returns `REINSTALLATION_PENDING` with the installed version and failed stage. Inspect `kast status --json` before retrying a recovery failure. Reload affected harnesses after success; calls and writes are never replayed.
+Running IDEA returns `REJECTED` with `HOST_RESTART_REQUIRED`. Quit it and repeat. Shutdown rejection keeps the fence and prevents payload replacement.
 
-With `--json`, stdout contains one result with a required `type`: `STOPPED`, `REINSTALLED`, `REJECTED`, or `REINSTALLATION_PENDING`. Stage observations go to stderr. Rejected and pending results exit with code 1. The result schema ships at `installation/share/kast/schema/management-lifecycle.schema.json`.
+`reinstall` verifies shutdown, installs the recorded version, activates the coordinator, and restores integrations. Failed activation restores the fence and returns `REINSTALLATION_PENDING` with the failed stage. Inspect `kast status --json` before retrying recovery. Reload agents after success. Writes are never replayed.
 
-Older payloads without the lifecycle fence capability reject before effects. Upgrade through the published installer before using these commands.
+<Accordion title="Lifecycle result contract">
+  JSON stdout contains one `type`: `STOPPED`, `REINSTALLED`, `REJECTED`, or `REINSTALLATION_PENDING`. Stage observations use stderr. Rejected and pending results exit with code 1.
+
+  The schema ships at `installation/share/kast/schema/management-lifecycle.schema.json`. Older payloads without fence capability reject before effects. Upgrade through the published installer.
+</Accordion>
 
 ## Force reset
+
+<Warning>
+  Force reset erases the selected Kast directory, including configuration, arbitrary files, and registration history. Erased data has no rollback.
+</Warning>
 
 ```shell
 kast uninstall --force --json
 kast reinstall --force --json
 ```
 
-Each command bypasses old payload and receipt ownership checks and removes the entire selected Kast directory, including saved configuration, arbitrary files, and registration history. Symlinks are unlinked without following their targets. Filesystem roots, HOME, and its ancestors are rejected as deletion targets.
+Reset bypasses old ownership checks. It fences startup, records a recovery location, and moves the directory aside before retiring scoped Kast processes. Shared IDEA and Gradle processes remain under your control. Failed retirement preserves old contents and reports `recoveryPath`.
 
-Reset acquires a stable lock and writes a startup fence beside the directory. It records a recovery location before atomically moving the old directory aside, unloads the installation's launchd jobs, removes its exact login entries, and forcibly retires scoped Kast daemons and tool processes within a bounded deadline. Each signaled process must retain its observed identity. Shared IDEA and Gradle processes remain under your control. Erasure requires verified retirement; a rejected retirement retains the old contents and returns their `recoveryPath`.
+Force reinstall stages the latest stable release and verifies payload and service readiness before admitting tools. Success returns `RESET_REINSTALLED`, the new version, service `generation`, and `command` at `<kast-directory>/bin/kast`.
 
-Force reinstall runs the embedded installer to stage the latest stable release without starting its daemon. The exterior journal stays present during activation. Only `ACTIVATING` intent with a live exclusive reset lock admits daemon startup; tools remain fenced until readiness is verified. It verifies the replacement payload before activation and returns `RESET_REINSTALLED` only after readiness proves the new version and service `generation`. The result includes the new `command` path, `<kast-directory>/bin/kast`. Use that command to register integrations again, restart IDEA to load the plugin, then reload the affected harness. Existing harness registrations outside the selected directory remain; reset removes only the installation's exact exterior login entries.
+Use the returned command to reconnect integrations. Restart IDEA and affected agents. Exterior harness registrations remain. Reset removes only the installation's exact login entries.
 
-Failed staging or activation restores the fence and retires any partially started Kast services. If recovery also fails, `RESET_RECOVERY_REQUIRED` retains both causes. Read `stage`, `failure`, and any `recoveryPath` before retrying. Interrupted cleanup retains its recovery location in the exterior fence. The lock remains beside the selected root to serialize later resets. Filesystem permissions, downloads, or OS refusal can prevent completion; erased data has no rollback.
+For staging or activation failures, read `stage`, `failure`, and `recoveryPath`. Failed recovery returns `RESET_RECOVERY_REQUIRED` with both causes.
 
-JSON results use `REMOVED`, `RESET_REINSTALLED`, `RESET_REINSTALLATION_PENDING`, `RESET_RETAINED`, `RESET_RECOVERY_REQUIRED`, or `RESET_REJECTED`. Unsuccessful results exit with code 1. Stage observations go to stderr. The canonical lifecycle schema covers both verified shutdown and destructive reset results. Force reinstallation requires a release containing the reset fence capability; incompatible releases reject before activation.
+<Accordion title="Reset boundaries and results">
+  Symlinks are unlinked without following targets. Filesystem roots, HOME, and its ancestors are rejected. Each signaled process must retain its observed identity. Erasure requires verified retirement.
+
+  The exterior lock serializes resets. The journal remains during activation. Daemon startup requires `ACTIVATING` intent and the live lock. Tools stay fenced until readiness. Interrupted cleanup retains its recovery location.
+
+  JSON variants are `REMOVED`, `RESET_REINSTALLED`, `RESET_REINSTALLATION_PENDING`, `RESET_RETAINED`, `RESET_RECOVERY_REQUIRED`, and `RESET_REJECTED`. Unsuccessful results exit with code 1. The lifecycle schema defines these variants. Incompatible reset capability rejects before activation.
+</Accordion>
 
 ## Change agents
 
@@ -67,9 +81,7 @@ kast connect pi
 kast disconnect copilot
 ```
 
-You can connect more than one supported harness. Disconnect removes an owned registration; restart the affected harness so it stops using its loaded integration. It does not stop every client or close IDEA.
-
-Use [Connect your agent](/agent-harnesses) for conflicts and explicit `--force` replacement of a harness's Kast slot.
+Multiple agents can connect. Restart a disconnected agent to unload its integration. See [connection conflicts](/agent-harnesses#a-connection-already-exists).
 
 ## Uninstall
 
@@ -77,12 +89,8 @@ Use [Connect your agent](/agent-harnesses) for conflicts and explicit `--force` 
 kast uninstall
 ```
 
-Uninstall removes the owned installation. Read any ownership or recovery failure before retrying; do not delete unrelated client configuration to bypass it.
+Read ownership and recovery failures before retrying.
 
-<Accordion title="Explicit workspace control in the hosted App Server">
-  Ordinary semantic queries prepare their workspace automatically. The hosted `workspace_lifecycle` tool is for explicit project actions such as inspecting, presenting, releasing, or closing a selected project. It is absent from direct MCP and Tool RPC catalogs.
+## Explicit workspace control in the hosted App Server
 
-  Ask the hosted client to inspect the installed schema and approval requirements before a lifecycle action. Disconnecting a harness, releasing a workspace, and closing a project are different operations.
-</Accordion>
-
-See [Prepare IntelliJ in the background](/concepts/background-startup) for normal query startup, or [Troubleshooting](/troubleshooting) when Kast reports a blocker.
+`workspace_lifecycle` inspects, presents, releases, or closes a selected project. It is absent from direct MCP and Tool RPC. Inspect the installed schema and approval requirements before an action. Disconnect, release, and close have separate effects.

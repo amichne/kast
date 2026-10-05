@@ -5,9 +5,7 @@ icon: "terminal"
 keywords: ["RPC", "catalog", "Copilot CLI", "Pi"]
 ---
 
-`kast-tool-rpc-complete` is a one-shot process interface. Run it from the
-Kotlin Gradle repository or worktree. Each invocation writes one JSON object
-to stdout.
+Run `kast-tool-rpc-complete` from the Kotlin repository or worktree. Each invocation writes one JSON object to stdout.
 
 ## Discover
 
@@ -15,41 +13,27 @@ to stdout.
 "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" catalog
 ```
 
-The reply has `type: "catalog"`, `catalog.schemaVersion: 2`, and
-`catalog.tools[]`. Each tool has `name`, `description`, `inputSchema`,
-and `effect` (`READ` or `WRITE`). Re-read it after an upgrade.
+The reply has `type: "catalog"`, `catalog.schemaVersion: 2`, and `catalog.tools[]`. Each tool carries `name`, `description`, `inputSchema`, and `effect` (`READ` or `WRITE`). Rediscover after upgrades.
 
 ## Call
 
-The command takes the tool name after `call` and one JSON object on stdin.
-For a workspace-independent check:
+Pass the tool name after `call` and one JSON object on stdin:
 
 ```shell
 printf '%s\n' '{}' |
   "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" call health_check
 ```
 
-Replace `health_check` and stdin with the [query example](/reference/walkthrough) to
-get compiler-backed symbols. Tool RPC exposes the same direct tool names as
-[MCP](/reference/mcp-catalog), including `add_declaration`. It does not expose
-`workspace_lifecycle`.
+Use [query arguments](/reference/api) for `query_symbols`. Tool RPC exposes direct MCP tool names, including change tools, but excludes `workspace_lifecycle`.
 
 ## Decode
 
-The generated [reply union](/reference/models/tool-rpc-reply) is the process
-contract:
-
 | `type` | Required field | Meaning |
 | --- | --- | --- |
-| `catalog` | `catalog` | Tool inventory and input schemas |
-| `complete` | `document` | Completed canonical operation |
-| `qualified` | `document` | Known facts with a qualification |
-| `rejected_document` | `document` | Semantic or hosted rejection |
-| `rejected` | `failure` | Finite process boundary failure |
+| `catalog` | `catalog` | Installed inventory. |
+| `complete` | `document` | Completed operation. |
+| `qualified` | `document` | Facts with limitations. |
+| `rejected_document` | `document` | Semantic or hosted rejection. |
+| `rejected` | `failure` | Finite process-boundary failure. |
 
-Decode `document` using the selected tool's generated response schema.
-Unknown `type` or `failure` values are incompatible with this contract.
-An empty qualified query does not prove absence.
-
-Copilot CLI and Pi can use the installed adapters described in
-[the repository integration guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).
+Decode `document` with the tool's response schema. Unknown variants are incompatible. See the [reply union](/reference/models/tool-rpc-reply) and [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).

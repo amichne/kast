@@ -4,15 +4,13 @@ description: "Choose Codex, Copilot, or Pi, then verify the connection with a re
 icon: "plug"
 ---
 
-[Install Kast](/start) first, then choose your agent. Connect the integration, restart your agent, and run the query below to check that the tools work.
-
-The agent's command must already be available in your terminal. Replace `/path/to/kotlin-repository` with your repository's local path in the commands below.
+[Install Kast](/start) first. Your agent's command must be available in your terminal. Replace `/path/to/kotlin-repository` below with the exact repository or worktree you want to inspect.
 
 ## Choose your agent
 
 <Tabs>
   <Tab title="Codex">
-    Install the bundled plugin to get the MCP tools, query skill, and examples together. If you already registered Kast directly with `kast connect codex mcp`, run `kast disconnect codex` first so Codex has only one Kast MCP connection.
+    The bundled plugin installs MCP tools, the query skill, and examples. If direct MCP is already registered, run `kast disconnect codex` first to avoid duplicate connections.
 
     ```shell
     kast plugin codex
@@ -20,26 +18,24 @@ The agent's command must already be available in your terminal. Replace `/path/t
     codex
     ```
 
-    Restart Codex after installation and select the repository or worktree you want to inspect.
+    Restart Codex after installation.
 
     <Accordion title="Direct MCP without the bundled plugin">
-      Choose this instead of the plugin when you only need the direct MCP registration:
-
       ```shell
       kast connect codex mcp
       cd /path/to/kotlin-repository
       codex
       ```
 
-      Start a new Codex session after connecting. `kast connect codex` without an explicit transport fails with usage guidance.
+      Start a new session. `kast connect codex` requires an explicit transport.
     </Accordion>
 
     <Accordion title="App Server transport">
-      New persistent installations publish Kast's broker at the standard Codex control socket. Ordinary managed `codex` invocations can discover it automatically. The existing macOS service also publishes the desktop daemon-selection flag, so compatible desktop builds can use the broker on a normal fresh launch. Quit and reopen an already running desktop app after installation.
+      New persistent installations publish the broker at the standard Codex control socket. Managed `codex` invocations can discover it automatically. Compatible desktop builds also use the service's daemon-selection flag on a fresh launch.
 
-      No desktop launch wrapper, app bundle edit or signing change is involved. An existing saved `private` endpoint stays explicit, and client overrides can bypass discovery. Desktop UI tool exposure needs qualification against the installed client version; see the [App Server compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
+      Quit and reopen an existing desktop app. Saved `private` endpoints and client overrides can bypass discovery. Desktop tool exposure depends on the [tested client boundary](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
 
-      The owned launcher remains available for an explicit attachment:
+      For explicit attachment:
 
       ```shell
       kast connect codex app-server
@@ -47,7 +43,7 @@ The agent's command must already be available in your terminal. Replace `/path/t
       kast-codex
       ```
 
-      This installs `~/.local/bin/kast-codex` and attaches it to Kast's persistent broker and existing IDEA host. Start a fresh thread to load the dynamic tools. An App Server client can use `kast-codex app-server` for JSONL stdio.
+      This installs `~/.local/bin/kast-codex`. Start a fresh thread to load dynamic tools. Custom clients can use `kast-codex app-server` for JSONL stdio.
     </Accordion>
   </Tab>
   <Tab title="Copilot">
@@ -57,7 +53,7 @@ The agent's command must already be available in your terminal. Replace `/path/t
     copilot
     ```
 
-    Restart Copilot after connecting so it loads the bundled extension and its installed tool catalog.
+    Restart Copilot to load the extension and installed catalog.
   </Tab>
   <Tab title="Pi">
     ```shell
@@ -66,44 +62,40 @@ The agent's command must already be available in your terminal. Replace `/path/t
     pi
     ```
 
-    Restart Pi after connecting so it loads the bundled extension and its installed tool catalog.
+    Restart Pi to load the extension and installed catalog.
   </Tab>
 </Tabs>
 
-Use the exact repository or worktree you want to inspect. Kast [prepares IntelliJ when a semantic request needs it](/concepts/background-startup); there is no separate workspace-open step.
+Queries [prepare IntelliJ automatically](/concepts/background-startup). There is no separate workspace-open step.
 
 ## Check that the tools work
 
 Ask your agent:
 
-> Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. If Kast is not ready or cannot prove a result, report the blocker rather than substituting a text search.
+> Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. Report any readiness or proof blocker.
 
-The connection works when a Kast query returns a declaration with its location and coverage. `kast status` shows registration information; this query checks that the agent can use the tools.
+A returned declaration with location and coverage verifies tool use. `kast status` reports registration.
 
-## Get a useful first result
-
-Choose a function you expect to change, then replace `submitOrder` and `checkout` in this prompt with its name and module or directory:
+For a useful first investigation, substitute your function and directory:
 
 ```text wrap
 Use Kast to find submitOrder in the production Kotlin sources under checkout. Show matching signatures, locations, and coverage. Stop so I can choose the exact function.
 ```
 
-Choose the result by its signature and file, then ask:
+Then ask:
 
 ```text wrap
 Use the exact reference for the function I selected to find its callers. Show the call sites and searched scope, and report any unfinished work.
 ```
 
-This gives you a starting list of places to inspect before changing that function. Confirmed callers are useful even when the search is incomplete; they are not a promise that every caller was found. [Find and trace code](/search) shows how to read the result and follow up.
-
-**Next:** [Find and trace code](/search). If tools are missing, a version disagrees, or the first query cannot prepare IDEA, use [Troubleshooting](/troubleshooting).
+[Find and trace code](/search) explains the results. For missing tools or readiness blockers, use [Troubleshooting](/troubleshooting).
 
 ## A connection already exists
 
-If the registered integration already matches, Kast leaves it in place. If Kast reports a conflict, inspect the existing registration before replacing it.
+Matching registrations stay in place. For a conflict, inspect the existing registration before replacement.
 
 <Accordion title="Explicitly replace a conflicting registration">
-  `--force` replaces only that harness's Kast slot. Use the command for the integration you selected, not every command below.
+  Run only the command for your chosen integration:
 
   ```shell
   kast connect codex app-server --force
@@ -112,54 +104,36 @@ If the registered integration already matches, Kast leaves it in place. If Kast 
   # or: kast connect pi --force
   ```
 
-  Forced connection verifies the bundled payload and captures the previous registration before replacement. A failed transaction attempts to restore the previous registration and receipt. If restoration fails, the error identifies the backup and recovery destination. Unrelated registrations stay in place.
+  `--force` replaces that harness's Kast slot. Kast verifies the payload and captures the previous registration. Failed replacement attempts restoration. Failed restoration reports the backup and recovery destination.
 </Accordion>
 
 ## Disconnect or upgrade
 
-<AccordionGroup>
-  <Accordion title="Disconnect an integration">
-    For a registration made with `kast connect`, name the agent you connected:
+For a registration made with `kast connect`:
 
-    ```shell
-    kast disconnect copilot
-    ```
+```shell
+kast disconnect copilot
+```
 
-    `kast disconnect codex` removes its owned App Server launcher and MCP registration when recorded. Restart the affected agent so it stops using the loaded integration.
+`kast disconnect codex` removes its recorded App Server launcher and MCP registration. Remove the Codex-owned bundled plugin with `codex plugin remove kast@kast`. Restart the affected agent.
 
-    The bundled Codex plugin is owned by Codex instead. Remove it with `codex plugin remove kast@kast`.
-  </Accordion>
-
-  <Accordion title="Reload integrations after a Kast upgrade">
-    After `kast upgrade`, restart IDEA and your connected agents so they load the matched payload and rediscover its catalog. For the bundled Codex plugin, rerun `kast plugin codex` to install the matching skill.
-  </Accordion>
-</AccordionGroup>
+After `kast upgrade`, restart IDEA and connected agents. For the bundled Codex plugin, rerun `kast plugin codex`.
 
 ## Install the skill independently
 
-If you already connected Kast, you can install the skill or marketplace separately.
+<Accordion title="Release archives and custom clients">
+  [Control 0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) supplies `kast-skill-v0.3.1.zip`, `kast-plugin-v0.3.1.zip`, and `kast-marketplace-v0.3.1.zip` with SHA-256 checksums.
 
-<AccordionGroup>
-  <Accordion title="Install a release skill or marketplace archive">
-    Each Control release provides the skill, plugin, and marketplace archives with SHA-256 checksums. [Control 0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) includes `kast-skill-v0.3.1.zip`, `kast-plugin-v0.3.1.zip`, and `kast-marketplace-v0.3.1.zip`. Host is released separately; check the [compatible pair](/reference/compatibility#current-release-pair).
+  Extract the skill's `kast/` directory into `~/.agents/skills/` or your repository's `.agents/skills/`. Its generated examples use the public contract. Replace illustrative references with current workspace values.
 
-    The skill ZIP contains one `kast/` directory. Extract it into `~/.agents/skills/` or your repository's `.agents/skills/`. The skill covers scoped lookup, public inventories, fuzzy search, containing declarations, references, callers and callees, implementations and overrides, bounded traversal, and retained query composition.
+  After checksum verification and marketplace extraction:
 
-    Its JSON examples are generated from Kast's public contract and validated by the typed input parser. Replace illustrative references with values returned by your current workspace.
+  ```shell
+  codex plugin marketplace add /absolute/path/to/extracted-marketplace
+  codex plugin add kast@kast
+  ```
 
-    To install a downloaded marketplace ZIP, verify its checksum, extract it, and run:
+  The source marketplace is available through `codex plugin marketplace add amichne/kast`. Install Kast and a compatible Host first.
 
-    ```shell
-    codex plugin marketplace add /absolute/path/to/extracted-marketplace
-    codex plugin add kast@kast
-    ```
-
-    The source marketplace is also available with `codex plugin marketplace add amichne/kast`. The plugin uses the installed Kast MCP launcher; install Kast and its matching IDEA plugin first.
-  </Accordion>
-
-  <Accordion title="Connect a different client">
-    Custom clients can launch `kast-codex app-server` after connecting Codex with the App Server transport, or use [direct MCP](/reference/mcp-catalog) or [one-shot Tool RPC](/reference/rpc-catalog).
-
-    The [repository integration guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) documents the adapter boundary.
-  </Accordion>
-</AccordionGroup>
+  Custom clients can use [MCP](/reference/mcp-catalog), [Tool RPC](/reference/rpc-catalog), or App Server. See the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).
+</Accordion>
