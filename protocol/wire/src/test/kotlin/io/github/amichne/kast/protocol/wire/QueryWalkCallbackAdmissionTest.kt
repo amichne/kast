@@ -187,6 +187,17 @@ class QueryWalkCallbackAdmissionTest {
     }
 
     @Test
+    fun `deeper frontier may share the seed selector scope fingerprint`() {
+        val wire = original()
+        val entry = wire.callbackObservations.single()
+        val deeper = entry.copy(subject = QueryReferenceWireDocument.ExactSymbol("exact:frontier"), depth = 1)
+        val decoded = decode(wire.copy(maximumDepth = 2, callbackObservations = listOf(deeper))).value()
+        val retained = decoded.callbackObservations.values.single()
+        assertEquals("exact:frontier", retained.subject.token.value)
+        assertEquals(callback.domainFingerprint, retained.observation.domainFingerprint)
+    }
+
+    @Test
     fun `distinct repeated occurrences survive separate output pages without deduplication`() {
         val wire = original()
         val first = wire.callbackObservations.single()
