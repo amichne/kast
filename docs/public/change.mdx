@@ -31,7 +31,7 @@ flowchart TB
   accTitle: A write requires verification or recovery before another write
   accDescr: An exact target enters the change workflow. Verified edits proceed to review. Failed verification or a lost response requires source inspection and recovery before any retry.
   A["Exact target and requested edit"] --> B["Plan, apply, verify"]
-  B --> C{"Outcome known?"}
+  B --> C{"Verification outcome"}
   C -->|Verified| D["Review diff and run project tests"]
   C -->|Failed or uncertain| E["Keep plan and phase evidence"]
   E --> F["Read source and follow recovery"]
