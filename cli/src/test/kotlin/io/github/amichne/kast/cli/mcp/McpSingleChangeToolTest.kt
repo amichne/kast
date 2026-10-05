@@ -27,6 +27,7 @@ import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -72,7 +73,7 @@ class McpSingleChangeToolTest {
         assertInstanceOf(CliExit.Complete::class.java, result)
         val output = Json.parseToJsonElement(result.document.value).jsonObject
         assertEquals("complete", output.getValue("status").jsonPrimitive.content)
-        assertTrue(McpStructuredResults.validates("add_declaration", output))
+        assertNull(McpStructuredResults.failure("add_declaration", output))
         assertEquals(
             "receipt:verified",
             output.getValue("application").jsonObject.getValue("receiptIdentity").jsonPrimitive.content,
@@ -118,8 +119,8 @@ class McpSingleChangeToolTest {
 
         val result = tool.invoke((admitted as Refinement.Refined).value)
         assertInstanceOf(CliExit.Complete::class.java, result)
-        assertTrue(
-            McpStructuredResults.validates("replace_body", Json.parseToJsonElement(result.document.value).jsonObject)
+        assertNull(
+            McpStructuredResults.failure("replace_body", Json.parseToJsonElement(result.document.value).jsonObject)
         )
         assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
     }
@@ -158,7 +159,7 @@ class McpSingleChangeToolTest {
         assertInstanceOf(CliExit.OperationRejected::class.java, result)
         val output = Json.parseToJsonElement(result.document.value).jsonObject
         assertEquals("rejected", output.getValue("status").jsonPrimitive.content)
-        assertTrue(McpStructuredResults.validates("add_declaration", output))
+        assertNull(McpStructuredResults.failure("add_declaration", output))
         val error = output.getValue("error").jsonObject
         assertEquals(
             "recovery_required",

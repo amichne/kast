@@ -11,8 +11,9 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class McpStructuredResultsTest {
@@ -38,7 +39,11 @@ class McpStructuredResultsTest {
                     )
                     .document()
             }
-        assertTrue(McpStructuredResults.validates("query_symbols", document))
+        assertNull(McpStructuredResults.failure("query_symbols", document))
+        assertSame(
+            McpStructuredResults.validatorFor("query_symbols"),
+            McpStructuredResults.validatorFor("query_symbols"),
+        )
         fixture.assertRejects(io.github.amichne.kast.protocol.contract.CanonicalOperation.QUERY_RUN, document)
     }
 
@@ -72,8 +77,8 @@ class McpStructuredResultsTest {
                     ChangeRunDocument.Rejected(ChangeRunError(ChangeRejection.PLANNING_REJECTED)),
                 )
                 .jsonObject
-        assertTrue(McpStructuredResults.validates("replace_body", rejected))
-        assertTrue(McpStructuredResults.validates("add_declaration", rejected))
+        assertNull(McpStructuredResults.failure("replace_body", rejected))
+        assertNull(McpStructuredResults.failure("add_declaration", rejected))
     }
 
     @Test
@@ -85,5 +90,11 @@ class McpStructuredResultsTest {
                 )
                 .jsonObject
         assertThrows(SerializationException::class.java) { rootedResultSchema(malformed) }
+    }
+
+    @Test
+    fun `tool name suffix cannot bind an unadvertised result contract`() {
+        assertThrows(IllegalStateException::class.java) { McpStructuredResults.validatorFor("other:query_symbols") }
+        assertThrows(IllegalStateException::class.java) { McpStructuredResults.validatorFor("query_symbols#/anyOf/0") }
     }
 }

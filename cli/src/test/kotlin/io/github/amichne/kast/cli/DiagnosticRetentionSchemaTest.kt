@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.mcp.McpResultSchemaFailure
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
@@ -23,7 +24,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 class DiagnosticRetentionSchemaTest {
@@ -41,7 +42,7 @@ class DiagnosticRetentionSchemaTest {
                         document.getValue("qualification").jsonObject["retentionFailure"],
                     )
                     assertAdmits(CanonicalOperation.DIAGNOSTIC_CHECK, document)
-                    assertTrue(McpStructuredResults.validates("check_diagnostics", document))
+                    assertNull(McpStructuredResults.failure("check_diagnostics", document))
                 }
             }
         }
@@ -54,7 +55,10 @@ class DiagnosticRetentionSchemaTest {
             for (invalid in listOf(JsonNull, JsonPrimitive("UNKNOWN"))) {
                 val malformed = document.with("qualification", qualification.with("retentionFailure", invalid))
                 assertRejects(CanonicalOperation.DIAGNOSTIC_CHECK, malformed)
-                assertFalse(McpStructuredResults.validates("check_diagnostics", malformed))
+                assertEquals(
+                    McpResultSchemaFailure.SCHEMA_VIOLATION,
+                    McpStructuredResults.failure("check_diagnostics", malformed)?.failure,
+                )
             }
         }
 
@@ -65,7 +69,7 @@ class DiagnosticRetentionSchemaTest {
                 val document = projection(detail, retentionFailure = null)
                 assertFalse(document.getValue("qualification").jsonObject.containsKey("retentionFailure"))
                 assertAdmits(CanonicalOperation.DIAGNOSTIC_CHECK, document)
-                assertTrue(McpStructuredResults.validates("check_diagnostics", document))
+                assertNull(McpStructuredResults.failure("check_diagnostics", document))
             }
         }
 

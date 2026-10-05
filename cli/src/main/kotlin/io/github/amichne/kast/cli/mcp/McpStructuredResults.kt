@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli.mcp
 
 import com.networknt.schema.InputFormat
+import com.networknt.schema.Schema
+import com.networknt.schema.SchemaLocation
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.generatedRequestSchema
@@ -19,33 +21,35 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /** MCP advertises and validates the owning operation's semantic document. */
 internal object McpStructuredResults {
-    private val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+    private val registry =
+        SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12) { builder ->
+            builder.schemas { uri -> schemaFor(uri.removePrefix("urn:kast:mcp:result:")).toString() }
+        }
 
     val healthSchema: JsonObject = healthResultSchema()
 
     fun schemaFor(name: String): JsonObject =
         rootedResultSchema(
-            when {
-                PublicToolIdentity.entries.any {
-                    it.toolName == name &&
-                        it !in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY)
-                } -> installedPublicToolSemanticResultSchema(PublicToolIdentity.entries.single { it.toolName == name })
-                name == "health_check" -> healthSchema
-                name == "add_declaration" || name == "replace_body" ->
-                    generatedRequestSchema(ChangeRunDocument.serializer())
-                else -> error("Unbound MCP tool result contract: $name")
+            when (val identity = PublicToolIdentity.entries.singleOrNull { it.toolName == name }) {
+                PublicToolIdentity.QUERY_SYMBOLS,
+                PublicToolIdentity.CHECK_DIAGNOSTICS -> installedPublicToolSemanticResultSchema(identity)
+                PublicToolIdentity.ADD_DECLARATION,
+                PublicToolIdentity.REPLACE_BODY -> generatedRequestSchema(ChangeRunDocument.serializer())
+                null -> if (name == "health_check") healthSchema else error("Unbound MCP tool result contract: $name")
             }
         )
 
-    fun validates(name: String, content: JsonObject): Boolean =
-        registry.getSchema(schemaFor(name).toString()).validate(content.toString(), InputFormat.JSON).isEmpty()
+    internal fun validatorFor(name: String): Schema {
+        check(name == "health_check" || PublicToolIdentity.entries.any { it.toolName == name }) {
+            "Unbound MCP tool result contract: $name"
+        }
+        return registry.getSchema(SchemaLocation.of("urn:kast:mcp:result:$name"))
+    }
 
     fun failure(name: String, content: JsonObject?): McpResultSchemaEvidence? {
         if (content == null)
             return McpResultSchemaEvidence(McpResultSchemaFailure.UNPARSEABLE_DOCUMENT, McpResultSchemaField.UNKNOWN)
-        val violation =
-            registry.getSchema(schemaFor(name).toString()).validate(content.toString(), InputFormat.JSON).firstOrNull()
-                ?: return null
+        val violation = validatorFor(name).validate(content.toString(), InputFormat.JSON).firstOrNull() ?: return null
         val field =
             when (violation.property ?: violation.instanceLocation.getName(-1)) {
                 "status" -> McpResultSchemaField.STATUS
