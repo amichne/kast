@@ -4,7 +4,7 @@ description: "Choose the action, input, steps, and output for a query_symbols re
 icon: "book-open"
 ---
 
-`query_symbols` accepts one action: run a query, resume unfinished work, or read retained rows. Start with [the walkthrough](/search) for examples; use this page to build a request.
+`query_symbols` accepts one action: run a query, resume unfinished work, or read retained rows. Start with [Find and trace code](/search) for agent prompts or the [recorded walkthrough](/reference/walkthrough) for JSON examples; use this page to build a request.
 
 ## Choose an action
 
@@ -58,7 +58,7 @@ Replace token placeholders with issued values. They are teaching labels, not val
 
 Discovery accepts a directory or package scope. Without a scope override, it searches the workspace recursively in source sets `main` and `test`. Source scope restricts discovery, not the destinations of later relationship steps.
 
-`SEARCH_TEXT` accepts an ASCII identifier word: a letter or underscore followed by letters, digits, or underscores. It rejects phrases, substrings, qualified literals, and regular expressions. A text match identifies a containing declaration; use a relationship step to establish callers or references. See [the text discovery example](/search#start-from-remembered-text).
+`SEARCH_TEXT` accepts an ASCII identifier word: a letter or underscore followed by letters, digits, or underscores. It rejects phrases, substrings, qualified literals, and regular expressions. A text match identifies a containing declaration; use a relationship step to establish callers or references. See [the text discovery request](/reference/walkthrough#start-from-remembered-text).
 
 `ALL_DECLARATIONS` enumerates supported Kotlin classes, functions, properties, and type aliases, including eligible nested declarations. It covers Kotlin source in the requested scope. Direct enumeration that includes libraries is unsupported. Read the returned restrictions, progress, and blockers before claiming the search is complete.
 

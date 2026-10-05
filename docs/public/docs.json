@@ -16,11 +16,8 @@
         "group": "Start here",
         "pages": [
           "index",
-          {
-            "group": "Get started",
-            "expanded": false,
-            "pages": ["start", "agent-harnesses", "troubleshooting"]
-          }
+          "start",
+          "agent-harnesses"
         ]
       },
       {
@@ -28,8 +25,9 @@
         "pages": [
           "search",
           "concepts/evidence-boundaries",
-          "query-pipelines",
           "change",
+          "query-pipelines",
+          "troubleshooting",
           {
             "group": "Setup and maintenance",
             "pages": [
@@ -49,7 +47,9 @@
             "pages": [
               "reference/api",
               "reference/responses",
-              "reference/symbols"
+              "reference/symbols",
+              "reference/callbacks",
+              "reference/walkthrough"
             ]
           },
           "reference/schemas",
