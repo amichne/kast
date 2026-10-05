@@ -36,5 +36,6 @@
   "domain_fingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
   "inherited_omissions": [],
   "reference_occurrences": [],
-  "scope_exclusions": []
+  "scope_exclusions": [],
+  "callback_observations": []
 }

@@ -4,7 +4,7 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.generatedRequestSchema
-import io.github.amichne.kast.cli.installedSemanticResultSchema
+import io.github.amichne.kast.cli.installedPublicToolSemanticResultSchema
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.SerialName
@@ -29,7 +29,7 @@ internal object McpStructuredResults {
                 PublicToolIdentity.entries.any {
                     it.toolName == name &&
                         it !in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY)
-                } -> installedSemanticResultSchema(PublicToolIdentity.entries.single { it.toolName == name }.operation)
+                } -> installedPublicToolSemanticResultSchema(PublicToolIdentity.entries.single { it.toolName == name })
                 name == "health_check" -> healthSchema
                 name == "add_declaration" || name == "replace_body" ->
                     generatedRequestSchema(ChangeRunDocument.serializer())

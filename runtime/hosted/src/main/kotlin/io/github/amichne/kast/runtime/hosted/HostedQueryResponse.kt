@@ -20,6 +20,7 @@ import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
 import io.github.amichne.kast.protocol.contract.budgetPresence
 import io.github.amichne.kast.protocol.contract.presentationPrefix
 import io.github.amichne.kast.protocol.contract.presentationSuffix
+import io.github.amichne.kast.protocol.contract.presentationUnitCount
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -75,8 +76,9 @@ private fun encodeHostedQueryResponseDocument(
         }
         is OperationOutcome.Rejected -> return original
     }
-    val size = evidence.payload.items.values.size
-    if (original !is HostedResponse.Oversized && size <= maximumResults.value) {
+    val rows = evidence.payload.items.values.size
+    val size = evidence.payload.presentationUnitCount
+    if (original.fitsRows(rows, maximumResults)) {
         return original.publishEncodedPage(semantic, published)
     }
     if (original is HostedResponse.Oversized) observation.terminated(IntellijReadTermination.RESPONSE_BYTE_LIMIT)
@@ -89,13 +91,17 @@ private fun encodeHostedQueryResponseDocument(
         return rejectedQueryRetention(
             io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause.INVALID_FITTED_PAGE
         )
-    val exhausted = queryPageLimitations(limitations, original, size, maximumResults)
+    val exhausted = queryPageLimitations(limitations, original, rows, maximumResults)
     val fitting = QueryPageEncoding(evidence, minimum, exhausted, semantic.preparedCoverage(), limits, maximumBytes)
-    val bestCount = largestHostedQueryPrefix(minOf(size - 1, maximumResults.value), fitting::placeholder)
+    val maximumPrefix = if (rows > maximumResults.value) maximumResults.value else size - 1
+    val bestCount = largestHostedQueryPrefix(maximumPrefix, fitting::placeholder)
     // An empty prefix cannot advance a byte-bound continuation. Fail with finite rejection instead.
     if (bestCount == 0) return rejection
     return fitting.retainPrefix(semantic, bestCount, retain, published, observation)
 }
+
+private fun HostedResponse.fitsRows(rows: Int, maximumResults: ResultLimit): Boolean =
+    this !is HostedResponse.Oversized && rows <= maximumResults.value
 
 private fun queryPageLimitations(
     existing: List<QueryLimitationDocument>,

@@ -141,6 +141,26 @@ The recorded walk (`15-caller-walk`) returned `QueryPlanCompiler.admit` calling 
 
 The depth limits how far Kast follows callers. Check coverage for any work left unfinished within that limit. Confirmed callers remain useful in a qualified result, but an empty qualified result does not prove that no callers exist.
 
+`REFERENCES` reports lexical containment: a declaration-owned occurrence appears inside that declaration. This alone does not prove a named caller edge. `CALLERS` and `CALLEES` preserve `callback_observations` for invocations inside anonymous callable bodies. Each observation keeps the exact occurrence, lexical owner, anonymous body, and named-call policy. `EXCLUDED` explains why the invocation is absent from named callers; `ADMITTED_INLINE` keeps the separate anonymous owner even when the inline policy admits a named edge. `UNAVAILABLE` preserves incomplete ownership.
+
+The observation's flow separates the supplied lambda's exact identity from its compiler-confirmed argument-to-parameter binding and the receiving function's exact parameter invocations. Those facts describe a possible static path. They do not claim that the callback ran. When a parameter invocation belongs to another lambda, `owner_bindings` retains that body’s exact supplying call and compiler-confirmed formal mapping where available. Those records retain `NESTED_CALLBACK_EXECUTION`: supplying a lambda does not prove its activation. Library mappings remain `EXTERNAL_CALLABLE` with the exact workspace supply and `OUTSIDE_DOMAIN`. A local initializer retains `STORED_CALLBACK`; a returned literal retains `RETURNED_CALLBACK`. Unsupported supply, including a direct literal invocation whose activation Kast cannot yet trace, retains `UNSUPPORTED_CALLBACK_SUPPLY`. Unresolved mapping, external body, or escaped parameter also retains an explicit obligation.
+
+Inspect an exact source occurrence or anonymous body by passing its issued `candidateSelector` unchanged to `query_symbols`:
+
+```json
+{
+  "request": {
+    "type": "READ_SOURCE",
+    "candidateRef": "<issued candidateSelector>"
+  }
+}
+```
+
+This action uses the source-read owner and returns the exact anchored source with its authority and coverage. Reacquire the reference after an epoch change. Do not substitute the enclosing named function for the lambda.
+
+`page_progress` counts the current page's rows and evidence. A zero-row page can advance walk or callback evidence. Continue with the exact issued token and `next_action` until query output finishes; complete traversal coverage can precede complete output delivery.
+
+
 ## Adapt the question to your codebase
 
 Give the agent a declaration name or exact reference, the narrowest useful module or directory, and the relationship you need. Specify unique declarations, individual use sites, or a bounded trace; include a depth for a walk.

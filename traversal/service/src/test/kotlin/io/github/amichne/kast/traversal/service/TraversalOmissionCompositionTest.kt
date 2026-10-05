@@ -102,6 +102,80 @@ class TraversalOmissionCompositionTest {
         assertEquals(1, replay.page.inheritedOmissions.size)
     }
 
+    @Test
+    fun `repeated inherited unmeasured omissions preserve resumable checkpoints`() {
+        var reads = 0
+        val relations = RelationOperations { request ->
+            reads += 1
+            val batch = fixture.completeRelationResult(request, emptyList()).batch
+            val inventory = (0..2).map { traversalFilteredLocator(request, "item-$it", 100 + it) }
+            val compilation =
+                if (reads < 3) {
+                    val state = traversalCalleeState(request, inventory, 1)
+                    io.github.amichne.kast.relation.contract.RelationCompilation.qualifiedResumable(
+                            batch,
+                            setOf(RelationLimitation.UNSUPPORTED_ITEM, RelationLimitation.RESULT_LIMIT_REACHED),
+                            state.providerCursor,
+                            providerState = state,
+                        )
+                        .refined()
+                } else {
+                    io.github.amichne.kast.relation.contract.RelationCompilation.qualifiedTerminal(
+                            batch,
+                            setOf(RelationLimitation.UNSUPPORTED_ITEM),
+                        )
+                        .refined()
+                }
+            io.github.amichne.kast.relation.contract.RelationReadResult.Qualified(batch, compilation.coverage)
+        }
+        val operations = traversalOperations(relations, TraversalNanoClock { 0L })
+        val initial = fixture.plan(a, aggregateRecords = 1, depth = 1, oneHop = fixture.relationBudget(records = 1))
+        var plan = initial
+        repeat(2) {
+            val result = assertInstanceOf(TraversalResult.Qualified::class.java, runSuspend { operations.run(plan) })
+            val resumable = assertInstanceOf(TraversalQualification.Resumable::class.java, result.qualification)
+            val retained = resumable.continuation.checkpoint.retainedOmissions.single()
+            assertEquals(setOf(RelationLimitation.UNSUPPORTED_ITEM), retained.limitations)
+            assertEquals(0, retained.knownMinimum.value)
+            assertEquals(
+                io.github.amichne.kast.relation.contract.RelationOmissionMeasurement.UnmeasuredOnPage,
+                retained.omissions.single().measurement,
+            )
+            plan = TraversalPlan.resume(a, RelationMeaning.Callees, initial.budget, resumable.continuation).refined()
+        }
+        val terminal = assertInstanceOf(TraversalResult.Qualified::class.java, runSuspend { operations.run(plan) })
+        assertInstanceOf(TraversalQualification.TerminalIncomplete::class.java, terminal.qualification)
+        assertEquals(1, terminal.page.inheritedOmissions.size)
+        assertEquals(3, reads)
+    }
+
+    @Test
+    fun `equal page measurements remain distinct before strict checkpoint admission`() {
+        val plan = fixture.plan(a, depth = 1)
+        val checkpoint = io.github.amichne.kast.traversal.contract.TraversalCheckpoint.initial(plan)
+        val entry = checkpoint.frontier.single()
+        val request =
+            io.github.amichne.kast.relation.contract.RelationRequest.start(
+                a,
+                RelationMeaning.Callees,
+                plan.budget.oneHop,
+            )
+        val initial = fixture.terminalRelationResult(request)
+        val batch = initial.batch.withOmissions(listOf(measuredOmission(request.providerCursor.provider))).refined()
+        val partial =
+            io.github.amichne.kast.traversal.contract.TraversalPartialExpansion.create(
+                    plan,
+                    entry,
+                    io.github.amichne.kast.relation.contract.RelationReadResult.Qualified(batch, initial.coverage),
+                    io.github.amichne.kast.traversal.contract.TraversalExpansionRemainder.NOT_EXPLORED,
+                )
+                .refined()
+        val state = MutableTraversalState.from(checkpoint)
+        state.retainOmissions(partial)
+        state.retainOmissions(partial)
+        assertEquals(listOf(partial, partial), state.retainedOmissions)
+    }
+
     private fun measuredOmission(provider: io.github.amichne.kast.relation.contract.RelationProviderKind) =
         io.github.amichne.kast.relation.contract.RelationOmissionEvidence.fromObservedPage(
                 provider,

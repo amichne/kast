@@ -23,6 +23,25 @@ internal class IntellijRelationOmissionObservation(private val provider: Relatio
         }
     }
 
+    fun observeReferenceOwnership(
+        value: io.github.amichne.kast.relation.contract.RelationReferenceOccurrence
+    ): Set<RelationLimitation> =
+        when (val ownership = value.ownership) {
+            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.Unavailable -> {
+                val reason =
+                    when (ownership.cause) {
+                        io.github.amichne.kast.relation.contract.RelationOwnershipUnavailableCause
+                            .UNSUPPORTED_DECLARATION,
+                        io.github.amichne.kast.relation.contract.RelationOwnershipUnavailableCause
+                            .UNRESOLVED_DECLARATION -> RelationLimitation.UNSUPPORTED_ITEM
+                    }
+                record(reason, RelationOmissionSample.Located(value.occurrence))
+                setOf(reason)
+            }
+            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.DeclarationOwned,
+            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.FileScoped -> emptySet()
+        }
+
     fun summarize(
         limitations: Set<RelationLimitation>
     ): Refinement<List<RelationOmissionEvidence>, RelationCompilerRejection> {

@@ -44,6 +44,32 @@ private fun PublicToolAction.lower(): Refinement<PublicToolCanonical, PublicTool
                 )
             )
         is PublicToolReadResultAction -> lowerReadResult()
+        is PublicToolReadSourceAction -> lowerReadSource()
+    }
+
+private fun PublicToolReadSourceAction.lowerReadSource(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
+    when (val anchor = SourceReadAnchorDocument.admit(candidateRef)) {
+        is Refinement.Rejected -> Refinement.Rejected(PublicToolInputFailure.SourceAnchor(anchor.failure))
+        is Refinement.Refined ->
+            when (val admitted = anchor.value) {
+                is SourceReadAnchorDocument.Candidate ->
+                    Refinement.Refined(
+                        PublicToolCanonical.Source(
+                            SourceReadRequest(
+                                anchor = admitted,
+                                region = SourceRegionSelectionDocument.Anchor,
+                                entities = SourceEntitySelectionDocument.None,
+                                text = SourceTextRequestDocument.Complete,
+                                executionBudget = (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
+                            )
+                        )
+                    )
+                is SourceReadAnchorDocument.Source,
+                is SourceReadAnchorDocument.Symbol ->
+                    Refinement.Rejected(
+                        PublicToolInputFailure.SourceAnchor(SourceReadAnchorDocumentFailure.UNKNOWN_TOKEN_FAMILY)
+                    )
+            }
     }
 
 private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, PublicToolInputFailure> =

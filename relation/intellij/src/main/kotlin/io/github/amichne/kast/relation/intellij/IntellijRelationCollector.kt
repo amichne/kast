@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets
 /** Request-local bounded collector for already K2-confirmed detached relation facts. */
 internal class IntellijRelationCollector(
     private val request: RelationRequest,
-    private val clockNanoseconds: () -> Long = System::nanoTime,
+    clockNanoseconds: () -> Long = System::nanoTime,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val limits: ReadLimits = ReadLimits.Default,
     private val allowance: IntellijRelationAllowance = IntellijRelationAllowance(clockNanoseconds),
@@ -30,10 +30,11 @@ internal class IntellijRelationCollector(
         io.github.amichne.kast.relation.contract.RelationProviderConsumption.Unconfirmed
         private set
 
-    private val startedAt = allowance.startedAt
     private val facts = mutableListOf<RelationFact>()
     private val referenceOccurrences = mutableListOf<RelationReferenceOccurrence>()
     private val scopeExclusions = mutableListOf<io.github.amichne.kast.relation.contract.RelationScopeExclusion>()
+    private val callbackObservations =
+        mutableListOf<io.github.amichne.kast.relation.contract.RelationCallbackObservation>()
     private var providerState: RelationProviderState? =
         (request.position as? RelationReadPosition.Resume)?.continuation?.providerState
     private val limitations = request.retainedLimitations.toMutableSet()
@@ -41,9 +42,6 @@ internal class IntellijRelationCollector(
     private val requestedCursor = request.providerCursor
     private var nextProviderCursor = requestedCursor
     private var pendingProviderItem: RelationProviderItemDescriptor? = null
-    private val nativeCandidates: Int
-        get() = allowance.nativeCandidates
-
     private val examined: Long
         get() = allowance.examined
 
@@ -52,17 +50,13 @@ internal class IntellijRelationCollector(
 
     /** Bounds native materialization before a canonical provider order can be established. */
     fun admitProviderEnumeration(): IntellijRelationProviderEnumerationAdmission =
-        when (state) {
-            IntellijRelationCollectionState.COLLECTING ->
-                if (elapsedLimitReached()) {
-                    halt(RelationLimitation.TIME_LIMIT_REACHED)
-                    IntellijRelationProviderEnumerationAdmission.HALTED
-                } else {
-                    IntellijRelationProviderEnumerationAdmission.READY
-                }
-            IntellijRelationCollectionState.HALTED,
-            IntellijRelationCollectionState.ENUMERATION_LIMIT,
-            IntellijRelationCollectionState.CONTRACT_REJECTED -> IntellijRelationProviderEnumerationAdmission.HALTED
+        when (allowance.admitEnumeration(state, request.budget.resources)) {
+            IntellijRelationEnumerationGrant.READY -> IntellijRelationProviderEnumerationAdmission.READY
+            IntellijRelationEnumerationGrant.UNAVAILABLE -> IntellijRelationProviderEnumerationAdmission.HALTED
+            IntellijRelationEnumerationGrant.TIME_LIMIT_REACHED -> {
+                halt(RelationLimitation.TIME_LIMIT_REACHED)
+                IntellijRelationProviderEnumerationAdmission.HALTED
+            }
         }
 
     /** Bounds the native buffers independently of semantic per-page work and result budgets. */
@@ -70,13 +64,12 @@ internal class IntellijRelationCollector(
         if (admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY) {
             return IntellijRelationProviderEnumerationAdmission.HALTED
         }
-        if (nativeCandidates >= limits[ReadLimitParameter.RELATION_CANDIDATES].value) {
+        if (allowance.admitCandidate(limits) == IntellijRelationProviderEnumerationAdmission.HALTED) {
             observation.terminated(IntellijReadTermination.CANDIDATE_CAP)
             limitations += RelationLimitation.CANDIDATE_LIMIT_REACHED
             state = IntellijRelationCollectionState.ENUMERATION_LIMIT
             return IntellijRelationProviderEnumerationAdmission.HALTED
         }
-        allowance.collectCandidate()
         observation.count(IntellijReadCounter.RELATION_CANDIDATES)
         return IntellijRelationProviderEnumerationAdmission.READY
     }
@@ -108,8 +101,8 @@ internal class IntellijRelationCollector(
         when {
             examined >= request.budget.resources.workUnitLimit.value ->
                 haltAdmission(RelationLimitation.WORK_LIMIT_REACHED)
-            semanticResultCount() + scopeExclusions.size >= request.budget.resources.resultLimit.value ->
-                haltAdmission(RelationLimitation.RESULT_LIMIT_REACHED)
+            semanticResultCount() + scopeExclusions.size + standaloneCallbackCount() >=
+                request.budget.resources.resultLimit.value -> haltAdmission(RelationLimitation.RESULT_LIMIT_REACHED)
             else -> {
                 pendingProviderItem = item
                 providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.Unconfirmed
@@ -138,16 +131,26 @@ internal class IntellijRelationCollector(
      * Consumes one already compiler-confirmed edge while enforcing page budgets. A budget halt leaves the pending item
      * unconsumed so a resumed request cannot omit it.
      */
-    fun accept(fact: RelationFact): Boolean {
+    fun accept(
+        fact: RelationFact,
+        callback: io.github.amichne.kast.relation.contract.RelationCallbackObservation? = null,
+    ): Boolean {
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         val pending = pendingProviderItem ?: return contractHalt()
-        if (semanticResultCount() + scopeExclusions.size >= request.budget.resources.resultLimit.value) {
+        if (
+            semanticResultCount() + scopeExclusions.size + standaloneCallbackCount() >=
+                request.budget.resources.resultLimit.value
+        ) {
             return halt(RelationLimitation.RESULT_LIMIT_REACHED)
         }
 
         if (fact in facts) return dismissProviderItem()
 
-        val factBytes = fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+        if (callback != null && (!callback.belongsTo(request) || !callback.supportsNamedFact(fact)))
+            return contractHalt()
+        val factBytes =
+            fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() +
+                (callback?.canonicalProjection()?.toByteArray(StandardCharsets.UTF_8)?.size?.toLong() ?: 0L)
         if (retainedBytes + factBytes > request.budget.returnedBytes.value) {
             return halt(RelationLimitation.BYTE_LIMIT_REACHED)
         }
@@ -156,6 +159,7 @@ internal class IntellijRelationCollector(
         pendingProviderItem = null
         retainedBytes += factBytes
         facts += fact
+        if (callback != null) callbackObservations += callback
         providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.GraphConfirmed(fact)
         observation.count(IntellijReadCounter.RELATION_FACTS)
         return if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
@@ -166,12 +170,40 @@ internal class IntellijRelationCollector(
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         if (pendingProviderItem == null || !value.belongsTo(request)) return contractHalt()
         if (value in scopeExclusions) return dismissProviderItem()
-        if (semanticResultCount() + scopeExclusions.size >= request.budget.resources.resultLimit.value)
+        if (
+            semanticResultCount() + scopeExclusions.size + standaloneCallbackCount() >=
+                request.budget.resources.resultLimit.value
+        )
             return halt(RelationLimitation.RESULT_LIMIT_REACHED)
         val bytes = value.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
         if (retainedBytes + bytes > request.budget.returnedBytes.value)
             return halt(RelationLimitation.BYTE_LIMIT_REACHED)
         scopeExclusions += value
+        retainedBytes += bytes
+        return dismissProviderItem()
+    }
+
+    /** Callback ownership evidence consumes the same bounded page allowance as other exact evidence. */
+    fun acceptCallbackObservation(
+        value: io.github.amichne.kast.relation.contract.RelationCallbackObservation,
+        unavailable: RelationLimitation? = null,
+    ): Boolean {
+        if (state != IntellijRelationCollectionState.COLLECTING) return false
+        if (pendingProviderItem == null || !value.belongsTo(request)) return contractHalt()
+        if (value in callbackObservations) return dismissProviderItem()
+        if (
+            semanticResultCount() + scopeExclusions.size + standaloneCallbackCount() >=
+                request.budget.resources.resultLimit.value
+        )
+            return halt(RelationLimitation.RESULT_LIMIT_REACHED)
+        val bytes = value.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+        if (retainedBytes + bytes > request.budget.returnedBytes.value)
+            return halt(RelationLimitation.BYTE_LIMIT_REACHED)
+        callbackObservations += value
+        if (unavailable != null) {
+            omissions.record(unavailable, RelationOmissionSample.Located(value.occurrence))
+            qualify(unavailable)
+        }
         retainedBytes += bytes
         return dismissProviderItem()
     }
@@ -205,6 +237,7 @@ internal class IntellijRelationCollector(
                 facts = facts,
                 occurrences = referenceOccurrences,
                 scopeExclusions = scopeExclusions,
+                callbackObservations = callbackObservations,
                 examined = examined,
                 state = state,
                 pending = pendingProviderItem != null,
@@ -265,31 +298,19 @@ internal class IntellijRelationCollector(
         retainedBytes += bytes
         providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.Confirmed(value)
         referenceOccurrences += value
-        when (val ownership = value.ownership) {
-            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.Unavailable -> {
-                val reason =
-                    when (ownership.cause) {
-                        io.github.amichne.kast.relation.contract.RelationOwnershipUnavailableCause
-                            .UNSUPPORTED_DECLARATION -> RelationLimitation.UNSUPPORTED_ITEM
-                        io.github.amichne.kast.relation.contract.RelationOwnershipUnavailableCause
-                            .UNRESOLVED_DECLARATION -> RelationLimitation.UNSUPPORTED_ITEM
-                    }
-                omissions.record(reason, RelationOmissionSample.Located(value.occurrence))
-                qualify(reason)
-            }
-            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.DeclarationOwned,
-            is io.github.amichne.kast.relation.contract.RelationReferenceOwnership.FileScoped -> Unit
-        }
+        omissions.observeReferenceOwnership(value).forEach(::qualify)
         if (fact != null) facts += fact
         observation.count(IntellijReadCounter.RELATION_FACTS)
         return if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
     }
 
-    private fun elapsedLimitReached(): Boolean {
-        val elapsed = (clockNanoseconds() - startedAt).coerceAtLeast(0L)
-        val limit = request.budget.resources.elapsedTimeLimit.value * NANOS_PER_MILLISECOND
-        return elapsed >= limit
+    private fun standaloneCallbackCount(): Int = callbackObservations.count { callback ->
+        facts.none(callback::supportsNamedFact)
     }
+
+    fun admitCallbackWork(): CallbackWorkAdmission = allowance.admitCallbackWork(request.budget.resources)
+
+    private fun elapsedLimitReached(): Boolean = allowance.elapsedLimitReached(request.budget.resources)
 
     private fun halt(limitation: RelationLimitation): Boolean {
         limitations += limitation
@@ -301,9 +322,5 @@ internal class IntellijRelationCollector(
     private fun contractHalt(): Boolean {
         state = IntellijRelationCollectionState.CONTRACT_REJECTED
         return false
-    }
-
-    private companion object {
-        const val NANOS_PER_MILLISECOND = 1_000_000L
     }
 }

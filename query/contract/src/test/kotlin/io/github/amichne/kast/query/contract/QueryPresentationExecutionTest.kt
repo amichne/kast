@@ -14,6 +14,7 @@ class QueryPresentationExecutionTest {
             QueryPresentationExecution.evaluateAndFit(
                 evaluate = { owner ->
                     assertEquals(Refinement.Refined(Unit), owner.admitValuePath())
+                    assertEquals(Refinement.Refined(Unit), owner.admitCallbackEvidence())
                     order += "evaluate"
                     owner
                 },
@@ -21,6 +22,10 @@ class QueryPresentationExecutionTest {
                     assertEquals(
                         Refinement.Rejected(QueryPresentationAdmissionFailure.OWNER_EXPIRED),
                         owner.admitValuePath(),
+                    )
+                    assertEquals(
+                        Refinement.Rejected(QueryPresentationAdmissionFailure.OWNER_EXPIRED),
+                        owner.admitCallbackEvidence(),
                     )
                     order += "fit"
                     QueryExecutionResult.Rejected(QueryExecutionRejection.BUDGET_REJECTED)
@@ -47,6 +52,10 @@ class QueryPresentationExecutionTest {
         }
         assertEquals(0, fits)
         assertEquals(Refinement.Rejected(QueryPresentationAdmissionFailure.OWNER_EXPIRED), leaked.admitValuePath())
+        assertEquals(
+            Refinement.Rejected(QueryPresentationAdmissionFailure.OWNER_EXPIRED),
+            leaked.admitCallbackEvidence(),
+        )
     }
 
     @Test
@@ -61,5 +70,9 @@ class QueryPresentationExecutionTest {
             }
         }
         assertEquals(Refinement.Rejected(QueryPresentationAdmissionFailure.OWNER_EXPIRED), leaked.admitValuePath())
+        assertEquals(
+            Refinement.Rejected(QueryPresentationAdmissionFailure.OWNER_EXPIRED),
+            leaked.admitCallbackEvidence(),
+        )
     }
 }

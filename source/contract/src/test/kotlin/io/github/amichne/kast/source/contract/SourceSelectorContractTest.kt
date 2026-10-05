@@ -23,6 +23,33 @@ import kotlin.test.assertNotEquals
 
 class SourceSelectorContractTest {
     @Test
+    fun `issued file range uses historical exact file source admission`() {
+        val snapshot = snapshot("fun x() = 1\n")
+        val range = CandidateSelector.restoreRange(snapshot.lease, snapshot.file, 0, 3).refined()
+
+        assertEquals(SourceReadScope.ExactFile, SourceReadAnchor.Candidate(range).readScope())
+        assertEquals(snapshot.file, range.file)
+        assertEquals(snapshot.lease, range.lease)
+    }
+
+    @Test
+    fun `exact file range with search restrictions retains constrained source admission`() {
+        val snapshot = snapshot("fun x() = 1\n")
+        val scope =
+            SymbolSearchScope.ExactFile(
+                snapshot.file.path,
+                SymbolSourceKindPolicy.PRODUCTION_ONLY,
+                SymbolGeneratedSourcePolicy.EXCLUDE,
+            )
+        val range = CandidateSelector.restoreRange(snapshot.lease, snapshot.file, 0, 3, scope).refined()
+
+        assertEquals(
+            SourceReadScope.Constrained(scope, SymbolDiscoveryConstraints.None),
+            SourceReadAnchor.Candidate(range).readScope(),
+        )
+    }
+
+    @Test
     fun `range source anchors retain their decoded scope constraints`() {
         val snapshot = snapshot("fun x() = 1\n")
         val scope =

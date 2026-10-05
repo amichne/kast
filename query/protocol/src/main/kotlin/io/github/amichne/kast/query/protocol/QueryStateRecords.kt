@@ -9,12 +9,12 @@ import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.presentationUnitCount
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import kotlinx.serialization.json.Json
 
 internal sealed interface QueryStateKey {
     data class Checkpoint(val token: QueryExecutionContinuation.Pipeline) : QueryStateKey
@@ -154,6 +154,8 @@ internal sealed interface QueryProducerAcquisition {
     data object Mismatch : QueryProducerAcquisition
 
     data object CapacityExceeded : QueryProducerAcquisition
+
+    data class Rejected(val cause: QueryContinuationFailure) : QueryProducerAcquisition
 }
 
 internal fun QueryProducerAcquisition.checkpointAcquisition(): QueryCheckpointAcquisition =
@@ -169,6 +171,7 @@ internal fun QueryProducerAcquisition.checkpointAcquisition(): QueryCheckpointAc
         QueryProducerAcquisition.Unavailable -> QueryCheckpointAcquisition.Unavailable
         QueryProducerAcquisition.Mismatch -> QueryCheckpointAcquisition.Mismatch
         QueryProducerAcquisition.CapacityExceeded -> QueryCheckpointAcquisition.CapacityExceeded
+        is QueryProducerAcquisition.Rejected -> QueryCheckpointAcquisition.Rejected(cause)
     }
 
 internal fun QueryProducerAcquisition.outputAcquisition(): QueryOutputAcquisition =
@@ -183,6 +186,7 @@ internal fun QueryProducerAcquisition.outputAcquisition(): QueryOutputAcquisitio
         QueryProducerAcquisition.Unavailable -> QueryOutputAcquisition.Unavailable
         QueryProducerAcquisition.Mismatch -> QueryOutputAcquisition.Mismatch
         QueryProducerAcquisition.CapacityExceeded -> QueryOutputAcquisition.CapacityExceeded
+        is QueryProducerAcquisition.Rejected -> QueryOutputAcquisition.Rejected(cause)
     }
 
 internal fun QueryPublishedPage.dependencies(): Set<QueryStateKey> = buildSet {
@@ -208,10 +212,10 @@ internal fun QueryStateEntry.Pending.withExecution(
         is QueryStateEntry.Output -> copy(execution = execution, bytes = bytes)
     }
 
-internal fun QueryPublishedPage.itemCount(): Int =
+internal fun QueryPublishedPage.presentationUnitCount(): Int =
     when (this) {
-        is OperationOutcome.Complete -> evidence.payload.items.values.size
-        is OperationOutcome.Qualified -> evidence.payload.items.values.size
+        is OperationOutcome.Complete -> evidence.payload.presentationUnitCount
+        is OperationOutcome.Qualified -> evidence.payload.presentationUnitCount
         is OperationOutcome.Rejected -> 0
     }
 
@@ -300,30 +304,12 @@ internal fun generatedRowReference(): QueryResultRowReference =
         is Refinement.Rejected -> error("A generated query row reference must satisfy its syntax")
     }
 
-internal fun Long.saturatedAdd(other: Long): Long =
-    if (this < 0L || other < 0L || this > Long.MAX_VALUE - other) Long.MAX_VALUE else this + other
-
-internal fun Long.saturatedMultiply(other: Long): Long =
-    if (this < 0L || other < 0L || this > Long.MAX_VALUE / other) Long.MAX_VALUE else this * other
-
 internal fun QueryRunRequest.normalized(): QueryRunRequest =
     when (this) {
         is QueryRunRequest.Run -> copy(executionBudget = null)
         is QueryRunRequest.Resume -> copy(executionBudget = null)
         is QueryRunRequest.ReadResult -> this
     }
-
-internal fun QueryRunRequest.accountedRequestBytes(): Long =
-    Json.encodeToString(QueryRunRequest.serializer(), this).toByteArray(Charsets.UTF_8).size.toLong() *
-        RETAINED_ENCODING_MULTIPLIER
-
-/** The store supplies its bounded totals; extraction cannot manufacture a semantic fact. */
-internal fun queryRetentionMeasurements(retained: Long, highWater: Long, entryCount: Int): QueryRetentionMeasurements =
-    QueryRetentionMeasurements(
-        QueryRetentionByteCount.measured(retained),
-        QueryRetentionByteCount.measured(highWater),
-        (io.github.amichne.kast.query.contract.QueryCount.parse(entryCount) as Refinement.Refined).value,
-    )
 
 internal fun QueryPublishedPage.matchesAuthority(lease: SemanticReadAuthority): Boolean =
     when (this) {
@@ -342,8 +328,6 @@ internal fun MutableMap<QueryStateKey, QueryStateEntry>.publishReachable(
     entries.removeIf { it.value.owner === claim && it.key !in reachable }
     replaceAll { _, value -> value.publishOwned(claim) }
 }
-
-internal const val RETAINED_ENCODING_MULTIPLIER = 4L
 
 internal fun Map<QueryStateKey, QueryStateEntry>.outputFor(
     request: QueryRunRequest,

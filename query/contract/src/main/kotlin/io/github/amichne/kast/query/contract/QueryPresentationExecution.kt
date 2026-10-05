@@ -7,14 +7,19 @@ enum class QueryPresentationAdmissionFailure {
 }
 
 /**
- * Scoped permission to leave value-path byte admission to the paired encoded-page publisher. No capability is retained
- * in a plan, checkpoint or store. Construction requires evaluation and its fitting effect together; closing evaluation,
+ * Scoped permission to leave value-path and callback-evidence byte admission to the paired encoded-page publisher.
+ * Detached proof storage estimates cannot establish the size of an encoded response. No capability is retained in a
+ * plan, checkpoint or store. Construction requires evaluation and its fitting effect together; closing evaluation,
  * rejection, or an exception retires the permission before any later execution can use it.
  */
 class QueryPresentationExecution private constructor() {
     private var evaluating = true
 
-    fun admitValuePath(): Refinement<Unit, QueryPresentationAdmissionFailure> =
+    fun admitValuePath(): Refinement<Unit, QueryPresentationAdmissionFailure> = admit()
+
+    fun admitCallbackEvidence(): Refinement<Unit, QueryPresentationAdmissionFailure> = admit()
+
+    private fun admit(): Refinement<Unit, QueryPresentationAdmissionFailure> =
         if (evaluating) Refinement.Refined(Unit)
         else Refinement.Rejected(QueryPresentationAdmissionFailure.OWNER_EXPIRED)
 

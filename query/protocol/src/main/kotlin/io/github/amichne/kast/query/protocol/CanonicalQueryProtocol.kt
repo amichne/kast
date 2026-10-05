@@ -63,6 +63,7 @@ class CanonicalQueryProtocol(
             QueryCheckpointAcquisition.Mismatch -> rejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH)
             QueryCheckpointAcquisition.CapacityExceeded ->
                 rejected(QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED)
+            is QueryCheckpointAcquisition.Rejected -> rejected(acquired.cause.rejection)
             is QueryCheckpointAcquisition.Acquired ->
                 executeOwned(acquired.request, acquired.checkpoint, acquired.claim, lease, budget)
         }
@@ -80,6 +81,7 @@ class CanonicalQueryProtocol(
             QueryOutputAcquisition.Mismatch -> rejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH)
             QueryOutputAcquisition.CapacityExceeded ->
                 rejected(QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED)
+            is QueryOutputAcquisition.Rejected -> rejected(acquired.cause.rejection)
         }
 
     private suspend fun executeOwned(

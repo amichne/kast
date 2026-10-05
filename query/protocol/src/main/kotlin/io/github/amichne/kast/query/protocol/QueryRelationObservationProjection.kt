@@ -59,6 +59,9 @@ internal fun QueryRelationObservation.projectRelationObservation(
         QueryRelationDomainFingerprint.parse(question.domainFingerprint.value).relationValueOrNull() ?: return null,
         projectedCoverage,
         scopeExclusions.mapProjected { it.projectScopeExclusion(authority) }.boundedProjectedOrNull() ?: return null,
+        callbackObservations
+            .mapProjected { it.projectCallbackObservation(authority, question) }
+            .boundedProjectedOrNull() ?: return null,
     )
 }
 

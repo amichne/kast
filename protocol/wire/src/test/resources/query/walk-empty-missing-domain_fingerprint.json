@@ -35,5 +35,6 @@
   },
   "inherited_omissions": [],
   "reference_occurrences": [],
-  "scope_exclusions": []
+  "scope_exclusions": [],
+  "callback_observations": []
 }

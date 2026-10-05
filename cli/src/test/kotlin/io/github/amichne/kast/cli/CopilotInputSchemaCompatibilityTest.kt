@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -30,7 +31,19 @@ class CopilotInputSchemaCompatibilityTest {
     fun `query action variants retain their union rather than an optional property bag`() {
         val schema = PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS)
         val action = schema.getValue("$" + "defs").jsonObject.getValue("Action").jsonObject
-        assertEquals(3, action.getValue("anyOf").jsonArray.size)
+        assertEquals(
+            setOf(
+                "#/${'$'}defs/RunAction",
+                "#/${'$'}defs/ResumeAction",
+                "#/${'$'}defs/ReadResultAction",
+                "#/${'$'}defs/ReadSourceAction",
+            ),
+            action
+                .getValue("anyOf")
+                .jsonArray
+                .map { it.jsonObject.getValue("${'$'}ref").jsonPrimitive.content }
+                .toSet(),
+        )
         assertRejects(
             schema,
             PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS)

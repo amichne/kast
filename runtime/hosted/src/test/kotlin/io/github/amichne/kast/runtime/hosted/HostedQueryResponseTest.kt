@@ -48,7 +48,7 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryResponseTest {
     @Test
-    fun `caller byte allowance includes grant evidence and preserves failure coverage on every page`() {
+    fun `caller byte allowance includes grant evidence and emits each retained failure once`() {
         val report = ExecutionBudgetReport.from(queryTestGrant())
         val all = List(4) { item() }
         val original = OperationOutcome.Complete(envelope(all, listOf(failure()))).withQueryBudget(report)
@@ -67,11 +67,16 @@ class HostedQueryResponseTest {
         val decoded = CanonicalOperationWireBindings.queryRun.decodeOutcome(response.document) as WireDecoding.Decoded
         val page = (decoded.value as OperationOutcome.Qualified).evidence.payload
         assertEquals(report, page.executionBudget)
-        assertEquals(listOf(failure()), page.failures.values)
+        assertTrue(page.failures.values.isEmpty())
         val remainder = (suffix as OperationOutcome.Complete).evidence.payload
         assertEquals(listOf(failure()), remainder.failures.values)
         assertEquals(all, page.items.values + remainder.items.values)
     }
+
+    private fun retainedOutput() =
+        HostedOutputRetention.Retained(
+            ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000").refined()
+        )
 
     private fun queryTestGrant(): AdmittedExecutionBudget {
         val resources =
@@ -157,7 +162,7 @@ class HostedQueryResponseTest {
         assertTrue(result.items.values.size < items.size)
         assertEquals(items.take(result.items.values.size), result.items.values)
         assertEquals(envelope.basis, semantic.evidence.basis)
-        assertEquals(envelope.payload.failures, result.failures)
+        assertTrue(result.failures.values.isEmpty())
         assertEquals(40, retained.knownMinimum.value)
         assertRetainedTerminalCoverage(retained)
         assertEquals(
@@ -185,8 +190,14 @@ class HostedQueryResponseTest {
     }
 
     @Test
-    fun `mandatory failure evidence exceeding the cap stays rejected`() {
-        val response = encodeWithRetention(OperationOutcome.Complete(envelope(emptyList(), List(40) { failure() })))
+    fun `one indivisible failure exceeding the cap stays rejected`() {
+        val response =
+            encodeHostedQueryResponse(
+                OperationOutcome.Complete(envelope(emptyList(), listOf(failure()))),
+                maximumBytes = ReturnedByteLimit.parse(2000).refined(),
+            ) {
+                retainedOutput()
+            }
         assertTrue(response is HostedResponse.Oversized)
         assertEquals(HostedEvaluationOutcome.REJECTED, response.outcome)
     }

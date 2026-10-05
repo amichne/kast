@@ -1,0 +1,81 @@
+{
+  "type": "INSTALLED_CALLBACK_QUALIFIED",
+  "calls": 40,
+  "root": "/Users/amichne/.codex/worktrees/19ce/kast",
+  "rpc": "/Users/amichne/.local/share/kast/installation/bin/kast-mcp-complete",
+  "rpcSha256": "7db5ae69a50ddf725e1e58e1ba57017e368512496a51d25e43df10a77b262632",
+  "transport": "MCP_SESSION",
+  "budget": {
+    "maxElapsedMs": 20000,
+    "maxWorkUnits": 20000,
+    "maxResults": 1,
+    "maxReturnedBytes": 524288
+  },
+  "inspectedSourceRanges": 10,
+  "checks": [
+    {
+      "owner": "read",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "EXTERNAL_CALLABLE",
+          "OUTSIDE_DOMAIN",
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "read",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "EXTERNAL_CALLABLE",
+          "OUTSIDE_DOMAIN",
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    }
+  ],
+  "terminalPages": [
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    }
+  ]
+}

@@ -97,6 +97,17 @@ private constructor(
     }
 }
 
+/** Rows and independently retained evidence are presentation units; only rows advance retained row offsets. */
+val QueryRunResult.presentationUnitCount: Int
+    get() =
+        items.values.size +
+            failures.values.size +
+            omissions.values.size +
+            walkObservations.values.size +
+            referenceObservations.values.size +
+            discoveryObservations.values.size +
+            relationObservations.values.size
+
 /** A fitting boundary may expose only the offsets of the rows it actually emits. */
 fun QueryRunResult.presentationPrefix(count: Int): Refinement<QueryRunResult, QueryPresentationWindowFailure> =
     presentationSlice(count, suffix = false)
@@ -109,26 +120,31 @@ private fun QueryRunResult.presentationSlice(
     count: Int,
     suffix: Boolean,
 ): Refinement<QueryRunResult, QueryPresentationWindowFailure> {
-    if (count !in 0..items.values.size) return Refinement.Rejected(QueryPresentationWindowFailure.INVALID_ITEM_COUNT)
+    if (count !in 0..presentationUnitCount)
+        return Refinement.Rejected(QueryPresentationWindowFailure.INVALID_ITEM_COUNT)
     val window =
         when (val admitted = admittedPresentationWindow()) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
-    val selected = selectedItems(count, suffix)
-    val bounded =
-        when (val admitted = BoundedProtocolList.create(selected)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> error("A subset of an admitted query item list lost its collection proof")
-        }
+    val selectedRowCount = minOf(count, items.values.size)
+    val partition = QueryPresentationPartition(count, suffix)
+    val bounded = partition.select(items)
+    val selectedFailures = partition.select(failures)
+    val selectedOmissions = partition.select(omissions)
+    val selectedWalks = partition.select(walkObservations)
+    val selectedReferences = partition.select(referenceObservations)
+    val selectedDiscoveries = partition.select(discoveryObservations)
+    val selectedRelations = partition.select(relationObservations)
+    val selected = bounded.values
     val selectedWindow =
-        when (val selected = if (suffix) window?.suffix(count) else window?.prefix(count)) {
+        when (val selected = if (suffix) window?.suffix(selectedRowCount) else window?.prefix(selectedRowCount)) {
             null -> null
             is Refinement.Refined -> selected.value
             is Refinement.Rejected -> return selected
         }
     val accounting =
-        when (val selectedAccounting = selectedImpactAccounting(selected, if (suffix) count else 0)) {
+        when (val selectedAccounting = selectedImpactAccounting(selected, if (suffix) selectedRowCount else 0)) {
             is Refinement.Refined -> selectedAccounting.value
             is Refinement.Rejected ->
                 return Refinement.Rejected(QueryPresentationWindowFailure.Accounting(selectedAccounting.failure))
@@ -136,11 +152,32 @@ private fun QueryRunResult.presentationSlice(
     return Refinement.Refined(
         copy(
             items = bounded,
+            failures = selectedFailures,
+            omissions = selectedOmissions,
+            walkObservations = selectedWalks,
+            referenceObservations = selectedReferences,
+            discoveryObservations = selectedDiscoveries,
+            relationObservations = selectedRelations,
             impactAccounting = accounting,
             presentationWindow = selectedWindow,
             nextCursor = selectedWindow?.nextCursor,
         )
     )
+}
+
+/** Independent evidence positions never become retained row cursors. */
+private class QueryPresentationPartition(private val count: Int, private val suffix: Boolean) {
+    private var offset = 0
+
+    fun <T> select(values: BoundedProtocolList<T>): BoundedProtocolList<T> {
+        val selectedCount = (count - offset).coerceIn(0, values.values.size)
+        offset += values.values.size
+        val selected = if (suffix) values.values.drop(selectedCount) else values.values.take(selectedCount)
+        return when (val admitted = BoundedProtocolList.create(selected)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error("A subset of an admitted query presentation list lost its collection proof")
+        }
+    }
 }
 
 private fun QueryRunResult.admittedPresentationWindow():
@@ -159,6 +196,3 @@ private fun QueryRunResult.admittedPresentationWindow():
     }
     return Refinement.Refined(window)
 }
-
-private fun QueryRunResult.selectedItems(count: Int, suffix: Boolean): List<QueryResultItemDocument> =
-    if (suffix) items.values.drop(count) else items.values.take(count)

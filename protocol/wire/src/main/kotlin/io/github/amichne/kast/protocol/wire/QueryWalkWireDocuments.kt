@@ -39,6 +39,7 @@ internal data class QueryWalkObservationWireDocument(
     @SerialName("inherited_omissions") val inheritedOmissions: List<TraversalPartialExpansionWireDocument>,
     @SerialName("reference_occurrences") val referenceOccurrences: List<TraversalReferenceObservationWireDocument>,
     @SerialName("scope_exclusions") val scopeExclusions: List<QueryWalkScopeExclusionWireDocument>,
+    @SerialName("callback_observations") val callbackObservations: List<QueryWalkCallbackObservationWireDocument>,
 )
 
 @Serializable
@@ -147,6 +148,7 @@ internal fun QueryWalkObservationDocument.toWireDocument() =
         inheritedOmissions = inheritedOmissions.values.map(TraversalPartialExpansionDocument::toWireDocument),
         referenceOccurrences = referenceOccurrences.values.map(TraversalReferenceObservationDocument::toWireDocument),
         scopeExclusions = scopeExclusions.values.map { it.toWireDocument() },
+        callbackObservations = callbackObservations.values.map { it.toWireDocument() },
     )
 
 private fun QueryWalkCoverageDocument.toWireDocument(): QueryWalkCoverageWireDocument =
@@ -187,24 +189,29 @@ private fun QueryWalkObservationWireDocument.retainedWalkEvidence(
         referenceOccurrences.convertBounded(TraversalReferenceObservationWireDocument::toContract).flatMapConverted {
             references ->
             scopeExclusions.convertBounded(QueryWalkScopeExclusionWireDocument::toContract).flatMapConverted { exits ->
-                coverage.toContract().mapConverted { admittedCoverage ->
-                    QueryWalkObservationDocument(
-                        subject = QueryReferenceDocument.ExactSymbol(token),
-                        relation = relation.toContract(),
-                        maximumDepth = depth,
-                        expandedFrontier = frontier,
-                        progress = progress,
-                        strategy = strategy,
-                        partialExpansions = partials,
-                        coverage = admittedCoverage,
-                        requestedDomain = requestedDomain,
-                        effectiveDomain = effectiveDomain,
-                        domainFingerprint = domainFingerprint,
-                        inheritedOmissions = inherited,
-                        referenceOccurrences = references,
-                        scopeExclusions = exits,
-                    )
-                }
+                callbackObservations
+                    .convertBounded(QueryWalkCallbackObservationWireDocument::toContract)
+                    .flatMapConverted { callbacks ->
+                        coverage.toContract().mapConverted { admittedCoverage ->
+                            QueryWalkObservationDocument(
+                                subject = QueryReferenceDocument.ExactSymbol(token),
+                                relation = relation.toContract(),
+                                maximumDepth = depth,
+                                expandedFrontier = frontier,
+                                progress = progress,
+                                strategy = strategy,
+                                partialExpansions = partials,
+                                coverage = admittedCoverage,
+                                requestedDomain = requestedDomain,
+                                effectiveDomain = effectiveDomain,
+                                domainFingerprint = domainFingerprint,
+                                inheritedOmissions = inherited,
+                                referenceOccurrences = references,
+                                scopeExclusions = exits,
+                                callbackObservations = callbacks,
+                            )
+                        }
+                    }
             }
         }
     }

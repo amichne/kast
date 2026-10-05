@@ -10,6 +10,8 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.query.protocol.QueryContinuationRevocations
+import io.github.amichne.kast.query.protocol.QueryStateRetirement
 import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
@@ -28,13 +30,14 @@ internal sealed interface HostedOutputRetention {
 
 @Service(Service.Level.PROJECT)
 internal class HostedQueryContinuations : Disposable {
+    private val queryRevocations = QueryContinuationRevocations()
     private val epochs = HostedEpochStore<Active>(Active::retire)
 
     fun forEpoch(
         lease: io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority,
         limits: ReadLimits,
     ): Refinement<Active, io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure> =
-        epochs.admit(lease) { Active(lease, limits) }
+        epochs.admit(lease) { Active(lease, limits, queryRevocations) }
 
     override fun dispose() = epochs.retire()
 
@@ -42,12 +45,17 @@ internal class HostedQueryContinuations : Disposable {
         const val prefix = "query-output:v1:"
     }
 
-    class Active(val lease: SemanticReadAuthority, private val limits: ReadLimits) {
+    class Active(
+        val lease: SemanticReadAuthority,
+        private val limits: ReadLimits,
+        revocations: QueryContinuationRevocations = QueryContinuationRevocations(),
+    ) {
         val queryState =
             QueryStateStore(
                 capacity = limits[ReadLimitParameter.QUERY_CONTINUATION_ENTRIES].value,
                 maximumBytes = limits[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value.toLong(),
                 ttlMillis = limits[ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS].value.toLong(),
+                revocations = revocations,
             )
 
         val diagnosticCheckpoints =
@@ -60,9 +68,14 @@ internal class HostedQueryContinuations : Disposable {
 
         val sourceState = HostedSourceStateStore(limits)
 
-        fun retire() {
+        fun retire(cause: HostedEpochRetirement) {
             sourceState.retire()
-            queryState.retire()
+            queryState.retire(
+                when (cause) {
+                    HostedEpochRetirement.OWNER_RETIRED -> QueryStateRetirement.OWNER_RETIRED
+                    HostedEpochRetirement.BASIS_MOVED -> QueryStateRetirement.BASIS_MOVED
+                }
+            )
             diagnosticCheckpoints.retire()
         }
     }

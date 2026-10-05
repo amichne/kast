@@ -4,12 +4,14 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationLimitation
+import io.github.amichne.kast.relation.contract.RelationOmissionMeasurement
 import io.github.amichne.kast.traversal.contract.TraversalCheckpoint
 import io.github.amichne.kast.traversal.contract.TraversalFrontierEntry
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
 import io.github.amichne.kast.traversal.contract.TraversalNode
 import io.github.amichne.kast.traversal.contract.TraversalPage
 import io.github.amichne.kast.traversal.contract.TraversalPageFailure
+import io.github.amichne.kast.traversal.contract.TraversalPartialExpansion
 import io.github.amichne.kast.traversal.contract.TraversalPendingState
 import io.github.amichne.kast.traversal.contract.TraversalPlan
 import io.github.amichne.kast.traversal.contract.TraversalPosition
@@ -70,6 +72,18 @@ internal class MutableTraversalState(
             FrontierAdmission.Skip
         else FrontierAdmission.Admit
 
+    /** Repeated inherited qualifications carry no new measurement; observed page evidence remains distinct. */
+    fun retainOmissions(partial: TraversalPartialExpansion) {
+        val retained = partial.retainedExpansions()
+        retainedOmissions += retained.filterNot { expansion ->
+            expansion in retainedOmissions &&
+                expansion.omissions.all {
+                    it.measurement == RelationOmissionMeasurement.UnmeasuredOnPage && it.samples.locations.isEmpty()
+                }
+        }
+        terminalRelationLimitations += retained.flatMap { it.limitations }
+    }
+
     companion object {
         fun from(checkpoint: TraversalCheckpoint): MutableTraversalState =
             MutableTraversalState(
@@ -123,8 +137,15 @@ internal class TraversalAccounting(
 ) {
     val scopeExclusions = mutableListOf<io.github.amichne.kast.traversal.contract.TraversalScopeExclusion>()
 
+    val callbackObservations = mutableListOf<io.github.amichne.kast.traversal.contract.TraversalCallbackObservation>()
+
     val retainedResultCount: Int
-        get() = semanticResultCount + scopeExclusions.size
+        get() =
+            semanticResultCount +
+                scopeExclusions.size +
+                callbackObservations.count { callback ->
+                    records.none { it.fact.occurrence == callback.observation.occurrence }
+                }
 
     val semanticResultCount: Int
         get() =
@@ -168,6 +189,7 @@ internal class TraversalAccounting(
             inheritedOmissions,
             referenceOccurrences.sorted(),
             scopeExclusions.sorted(),
+            callbackObservations.sorted(),
         )
     }
 }

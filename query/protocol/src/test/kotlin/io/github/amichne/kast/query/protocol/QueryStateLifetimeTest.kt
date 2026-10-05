@@ -156,9 +156,12 @@ class QueryStateLifetimeTest {
         store.releasePublication(acquired.claim)
 
         now = 10_000_001L
-        assertEquals(QueryOutputAcquisition.Unavailable, store.acquireOutput(output.token, lease, 1000))
+        assertEquals(
+            QueryOutputAcquisition.Rejected(QueryContinuationFailure.DEPENDENCY_UNAVAILABLE),
+            store.acquireOutput(output.token, lease, 1000),
+        )
         assertEquals(QueryResultRestoration.Unavailable, store.restoreResult(result.reference, lease))
-        assertEquals(0L, store.retentionMeasurements().retainedBytes.value)
+        assertEquals(256L, store.retentionMeasurements().retainedBytes.value)
     }
 
     @Test
@@ -189,7 +192,11 @@ class QueryStateLifetimeTest {
         now = 10_000_001L
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(token, lease))
         assertEquals(QueryResultRestoration.Unavailable, store.restoreResult(result.reference, lease))
-        assertEquals(0L, store.retentionMeasurements().retainedBytes.value)
+        assertEquals(256L, store.retentionMeasurements().retainedBytes.value)
+        assertEquals(
+            QueryCheckpointAcquisition.Rejected(QueryContinuationFailure.DEPENDENCY_UNAVAILABLE),
+            store.acquireCheckpoint(token, lease, 1000),
+        )
     }
 
     @Test
@@ -210,7 +217,10 @@ class QueryStateLifetimeTest {
         now = 16_000_000L
         assertEquals(page, replay.page)
         assertEquals(QueryResultRestoration.Unavailable, store.restoreResult(result.reference, lease))
-        assertEquals(QueryCheckpointAcquisition.Unavailable, store.acquireCheckpoint(token, lease, 1000))
+        assertEquals(
+            QueryCheckpointAcquisition.Rejected(QueryContinuationFailure.EXPIRED),
+            store.acquireCheckpoint(token, lease, 1000),
+        )
         assertEquals(
             QueryPublicationCommit.Rejected(QueryPublicationFailure.EXPIRED),
             store.commitPublication(replay.claim, replay.page),
@@ -219,7 +229,7 @@ class QueryStateLifetimeTest {
         store.releasePublication(replay.claim)
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(token, lease))
         assertEquals(QueryResultRestoration.Unavailable, store.restoreResult(result.reference, lease))
-        assertEquals(0L, store.retentionMeasurements().retainedBytes.value)
+        assertEquals(256L, store.retentionMeasurements().retainedBytes.value)
     }
 
     @Test
@@ -228,19 +238,7 @@ class QueryStateLifetimeTest {
         val store = QueryStateStore(capacity = 8, maximumBytes = 100_000L, clock = { now }, ttlMillis = 10)
         val checkpoint = (store.issueCheckpoint(request(), checkpoint()) as QueryCheckpointIssuance.Issued).token
         val completePage = page() as OperationOutcome.Complete
-        val parentPage =
-            OperationOutcome.Qualified(
-                completePage.evidence,
-                QueryRunQualification.create(
-                        QueryKnownMinimum.parse(0).refined(),
-                        listOf(QueryLimitationDocument.WORK_LIMIT_REACHED),
-                        QueryQualifiedProgressDocument.Resumable(
-                            QueryCheckpointDocument.Upstream(checkpoint),
-                            ReadResumeActionDocument.RESUME,
-                        ),
-                    )
-                    .refined(),
-            )
+        val parentPage = qualified(QueryCheckpointDocument.Upstream(checkpoint))
         now = 5_000_000L
         val initial = (store.acquireInitial(lease) as QueryInitialAcquisition.Acquired).claim
         val output =
@@ -269,9 +267,12 @@ class QueryStateLifetimeTest {
         store.releasePublication(replay.claim)
 
         now = 10_000_001L
-        assertEquals(QueryOutputAcquisition.Unavailable, store.acquireOutput(output.token, lease, 1000))
+        assertEquals(
+            QueryOutputAcquisition.Rejected(QueryContinuationFailure.DEPENDENCY_UNAVAILABLE),
+            store.acquireOutput(output.token, lease, 1000),
+        )
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(checkpoint, lease))
-        assertEquals(0L, store.retentionMeasurements().retainedBytes.value)
+        assertEquals(512L, store.retentionMeasurements().retainedBytes.value)
     }
 
     private suspend fun qualified(checkpoint: QueryCheckpointDocument): QueryPublishedPage {

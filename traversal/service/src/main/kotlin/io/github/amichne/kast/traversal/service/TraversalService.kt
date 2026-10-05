@@ -159,6 +159,20 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                         return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
                 }
             }
+            for (exclusion in batch.callbackObservations) {
+                when (
+                    val observed =
+                        io.github.amichne.kast.traversal.contract.TraversalCallbackObservation.create(
+                            plan,
+                            entry,
+                            exclusion,
+                        )
+                ) {
+                    is Refinement.Refined -> accounting.callbackObservations += observed.value
+                    is Refinement.Rejected ->
+                        return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
+                }
+            }
             accounting.encodedBytes += batch.encodedBytes.value
             accounting.examinedWorkUnits += batch.examinedWorkUnits.value
             accounting.elapsedMillis += read.elapsedMillis.value
@@ -210,9 +224,7 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                     ) {
                         is Refinement.Refined -> {
                             accounting.partialExpansions += partial.value
-                            val retained = partial.value.retainedExpansions()
-                            state.retainedOmissions += retained
-                            state.terminalRelationLimitations += retained.flatMap { it.limitations }
+                            state.retainOmissions(partial.value)
                         }
                         is Refinement.Rejected ->
                             return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)

@@ -32,6 +32,7 @@ internal fun QueryWalkObservation.projectWalkObservation(
     val frontier = QueryExpandedFrontierDocument.parse(expandedFrontier.value).refinedWalkOrNull() ?: return null
     val partials = partialExpansions.protocolDocuments(authority) ?: return null
     val projectedCoverage = coverage.protocolDocument() ?: return null
+    val domain = projectQuestionDomain() ?: return null
     return QueryWalkObservationDocument(
         subject = subject,
         relation = meaning.protocolDocument(),
@@ -48,17 +49,29 @@ internal fun QueryWalkObservation.projectWalkObservation(
         partialExpansions = partials,
         coverage = projectedCoverage,
         requestedDomain = question.requestedDomain.requestedDomainDocument(),
-        effectiveDomain = relationDomainDocument(question.effectiveScope, question.effectiveConstraints) ?: return null,
-        domainFingerprint =
-            io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint.parse(
-                    question.domainFingerprint.value
-                )
-                .refinedWalkOrNull() ?: return null,
+        effectiveDomain = domain.domain,
+        domainFingerprint = domain.fingerprint,
         inheritedOmissions = inheritedOmissions.protocolDocuments(authority) ?: return null,
         referenceOccurrences = referenceOccurrences.protocolReferences(authority) ?: return null,
+        callbackObservations =
+            callbackObservations.mapProjected { it.projectCallbackObservation(authority) }.boundedProjectedOrNull()
+                ?: return null,
         scopeExclusions =
             scopeExclusions.mapProjected { it.projectScopeExclusion(authority) }.boundedProjectedOrNull()
                 ?: return null,
+    )
+}
+
+private data class WalkQuestionDomain(
+    val domain: io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument,
+    val fingerprint: io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint,
+)
+
+private fun QueryWalkObservation.projectQuestionDomain(): WalkQuestionDomain? {
+    return WalkQuestionDomain(
+        relationDomainDocument(question.effectiveScope, question.effectiveConstraints) ?: return null,
+        io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint.parse(question.domainFingerprint.value)
+            .refinedWalkOrNull() ?: return null,
     )
 }
 

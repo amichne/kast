@@ -8,8 +8,11 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.query.contract.QueryBudget
@@ -63,6 +66,7 @@ class HostedContinuationOwnerRetentionTest {
             continuations.forEpoch(authority, limits),
         )
         org.junit.jupiter.api.Assertions.assertSame(next, continuations.forEpoch(nextAuthority, limits).value())
+        assertStaleContinuation(next, fixture, queryState.token)
         assertQueryRetired(owner, queryState.token)
         assertEquals(QueryCheckpointIssuance.Unavailable, owner.queryState.issueCheckpoint(queryRequest, checkpoint))
         assertEquals(
@@ -75,6 +79,32 @@ class HostedContinuationOwnerRetentionTest {
             OperationOutcome.Rejected(SourceReadRejection.CONTINUATION_UNAVAILABLE),
             owner.sourceState.readFixtureSuffix(sourceOutput.token, source.request, authority),
         )
+    }
+
+    private suspend fun assertStaleContinuation(
+        next: HostedQueryContinuations.Active,
+        fixture: RelationPagingFixture,
+        token: QueryExecutionContinuation.Pipeline,
+    ) {
+        val resumed =
+            CanonicalQueryProtocol(
+                    QueryOperations { error("A retired-epoch token must reject before semantic execution") },
+                    CanonicalQueryReferences(),
+                    next.queryState,
+                )
+                .execute(
+                    QueryRunRequest.Resume(token),
+                    next.lease,
+                    QueryBudget(fixture.budget.resources, QueryByteLimit.parse(100_000).value()),
+                )
+        assertEquals(
+            OperationOutcome.Rejected(
+                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_STALE_BASIS)
+            ),
+            resumed,
+        )
+        assertEquals(1, next.queryState.retentionMeasurements().retainedRevocations.value)
+        assertEquals(256L, next.queryState.retentionMeasurements().retainedBytes.value)
     }
 
     @Test

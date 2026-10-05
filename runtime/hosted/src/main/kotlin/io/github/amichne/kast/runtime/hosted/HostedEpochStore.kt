@@ -5,7 +5,12 @@ import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure
 
 /** One current partition. The original semantic owner, never a numeric revision, authorizes replacement. */
-internal class HostedEpochStore<Value>(private val retireValue: (Value) -> Unit) {
+internal enum class HostedEpochRetirement {
+    OWNER_RETIRED,
+    BASIS_MOVED,
+}
+
+internal class HostedEpochStore<Value>(private val retireValue: (Value, HostedEpochRetirement) -> Unit) {
     private sealed interface State<out Value> {
         data object Empty : State<Nothing>
 
@@ -37,7 +42,7 @@ internal class HostedEpochStore<Value>(private val retireValue: (Value) -> Unit)
                     is Refinement.Refined -> Unit
                 }
                 if (authority === current.authority) return Refinement.Refined(current.value)
-                retireValue(current.value)
+                retireValue(current.value, HostedEpochRetirement.BASIS_MOVED)
             }
         }
         val value = create()
@@ -48,7 +53,7 @@ internal class HostedEpochStore<Value>(private val retireValue: (Value) -> Unit)
     @Synchronized
     fun retire() {
         when (val current = state) {
-            is State.Current -> retireValue(current.value)
+            is State.Current -> retireValue(current.value, HostedEpochRetirement.OWNER_RETIRED)
             State.Empty,
             State.Retired -> Unit
         }

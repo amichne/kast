@@ -1,0 +1,11 @@
+{
+  "type": "INSTALLED_CALLBACK_OUTPUT_SCHEMA_ADMITTED",
+  "catalog": "/Users/amichne/.local/share/kast/installation/share/kast/provider-catalog.json",
+  "catalogSha256": "05c0b7ca13554ddbf5fb001cb45901db23e58e563c6f28d8f2edf9ac3b0c5794",
+  "carrier": "COMPLETED",
+  "admittedCalls": {
+    "/tmp/kast-callback-fixture-14212-run1": 342,
+    "/tmp/kast-callback-value-bindings-14212-run1": 19,
+    "/tmp/kast-callback-production-14212-run2": 40
+  }
+}

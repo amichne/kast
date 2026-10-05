@@ -7,7 +7,7 @@
     },
     "request": {
       "$ref": "#/$defs/Action",
-      "description": "Exactly one closed query action: run, resume, or read_result."
+      "description": "Exactly one closed action: run, resume, read_result, or read_source."
     }
   },
   "required": [
@@ -1224,6 +1224,9 @@
         },
         {
           "$ref": "#/$defs/ReadResultAction"
+        },
+        {
+          "$ref": "#/$defs/ReadSourceAction"
         }
       ]
     },
@@ -4760,6 +4763,42 @@
         "range",
         "role"
       ]
+    },
+    "SourceCandidateReference": {
+      "type": "string",
+      "pattern": "^candidate:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})$",
+      "description": "Exact issued source occurrence or anonymous callable candidate reference. Retains its original workspace and read authority."
+    },
+    "ReadSourceAction": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "READ_SOURCE"
+          ]
+        },
+        "candidateRef": {
+          "$ref": "#/$defs/SourceCandidateReference"
+        },
+        "executionBudget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionBudget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "candidateRef",
+        "executionBudget"
+      ],
+      "additionalProperties": false,
+      "description": "Read the exact source range of an issued callback, occurrence, or declaration candidate. The existing source owner validates authority and freshness; this does not execute a query."
     }
   }
 }

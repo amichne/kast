@@ -2,7 +2,7 @@
   {
     "type": "function",
     "name": "kast_query_symbols",
-    "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For remembered words, use source {\"type\":\"SEARCH_TEXT\",\"word\":\"launchd\",\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"app-server\"}} to receive exact containing-declaration refs and bounded lexical matches. This word mode is case-sensitive and excludes regex and qualified literals. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct. Discovery observations preserve the declared universe, phase counts, coverage and unfinished input. Reference occurrence rows retain compiler target identity and explicit declaration-owned, file-scoped or unavailable ownership. A published execution page replays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner publishes or drains. Set steps[].expansionScope to WORKSPACE, RETAINED_SEED, or SOURCE_DOMAIN to control native relation destinations separately from source discovery and output predicates.",
+    "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For remembered words, use source {\"type\":\"SEARCH_TEXT\",\"word\":\"launchd\",\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"app-server\"}} to receive exact containing-declaration refs and bounded lexical matches. This word mode is case-sensitive and excludes regex and qualified literals. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct. Discovery observations preserve the declared universe, phase counts, coverage and unfinished input. Reference occurrence rows retain compiler target identity and explicit declaration-owned, file-scoped or unavailable ownership. A published execution page replays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner publishes or drains. Set steps[].expansionScope to WORKSPACE, RETAINED_SEED, or SOURCE_DOMAIN to control native relation destinations separately from source discovery and output predicates. Inspect a callback occurrence, anonymous callable body, or proof declaration with request {\"type\":\"READ_SOURCE\",\"candidateRef\":\"<exact issued candidate reference>\"}; this returns the existing source.read document for that exact range, preserving freshness and authority failures.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -12,7 +12,7 @@
         },
         "request": {
           "$ref": "#/$defs/Action",
-          "description": "Exactly one closed query action: run, resume, or read_result."
+          "description": "Exactly one closed action: run, resume, read_result, or read_source."
         }
       },
       "required": [
@@ -1229,6 +1229,9 @@
             },
             {
               "$ref": "#/$defs/ReadResultAction"
+            },
+            {
+              "$ref": "#/$defs/ReadSourceAction"
             }
           ]
         },
@@ -4765,6 +4768,42 @@
             "range",
             "role"
           ]
+        },
+        "SourceCandidateReference": {
+          "type": "string",
+          "pattern": "^candidate:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})$",
+          "description": "Exact issued source occurrence or anonymous callable candidate reference. Retains its original workspace and read authority."
+        },
+        "ReadSourceAction": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "READ_SOURCE"
+              ]
+            },
+            "candidateRef": {
+              "$ref": "#/$defs/SourceCandidateReference"
+            },
+            "executionBudget": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ExecutionBudget"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "candidateRef",
+            "executionBudget"
+          ],
+          "additionalProperties": false,
+          "description": "Read the exact source range of an issued callback, occurrence, or declaration candidate. The existing source owner validates authority and freshness; this does not execute a query."
         }
       }
     },
