@@ -5,23 +5,18 @@ icon: "plug"
 keywords: ["MCP", "tools/list", "tools/call", "structuredContent"]
 ---
 
-The installed Kast MCP process runs over stdio from the client's repository
-directory. After MCP negotiation, `tools/list` is the authority for this
-release's tool names, `inputSchema`, and `outputSchema`.
+The installed MCP process uses stdio from the client's repository directory. After negotiation, `tools/list` defines the installed names, `inputSchema`, and `outputSchema`.
 
-| Read tools | Purpose |
+| Tool | Purpose |
 | --- | --- |
-| `query_symbols` | Declarations, exact references, relations, and pipelines |
-| `check_diagnostics` | IDEA diagnostics for a path |
-| `health_check` | Workspace binding and IDEA readiness |
+| `query_symbols` | Declarations, source, relationships, and composition. |
+| `check_diagnostics` | IDEA diagnostics for a path. |
+| `health_check` | Workspace binding and readiness. |
+| `add_declaration`, `replace_body` | Targeted source changes. |
 
-`add_declaration` and `replace_body` are the write tools. Request the `SOURCE`
-field in a `query_symbols` symbol output to read committed source context. The
-App Server's `workspace_lifecycle` is a separate hosted tool.
+Hosted `workspace_lifecycle` is separate and absent from direct MCP.
 
 ## Call and result
-
-An MCP client sends a JSON-RPC tool call after negotiation:
 
 ```json
 {
@@ -32,18 +27,10 @@ An MCP client sends a JSON-RPC tool call after negotiation:
 }
 ```
 
-For a query, set `name` to `query_symbols` and use the
-[example arguments](/reference/walkthrough). A call returns a JSON-RPC `result` with
-`content`, `isError`, and, when the document is admitted,
-`structuredContent`.
+For queries, use `query_symbols` and its [arguments](/reference/api).
 
-`structuredContent` is the canonical operation document itself. Its `status`
-is `complete`, `qualified`, or `rejected`, with the operation's exact references,
-coverage, finite failures, and recovery evidence intact. An invocation failure
-uses `isError` and may have no `structuredContent`. The generated
-[tool call wrapper](/reference/models/mcp-tool-call-result) describes the MCP
-transport; use the generated tool response schema to decode the semantic document.
+The JSON-RPC result carries `content`, `isError`, and admitted `structuredContent`. For semantic tools, `structuredContent` is the canonical operation document, preserving status, references, coverage, failures, and recovery evidence.
 
-The OpenAPI `POST /callables/…` labels in this pane organize hosted tool
-schemas. They are documentation paths, not HTTP endpoints. The direct MCP
-result uses the wrapper above.
+Inspect `isError` and the semantic status. Invocation failures can lack a structured document. `health_check` has its own readiness schema.
+
+Decode the [wrapper](/reference/models/mcp-tool-call-result) and tool-specific [generated result](/reference/schemas) separately. OpenAPI `/callables/…` labels organize documentation. They are not HTTP endpoints.

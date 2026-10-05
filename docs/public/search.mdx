@@ -5,71 +5,61 @@ icon: "search"
 keywords: ["query_symbols", "Kotlin", "compiler references", "relations"]
 ---
 
-Start with a function or type you care about and the module or directory that contains it. Your [connected agent](/agent-harnesses) writes the Kast query; you can ask in plain language.
+Start with a declaration name and its module or directory. Your [connected agent](/agent-harnesses) writes the query.
 
 ## 1. Find a declaration and inspect its source
 
-Replace `submitOrder` and `checkout` with a name and directory from your repository:
+Substitute your name and directory:
 
 ```text wrap
 Use Kast to find submitOrder under checkout in main. Show matching signatures, locations, and coverage. Stop so I can choose the exact function.
 ```
 
-Check the signature and file, choose the result, and ask the agent to read that declaration's source and keep its exact reference. The returned reference identifies that declaration in the selected workspace; a name alone may match several overloads or declarations.
+Select by signature and file. Ask the agent to read its source and keep its exact reference for follow-up queries.
 
-<Accordion title="What a useful answer looks like">
-  This is an illustrative agent summary, not a captured response or wire format. Your names, paths, and coverage will differ.
-
-  | Part of the answer | Example | What to check |
-  | --- | --- | --- |
-  | Declaration | `CheckoutService.submitOrder(order: Order): Receipt` | Is this the overload you meant? |
-  | Location | `checkout/src/main/kotlin/CheckoutService.kt` | Is this the repository and file you expected? |
-  | Coverage | Complete for the requested production-source search | Did it finish the scope you requested? |
-  | Exact reference | A reference returned by Kast | Have the agent reuse it unchanged. |
-
-  A **qualified** answer can still confirm a declaration, but must explain its limits. An empty qualified answer does not prove that the declaration is absent. See [What an answer proves](/concepts/evidence-boundaries).
-</Accordion>
+| Check | Why it matters |
+| --- | --- |
+| Signature | Distinguishes overloads. |
+| Location | Confirms the intended repository and declaration. |
+| Coverage | Reports whether the requested search finished. |
+| Exact reference | Carries the selected identity into the next request. |
 
 ## 2. Find callers or implementations
 
-For a function, ask:
+For a function:
 
 ```text wrap
 Use the exact reference we just selected to find its callers. Show each caller's location and the call site, and report the search scope and any limitations.
 ```
 
-For an interface or base type, ask:
+For an interface or base type:
 
 ```text wrap
 Use the selected type's exact reference to find its implementations. Show each declaration once, with its signature and location. Report whether the search finished.
 ```
 
-The directory used to find the starting declaration does not automatically restrict its callers or implementations. Ask for a destination directory filter if those results must stay within a particular module.
+Discovery scope does not automatically restrict relationship destinations. Use `expansionScope` to restrict the relationship search domain. Use a later filter to restrict returned rows. See [Query forms](/reference/api#apply-only-the-steps-you-need).
 
 ## 3. Trace callers to a chosen depth
-
-To follow a call chain beyond immediate callers, ask:
 
 ```text wrap
 From the selected function, trace callers up to two hops. Show the hop depth and call-site evidence. Continue if Kast reports resumable work; otherwise explain any unvisited work or terminal limit.
 ```
 
-Two hops limits how far the trace goes. Check coverage within that bound before saying you found every caller. A zero-row page can still contain progress; have the agent follow the reported next action.
+Depth bounds the requested graph. Coverage reports unfinished work within that bound. Follow reported progress even on a zero-row page.
 
-A reference inside a function is not automatically a call by that function. Invocations inside lambdas keep their own ownership evidence. A static callback path does not prove that the callback ran, and library callback activation can remain outside Kast's supported scope. Read [Callback evidence](/reference/callbacks) when those distinctions affect your question.
+Invocations inside lambdas preserve separate ownership. Static callback paths do not prove runtime execution. See [Callback evidence](/reference/callbacks).
 
 ## Start from remembered text
-
-If you remember a word from the source but not the declaration name, ask:
 
 ```text wrap
 Use Kast to find functions containing the word retry under checkout in main. Show a matching line for each function, then let me choose one to inspect or trace.
 ```
 
-Use one case-sensitive ASCII word beginning with a letter or underscore. Phrases, substrings, qualified literals, and regular expressions are rejected. A matching word explains discovery; it does not prove a call relationship. Unsupported containing declarations or a stopped scan can leave coverage incomplete.
+Use one case-sensitive ASCII word beginning with a letter or underscore. Phrases, substrings, qualified literals, and regular expressions are rejected. A word match explains discovery. A relation query establishes callers. Unsupported containers or a stopped scan leave coverage incomplete.
 
 ## Keep the investigation current
 
-Reuse issued references unchanged. If Kast reports a stale reference or unavailable saved state, search again. Source edits, an IDEA restart, or expired retained state can invalidate an earlier investigation.
+Pass issued references unchanged. After a stale-reference or unavailable-state failure, search again. Edits, IDEA restarts, and retention expiry can invalidate saved work.
 
-[What an answer proves](/concepts/evidence-boundaries) explains what you can conclude. For exact inputs and historical examples, open [Query forms](/reference/api), [Results](/reference/responses), or the [recorded walkthrough](/reference/walkthrough). To compare sets from separate queries, use [Combine query results](/query-pipelines).
+Use [What an answer proves](/concepts/evidence-boundaries) for conclusions, [Results](/reference/responses) for progress, or [Combine query results](/query-pipelines) for retained composition.

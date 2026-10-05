@@ -4,40 +4,34 @@ description: "Understand what a result confirms, what remains unknown, and when 
 icon: "shield-check"
 ---
 
-A result describes the workspace, source state, and scope that Kast checked. Read those limits before using it to answer a broader question or making a source change.
+Read each fact with its workspace, source state, scope, and coverage. Exact identity and exhaustive coverage establish different properties.
 
 ## Exact facts are not the same as exhaustive coverage
 
-| Result | What it supports |
+| Result | Supported conclusion |
 | --- | --- |
-| Exact symbol with complete coverage | Kast confirmed the declaration and covered the requested search scope. |
-| Exact symbol with qualified coverage | Kast confirmed the declaration, but more matches or unfinished checks may remain. |
-| Empty with complete coverage | No matching result exists within the declared, supported search scope. |
-| Empty with qualified coverage | Absence remains unproven, even when this page has no rows. |
-| Rejected or unavailable | No successful semantic result was established by this request. Resolve the reported failure. |
+| Exact symbol, complete coverage | Confirmed declaration. Requested search scope covered. |
+| Exact symbol, qualified coverage | Confirmed declaration. Additional matches or checks can remain. |
+| Empty, complete coverage | No match in the declared, supported scope. |
+| Empty, qualified coverage | Absence remains unproven. |
+| Rejected or unavailable | No successful semantic result from this request. |
 
-A complete Kotlin-source search covers the stated source scope. It does not establish facts about other languages, libraries, or runtime behavior. Read any restrictions, omissions, and item failures alongside the result.
+Kotlin-source coverage does not establish facts about excluded sources, libraries, other languages, or runtime execution. Read restrictions, omissions, and item failures.
 
 ## Decide whether to continue
 
-Ask the agent to state the scope checked, confirmed facts, limitations, and any next action. When Kast reports resumable work, continue with its issued token. When it reports a terminal limit, keep the facts and explain the unfinished work. A missing continuation does not mean coverage is complete.
+Resumable progress supplies an execution continuation. Terminal progress supplies a stopping reason. A missing continuation does not establish completeness.
 
-An empty page can still represent progress. Retrieving all saved rows does not finish an incomplete search. See [Results](/reference/responses#follow-progress-not-row-count) for execution and paging details.
+An empty page can still advance work. Reading all saved rows preserves the original coverage limits. See [Results](/reference/responses#follow-progress-not-row-count).
 
 ## Can I reuse this result later?
 
-Kast checks references against the workspace and source state that produced them. Pass them unchanged. If a reference is stale, or saved results have expired or become unavailable, start a fresh query. Do not replace a rejected reference with a guessed name or source location.
+Pass issued handles unchanged. For stale references or unavailable saved state, start a fresh query.
 
-A fresh read of an exact symbol may validate it again through the compiler. Saved results and continuations require their original state to remain valid. [Saved state and identity](/reference/responses#saved-state-and-identity) explains workspace ownership, IDEA read state, lifetimes, and the different handles.
+An exact symbol can undergo fresh compiler revalidation. Retained results and continuations require their original read state and lifetime. See [Saved state and identity](/reference/responses#saved-state-and-identity).
 
-## What does a caller trace prove?
+## Check relationship and verification claims
 
-A confirmed call site is evidence for that relationship in the checked source. A reference occurrence may only show where a name appears. Invocations in lambdas have separate ownership and callback limits; they do not prove runtime execution or exhaustive library callback activation. See [Callback evidence](/reference/callbacks).
+A confirmed call site establishes a source relationship. Lexical containment alone does not establish a named caller. [Callback evidence](/reference/callbacks) preserves anonymous ownership and activation limits.
 
-## Check the scope of verification
-
-Kast identifies the exact target of a source change and reports its verification outcome. If the outcome is uncertain, preserve the receipt and recovery evidence and avoid automatic write retries. The [change guide](/change) explains supported targets and what to do next.
-
-Run the build and tests your project requires. IDEA diagnostics and verification of one edit cover their reported scope; they do not establish whole-project behavior.
-
-Client authors can use [Results](/reference/responses) for transport wrappers and reference handling, or [Combine query results](/query-pipelines) for composition limits.
+A verified edit covers the reported change scope. For uncertain outcomes, preserve the receipt and follow [change recovery](/change#read-the-receipt) before retrying. Run your project's build and tests.

@@ -4,17 +4,13 @@ description: "Use exact compiler references, locations, and signatures without g
 icon: "braces"
 ---
 
-`query_symbols` returns exact Kotlin symbols. A result can carry a kind,
-name, source location, signature, and an opaque `ref`. The
-[query item schema](/reference/models/query-item) defines the full shape.
+`query_symbols` returns exact Kotlin declarations. Keep coverage attached to reported symbols.
 
 | Field | Use |
 | --- | --- |
-| `ref` | Pass unchanged to Kast for a later read. |
-| `location` | Show where the declaration was proven. |
-| `signature` | Display the compiler's declaration details. |
-| `source` | Show a bounded committed source window when requested. |
+| `ref` | Pass unchanged to later queries. |
+| `location` | Locate the proven declaration. |
+| `signature` | Distinguish compiler-established declarations. |
+| `source` | Inspect bounded committed source, when requested. |
 
-Pass the returned exact `ref` unchanged to later queries. Request the `SOURCE` field when a query needs committed source context. A matching name, file path, or reconstructed token does not prove exact identity.
-
-The [recorded exact-name query](/reference/walkthrough#1-find-a-declaration-and-inspect-its-source) uses Kast's `QueryStepSyntax`. Substitute a declaration and directory from your repository. Keep the result's coverage with any symbol you report.
+Request `SOURCE` for source context. A matching name, path, or reconstructed token does not prove identity. See the [query item schema](/reference/models/query-item) and [scoped example](/reference/walkthrough#1-find-a-declaration-and-inspect-its-source).

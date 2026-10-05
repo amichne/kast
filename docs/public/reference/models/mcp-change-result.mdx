@@ -5,8 +5,6 @@ openapi-schema: "reference/callables.openapi.json add_declarationSemanticResult"
 mode: "wide"
 ---
 
-This page renders the generated semantic result for `add_declaration`. MCP returns the admitted operation document in `result.structuredContent`; it does not replace the operation's verification and recovery evidence with a generic change wrapper.
+MCP returns the `add_declaration` operation document in `result.structuredContent`. Preserve its plan identity, verification outcome, and recovery evidence until the effect is known.
 
-Keep the exact plan identity, verification outcome, and any recovery evidence until the effect has a known outcome. A returned document or a completed transport is not, by itself, proof that the change was verified.
-
-`replace_body` has a separate generated `replace_bodySemanticResult` contract. Use [Schemas and samples](/reference/schemas) for that tool's exact response, and [Change code](/change) for supported targets, verification, and recovery.
+`replace_body` uses the separate `replace_bodySemanticResult` schema. See [Schemas and samples](/reference/schemas) and [change recovery](/change#read-the-receipt).
