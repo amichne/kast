@@ -1,0 +1,38 @@
+---
+title: "Callback evidence"
+description: "Interpret anonymous callable ownership, static bindings, and the limits of caller tracing."
+icon: "route"
+---
+
+Use this reference when a caller trace includes lambdas or other anonymous callable bodies. Kast preserves their identity and reported ownership rather than treating every invocation as a call by the enclosing named function.
+
+**A static path does not prove execution.** Supplying a lambda does not prove that it ran. Library callback activation and unsupported callback supplies remain explicit limits, even when other parts of the query are complete.
+
+## Named callers and lexical ownership
+
+`REFERENCES` reports lexical containment: a declaration-owned occurrence appears inside that declaration. This alone does not prove a named caller edge. `CALLERS` and `CALLEES` preserve `callback_observations` for invocations inside anonymous callable bodies. Each observation keeps the exact occurrence, lexical owner, anonymous body, and named-call policy. `EXCLUDED` explains why the invocation is absent from named callers; `ADMITTED_INLINE` keeps the separate anonymous owner even when the inline policy admits a named edge. `UNAVAILABLE` preserves incomplete ownership.
+
+## Static bindings and unfinished proof
+
+The observation's flow separates the supplied lambda's exact identity from its compiler-confirmed argument-to-parameter binding and the receiving function's exact parameter invocations. Those facts describe a possible static path. They do not claim that the callback ran. When a parameter invocation belongs to another lambda, `owner_bindings` retains that body’s exact supplying call and compiler-confirmed formal mapping where available. Those records retain `NESTED_CALLBACK_EXECUTION`: supplying a lambda does not prove its activation. Library mappings remain `EXTERNAL_CALLABLE` with the exact workspace supply and `OUTSIDE_DOMAIN`. A local initializer retains `STORED_CALLBACK`; a returned literal retains `RETURNED_CALLBACK`. Unsupported supply, including a direct literal invocation whose activation Kast cannot yet trace, retains `UNSUPPORTED_CALLBACK_SUPPLY`. Unresolved mapping, external body, or escaped parameter also retains an explicit obligation.
+
+## Read the exact anonymous source
+
+Inspect an exact source occurrence or anonymous body by passing its issued `candidateSelector` unchanged to `query_symbols`:
+
+```json
+{
+  "request": {
+    "type": "READ_SOURCE",
+    "candidateRef": "<issued candidateSelector>"
+  }
+}
+```
+
+This action uses the source-read owner and returns the exact anchored source with its authority and coverage. Reacquire the reference after an epoch change. Do not substitute the enclosing named function for the lambda.
+
+## Continue output delivery
+
+`page_progress` counts the current page's rows and evidence. A zero-row page can advance walk or callback evidence. Continue with the exact issued token and `next_action` until query output finishes; complete traversal coverage can precede complete output delivery.
+
+See [Results](/reference/responses#follow-progress-not-row-count) for the difference between finishing query work and retrieving saved rows.

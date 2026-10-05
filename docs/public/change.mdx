@@ -1,58 +1,79 @@
 ---
-title: "Add a declaration or replace a body"
-description: "Use Kast's two exact-target, one-call source changes."
+title: "Make a targeted change"
+description: "Add one declaration or replace one supported function body, then inspect the verification receipt."
 icon: "file-pen-line"
 ---
 
-`add_declaration` adds one declaration to an existing Kotlin file. `replace_body`
-replaces the block body of one existing, non-inline named function. Both use an
-exact reference returned by Kast to identify the target, then plan, apply,
-verify, and report the outcome.
+Use Kast to add a declaration to an existing Kotlin file or replace the block body of an existing, non-inline named function. First [find and inspect the target](/search), then ask for the specific change. Your agent passes the exact reference returned by Kast.
 
-## Provide an exact target
+## Check the target and scope
 
-First use a [query](/search) to obtain the target symbol reference. The change intent is:
+For example, replace `retryLimit` and `checkout` with your function and directory:
 
-```json
-{
-  "exactTarget": "<exact-ref-returned-by-Kast>",
-  "declaration": "fun retryLimit(): Int = 3"
-}
+```text wrap
+Use Kast to find retryLimit under checkout. Show its signature and source so I can choose the exact function. Check whether it has a supported block body before changing it.
 ```
 
-The generated [Add declaration schema](/api-reference/add-declaration) defines the request. Pass the returned reference unchanged. Both compact `exact:v5:…` and inline `exact:v3:…` references are opaque: never rewrite the prefix or substitute a candidate, continuation, or result token.
+After choosing the target, ask:
 
-For a body replacement, pass the same kind of exact function reference and one
-complete Kotlin block, including braces:
-
-```json
-{
-  "exactTarget": "<exact-function-ref-returned-by-Kast>",
-  "body": "{ return 3 }"
-}
+```text wrap
+Use Kast to replace the chosen function's body with { return 3 }. Keep its signature and the source outside the body unchanged. Report verification and the change receipt; if the outcome is uncertain, preserve recovery evidence and stop before retrying the write.
 ```
 
-The [Replace body schema](/api-reference/replace-body) defines the input.
-Expression bodies, functions with contracts, inline functions, and other target
-kinds are rejected. The callable signature and source outside the body stay
-unchanged.
+Body replacement rejects expression bodies, functions with contracts, inline functions, and other target kinds. Kast's change tools do not create new files, replace arbitrary source ranges, rename symbols across files, or perform multi-file refactors.
+
+To add a declaration, ask the agent to identify the existing Kotlin file and obtain the exact target reference, then add one declaration such as `fun retryLimit(): Int = 3` with `add_declaration`. Review the chosen location and declaration before the write.
 
 ## Read the receipt
 
-A successful change returns verification and a receipt. If the operation is uncertain, preserve its plan identity and recovery evidence. A rejected request or lost response does not prove that no write occurred.
+The tools plan, apply, verify, and report the outcome in one call. Ask the agent to show the verification outcome and receipt alongside the source diff.
 
-After a verified replacement, pass its returned `freshRef` unchanged to a
-subsequent `add_declaration`. The fresh reference describes the verified
-post-write declaration. A pre-write reference must pass the existing authority
-checks; a failed reference must not be replaced by a guessed name match.
+| Outcome | Next action |
+| --- | --- |
+| Verified change and receipt | Inspect the diff, then run the build and tests your project requires. |
+| Failed or incomplete verification | Keep the plan identity and recovery evidence; follow the reported recovery action. |
+| Timeout, terminated client, or lost response | Inspect the source and recovery evidence before deciding whether another write is appropriate. |
 
-A timeout or terminated client leaves the source effect unknown unless a
-verified receipt establishes it. Do not automatically replay the write. Retain
-the plan identity and phase evidence, inspect the source with an ordinary query,
-and follow the reported recovery outcome.
+<Warning>
+  A rejected request, timeout, or lost response does not prove that no write occurred. Do not blindly retry. Preserve the plan identity and phase evidence, inspect the source with a read, and follow the reported recovery outcome.
+</Warning>
 
-## Know the boundary
+IDEA diagnostics and edit verification cover their reported scope. They do not establish whole-project behavior or replace your project's tests.
 
-These tools do not add new files, replace arbitrary source ranges, rename
-symbols across files, or perform multi-file refactors. Use them only for the
-admitted exact-target changes above.
+## Exact inputs for tool authors
+
+Ordinary agent requests do not require JSON. These examples explain the two change inputs; replace placeholders with current references before using them.
+
+<AccordionGroup>
+  <Accordion title="Add a declaration">
+    `add_declaration` accepts one declaration for an existing Kotlin file:
+
+    ```json
+    {
+      "exactTarget": "<exact-ref-returned-by-Kast>",
+      "declaration": "fun retryLimit(): Int = 3"
+    }
+    ```
+
+    See the generated [Add declaration schema](/api-reference/add-declaration).
+  </Accordion>
+
+  <Accordion title="Replace a function body">
+    `replace_body` accepts one complete Kotlin block, including braces:
+
+    ```json
+    {
+      "exactTarget": "<exact-function-ref-returned-by-Kast>",
+      "body": "{ return 3 }"
+    }
+    ```
+
+    See the generated [Replace body schema](/api-reference/replace-body). The callable signature and source outside the body stay unchanged.
+  </Accordion>
+
+  <Accordion title="Carry exact identity across a change">
+    Both compact `exact:v5:…` and inline `exact:v3:…` references are opaque. Pass them unchanged; never rewrite the prefix or substitute a candidate, continuation, result token, or guessed name match.
+
+    After a verified replacement, pass its returned `freshRef` unchanged to a subsequent `add_declaration`. It describes the verified post-write declaration. A pre-write reference must still pass authority checks; a failed reference cannot be repaired by guessing its identity.
+  </Accordion>
+</AccordionGroup>

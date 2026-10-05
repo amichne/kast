@@ -6,6 +6,8 @@ icon: "plug"
 
 [Install Kast](/start) first, then choose your agent. Connect the integration, restart your agent, and run the query below to check that the tools work.
 
+The agent's command must already be available in your terminal. Replace `/path/to/kotlin-repository` with your repository's local path in the commands below.
+
 ## Choose your agent
 
 <Tabs>
@@ -77,6 +79,16 @@ Ask your agent:
 > Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. If Kast is not ready or cannot prove a result, report the blocker rather than substituting a text search.
 
 The connection works when a Kast query returns a declaration with its location and coverage. `kast status` shows registration information; this query checks that the agent can use the tools.
+
+## Get a useful first result
+
+Choose a function you expect to change, then replace `submitOrder` and `checkout` in this prompt with its name and module or directory:
+
+```text wrap
+Use Kast to find submitOrder in the production Kotlin sources under checkout. If several declarations match, show their signatures and locations so I can choose. For the chosen function, find its callers and show the call sites. Report the scope searched, any unfinished work, and whether the result is complete.
+```
+
+This gives you a starting list of places to inspect before changing that function. Confirmed callers are useful even when the search is incomplete; they are not a promise that every caller was found. [Find and trace code](/search) shows how to read the result and follow up.
 
 **Next:** [Find and trace code](/search). If tools are missing, a version disagrees, or the first query cannot prepare IDEA, use [Troubleshooting](/troubleshooting).
 

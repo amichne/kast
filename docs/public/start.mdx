@@ -11,11 +11,25 @@ Install Kast once, then [connect Codex, Copilot, or Pi](/agent-harnesses).
 
 You need **macOS on Apple silicon**, a **Kotlin Gradle repository**, and **IntelliJ IDEA `262.*`** with its bundled Kotlin plugin and Java 25 JBR.
 
+Check [compatibility](/reference/compatibility) before installing. Use IDEA's bundled runtime; installing a separate JDK does not change it.
+
+<Accordion title="Check the IDEA build and bundled runtime">
+  For the usual application path, these read-only commands show the same bundle metadata the installer checks. Change `idea` if you installed IDEA elsewhere.
+
+  ```shell
+  idea="/Applications/IntelliJ IDEA.app/Contents"
+  cat "$idea/Resources/build.txt"
+  cat "$idea/jbr/Contents/Home/release"
+  ```
+
+  Look for a build such as `IU-262.…` or `IC-262.…`, `JAVA_VERSION` beginning with `25`, and `OS_ARCH` of `aarch64` or `arm64`. The installer also checks for IDEA's bundled Kotlin plugin and reports incompatible or ambiguous installations.
+</Accordion>
+
 ## Install
 
 Run this in a terminal:
 
-```shell
+```shell wrap
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
@@ -40,7 +54,7 @@ Look for the installed version and installation path. A recorded connection is n
 <Accordion title="Select another IDEA installation">
   Pass the IDEA application path to the bootstrap installer:
 
-  ```shell
+  ```shell wrap
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
   ```
 </Accordion>

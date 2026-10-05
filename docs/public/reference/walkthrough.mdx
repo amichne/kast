@@ -1,0 +1,140 @@
+---
+title: "Recorded query walkthrough"
+description: "Inspect historical requests and observed results, with their source revision and limits."
+icon: "notebook-text"
+---
+
+For your own repository, start with [Find and trace code](/search). This page keeps the detailed requests and captured results for readers checking the contract. Recorded names, counts, references, and coverage belong to that run; acquire fresh references in your workspace.
+
+## Start from remembered text
+
+> Use Kast to find functions containing the word `launchd` under `app-server` in `main`. Show a matching line for each function, then trace the callers of the relevant function.
+
+Text discovery returns exact references to the declarations containing a match. Each result includes one example match with a line excerpt, a one-based line number, and a UTF-16 source range. Reuse the declaration’s `ref` to read its source or find callers. The matching word explains why the declaration was found; it does not establish a call relationship.
+
+<Accordion title="Request: find declarations containing a word">
+  ```json
+  {
+    "request": {
+      "type": "RUN",
+      "source": {
+        "type": "SEARCH_TEXT",
+        "word": "launchd",
+        "declarationKinds": ["FUNCTION"],
+        "scope": {
+          "type": "DIRECTORY",
+          "relativeDirectoryPath": "app-server",
+          "sourceSetNames": ["main"]
+        }
+      },
+      "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION"]},
+      "executionBudget": {"maxResults": 10}
+    }
+  }
+  ```
+
+  Use one case-sensitive ASCII word beginning with a letter or underscore. Later characters can also be digits. Phrases, substrings, qualified literals, and regular expressions are rejected. To find `AppServerAction.Disable`, search for `Disable` in the relevant directory and inspect the match context.
+
+  Hits without a supported containing declaration leave coverage incomplete. A stopped index scan is terminal; other retained work may have a continuation. Follow the result’s reported progress.
+</Accordion>
+
+This request illustrates the input contract. The recorded examples below predate text discovery.
+
+These examples were recorded against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts and coverage describe that run, not your current workspace. In your repository, substitute your declaration and directory, and acquire fresh references. [Capture details and full responses](/reference/schemas#recorded-walkthrough).
+
+## 1. Find a declaration and inspect its source
+
+> Use Kast to find `QueryStepSyntax` in the production sources under `query/contract`. Show its location, signature, and source. Keep its exact reference for the next question.
+
+Check the declaration’s identity and location, then read its coverage to see whether the search finished. The recorded response (`01-discovery`) returned one `QueryStepSyntax` in `QuerySteps.kt` with exhaustive coverage, a signature, and a source window.
+
+<Accordion title="Request: scoped declaration lookup">
+  ```json
+  {
+    "request": {
+      "type": "RUN",
+      "executionBudget": {"maxElapsedMs": 15000},
+      "source": {
+        "type": "SEARCH_DECLARATIONS",
+        "declarationName": "QueryStepSyntax",
+        "declarationKinds": ["CLASS"],
+        "scope": {
+          "type": "DIRECTORY",
+          "relativeDirectoryPath": "query/contract",
+          "sourceSetNames": ["main"]
+        }
+      },
+      "output": {
+        "type": "SYMBOLS",
+        "fields": ["NAME", "LOCATION", "SIGNATURE", "SOURCE"]
+      }
+    }
+  }
+  ```
+
+  `CLASS` selects the supported class-like family, including this interface; it does not imply a concrete class. The [recorded source](https://github.com/amichne/kast/blob/56df0912e46b182bb4ad8beabd1512823100fd72/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt) declares `sealed interface QueryStepSyntax`.
+</Accordion>
+
+Reuse the returned exact reference to ask the next question about this declaration.
+
+## 2. Follow its implementations
+
+> Reuse that exact reference to find the implementations of `QueryStepSyntax`. Show each declaration once and retain the result so we can compare it with another query.
+
+The recorded response (`02-implementations-a`) returned ten implementations with exhaustive coverage. Keep the retained-result reference for [Combine query results](/query-pipelines), where it is labeled **A**. Send the actual reference in requests.
+
+<Accordion title="Request: follow implementations and retain the result">
+  Replace the placeholder with the exact reference returned by the first query. Do not send the placeholder literally.
+
+  ```json
+  {
+    "request": {
+      "type": "RUN",
+      "executionBudget": {"maxElapsedMs": 15000},
+      "source": {
+        "type": "SYMBOL_REFS",
+        "symbolRefs": ["<ref from step 1>"]
+      },
+      "steps": [
+        {"type": "EXPAND_RELATION", "relation": "IMPLEMENTATIONS"},
+        {"type": "DISTINCT_SYMBOLS"}
+      ],
+      "retention": "RETAIN"
+    }
+  }
+  ```
+
+  Five of the ten recorded names were `Where`, `Concat`, `Intersect`, `Union`, and `Join`, all under `QueryStepSyntax`. The full response preserves each issued reference and its relation evidence.
+</Accordion>
+
+## 3. Trace callers to a chosen depth
+
+> Find `QueryPlanCompiler.exactStage` under `query/contract` in `main`, then trace its callers up to two hops. Show the hop depth and call-site evidence, and report any unvisited work.
+
+The recorded walk (`15-caller-walk`) returned `QueryPlanCompiler.admit` calling `exactStage` at depth 1, with exact compiler-confirmed relation evidence, exhaustive coverage, and no continuation. That is the captured result, not a promise about the current call graph.
+
+<Accordion title="Request: walk callers to a bounded depth">
+  First find the function named `exactStage` in the stated scope and check its qualified identity (`14-function-discovery` in the recording). Replace the placeholder with that function's issued exact reference.
+
+  ```json
+  {
+    "request": {
+      "type": "RUN",
+      "executionBudget": {"maxElapsedMs": 15000},
+      "source": {
+        "type": "SYMBOL_REFS",
+        "symbolRefs": ["<exact function ref>"]
+      },
+      "steps": [
+        {"type": "WALK", "relation": "CALLERS", "maximumDepth": 2}
+      ],
+      "output": {"type": "TRAVERSAL_RECORDS"}
+    }
+  }
+  ```
+</Accordion>
+
+The depth limits how far Kast follows callers. Check coverage for any work left unfinished within that limit. Confirmed callers remain useful in a qualified result, but an empty qualified result does not prove that no callers exist.
+
+
+See [Callback evidence](/reference/callbacks) for anonymous functions and [Results](/reference/responses#follow-progress-not-row-count) for continuation and output delivery.
