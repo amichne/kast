@@ -219,10 +219,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-05T19:11:53.820Z" }
+generated: { by: "codex", at: "2026-10-05T20:36:23.129Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-05T20:36:23.129Z
 ---
 
 # Distribution and packaging
@@ -473,3 +473,6 @@ Checkout installation admits the selected IDEA bundle's executable JBR and Java
 25-or-newer release before Gradle or staging. It scopes that runtime to its children.
 Installed launchers retain and recheck the selected JBR before executing Control;
 an unavailable or older runtime gives repair guidance rather than using ambient Java.
+Both paths require exactly one fully quoted `JAVA_VERSION` declaration. Duplicate
+declarations, an unclosed quote, trailing text, or a valid declaration beside a
+malformed duplicate reject before Gradle or child execution.

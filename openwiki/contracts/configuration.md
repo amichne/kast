@@ -48,7 +48,7 @@ code_sources:
   - path: build.gradle.kts
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-05T20:36:23.129Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
@@ -78,7 +78,7 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-10-05T19:11:53.820Z" }
+generated: { by: "codex", at: "2026-10-05T20:36:23.129Z" }
 ---
 
 # Installation configuration
@@ -189,4 +189,4 @@ and `KAST_LOCAL_JAVA_HOME` are removed from the catalogue and reject as
 neither input. The assembled-product acceptance runner retains its separate
 `KAST_ACCEPTANCE_JAVA_EXECUTABLE` binding.
 
-The checkout installer admits the selected IDEA bundled JBR with executable and Java release feature >=25 before Gradle, setting Java only for its own children. Installed launchers recheck their recorded selected JBR before child startup and reject missing or incompatible runtime with repair guidance. Ambient Java does not select either runtime.
+The checkout installer admits the selected IDEA bundled JBR with executable and Java release feature >=25 before Gradle, setting Java only for its own children. Installed launchers recheck their recorded selected JBR before child startup. Both require exactly one `JAVA_VERSION` declaration with a fully quoted numeric feature; duplicate declarations, missing quotes and trailing text reject before execution, including a valid declaration beside a malformed duplicate. Missing or incompatible runtime rejects with repair guidance. Ambient Java does not select either runtime.

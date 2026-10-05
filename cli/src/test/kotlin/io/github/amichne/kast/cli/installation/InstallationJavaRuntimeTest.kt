@@ -76,7 +76,7 @@ class InstallationJavaRuntimeTest {
     private fun runtime(root: Path): InstallationPath {
         val home = Files.createDirectories(root.resolve("IDEA's Home With Spaces/jbr/Contents/Home"))
         val java = Files.createDirectories(home.resolve("bin")).resolve("java")
-        Files.writeString(java, "#!/bin/sh\nexit 0\n")
+        Files.writeString(java, "#!/bin/sh\nprintf '%s\\n' \"${'$'}@\"\n")
         Files.setPosixFilePermissions(java, PosixFilePermissions.fromString("rwx------"))
         Files.writeString(home.resolve("release"), "JAVA_VERSION=\"25.0.1\"\n")
         return (InstallationPath.parse(home.toString()) as Refinement.Refined).value
@@ -86,7 +86,7 @@ class InstallationJavaRuntimeTest {
         val script =
             Files.writeString(
                 root.resolve("launch.sh"),
-                installationJavaRuntimeEnvironment(home) + "\nprintf '%s\\n' \"${'$'}JAVA_HOME\" \"${'$'}JAVA\"\n",
+                installationJavaRuntimeEnvironment(home) + "\nexec \"${'$'}JAVA\" \"${'$'}JAVA_HOME\" \"${'$'}JAVA\"\n",
             )
         val process =
             ProcessBuilder("/bin/sh", script.toString())

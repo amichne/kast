@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-03 | hash: b6f38faa3135 -->
+<!-- generated: 2026-10-05 | hash: 626bfa30e216 -->
 
 # app-server
 
