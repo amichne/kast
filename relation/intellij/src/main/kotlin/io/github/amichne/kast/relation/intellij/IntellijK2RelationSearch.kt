@@ -72,6 +72,11 @@ internal class IntellijK2RelationSearch(
                 omit = { limitation, element, range -> incompleteItem(limitation, element, range) },
             )
 
+        private val callbackEmitter =
+            IntellijCallbackObservationEmitter(request, projection, scope, collector) { limitation, element, range ->
+                incompleteItem(limitation, element, range)
+            }
+
         fun references(plan: IntellijRelationPlan.References): IntellijRelationTermination =
             IntellijRetainedRelationRead(
                     project = project,
@@ -142,13 +147,21 @@ internal class IntellijK2RelationSearch(
 
         private fun emitRelatedReference(reference: PsiReference): Boolean =
             when (val related = reference.element.relatedOwner()) {
-                is SupportedContainingDeclaration.Found ->
-                    emit(related.projection, reference.element, reference.rangeInElement)
+                is SupportedContainingDeclaration.Found -> emitNamedCall(reference, subject, related.projection)
                 SupportedContainingDeclaration.Unresolved ->
-                    incompleteItem(RelationLimitation.UNRESOLVED_TARGET, reference.element, reference.rangeInElement)
-                SupportedContainingDeclaration.Excluded -> collector.dismissProviderItem()
+                    callbackEmitter.retain(
+                        reference,
+                        subject,
+                        NativeCallbackPolicy.Unavailable(CallOwnershipFailure.UnresolvedArgumentMapping),
+                    )
+                is SupportedContainingDeclaration.Excluded ->
+                    callbackEmitter.retain(reference, subject, NativeCallbackPolicy.Excluded(related.evidence))
                 SupportedContainingDeclaration.Unsupported ->
-                    incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, reference.element, reference.rangeInElement)
+                    callbackEmitter.retain(
+                        reference,
+                        subject,
+                        NativeCallbackPolicy.Unavailable(CallOwnershipFailure.UnsupportedBoundary),
+                    )
             }
 
         private fun retainedReader() =
@@ -213,11 +226,7 @@ internal class IntellijK2RelationSearch(
             val owner =
                 when (val admitted = projection.callOwner(candidate.owner)) {
                     is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return when (val failure = admitted.failure) {
-                            CallOwnershipFailure.ExcludedCallback -> collector.dismissProviderItem()
-                            is CallOwnershipFailure.Incomplete -> incompleteCallee(candidate, failure.limitation)
-                        }
+                    is Refinement.Rejected -> return retainUnownedCallee(candidate, admitted.failure)
                 }
             return when (candidate) {
                 is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
@@ -235,11 +244,42 @@ internal class IntellijK2RelationSearch(
             }
         }
 
+        private fun retainUnownedCallee(candidate: CalleeProviderItem, failure: CallOwnershipFailure): Boolean {
+            val policy =
+                when (failure) {
+                    is CallOwnershipFailure.ExcludedCallback -> NativeCallbackPolicy.Excluded(failure)
+                    is CallOwnershipFailure.Incomplete -> NativeCallbackPolicy.Unavailable(failure)
+                }
+            val limitation =
+                when (failure) {
+                    is CallOwnershipFailure.ExcludedCallback -> RelationLimitation.UNRESOLVED_TARGET
+                    is CallOwnershipFailure.Incomplete -> failure.limitation
+                }
+            return when (candidate) {
+                is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, limitation)
+                is CalleeProviderItem.Reference ->
+                    when (val target = projection.resolve(candidate.reference)) {
+                        is IntellijK2ResolvedDeclaration.Found -> {
+                            observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
+                            admitCalleeTarget(target.declaration, candidate.reference) {
+                                callbackEmitter.retain(candidate.reference, target.declaration, policy)
+                            }
+                        }
+                        IntellijK2ResolvedDeclaration.Unresolved -> {
+                            observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
+                            incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
+                        }
+                    }
+            }
+        }
+
         private fun processCalleeTarget(
             owner: ContainingDeclaration.Found,
             target: PsiNamedElement,
             reference: KtReference,
-        ): Boolean {
+        ): Boolean = admitCalleeTarget(target, reference) { emitCallee(owner, target, reference) }
+
+        private fun admitCalleeTarget(target: PsiNamedElement, reference: KtReference, emit: () -> Boolean): Boolean {
             val file = target.containingFile?.virtualFile
             when (scope.admitProviderSite(file)) {
                 RelationProviderScopeAdmission.ADMITTED -> Unit
@@ -267,7 +307,7 @@ internal class IntellijK2RelationSearch(
                     )
             }
             return when (packageDisposition(target)) {
-                ProviderItemDisposition.READY -> emitCallee(owner, target, reference)
+                ProviderItemDisposition.READY -> emit()
                 ProviderItemDisposition.SKIPPED -> true
                 ProviderItemDisposition.HALTED -> false
             }
@@ -312,6 +352,26 @@ internal class IntellijK2RelationSearch(
             }
         }
 
+        private fun emitNamedCall(
+            reference: PsiReference,
+            target: PsiNamedElement,
+            related: IntellijRelationDeclarationProjection.Projected,
+        ): Boolean {
+            if (request.meaning != RelationMeaning.Callers && request.meaning != RelationMeaning.Callees)
+                return emit(related, reference.element, reference.rangeInElement)
+            val callback =
+                when (val result = callbackEmitter.observe(reference, target, NativeCallbackPolicy.Inline)) {
+                    is Refinement.Refined ->
+                        when (val observed = result.value) {
+                            NativeCallbackObservation.None -> null
+                            is NativeCallbackObservation.Observed -> observed.value
+                        }
+                    is Refinement.Rejected ->
+                        return incompleteItem(result.failure, reference.element, reference.rangeInElement)
+                }
+            return emit(related, reference.element, reference.rangeInElement, callback)
+        }
+
         private fun incompleteCallee(candidate: CalleeProviderItem, limitation: RelationLimitation): Boolean =
             when (candidate) {
                 is CalleeProviderItem.Reference ->
@@ -329,7 +389,12 @@ internal class IntellijK2RelationSearch(
             target: PsiNamedElement,
             reference: KtReference,
         ): Boolean =
-            if (owner.declaration === subject) emit(target, reference.element, reference.rangeInElement)
+            if (owner.declaration === subject)
+                when (val projected = projection.project(target)) {
+                    is IntellijRelationDeclarationProjection.Projected -> emitNamedCall(reference, target, projected)
+                    IntellijRelationDeclarationProjection.Unsupported ->
+                        incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, reference.element, reference.rangeInElement)
+                }
             else incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, reference.element, reference.rangeInElement)
 
         private fun PsiElement.relatedOwner(): SupportedContainingDeclaration =
@@ -367,6 +432,7 @@ internal class IntellijK2RelationSearch(
             related: IntellijRelationDeclarationProjection.Projected,
             occurrenceElement: PsiElement,
             relativeRange: com.intellij.openapi.util.TextRange,
+            callback: io.github.amichne.kast.relation.contract.RelationCallbackObservation? = null,
         ): Boolean {
             val endpoint =
                 when (
@@ -433,7 +499,7 @@ internal class IntellijK2RelationSearch(
                     is Refinement.Rejected ->
                         return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
                 }
-            return collector.accept(fact)
+            return collector.accept(fact, callback)
         }
 
         private fun incompleteItem(

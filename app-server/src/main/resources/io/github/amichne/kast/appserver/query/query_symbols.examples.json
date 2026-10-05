@@ -645,6 +645,15 @@
           }
         }
       }
+    },
+    "readCallbackSource": {
+      "summary": "Inspect the exact source range of an issued callback candidate.",
+      "value": {
+        "request": {
+          "type": "READ_SOURCE",
+          "candidateRef": "candidate:v5:AAAAAAAAAAAAAAAAAAAAAA"
+        }
+      }
     }
   },
   "invalidExamples": {
@@ -928,6 +937,15 @@
               }
             }
           ]
+        }
+      }
+    },
+    "readSourceExactSymbol": {
+      "summary": "READ_SOURCE requires an issued candidate reference, distinct from an exact symbol reference.",
+      "value": {
+        "request": {
+          "type": "READ_SOURCE",
+          "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA"
         }
       }
     }

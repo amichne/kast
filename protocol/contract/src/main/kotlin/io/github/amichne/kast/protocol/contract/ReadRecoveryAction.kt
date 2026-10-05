@@ -62,7 +62,9 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
                 QueryExecutionRejectionDocument.CONTINUATION_OWNER_RETIRED,
                 QueryExecutionRejectionDocument.CONTINUATION_CLAIM_UNAVAILABLE,
                 QueryExecutionRejectionDocument.CONTINUATION_EXPIRED,
+                QueryExecutionRejectionDocument.CONTINUATION_EVICTED,
                 QueryExecutionRejectionDocument.CONTINUATION_DEPENDENCY_UNAVAILABLE,
+                QueryExecutionRejectionDocument.CONTINUATION_STALE_BASIS,
                 QueryExecutionRejectionDocument.RESULT_UNAVAILABLE,
                 QueryExecutionRejectionDocument.RESULT_STALE_BASIS -> ReadRecoveryAction.RESTART_READ
                 QueryExecutionRejectionDocument.CONTINUATION_MISMATCH,

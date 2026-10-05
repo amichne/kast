@@ -117,7 +117,7 @@ internal class IntellijReferenceOccurrenceEmitter(
                             .UNRESOLVED_DECLARATION
                     )
                 SupportedContainingDeclaration.Unsupported,
-                SupportedContainingDeclaration.Excluded ->
+                is SupportedContainingDeclaration.Excluded ->
                     io.github.amichne.kast.relation.contract.RelationReferenceOwnership.Unavailable(
                         io.github.amichne.kast.relation.contract.RelationOwnershipUnavailableCause
                             .UNSUPPORTED_DECLARATION

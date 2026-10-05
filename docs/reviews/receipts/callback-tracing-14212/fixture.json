@@ -1,0 +1,883 @@
+{
+  "type": "INSTALLED_CALLBACK_QUALIFIED",
+  "calls": 342,
+  "root": "/Users/amichne/.codex/worktrees/19ce/kast/build/callback-native-fixture",
+  "rpc": "/Users/amichne/.local/share/kast/installation/bin/kast-mcp-complete",
+  "rpcSha256": "7db5ae69a50ddf725e1e58e1ba57017e368512496a51d25e43df10a77b262632",
+  "transport": "MCP_SESSION",
+  "budget": {
+    "maxElapsedMs": 20000,
+    "maxWorkUnits": 20000,
+    "maxResults": 1,
+    "maxReturnedBytes": 524288
+  },
+  "inspectedSourceRanges": 107,
+  "checks": [
+    {
+      "owner": "stdlibInline",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "OUTSIDE_DOMAIN"
+      ],
+      "obligations": [
+        [
+          "OUTSIDE_DOMAIN"
+        ]
+      ]
+    },
+    {
+      "owner": "callbackInline",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "homonymousInline",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "noinlineBoundary",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "crossinlineBoundary",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "explicitInline",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "nestedInline",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "repeatedInline",
+      "walk": false,
+      "matchedOccurrences": 2,
+      "bindingCauses": [
+        null,
+        null
+      ],
+      "obligations": [
+        [],
+        []
+      ]
+    },
+    {
+      "owner": "unsupportedOuter",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "storedInline",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "STORED_CALLBACK"
+      ],
+      "obligations": [
+        [
+          "STORED_CALLBACK",
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "returnedInline",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "RETURNED_CALLBACK"
+      ],
+      "obligations": [
+        [
+          "RETURNED_CALLBACK",
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "immediateLiteralCallback",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "UNSUPPORTED_CALLBACK_SUPPLY"
+      ],
+      "obligations": [
+        [
+          "UNSUPPORTED_CALLBACK_SUPPLY",
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "storedParameterCallback",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "explicitParameterCallback",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "mutableParameterCallback",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "PARAMETER_ESCAPES",
+          "NO_INVOCATION_PROVEN"
+        ]
+      ]
+    },
+    {
+      "owner": "storedOperationCallback",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "PARAMETER_ESCAPES",
+          "NO_INVOCATION_PROVEN"
+        ]
+      ]
+    },
+    {
+      "owner": "selectedParameterCallback",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "uninvokedParameterCallback",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "NO_INVOCATION_PROVEN"
+        ]
+      ]
+    },
+    {
+      "owner": "unresolvedCallback",
+      "walk": false,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "UNRESOLVED_ARGUMENT_MAPPING"
+      ],
+      "obligations": [
+        [
+          "UNRESOLVED_ARGUMENT_MAPPING"
+        ]
+      ]
+    },
+    {
+      "owner": "stdlibInline",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "OUTSIDE_DOMAIN"
+      ],
+      "obligations": [
+        [
+          "OUTSIDE_DOMAIN"
+        ]
+      ]
+    },
+    {
+      "owner": "callbackInline",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "homonymousInline",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "noinlineBoundary",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "crossinlineBoundary",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "explicitInline",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "nestedInline",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "repeatedInline",
+      "walk": true,
+      "matchedOccurrences": 2,
+      "bindingCauses": [
+        null,
+        null
+      ],
+      "obligations": [
+        [],
+        []
+      ]
+    },
+    {
+      "owner": "unsupportedOuter",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "storedInline",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "STORED_CALLBACK"
+      ],
+      "obligations": [
+        [
+          "STORED_CALLBACK",
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "returnedInline",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "RETURNED_CALLBACK"
+      ],
+      "obligations": [
+        [
+          "RETURNED_CALLBACK",
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "immediateLiteralCallback",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "UNSUPPORTED_CALLBACK_SUPPLY"
+      ],
+      "obligations": [
+        [
+          "UNSUPPORTED_CALLBACK_SUPPLY",
+          "NESTED_CALLBACK_EXECUTION"
+        ]
+      ]
+    },
+    {
+      "owner": "storedParameterCallback",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "explicitParameterCallback",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "mutableParameterCallback",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "PARAMETER_ESCAPES",
+          "NO_INVOCATION_PROVEN"
+        ]
+      ]
+    },
+    {
+      "owner": "storedOperationCallback",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "PARAMETER_ESCAPES",
+          "NO_INVOCATION_PROVEN"
+        ]
+      ]
+    },
+    {
+      "owner": "selectedParameterCallback",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        []
+      ]
+    },
+    {
+      "owner": "uninvokedParameterCallback",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        null
+      ],
+      "obligations": [
+        [
+          "NO_INVOCATION_PROVEN"
+        ]
+      ]
+    },
+    {
+      "owner": "unresolvedCallback",
+      "walk": true,
+      "matchedOccurrences": 1,
+      "bindingCauses": [
+        "UNRESOLVED_ARGUMENT_MAPPING"
+      ],
+      "obligations": [
+        [
+          "UNRESOLVED_ARGUMENT_MAPPING"
+        ]
+      ]
+    }
+  ],
+  "terminalPages": [
+    {
+      "status": "qualified",
+      "coverage": {
+        "exhaustive": false
+      },
+      "terminalReason": "upstream-incomplete",
+      "qualification": {
+        "knownMinimum": 7,
+        "limitations": [
+          "relation-incomplete"
+        ],
+        "progress": {
+          "type": "terminal_incomplete",
+          "reason": "upstream-incomplete"
+        }
+      }
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "qualified",
+      "coverage": {
+        "exhaustive": false
+      },
+      "terminalReason": "upstream-incomplete",
+      "qualification": {
+        "knownMinimum": 0,
+        "limitations": [
+          "relation-incomplete"
+        ],
+        "progress": {
+          "type": "terminal_incomplete",
+          "reason": "upstream-incomplete"
+        }
+      }
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "qualified",
+      "coverage": {
+        "exhaustive": false
+      },
+      "terminalReason": "upstream-incomplete",
+      "qualification": {
+        "knownMinimum": 0,
+        "limitations": [
+          "relation-incomplete"
+        ],
+        "progress": {
+          "type": "terminal_incomplete",
+          "reason": "upstream-incomplete"
+        }
+      }
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "qualified",
+      "coverage": {
+        "exhaustive": false
+      },
+      "terminalReason": "upstream-incomplete",
+      "qualification": {
+        "knownMinimum": 0,
+        "limitations": [
+          "relation-incomplete"
+        ],
+        "progress": {
+          "type": "terminal_incomplete",
+          "reason": "upstream-incomplete"
+        }
+      }
+    },
+    {
+      "status": "qualified",
+      "coverage": {
+        "exhaustive": false
+      },
+      "terminalReason": "upstream-incomplete",
+      "qualification": {
+        "knownMinimum": 7,
+        "limitations": [
+          "traversal-incomplete"
+        ],
+        "progress": {
+          "type": "terminal_incomplete",
+          "reason": "upstream-incomplete"
+        }
+      }
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "qualified",
+      "coverage": {
+        "exhaustive": false
+      },
+      "terminalReason": "upstream-incomplete",
+      "qualification": {
+        "knownMinimum": 0,
+        "limitations": [
+          "traversal-incomplete"
+        ],
+        "progress": {
+          "type": "terminal_incomplete",
+          "reason": "upstream-incomplete"
+        }
+      }
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "qualified",
+      "coverage": {
+        "exhaustive": false
+      },
+      "terminalReason": "upstream-incomplete",
+      "qualification": {
+        "knownMinimum": 0,
+        "limitations": [
+          "traversal-incomplete"
+        ],
+        "progress": {
+          "type": "terminal_incomplete",
+          "reason": "upstream-incomplete"
+        }
+      }
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "complete",
+      "coverage": {
+        "exhaustive": true
+      },
+      "terminalReason": null,
+      "qualification": null
+    },
+    {
+      "status": "qualified",
+      "coverage": {
+        "exhaustive": false
+      },
+      "terminalReason": "upstream-incomplete",
+      "qualification": {
+        "knownMinimum": 0,
+        "limitations": [
+          "traversal-incomplete"
+        ],
+        "progress": {
+          "type": "terminal_incomplete",
+          "reason": "upstream-incomplete"
+        }
+      }
+    }
+  ]
+}

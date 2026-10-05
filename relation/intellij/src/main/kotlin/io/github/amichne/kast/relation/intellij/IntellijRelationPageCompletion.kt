@@ -22,6 +22,7 @@ internal data class IntellijRelationPageCompletion(
     private val facts: List<RelationFact>,
     private val occurrences: List<RelationReferenceOccurrence>,
     private val scopeExclusions: List<io.github.amichne.kast.relation.contract.RelationScopeExclusion>,
+    private val callbackObservations: List<io.github.amichne.kast.relation.contract.RelationCallbackObservation>,
     private val examined: Long,
     private val state: IntellijRelationCollectionState,
     private val pending: Boolean,
@@ -66,13 +67,17 @@ internal data class IntellijRelationPageCompletion(
                 scopeExclusions.distinct().sumOf {
                     it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
                 }
+        val callbackBytes =
+            callbackObservations.distinct().sumOf {
+                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+            }
         val semanticCount =
             orderedOccurrences.size +
                 orderedFacts.count { fact ->
                     orderedOccurrences.none { it.occurrence == fact.occurrence && it.target == fact.target }
                 }
         val bytes =
-            when (val parsed = RelationByteCount.parse(byteCount)) {
+            when (val parsed = RelationByteCount.parse(byteCount + callbackBytes)) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return compilerContractRejected()
             }
@@ -94,6 +99,7 @@ internal data class IntellijRelationPageCompletion(
                 resultCount = results,
                 referenceOccurrences = orderedOccurrences,
                 scopeExclusions = scopeExclusions.distinct().sorted(),
+                callbackObservations = callbackObservations.distinct().sorted(),
             )
             .withObservedOmissions()
     }

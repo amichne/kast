@@ -13,6 +13,7 @@ import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
@@ -138,7 +139,7 @@ class QueryStateDependencyAdmissionTest {
             store.releasePublication(fresh)
             store.releasePublication(pin.claim)
         }
-        assertEquals(0L, store.retentionMeasurements().retainedBytes.value)
+        assertExpiredDependenciesReleased(store, parent, oldOutput.token, retained.reference)
     }
 
     @Test
@@ -186,6 +187,28 @@ class QueryStateDependencyAdmissionTest {
             store.releasePublication(producer)
         }
         assertEquals(0L, store.retentionMeasurements().retainedBytes.value)
+    }
+
+    private fun assertExpiredDependenciesReleased(
+        store: QueryStateStore,
+        checkpoint: QueryExecutionContinuation.Pipeline,
+        output: QueryExecutionContinuation.Output,
+        result: QueryResultReference,
+    ) {
+        val measurements = store.retentionMeasurements()
+        assertEquals(0, measurements.retainedEntries.value)
+        assertEquals(2, measurements.retainedRevocations.value)
+        assertEquals(512L, measurements.retainedBytes.value)
+        assertEquals(QueryResultRestoration.Unavailable, store.restoreResult(result, lease))
+        // Both tokens are younger than their expired result dependency; their own lifetimes remain valid.
+        assertEquals(
+            QueryCheckpointAcquisition.Rejected(QueryContinuationFailure.DEPENDENCY_UNAVAILABLE),
+            store.acquireCheckpoint(checkpoint, lease, 1000),
+        )
+        assertEquals(
+            QueryOutputAcquisition.Rejected(QueryContinuationFailure.DEPENDENCY_UNAVAILABLE),
+            store.acquireOutput(output, lease, 1000),
+        )
     }
 
     private suspend fun qualified(checkpoint: QueryCheckpointDocument): QueryPublishedPage {

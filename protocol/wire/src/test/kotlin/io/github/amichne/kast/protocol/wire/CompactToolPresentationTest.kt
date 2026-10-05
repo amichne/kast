@@ -47,6 +47,80 @@ import org.junit.jupiter.api.Test
 
 class CompactToolPresentationTest {
     @Test
+    fun `zero row evidence page reports productive walk evidence and the exact resume action`() {
+        val token = QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000001").value()
+        val observation = completeWalkObservation()
+        val outcome =
+            CanonicalQueryCliDocuments.project(
+                OperationOutcome.Qualified(
+                    EvidenceEnvelope(
+                        CanonicalOperation.QUERY_RUN.id,
+                        basis(),
+                        QueryRunResult(
+                            fixtureQueryQuestion(),
+                            bounded(emptyList()),
+                            bounded(emptyList()),
+                            walkObservations = bounded(listOf(observation)),
+                        ),
+                    ),
+                    qualification(token),
+                )
+            ) as ProjectedOperationOutcome.Qualified
+        val compact = json(outcome.document.present(ToolOutputDetail.COMPACT))
+        assertEquals(
+            Json { encodeDefaults = true }
+                .encodeToJsonElement(
+                    ExpectedQueryPageProgress.serializer(),
+                    ExpectedQueryPageProgress(walkEvidence = 1),
+                ),
+            compact.getValue("page_progress"),
+        )
+        val progress = compact.getValue("qualification").jsonObject.getValue("progress").jsonObject
+        assertEquals("resume", progress.getValue("next_action").jsonPrimitive.content)
+        assertEquals(token.value, progress.getValue("checkpoint").jsonObject.getValue("token").jsonPrimitive.content)
+        assertEquals("false", compact.getValue("coverage").jsonObject.getValue("exhaustive").jsonPrimitive.content)
+        assertEquals(
+            "complete",
+            compact.getValue("walk_observations").let {
+                (it as kotlinx.serialization.json.JsonArray)
+                    .single()
+                    .jsonObject
+                    .getValue("coverage")
+                    .jsonObject
+                    .getValue("kind")
+                    .jsonPrimitive
+                    .content
+            },
+        )
+    }
+
+    private fun completeWalkObservation() =
+        io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument(
+            io.github.amichne.kast.protocol.contract.QueryReferenceDocument.ExactSymbol(
+                ProtocolText.parse("exact:v5:fixture").value()
+            ),
+            io.github.amichne.kast.protocol.contract.RelationKindDocument.CALLEES,
+            ProtocolCount.parse(2).value(),
+            io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument.parse(1).value(),
+            io.github.amichne.kast.protocol.contract.TraversalProgressDocument(1, 7, 29, 2),
+            io.github.amichne.kast.protocol.contract.TraversalStrategyDocument.BreadthFirst,
+            bounded(emptyList()),
+            io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument.Complete,
+            io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument.WORKSPACE,
+            io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument(
+                io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument.Workspace,
+                io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument.PRODUCTION_AND_TEST,
+                io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+                io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+                io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument.All,
+                null,
+                null,
+                bounded(emptyList()),
+            ),
+            io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint.parse("1".repeat(64)).value(),
+        )
+
+    @Test
     fun `compact query retains qualification and exact continuation while verbose restores bookkeeping`() {
         val token = QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000001").value()
         val qualification = qualification(token)
@@ -65,6 +139,12 @@ class CompactToolPresentationTest {
         val verbose = json(outcome.document.present(ToolOutputDetail.VERBOSE))
         assertEquals(verbose.getValue("qualification"), compact.getValue("qualification"))
         assertEquals(verbose.getValue("coverage"), compact.getValue("coverage"))
+        assertEquals(
+            Json { encodeDefaults = true }
+                .encodeToJsonElement(ExpectedQueryPageProgress.serializer(), ExpectedQueryPageProgress()),
+            compact.getValue("page_progress"),
+        )
+        assertEquals(verbose.getValue("page_progress"), compact.getValue("page_progress"))
         assertEquals("54", compact.getValue("qualification").jsonObject.getValue("knownMinimum").jsonPrimitive.content)
         assertEquals(
             token.value,
@@ -173,6 +253,19 @@ class CompactToolPresentationTest {
 
     private fun <T> Refinement<T, *>.value(): T = (this as Refinement.Refined).value
 }
+
+@Serializable
+private data class ExpectedQueryPageProgress(
+    val rows: Int = 0,
+    @kotlinx.serialization.SerialName("walk_evidence") val walkEvidence: Int = 0,
+    @kotlinx.serialization.SerialName("reference_evidence") val referenceEvidence: Int = 0,
+    @kotlinx.serialization.SerialName("relation_evidence") val relationEvidence: Int = 0,
+    @kotlinx.serialization.SerialName("scope_exclusions") val scopeExclusions: Int = 0,
+    @kotlinx.serialization.SerialName("callback_observations") val callbackObservations: Int = 0,
+    @kotlinx.serialization.SerialName("excluded_callbacks") val excludedCallbacks: Int = 0,
+    val omissions: Int = 0,
+    val failures: Int = 0,
+)
 
 @Serializable
 private data class VerifiedFixture(

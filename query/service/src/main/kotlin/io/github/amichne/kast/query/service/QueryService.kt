@@ -72,6 +72,8 @@ class QueryService(
         private var progressed = false
         private var terminal: QueryTerminalReason? = null
         private var rejection: QueryExecutionResult.Rejection? = null
+        private val callbackOutput =
+            QueryCallbackEvidenceTasks(presentation, tasks, ::emit) { rejection = QueryExecutionResult.Rejected(it) }
 
         init {
             state.limitations += checkpoint?.limitations.orEmpty()
@@ -116,8 +118,7 @@ class QueryService(
                 is PipelineTask.ValuePath -> emitValuePath(task.value)
                 is PipelineTask.Failure -> emit(task.value.projectedUtf8Size()) { completedFailures += task.value }
                 is PipelineTask.Omission -> emit(task.value.projectedUtf8Size()) { completedOmissions += task.value }
-                is PipelineTask.WalkObservation ->
-                    emit(task.value.projectedUtf8Size()) { completedWalkObservations += task.value }
+                is PipelineTask.WalkObservation -> callbackOutput.walk(task) { completedWalkObservations += task.value }
                 is PipelineTask.Occurrence -> emit(task.value.projectedUtf8Size()) { occurrences += task.value }
                 is PipelineTask.ReferenceObservation ->
                     emit(task.value.projectedUtf8Size()) { referenceObservations += task.value }
@@ -126,7 +127,7 @@ class QueryService(
                     if (task.value in relationObservations) {
                         tasks.removeFirst()
                         true
-                    } else emit(task.value.projectedUtf8Size()) { relationObservations += task.value }
+                    } else callbackOutput.relation(task) { relationObservations += task.value }
                 is PipelineTask.WalkRecord -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)

@@ -40,7 +40,10 @@ internal fun mintlifyCallableReference(): CanonicalJsonDocument {
         (bindings.flatMap { binding ->
                 binding.tool.inputSchema.documentationComponents(binding.requestComponentName()) +
                     binding.tool.outputSchema.documentationComponents(binding.responseComponentName()) +
-                    installedSemanticResultSchema(binding.operation)
+                    (PublicToolIdentity.entries
+                            .singleOrNull { it.toolName == binding.tool.name }
+                            ?.let(::installedPublicToolSemanticResultSchema)
+                            ?: installedSemanticResultSchema(binding.operation))
                         .documentationComponents(binding.semanticResultComponentName())
             } +
                 generatedRequestSchema(ToolRpcReply.serializer())

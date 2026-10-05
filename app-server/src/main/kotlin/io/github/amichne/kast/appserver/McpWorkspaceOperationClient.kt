@@ -133,6 +133,7 @@ private fun mcpOperation(call: DaemonOperationCall): Refinement<ExistingIdeOpera
             is DaemonOperationCall.PublicTool ->
                 when (val canonical = call.tool.canonical) {
                     is PublicToolCanonical.Query -> mcpPreparers.queryRun.prepare(canonical.request)
+                    is PublicToolCanonical.Source -> mcpPreparers.sourceRead.prepare(canonical.request)
                     is PublicToolCanonical.Diagnostics -> mcpPreparers.diagnosticCheck.prepare(canonical.request)
                     is PublicToolCanonical.Change ->
                         return Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)

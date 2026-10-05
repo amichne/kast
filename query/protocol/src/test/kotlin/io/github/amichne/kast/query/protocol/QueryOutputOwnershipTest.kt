@@ -79,7 +79,7 @@ class QueryOutputOwnershipTest {
         )
         store.releasePublication(claim)
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(issued.token, lease))
-        assertEquals(0L, store.retentionMeasurements().retainedBytes.value)
+        assertEquals(256L, store.retentionMeasurements().retainedBytes.value)
     }
 
     @Test
@@ -137,8 +137,11 @@ class QueryOutputOwnershipTest {
             store.commitPublication(retry.claim, retry.page),
         )
         store.releasePublication(retry.claim)
-        assertEquals(QueryOutputAcquisition.Unavailable, store.acquireOutput(issued.token, lease, 10000))
-        assertEquals(0L, store.retentionMeasurements().retainedBytes.value)
+        assertEquals(
+            QueryOutputAcquisition.Rejected(QueryContinuationFailure.OWNER_RETIRED),
+            store.acquireOutput(issued.token, lease, 10000),
+        )
+        assertEquals(256L, store.retentionMeasurements().retainedBytes.value)
     }
 
     @Test

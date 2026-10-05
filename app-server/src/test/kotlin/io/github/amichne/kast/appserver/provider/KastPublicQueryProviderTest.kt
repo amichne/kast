@@ -45,6 +45,21 @@ import org.junit.jupiter.api.io.TempDir
 
 class KastPublicQueryProviderTest {
     @Test
+    fun `provider prepares exact callback source through canonical source reader`(@TempDir root: Path) = runBlocking {
+        val executor = RecordingExecutor(capability())
+        val broker = broker(root, executor)
+        val raw =
+            PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS).examples.getValue("readCallbackSource").value
+        assertTrue(broker.dispatch(request(root, PublicToolIdentity.QUERY_SYMBOLS, raw)) is BrokerDispatch.Completed)
+        val read = assertInstanceOf(ExistingIdeOperation.Read::class.java, executor.operations.single())
+        val parsed = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw).refined()
+        val expected =
+            canonicalCliRequestPreparers().sourceRead.prepare((parsed.canonical as PublicToolCanonical.Source).request)
+                as OperationPreparation.Prepared
+        assertEquals(expected.request.document, read.request.document)
+    }
+
+    @Test
     fun `provider preserves schema-bound facade syntax without preparing lifecycle`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)

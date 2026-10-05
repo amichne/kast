@@ -15,6 +15,27 @@ import org.junit.jupiter.api.Test
 
 class PublicToolCommandTest {
     @Test
+    fun `public read source command uses exact canonical candidate anchor`() {
+        val raw =
+            PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS)
+                .examples
+                .getValue("readCallbackSource")
+                .value
+                .toString()
+        val graph =
+            (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
+                .factory
+        val parsing =
+            graph.parse(listOf("tool", "query_symbols"), CliRequestDocumentInput.Provided(raw))
+                as CliCommandParsing.Parsed
+        val prepared = (parsing.action as CliAction.Semantic).request
+        val request = (WireRequestEnvelope.admit(prepared.document) as WireRequestAdmission.Admitted).request
+        val decoded = CanonicalOperationWireBindings.sourceRead.decodeRequest(request) as WireDecoding.Decoded
+        val anchor = decoded.value.anchor as io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument.Candidate
+        assertEquals("candidate:v5:AAAAAAAAAAAAAAAAAAAAAA", anchor.selector.value)
+    }
+
+    @Test
     fun `all public tools share CLI admission and canonical wire lowering`() {
         val examples =
             mapOf(
@@ -41,6 +62,11 @@ class PublicToolCommandTest {
                     assertEquals(
                         WireDecoding.Decoded(expected.request),
                         CanonicalOperationWireBindings.queryRun.decodeRequest(request),
+                    )
+                is PublicToolCanonical.Source ->
+                    assertEquals(
+                        WireDecoding.Decoded(expected.request),
+                        CanonicalOperationWireBindings.sourceRead.decodeRequest(request),
                     )
                 is PublicToolCanonical.Diagnostics ->
                     assertEquals(

@@ -14,10 +14,12 @@ import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
+import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
+import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
@@ -138,6 +140,58 @@ class HostedQueryRetainedPresentationTest {
     }
 
     @Test
+    fun `mixed row and evidence pages drain exact identities once while only rows advance the retained cursor`() {
+        val original = page(20, 26, 26, longTokens = true)
+        val failures = presentationFailures()
+        val payload = original.evidence.payload.copy(failures = bounded(failures))
+        var pending: HostedQueryOutcome = original.copy(evidence = original.evidence.copy(payload = payload))
+        val rows = mutableListOf<QueryResultItemDocument>()
+        val evidence = mutableListOf<QueryItemFailureDocument>()
+        var cursor = 20
+        var requests = 0
+        var evidenceOnlyPages = 0
+        while (true) {
+            requests++
+            assertTrue(requests <= 10)
+            var suffix: HostedQueryOutcome? = null
+            val response =
+                encodeHostedQueryResponse(
+                    pending,
+                    maximumResults = ResultLimit.parse(2).refined(),
+                    maximumBytes = ReturnedByteLimit.parse(6500).refined(),
+                ) { remainder ->
+                    suffix = remainder
+                    retainedOutput()
+                }
+                    as HostedResponse.Canonical<*, *, *>
+            assertTrue(response.document.toByteArray().size <= 6500)
+            val fitted =
+                when (val semantic = response.semantic) {
+                    is OperationOutcome.Complete -> semantic.evidence.payload as QueryRunResult
+                    is OperationOutcome.Qualified -> semantic.evidence.payload as QueryRunResult
+                    is OperationOutcome.Rejected -> error("Unexpected rejection")
+                }
+            assertEquals(payload.question, fitted.question)
+            assertEquals(payload.retention, fitted.retention)
+            assertEquals(cursor, fitted.presentationWindow?.start?.value)
+            cursor += fitted.items.values.size
+            assertEquals(cursor, fitted.presentationWindow?.end?.value)
+            assertTrue(fitted.items.values.size <= 2)
+            if (fitted.items.values.isEmpty()) {
+                evidenceOnlyPages++
+                assertTrue(fitted.failures.values.isNotEmpty())
+            }
+            rows += fitted.items.values
+            evidence += fitted.failures.values
+            pending = suffix ?: break
+        }
+        assertEquals(payload.items.values, rows)
+        assertEquals(failures, evidence)
+        assertEquals(26, cursor)
+        assertTrue(evidenceOnlyPages > 1)
+    }
+
+    @Test
     fun `terminal fitted cursor reads every unreturned row from the still retained result`() = runTest {
         val fixture = retainedFixture()
         val owner = fixture.owner
@@ -178,6 +232,14 @@ class HostedQueryRetainedPresentationTest {
         assertEquals(originalIds.subList(100, 150), rowIds)
         assertEquals(50, rowIds.toSet().size)
     }
+
+    private fun presentationFailures() =
+        List(4) { index ->
+            QueryItemFailureDocument.ExactReference(
+                QueryReferenceDocument.ExactSymbol(text("exact:v3:" + ('b' + index).toString().repeat(3000))),
+                QueryExactFailureDocument.AMBIGUOUS_DECLARATION,
+            )
+        }
 
     private data class RetainedFixture(
         val owner: RelationPagingFixture,

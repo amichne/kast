@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
@@ -123,6 +124,8 @@ internal sealed interface QueryCheckpointAcquisition {
     data object Mismatch : QueryCheckpointAcquisition
 
     data object CapacityExceeded : QueryCheckpointAcquisition
+
+    data class Rejected(val cause: QueryContinuationFailure) : QueryCheckpointAcquisition
 }
 
 sealed interface QueryOutputAcquisition {
@@ -137,6 +140,23 @@ sealed interface QueryOutputAcquisition {
     data object Mismatch : QueryOutputAcquisition
 
     data object CapacityExceeded : QueryOutputAcquisition
+
+    data class Rejected(val cause: QueryContinuationFailure) : QueryOutputAcquisition
+}
+
+/** Proven owner and dependency failures remain distinct from an unknown or no longer retained token. */
+enum class QueryContinuationFailure(val rejection: QueryExecutionRejectionDocument) {
+    OWNER_RETIRED(QueryExecutionRejectionDocument.CONTINUATION_OWNER_RETIRED),
+    EXPIRED(QueryExecutionRejectionDocument.CONTINUATION_EXPIRED),
+    DEPENDENCY_UNAVAILABLE(QueryExecutionRejectionDocument.CONTINUATION_DEPENDENCY_UNAVAILABLE),
+    EVICTED(QueryExecutionRejectionDocument.CONTINUATION_EVICTED),
+    STALE_BASIS(QueryExecutionRejectionDocument.CONTINUATION_STALE_BASIS),
+}
+
+/** The lifetime owner names the transition; expiry and eviction have different effect owners. */
+enum class QueryStateRetirement(val failure: QueryContinuationFailure) {
+    OWNER_RETIRED(QueryContinuationFailure.OWNER_RETIRED),
+    BASIS_MOVED(QueryContinuationFailure.STALE_BASIS),
 }
 
 sealed interface QueryOutputIssuance {
@@ -164,6 +184,8 @@ data class QueryRetentionMeasurements(
     val retainedBytes: QueryRetentionByteCount,
     val highWaterBytes: QueryRetentionByteCount,
     val retainedEntries: io.github.amichne.kast.query.contract.QueryCount,
+    val retainedRevocations: io.github.amichne.kast.query.contract.QueryCount =
+        (io.github.amichne.kast.query.contract.QueryCount.parse(0) as Refinement.Refined).value,
 )
 
 @JvmInline

@@ -1,0 +1,143 @@
+package io.github.amichne.kast.relation.contract
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
+import java.util.Collections
+
+enum class CallbackInvocationFlowCause {
+    STORED_CALLBACK,
+    RETURNED_CALLBACK,
+    UNSUPPORTED_CALLBACK_SUPPLY,
+    ANONYMOUS_IDENTITY_UNAVAILABLE,
+    UNRESOLVED_ARGUMENT_MAPPING,
+    UNRESOLVED_PARAMETER_REFERENCE,
+    EXTERNAL_CALLABLE,
+    OUTSIDE_DOMAIN,
+    PARAMETER_ESCAPES,
+    NESTED_CALLBACK_EXECUTION,
+    NO_INVOCATION_PROVEN,
+    WORK_LIMIT_REACHED,
+    TIME_LIMIT_REACHED,
+    RESULT_LIMIT_REACHED,
+    BYTE_LIMIT_REACHED,
+}
+
+sealed interface CallbackBindingEvidence {
+    data class Bound(val binding: CallbackArgumentBinding) : CallbackBindingEvidence
+
+    data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackBindingEvidence
+}
+
+/** Possible static invocation evidence; neither mapping nor containment establishes runtime execution. */
+@ConsistentCopyVisibility
+data class CallbackInvocationFlow
+private constructor(
+    val basis: SemanticReadIdentity,
+    val body: RelationCallableBody.Anonymous,
+    val binding: CallbackBindingEvidence,
+    val invocations: List<CallbackParameterInvocation>,
+    val obligations: Set<CallbackInvocationFlowCause>,
+    val ownerBindings: List<CallbackBodyBinding> = emptyList(),
+) {
+    /** Conservative detached proof storage; wire presentation retains its independent encoded byte guard. */
+    val retainedBytes: Long =
+        4096L +
+            canonicalProjection().toByteArray(Charsets.UTF_8).size * 4L +
+            when (binding) {
+                is CallbackBindingEvidence.Bound -> valueSiteStorageBytes(binding.binding.invocation.resultSite())
+                is CallbackBindingEvidence.Unavailable -> 256L
+            }
+
+    /** Refines actual anonymous-owner facts without discarding an existing binding or activation obligation. */
+    fun withOwnerBindings(
+        additional: List<CallbackBodyBinding>
+    ): Refinement<CallbackInvocationFlow, CallbackInvocationFlowFailure> {
+        val combined = ownerBindings + additional
+        when (val admitted = admitCallbackOwnerBindings(this, combined)) {
+            is Refinement.Rejected -> return admitted
+            is Refinement.Refined -> Unit
+        }
+        return Refinement.Refined(
+            CallbackInvocationFlow(
+                basis = basis,
+                body = body,
+                binding = binding,
+                invocations = invocations,
+                obligations = Collections.unmodifiableSet(obligations + combined.flatMap { it.obligations }),
+                ownerBindings = Collections.unmodifiableList(combined.toList()),
+            )
+        )
+    }
+
+    companion object {
+        fun fromCompiler(
+            basis: SemanticReadIdentity,
+            body: RelationCallableBody.Anonymous,
+            binding: CallbackBindingEvidence,
+            invocations: List<CallbackParameterInvocation>,
+            obligations: Set<CallbackInvocationFlowCause>,
+        ): Refinement<CallbackInvocationFlow, CallbackInvocationFlowFailure> {
+            val admitted =
+                when (binding) {
+                    is CallbackBindingEvidence.Bound ->
+                        admitBoundCallbackFlow(
+                            basis = basis,
+                            body = body,
+                            binding = binding.binding,
+                            invocations = invocations,
+                        )
+                    is CallbackBindingEvidence.Unavailable ->
+                        admitUnboundCallbackFlow(binding, invocations, obligations)
+                }
+            when (admitted) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            if (invocations.distinct().size != invocations.size)
+                return Refinement.Rejected(CallbackInvocationFlowFailure.DUPLICATE_INVOCATION)
+            if (invocations.isEmpty() && obligations.isEmpty())
+                return Refinement.Rejected(CallbackInvocationFlowFailure.MISSING_OBLIGATION)
+            if (
+                binding is CallbackBindingEvidence.Bound &&
+                    callbackExecutionNeedsQualification(binding.binding, invocations) &&
+                    CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION !in obligations
+            )
+                return Refinement.Rejected(CallbackInvocationFlowFailure.MISSING_OBLIGATION)
+            return Refinement.Refined(
+                CallbackInvocationFlow(
+                    basis = basis,
+                    body = body,
+                    binding = binding,
+                    invocations = Collections.unmodifiableList(invocations.toList()),
+                    obligations = Collections.unmodifiableSet(obligations.toSet()),
+                )
+            )
+        }
+    }
+}
+
+enum class CallbackInvocationFlowFailure {
+    BASIS_MISMATCH,
+    BODY_OUTSIDE_ARGUMENT,
+    PARAMETER_OUTSIDE_CALLABLE,
+    INVALID_PARAMETER_POSITION,
+    INVOCATION_OUTSIDE_CALLABLE,
+    INVOCATION_OUTSIDE_OWNER,
+    UNBOUND_INVOCATION,
+    DUPLICATE_INVOCATION,
+    MISSING_OBLIGATION,
+    UNSUPPORTED_CALLABLE_TRANSFER,
+    INVALID_CALLABLE_TRANSFER_PATH,
+    CALLABLE_TRANSFER_BINDING_MISMATCH,
+    INVOCATION_OUTSIDE_SUPPLYING_OWNER,
+    OWNER_BINDING_MISMATCH,
+    DUPLICATE_OWNER_BINDING,
+}
+
+sealed interface CallbackInvocationFlowRead {
+    data class Observed(val flow: CallbackInvocationFlow) : CallbackInvocationFlowRead
+
+    data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackInvocationFlowRead
+
+    data class ContractRejected(val cause: CallbackInvocationFlowFailure) : CallbackInvocationFlowRead
+}

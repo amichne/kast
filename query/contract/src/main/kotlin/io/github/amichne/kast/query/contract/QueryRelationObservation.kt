@@ -40,6 +40,7 @@ private constructor(
     val question: QueryRelationQuestion,
     val coverage: QueryRelationCoverage,
     val scopeExclusions: List<io.github.amichne.kast.relation.contract.RelationScopeExclusion>,
+    val callbackObservations: List<io.github.amichne.kast.relation.contract.RelationCallbackObservation>,
 ) {
     val retainedBytes: Long
         get() =
@@ -50,17 +51,29 @@ private constructor(
                         question.subject.signature.canonicalEncoding().value.length) +
                 question.effectiveConstraints.fingerprintFields().sumOf { it.length * 2L } +
                 SymbolSearchScope.snapshot(question.effectiveScope).toString().length * 2L +
+                callbackObservations.sumOf { it.retainedBytes } +
                 scopeExclusions.sumOf { it.canonicalProjection().length * 2L }
 
     fun projectedUtf8Size(): Long = DOCUMENT_OVERHEAD_BYTES + retainedBytes * UTF8_EXPANSION_FACTOR
 
     fun evidenceUnits(): List<QueryRelationObservation> =
-        if (scopeExclusions.size <= 1) listOf(this)
-        else scopeExclusions.map { copy(scopeExclusions = Collections.singletonList(it)) }
+        if (scopeExclusions.size + callbackObservations.size <= 1) listOf(this)
+        else {
+            val structural = copy(scopeExclusions = emptyList(), callbackObservations = emptyList())
+            Collections.unmodifiableList(
+                scopeExclusions.map { structural.copy(scopeExclusions = Collections.singletonList(it)) } +
+                    callbackObservations.map { structural.copy(callbackObservations = Collections.singletonList(it)) }
+            )
+        }
 
     companion object {
         fun from(result: RelationReadResult.Complete): QueryRelationObservation =
-            observation(result.batch.request, QueryRelationCoverage.Exhausted, result.batch.scopeExclusions)
+            observation(
+                result.batch.request,
+                QueryRelationCoverage.Exhausted,
+                result.batch.scopeExclusions,
+                result.batch.callbackObservations,
+            )
 
         fun from(result: RelationReadResult.Qualified): QueryRelationObservation =
             observation(
@@ -74,12 +87,14 @@ private constructor(
                         )
                 },
                 result.batch.scopeExclusions,
+                result.batch.callbackObservations,
             )
 
         private fun observation(
             request: io.github.amichne.kast.relation.contract.RelationRequest,
             coverage: QueryRelationCoverage,
             exclusions: List<io.github.amichne.kast.relation.contract.RelationScopeExclusion>,
+            callbacks: List<io.github.amichne.kast.relation.contract.RelationCallbackObservation>,
         ): QueryRelationObservation =
             QueryRelationObservation(
                 QueryRelationQuestion(
@@ -92,6 +107,7 @@ private constructor(
                 ),
                 coverage,
                 Collections.unmodifiableList(exclusions.toList()),
+                Collections.unmodifiableList(callbacks.toList()),
             )
     }
 }

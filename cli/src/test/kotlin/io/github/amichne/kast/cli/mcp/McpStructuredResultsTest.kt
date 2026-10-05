@@ -17,6 +17,32 @@ import org.junit.jupiter.api.Test
 
 class McpStructuredResultsTest {
     @Test
+    fun `public query accepts exact source result without widening canonical query result`() {
+        val fixture = io.github.amichne.kast.cli.LiveReadOutputSchemaTest()
+        val basis =
+            io.github.amichne.kast.kernel.EvidenceBasis.Published(
+                (io.github.amichne.kast.kernel.EvidenceGeneration.parse(1)
+                        as io.github.amichne.kast.kernel.Refinement.Refined)
+                    .value
+            )
+        val evidence =
+            io.github.amichne.kast.kernel.EvidenceEnvelope(
+                io.github.amichne.kast.protocol.contract.CanonicalOperation.SOURCE_READ.id,
+                basis,
+                fixture.sourceResult(basis),
+            )
+        val document =
+            with(fixture) {
+                io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments.project(
+                        io.github.amichne.kast.kernel.OperationOutcome.Complete(evidence)
+                    )
+                    .document()
+            }
+        assertTrue(McpStructuredResults.validates("query_symbols", document))
+        fixture.assertRejects(io.github.amichne.kast.protocol.contract.CanonicalOperation.QUERY_RUN, document)
+    }
+
+    @Test
     fun `MCP result root preserves generated discriminator and finite rejection schema`() {
         val generated = generatedRequestSchema(ChangeRunDocument.serializer())
         val rooted = rootedResultSchema(generated)

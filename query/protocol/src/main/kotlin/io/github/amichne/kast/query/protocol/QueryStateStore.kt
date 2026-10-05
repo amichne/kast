@@ -22,6 +22,7 @@ class QueryStateStore(
     private val maximumBytes: Long = ReadLimitParameter.QUERY_CONTINUATION_BYTES.defaultValue.toLong(),
     private val clock: () -> Long = System::nanoTime,
     private val ttlMillis: Long = ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS.defaultValue.toLong(),
+    revocations: QueryContinuationRevocations = QueryContinuationRevocations(),
 ) {
     /** Reserves bounded replay space before native work and isolates ownership to one token. */
     @Synchronized
@@ -30,10 +31,7 @@ class QueryStateStore(
         lease: SemanticReadAuthority,
         maximumPageBytes: Long,
     ): QueryCheckpointAcquisition {
-        expire()
-        val key = Key.Checkpoint(token)
-        val entry = entries[key] as? Entry.Producer ?: return QueryCheckpointAcquisition.Unavailable
-        val acquired = acquireProducer(key, entry, token, lease, maximumPageBytes)
+        val acquired = acquireContinuation(token, lease, maximumPageBytes)
         val result = acquired.checkpointAcquisition()
         if (result == QueryCheckpointAcquisition.Unavailable && acquired is ProducerAcquisition.Acquired)
             releasePublication(acquired.claim)
@@ -46,55 +44,29 @@ class QueryStateStore(
         lease: SemanticReadAuthority,
         maximumPageBytes: Long,
     ): QueryOutputAcquisition {
-        expire()
-        val key = Key.Output(token)
-        val entry = entries[key] as? Entry.Producer ?: return QueryOutputAcquisition.Unavailable
-        val acquired = acquireProducer(key, entry, token, lease, maximumPageBytes)
+        val acquired = acquireContinuation(token, lease, maximumPageBytes)
         val result = acquired.outputAcquisition()
         if (result == QueryOutputAcquisition.Unavailable && acquired is ProducerAcquisition.Acquired)
             releasePublication(acquired.claim)
         return result
     }
 
-    private fun acquireProducer(
-        key: Key,
-        entry: Entry.Producer,
+    private fun acquireContinuation(
         token: QueryExecutionContinuation,
         lease: SemanticReadAuthority,
         maximumPageBytes: Long,
     ): ProducerAcquisition {
+        val key = token.key()
+        retention.continuationFailure(key, clock(), ttlMillis)?.let {
+            expire()
+            return ProducerAcquisition.Rejected(it)
+        }
+        expire()
+        val entry = entries[key] as? Entry.Producer ?: return ProducerAcquisition.Unavailable
         if (lifetime == Lifetime.RETIRED) return ProducerAcquisition.Unavailable
-        if (key !in entries.liveDependencyClosure(clock(), ttlMillis)) return ProducerAcquisition.Unavailable
-        if (entry.lease != lease) return ProducerAcquisition.Mismatch
-        val pending =
-            when (entry) {
-                is Entry.Published -> {
-                    if (entry.dependencies.any { it !in entries }) return ProducerAcquisition.Unavailable
-                    if (!evictFor(TRANSIENT_CLAIM_BASE_BYTES, setOf(key))) {
-                        return ProducerAcquisition.CapacityExceeded
-                    }
-                    val claim =
-                        QueryExecutionClaim(QueryExecutionOrigin.Replay(token, entry.page, clock()), UUID.randomUUID())
-                    transientClaims[claim.identity] = claim
-                    retainedBytes()
-                    return ProducerAcquisition.Published(claim, entry.page)
-                }
-                is Entry.Pending -> entry
-            }
-        when (pending.execution) {
-            is CheckpointExecution.Running -> return ProducerAcquisition.InUse
-            CheckpointExecution.Ready -> Unit
+        return acquisition.acquireProducer(key, entry, token, lease, maximumPageBytes).also { result ->
+            if (result is ProducerAcquisition.Acquired || result is ProducerAcquisition.Published) retainedBytes()
         }
-        if (pending.owner != null) return ProducerAcquisition.Unavailable
-        val reserve = maximumPageBytes.saturatedMultiply(4L).saturatedAdd(4096L)
-        if (reserve > maximumBytes || !reserveFor(reserve, setOf(key))) {
-            return ProducerAcquisition.CapacityExceeded
-        }
-        val claim = QueryExecutionClaim(QueryExecutionOrigin.Producer(token), UUID.randomUUID())
-        entries[key] =
-            pending.withExecution(CheckpointExecution.Running(claim, reserve), pending.bytes.saturatedAdd(reserve))
-        retainedBytes()
-        return ProducerAcquisition.Acquired(claim, pending)
     }
 
     /** The immutable page and its retained successor become visible in one store transition. */
@@ -149,7 +121,12 @@ class QueryStateStore(
     private val entries = linkedMapOf<Key, Entry>()
     private val transientClaims = linkedMapOf<UUID, QueryExecutionClaim>()
     private var highWaterBytes = 0L
-    private val retention = QueryStateRetention(entries, transientClaims, capacity, maximumBytes)
+    private val retention = QueryStateRetention(entries, transientClaims, capacity, maximumBytes, revocations)
+    private val acquisition = QueryStateAcquisition(entries, transientClaims, retention, maximumBytes, clock, ttlMillis)
+
+    init {
+        retention.trimRevocations()
+    }
 
     @Synchronized
     internal fun acquireInitial(
@@ -169,7 +146,7 @@ class QueryStateStore(
 
     @Synchronized
     fun retentionMeasurements(): QueryRetentionMeasurements =
-        queryRetentionMeasurements(retainedBytes(), highWaterBytes, entries.size)
+        queryRetentionMeasurements(retainedBytes(), highWaterBytes, entries.size, retention.revocationCount())
 
     @Synchronized
     fun issueCheckpoint(
@@ -265,15 +242,13 @@ class QueryStateStore(
 
     @Synchronized
     fun clear() {
-        entries.clear()
-        transientClaims.clear()
+        retention.clear()
     }
 
     @Synchronized
-    fun retire() {
+    fun retire(cause: QueryStateRetirement = QueryStateRetirement.OWNER_RETIRED) {
         lifetime = Lifetime.RETIRED
-        entries.clear()
-        transientClaims.clear()
+        retention.retire(cause)
     }
 
     @Synchronized
@@ -289,7 +264,8 @@ class QueryStateStore(
         expire()
         val producerToken = (owner.origin as? QueryExecutionOrigin.Producer)?.token
         val parent = (producerToken?.key()?.let(entries::get) as? Entry.Output)?.page
-        if (parent != null && page.itemCount() >= parent.itemCount()) return QueryOutputIssuance.NonAdvancing
+        if (parent != null && page.presentationUnitCount() >= parent.presentationUnitCount())
+            return QueryOutputIssuance.NonAdvancing
         val normalized = request.normalized()
         entries.outputFor(normalized, lease, page, owner, clock(), ttlMillis)?.let {
             return QueryOutputIssuance.Issued(it)
@@ -307,19 +283,12 @@ class QueryStateStore(
         return QueryOutputIssuance.Issued(token)
     }
 
-    private fun entryBytes(payloadBytes: Long, request: QueryRunRequest.Run): Long? {
-        val requestBytes = request.accountedRequestBytes()
-        if (capacity <= 0 || requestBytes !in 0..maximumBytes || payloadBytes !in 0..(maximumBytes - requestBytes)) {
-            return null
-        }
-        return requestBytes + payloadBytes
-    }
+    private fun entryBytes(payloadBytes: Long, request: QueryRunRequest.Run): Long? =
+        request.accountedEntryBytes(payloadBytes, capacity, maximumBytes)
 
     private fun evictFor(bytes: Long, protected: Key?): Boolean = evictFor(bytes, setOfNotNull(protected))
 
     private fun evictFor(bytes: Long, protected: Set<Key>): Boolean = retention.evictFor(bytes, protected)
-
-    private fun reserveFor(bytes: Long, protected: Set<Key>): Boolean = retention.reserveFor(bytes, protected)
 
     private fun retainedBytes(): Long {
         val total = retention.retainedBytes()

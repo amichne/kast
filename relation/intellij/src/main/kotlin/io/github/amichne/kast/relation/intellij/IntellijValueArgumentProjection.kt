@@ -38,7 +38,13 @@ internal fun nativeValueArgument(
         when (val result = nativeArgumentBinding(call, expression)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> {
-                return Refinement.Rejected(result.failure)
+                return Refinement.Rejected(
+                    when (result.failure) {
+                        NativeArgumentBindingFailure.UNRESOLVED_REFERENCE ->
+                            ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE
+                        NativeArgumentBindingFailure.EXTERNAL_CALL -> ValueFlowUnsupportedCause.EXTERNAL_CALL
+                    }
+                )
             }
         }
     val endpoint =
@@ -93,32 +99,37 @@ private fun nativeArgumentEndpoint(
     }
 }
 
-private fun nativeArgumentBinding(
+internal fun nativeArgumentBinding(
     call: KtCallElement,
     expression: KtExpression,
-): Refinement<NativeArgument, ValueFlowUnsupportedCause> =
+): Refinement<NativeArgument, NativeArgumentBindingFailure> =
     analyze(call) {
         val resolved =
-            call.resolveCall() ?: return@analyze Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+            call.resolveCall() ?: return@analyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
         val callable =
             resolved.signature.symbol as? KaNamedFunctionSymbol
-                ?: return@analyze Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+                ?: return@analyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
         val parameter =
             resolved.valueArgumentMapping[expression]?.symbol
-                ?: return@analyze Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+                ?: return@analyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
         val position =
             when (val admitted = ValueArgumentPosition.parse(callable.valueParameters.indexOf(parameter))) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
-                    return@analyze Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+                    return@analyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
             }
         val declaration =
             callable.psi as? PsiNamedElement
-                ?: return@analyze Refinement.Rejected(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+                ?: return@analyze Refinement.Rejected(NativeArgumentBindingFailure.EXTERNAL_CALL)
         Refinement.Refined(NativeArgument(declaration, position))
     }
 
-private data class NativeArgument(val declaration: PsiNamedElement, val position: ValueArgumentPosition)
+internal data class NativeArgument(val declaration: PsiNamedElement, val position: ValueArgumentPosition)
+
+internal enum class NativeArgumentBindingFailure {
+    UNRESOLVED_REFERENCE,
+    EXTERNAL_CALL,
+}
 
 private fun argumentRange(element: PsiElement): Refinement<ExactDeclarationTextRange, ValueFlowUnsupportedCause> =
     when (val result = ExactDeclarationTextRange.parse(element.textRange.startOffset, element.textRange.endOffset)) {

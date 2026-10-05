@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
@@ -60,10 +61,69 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryWalkResponseTest {
     @Test
+    fun `zero row oversized evidence drains immutable observations within the byte allowance`() = runTest {
+        val fixture = walkFixture()
+        val original = fixture.outcome as OperationOutcome.Qualified
+        val observations =
+            List(6) { index ->
+                fixture.observation.copy(
+                    domainFingerprint =
+                        QueryRelationDomainFingerprint.parse((index + 1).toString().repeat(64)).refined()
+                )
+            }
+        var pending: HostedQueryOutcome = emptyEvidencePage(original, observations)
+        val seen = mutableListOf<QueryWalkObservationDocument>()
+        var requests = 0
+        while (true) {
+            requests++
+            assertTrue(requests <= 6)
+            var suffix: HostedQueryOutcome? = null
+            val response =
+                encodeHostedQueryResponse(
+                    pending,
+                    maximumResults = ResultLimit.parse(1).refined(),
+                    maximumBytes = ReturnedByteLimit.parse(6500).refined(),
+                ) { remaining ->
+                    suffix = remaining
+                    HostedOutputRetention.Retained(
+                        ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000")
+                            .refined()
+                    )
+                }
+            assertTrue(response is HostedResponse.Canonical<*, *, *>)
+            val page = response as HostedResponse.Canonical<*, *, *>
+            assertTrue(page.document.toByteArray().size <= 6500)
+            val result = (page.semantic as OperationOutcome.Qualified).evidence.payload as QueryRunResult
+            assertTrue(result.items.values.isEmpty())
+            assertTrue(result.walkObservations.values.isNotEmpty())
+            seen += result.walkObservations.values
+            pending = suffix ?: break
+        }
+        assertTrue(requests > 1)
+        assertEquals(observations, seen)
+    }
+
+    private fun emptyEvidencePage(
+        original: OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>,
+        observations: List<QueryWalkObservationDocument>,
+    ): HostedQueryOutcome =
+        original.copy(
+            evidence =
+                original.evidence.copy(
+                    payload =
+                        original.evidence.payload.copy(
+                            items = bounded(emptyList()),
+                            walkObservations = bounded(observations),
+                        )
+                )
+        )
+
+    @Test
     fun `query walk pages retain occurrence records and depth frontier progress and incomplete coverage`() = runTest {
         val (records, observation, outcome) = walkFixture()
         var pending = outcome
         val observed = mutableListOf<QueryResultItemDocument>()
+        val evidence = mutableListOf<QueryWalkObservationDocument>()
         repeat(records.size) { index ->
             var remainder: HostedQueryOutcome? = null
             val page =
@@ -82,7 +142,7 @@ class HostedQueryWalkResponseTest {
             val semantic = page.semantic as OperationOutcome.Qualified
             val result = semantic.evidence.payload as QueryRunResult
             observed += result.items.values
-            assertEquals(listOf(observation), result.walkObservations.values)
+            evidence += result.walkObservations.values
             assertTrue(
                 QueryLimitationDocument.TRAVERSAL_INCOMPLETE in
                     (semantic.qualification as QueryRunQualification).limitations
@@ -91,6 +151,7 @@ class HostedQueryWalkResponseTest {
             pending = remainder ?: pending
         }
         assertEquals(records, observed)
+        assertEquals(listOf(observation), evidence)
         assertEquals(listOf(10, 12, 14), records.map { it.record.relation.occurrence.range.startInclusive.value })
         assertEquals(
             1,
@@ -100,7 +161,7 @@ class HostedQueryWalkResponseTest {
 
     @Test
     fun `retention capacity preserves a useful prefix and the original incomplete coverage`() = runTest {
-        val (records, observation, outcome) = walkFixture()
+        val (records, _, outcome) = walkFixture()
         var published: QueryPublishedPage? = null
         val response =
             encodeHostedQueryResponse(
@@ -113,7 +174,7 @@ class HostedQueryWalkResponseTest {
         val qualified = response.semantic as OperationOutcome.Qualified
         val result = qualified.evidence.payload as QueryRunResult
         assertEquals(listOf(records.first()), result.items.values)
-        assertEquals(listOf(observation), result.walkObservations.values)
+        assertTrue(result.walkObservations.values.isEmpty())
         val progress =
             (qualified.qualification as QueryRunQualification).progress
                 as QueryQualifiedProgressDocument.RetentionUnavailable

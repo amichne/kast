@@ -9,9 +9,11 @@ A public request is intent, not compiler evidence. Admit the sole public query
 grammar in `tools.schema.json` into `AdmittedPublicTool` through its private
 construction boundary. Never reintroduce a raw JSON query payload, candidate
 output, an INSPECT stage, magic wildcard, or implicit retry. The closed query
-request admits exactly one of three actions: run with a source and ordered steps, resume
+request admits exactly one of four actions: run with a source and ordered steps, resume
 with a typed pipeline or retained-output execution continuation and optional grant, or read_result with a
-retained-result reference and distinct presentation cursor. Keep exact-symbol
+retained-result reference and distinct presentation cursor, or read_source with an issued
+candidate reference for its exact source anchor. Source reads reuse the canonical source owner
+and preserve its authority and freshness failures. Keep candidate references, exact-symbol
 references, result references, execution continuations, and result cursors
 separate in the admitted syntax. The public resume schema admits only issued
 `query:v1` and `query-output:v1` token families; malformed and retained-result

@@ -152,5 +152,9 @@ private fun AgentToolDefinition.hostedDocument(): InstalledHostedToolDocument =
                         operation.hostedVariants,
                     )
             },
-        outputSchema = installedServerOutputSchema(operation.operation),
+        outputSchema =
+            when (val input = inputBinding) {
+                is AgentToolInputBinding.Facade -> installedPublicToolOutputSchema(input.identity)
+                AgentToolInputBinding.Canonical -> installedServerOutputSchema(operation.operation)
+            },
     )

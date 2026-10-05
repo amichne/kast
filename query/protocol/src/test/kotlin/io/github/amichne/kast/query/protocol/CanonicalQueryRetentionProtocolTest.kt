@@ -226,7 +226,7 @@ class CanonicalQueryRetentionProtocolTest {
     private suspend fun assertCheckpointBinding(protocol: CanonicalQueryProtocol, token: QueryExecutionContinuation) {
         // Resume is token-only: a caller cannot provide a conflicting replacement plan.
         assertEquals(
-            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_STALE_BASIS),
             (protocol.execute(
                     QueryRunRequest.Resume(token),
                     SemanticReadLease(root, EvidenceGeneration.parse(8).refined()),

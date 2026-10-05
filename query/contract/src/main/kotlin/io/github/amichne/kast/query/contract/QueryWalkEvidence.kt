@@ -108,10 +108,17 @@ private constructor(
     val inheritedOmissions: List<QueryWalkPartialExpansion>,
     val referenceOccurrences: List<io.github.amichne.kast.traversal.contract.TraversalReferenceObservation>,
     val scopeExclusions: List<io.github.amichne.kast.traversal.contract.TraversalScopeExclusion>,
+    val callbackObservations: List<io.github.amichne.kast.traversal.contract.TraversalCallbackObservation>,
 ) {
     /** Partition independent proof payloads before output accounting; their shared progress is a witness, not a sum. */
     fun evidenceUnits(): List<QueryWalkObservation> {
-        if (partialExpansions.size + inheritedOmissions.size + referenceOccurrences.size + scopeExclusions.size <= 1)
+        if (
+            partialExpansions.size +
+                inheritedOmissions.size +
+                referenceOccurrences.size +
+                scopeExclusions.size +
+                callbackObservations.size <= 1
+        )
             return listOf(this)
         val structural =
             copy(
@@ -119,12 +126,14 @@ private constructor(
                 inheritedOmissions = emptyList(),
                 referenceOccurrences = emptyList(),
                 scopeExclusions = emptyList(),
+                callbackObservations = emptyList(),
             )
         val units =
             partialExpansions.map { structural.copy(partialExpansions = listOf(it)) } +
                 inheritedOmissions.map { structural.copy(inheritedOmissions = listOf(it)) } +
                 referenceOccurrences.map { structural.copy(referenceOccurrences = listOf(it)) } +
-                scopeExclusions.map { structural.copy(scopeExclusions = listOf(it)) }
+                scopeExclusions.map { structural.copy(scopeExclusions = listOf(it)) } +
+                callbackObservations.map { structural.copy(callbackObservations = listOf(it)) }
         return java.util.Collections.unmodifiableList(units)
     }
 
@@ -167,6 +176,7 @@ private constructor(
                     ),
                 referenceOccurrences = page.referenceOccurrences,
                 scopeExclusions = page.scopeExclusions,
+                callbackObservations = page.callbackObservations,
             )
     }
 }

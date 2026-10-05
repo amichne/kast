@@ -156,6 +156,8 @@ data class QueryRelationObservationDocument(
     @SerialName("domain_fingerprint") val domainFingerprint: QueryRelationDomainFingerprint,
     val coverage: QueryRelationCoverageDocument,
     val scopeExclusions: BoundedProtocolList<QueryScopeExclusionDocument>,
+    val callbackObservations: BoundedProtocolList<QueryCallbackObservationDocument> =
+        (BoundedProtocolList.create(emptyList<QueryCallbackObservationDocument>()) as Refinement.Refined).value,
 ) {
     companion object {
         val Empty: BoundedProtocolList<QueryRelationObservationDocument> =

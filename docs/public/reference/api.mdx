@@ -93,7 +93,7 @@ Read section `SITE_ACCOUNTING` for one row per requested site in the original or
 
     `SOURCE_DOMAIN` requires exact imported `sourceSets` names, `sourcePolicy` (`PRODUCTION_ONLY`, `TEST_ONLY`, or `PRODUCTION_AND_TEST`), and `generatedSources` (`EXCLUDE` or `INCLUDE`). Its optional `directory` is workspace-relative; `includeSubdirectories` defaults to `true`. These restrictions apply before native enumeration. `IMPACT.domain` uses the same three scope forms and must be supplied explicitly.
 
-    Relation and walk observations preserve requested and effective domains, coverage, and proven scope exclusions. Interpret an empty result against that declared domain and its qualifications; rows removed by `WHERE` do not establish absence from the expansion domain.
+    Relation and walk observations preserve requested and effective domains, coverage, and proven scope exclusions. Callback observations separately retain lexical containment, anonymous callable identity, named-call ownership policy, and bounded compiler-confirmed argument mapping and parameter invocation evidence. An excluded callback does not become a named edge; unavailable callback behavior remains explicitly incomplete. Interpret an empty result against that declared domain and its qualifications; rows removed by `WHERE` do not establish absence from the expansion domain.
 
     For `BREADTH_FIRST`, `maximumDepth` defines the requested graph. Results at that depth are included without expanding them. Coverage is complete when every required one-hop read below that depth is complete. Result, work, and time limits can pause execution; resume the issued continuation to finish retained work. A required one-hop read with terminal incomplete coverage keeps the walk incomplete.
   </Accordion>

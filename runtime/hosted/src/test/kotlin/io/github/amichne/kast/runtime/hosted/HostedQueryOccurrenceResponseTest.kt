@@ -63,6 +63,7 @@ class HostedQueryOccurrenceResponseTest {
         val omission = omission(facts)
         var pending: HostedQueryOutcome = terminalOccurrences(fixture, items, omission)
         val observed = mutableListOf<QueryResultItemDocument>()
+        val evidence = mutableListOf<QueryRelationOmissionDocument>()
         repeat(items.size) { pageIndex ->
             var remainder: HostedQueryOutcome? = null
             val response =
@@ -80,7 +81,7 @@ class HostedQueryOccurrenceResponseTest {
             val page = response.semantic as OperationOutcome.Qualified
             val result = page.evidence.payload as QueryRunResult
             observed += result.items.values
-            assertEquals(listOf(omission), result.omissions.values)
+            evidence += result.omissions.values
             assertTrue(
                 QueryLimitationDocument.RELATION_INCOMPLETE in (page.qualification as QueryRunQualification).limitations
             )
@@ -91,6 +92,11 @@ class HostedQueryOccurrenceResponseTest {
             pending = remainder ?: pending
         }
         assertEquals(items, observed)
+        assertEquals(listOf(omission), evidence)
+        assertOccurrenceIdentities(facts)
+    }
+
+    private fun assertOccurrenceIdentities(facts: List<RelationFactDocument>) {
         assertEquals(listOf(10, 12, 14), facts.map { it.occurrence.range.startInclusive.value })
         assertEquals(1, facts.map { it.source.selector to it.target.selector }.distinct().size)
         assertEquals(1, facts.map { it.provenance }.distinct().size)

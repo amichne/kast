@@ -5,22 +5,59 @@ import java.util.UUID
 /** Lifecycle operations on the single store's maps; the calling store owns every lock and effect. */
 internal class QueryStateRetention(
     private val entries: MutableMap<QueryStateKey, QueryStateEntry>,
-    private val transientClaims: Map<UUID, QueryExecutionClaim>,
+    private val transientClaims: MutableMap<UUID, QueryExecutionClaim>,
     private val capacity: Int,
     private val maximumBytes: Long,
+    private val revocations: QueryContinuationRevocations,
 ) {
+    fun revocation(key: QueryStateKey): QueryContinuationFailure? =
+        when (key) {
+            is QueryStateKey.Checkpoint -> revocations[key.token]
+            is QueryStateKey.Output -> revocations[key.token]
+            is QueryStateKey.Result -> null
+        }
+
+    /** Inspect before cleanup reclaims token identity; an absent bounded receipt proves no historical cause. */
+    fun continuationFailure(key: QueryStateKey, now: Long, ttlMillis: Long): QueryContinuationFailure? {
+        val entry = entries[key] as? QueryStateEntry.Producer ?: return revocation(key)
+        if (!entry.withinLifetime(now, ttlMillis)) return QueryContinuationFailure.EXPIRED
+        if (entry.owner != null) return null
+        if (key !in entries.liveDependencyClosure(now, ttlMillis))
+            return QueryContinuationFailure.DEPENDENCY_UNAVAILABLE
+        return null
+    }
+
+    fun clear() {
+        entries.clear()
+        transientClaims.clear()
+        revocations.clear()
+    }
+
+    fun retire(cause: QueryStateRetirement) {
+        val revoked = entries.keys.toList()
+        entries.clear()
+        transientClaims.clear()
+        for (key in revoked) remember(key, cause.failure)
+    }
+
+    fun revocationCount(): Int = revocations.size()
+
     fun evictFor(bytes: Long, protected: Set<QueryStateKey>): Boolean {
         while (entries.size + transientClaims.size >= capacity || retainedBytes() > maximumBytes - bytes) {
+            if (entries.size + transientClaims.size < capacity && discardOldestRevocation()) continue
             val victim = entries.keys.firstOrNull { it !in protected && evictable(it) } ?: return false
             entries.remove(victim)
+            remember(victim, QueryContinuationFailure.EVICTED)
         }
         return true
     }
 
     fun reserveFor(bytes: Long, protected: Set<QueryStateKey>): Boolean {
         while (retainedBytes() > maximumBytes - bytes) {
+            if (discardOldestRevocation()) continue
             val victim = entries.keys.firstOrNull { it !in protected && evictable(it) } ?: return false
             entries.remove(victim)
+            remember(victim, QueryContinuationFailure.EVICTED)
         }
         return true
     }
@@ -50,12 +87,38 @@ internal class QueryStateRetention(
         }
 
     fun retainedBytes(): Long {
-        var total = transientClaims.values.sumOf { it.origin.accountedClaimBytes() }
+        var total =
+            revocations.size().toLong() * REVOCATION_RECEIPT_BYTES +
+                transientClaims.values.sumOf { it.origin.accountedClaimBytes() }
         for (entry in entries.values) {
             if (entry.bytes > maximumBytes - total) return maximumBytes
             total += entry.bytes
         }
         return total
+    }
+
+    private fun discardOldestRevocation(): Boolean = revocations.discardOldest()
+
+    fun trimRevocations() {
+        while (revocations.size() > capacity.coerceAtLeast(0) || retainedBytes() > maximumBytes) {
+            if (!discardOldestRevocation()) return
+        }
+    }
+
+    /** Detached token and finite cause only. Receipts use the same byte quota and at most capacity slots. */
+    fun remember(key: QueryStateKey, cause: QueryContinuationFailure) {
+        val token =
+            when (key) {
+                is QueryStateKey.Result -> return
+                is QueryStateKey.Checkpoint -> key.token
+                is QueryStateKey.Output -> key.token
+            }
+        if (capacity <= 0 || maximumBytes < REVOCATION_RECEIPT_BYTES) return
+        revocations.remove(token)
+        while (revocations.size() >= capacity || retainedBytes() > maximumBytes - REVOCATION_RECEIPT_BYTES) {
+            if (!discardOldestRevocation()) return
+        }
+        revocations.record(token, cause)
     }
 
     /** Only active claims pin physical storage beyond original dependency expiry. */
@@ -69,6 +132,17 @@ internal class QueryStateRetention(
                 }
                 .keys
         val retained = entries.liveDependencyClosure(now, ttlMillis) + entries.dependencyClosure(active)
-        entries.keys.removeIf { it !in retained }
+        val removed = entries.filterKeys { it !in retained }
+        entries.keys.removeAll(removed.keys)
+        for ((key, entry) in removed) {
+            remember(
+                key,
+                if (entry.withinLifetime(now, ttlMillis)) QueryContinuationFailure.DEPENDENCY_UNAVAILABLE
+                else QueryContinuationFailure.EXPIRED,
+            )
+        }
     }
 }
+
+/** Accounting estimate for one opaque token identity and one closed cause; no retained source or row payload. */
+internal const val REVOCATION_RECEIPT_BYTES = 256L

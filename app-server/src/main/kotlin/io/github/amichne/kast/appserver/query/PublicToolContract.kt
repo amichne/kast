@@ -17,6 +17,8 @@ sealed interface PublicToolInputFailure {
 
     data object SyntaxRejected : PublicToolInputFailure
 
+    data class SourceAnchor(val cause: SourceReadAnchorDocumentFailure) : PublicToolInputFailure
+
     data class Parameter(val parameter: PublicToolParameter, val rule: PublicToolRule) : PublicToolInputFailure
 }
 
@@ -43,6 +45,8 @@ enum class PublicToolRule(val correction: String) {
 /** Closed lowering result. The operation retains execution, effect, and compiler authority. */
 sealed interface PublicToolCanonical {
     data class Query(val request: QueryRunRequest) : PublicToolCanonical
+
+    data class Source(val request: SourceReadRequest) : PublicToolCanonical
 
     data class Diagnostics(val request: DiagnosticCheckRequest) : PublicToolCanonical
 
@@ -80,6 +84,11 @@ private constructor(
                             is PublicToolCanonical.Query ->
                                 PublicToolContract.json.encodeToJsonElement(
                                     QueryRunRequest.serializer(),
+                                    canonical.request,
+                                )
+                            is PublicToolCanonical.Source ->
+                                PublicToolContract.json.encodeToJsonElement(
+                                    SourceReadRequest.serializer(),
                                     canonical.request,
                                 )
                             is PublicToolCanonical.Diagnostics ->
@@ -185,6 +194,7 @@ fun PublicToolInputFailure.explanation(): String =
         PublicToolInputFailure.SchemaRejected ->
             "Arguments must match the selected tool's fields and variants. Omit optional controls to use their defaults."
         PublicToolInputFailure.SyntaxRejected -> "Arguments violate the selected tool's bounded value grammar."
+        is PublicToolInputFailure.SourceAnchor -> "candidateRef: source anchor rejected (${cause.name})."
         is PublicToolInputFailure.Parameter -> "${parameter.path}: ${rule.correction}"
     }
 

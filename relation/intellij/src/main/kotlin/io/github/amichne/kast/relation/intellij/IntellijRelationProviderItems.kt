@@ -31,7 +31,10 @@ internal sealed interface CallOwnershipFailure {
     }
 
     /** A proven callback boundary has no named caller edge in the static call graph. */
-    data object ExcludedCallback : CallOwnershipFailure
+    data class ExcludedCallback(
+        val boundary: org.jetbrains.kotlin.psi.KtFunctionLiteral,
+        val reason: io.github.amichne.kast.relation.contract.CallbackExclusionReason,
+    ) : CallOwnershipFailure
 }
 
 internal sealed interface ContainingDeclaration {
@@ -49,7 +52,7 @@ internal sealed interface SupportedContainingDeclaration {
 
     data object Unresolved : SupportedContainingDeclaration
 
-    data object Excluded : SupportedContainingDeclaration
+    data class Excluded(val evidence: CallOwnershipFailure.ExcludedCallback) : SupportedContainingDeclaration
 }
 
 internal sealed interface OccurrenceProvenance {
@@ -150,10 +153,10 @@ internal fun PsiElement.nearestSupportedCallable(
                 IntellijRelationDeclarationProjection.Unsupported -> SupportedContainingDeclaration.Unsupported
             }
         is Refinement.Rejected ->
-            when (owner.failure) {
+            when (val failure = owner.failure) {
                 CallOwnershipFailure.UnsupportedBoundary -> SupportedContainingDeclaration.Unsupported
                 CallOwnershipFailure.UnresolvedArgumentMapping -> SupportedContainingDeclaration.Unresolved
-                CallOwnershipFailure.ExcludedCallback -> SupportedContainingDeclaration.Excluded
+                is CallOwnershipFailure.ExcludedCallback -> SupportedContainingDeclaration.Excluded(failure)
             }
     }
 

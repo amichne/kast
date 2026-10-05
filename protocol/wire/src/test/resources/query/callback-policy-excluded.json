@@ -1,0 +1,1 @@
+{"type":"EXCLUDED","reason":"NON_INLINE_ARGUMENT","excluded_boundary":{"candidateSelector":"candidate:lambda","file":"Seed.kt","range":{"startInclusive":4,"endExclusive":18}}}

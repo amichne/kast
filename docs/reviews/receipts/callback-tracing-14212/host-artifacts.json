@@ -1,0 +1,152 @@
+{
+  "type": "INSTALLED_HOST_ARTIFACT_MATCHED",
+  "version": "0.20261005.14212",
+  "archive": "/tmp/kast-callback-install-assets-14212/kast-ide-hosted-v0.20261005.14212-idea-262.zip",
+  "archiveSha256": "1d0c223e55bc64a2e0ad85140174d5c2cb5729d45e8036407f4a9b451e5bbfcf",
+  "files": [
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/kast-ide-hosted-0.20261005.14212.jar",
+      "sha256": "25dfeeb2cbadfb9dadcabd0bedd582aeab7ccf7052452924281c5c729b6d9060"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/workspace-intellij-read-0.50.0-16-g374308a46.jar",
+      "sha256": "8ad7265a541987953823a9b2fb85db3688e22d59f737b4c644939f0622f82be7"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/wire-0.50.0-16-g374308a46.jar",
+      "sha256": "68fe8a5b00dea3096ff196de3a053f8a6a33c3274dd3713e99da25eb63393e0f"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/change-protocol-0.50.0-16-g374308a46.jar",
+      "sha256": "fdd43c89edc435cbca22c151bd2a2dc66a356ed1b46ae24365316a8cb839d551"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/change-intellij-0.50.0-16-g374308a46.jar",
+      "sha256": "602625e88e23bb1a606bbafe86f73ad8a9208498204b35a1849493e8e68aa539"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/query-protocol-0.50.0-16-g374308a46.jar",
+      "sha256": "0706db823fff91dd796e04366ac47d78addbffcb353defbbec1055b214538cd2"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/relation-intellij-0.50.0-16-g374308a46.jar",
+      "sha256": "6ae589b55d1678b24d445f7bb20658e98343beecef5e6721192f660ab7270d0d"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/diagnostic-intellij-0.50.0-16-g374308a46.jar",
+      "sha256": "6ca1ff25056ffa310fb146f1dcf4bae65f2bd4716642065a2aa2b7146c41e72e"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/symbol-intellij-0.50.0-16-g374308a46.jar",
+      "sha256": "2b180af362e1fcaa8eeae89b136550242a9e10a681e9684afae169a73d0fbc90"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/source-intellij-0.50.0-16-g374308a46.jar",
+      "sha256": "0895bb5c20ce6734519a66e06bc20d6d194bf7e6d20b735d4894b4dfe39f795c"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/registry-0.50.0-16-g374308a46.jar",
+      "sha256": "c4149e1ba4d962b241738019e7207c291801a1ea31f6cc6c3b85b39c464ad2f7"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/contract-0.50.0-16-g374308a46.jar",
+      "sha256": "2a250dc021b7cebc4e6e3de5741c860eb7c3ec3a97bd9c30552ed0a57ea1eeaa"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/change-plan-0.50.0-16-g374308a46.jar",
+      "sha256": "8330b33570e5d388bcd0597852a9596c9fab380f04cf79e4ab12b3475a10e87b"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/evidence-sqlite-0.50.0-16-g374308a46.jar",
+      "sha256": "a96cf2bc79beccc695ae601a2fec27186eecdadc9f203e983ee253b22cacf441"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/change-verify-0.50.0-16-g374308a46.jar",
+      "sha256": "c86374568643b7b1dceb92e91476004747f6f747809952472bd44ef838d966c7"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/change-apply-0.50.0-16-g374308a46.jar",
+      "sha256": "b7718eff09fe8c621021c49aa562c8c956c3876c118fd67ba5433ec31ece1acb"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/change-recovery-0.50.0-16-g374308a46.jar",
+      "sha256": "09cbbe8417365fa51e90c0e492205a5776488523be9f20f26501102be40a9ad0"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/change-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "c510b278e3584ba601b3db777ed4de62292820f0f651060dd1117ee21a57cf09"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/evidence-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "82652ae2bfd1fd411b12fc923b73f58e93bbee565437e1aaa42b930f4294ac0c"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/query-service-0.50.0-16-g374308a46.jar",
+      "sha256": "408aa1cfda691dda3aa0960a0ee8d0ad0da9f5987aea9478edb258deca6ba15f"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/query-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "97d66af3e1d326136e89645323e403f29fdf1fc821eae799351df12f96e131e4"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/symbol-service-0.50.0-16-g374308a46.jar",
+      "sha256": "02f0d38367b2b1ac00d1d9c82a5bf16f6634ef753c58a3808dec7f19292b8234"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/source-service-0.50.0-16-g374308a46.jar",
+      "sha256": "7a738e9dbfc572aec5c370c970c4025244d3175a00570b4d8d583425701e97d6"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/source-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "d95f1f844652948dfda76a4ab01be44d60d69528d4c8d925d47e674437970454"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/relation-service-0.50.0-16-g374308a46.jar",
+      "sha256": "e54f192379da7ea51aadb0034fbc846f0262224753bca319606bd0dc483e2df6"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/traversal-service-0.50.0-16-g374308a46.jar",
+      "sha256": "6db9fd971bf084c4ba8e3a99512d3f92d6228b93b5659437e5a82701619ca498"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/traversal-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "9846db199324bee046800db387b91c981a84fb14f45eba3d1574b4520b1f898a"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/relation-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "195a6ef7e07f6e2a4dd7de84a1db9762a5d9bfde41c71c0fe2c4985a899566ab"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/symbol-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "5498e90ff970319657bf1650cd5defb682c743fbf11ed9728e65c1e1ae8eda74"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/diagnostic-service-0.50.0-16-g374308a46.jar",
+      "sha256": "95bb9411118d8ef70b01a94db3f1d85b16fda1329d392908481514905624645f"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/diagnostic-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "42510074f1c67eb71483dd68be52b5f8cdfefd6bc8d5877f4f0a686f6fd61569"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/workspace-contract-0.50.0-16-g374308a46.jar",
+      "sha256": "bfea0d654823f33420cfdb09d4b37aed5d25ada99bfbd8fea217e2822c1aef11"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/kernel-0.50.0-16-g374308a46.jar",
+      "sha256": "cf9f3b1eabdbafe6d35221a168c9e02d9df7c4575f99757f8dabc31f96ef2fdb"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/kotlinx-serialization-core-jvm-1.11.0.jar",
+      "sha256": "f4a801c647d4351327cd9e1ac4113e2be9ea37a64ab0abae269c25a52e28f35d"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/kotlinx-serialization-json-jvm-1.11.0.jar",
+      "sha256": "563a25b4eb5c9128ae9c2479f3d1a5c44dcd176112b91cf03682e906eba5c935"
+    },
+    {
+      "path": "/Users/amichne/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/sqlite-jdbc-3.53.2.0.jar",
+      "sha256": "dc320e4102884c135ccc30c3c6fc3fb190b750e1586a100e3aba3be783cf33a9"
+    }
+  ]
+}

@@ -39,3 +39,10 @@ thread ownership or resume sessions across upgrades.
 A subprocess timeout, cancellation, output overflow, or nonzero exit is not
 proof of rollback. Keep its bounded phase and plan evidence, avoid automatic
 write retries, and follow the [change guidance](/change).
+
+
+## Continuation failures
+
+Copy execution continuations unchanged and use their reported next action. Known failures distinguish expiration, owner retirement, dependency loss, eviction, stale basis, and incompatible continuation identity. Restart the read when the original authority or retained state no longer admits the continuation. A budget failure retains the exhausted dimension and stage; increasing a grant does not recover missing state.
+
+Continuation revocation receipts use the existing bounded retention budget. The oldest receipts can be reclaimed to preserve live state. Once a receipt is gone, an unavailable token cannot establish its historical eviction or expiration cause.

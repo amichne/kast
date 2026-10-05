@@ -45,6 +45,7 @@ fun explicitInline(): String = ordinaryInline(block = { inlineTarget() })
 fun nestedInline(): String = ordinaryInline { ordinaryInline { inlineTarget() } }
 fun repeatedInline(): String = ordinaryInline { inlineTarget() + inlineTarget() }
 fun returnedInline(): () -> String = { inlineTarget() }
+fun immediateLiteralCallback(): String = ({ inlineTarget() })()
 fun storedInline(): String { val stored = { inlineTarget() }; return stored() }
 fun callbackInline(): String = ordinaryCallback { inlineTarget() }
 fun homonymousInline(): String = ordinaryInline(1) { inlineTarget() }
@@ -57,3 +58,26 @@ fun localInline(): String {
 }
 fun mixedInline(): String { val stored = { inlineTarget() }; return ordinaryInline { inlineTarget() } }
 val accessorInline: String get() = ordinaryInline { inlineTarget() }
+
+fun storedParameter(block: () -> String): String {
+    val saved = block
+    return saved()
+}
+fun storedParameterCallback(): String = storedParameter { inlineTarget() }
+fun explicitParameter(block: () -> String): String = block.invoke()
+fun explicitParameterCallback(): String = explicitParameter { inlineTarget() }
+fun mutableParameter(block: () -> String): String {
+    var saved = block
+    saved = { "replacement" }
+    return saved()
+}
+fun mutableParameterCallback(): String = mutableParameter { inlineTarget() }
+var deferredOperation: () -> String = { "initial" }
+fun storeOperation(block: () -> String): String {
+    deferredOperation = block
+    return "stored"
+}
+fun storedOperationCallback(): String = storeOperation { inlineTarget() }
+fun selectedOperation(unused: () -> String, selected: () -> String): String = selected()
+fun selectedParameterCallback(): String = selectedOperation(unused = { "unused" }, selected = { inlineTarget() })
+fun uninvokedParameterCallback(): String = selectedOperation(unused = { inlineTarget() }, selected = { "selected" })

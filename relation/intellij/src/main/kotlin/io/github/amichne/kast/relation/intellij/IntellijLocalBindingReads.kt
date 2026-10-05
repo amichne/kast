@@ -58,12 +58,11 @@ internal class IntellijLocalBindingReads(
                     if (native == null)
                         LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
                     else {
-                        val resolution = analyze(native.element) { native.resolveToSymbol()?.psi }
-                        when {
-                            resolution == null ->
+                        when (confirmLocalBindingReference(native, property)) {
+                            LocalBindingReferenceConfirmation.UNRESOLVED ->
                                 LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
-                            resolution !== property -> LocalReferenceResolution.OtherBinding
-                            else -> localReadTarget(native.element)
+                            LocalBindingReferenceConfirmation.OTHER_BINDING -> LocalReferenceResolution.OtherBinding
+                            LocalBindingReferenceConfirmation.EXACT_BINDING -> localReadTarget(native.element)
                         }
                     }
                 },
@@ -111,4 +110,37 @@ internal class IntellijLocalBindingReads(
             is Refinement.Refined -> range
             is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         }
+}
+
+/** Shared K2 identity proof for local value reads; spelling never establishes a transfer. */
+internal enum class LocalBindingReferenceConfirmation {
+    EXACT_BINDING,
+    OTHER_BINDING,
+    UNRESOLVED,
+}
+
+internal fun confirmLocalBindingReference(
+    reference: KtReference,
+    property: KtProperty,
+): LocalBindingReferenceConfirmation {
+    return when (val resolution = resolveLocalValueReference(reference)) {
+        NativeLocalValueReferenceResolution.Unresolved -> LocalBindingReferenceConfirmation.UNRESOLVED
+        is NativeLocalValueReferenceResolution.Resolved ->
+            if (resolution.declaration === property) LocalBindingReferenceConfirmation.EXACT_BINDING
+            else LocalBindingReferenceConfirmation.OTHER_BINDING
+    }
+}
+
+internal sealed interface NativeLocalValueReferenceResolution {
+    data class Resolved(val declaration: PsiElement) : NativeLocalValueReferenceResolution
+
+    data object Unresolved : NativeLocalValueReferenceResolution
+}
+
+/** Shared native observation, including formal references; consumers retain their own ownership and role checks. */
+internal fun resolveLocalValueReference(reference: KtReference): NativeLocalValueReferenceResolution {
+    val declaration =
+        analyze(reference.element) { reference.resolveToSymbol()?.psi }
+            ?: return NativeLocalValueReferenceResolution.Unresolved
+    return NativeLocalValueReferenceResolution.Resolved(declaration)
 }

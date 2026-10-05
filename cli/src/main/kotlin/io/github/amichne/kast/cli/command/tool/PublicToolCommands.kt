@@ -32,6 +32,7 @@ internal fun publicToolCommands(
                         OperationRequestPreparer { request ->
                             when (val canonical = request.canonical) {
                                 is PublicToolCanonical.Query -> preparers.queryRun.prepare(canonical.request)
+                                is PublicToolCanonical.Source -> preparers.sourceRead.prepare(canonical.request)
                                 is PublicToolCanonical.Diagnostics ->
                                     preparers.diagnosticCheck.prepare(canonical.request)
                                 is PublicToolCanonical.Change ->

@@ -39,6 +39,8 @@ internal data class QueryWalkObservationCliDocument(
     @SerialName("reference_occurrences") val referenceOccurrences: List<TraversalReferenceObservationWireDocument>,
     @SerialName("scope_exclusions")
     val scopeExclusions: List<io.github.amichne.kast.protocol.wire.QueryWalkScopeExclusionWireDocument>,
+    @SerialName("callback_observations")
+    val callbackObservations: List<io.github.amichne.kast.protocol.wire.QueryWalkCallbackObservationWireDocument>,
 )
 
 @Serializable
@@ -89,6 +91,7 @@ internal fun QueryWalkObservationDocument.toQueryCliDocument() =
         inheritedOmissions.values.map { it.toCliDocument() },
         referenceOccurrences.values.map { it.toWireDocument() },
         scopeExclusions.values.map { it.toWireDocument() },
+        callbackObservations.values.map { it.toWireDocument() },
     )
 
 @Serializable

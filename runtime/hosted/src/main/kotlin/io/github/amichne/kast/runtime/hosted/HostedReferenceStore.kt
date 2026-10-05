@@ -18,7 +18,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 /** Only detached token text is retained. Epoch changes discard references which can no longer restore authority. */
 @Service(Service.Level.PROJECT)
 class HostedReferenceStore : Disposable {
-    private val epochs = HostedEpochStore<HostedReferenceTokens>(HostedReferenceTokens::retire)
+    private val epochs = HostedEpochStore<HostedReferenceTokens> { tokens, _ -> tokens.retire() }
 
     fun transport(
         authority: LiveSemanticReadAuthority,

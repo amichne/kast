@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.cliName
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -10,6 +11,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -39,6 +41,40 @@ internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObj
 /** The operation owns its semantic document across hosted, MCP, and RPC projections. */
 internal fun installedSemanticResultSchema(operation: CanonicalOperation): JsonObject =
     operationProcessDocumentSchema(operation).withLocalOutputDefinitions()
+
+/** A facade may route distinct closed actions to their existing canonical result owners. */
+internal fun installedPublicToolSemanticResultSchema(identity: PublicToolIdentity): JsonObject =
+    publicToolProcessDocumentSchema(identity).withLocalOutputDefinitions()
+
+internal fun installedPublicToolOutputSchema(identity: PublicToolIdentity): JsonObject =
+    unionSchema(
+            objectSchema(
+                ServerSchemaProperty("status", constantSchema("completed", "Process outcome.")),
+                ServerSchemaProperty("document", publicToolProcessDocumentSchema(identity)),
+            ),
+            objectSchema(
+                ServerSchemaProperty("status", constantSchema("rejected", "Process outcome.")),
+                ServerSchemaProperty("diagnostic", operationProcessDiagnosticSchema(identity.operation)),
+            ),
+        )
+        .withLocalOutputDefinitions()
+
+private fun publicToolProcessDocumentSchema(identity: PublicToolIdentity): JsonObject =
+    when (identity) {
+        PublicToolIdentity.QUERY_SYMBOLS ->
+            unionSchema(
+                canonicalActionResultSchema(CanonicalOperation.QUERY_RUN),
+                canonicalActionResultSchema(CanonicalOperation.SOURCE_READ),
+            )
+        else -> operationProcessDocumentSchema(identity.operation)
+    }
+
+/** Schema annotations preserve the canonical owner at the facade action union. */
+private fun canonicalActionResultSchema(operation: CanonicalOperation): JsonObject =
+    kotlinx.serialization.json.Json.encodeToJsonElement(
+            operationProcessDocumentSchema(operation) + ("title" to JsonPrimitive(operation.id.value))
+        )
+        .jsonObject
 
 /** Exact schema reuse keeps each advertised schema standalone and within the provider byte budget. */
 private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
@@ -95,6 +131,28 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
             "executionLimit" to
                 generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionLimitDocument.serializer()),
+            "impactSemanticBasis" to
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument.serializer()
+                ),
+            "impactDeclarationReference" to
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument.serializer()
+                ),
+            "impactInvocationReference" to
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument.serializer()
+                ),
+            "impactValueRole" to
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument.serializer()),
+            "impactValueSiteReference" to
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument.serializer()
+                ),
+            "impactCompilerTransfer" to
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument.serializer()
+                ),
             "liveReadEvidence" to liveReadEvidenceSchema(),
             "hostedEndpointRejection" to HostedRejectionSchemas.endpoint,
             "hostedReadRejection" to HostedRejectionSchemas.read,

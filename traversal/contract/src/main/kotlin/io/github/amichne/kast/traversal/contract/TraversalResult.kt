@@ -123,6 +123,7 @@ enum class TraversalPageFailure {
     ENCODED_BYTE_COUNT_MISMATCH,
     PARTIAL_EXPANSION_MISMATCH,
     SCOPE_EXCLUSION_MISMATCH,
+    CALLBACK_OBSERVATION_MISMATCH,
 }
 
 @JvmInline value class TraversalByteCount internal constructor(val value: Long)
@@ -147,6 +148,7 @@ private constructor(
     val inheritedOmissions: List<TraversalPartialExpansion>,
     val referenceOccurrences: List<TraversalReferenceObservation>,
     val scopeExclusions: List<TraversalScopeExclusion>,
+    val callbackObservations: List<TraversalCallbackObservation>,
 ) {
     companion object {
         /**
@@ -170,6 +172,7 @@ private constructor(
             inheritedOmissions: List<TraversalPartialExpansion> = emptyList(),
             referenceOccurrences: List<TraversalReferenceObservation> = emptyList(),
             scopeExclusions: List<TraversalScopeExclusion> = emptyList(),
+            callbackObservations: List<TraversalCallbackObservation> = emptyList(),
         ): Refinement<TraversalPage, TraversalPageFailure> {
             when (
                 val measures = admitMeasures(plan, encodedBytes, examinedWorkUnits, elapsedMillis, expandedFrontier)
@@ -187,6 +190,7 @@ private constructor(
                         partialExpansions,
                         referenceOccurrences,
                         scopeExclusions,
+                        callbackObservations,
                     )
             ) {
                 is Refinement.Rejected -> return contents
@@ -205,6 +209,7 @@ private constructor(
                     inheritedOmissions = java.util.Collections.unmodifiableList(inheritedOmissions.distinct().toList()),
                     referenceOccurrences = java.util.Collections.unmodifiableList(referenceOccurrences.toList()),
                     scopeExclusions = java.util.Collections.unmodifiableList(scopeExclusions.toList()),
+                    callbackObservations = java.util.Collections.unmodifiableList(callbackObservations.toList()),
                 )
             )
         }
@@ -236,8 +241,12 @@ private constructor(
             partialExpansions: List<TraversalPartialExpansion>,
             referenceOccurrences: List<TraversalReferenceObservation>,
             scopeExclusions: List<TraversalScopeExclusion>,
+            callbackObservations: List<TraversalCallbackObservation>,
         ): Refinement<Unit, TraversalPageFailure> {
-            when (val admitted = admitScopeOutcomes(plan, records, referenceOccurrences, scopeExclusions)) {
+            when (
+                val admitted =
+                    admitScopeOutcomes(plan, records, referenceOccurrences, scopeExclusions, callbackObservations)
+            ) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
@@ -267,6 +276,9 @@ private constructor(
                     referenceOccurrences.sumOf {
                         it.reference.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
                     } +
+                    callbackObservations.sumOf {
+                        it.observation.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+                    } +
                     scopeExclusions.sumOf {
                         it.exclusion.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
                     }
@@ -279,6 +291,7 @@ private constructor(
             records: List<TraversalRecord>,
             references: List<TraversalReferenceObservation>,
             exclusions: List<TraversalScopeExclusion>,
+            callbacks: List<TraversalCallbackObservation>,
         ): Refinement<Unit, TraversalPageFailure> {
             if (
                 exclusions != exclusions.distinct().sorted() ||
@@ -287,6 +300,13 @@ private constructor(
                     }
             )
                 return Refinement.Rejected(TraversalPageFailure.SCOPE_EXCLUSION_MISMATCH)
+            if (
+                callbacks != callbacks.distinct().sorted() ||
+                    callbacks.any {
+                        TraversalCallbackObservation.create(plan, it.entry, it.observation) !is Refinement.Refined
+                    }
+            )
+                return Refinement.Rejected(TraversalPageFailure.CALLBACK_OBSERVATION_MISMATCH)
             val outcomeCount =
                 records.size +
                     references.count { reference ->
@@ -295,7 +315,10 @@ private constructor(
                                 it.fact.target == reference.reference.target
                         }
                     } +
-                    exclusions.size
+                    exclusions.size +
+                    callbacks.count { callback ->
+                        records.none { it.fact.occurrence == callback.observation.occurrence }
+                    }
             return if (outcomeCount > plan.budget.records.value)
                 Refinement.Rejected(TraversalPageFailure.RECORD_LIMIT_EXCEEDED)
             else Refinement.Refined(Unit)
