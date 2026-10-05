@@ -157,7 +157,7 @@ internal class IntellijCallbackFlowScan(
 
     private fun retainAlias(property: KtProperty, route: CallbackValueRoute, transfer: ValueTransfer) {
         val bytes = transfer.source.retainedBytes + transfer.target.retainedBytes + route.transfers.size * 16L
-        when (val allowed = retention.admit(bytes, aliases.size)) {
+        when (val allowed = retention.admit(bytes)) {
             is Refinement.Refined -> aliases[property] = route.transfers + transfer
             is Refinement.Rejected -> stopCapacity(allowed.failure)
         }
@@ -181,7 +181,7 @@ internal class IntellijCallbackFlowScan(
 
     private fun retainInvocation(invocation: CallbackParameterInvocation) {
         val bytes = 4096L + invocation.callableTransfers.size * 16L
-        when (val allowed = retention.admit(bytes, invocations.size)) {
+        when (val allowed = retention.admit(bytes)) {
             is Refinement.Refined -> invocations += invocation
             is Refinement.Rejected -> stopCapacity(allowed.failure)
         }
@@ -202,7 +202,7 @@ internal class IntellijCallbackFlowScan(
         when (val read = IntellijCallbackOwnerBindingReader(context).read(literal, owner, enclosing)) {
             is Refinement.Rejected -> obligations += CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING
             is Refinement.Refined ->
-                when (val permitted = retention.admit(read.value.retainedBytes, ownerBindings.size)) {
+                when (val permitted = retention.admit(read.value.retainedBytes)) {
                     is Refinement.Refined -> {
                         ownerBindings[owner] = read.value
                         obligations += read.value.obligations

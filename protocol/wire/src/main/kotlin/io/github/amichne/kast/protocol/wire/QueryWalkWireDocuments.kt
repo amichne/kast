@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkCallbackObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
@@ -190,7 +191,7 @@ private fun QueryWalkObservationWireDocument.retainedWalkEvidence(
             references ->
             scopeExclusions.convertBounded(QueryWalkScopeExclusionWireDocument::toContract).flatMapConverted { exits ->
                 callbackObservations
-                    .convertBounded(QueryWalkCallbackObservationWireDocument::toContract)
+                    .convertBounded { convertCallback(it) }
                     .flatMapConverted { callbacks ->
                         coverage.toContract().mapConverted { admittedCoverage ->
                             QueryWalkObservationDocument(
@@ -213,6 +214,25 @@ private fun QueryWalkObservationWireDocument.retainedWalkEvidence(
                         }
                     }
             }
+        }
+    }
+
+private fun QueryWalkObservationWireDocument.convertCallback(
+    callback: QueryWalkCallbackObservationWireDocument
+): WireDocumentConversion<QueryWalkCallbackObservationDocument> =
+    callback.toContract().flatMapConverted { admitted ->
+        val observation = admitted.observation
+        when {
+            admitted.depth.value >= maximumDepth -> WireDocumentConversion.Rejected
+            observation.relation != relation.toContract() -> WireDocumentConversion.Rejected
+            observation.requestedDomain != requestedDomain || observation.effectiveDomain != effectiveDomain ->
+                WireDocumentConversion.Rejected
+            admitted.depth.value == 0 && admitted.subject.token.value != subject.token ->
+                WireDocumentConversion.Rejected
+            // The fingerprint also retains the frontier selector's original scope and constraints.
+            admitted.subject.token.value == subject.token && observation.domainFingerprint != domainFingerprint ->
+                WireDocumentConversion.Rejected
+            else -> WireDocumentConversion.Converted(admitted)
         }
     }
 
