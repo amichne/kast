@@ -5,6 +5,9 @@ description: Typed configuration and runtime identity contracts constrain manage
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 code_sources:
+  - path: packaging/install-checkout.sh
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
+    symbols: [installationJavaRuntimeEnvironment]
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
     symbols: [HostedQueryProgress]
   - path: runtime/hosted/native/README.md
@@ -172,6 +175,8 @@ sources:
     resource: repo://build.gradle.kts
   - id: openwiki-source-b19700b4b7bbfa25fb4bb931
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
+  - id: openwiki-source-82001d1847d4403e8e24787a
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
@@ -198,6 +203,8 @@ sources:
     resource: repo://install.sh
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
+  - id: openwiki-source-4070dc53852de69cdff3bd47
+    resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-4c9f1a2f0eff9672edf6ca2f
     resource: repo://packaging/installer_fixture.py
   - id: openwiki-source-8faf23d69764b95242de5e09
@@ -212,10 +219,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-02T08:15:19.347Z" }
+generated: { by: "codex", at: "2026-10-05T19:11:53.820Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T13:22:01.032Z
+    at: 2026-10-05T19:11:53.820Z
 ---
 
 # Distribution and packaging
@@ -456,8 +463,13 @@ Each component release records its own source revision and archive checksum. The
 runner also records its checksum and checkout state; components may come from
 different source revisions. A fresh semantic RUN is permitted only for the exact
 typed freshness rejection with MOVED at MODEL_CAPTURE or CONTENT_REVALIDATION
-and the observed restart_read instruction, matching the host's two declared restart
-stages. At most three independent RUNs are permitted, with every rejection retained.
+and the observed restart_read instruction. This harness intentionally accepts only
+those two rejection stages. At most three independent RUNs are permitted, with every rejection retained.
 Focused helper tests prove bounded inventory, identity ordering and that recovery
 predicate using case-owned inputs. They do not establish the required live
 mixed-version result; the completed native proof remains a separate gate.
+
+Checkout installation admits the selected IDEA bundle's executable JBR and Java
+25-or-newer release before Gradle or staging. It scopes that runtime to its children.
+Installed launchers retain and recheck the selected JBR before executing Control;
+an unavailable or older runtime gives repair guidance rather than using ambient Java.

@@ -31,7 +31,20 @@ Frozen candidate CLI/app-server SHA-256:
 - `03a1266adf484de4ca8587d1aa38bd304117555b6cdda84e83d7f6a581f32b34`
 - `0b8f324bb058e3c05dc03966d7c282a7e13b020328f2123c77a67185dc3342f4`
 
-The final source groups the registration names and lazy producer into a typed `DirectToolRegistration` owner and extracts compatibility admission to satisfy quality gates. Functional tests verify the same path. Native capacity prevents a new successful full paired trial of those final bytes; measured hashes above identify the actual timed variant.
+The final source groups the registration names and lazy producer into a typed `DirectToolRegistration` owner and extracts compatibility admission to satisfy quality gates. Functional tests verify the same path. Native capacity prevents a new successful full semantic-query paired trial of those final bytes; the hashes above identify the earlier timed variant. The separate final-byte startup trial below is complete.
+
+## Exact final-byte startup trial
+
+Rebuilt the unchanged final code commit `968b3e75fcabdc69b1271da2c3397ee8e402ab44` with the selected IDEA JBR and staged its CLI/app-server JARs in an owned complete payload. Each call starts a fresh JVM against the same indexed synthetic fixture and loaded Host. Two repeats each exclude one warmup pair and alternate order across six measured pairs. The fixed request is passive verbose health; all 28 calls return complete health with READY, INDEXED and SAVED_PSI_COMMITTED evidence.
+
+| Repeat | Paired n | Baseline median wall ms | Final median wall ms | Median paired reduction | Baseline/final median child CPU ms |
+|---|---:|---:|---:|---:|---:|
+| 0 | 6 | 1264.521 | 578.373 | 54.53% | 3468.016 / 1760.188 |
+| 1 | 6 | 1277.305 | 580.518 | 54.73% | 3435.818 / 1764.047 |
+
+All 12 measured pairs improved. Final CLI SHA-256 is `dbacc5e96df4607b4bdfb05b396cd35302fb9abba2ca2ba5ec5a2ed52e250e60`; app-server SHA-256 is `32869025815f349f6a21b460bcd086bd47097c0e2d1934fa1cd5e08a41edb53f`. Git source state did not change during the trial. Later Claim/report commits change documentation only.
+
+This measures one-shot startup and passive health, with no native semantic query or correlated semantic receipt. Preparation diagnostics still contain the lifecycle-capacity rejection; passive health remains available. The bounded history belongs to the loaded application's `IdeLifecycleApplication` service, so a fresh CLI or Control process reaches the same history. A scripted fresh lifecycle fixture would prove policy only. Fresh native authority would require a separately qualified graphical IDEA application and imported/indexed fixture; neither resetting the active application nor loosening capacity is used here.
 
 ## Why the earlier candidate was discarded
 
@@ -53,4 +66,4 @@ Functional tests prove invocation does not evaluate a throwing discovery produce
 
 The investigation's full CLI suite and affected app-server suites passed, along with JSON contracts, architecture, formatting and file-length guards. Detekt findings were compared by rule, normalized source URI and message against an untouched source archive; no introduced findings remain. The final PR-branch aggregate run is recorded in the PR validation artifact.
 
-The second repeat's finite lifecycle-capacity rejection and the native latency increase are retained limitations. Lifecycle retirement policy, output continuation, socket recovery and enterprise import/index/model measurements are deferred followups. The private repository and its live basis were unavailable. Final source has functional/JFR evidence of avoiding catalog work; the completed native paired timings identify the earlier frozen variant, not newly measured final bytes. No active IDE/service restart, limit change, global setting or installation was used to manufacture a successful trial. Raw recordings, screenshots and full logs remain private and are excluded from this PR.
+The second repeat's finite lifecycle-capacity rejection and the native latency increase are retained limitations. Lifecycle retirement policy, output continuation, socket recovery and enterprise import/index/model measurements are deferred followups. The private repository and its live basis were unavailable. Final source has functional/JFR evidence of avoiding catalog work and a completed final-byte startup/health trial; the native semantic paired timings identify the earlier frozen variant. No active IDE/service restart, limit change, global setting or installation was used to manufacture a successful trial. Raw recordings, screenshots and full logs remain private and are excluded from this PR.

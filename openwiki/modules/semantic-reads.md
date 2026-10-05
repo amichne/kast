@@ -204,7 +204,7 @@ sources:
 generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T17:08:58.136Z
+    at: 2026-10-05T19:11:53.820Z
 ---
 
 # Semantic read domains

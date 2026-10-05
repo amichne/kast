@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:098c03061533b4645b891efffdea3c5ff0f93e0dac2d9081e0b7878e89fbff0c",
+  "pageVersion": "sha256:7a7a21dfbc2e34e29a8e69ca052a347fe122825ad642f502b1fd167e66368dc4",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -241,10 +241,42 @@
           "version": "repo-file-v1:sha256:64396179a9b1292df2b07ee9647f7b5b782c7d5ff34c52c54b85b676a6ec6927"
         }
       ]
+    },
+    {
+      "id": "claim_9a03d52f5fa64875a561d7eeb34f5cd7",
+      "statement": "Installed service Java selection uses the explicitly owned candidate when supplied or the saved IDEA bundled JBR; canonical executable paths and a bounded single Java release declaration with feature at least 25 are retained as BrokerJavaRuntime. Missing selection and incompatible runtime reject without ambient Java fallback.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt#L9-L35",
+          "version": "repo-lines-v1:sha256:958618231f498dc70bdb2d699d02d479abcbb216f42e4e498621b66fdcee2f11:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2NGMyODRkM2EyNDY1OTE0YzJiOTFmZDc5NTBjZDU5OTdlY2YyMGVhYmE4Y2E1NmQ2MzIxZGEwMmIzOGI1NDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZjM1ZmQ4YTdkN2ZjZmZiNDMyYzA4MTk2ZGU3YTU4OWY2YTVmZTYxMjI5ZTkwMmZkMGFmMjRlOWM5MWVmYjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlMTAyOGYyM2YwNmU2YWJiNzJhMzY2MWU2NmMxNTY1OWNkYzk0YjgzNzE2OTdhODAzYjY5MTk2ZjllMDYzNTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3OTRkMDJhODEyMTk0NGQxNzZkMjY1ZTliYjljYzU5ZjZhYjg5MGJjYWRmOGFlZmRlYmRiYmI0ZjJlYTg0NDQifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt#L311-L332",
+          "version": "repo-lines-v1:sha256:7a92745a0f0059a54ab534c30dbffeee29a2531411833fdcccbd61aa3c09a944:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMDNlYmZiNGMzMzdkZjU3NTUyNWY5N2UyYTIxYzg3MWUwMDQzNDMxMTY4Mzc5OGJiYWYyN2RkY2VlMzRiOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNjQ3OWNjMjMwNDQwZmQ0MWU4MjI0MjE4Njc5Njk4NTU5ZDI4OTNiZDY3YjQzODBhZmFiODExYjM4YTU1YWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzZThjYjdiMDgxZTZiZmRlN2VjM2IyYzY3M2UwMTFmZWRlNTI2OTIxYmM4ODc5YjdjYWU5ZTg1MzU1ZTlhNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3MGVlZTY2NDQ3YjgxOTFjZmI1Zjg0MzA5YWYwN2UwMTM1MmMwZTRkYmYxYmI5NjY4MzBmMTExNTA1NmFiMzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9523e8a43a1746688ea4f1fb015af443",
+      "statement": "One-shot Tool RPC invocation checks compiled AgentToolName registrations before effects without projecting discovery catalogs; lazy catalog discovery verifies exact names and counts from the same registration owner, while canonical public request and installation shutdown admission remain before preparation and execution.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt#L6-L17",
+          "version": "repo-lines-v1:sha256:db8d4017b9d0dd78241a27eefa372bb588ffae6b8ff91b511f961120203fbcb3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4YjNlNTJhYzUzOGE2OWRiZmQ0ZjJkYjNkMDFmYmI5MjQ4Zjg5ODdkMjllN2M2MmQ1YzE2NzIyYTI5ODFkOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwNWY5YzQ3YmFlMDc0OGIyNzczZDg4ZTY1MDFlNmYxZTdhYzQ4YTJkZDVmYmI1ZTBmZmI0N2MyMmQ0MDQ1ZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1NWU2YThiOTYyOTk2OTZmN2M0YzhmNTQ0OGViM2FmYjQ0ZjkyZmY1MDY5ODcwMGIxNzJjOTg3OTYzNGFmNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkYjI4YTg1ZDgwN2FmMDE2YzkxZmVmZmFiZjYxYjU2MWMyZWM5ZmI4YjY0ZDUyYjY2MzEyM2M1Yjk4NGNiYTYifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt#L135-L153",
+          "version": "repo-lines-v1:sha256:08722fb856e488350c7e9a4d08d4cd51124337d915b6f72f519f37b6a26f7a12:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5ZTExMjc0M2M4ODRmZThkMDc2MmUwNWQxZjQwMjM5NDA4ZWMzZjU0ZTNlN2RlYjViZDFkN2U5ODg3YTA2N2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5YmUyNDViN2RmZmJjOGMwMDkwYjQ5MDA2OTY2YWQwNTg5NjBjNGU4M2VlNTdjOTFlNzFiNGZhNzEyZjdjOTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L79-L117",
+          "version": "repo-lines-v1:sha256:2216b5d5dbf7bb740519d4ef7468a5add7e5578202e3d690fec233395dfe3fba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDkxMzQ3YjJmZWZhNGU2YzA0YzFkM2IzZjg4ZWZkZGE5MjUyMTJlNWU4NWU1NDY0ZDJkMTNhODFhNmQ4MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2Nzk3YzFkNTMwYzllOWI3MmI3YTQ1OTM5YWY2NGQ2NjBlOTI0YzQ4OWUxNGJkZDlkZThiNWYxYzEyNTI5MDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxYjdlMjcwNWViY2Q5MTM4OTVkOGU3OTc1MzE4OTc4YTkzMzg1YmQ4MzcyYTliNmM3MzNlYzZhNDcyMGIzNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxYzE1NTQ3MDhkMmUyYzA1MzVkMjZjMTE2YTk0NmYzYjJmMTFmZTRjOTRiOGIxNDY3MzBjZTM3NWU5OWVmYWMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T17:08:58.136Z"
+    "at": "2026-10-05T19:11:53.820Z"
   }
 }
