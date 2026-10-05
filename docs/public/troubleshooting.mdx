@@ -1,26 +1,40 @@
 ---
 title: "Troubleshoot Kast"
-description: "Act on the reported installation, readiness, or semantic failure."
+description: "Recover from missing tools, an IDEA readiness blocker, or an incomplete result."
 icon: "life-buoy"
 ---
 
-Start with the failure or limitation Kast reports. An empty qualified or
-rejected query does not prove that a symbol is absent.
+Start with the reported failure and check your installation:
+
+```shell
+kast status
+```
+
+Look for the installed version, installation path, and recorded connections. Registration alone does not prove that your agent loaded the tools; repeat the [first query](/agent-harnesses#check-that-the-tools-work) after resolving the blocker.
+
+## Choose the symptom
 
 | Symptom | First check |
 | --- | --- |
-| No Kast tools | Restart the client, then inspect its [MCP](/reference/mcp-catalog) or [RPC](/reference/rpc-catalog) catalog. |
-| Installer reports no matching plugin | Check the IDEA release line in [compatibility](/reference/compatibility). |
+| No Kast tools | Confirm your [chosen integration](/agent-harnesses), then restart the agent and repeat its first query. |
+| Installer reports no matching plugin | Check the [IDEA build and bundled runtime](/start#before-you-install), then [compatibility](/reference/compatibility). |
 | Project trust, import, or indexing blocker | Resolve the reported IDEA state, then repeat the read. |
 | Wrong workspace | Start the client from the intended Gradle repository or worktree. |
 | Qualified query | Keep returned facts and limitations. Resume if progress is resumable; otherwise follow the reported terminal reason. |
 | Stale `ref` | Search again and use the newly returned reference unchanged. |
 | Uncertain change | Keep the plan and recovery evidence; see [change](/change). |
 
-`health_check` reports the bound workspace and IDEA readiness. It does not
-prove that every semantic query will succeed. Run a scoped semantic query when
-you need evidence for a specific declaration or relation.
+## IDEA is not ready
 
+Resolve the reported trust, Gradle import, or indexing blocker in the selected IDEA project, then repeat the read from the intended repository or worktree. If available in your integration, ask the agent to run `health_check` to report the bound workspace and IDEA readiness. Readiness does not prove that every semantic query will succeed; the scoped query checks the declaration or relationship you need.
+
+## The query is incomplete or stale
+
+Keep confirmed facts with their limitations. Continue when Kast reports resumable work; if it reports a terminal limit, follow that reason. An empty qualified or rejected result does not prove that a symbol is absent.
+
+For a stale reference or unavailable saved state, start a fresh query and use its new references unchanged. [What an answer proves](/concepts/evidence-boundaries) explains these decisions.
+
+<Accordion title="Connection conflicts and version or catalog failures">
 For catalog admission failures, compare the reported expected and observed
 contract versions and the selected executable. Upgrade the matched payloads and
 restart IDEA and the harness. `kast connect codex` requires `mcp` or `app-server`.
@@ -36,13 +50,16 @@ harness's Kast slot. If rollback reports a recovery backup, preserve it and
 restore the named destination before retrying. The flag does not repair live
 thread ownership or resume sessions across upgrades.
 
-A subprocess timeout, cancellation, output overflow, or nonzero exit is not
-proof of rollback. Keep its bounded phase and plan evidence, avoid automatic
-write retries, and follow the [change guidance](/change).
 
+</Accordion>
 
-## Continuation failures
-
+<Accordion title="Continuation failure details">
 Copy execution continuations unchanged and use their reported next action. Known failures distinguish expiration, owner retirement, dependency loss, eviction, stale basis, and incompatible continuation identity. Restart the read when the original authority or retained state no longer admits the continuation. A budget failure retains the exhausted dimension and stage; increasing a grant does not recover missing state.
 
 Continuation revocation receipts use the existing bounded retention budget. The oldest receipts can be reclaimed to preserve live state. Once a receipt is gone, an unavailable token cannot establish its historical eviction or expiration cause.
+
+</Accordion>
+
+## A write has an uncertain outcome
+
+A subprocess timeout, cancellation, output overflow, or nonzero exit does not prove rollback. Preserve the plan identity and bounded phase evidence, inspect the source, and follow [change recovery guidance](/change#read-the-receipt) before another write. Avoid automatic retries.

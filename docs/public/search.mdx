@@ -1,180 +1,75 @@
 ---
 title: "Find and trace code"
-description: "Find Kotlin declarations by name or source text, then trace their callers and implementations."
+description: "Find a declaration in your project, inspect it, and follow its callers or implementations."
 icon: "search"
-keywords:
-  - "query_symbols"
-  - "Kotlin"
-  - "compiler references"
-  - "relations"
+keywords: ["query_symbols", "Kotlin", "compiler references", "relations"]
 ---
 
-Ask for a declaration, a relationship, and the scope you care about. Your agent translates the question into `query_symbols`; you do not need to write the JSON yourself. Use [Query forms](/reference/api) to look up the available inputs and steps.
-
-## Start from remembered text
-
-> Use Kast to find functions containing the word `launchd` under `app-server` in `main`. Show a matching line for each function, then trace the callers of the relevant function.
-
-Text discovery returns exact references to the declarations containing a match. Each result includes one example match with a line excerpt, a one-based line number, and a UTF-16 source range. Reuse the declaration’s `ref` to read its source or find callers. The matching word explains why the declaration was found; it does not establish a call relationship.
-
-<Accordion title="Request: find declarations containing a word">
-  ```json
-  {
-    "request": {
-      "type": "RUN",
-      "source": {
-        "type": "SEARCH_TEXT",
-        "word": "launchd",
-        "declarationKinds": ["FUNCTION"],
-        "scope": {
-          "type": "DIRECTORY",
-          "relativeDirectoryPath": "app-server",
-          "sourceSetNames": ["main"]
-        }
-      },
-      "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION"]},
-      "executionBudget": {"maxResults": 10}
-    }
-  }
-  ```
-
-  Use one case-sensitive ASCII word beginning with a letter or underscore. Later characters can also be digits. Phrases, substrings, qualified literals, and regular expressions are rejected. To find `AppServerAction.Disable`, search for `Disable` in the relevant directory and inspect the match context.
-
-  Hits without a supported containing declaration leave coverage incomplete. A stopped index scan is terminal; other retained work may have a continuation. Follow the result’s reported progress.
-</Accordion>
-
-This request illustrates the input contract. The recorded examples below predate text discovery.
-
-These examples were recorded against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts and coverage describe that run, not your current workspace. In your repository, substitute your declaration and directory, and acquire fresh references. [Capture details and full responses](/reference/schemas#recorded-walkthrough).
+Start with a function or type you care about and the module or directory that contains it. Your [connected agent](/agent-harnesses) writes the Kast query; you can ask in plain language.
 
 ## 1. Find a declaration and inspect its source
 
-> Use Kast to find `QueryStepSyntax` in the production sources under `query/contract`. Show its location, signature, and source. Keep its exact reference for the next question.
+Replace `submitOrder` and `checkout` with a name and directory from your repository:
 
-Check the declaration’s identity and location, then read its coverage to see whether the search finished. The recorded response (`01-discovery`) returned one `QueryStepSyntax` in `QuerySteps.kt` with exhaustive coverage, a signature, and a source window.
+```text wrap
+Use Kast to find submitOrder under checkout in main. Show matching signatures, locations, and coverage. Stop so I can choose the exact function.
+```
 
-<Accordion title="Request: scoped declaration lookup">
-  ```json
-  {
-    "request": {
-      "type": "RUN",
-      "executionBudget": {"maxElapsedMs": 15000},
-      "source": {
-        "type": "SEARCH_DECLARATIONS",
-        "declarationName": "QueryStepSyntax",
-        "declarationKinds": ["CLASS"],
-        "scope": {
-          "type": "DIRECTORY",
-          "relativeDirectoryPath": "query/contract",
-          "sourceSetNames": ["main"]
-        }
-      },
-      "output": {
-        "type": "SYMBOLS",
-        "fields": ["NAME", "LOCATION", "SIGNATURE", "SOURCE"]
-      }
-    }
-  }
-  ```
+Check the signature and file, choose the result, and ask the agent to read that declaration's source and keep its exact reference. The returned reference identifies that declaration in the selected workspace; a name alone may match several overloads or declarations.
 
-  `CLASS` selects the supported class-like family, including this interface; it does not imply a concrete class. The [recorded source](https://github.com/amichne/kast/blob/56df0912e46b182bb4ad8beabd1512823100fd72/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt) declares `sealed interface QueryStepSyntax`.
+<Accordion title="What a useful answer looks like">
+  This is an illustrative agent summary, not a captured response or wire format. Your names, paths, and coverage will differ.
+
+  | Part of the answer | Example | What to check |
+  | --- | --- | --- |
+  | Declaration | `CheckoutService.submitOrder(order: Order): Receipt` | Is this the overload you meant? |
+  | Location | `checkout/src/main/kotlin/CheckoutService.kt` | Is this the repository and file you expected? |
+  | Coverage | Complete for the requested production-source search | Did it finish the scope you requested? |
+  | Exact reference | A reference returned by Kast | Have the agent reuse it unchanged. |
+
+  A **qualified** answer can still confirm a declaration, but must explain its limits. An empty qualified answer does not prove that the declaration is absent. See [What an answer proves](/concepts/evidence-boundaries).
 </Accordion>
 
-Reuse the returned exact reference to ask the next question about this declaration.
+## 2. Find callers or implementations
 
-## 2. Follow its implementations
+For a function, ask:
 
-> Reuse that exact reference to find the implementations of `QueryStepSyntax`. Show each declaration once and retain the result so we can compare it with another query.
+```text wrap
+Use the exact reference we just selected to find its callers. Show each caller's location and the call site, and report the search scope and any limitations.
+```
 
-The recorded response (`02-implementations-a`) returned ten implementations with exhaustive coverage. Keep the retained-result reference for [Combine query results](/query-pipelines), where it is labeled **A**. Send the actual reference in requests.
+For an interface or base type, ask:
 
-<Accordion title="Request: follow implementations and retain the result">
-  Replace the placeholder with the exact reference returned by the first query. Do not send the placeholder literally.
+```text wrap
+Use the selected type's exact reference to find its implementations. Show each declaration once, with its signature and location. Report whether the search finished.
+```
 
-  ```json
-  {
-    "request": {
-      "type": "RUN",
-      "executionBudget": {"maxElapsedMs": 15000},
-      "source": {
-        "type": "SYMBOL_REFS",
-        "symbolRefs": ["<ref from step 1>"]
-      },
-      "steps": [
-        {"type": "EXPAND_RELATION", "relation": "IMPLEMENTATIONS"},
-        {"type": "DISTINCT_SYMBOLS"}
-      ],
-      "retention": "RETAIN"
-    }
-  }
-  ```
-
-  Five of the ten recorded names were `Where`, `Concat`, `Intersect`, `Union`, and `Join`, all under `QueryStepSyntax`. The full response preserves each issued reference and its relation evidence.
-</Accordion>
+The directory used to find the starting declaration does not automatically restrict its callers or implementations. Ask for a destination directory filter if those results must stay within a particular module.
 
 ## 3. Trace callers to a chosen depth
 
-> Find `QueryPlanCompiler.exactStage` under `query/contract` in `main`, then trace its callers up to two hops. Show the hop depth and call-site evidence, and report any unvisited work.
+To follow a call chain beyond immediate callers, ask:
 
-The recorded walk (`15-caller-walk`) returned `QueryPlanCompiler.admit` calling `exactStage` at depth 1, with exact compiler-confirmed relation evidence, exhaustive coverage, and no continuation. That is the captured result, not a promise about the current call graph.
-
-<Accordion title="Request: walk callers to a bounded depth">
-  First find the function named `exactStage` in the stated scope and check its qualified identity (`14-function-discovery` in the recording). Replace the placeholder with that function's issued exact reference.
-
-  ```json
-  {
-    "request": {
-      "type": "RUN",
-      "executionBudget": {"maxElapsedMs": 15000},
-      "source": {
-        "type": "SYMBOL_REFS",
-        "symbolRefs": ["<exact function ref>"]
-      },
-      "steps": [
-        {"type": "WALK", "relation": "CALLERS", "maximumDepth": 2}
-      ],
-      "output": {"type": "TRAVERSAL_RECORDS"}
-    }
-  }
-  ```
-</Accordion>
-
-The depth limits how far Kast follows callers. Check coverage for any work left unfinished within that limit. Confirmed callers remain useful in a qualified result, but an empty qualified result does not prove that no callers exist.
-
-`REFERENCES` reports lexical containment: a declaration-owned occurrence appears inside that declaration. This alone does not prove a named caller edge. `CALLERS` and `CALLEES` preserve `callback_observations` for invocations inside anonymous callable bodies. Each observation keeps the exact occurrence, lexical owner, anonymous body, and named-call policy. `EXCLUDED` explains why the invocation is absent from named callers; `ADMITTED_INLINE` keeps the separate anonymous owner even when the inline policy admits a named edge. `UNAVAILABLE` preserves incomplete ownership.
-
-The observation's flow separates the supplied lambda's exact identity from its compiler-confirmed argument-to-parameter binding and the receiving function's exact parameter invocations. Those facts describe a possible static path. They do not claim that the callback ran. When a parameter invocation belongs to another lambda, `owner_bindings` retains that body’s exact supplying call and compiler-confirmed formal mapping where available. Those records retain `NESTED_CALLBACK_EXECUTION`: supplying a lambda does not prove its activation. Library mappings remain `EXTERNAL_CALLABLE` with the exact workspace supply and `OUTSIDE_DOMAIN`. A local initializer retains `STORED_CALLBACK`; a returned literal retains `RETURNED_CALLBACK`. Unsupported supply, including a direct literal invocation whose activation Kast cannot yet trace, retains `UNSUPPORTED_CALLBACK_SUPPLY`. Unresolved mapping, external body, or escaped parameter also retains an explicit obligation.
-
-Inspect an exact source occurrence or anonymous body by passing its issued `candidateSelector` unchanged to `query_symbols`:
-
-```json
-{
-  "request": {
-    "type": "READ_SOURCE",
-    "candidateRef": "<issued candidateSelector>"
-  }
-}
+```text wrap
+From the selected function, trace callers up to two hops. Show the hop depth and call-site evidence. Continue if Kast reports resumable work; otherwise explain any unvisited work or terminal limit.
 ```
 
-This action uses the source-read owner and returns the exact anchored source with its authority and coverage. Reacquire the reference after an epoch change. Do not substitute the enclosing named function for the lambda.
+Two hops limits how far the trace goes. Check coverage within that bound before saying you found every caller. A zero-row page can still contain progress; have the agent follow the reported next action.
 
-`page_progress` counts the current page's rows and evidence. A zero-row page can advance walk or callback evidence. Continue with the exact issued token and `next_action` until query output finishes; complete traversal coverage can precede complete output delivery.
+A reference inside a function is not automatically a call by that function. Invocations inside lambdas keep their own ownership evidence. A static callback path does not prove that the callback ran, and library callback activation can remain outside Kast's supported scope. Read [Callback evidence](/reference/callbacks) when those distinctions affect your question.
 
+## Start from remembered text
 
-## Adapt the question to your codebase
+If you remember a word from the source but not the declaration name, ask:
 
-Give the agent a declaration name or exact reference, the narrowest useful module or directory, and the relationship you need. Specify unique declarations, individual use sites, or a bounded trace; include a depth for a walk.
+```text wrap
+Use Kast to find functions containing the word retry under checkout in main. Show a matching line for each function, then let me choose one to inspect or trace.
+```
 
-The discovery scope limits the starting declarations. Their callers or implementations can be in other directories. Add a destination filter if those results must stay within a directory, and pass returned references unchanged.
+Use one case-sensitive ASCII word beginning with a letter or underscore. Phrases, substrings, qualified literals, and regular expressions are rejected. A matching word explains discovery; it does not prove a call relationship. Unsupported containing declarations or a stopped scan can leave coverage incomplete.
 
-## Next steps
+## Keep the investigation current
 
-<CardGroup cols={2}>
-  <Card title="What an answer proves" icon="shield-check" href="/concepts/evidence-boundaries">
-    Decide what the facts and coverage allow you to claim.
-  </Card>
+Reuse issued references unchanged. If Kast reports a stale reference or unavailable saved state, search again. Source edits, an IDEA restart, or expired retained state can invalidate an earlier investigation.
 
-  <Card title="Combine query results" icon="workflow" href="/query-pipelines">
-    Compare declarations from separate queries using their retained references.
-  </Card>
-</CardGroup>
+[What an answer proves](/concepts/evidence-boundaries) explains what you can conclude. For exact inputs and historical examples, open [Query forms](/reference/api), [Results](/reference/responses), or the [recorded walkthrough](/reference/walkthrough). To compare sets from separate queries, use [Combine query results](/query-pipelines).

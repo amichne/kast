@@ -28,7 +28,7 @@ kast plugin codex
 ```
 
 Restart Codex and select the exact repository or worktree. Codex manages this
-plugin; remove it with `codex plugin remove kast@kast`. Each release also includes
+plugin; remove it with `codex plugin remove kast@kast`. Each Control release also includes
 standalone skill, plugin, and marketplace ZIPs with SHA-256 checksums. See the
 [agent tools package](agent-tools/README.md) for independent skill installation
 and manual marketplace setup. After upgrading Kast, rerun `kast plugin codex`

@@ -12,6 +12,8 @@ keywords:
 
 Kast connects your coding agent to IntelliJ IDEA’s Kotlin analysis. Ask it to find a declaration, trace its callers, inspect source, or make a targeted change. Each result identifies what Kast found and whether the query covered the scope you requested.
 
+For example, before changing `submitOrder`, ask: “Find this function in the checkout module and show its callers and call sites.” Kast gives your agent declarations and relationships checked against the selected IDEA workspace, including limits on what it could establish. You can use that evidence to decide which source and tests to inspect next.
+
 <CardGroup cols={2}>
   <Card title="Install and connect" icon="download" href="/start">
     Install Kast, connect your agent, and check the connection with a real query.
