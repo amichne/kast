@@ -25,7 +25,7 @@ import kotlinx.serialization.json.JsonObject
 
 /** Shared native tool composition. The client protocol is chosen by the caller. */
 internal class KastDirectToolSession(
-    val catalog: List<DirectToolDocument>,
+    private val registration: DirectToolRegistration,
     val root: () -> CanonicalRootDiscovery,
     start: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure>,
     val invokePublic: (AdmittedPublicTool) -> CliExit,
@@ -34,6 +34,28 @@ internal class KastDirectToolSession(
     },
     val admission: () -> InstalledToolAdmission = { InstalledToolAdmission.AVAILABLE },
 ) {
+    /** Invocation admission uses compiled registrations; schema projection is only a discovery effect. */
+    val catalog: List<DirectToolDocument>
+        get() = registration.catalog
+
+    fun supports(name: String): Boolean = registration.supports(name)
+
+    constructor(
+        catalog: List<DirectToolDocument>,
+        root: () -> CanonicalRootDiscovery,
+        start: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure>,
+        invokePublic: (AdmittedPublicTool) -> CliExit,
+        invokeSupport: (SupportToolIdentity, JsonObject) -> CliExit = { _, _ -> error("No support tool binding") },
+        admission: () -> InstalledToolAdmission = { InstalledToolAdmission.AVAILABLE },
+    ) : this(
+        DirectToolRegistration.fromDocuments(catalog),
+        root,
+        start,
+        invokePublic,
+        invokeSupport,
+        admission,
+    )
+
     val start: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure> = { selected ->
         when (admission()) {
             InstalledToolAdmission.AVAILABLE -> start(selected)
@@ -64,23 +86,32 @@ internal class KastDirectToolSession(
             val code =
                 Path.of(KastDirectToolSession::class.java.protectionDomain.codeSource.location.toURI()).toRealPath()
             val installation = code.parent.takeIf { it.fileName.toString() == "lib" }?.parent ?: return null
-            val catalog = installedHostedBootstrap().tools.associateBy { it.name }
             val selected =
                 CanonicalAgentToolDefinitions.all.filter { definition ->
                     PublicToolIdentity.entries.any { it.toolName == definition.name.value }
                 }
-            if (selected.size != PublicToolIdentity.entries.size || selected.any { it.name.value !in catalog })
-                return null
+            if (selected.size != PublicToolIdentity.entries.size) return null
             val root = { FilesystemCanonicalRootDiscovery.discover(directory) }
-            val boundRoot = (root() as? CanonicalRootDiscovery.Discovered)?.root?.path ?: directory
-            val read = mcpWorkspaceOperationClient(home, environment)
+            val boundRoot =
+                observeDirectToolStage(DirectToolStage.ROOT_BINDING) {
+                    (root() as? CanonicalRootDiscovery.Discovered)?.root?.path ?: directory
+                }
+            val read =
+                observeDirectToolStage(DirectToolStage.WORKSPACE_CLIENT_COMPOSITION) {
+                    mcpWorkspaceOperationClient(home, environment)
+                }
             val capabilities =
-                ExistingIdeCliCapabilities(
-                    FilesystemCanonicalRootDiscovery,
-                    configuredExistingIdeClient(home, environment),
-                    read,
-                )
-            val change = McpSingleChangeTool.installed(root = boundRoot, home = home, capabilities = capabilities)
+                observeDirectToolStage(DirectToolStage.CAPABILITIES_COMPOSITION) {
+                    ExistingIdeCliCapabilities(
+                        FilesystemCanonicalRootDiscovery,
+                        configuredExistingIdeClient(home, environment),
+                        read,
+                    )
+                }
+            val change =
+                observeDirectToolStage(DirectToolStage.CHANGE_TOOL_COMPOSITION) {
+                    McpSingleChangeTool.installed(root = boundRoot, home = home, capabilities = capabilities)
+                }
             val invokePublic: (AdmittedPublicTool) -> CliExit = { request ->
                 if (request.identity in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY))
                     change.invoke(request)
@@ -102,7 +133,18 @@ internal class KastDirectToolSession(
                         .toSet(),
                 )
             return KastDirectToolSession(
-                catalog = selected.map { catalog.getValue(it.name.value).directToolDocument() } + directSupportTools(),
+                registration =
+                    DirectToolRegistration(
+                        selected.map { it.name }.toSet() + directToolName(SupportToolIdentity.HEALTH_CHECK.toolName)
+                    ) {
+                        val catalog =
+                            observeDirectToolStage(DirectToolStage.HOSTED_CATALOG_COMPOSITION) {
+                                installedHostedBootstrap().tools.associateBy { it.name }
+                            }
+                        observeDirectToolStage(DirectToolStage.DIRECT_CATALOG_PROJECTION) {
+                            selected.map { catalog.getValue(it.name.value).directToolDocument() } + directSupportTools()
+                        }
+                    },
                 root = root,
                 admission = { observeInstalledToolAdmission(installation) },
                 start = read::start,
