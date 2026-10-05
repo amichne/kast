@@ -10,9 +10,9 @@ icon: "book-open"
 
 | Action | Required input | Behavior |
 | --- | --- | --- |
-| `RUN` | `source` | Evaluate optional `steps` in order; select `output` and optional `retention`. |
+| `RUN` | `source` | Evaluate optional `steps` in order. Select `output` and optional `retention`. |
 | `RESUME` | Issued `continuation` | Continue saved execution with its original source and steps. |
-| `READ_RESULT` | Issued `result`; optional `cursor` | Present retained rows without semantic execution. Output must match the retained row type. |
+| `READ_RESULT` | Issued `result`. Optional `cursor` | Present retained rows without semantic execution. Output must match the retained row type. |
 | `READ_SOURCE` | Issued `candidateRef` | Read an exact anchored occurrence or anonymous body. See [callbacks](/reference/callbacks#read-the-exact-anonymous-source). |
 
 ```json
@@ -27,14 +27,14 @@ icon: "book-open"
 }
 ```
 
-Omitted output selects symbol name and location. `retention: "RETAIN"` keeps results for later use. Pass issued handles unchanged; placeholders are not valid references.
+Omitted output selects symbol name and location. `retention: "RETAIN"` keeps results for later use. Pass issued handles unchanged. Placeholders are not valid references.
 
 ## Start from the right input
 
 | Source | Purpose |
 | --- | --- |
-| `SEARCH_DECLARATIONS` | Simple declaration name; exact, case-sensitive matching by default. Fuzzy matching is explicit. |
-| `SEARCH_TEXT` | One case-sensitive ASCII identifier word; exact containing declarations and match context. |
+| `SEARCH_DECLARATIONS` | Simple declaration name. Exact, case-sensitive matching by default. Fuzzy matching is explicit. |
+| `SEARCH_TEXT` | One case-sensitive ASCII identifier word. Exact containing declarations and match context. |
 | `ALL_DECLARATIONS` | Supported Kotlin declarations, including nested declarations, ordered by file path and source offset. |
 | `AT_LOCATION` | Nearest containing named declaration at a workspace-relative `file` and UTF-16 `offset`. |
 | `SYMBOL_REFS` | Exact references from previous results. |
@@ -54,10 +54,10 @@ Discovery accepts directory or package scope. Its default is recursive workspace
 | `WHERE` | Filter compiler-confirmed visibility or literal `NAME`, `KIND`, or `FILE`. Comparisons: `EQUALS`, `NOT_EQUALS`, `STARTS_WITH`, `ENDS_WITH`. |
 | `DISTINCT_SYMBOLS` | Keep the first row per canonical identity at this pipeline position. |
 | `EXPAND_RELATION` | One hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`. |
-| `WALK` | Bounded relation traversal; default depth one, breadth-first strategy. |
+| `WALK` | Bounded relation traversal. Default depth one, breadth-first strategy. |
 | `CONCAT` | Append `input`, preserving order and duplicates. |
 | `UNION`, `INTERSECT`, `DIFFERENCE` | Compare retained symbol rows in `right` by canonical identity. Difference requires complete right coverage. |
-| `JOIN` | `INNER` pairs named cells; `SEMI` keeps matches; `ANTI` requires complete right coverage to establish absence. |
+| `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` requires complete right coverage to establish absence. |
 | `PROJECT_BINDING` | Select one named symbol cell before further symbol steps. |
 
 There is no arbitrary-field join or general-purpose `MAP`. Steps after composition apply to the combined stream. See [Combine query results](/query-pipelines).
@@ -68,13 +68,13 @@ There is no arbitrary-field join or general-purpose `MAP`. Steps after compositi
 
 | Scope | Meaning |
 | --- | --- |
-| `WORKSPACE` | Workspace expansion; default for `EXPAND_RELATION`. |
-| `RETAINED_SEED` | Scope carried by each seed; default for `WALK`. Acquire an `AT_LOCATION` seed for exact-file scope. |
+| `WORKSPACE` | Workspace expansion. Default for `EXPAND_RELATION`. |
+| `RETAINED_SEED` | Scope carried by each seed. Default for `WALK`. Acquire an `AT_LOCATION` seed for exact-file scope. |
 | `SOURCE_DOMAIN` | Exact imported `sourceSets`, source policy, generated-source policy, and optional workspace-relative directory. |
 
-Omission or `null` uses the operation's default. `SOURCE_DOMAIN` requires `sourcePolicy` and `generatedSources`; `includeSubdirectories` defaults to `true`. `IMPACT.domain` requires an explicit scope.
+Omission or `null` uses the operation's default. `SOURCE_DOMAIN` requires `sourcePolicy` and `generatedSources`. `includeSubdirectories` defaults to `true`. `IMPACT.domain` requires an explicit scope.
 
-Observations retain requested and effective domains, coverage, and proven exclusions. [Callback observations](/reference/callbacks) preserve anonymous ownership; excluded callbacks do not become named edges.
+Observations retain requested and effective domains, coverage, and proven exclusions. [Callback observations](/reference/callbacks) preserve anonymous ownership. Excluded callbacks do not become named edges.
 
 For breadth-first walks, `maximumDepth` includes nodes at that depth without expanding them. Complete coverage requires complete one-hop reads below the bound. Result, work, and time limits can pause execution. Terminal incomplete reads keep the walk incomplete.
 
@@ -89,11 +89,11 @@ For breadth-first walks, `maximumDepth` includes nodes at that depth without exp
 | `VALUE_PATHS` | Producer sites, transfers, model applications, representation history, terminals, and obligations. |
 | `IMPACT_WITNESS` | Selected retained impact evidence through `READ_RESULT` only. |
 
-Explicit symbol `fields: []` requests mandatory identity and kind. File-scoped occurrences remain use sites; walks cannot expand them as declaration endpoints.
+Explicit symbol `fields: []` requests mandatory identity and kind. File-scoped occurrences remain use sites. Walks cannot expand them as declaration endpoints.
 
 ## Investigate value impact
 
-`IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models`. Use no transformation steps and select `VALUE_PATHS`; retain the result for later inspection.
+`IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models`. Use no transformation steps and select `VALUE_PATHS`. Retain the result for later inspection.
 
 | Input | Requirement |
 | --- | --- |
@@ -101,12 +101,12 @@ Explicit symbol `fields: []` requests mandatory identity and kind. File-scoped o
 | `declarations` | Modeled callable references paired with identity claims for fresh revalidation. |
 | `flow` | `KOTLIN_FORWARD_V1`. |
 | `domain` | Explicit expansion scope. |
-| `models` | Reviewed representation or boundary rules; `[]` supplies none. |
+| `models` | Reviewed representation or boundary rules. `[]` supplies none. |
 | Optional `requestedSites` | Enclosing identity, range, and role. Argument sites also identify invocation, callable, and formal parameter index. |
 
 Native reads establish invocation and site identity. Supplied models define representation and boundary meaning. Unsupported transfers, rejected reads, and unresolved obligations preserve qualifications.
 
-A work-limited run can return empty `VALUE_PATHS` with `EVIDENCE_ONLY` accounting and a resumable checkpoint. Before ledger finalization, witnesses return `RESULT_FIELD_UNAVAILABLE`. `RESUME` advances the investigation; retained reads preserve its checkpoint.
+A work-limited run can return empty `VALUE_PATHS` with `EVIDENCE_ONLY` accounting and a resumable checkpoint. Before ledger finalization, witnesses return `RESULT_FIELD_UNAVAILABLE`. `RESUME` advances the investigation. Retained reads preserve its checkpoint.
 
 ### Read retained witnesses
 
@@ -126,6 +126,6 @@ Site identity alone does not establish a producer relationship. Retained witness
 
 ## Defaults and limits
 
-Omitted budgets use configured defaults and ceilings. Omission is not unlimited execution; budgets do not change requested scope or output shape.
+Omitted budgets use configured defaults and ceilings. Omission is not unlimited execution. Budgets do not change requested scope or output shape.
 
 Every public tool accepts root-level boolean `verbose`. Omission or `false` selects compact output without removing semantic limitations. [Results](/reference/responses) explains continuation, coverage, and recovery.

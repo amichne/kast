@@ -33,7 +33,7 @@ This page contains exact requests and historical observations. For your reposito
 
   Use one case-sensitive ASCII identifier word. Phrases, substrings, qualified literals, and regular expressions are rejected. Search `Disable` rather than `AppServerAction.Disable`, then inspect context.
 
-  Unsupported containers leave coverage incomplete. A stopped index scan is terminal; other retained work can be resumable.
+  Unsupported containers leave coverage incomplete. A stopped index scan is terminal. Other retained work can be resumable.
 </Accordion>
 
 This request illustrates current inputs. The recording below predates text discovery and uses [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). [Capture details and full responses](/reference/schemas#recorded-walkthrough) preserve its evidence.
@@ -124,4 +124,4 @@ Find `QueryPlanCompiler.exactStage` under `query/contract` in `main`, then reuse
 
 Recorded `15-caller-walk` returned `QueryPlanCompiler.admit` at depth 1, with compiler-confirmed evidence, exhaustive coverage, and no continuation.
 
-Depth bounds the requested graph; coverage reports unfinished work within it. Empty qualified output does not establish absence. See [Callback evidence](/reference/callbacks) and [Results](/reference/responses#follow-progress-not-row-count).
+Depth bounds the requested graph. Coverage reports unfinished work within it. Empty qualified output does not establish absence. See [Callback evidence](/reference/callbacks) and [Results](/reference/responses#follow-progress-not-row-count).

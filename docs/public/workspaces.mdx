@@ -39,12 +39,12 @@ For forced retirement of recorded tool processes, use `kast stop --force --json`
 
 Running IDEA returns `REJECTED` with `HOST_RESTART_REQUIRED`. Quit it and repeat. Shutdown rejection keeps the fence and prevents payload replacement.
 
-`reinstall` verifies shutdown, installs the recorded version, activates the coordinator, and restores integrations. Failed activation restores the fence and returns `REINSTALLATION_PENDING` with the failed stage. Inspect `kast status --json` before retrying recovery. Reload agents after success; writes are never replayed.
+`reinstall` verifies shutdown, installs the recorded version, activates the coordinator, and restores integrations. Failed activation restores the fence and returns `REINSTALLATION_PENDING` with the failed stage. Inspect `kast status --json` before retrying recovery. Reload agents after success. Writes are never replayed.
 
 <Accordion title="Lifecycle result contract">
   JSON stdout contains one `type`: `STOPPED`, `REINSTALLED`, `REJECTED`, or `REINSTALLATION_PENDING`. Stage observations use stderr. Rejected and pending results exit with code 1.
 
-  The schema ships at `installation/share/kast/schema/management-lifecycle.schema.json`. Older payloads without fence capability reject before effects; upgrade through the published installer.
+  The schema ships at `installation/share/kast/schema/management-lifecycle.schema.json`. Older payloads without fence capability reject before effects. Upgrade through the published installer.
 </Accordion>
 
 ## Force reset
@@ -62,14 +62,14 @@ Reset bypasses old ownership checks. It fences startup, records a recovery locat
 
 Force reinstall stages the latest stable release and verifies payload and service readiness before admitting tools. Success returns `RESET_REINSTALLED`, the new version, service `generation`, and `command` at `<kast-directory>/bin/kast`.
 
-Use the returned command to reconnect integrations. Restart IDEA and affected agents. Exterior harness registrations remain; reset removes only the installation's exact login entries.
+Use the returned command to reconnect integrations. Restart IDEA and affected agents. Exterior harness registrations remain. Reset removes only the installation's exact login entries.
 
 For staging or activation failures, read `stage`, `failure`, and `recoveryPath`. Failed recovery returns `RESET_RECOVERY_REQUIRED` with both causes.
 
 <Accordion title="Reset boundaries and results">
-  Symlinks are unlinked without following targets. Filesystem roots, HOME, and its ancestors are rejected. Each signaled process must retain its observed identity; erasure requires verified retirement.
+  Symlinks are unlinked without following targets. Filesystem roots, HOME, and its ancestors are rejected. Each signaled process must retain its observed identity. Erasure requires verified retirement.
 
-  The exterior lock serializes resets. The journal remains during activation; daemon startup requires `ACTIVATING` intent and the live lock. Tools stay fenced until readiness. Interrupted cleanup retains its recovery location.
+  The exterior lock serializes resets. The journal remains during activation. Daemon startup requires `ACTIVATING` intent and the live lock. Tools stay fenced until readiness. Interrupted cleanup retains its recovery location.
 
   JSON variants are `REMOVED`, `RESET_REINSTALLED`, `RESET_REINSTALLATION_PENDING`, `RESET_RETAINED`, `RESET_RECOVERY_REQUIRED`, and `RESET_REJECTED`. Unsuccessful results exit with code 1. The lifecycle schema defines these variants. Incompatible reset capability rejects before activation.
 </Accordion>

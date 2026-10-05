@@ -6,13 +6,13 @@ icon: "workflow"
 
 Retain results with `retention: "RETAIN"`, then combine their rows by exact symbol identity. Pass issued result references unchanged.
 
-This example uses the [historical recording](/reference/schemas#recorded-walkthrough) against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts describe that run. **A**, **B**, and **C** are teaching labels; use fresh references in your session.
+This example uses the [historical recording](/reference/schemas#recorded-walkthrough) against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts describe that run. **A**, **B**, and **C** are teaching labels. Use fresh references in your session.
 
 ## Retain a second query result
 
 The [walkthrough](/reference/walkthrough) retains **A**: ten implementations of `QueryStepSyntax`. Retain **B**: two class-like declarations named `Concat` under `query/contract` in `main`.
 
-`QueryStepSyntax.Concat` implements the interface; `ExactQueryStage.Concat` does not. A shared name does not establish shared identity.
+`QueryStepSyntax.Concat` implements the interface. `ExactQueryStage.Concat` does not. A shared name does not establish shared identity.
 
 <Accordion title="Request: discover and retain input B">
   ```json
@@ -107,7 +107,7 @@ The recorded intersection (`05-intersection`) returns only `QueryStepSyntax.Conc
 
 `INNER` joins preserve both rows' evidence. Name the cells, then select one with `PROJECT_BINDING` before another relationship step.
 
-The recorded join (`06-join-c`) retains one pair as **C**. Both cells identify `QueryStepSyntax.Concat`; `step` preserves implementation evidence and `candidate` discovery evidence. Different reference strings can identify the same declaration.
+The recorded join (`06-join-c`) retains one pair as **C**. Both cells identify `QueryStepSyntax.Concat`. `step` preserves implementation evidence and `candidate` discovery evidence. Different reference strings can identify the same declaration.
 
 <Accordion title="Requests: retain pairs as C, then follow one side">
   ```json
@@ -157,7 +157,7 @@ There is no arbitrary-field join or general-purpose `MAP`.
 
 ## Choose the relationship search domain
 
-`EXPAND_RELATION` defaults to `WORKSPACE`; `WALK` defaults to `RETAINED_SEED`. `expansionScope` controls the search domain before enumeration. A later `WHERE` filters returned rows.
+`EXPAND_RELATION` defaults to `WORKSPACE`. `WALK` defaults to `RETAINED_SEED`. `expansionScope` controls the search domain before enumeration. A later `WHERE` filters returned rows.
 
 For explicit source restrictions:
 
@@ -180,7 +180,7 @@ Coverage applies to that domain. This current step does not change the recording
 
 ## Resume work or inspect retained rows
 
-`RESUME` advances unfinished execution. `READ_RESULT` presents stored rows without semantic work; a result cursor pages those rows. Neither paging nor composition erases original limitations.
+`RESUME` advances unfinished execution. `READ_RESULT` presents stored rows without semantic work. A result cursor pages those rows. Neither paging nor composition erases original limitations.
 
 <Accordion title="Requests: resume execution or read retained rows">
   ```json
@@ -200,7 +200,7 @@ Coverage applies to that domain. This current step does not change the recording
 
 ### Observe a resumable result
 
-The recording's `12-bounded-symbols` returns one qualified row with `result-limit-reached` and resumable progress. `13-resume` returns the remaining row with complete coverage. Follow your own result's progress; row count does not establish resumability.
+The recording's `12-bounded-symbols` returns one qualified row with `result-limit-reached` and resumable progress. `13-resume` returns the remaining row with complete coverage. Follow your own result's progress. Row count does not establish resumability.
 
 ### Reject an incomplete absence check
 
@@ -217,6 +217,6 @@ The recording's `12-bounded-symbols` returns one qualified row with `result-limi
 }
 ```
 
-That historical search had terminal `upstream-incomplete` progress. Current exact-name search can retain candidates beyond output limits; `ALL_DECLARATIONS` can retain its discovery position. Native work or byte limits can still leave coverage incomplete.
+That historical search had terminal `upstream-incomplete` progress. Current exact-name search can retain candidates beyond output limits. `ALL_DECLARATIONS` can retain its discovery position. Native work or byte limits can still leave coverage incomplete.
 
 Edits, builds, and IDEA state changes can invalidate retained results. Use [Results](/reference/responses) for recovery and handle rules.

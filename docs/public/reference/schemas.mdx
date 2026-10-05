@@ -17,7 +17,7 @@ Kast generates per-tool input schemas and examples from one authored contract:
 | `add_declaration` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.examples.json) |
 | `replace_body` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.examples.json) |
 
-Support callables have separate availability: direct MCP exposes `health_check`; hosted App Server exposes `workspace_lifecycle`. The [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json) defines their inputs and outputs.
+Support callables have separate availability: direct MCP exposes `health_check`. Hosted App Server exposes `workspace_lifecycle`. The [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json) defines their inputs and outputs.
 
 The [authored schema](https://github.com/amichne/kast/blob/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns shared definitions and metadata. Use per-tool `parameters.json` for input checks. Preserve closed variants and `$ref` links.
 
@@ -29,7 +29,7 @@ Defaults come from admission. Schema validity does not establish current identit
 
 ## Samples and observed responses
 
-Generated samples include valid and deliberately invalid contract cases. Their opaque references are illustrative; they are not reusable tokens or native response recordings.
+Generated samples include valid and deliberately invalid contract cases. Their opaque references are illustrative. They are not reusable tokens or native response recordings.
 
 ## Recorded walkthrough
 
@@ -41,16 +41,16 @@ Generated samples include valid and deliberately invalid contract cases. Their o
 | CLI and IDEA plugin | `0.20260928.121700` |
 | IDEA/Kotlin build | `262.10315.125` |
 | Checkout | `81fb023c06f8dba63e3531f49632f465b5cc6b21` |
-| Tutorial source | `56df0912e46b182bb4ad8beabd1512823100fd72`; checkout differences were confined to `docs/public`. |
+| Tutorial source | `56df0912e46b182bb4ad8beabd1512823100fd72`. Checkout differences were confined to `docs/public`. |
 | Successful and qualified reads | Same host, epoch 7, `SAVED_PSI_COMMITTED` content. |
 
 | Calls | Observed result |
 | --- | --- |
-| `01`–`03`: discover and retain A/B | One interface, ten implementations, two `Concat` declarations; exhaustive coverage. |
-| `04`–`05`: union/filter and intersection | Two distinct declarations after union/filter; one shared declaration after intersection. |
+| `01`–`03`: discover and retain A/B | One interface, ten implementations, two `Concat` declarations. Exhaustive coverage. |
+| `04`–`05`: union/filter and intersection | Two distinct declarations after union/filter. One shared declaration after intersection. |
 | `06`–`07`: join C, project, follow references | One paired row and one compiler-confirmed reference occurrence. |
-| `08`–`09`: read retained A/C | Ten symbols and one paired row; original result identities preserved. |
-| `10`–`11`, `16`: incomplete right input | One qualified discovery row; both difference and anti join reject `right-input-incomplete`. |
+| `08`–`09`: read retained A/C | Ten symbols and one paired row. Original result identities preserved. |
+| `10`–`11`, `16`: incomplete right input | One qualified discovery row. Both difference and anti join reject `right-input-incomplete`. |
 | `12`–`13`: bounded execution and resume | One row with a continuation, then the remaining row with complete coverage. |
 | `14`–`15`: find `exactStage`, walk callers | One function, then one caller record at depth 1 within the two-hop bound. |
 

@@ -38,7 +38,7 @@ For an interface or base type:
 Use the selected type's exact reference to find its implementations. Show each declaration once, with its signature and location. Report whether the search finished.
 ```
 
-Discovery scope does not automatically restrict relationship destinations. Use `expansionScope` to restrict the relationship search domain; use a later filter to restrict returned rows. See [Query forms](/reference/api#apply-only-the-steps-you-need).
+Discovery scope does not automatically restrict relationship destinations. Use `expansionScope` to restrict the relationship search domain. Use a later filter to restrict returned rows. See [Query forms](/reference/api#apply-only-the-steps-you-need).
 
 ## 3. Trace callers to a chosen depth
 
@@ -48,7 +48,7 @@ From the selected function, trace callers up to two hops. Show the hop depth and
 
 Depth bounds the requested graph. Coverage reports unfinished work within that bound. Follow reported progress even on a zero-row page.
 
-Invocations inside lambdas preserve separate ownership. Static callback paths do not prove runtime execution; see [Callback evidence](/reference/callbacks).
+Invocations inside lambdas preserve separate ownership. Static callback paths do not prove runtime execution. See [Callback evidence](/reference/callbacks).
 
 ## Start from remembered text
 
@@ -56,7 +56,7 @@ Invocations inside lambdas preserve separate ownership. Static callback paths do
 Use Kast to find functions containing the word retry under checkout in main. Show a matching line for each function, then let me choose one to inspect or trace.
 ```
 
-Use one case-sensitive ASCII word beginning with a letter or underscore. Phrases, substrings, qualified literals, and regular expressions are rejected. A word match explains discovery; a relation query establishes callers. Unsupported containers or a stopped scan leave coverage incomplete.
+Use one case-sensitive ASCII word beginning with a letter or underscore. Phrases, substrings, qualified literals, and regular expressions are rejected. A word match explains discovery. A relation query establishes callers. Unsupported containers or a stopped scan leave coverage incomplete.
 
 ## Keep the investigation current
 

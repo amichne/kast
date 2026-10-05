@@ -39,7 +39,7 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-An empty page can advance filtered input. Follow issued `next_action`; a result limit does not guarantee a continuation.
+An empty page can advance filtered input. Follow issued `next_action`. A result limit does not guarantee a continuation.
 
 | Operation | Advances | Handle |
 | --- | --- | --- |
@@ -107,7 +107,7 @@ An exact symbol can undergo fresh revalidation. Retained results and continuatio
 Composition preserves input qualifications. `DIFFERENCE` and `ANTI` joins require complete right-hand coverage before establishing absence.
 
 <Accordion title="Where the operation document sits in each transport">
-Direct MCP places the canonical semantic document in `result.structuredContent`. `health_check` has a separate readiness shape. Tool RPC document variants carry `document`; hosted App Server completed invocations also carry `document`.
+Direct MCP places the canonical semantic document in `result.structuredContent`. `health_check` has a separate readiness shape. Tool RPC document variants carry `document`. Hosted App Server completed invocations also carry `document`.
 
 Decode with the [MCP](/reference/mcp-catalog), [Tool RPC](/reference/rpc-catalog), and [generated contracts](/reference/schemas).
 

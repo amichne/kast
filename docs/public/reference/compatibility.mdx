@@ -31,7 +31,7 @@ The [installer](/start) selects stable components independently. With a download
 bash install.sh --version 0.3.1 --host-version 0.4.0
 ```
 
-`--version` selects Control; `--host-version` selects Host. The previous Host 0.3.0 / Control 0.2.0 pair requires both upgrades because its wire contract differs. Restart IDEA and affected agents.
+`--version` selects Control. `--host-version` selects Host. The previous Host 0.3.0 / Control 0.2.0 pair requires both upgrades because its wire contract differs. Restart IDEA and affected agents.
 
 Control-only installation reuses a running Host with a matching contract. Host-only installation leaves Control in place:
 
@@ -39,10 +39,10 @@ Control-only installation reuses a running Host with a matching contract. Host-o
 bash install.sh --host-only --version 0.4.0
 ```
 
-In Host-only mode, `--version` selects Host. Restart IDEA; Control must still match its contract.
+In Host-only mode, `--version` selects Host. Restart IDEA. Control must still match its contract.
 
 ## Recorded examples and client limits
 
 Walkthrough counts and offsets describe their captured revision. Use current [query forms](/reference/api) and [schemas](/reference/schemas) for inputs. Never edit a reference prefix to repair it.
 
-Codex App Server remains a preview; inspect its [tested client boundary](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
+Codex App Server remains a preview. Inspect its [tested client boundary](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).

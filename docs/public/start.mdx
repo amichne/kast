@@ -41,7 +41,7 @@ Inspect the version and installation path. Verify loaded tools with the [first q
 
 <AccordionGroup>
   <Accordion title="If your shell cannot find kast">
-    The executable is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty; otherwise, it is `$HOME/.local/bin/kast`.
+    The executable is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty. Otherwise, it is `$HOME/.local/bin/kast`.
 
     Use the printed absolute path or add its directory to `PATH`. The installer warns but does not edit shell profiles.
   </Accordion>
@@ -59,8 +59,8 @@ Inspect the version and installation path. Verify loaded tools with the [first q
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.1 --host-version 0.4.0
     ```
 
-    `--version` selects Control; `--host-version` selects Host. Restart IDEA and your agent.
+    `--version` selects Control. `--host-version` selects Host. Restart IDEA and your agent.
   </Accordion>
 </AccordionGroup>
 
-**Next:** [Connect your agent](/agent-harnesses). For blockers, use [Troubleshooting](/troubleshooting); for upgrades or removal, use [Manage Kast](/workspaces).
+**Next:** [Connect your agent](/agent-harnesses). For blockers, use [Troubleshooting](/troubleshooting). For upgrades or removal, use [Manage Kast](/workspaces).

@@ -104,7 +104,7 @@ Matching registrations stay in place. For a conflict, inspect the existing regis
   # or: kast connect pi --force
   ```
 
-  `--force` replaces that harness's Kast slot. Kast verifies the payload and captures the previous registration. Failed replacement attempts restoration; failed restoration reports the backup and recovery destination.
+  `--force` replaces that harness's Kast slot. Kast verifies the payload and captures the previous registration. Failed replacement attempts restoration. Failed restoration reports the backup and recovery destination.
 </Accordion>
 
 ## Disconnect or upgrade
@@ -124,7 +124,7 @@ After `kast upgrade`, restart IDEA and connected agents. For the bundled Codex p
 <Accordion title="Release archives and custom clients">
   [Control 0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) supplies `kast-skill-v0.3.1.zip`, `kast-plugin-v0.3.1.zip`, and `kast-marketplace-v0.3.1.zip` with SHA-256 checksums.
 
-  Extract the skill's `kast/` directory into `~/.agents/skills/` or your repository's `.agents/skills/`. Its generated examples use the public contract; replace illustrative references with current workspace values.
+  Extract the skill's `kast/` directory into `~/.agents/skills/` or your repository's `.agents/skills/`. Its generated examples use the public contract. Replace illustrative references with current workspace values.
 
   After checksum verification and marketplace extraction:
 
