@@ -229,6 +229,8 @@ private fun QueryWalkObservationWireDocument.convertCallback(
                 WireDocumentConversion.Rejected
             admitted.depth.value == 0 && admitted.subject.token.value != subject.token ->
                 WireDocumentConversion.Rejected
+            admitted.subject.token.value == subject.token && admitted.depth.value != 0 ->
+                WireDocumentConversion.Rejected
             // The fingerprint also retains the frontier selector's original scope and constraints.
             admitted.subject.token.value == subject.token && observation.domainFingerprint != domainFingerprint ->
                 WireDocumentConversion.Rejected

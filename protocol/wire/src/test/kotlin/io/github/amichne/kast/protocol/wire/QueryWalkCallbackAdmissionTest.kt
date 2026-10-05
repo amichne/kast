@@ -227,6 +227,29 @@ class QueryWalkCallbackAdmissionTest {
         assertTrue(decode(original().copy(callbackObservations = emptyList())) is WireDocumentConversion.Converted)
     }
 
+    @Test
+    fun `callback seed token is rejected at positive depth under callees`() {
+        rejectSeedAtPositiveDepth(RelationKindDocument.CALLEES)
+    }
+
+    @Test
+    fun `callback seed token is rejected at positive depth under callers`() {
+        rejectSeedAtPositiveDepth(RelationKindDocument.CALLERS)
+    }
+
+    private fun rejectSeedAtPositiveDepth(relation: RelationKindDocument) {
+        val wire = original().copy(relation = relation.toWireDocument(), maximumDepth = 2)
+        val seedAtOne =
+            wire.callbackObservations
+                .single()
+                .copy(
+                    depth = 1,
+                    observation = wire.callbackObservations.single().observation.copy(relation = relation),
+                )
+        val actual = decode(wire.copy(callbackObservations = listOf(seedAtOne)))
+        assertEquals(WireDocumentConversion.Rejected, actual)
+    }
+
     private fun <V, F> Refinement<V, F>.value(): V = (this as Refinement.Refined).value
 
     private fun <V> WireDocumentConversion<V>.value(): V = (this as WireDocumentConversion.Converted).value
