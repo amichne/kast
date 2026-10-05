@@ -140,14 +140,33 @@ class DesktopDiscoveryActivationTest {
     }
 
     @Test
+    fun `failed publication command rolls back any introduced flag`(@TempDir temporary: Path) {
+        rejectPublication(
+            temporary.toRealPath(),
+            "remove",
+            DesktopDiscoveryFailure.COMMAND_TIMED_OUT,
+            false,
+            listOf("enable:REJECTED"),
+        )
+    }
+
+    @Test
     fun `failed publication rollback preserves both causes and ownership`(@TempDir temporary: Path) {
         rejectPublication(temporary.toRealPath(), "remove:REJECTED", DesktopDiscoveryFailure.COMMAND_REJECTED, true)
     }
 
-    private fun rejectPublication(root: Path, removal: String, failure: DesktopDiscoveryFailure, retains: Boolean) {
+    private fun rejectPublication(
+        root: Path,
+        removal: String,
+        failure: DesktopDiscoveryFailure,
+        retains: Boolean,
+        publication: List<String> = listOf("enable", "read:REJECTED"),
+    ) {
         val target = target(root)
         val steps =
-            listOf("home", "read:ABSENT", "enable", "read:REJECTED", "read:ENABLED", removal) +
+            listOf("home", "read:ABSENT") +
+                publication +
+                listOf("read:ENABLED", removal) +
                 if (retains) emptyList() else listOf("read:ABSENT")
         val script = Script(DesktopDaemonHomeRead.Default, *steps.toTypedArray())
         val activities = mutableListOf<BrokerStartupActivity>()
@@ -159,7 +178,10 @@ class DesktopDiscoveryActivationTest {
                 }
             )
         assertEquals(
-            DesktopDiscoveryOutcome.Rejected(failure),
+            DesktopDiscoveryOutcome.Rejected(
+                failure,
+                if (retains) DesktopDiscoveryRollback.NOT_REQUIRED else DesktopDiscoveryRollback.REQUIRED,
+            ),
             InstalledCoordinator.publishDesktopDiscovery(target, activity, DesktopDaemonDiscovery(script)),
         )
         assertEquals(retains, Files.exists(record(target)))
@@ -277,10 +299,12 @@ class DesktopDiscoveryActivationTest {
             return DesktopDaemonEnvironmentRead.Observed(DesktopDaemonSetting.valueOf(next.removePrefix("read:")))
         }
 
-        override fun enable(): DesktopDiscoveryOutcome {
-            assertEquals("enable", remaining.removeFirstOrNull(), "Unexpected publication")
-            return DesktopDiscoveryOutcome.Ready
-        }
+        override fun enable(): DesktopDiscoveryOutcome =
+            when (val next = remaining.removeFirstOrNull()) {
+                "enable" -> DesktopDiscoveryOutcome.Ready
+                "enable:REJECTED" -> DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.COMMAND_TIMED_OUT)
+                else -> throw AssertionError("Unexpected publication: $next")
+            }
 
         override fun remove(): DesktopDiscoveryOutcome =
             when (val next = remaining.removeFirstOrNull()) {

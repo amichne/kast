@@ -79,7 +79,16 @@ internal enum class DesktopDiscoveryFailure {
 internal sealed interface DesktopDiscoveryOutcome {
     data object Ready : DesktopDiscoveryOutcome
 
-    data class Rejected(val failure: DesktopDiscoveryFailure) : DesktopDiscoveryOutcome
+    data class Rejected(
+        val failure: DesktopDiscoveryFailure,
+        val rollback: DesktopDiscoveryRollback = DesktopDiscoveryRollback.NOT_REQUIRED,
+    ) : DesktopDiscoveryOutcome
+}
+
+/** Rejection before publication cannot authorize releasing retained ownership. */
+internal enum class DesktopDiscoveryRollback {
+    NOT_REQUIRED,
+    REQUIRED,
 }
 
 internal enum class DesktopDaemonSetting {
@@ -159,26 +168,26 @@ internal class DesktopDaemonDiscovery(
         files: PrivateRecordFiles<DesktopDiscoveryFailure>,
         path: Path,
         target: DesktopDiscoveryTarget.Publish,
-    ): Refinement<Unit, DesktopDiscoveryFailure> {
+    ): DesktopDiscoveryOutcome {
         val existing = Files.exists(path, NOFOLLOW_LINKS)
         val retained =
             if (existing) {
                 when (val record = readOwnedRecord(files, path, target.owner)) {
                     is Refinement.Refined -> record.value
-                    is Refinement.Rejected -> return record
+                    is Refinement.Rejected -> return DesktopDiscoveryOutcome.Rejected(record.failure)
                 }
             } else null
         when (val route = qualifyHome(target)) {
             DesktopDiscoveryOutcome.Ready -> Unit
-            is DesktopDiscoveryOutcome.Rejected -> return Refinement.Rejected(route.failure)
+            is DesktopDiscoveryOutcome.Rejected -> return route
         }
         val current =
             when (val read = readStartingSetting()) {
                 is Refinement.Refined -> read.value
-                is Refinement.Rejected -> return read
+                is Refinement.Rejected -> return DesktopDiscoveryOutcome.Rejected(read.failure)
             }
         if (retained?.previous == PriorDesktopDaemonSetting.ENABLED && current == PriorDesktopDaemonSetting.ABSENT)
-            return Refinement.Rejected(DesktopDiscoveryFailure.ENVIRONMENT_CONFLICT)
+            return DesktopDiscoveryOutcome.Rejected(DesktopDiscoveryFailure.ENVIRONMENT_CONFLICT)
         if (!existing)
             files.write(
                 path,
@@ -191,8 +200,13 @@ internal class DesktopDaemonDiscovery(
                 MAXIMUM_RECORD_BYTES,
             )
         return when (current) {
-            PriorDesktopDaemonSetting.ABSENT -> mutateAndVerify(DesktopDaemonSetting.ENABLED, environment::enable)
-            PriorDesktopDaemonSetting.ENABLED -> Refinement.Refined(Unit)
+            PriorDesktopDaemonSetting.ABSENT ->
+                when (val published = mutateAndVerify(DesktopDaemonSetting.ENABLED, environment::enable)) {
+                    is Refinement.Refined -> DesktopDiscoveryOutcome.Ready
+                    is Refinement.Rejected ->
+                        DesktopDiscoveryOutcome.Rejected(published.failure, DesktopDiscoveryRollback.REQUIRED)
+                }
+            PriorDesktopDaemonSetting.ENABLED -> DesktopDiscoveryOutcome.Ready
         }
     }
 
@@ -229,7 +243,12 @@ internal class DesktopDaemonDiscovery(
     fun release(owner: DesktopDiscoveryOwner): DesktopDiscoveryOutcome {
         val path = owner.directory.resolve(RECORD_DIRECTORY).resolve(RECORD_NAME)
         if (Files.notExists(path, NOFOLLOW_LINKS)) return DesktopDiscoveryOutcome.Ready
-        return withRecord(owner) { files, recordPath -> releaseManaged(files, recordPath, owner) }
+        return withRecord(owner) { files, recordPath ->
+            when (val released = releaseManaged(files, recordPath, owner)) {
+                is Refinement.Refined -> DesktopDiscoveryOutcome.Ready
+                is Refinement.Rejected -> DesktopDiscoveryOutcome.Rejected(released.failure)
+            }
+        }
     }
 
     private fun releaseManaged(
@@ -290,15 +309,15 @@ internal class DesktopDaemonDiscovery(
 
     private fun withRecord(
         target: DesktopDiscoveryOwner,
-        action: (PrivateRecordFiles<DesktopDiscoveryFailure>, Path) -> Refinement<Unit, DesktopDiscoveryFailure>,
+        action: (PrivateRecordFiles<DesktopDiscoveryFailure>, Path) -> DesktopDiscoveryOutcome,
     ): DesktopDiscoveryOutcome {
         val files =
             when (val opened = PrivateRecordFiles.open(target.directory.resolve(RECORD_DIRECTORY), ::recordFailure)) {
                 is Refinement.Refined -> opened.value
                 is Refinement.Rejected -> return DesktopDiscoveryOutcome.Rejected(opened.failure)
             }
-        return when (val result = files.locked { action(files, files.root.resolve(RECORD_NAME)) }) {
-            is Refinement.Refined -> DesktopDiscoveryOutcome.Ready
+        return when (val result = files.locked { Refinement.Refined(action(files, files.root.resolve(RECORD_NAME))) }) {
+            is Refinement.Refined -> result.value
             is Refinement.Rejected -> DesktopDiscoveryOutcome.Rejected(result.failure)
         }
     }
