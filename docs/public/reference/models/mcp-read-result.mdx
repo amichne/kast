@@ -5,8 +5,6 @@ openapi-schema: "reference/callables.openapi.json query_symbolsSemanticResult"
 mode: "wide"
 ---
 
-For `query_symbols`, `result.structuredContent` is the canonical operation document itself. Its semantic `status` is `complete`, `qualified`, or `rejected`; exact references, coverage, qualifications, and recovery evidence remain attached. There is no additional generic `partial` wrapper or nested semantic `data` object.
+`query_symbols` returns its canonical document in `result.structuredContent`, with `complete`, `qualified`, or `rejected` status and preserved evidence.
 
-This page renders the generated query-specific result schema. `check_diagnostics` has its own generated `check_diagnosticsSemanticResult` contract; do not decode every read through a generic query result shape.
-
-An invocation failure uses the [MCP tool call wrapper](/reference/models/mcp-tool-call-result) and may have no admitted structured document. See [Results](/reference/responses) for the distinction between transport completion and semantic coverage, or [Schemas and samples](/reference/schemas) for the other operation contracts.
+`check_diagnostics` has a separate `check_diagnosticsSemanticResult` schema. Invocation failures can lack a structured document; see the [MCP wrapper](/reference/models/mcp-tool-call-result) and [Results](/reference/responses).

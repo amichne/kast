@@ -5,46 +5,36 @@ description: "Know what Kast starts, what it waits for, and which blockers need 
 icon: "monitor-cog"
 ---
 
-Start your agent in the Kotlin Gradle repository you want to inspect and ask a Kast question. Kast prepares that repository in IntelliJ IDEA when the request needs semantic analysis. You do not need to open or synchronize a workspace through another tool first.
+Start your agent in the intended Kotlin Gradle repository or worktree. A semantic request prepares its IDEA project automatically.
 
 ## What happens on the first question
 
 ```mermaid
-%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
 flowchart TB
-  accTitle: Background preparation ends in a ready query or an explicit blocker
-  accDescr: A question selects an exact Gradle root and its IntelliJ IDEA host. Kast waits for project readiness, then runs the query or reports the blocker instead of returning an empty semantic answer.
-  A("Ask a code question") --> B("Identify the exact Gradle root")
-  B --> C("Reuse or start the selected IDEA")
-  C --> D("Wait for import and indexing")
-  D --> R{"Project ready?"}
-  R -->|Yes| E("Query and return facts with coverage")
-  R -->|Blocked| F("Report what needs attention")
-  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
+  accTitle: Readiness determines whether Kast queries or reports a blocker
+  accDescr: Kast selects the exact Gradle root, reuses or starts IDEA, and waits for import and indexing. A ready project permits the query. A blocker requires attention and never becomes an empty semantic result.
+  A["Select exact Gradle root"] --> B["Reuse or start selected IDEA"]
+  B --> C{"Import and indexing ready?"}
+  C -->|Yes| D["Query with coverage"]
+  C -->|Blocked| E["Report trust, save, or import blocker"]
+  E -->|Resolve and repeat read| C
+  class A,B authority;
+  class D evidence;
+  class E limited;
   classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
   classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
   classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
-  class B,C authority;
-  class E evidence;
-  class F limited;
+  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-Preparation can take longer than a later query against an already-ready project. Kast does not deliberately bring IDEA to the foreground, but background presentation is best effort. A trust prompt, unsaved-document blocker, or failed import can still require your attention in IDEA.
+The first request can take longer than later queries. Background presentation is best effort; a trust prompt, unsaved document, or failed import can require attention in IDEA.
 
-A readiness failure is not an empty answer. Ask the agent to report the blocker and resolve it before repeating the query.
-
-## What Kast uses
-
-Kast asks the selected IDEA project for declarations and semantic relationships. The result belongs to that exact Gradle repository or worktree and to the evidence available for the request. Starting your agent in a different worktree does not make the previous worktree's references valid there.
-
-Listing a tool catalog is not a semantic readiness check. Use the [first-query prompt](/agent-harnesses#check-that-the-tools-work) to check that the full connection works.
+Results belong to that exact worktree. References from another worktree require their own admission. Use the [first query](/agent-harnesses#check-that-the-tools-work) to verify readiness and tool use.
 
 ## Control when an agent uses Kast
 
-Ask for a Kast-backed answer when symbol identity, callers, implementations, or reusable query results matter. For a text-only task, tell the agent not to call Kast.
+Request Kast for identity, relationships, or retained queries. For text-only work, tell the agent not to call it.
 
-To remove an installed harness registration, use `kast disconnect <harness>` and restart that harness. This is not an automatic-preparation toggle: it does not terminate existing sessions, close IDEA, or stop other connected clients.
+`kast disconnect <harness>` removes an installed registration. Restart that agent to unload it. Disconnect does not close IDEA or stop existing sessions and other clients.
 
-There is no documented `kast` management command that disables project preparation while keeping semantic queries enabled. The hosted App Server has separate explicit workspace lifecycle controls; [Manage Kast](/workspaces) explains that boundary.
-
-For the internal request flow and evidence checks, read [How Kast works](/concepts/architecture). For installation or readiness failures, use [Troubleshooting](/troubleshooting).
+There is no management command that disables preparation while keeping semantic queries enabled. Hosted App Server [workspace lifecycle controls](/workspaces#explicit-workspace-control-in-the-hosted-app-server) provide separate explicit project actions.

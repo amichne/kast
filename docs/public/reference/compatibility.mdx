@@ -4,54 +4,45 @@ description: "Check the platform and installed client contract."
 icon: "shield-check"
 ---
 
-Kast currently admits macOS on Apple silicon, an on-disk Kotlin Gradle
-repository, IntelliJ IDEA `262.*`, its bundled Kotlin plugin, and its
-Java 25 JBR. The installer rejects an IDEA release line without a matching
-Kast plugin.
+Kast admits Apple silicon macOS, an on-disk Kotlin Gradle repository, IDEA `262.*`, its bundled Kotlin plugin, and Java 25 JBR. Unsupported IDEA release lines are rejected.
 
-| Client | Contract to inspect after installation or upgrade |
+| Client | Installed contract authority |
 | --- | --- |
-| MCP | Live `tools/list` result |
-| Tool RPC | Live `catalog` reply |
-| Codex App Server | Provider catalog for the conversation |
+| MCP | `tools/list` |
+| Tool RPC | `catalog` |
+| Codex App Server | Conversation's provider catalog |
 
-Tool schemas and exact `ref` values are bound to their installed runtime
-and admitted workspace. Rediscover tools after an upgrade; search again
-when a reference is stale.
+Rediscover tools after upgrades. For stale workspace references, search again.
 
 ## Current release pair
 
-The checked stable pair, published October 5, 2026, is:
+The checked pair, published October 5, 2026:
 
-| Component | Release | Installed part |
-| --- | --- | --- |
-| Control | [0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) | Native command and agent adapters |
-| Host | [0.4.0](https://github.com/amichne/kast/releases/tag/host-v0.4.0) | IDEA plugin for release line `262` |
+| Component | Release | Source | Installed part |
+| --- | --- | --- | --- |
+| Control | [0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) | [`c2582dbf0`](https://github.com/amichne/kast/commit/c2582dbf0c3bbee83acc7db4f426d5836ece0710) | Command and adapters |
+| Host | [0.4.0](https://github.com/amichne/kast/releases/tag/host-v0.4.0) | [`d1305fe51`](https://github.com/amichne/kast/commit/d1305fe51e35855e65a1024ce88d094a90e8a341) | IDEA plugin for `262` |
 
-Control comes from [`c2582dbf0`](https://github.com/amichne/kast/commit/c2582dbf0c3bbee83acc7db4f426d5836ece0710); Host remains from [`d1305fe51`](https://github.com/amichne/kast/commit/d1305fe51e35855e65a1024ce88d094a90e8a341). Compatibility requires matching declared runtime protocol, operation registry, wire schema and capabilities, plus IDEA/Kotlin release-line admission. Equal version numbers do not establish compatibility.
+Compatibility requires matching runtime protocol, operation registry, wire schema, capabilities, and IDEA/Kotlin admission. Version equality establishes none of these.
 
-The default [installer](/start) selects the latest stable Control and Host independently and checks their contracts. To pin the checked pair with a downloaded [public installer](https://github.com/amichne/kast/blob/d1305fe51e35855e65a1024ce88d094a90e8a341/install.sh), run:
+The [installer](/start) selects stable components independently. With a downloaded public installer, pin the pair:
 
 ```shell
 bash install.sh --version 0.3.1 --host-version 0.4.0
 ```
 
-In paired mode, `--version` selects Control; `--host-version` selects Host. The previous Host 0.3.0 / Control 0.2.0 pair has a different wire contract, so upgrade both together. Restart IDEA and affected agents, then rediscover tools. A Control-only upgrade requires a running Host that declares the matching contract.
+`--version` selects Control; `--host-version` selects Host. The previous Host 0.3.0 / Control 0.2.0 pair requires both upgrades because its wire contract differs. Restart IDEA and affected agents.
 
-<Accordion title="Install only the IDEA plugin">
-  With a downloaded public installer, use:
+Control-only installation reuses a running Host with a matching contract. Host-only installation leaves Control in place:
 
-  ```shell
-  bash install.sh --host-only --version 0.4.0
-  ```
+```shell
+bash install.sh --host-only --version 0.4.0
+```
 
-  In Host-only mode, `--version` selects Host. This leaves Control in place; restart IDEA through its normal lifecycle. The installed Control must still match the Host's declared contract.
-</Accordion>
+In Host-only mode, `--version` selects Host. Restart IDEA; Control must still match its contract.
 
 ## Recorded examples and client limits
 
-The pinned query walkthroughs remain historical recordings. Their counts, offsets, and failure examples are evidence for the captured revision, not fresh validation of this release. Use [Query forms](/reference/api) and [Results](/reference/responses) for the current behavior, and the [generated schemas](/reference/schemas) for exact installed contracts. Never repair a stale reference by editing its version prefix.
+Walkthrough counts and offsets describe their captured revision. Use current [query forms](/reference/api) and [schemas](/reference/schemas) for inputs. Never edit a reference prefix to repair it.
 
-The Codex App Server integration remains a preview. See the
-[source-backed compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md)
-for its tested client boundary.
+Codex App Server remains a preview; inspect its [tested client boundary](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).

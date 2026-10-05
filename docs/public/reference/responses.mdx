@@ -4,86 +4,69 @@ description: "Check what a query found, whether it finished, and how to continue
 icon: "list-checks"
 ---
 
-Read the returned facts together with coverage and progress. A tool call can finish successfully while the query still has work to do.
+Read facts with coverage and progress. Transport completion does not establish semantic completion.
 
 ## Interpret coverage before making a claim
 
-| Semantic outcome | What it establishes |
+| Status | Meaning |
 | --- | --- |
-| `complete` | The operation covered its declared scope. |
-| `qualified` | The result contains stated limitations or unfinished work. |
-| `rejected` | Kast could not complete the request under its input or state requirements. |
+| `complete` | Declared scope covered. |
+| `qualified` | Stated limitations or unfinished work remain. |
+| `rejected` | Input or state requirements prevented completion. |
 
-Read the facts together with limitations, item failures, omissions, and progress. A qualified answer can establish specific callers without establishing that every caller was found. An empty qualified answer does not prove absence.
+Confirmed rows remain useful with qualifications. Empty qualified results do not prove absence. [Query forms](/reference/api#choose-the-result-you-need) defines symbol, occurrence, traversal, binding, and impact outputs.
 
-Diagnostics cover the reported IDEA analysis scope; they do not certify a whole-project build. For a source change, inspect its [receipt and recovery evidence](/change#read-the-receipt) separately: a rejected request or lost response does not prove that no write occurred.
-
-## What can come back
-
-| Result | Use it for |
-| --- | --- |
-| Symbols | Exact declarations, issued references, and selected name, location, signature, or source fields |
-| Occurrences | Individual use sites and relationship facts, including repeated uses |
-| Traversal records | Established relationship evidence with hop depth |
-| Binding rows | Named symbol cells produced by an inner join |
-
-See [Query forms](/reference/api) to choose an output or [Combine query results](/query-pipelines) to carry retained rows into another investigation.
+Diagnostics cover the reported IDEA scope. Source changes require their own [verification and recovery evidence](/change#read-the-receipt).
 
 ## Follow progress, not row count
 
-An empty page can still represent progress: Kast may have examined input that did not pass a filter. Use the reported outcome and progress to decide what to do next.
-
 ```mermaid
-%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
 flowchart TB
-  accTitle: Completion, resumable work, and terminal limits are different outcomes
-  accDescr: A complete result establishes coverage of its declared universe. A qualified result either carries a usable continuation or a terminal limitation. A rejected request requires its reported recovery action. Row count alone determines none of these states.
-  A("Read status and coverage") --> S{"Semantic outcome"}
-  S -->|Complete| C("Requested scope covered")
+  accTitle: Progress chooses the next action, regardless of row count
+  accDescr: Complete coverage supports conclusions within scope. Qualified progress either supplies a continuation or reports a terminal limit. Rejection requires recovery. Empty rows alone establish none of these states.
+  S{"Status and coverage"} -->|Complete| C["Conclude within declared scope"]
   S -->|Qualified| Q{"Reported progress"}
-  S -->|Rejected| F("Follow the recovery action")
-  Q -->|Resumable| R("Resume the issued continuation")
-  Q -->|Terminal| T("Keep facts and report the limit")
-  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
-  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
-  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
-  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
-  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
+  S -->|Rejected| F["Follow recovery action"]
+  Q -->|Resumable| R["RESUME issued continuation"]
+  Q -->|Terminal| T["Keep facts and report limit"]
   class C evidence;
   class Q,T limited;
   class R authority;
   class F rejected;
+  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
+  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
+  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
+  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-When progress is resumable, pass the issued continuation to `RESUME` to continue the saved query. If progress is terminal, keep the returned facts and read the reason it stopped. Follow its recovery guidance; a result limit alone does not mean a continuation exists.
+An empty page can advance filtered input. Follow issued `next_action`; a result limit does not guarantee a continuation.
 
-`READ_RESULT` reads saved rows without continuing the query. Choose the output type that matches the retained symbols, occurrences, traversal records, or binding rows, then use a result cursor to read another page. Reading every page leaves the query’s original coverage limits unchanged.
+| Operation | Advances | Handle |
+| --- | --- | --- |
+| `RESUME` | Saved execution | Execution continuation |
+| `READ_RESULT` | Presentation of stored rows | Result reference and optional cursor |
 
-`ALL_DECLARATIONS` saves unvisited files and its position in the active file. Rows returned, input examined, and scope covered measure different things. A small row count alone does not tell you how much work the query performed.
+Reading every retained page leaves original coverage unchanged. `ALL_DECLARATIONS` saves unvisited files and its position within the active file.
 
-Exact-name searches collect candidates within the work and byte allowances,
-independently of the output row limit. If five candidates fit those allowances,
-a two-row limit can return them across pages of two, two, and one without repeating
-discovery. A native discovery limit can still leave the final page incomplete;
-check its coverage after draining the continuation.
+Exact-name discovery collects candidates within work and byte allowances, independently of output row limits. Five admitted candidates can appear as pages of two, two, and one. Native discovery limits can still leave coverage incomplete.
 
-Replaying an already-published continuation returns the same semantic page and successor without repeating its scan. Concurrent use of unfinished execution can report `continuation-in-use`. If saved state expires, is evicted, or becomes stale, follow the reported recovery guidance.
+Replaying a published continuation returns the same page and successor without repeating the scan. Concurrent unfinished execution can report `continuation-in-use`.
 
 ## Carry the correct handle forward
 
-| Handle | Next use |
+| Handle | Use |
 | --- | --- |
-| Exact symbol `ref` | Start a fresh query from `SYMBOL_REFS`; Kast checks its identity against the current workspace state. |
-| Retained-result reference | Start from `RESULT`, combine with another retained input, or use `READ_RESULT`. |
-| Issued row ID | Select a row from its owning retained result. A subset does not prove coverage of omitted rows. |
-| Execution continuation | Use `RESUME` to continue stored unfinished work. |
-| Result cursor | Page through stored result rows, not semantic execution. |
+| Exact symbol `ref` | Fresh `SYMBOL_REFS` query with current identity checks. |
+| Retained-result reference | `RESULT`, composition, or `READ_RESULT`. |
+| Row ID | Select a row from its owning result. |
+| Execution continuation | `RESUME`. |
+| Result cursor | Page stored rows. |
 
-Pass each reference, continuation, or cursor unchanged. If Kast reports it as stale or unavailable, follow the recovery guidance. A query can return useful facts even when Kast cannot retain them for later use.
+Pass handles unchanged. Token spelling, names, and locations do not establish semantic identity. Row selection preserves evidence without proving coverage of excluded rows. Retention failure can prevent reuse without erasing returned facts.
 
 ## Compact and detailed output
 
-Omit `verbose` for compact output. Set `verbose: true` beside the tool’s arguments when you need execution details:
+Omit `verbose` for compact output. For execution details:
 
 ```json
 {
@@ -95,56 +78,38 @@ Omit `verbose` for compact output. Set `verbose: true` beside the tool’s argum
 }
 ```
 
-Compact output preserves semantic results, coverage, limitations, exact references, retained-result identities, continuation, and recovery evidence. It omits redundant fields and bookkeeping, not the limitations needed to interpret the answer. `"true"`, null, and numeric values are not accepted substitutes for a boolean.
+Compact output preserves facts, coverage, limitations, references, continuation, and recovery evidence. `verbose` accepts only a boolean.
 
-<Accordion title="Counts and bounded presentation">
-  `knownMinimum` refers to the logical query's final output, including rows already delivered. It is not a count of remaining presentation rows or unfiltered provider candidates.
-
-  Draining output pages does not remove semantic omissions or turn qualified coverage into complete coverage. Use a result cursor to read saved rows and an execution continuation to resume work.
-</Accordion>
-
-<Accordion title="Where the operation document sits in each transport">
-  Direct MCP puts the canonical semantic operation document itself in `result.structuredContent`; queries do not add a generic `partial` wrapper or nest that document under `data`. The support tool `health_check` has its own readiness schema. Tool RPC returns a top-level `type` and a `document` for completed, qualified, or rejected documents. Hosted App Server invocations have a `status` and, when completed, a `document`.
-
-  Integrators should use the [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog) contract rather than infer wrappers from a tutorial excerpt. The full contracts are collected on [Schemas and samples](/reference/schemas).
-</Accordion>
+`knownMinimum` counts logical final output, including delivered rows. It does not count remaining pages or unfiltered provider candidates.
 
 ## Saved state and identity
 
-<Accordion title="Workspace authority, read state, and lifetime">
-When you reuse a retained result or continuation, Kast checks its workspace, owning IDEA instance, read state, and lifetime.
-
 ```mermaid
-%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 24, "rankSpacing": 32}}}%%
 flowchart TB
-  accTitle: Kast checks retained state before reuse
-  accDescr: Kast checks the workspace, owning IDEA instance, read state, and lifetime of a retained result or continuation. Valid saved state restores the original facts and limits. Stale or unavailable state requires a fresh query.
-  A("Retained result or continuation") --> B("Check workspace, IDEA state, and lifetime")
-  B --> C{"Saved state still valid?"}
-  C -->|Yes| D("Restore original facts and limits")
-  C -->|No| E("Reject stale or unavailable state")
-  E --> F("Start a fresh investigation")
-  classDef default fill:transparent,stroke:#94A3B8,stroke-width:1.5px;
+  accTitle: Exact symbols and retained execution have different reuse rules
+  accDescr: Exact symbol references can undergo fresh compiler identity checks. Retained rows and continuations require their original workspace, host, read state, and lifetime. Invalid state requires a new query.
+  H{"Handle to reuse"} -->|Exact symbol| E["Fresh compiler identity check"]
+  H -->|Result or continuation| S["Check original workspace, host, epoch, lifetime"]
+  S --> V{"Valid and available?"}
+  V -->|Yes| R["Restore facts and qualifications"]
+  V -->|No| N["Reject; start fresh query"]
+  class E,S authority;
+  class R evidence;
+  class N rejected;
   classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
   classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
+  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
-  class B authority;
-  class D evidence;
-  class E rejected;
 ```
 
-Saved rows and unfinished work can be reused only while that state remains valid and available. A changed IDEA read epoch, expired or evicted entry, or different owner causes a rejection or unavailable result. A matching name or path cannot make the old result valid again.
+An exact symbol can undergo fresh revalidation. Retained results and continuations cannot migrate to another read state. Changed epochs, different owners, expiry, or eviction prevent reuse.
 
-A fresh read of an exact symbol may reacquire it and check its identity through the compiler. This is a new validation. Retained results and continuations cannot move to a different read state this way.
+Composition preserves input qualifications. `DIFFERENCE` and `ANTI` joins require complete right-hand coverage before establishing absence.
 
+<Accordion title="Where the operation document sits in each transport">
+Direct MCP places the canonical semantic document in `result.structuredContent`. `health_check` has a separate readiness shape. Tool RPC document variants carry `document`; hosted App Server completed invocations also carry `document`.
 
-</Accordion>
-
-<Accordion title="Evidence preserved by selection and composition">
-An exact symbol `ref`, a retained-result reference, an execution continuation, a result cursor, and a row ID have different meanings. Pass each unchanged to the operation that accepts it. Do not rebuild tokens, compare their spelling as semantic identity, or substitute a remembered source location.
-
-Selecting saved rows preserves their evidence, but says nothing about rows you excluded. Reference occurrences such as imports and aliases can belong to a file without an enclosing declaration. Kast keeps those use sites in the result without treating them as declarations that a call graph can expand.
+Decode with the [MCP](/reference/mcp-catalog), [Tool RPC](/reference/rpc-catalog), and [generated contracts](/reference/schemas).
 
 
-Combining results preserves their limitations. `DIFFERENCE` and an `ANTI` join remove symbols found in the right-hand input. That input must have complete coverage before Kast can conclude that a symbol is absent from it.
 </Accordion>
