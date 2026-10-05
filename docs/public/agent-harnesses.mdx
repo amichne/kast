@@ -85,7 +85,13 @@ The connection works when a Kast query returns a declaration with its location a
 Choose a function you expect to change, then replace `submitOrder` and `checkout` in this prompt with its name and module or directory:
 
 ```text wrap
-Use Kast to find submitOrder in the production Kotlin sources under checkout. If several declarations match, show their signatures and locations so I can choose. For the chosen function, find its callers and show the call sites. Report the scope searched, any unfinished work, and whether the result is complete.
+Use Kast to find submitOrder in the production Kotlin sources under checkout. Show matching signatures, locations, and coverage. Stop so I can choose the exact function.
+```
+
+Choose the result by its signature and file, then ask:
+
+```text wrap
+Use the exact reference for the function I selected to find its callers. Show the call sites and searched scope, and report any unfinished work.
 ```
 
 This gives you a starting list of places to inspect before changing that function. Confirmed callers are useful even when the search is incomplete; they are not a promise that every caller was found. [Find and trace code](/search) shows how to read the result and follow up.
