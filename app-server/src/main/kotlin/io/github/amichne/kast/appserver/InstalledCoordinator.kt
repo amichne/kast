@@ -291,14 +291,20 @@ private constructor(
         ): DesktopDiscoveryOutcome {
             if (target == DesktopDiscoveryTarget.NotRequired) return DesktopDiscoveryOutcome.Ready
             activity.started(BrokerStartupStage.DESKTOP_DISCOVERY)
-            return discovery.enable(target).also { outcome ->
-                when (outcome) {
-                    DesktopDiscoveryOutcome.Ready -> activity.completed(BrokerStartupStage.DESKTOP_DISCOVERY)
-                    is DesktopDiscoveryOutcome.Rejected ->
-                        activity.rejected(
-                            BrokerStartupStage.DESKTOP_DISCOVERY,
-                            BrokerStartupRejection.DesktopDiscovery(outcome.failure),
-                        )
+            return when (val outcome = discovery.enable(target)) {
+                DesktopDiscoveryOutcome.Ready -> {
+                    activity.completed(BrokerStartupStage.DESKTOP_DISCOVERY)
+                    outcome
+                }
+                is DesktopDiscoveryOutcome.Rejected -> {
+                    activity.rejected(
+                        BrokerStartupStage.DESKTOP_DISCOVERY,
+                        BrokerStartupRejection.DesktopDiscovery(outcome.failure),
+                    )
+                    when (val cleanup = CoordinatorReadinessPublisher.rollback(target, discovery, activity)) {
+                        DesktopDiscoveryOutcome.Ready -> outcome
+                        is DesktopDiscoveryOutcome.Rejected -> cleanup
+                    }
                 }
             }
         }

@@ -21,20 +21,28 @@ internal object CoordinatorReadinessPublisher {
             return CoordinatorReadinessPublication.Ready
         }
         activity.rejected(stage, BrokerStartupRejection.Coordinator(BrokerServerFailure.READINESS_REJECTED))
-        val cleanup = BrokerStartupStage.DESKTOP_DISCOVERY_CLEANUP
-        activity.started(cleanup)
         val failure =
-            when (val outcome = discovery.release(target)) {
-                DesktopDiscoveryOutcome.Ready -> {
-                    activity.completed(cleanup)
-                    BrokerServerFailure.READINESS_REJECTED
-                }
-                is DesktopDiscoveryOutcome.Rejected -> {
-                    activity.rejected(cleanup, BrokerStartupRejection.DesktopDiscovery(outcome.failure))
-                    BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED
-                }
+            when (rollback(target, discovery, activity)) {
+                DesktopDiscoveryOutcome.Ready -> BrokerServerFailure.READINESS_REJECTED
+                is DesktopDiscoveryOutcome.Rejected -> BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED
             }
         readiness.reject(failure)
         return CoordinatorReadinessPublication.Rejected(failure)
+    }
+
+    internal fun rollback(
+        target: DesktopDiscoveryTarget,
+        discovery: DesktopDaemonDiscovery,
+        activity: BrokerStartupActivityPublisher,
+    ): DesktopDiscoveryOutcome {
+        val stage = BrokerStartupStage.DESKTOP_DISCOVERY_CLEANUP
+        activity.started(stage)
+        return discovery.release(target).also { outcome ->
+            when (outcome) {
+                DesktopDiscoveryOutcome.Ready -> activity.completed(stage)
+                is DesktopDiscoveryOutcome.Rejected ->
+                    activity.rejected(stage, BrokerStartupRejection.DesktopDiscovery(outcome.failure))
+            }
+        }
     }
 }

@@ -234,6 +234,8 @@ class DesktopDaemonDiscoveryTest {
                     BrokerStartupStage.DESKTOP_DISCOVERY,
                     BrokerStartupRejection.DesktopDiscovery(DesktopDiscoveryFailure.ENVIRONMENT_CONFLICT),
                 ),
+                BrokerStartupActivity.Started(BrokerStartupStage.DESKTOP_DISCOVERY_CLEANUP),
+                BrokerStartupActivity.Completed(BrokerStartupStage.DESKTOP_DISCOVERY_CLEANUP),
             ),
             events,
         )

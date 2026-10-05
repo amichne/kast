@@ -135,6 +135,54 @@ class DesktopDiscoveryActivationTest {
     }
 
     @Test
+    fun `failed publication read back rolls back the introduced flag`(@TempDir temporary: Path) {
+        rejectPublication(temporary.toRealPath(), "remove", DesktopDiscoveryFailure.COMMAND_TIMED_OUT, false)
+    }
+
+    @Test
+    fun `failed publication rollback preserves both causes and ownership`(@TempDir temporary: Path) {
+        rejectPublication(temporary.toRealPath(), "remove:REJECTED", DesktopDiscoveryFailure.COMMAND_REJECTED, true)
+    }
+
+    private fun rejectPublication(root: Path, removal: String, failure: DesktopDiscoveryFailure, retains: Boolean) {
+        val target = target(root)
+        val steps =
+            listOf("home", "read:ABSENT", "enable", "read:REJECTED", "read:ENABLED", removal) +
+                if (retains) emptyList() else listOf("read:ABSENT")
+        val script = Script(DesktopDaemonHomeRead.Default, *steps.toTypedArray())
+        val activities = mutableListOf<BrokerStartupActivity>()
+        val activity =
+            BrokerStartupActivityPublisher(
+                BrokerStartupActivitySink {
+                    activities += it
+                    BrokerStartupActivityPublication.PUBLISHED
+                }
+            )
+        assertEquals(
+            DesktopDiscoveryOutcome.Rejected(failure),
+            InstalledCoordinator.publishDesktopDiscovery(target, activity, DesktopDaemonDiscovery(script)),
+        )
+        assertEquals(retains, Files.exists(record(target)))
+        assertTrue(
+            activities.contains(
+                BrokerStartupActivity.Rejected(
+                    BrokerStartupStage.DESKTOP_DISCOVERY,
+                    BrokerStartupRejection.DesktopDiscovery(DesktopDiscoveryFailure.COMMAND_TIMED_OUT),
+                )
+            )
+        )
+        val cleanup =
+            if (retains)
+                BrokerStartupActivity.Rejected(
+                    BrokerStartupStage.DESKTOP_DISCOVERY_CLEANUP,
+                    BrokerStartupRejection.DesktopDiscovery(DesktopDiscoveryFailure.COMMAND_REJECTED),
+                )
+            else BrokerStartupActivity.Completed(BrokerStartupStage.DESKTOP_DISCOVERY_CLEANUP)
+        assertTrue(activities.contains(cleanup))
+        script.exhausted()
+    }
+
+    @Test
     fun `home adapter rejects malformed and failed observations`() {
         assertEquals(DesktopDaemonHomeRead.Default, LaunchdDesktopDaemonEnvironment.interpretHome(0, ""))
         val configured = LaunchdDesktopDaemonEnvironment.interpretHome(0, "/tmp/codex\n")
@@ -223,6 +271,8 @@ class DesktopDiscoveryActivationTest {
 
         override fun read(): DesktopDaemonEnvironmentRead {
             val next = remaining.removeFirstOrNull() ?: throw AssertionError("Unexpected flag observation")
+            if (next == "read:REJECTED")
+                return DesktopDaemonEnvironmentRead.Rejected(DesktopDiscoveryFailure.COMMAND_TIMED_OUT)
             assertTrue(next.startsWith("read:"), "Unexpected flag observation: $next")
             return DesktopDaemonEnvironmentRead.Observed(DesktopDaemonSetting.valueOf(next.removePrefix("read:")))
         }

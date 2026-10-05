@@ -95,7 +95,7 @@ mutation. Disablement, the uninstall path's existing disable call, and destructi
 repair remove an owned flag only if it is still `1`; a pre-existing enabled flag
 or a subsequent change is preserved. Unknown ownership and failed read-back proof
 fail closed. A vanished pre-existing flag is not republished with discarded
-ownership. Rejected final readiness rolls discovery back and preserves both
+ownership. Rejected discovery publication or final readiness rolls discovery back and preserves both
 readiness and cleanup rejection evidence if rollback fails. Replacement retires
 the admitted predecessor’s discovery before changing identity or switching to
 private mode, with recovery through the exact prior launch receipt. Stopping

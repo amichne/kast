@@ -56,9 +56,12 @@ stop retains discovery for the existing login job; disablement removes it.
 A replacement retires the proven predecessor’s discovery before publishing its
 new identity, including when switching to private mode. An owned launch receipt
 permits cleanup recovery when predecessor readiness is already absent; failed
-cleanup blocks replacement and preserves the receipt for retry. Rejected final
+cleanup blocks replacement and preserves the receipt for retry. Rejected discovery publication or final
 readiness rolls back published discovery; a failed rollback retains its exact
-cleanup cause and ownership record.
+cleanup cause and ownership record. Stop and disablement recover the exact
+published launch command before stopping; disablement keeps that admitted
+identity through discovery cleanup and login-agent removal even if settings
+have since changed.
 
 Already running desktop processes retain their launch environment. Quit and
 reopen the app after installation to obtain the flag. An already existing
