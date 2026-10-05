@@ -125,7 +125,7 @@ def expected_occurrences(root, oracle, target, production):
     return Counter(expected)
 
 
-def check_mapping(observation, oracle):
+def check_mapping(observation, oracle, invocation=True):
     if oracle.binding != 'BOUND':
         return
     receiver, parameter, expression = RECEIVERS[oracle.owner]
@@ -146,7 +146,7 @@ def check_mapping(observation, oracle):
     parameter_text = modifier + parameter + ': () -> ' + ('Result' if oracle.owner == 'read' else 'String')
     parameter_start = len(text[:text.index(parameter_text, start, end)].encode('utf-16-le')) // 2
     assert bounds == dict(startInclusive=parameter_start, endExclusive=parameter_start + len(parameter_text)), (parameter_site, parameter_text)
-    if expression:
+    if expression and invocation:
         offset = text.index(expression, start, end)
         utf16 = len(text[:offset].encode('utf-16-le')) // 2
         assert Counter(site_key(i['occurrence']) for i in observation['flow']['invocations']) == Counter([
@@ -181,7 +181,7 @@ def callable_name(value):
     return value['compiler_target']['name']
 
 
-def check(observation, oracle, target):
+def check(observation, oracle, target, budget=None):
     assert callable_name(observation['target']) == target, observation
     assert callable_name(observation['lexical_owner']) == oracle.owner, observation
     policy = observation['named_policy']
@@ -219,12 +219,20 @@ def check(observation, oracle, target):
     assert flow['binding']['type'] == oracle.binding, flow
     if oracle.owner in ('selectedParameterCallback', 'uninvokedParameterCallback'):
         assert flow['binding']['position'] == (1 if oracle.owner == 'selectedParameterCallback' else 0), flow
-    assert bool(flow['invocations']) == oracle.invocation, flow
-    check_mapping(observation, oracle)
+    # Authored scans retain the outer anonymous owner or immutable alias before
+    # their invocation. These two facts share one result allowance.
+    one_result = budget is not None and budget.maxResults == 1
+    invocation_limited = one_result and oracle.owner in (
+        'nestedInline', 'unsupportedOuter', 'storedParameterCallback')
+    expected_invocation = oracle.invocation and not invocation_limited
+    assert bool(flow['invocations']) == expected_invocation, flow
+    check_mapping(observation, oracle, expected_invocation)
+    if invocation_limited:
+        assert {'RESULT_LIMIT_REACHED', 'NO_INVOCATION_PROVEN'} <= set(flow['obligations']), flow
     if oracle.obligation:
         expected_causes = (oracle.obligation,) if isinstance(oracle.obligation, str) else oracle.obligation
         assert set(expected_causes) & set(flow['obligations']), flow
-    if oracle.owner == 'storedParameterCallback':
+    if oracle.owner == 'storedParameterCallback' and expected_invocation:
         assert any(i.get('callable_transfers') for i in flow['invocations']), flow
     for invocation in flow['invocations']:
         assert invocation['occurrence']['candidateSelector']
@@ -240,6 +248,10 @@ def check(observation, oracle, target):
     if primary_supply:
         anonymous_owners.append(dict(type='ANONYMOUS', **flow['body']))
     expected_owners = {site_key(owner['occurrence']) for owner in anonymous_owners if owner['type'] == 'ANONYMOUS'}
+    # The production read retains its invocation before its anonymous owner.
+    if one_result and oracle.owner == 'read':
+        expected_owners = set()
+        assert 'RESULT_LIMIT_REACHED' in flow['obligations'], flow
     owner_bindings = flow['owner_bindings']
     assert {site_key(owner['body']['occurrence']) for owner in owner_bindings} == expected_owners, flow
     if oracle.owner in ('nestedInline', 'unsupportedOuter'):
@@ -479,7 +491,7 @@ def qualify(args, budget, output, validator, session=None):
             expected = expected_occurrences(args.root, oracle, target, args.production)
             assert Counter(site_key(o['occurrence']) for o in matched) == expected, (oracle.owner, 'CALLERS', matched, expected)
             for observation in matched:
-                check(observation, oracle, target)
+                check(observation, oracle, target, budget)
                 inspect_observation(observation)
             declaration = matched[0]['lexical_owner']['declaration']
             source = dict(type='AT_LOCATION', file=str(Path(declaration['file']).relative_to(args.root)),
@@ -488,7 +500,7 @@ def qualify(args, budget, output, validator, session=None):
             callee_observations = [o for o in observations(pages) if callable_name(o['target']) == target]
             assert Counter(site_key(o['occurrence']) for o in callee_observations) == expected, (oracle.owner, 'CALLEES', callee_observations, expected)
             for observation in callee_observations:
-                check(observation, oracle, target)
+                check(observation, oracle, target, budget)
             checks.append(dict(owner=oracle.owner, walk=walk, matchedOccurrences=len(matched),
                                bindingCauses=[o['flow']['binding'].get('cause') for o in matched],
                                obligations=[o['flow']['obligations'] for o in matched]))
