@@ -25,6 +25,35 @@ class IdeLifecycleStateTest {
     private fun project(ownership: IdeProjectOwnership) = state.observe(UUID.randomUUID(), root, ownership)
 
     @Test
+    fun `completed open history reaches capacity while preserving exact replay and protected project`() {
+        val bounded = IdeLifecycleState(UUID.fromString("00000000-0000-0000-0000-000000000001"), capacity = 2)
+        val target =
+            bounded.observe(UUID.fromString("00000000-0000-0000-0000-000000000002"), root, IdeProjectOwnership.BORROWED)
+        val opened = IdeLifecycleResult.Opened(target)
+        val first =
+            IdeLifecycleCommand.Open(
+                host = bounded.host.toString(),
+                requestId = "first",
+                client = client.value,
+                root = root.value,
+            )
+        listOf(first, first.copy(requestId = "second")).forEach { command ->
+            val id = LifecycleRequest(command.requestId)
+            assertInstanceOf(LifecycleSubmission.Start::class.java, bounded.begin(command, id, client))
+            bounded.complete(id, opened)
+            assertEquals(opened, bounded.status(id))
+        }
+        val before = bounded.inspect()
+        assertEquals(
+            LifecycleSubmission.Existing(IdeLifecycleResult.Blocked(IdeLifecycleFailure.CAPACITY)),
+            bounded.begin(first.copy(requestId = "third"), LifecycleRequest("third"), client),
+        )
+        assertEquals(LifecycleSubmission.Existing(opened), bounded.begin(first, LifecycleRequest("first"), client))
+        assertEquals(before, bounded.inspect())
+        assertEquals(IdeProjectOwnership.BORROWED, bounded.inspect().single().ownership)
+    }
+
+    @Test
     fun `refresh rule configuration keeps exact project and request identity`() {
         val target = project(IdeProjectOwnership.BORROWED)
         val rule = WorkspaceRefreshRule.TaskSuccess(":generateSources", WorkspaceRefreshEffect.FILE_REFRESH)

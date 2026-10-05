@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.cli.direct.DirectToolRegistration
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.directSupportTools
@@ -12,6 +13,7 @@ import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.cli.mcp.KastMcpServer
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.AgentToolName
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
@@ -37,6 +39,40 @@ import org.junit.jupiter.api.io.TempDir
 
 class KastToolRpcBridgeTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `one shot invocation preserves canonical admission without projecting a catalog`() {
+        val name = (AgentToolName.parse(PublicToolIdentity.QUERY_SYMBOLS.toolName) as Refinement.Refined).value
+        Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val root = (FilesystemCanonicalRootDiscovery.discover(temporary) as CanonicalRootDiscovery.Discovered).root
+        val document = CanonicalJsonDocument.generated(TestResult.serializer()).create(TestResult())
+        var invocations = 0
+        var preparations = 0
+        val session =
+            KastDirectToolSession(
+                registration =
+                    DirectToolRegistration(setOf(name)) { error("Invocation must not build discovery schemas") },
+                root = { CanonicalRootDiscovery.Discovered(root) },
+                start = {
+                    preparations++
+                    Refinement.Refined(Unit)
+                },
+                invokePublic = { admitted ->
+                    assertEquals(PublicToolIdentity.QUERY_SYMBOLS, admitted.identity)
+                    invocations++
+                    CliExit.Complete(document)
+                },
+            )
+        val bridge = KastToolRpcBridge(session)
+        assertEquals(ToolRpcReply.Rejected(ToolRpcFailure.UNKNOWN_TOOL), bridge.call("missing", "["))
+        assertEquals(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS), bridge.call(name.value, "["))
+        assertInstanceOf(
+            ToolRpcReply.Complete::class.java,
+            bridge.call(name.value, publicExample(PublicToolIdentity.QUERY_SYMBOLS, "runByName")),
+        )
+        assertEquals(1, invocations)
+        assertEquals(1, preparations)
+    }
 
     @Test
     fun `MCP and RPC catalogs preserve the same installed input schemas`() {

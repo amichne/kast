@@ -14,6 +14,8 @@ legacy command graph retained for migration, and hosted output projections.
 - [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installation service control with typed rejection output.
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - installed Kast stdio MCP transport and session tool dispatch.
 - [KastDirectToolSession.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt) - shared direct IDEA tool composition for MCP and harness-neutral RPC.
+- [DirectToolRegistration.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt) - compiled registration authority and deferred discovery catalog projection.
+- [DirectToolStageObservation.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolStageObservation.kt) - opt-in bounded JFR stage/outcome events for direct tool startup and invocation.
 - [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - one-shot catalog and invocation boundary for agent extensions.
 - [McpWire.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWire.kt) - typed MCP discovery, request, and result envelopes.
 - [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-validated MCP result envelopes and concise health and validation summaries.

@@ -5,10 +5,12 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeStage
 import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
+import io.github.amichne.kast.appserver.ide.observeExistingIdeStage
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.runtime.JsonLineWorkspacePreparationObserver
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
@@ -69,7 +71,13 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): M
     val preparations =
         WorkspacePreparations(
             CoroutineScope(SupervisorJob() + dispatcher),
-            { request -> runInterruptible(dispatcher) { lifecycle.execute(request, "kast-mcp") } },
+            { request ->
+                runInterruptible(dispatcher) {
+                    observeExistingIdeStage(ExistingIdeStage.LIFECYCLE_PREPARATION) {
+                        lifecycle.execute(request, "kast-mcp")
+                    }
+                }
+            },
             observer = JsonLineWorkspacePreparationObserver(System.err),
         )
     val demand =
@@ -77,10 +85,12 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): M
             preparations,
             {
                 runInterruptible(dispatcher) {
-                    lifecycle.execute(
-                        io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.Inspect,
-                        "kast-mcp",
-                    )
+                    observeExistingIdeStage(ExistingIdeStage.LIFECYCLE_INSPECTION) {
+                        lifecycle.execute(
+                            io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.Inspect,
+                            "kast-mcp",
+                        )
+                    }
                 }
             },
             { workspace, operation -> runInterruptible(dispatcher) { native.queryPrepared(workspace, operation) } },
