@@ -83,9 +83,12 @@ class InstallationRequestTest {
     }
 
     @Test
-    fun `endpoint defaults to private and rejects unknown explicit selections`() {
+    fun `endpoint defaults to codex control and rejects unknown explicit selections`() {
         val default = InstallationRequest.parse(validEnvironment()) as Refinement.Refined
-        assertEquals(io.github.amichne.kast.appserver.BrokerPublicEndpointMode.PRIVATE, default.value.publicEndpoint)
+        assertEquals(
+            io.github.amichne.kast.appserver.BrokerPublicEndpointMode.CODEX_CONTROL,
+            default.value.publicEndpoint,
+        )
         for (invalid in listOf("", "unknown")) {
             assertEquals(
                 Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.PUBLIC_ENDPOINT)),

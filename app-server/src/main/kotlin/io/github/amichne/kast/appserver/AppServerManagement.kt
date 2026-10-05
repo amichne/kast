@@ -80,6 +80,7 @@ enum class AppServerManagementFailure {
     DESKTOP_VERSION_UNSUPPORTED,
     DESKTOP_UNAVAILABLE,
     DESKTOP_INSPECTION_REJECTED,
+    DESKTOP_DISCOVERY_REJECTED,
     ENROLLMENT_REJECTED,
     SERVICE_UNAVAILABLE,
     SERVICE_OWNERSHIP_UNPROVEN,
@@ -213,26 +214,26 @@ class InstalledAppServerManager(
                 AppServerAction.Status -> readAppServerStatus(kast, command, enrollment)
                 AppServerAction.Stop,
                 AppServerAction.Disable -> {
-                    if (
-                        action == AppServerAction.Disable &&
-                            ServiceLoginAgent.observe(command) == ServiceLoginAgentObservation.REJECTED
-                    )
-                        return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-                    val host = MacOsPersistentBrokerServiceHost()
-                    val first = host.stop(command)
-                    val stopped =
-                        if (first is PersistentBrokerServiceAdmission.Rejected) {
-                            PublishedBrokerServiceCommand.recover(command)?.let(host::stop) ?: first
-                        } else first
-                    if (stopped is PersistentBrokerServiceAdmission.Rejected) {
-                        return AppServerManagementResult.Rejected(
-                            AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN,
-                            stopped.failure,
-                        )
-                    }
-                    if (action == AppServerAction.Disable) {
-                        if (ServiceLoginAgent.remove(command) == ServiceLoginAgentChange.REJECTED)
-                            return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
+                    val mode =
+                        if (action == AppServerAction.Disable) BrokerServiceDeactivationMode.DISABLE
+                        else BrokerServiceDeactivationMode.STOP
+                    when (val result = BrokerServiceDeactivation().execute(command, mode)) {
+                        is Refinement.Refined -> Unit
+                        is Refinement.Rejected ->
+                            return when (val failure = result.failure) {
+                                is BrokerServiceDeactivationFailure.Service ->
+                                    AppServerManagementResult.Rejected(
+                                        AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN,
+                                        failure.cause,
+                                    )
+                                is BrokerServiceDeactivationFailure.Discovery ->
+                                    AppServerManagementResult.Rejected(
+                                        AppServerManagementFailure.DESKTOP_DISCOVERY_REJECTED,
+                                        PersistentBrokerServiceFailure.DESKTOP_DISCOVERY_REJECTED,
+                                    )
+                                BrokerServiceDeactivationFailure.LoginOwnership ->
+                                    reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
+                            }
                     }
                     complete(if (action == AppServerAction.Stop) "stopped" else "disabled")
                 }

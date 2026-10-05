@@ -19,11 +19,15 @@ internal enum class BrokerStartupStage {
     UPSTREAM,
     PUBLIC_SERVER,
     NATIVE_PROTOCOL,
+    DESKTOP_DISCOVERY,
+    DESKTOP_DISCOVERY_CLEANUP,
     READINESS_PUBLICATION,
 }
 
 /** Closed startup rejection evidence, retaining a Codex protocol's exact finite cause. */
 internal sealed interface BrokerStartupRejection {
+    data class DesktopDiscovery(val failure: DesktopDiscoveryFailure) : BrokerStartupRejection
+
     data class Coordinator(val failure: BrokerServerFailure) : BrokerStartupRejection
 
     data class HostAdmission(val failure: InstalledBrokerServerConfigurationFailure) : BrokerStartupRejection
@@ -118,6 +122,7 @@ private fun BrokerStartupStage.wireName(): String = name.lowercase().replace('_'
 
 private fun BrokerStartupRejection.wireName(): String =
     when (this) {
+        is BrokerStartupRejection.DesktopDiscovery -> "desktop-discovery-${failure.name.lowercase().replace('_', '-')}"
         is BrokerStartupRejection.Coordinator -> "coordinator-${failure.name.lowercase().replace('_', '-')}"
         is BrokerStartupRejection.HostAdmission -> "host-admission-${failure.name.lowercase().replace('_', '-')}"
         is BrokerStartupRejection.Upstream -> "upstream-${failure.name.lowercase().replace('_', '-')}"

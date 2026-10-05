@@ -15,6 +15,14 @@ import org.junit.jupiter.api.io.TempDir
 
 class BrokerPublicEndpointTest {
     @Test
+    fun `implicit endpoint selects the standard Codex control socket`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val command = resolvedCommand(fixture)
+        assertTrue(command.publicEndpoint is BrokerPublicEndpoint.CodexControl)
+        assertEquals(fixture.home.resolve(".codex/app-server-control/app-server-control.sock"), command.publicSocket)
+    }
+
+    @Test
     fun `incumbent canonical endpoint rejects before protocol probing and permits startup after removal`(
         @TempDir temporary: Path
     ) {
@@ -90,8 +98,9 @@ class BrokerPublicEndpointTest {
     }
 
     @Test
-    fun `default endpoint is installation owned despite an occupied native Codex endpoint`(@TempDir temporary: Path) {
-        val fixture = installedFixture(temporary)
+    fun `explicit private endpoint coexists with an occupied native Codex endpoint`(@TempDir temporary: Path) {
+        val initial = installedFixture(temporary)
+        val fixture = initial.copy(environment = initial.environment + ("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"))
         val native = fixture.home.resolve(".codex/app-server-control/app-server-control.sock")
         Files.createDirectories(native.parent)
         Files.writeString(native, "foreign-owner")

@@ -61,8 +61,11 @@ class ServiceLoginAgentTest {
         executable(Files.createDirectories(product.resolve("share/kast/libexec")).resolve("kast-daemon"))
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val emptyBin = Files.createDirectory(temporary.resolve("empty-bin"))
-        return (BrokerServiceLaunchCommand.resolveCoordinator(kast, home, mapOf("PATH" to emptyBin.toString()))
-                as BrokerServiceLaunchCommandResolution.Resolved)
+        return (BrokerServiceLaunchCommand.resolveCoordinator(
+                kast,
+                home,
+                mapOf("PATH" to emptyBin.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
+            ) as BrokerServiceLaunchCommandResolution.Resolved)
             .command
     }
 

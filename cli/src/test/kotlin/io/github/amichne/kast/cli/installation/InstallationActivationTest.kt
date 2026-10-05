@@ -122,7 +122,7 @@ class InstallationActivationTest {
         assertTrue(Files.exists(selected.resolve("installation.json")))
         assertFalse(Files.readString(selected.resolve("config/environment")).contains("KAST_ENABLE_APP_SERVER"))
         val configuration = Files.readString(selected.resolve("config/environment"))
-        assertTrue(configuration.contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=private"))
+        assertTrue(configuration.contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control"))
         val identity = Files.readString(selected.resolve("installation.json"))
         Files.createFile(home.resolve("activation-ready"))
         val resume =

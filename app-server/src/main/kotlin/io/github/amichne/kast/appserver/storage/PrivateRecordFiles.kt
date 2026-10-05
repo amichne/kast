@@ -88,6 +88,15 @@ private constructor(
         }
     }
 
+    /** Removes only a verified private record directly inside this admitted store. */
+    fun remove(path: Path) {
+        if (path.parent != root) throw IOException("Record outside store rejected")
+        requireDirectory(root)
+        requireFile(path)
+        Files.delete(path)
+        force(root)
+    }
+
     fun <T> locked(block: () -> Refinement<T, Failure>): Refinement<T, Failure> = guarded {
         requireDirectory(root)
         val lockPath = root.resolve(".lock")

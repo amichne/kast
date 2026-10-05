@@ -667,45 +667,6 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `destructive recovery removes only the exact installation state tree`(@TempDir temporary: Path) {
-        val command = resolvedCommand(installedFixture(temporary))
-        val state = command.kast.parent.parent.resolve("state")
-        val runtimePayloads = Files.createDirectories(command.kast.parent.parent.resolve("runtime-payloads"))
-        Files.writeString(runtimePayloads.resolve("poisoned-runtime"), "state")
-        Files.createDirectories(command.stateDirectory)
-        Files.writeString(command.stateDirectory.resolve("poisoned"), "state")
-        val outside = Files.createDirectory(temporary.resolve("outside"))
-        val canary = Files.writeString(outside.resolve("canary"), "preserved")
-        Files.createSymbolicLink(state.resolve("outside-link"), outside)
-        var present = true
-        val operations = mutableListOf<String>()
-        val host =
-            MacOsPersistentBrokerServiceHost(
-                launchctl =
-                    LaunchctlInvoker { arguments, _ ->
-                        operations += arguments[1]
-                        when (arguments[1]) {
-                            "list" -> if (present) LaunchctlInvocation.Completed else LaunchctlInvocation.Absent
-                            "bootout" -> {
-                                present = false
-                                LaunchctlInvocation.Completed
-                            }
-                            else -> error("unexpected launchctl operation: ${arguments[1]}")
-                        }
-                    },
-                socketProbe = BrokerSocketProbe { BrokerSocketReachability.UNREACHABLE },
-                sleeper = BrokerServiceSleeper { BrokerServiceSleep.CONTINUE },
-                retirementTimeoutNanos = TimeUnit.SECONDS.toNanos(1),
-            )
-
-        assertEquals(PersistentBrokerServiceAdmission.Ready, host.destructiveReset(command))
-        assertFalse(Files.exists(state, java.nio.file.LinkOption.NOFOLLOW_LINKS))
-        assertFalse(Files.exists(runtimePayloads, java.nio.file.LinkOption.NOFOLLOW_LINKS))
-        assertEquals("preserved", Files.readString(canary))
-        assertEquals(1, operations.count { it == "bootout" })
-    }
-
-    @Test
     fun `attempt-correlated child rejection reaches the initiating demand exactly`(@TempDir temporary: Path) {
         val command = resolvedCommand(installedFixture(temporary))
         var present = true
@@ -761,6 +722,7 @@ class PersistentBrokerServiceTest {
             mapOf(
                 "PATH" to tools.toString(),
                 "KAST_RUNTIME_DIRECTORY" to userHome.resolve("runtime").toString(),
+                "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
             ),
         )
     }

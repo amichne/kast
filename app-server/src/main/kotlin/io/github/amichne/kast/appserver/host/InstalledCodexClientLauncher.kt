@@ -38,6 +38,7 @@ enum class CodexClientLaunchFailure {
     DAEMON_ARGUMENTS_REJECTED,
     APP_SERVER_CONFIGURATION_REJECTED,
     APP_SERVER_UNAVAILABLE,
+    DESKTOP_DISCOVERY_REJECTED,
     DESKTOP_UNAVAILABLE,
     FACADE_UNAVAILABLE,
     DESKTOP_OVERRIDE_CONFLICT,
@@ -368,6 +369,7 @@ private fun PersistentBrokerServiceFailure.launchFailure(): CodexClientLaunchFai
         PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT,
         PersistentBrokerServiceFailure.STARTUP_TIMED_OUT -> CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE
         PersistentBrokerServiceFailure.INTERRUPTED -> CodexClientLaunchFailure.INTERRUPTED
+        PersistentBrokerServiceFailure.DESKTOP_DISCOVERY_REJECTED -> CodexClientLaunchFailure.DESKTOP_DISCOVERY_REJECTED
     }
 
 fun installedCodexClientLauncher(kastExecutable: Path, userHome: Path): CodexClientLauncher {
