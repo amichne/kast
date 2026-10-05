@@ -35,6 +35,8 @@ Run this in a terminal:
 
 The installer installs the matched IDEA plugin, Kast-owned services, and the native `kast` management command. It may offer to connect Codex during interactive setup; you can choose or change your agent afterward.
 
+By default it selects the latest stable command and IDEA plugin releases independently and checks that their contracts match. Their version numbers can differ.
+
 Installer output shows progress and readable failure reasons. To include structured diagnostic reports, append `-- --verbose` to the command above.
 
 Restart IntelliJ IDEA to load the plugin, then check the installation:
@@ -57,6 +59,16 @@ Look for the installed version and installation path. A recorded connection is n
   ```shell wrap
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
   ```
+</Accordion>
+
+<Accordion title="Install a specific release pair">
+  The checked pair is [Control 0.3.0 and Host 0.4.0](/reference/compatibility#current-release-pair). Control provides the native command; Host provides the IDEA plugin. Select each version separately:
+
+  ```shell wrap
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.0 --host-version 0.4.0
+  ```
+
+  In a paired install, `--version` selects Control and `--host-version` selects Host. Restart IDEA and your agent after installation.
 </Accordion>
 
 ## Next: connect your agent

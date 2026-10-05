@@ -19,9 +19,36 @@ Tool schemas and exact `ref` values are bound to their installed runtime
 and admitted workspace. Rediscover tools after an upgrade; search again
 when a reference is stale.
 
-## Current release and recorded examples
+## Current release pair
 
-The latest release checked for this documentation update is [Kast v0.48.0](https://github.com/amichne/kast/releases/tag/v0.48.0), published September 30, 2026, from [`ce91aad`](https://github.com/amichne/kast/commit/ce91aad64974f69de076412891e31c543ac9be95). It includes the progressive semantic-read changes and a breaking pre-1.0 schema migration. Upgrade the matched installation, restart affected clients, and rediscover their tools rather than carrying an older catalog across the boundary.
+The checked stable pair, published October 5, 2026, is:
+
+| Component | Release | Installed part |
+| --- | --- | --- |
+| Control | [0.3.0](https://github.com/amichne/kast/releases/tag/control-v0.3.0) | Native command and agent adapters |
+| Host | [0.4.0](https://github.com/amichne/kast/releases/tag/host-v0.4.0) | IDEA plugin for release line `262` |
+
+Both releases come from [`d1305fe51`](https://github.com/amichne/kast/commit/d1305fe51e35855e65a1024ce88d094a90e8a341). Compatibility requires matching declared runtime protocol, operation registry, wire schema and capabilities, plus IDEA/Kotlin release-line admission. Equal version numbers do not establish compatibility.
+
+The default [installer](/start) selects the latest stable Control and Host independently and checks their contracts. To pin the checked pair with a downloaded [public installer](https://raw.githubusercontent.com/amichne/kast/main/install.sh), run:
+
+```shell
+bash install.sh --version 0.3.0 --host-version 0.4.0
+```
+
+In paired mode, `--version` selects Control; `--host-version` selects Host. The previous Host 0.3.0 / Control 0.2.0 pair has a different wire contract, so upgrade both together. Restart IDEA and affected agents, then rediscover tools. A Control-only upgrade requires a running Host that declares the matching contract.
+
+<Accordion title="Install only the IDEA plugin">
+  With a downloaded public installer, use:
+
+  ```shell
+  bash install.sh --host-only --version 0.4.0
+  ```
+
+  In Host-only mode, `--version` selects Host. This leaves Control in place; restart IDEA through its normal lifecycle. The installed Control must still match the Host's declared contract.
+</Accordion>
+
+## Recorded examples and client limits
 
 The pinned query walkthroughs remain historical recordings. Their counts, offsets, and failure examples are evidence for the captured revision, not fresh validation of this release. Use [Query forms](/reference/api) and [Results](/reference/responses) for the current behavior, and the [generated schemas](/reference/schemas) for exact installed contracts. Never repair a stale reference by editing its version prefix.
 
