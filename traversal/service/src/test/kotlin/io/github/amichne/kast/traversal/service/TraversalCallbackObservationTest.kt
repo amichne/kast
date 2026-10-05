@@ -128,6 +128,94 @@ class TraversalCallbackObservationTest {
         assertSame(CallbackNamedCallPolicy.AdmittedInline, result.page.callbackObservations.single().observation.policy)
     }
 
+    @Test
+    fun `self cycle retains its edge without rereading seed callback above depth zero`() {
+        val requests = mutableListOf<RelationRequest>()
+        val plan = fixture.plan(owner, depth = 3)
+        val operations =
+            traversalOperations(
+                RelationOperations { request ->
+                    requests += request
+                    cyclicResult(request, listOf(owner))
+                },
+                TraversalNanoClock { 0L },
+            )
+        val result = assertInstanceOf(TraversalResult.Complete::class.java, runSuspend { operations.run(plan) })
+        assertEquals(listOf(owner.fingerprint.value), requests.map { it.subject.fingerprint.value })
+        assertEquals(listOf(1), result.page.records.map { it.depth.value })
+        assertEquals(owner.fingerprint.value, result.page.records.single().related.fingerprint.value)
+        assertEquals(listOf(0), result.page.callbackObservations.map { it.entry.depth.value })
+        assertEquals(owner.fingerprint.value, result.page.callbackObservations.single().entry.node.fingerprint.value)
+    }
+
+    @Test
+    fun `two node cycle retains return to seed edge but callback seed is still read only at depth zero`() {
+        val requests = mutableListOf<RelationRequest>()
+        val plan = fixture.plan(owner, depth = 3)
+        val operations =
+            traversalOperations(
+                RelationOperations { request ->
+                    requests += request
+                    cyclicResult(
+                        request,
+                        listOf(if (request.subject.fingerprint.value == owner.fingerprint.value) target else owner),
+                    )
+                },
+                TraversalNanoClock { 0L },
+            )
+        val result = assertInstanceOf(TraversalResult.Complete::class.java, runSuspend { operations.run(plan) })
+        assertEquals(
+            listOf(owner.fingerprint.value, target.fingerprint.value),
+            requests.map { it.subject.fingerprint.value },
+        )
+        assertEquals(listOf(1, 2), result.page.records.map { it.depth.value })
+        assertEquals(owner.fingerprint.value, result.page.records.last().related.fingerprint.value)
+        assertEquals(listOf(0, 1), result.page.callbackObservations.map { it.entry.depth.value })
+        assertEquals(
+            listOf(owner.fingerprint.value, target.fingerprint.value),
+            result.page.callbackObservations.map { it.entry.node.fingerprint.value },
+        )
+    }
+
+    private fun cyclicResult(
+        request: RelationRequest,
+        targets: List<io.github.amichne.kast.symbol.contract.SymbolSelector>,
+    ): RelationReadResult.Complete {
+        val subject = request.subject
+        val start = subject.range.startInclusive
+        val callback =
+            RelationCallbackObservation.fromNativeBoundary(
+                    request,
+                    RelationOccurrence.fromBoundary(subject.file, start + 2, start + 3).refined(),
+                    fixture.endpoint(subject, target).evidence,
+                    io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromSelector(
+                        if (subject.fingerprint.value == owner.fingerprint.value) owner else target
+                    ),
+                    RelationOccurrence.fromBoundary(subject.file, start + 1, start + 4).refined(),
+                    CallbackNamedCallPolicy.Excluded(
+                        CallbackExclusionReason.NON_INLINE_ARGUMENT,
+                        RelationOccurrence.fromBoundary(subject.file, start + 1, start + 4).refined(),
+                    ),
+                    CallbackInvocationFlowRead.Unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING),
+                )
+                .refined()
+        val facts = fixture.completeRelationResult(request, targets.map { fixture.endpoint(subject, it) }).batch.facts
+        val bytes =
+            callback.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong() +
+                facts.sumOf { it.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong() }
+        val batch =
+            RelationBatch.create(
+                    request,
+                    facts,
+                    RelationByteCount.parse(bytes).refined(),
+                    RelationWorkCount.parse(1L).refined(),
+                    RelationResultCount.parse(facts.size).refined(),
+                    callbackObservations = listOf(callback),
+                )
+                .refined()
+        return RelationReadResult.Complete(batch, RelationCompilation.complete(batch).coverage)
+    }
+
     private fun callbackResult(request: RelationRequest, inline: Boolean = false): RelationReadResult.Complete {
         val exclusion =
             RelationCallbackObservation.fromNativeBoundary(
