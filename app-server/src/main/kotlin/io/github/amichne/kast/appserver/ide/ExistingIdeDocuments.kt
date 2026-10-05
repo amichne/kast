@@ -1,10 +1,13 @@
 package io.github.amichne.kast.appserver.ide
 
+import com.networknt.schema.SchemaException
+import com.networknt.schema.SchemaLocation
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.Specification
 import com.networknt.schema.SpecificationVersion
 import com.networknt.schema.dialect.Dialect
 import com.networknt.schema.keyword.NonValidationKeyword
+import com.networknt.schema.resource.ClasspathResourceLoader
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -38,7 +41,10 @@ object ExistingIdeDocuments {
         Dialect.builder(Specification.getDialect(SpecificationVersion.DRAFT_2020_12))
             .keyword(NonValidationKeyword("discriminator"))
             .build()
-    private val registry = SchemaRegistry.withDialect(schemaDialect)
+    private val registry =
+        SchemaRegistry.withDialect(schemaDialect) { builder ->
+            builder.resourceLoaders { it.add(ClasspathResourceLoader { ExistingIdeDocuments::class.java.classLoader }) }
+        }
 
     internal fun compatibility(
         raw: String
@@ -68,12 +74,10 @@ object ExistingIdeDocuments {
         resourcePath: String,
     ): Refinement<tools.jackson.databind.JsonNode, ExistingIdeFailure> {
         return try {
-            val resource =
-                ExistingIdeDocuments::class.java.getResourceAsStream(resourcePath)
-                    ?: return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
-            val schemaText = resource.bufferedReader().use { it.readText() }
+            if (ExistingIdeDocuments::class.java.getResource(resourcePath) == null)
+                return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
             val node = mapper.readTree(raw)
-            if (registry.getSchema(schemaText).validate(node).isEmpty()) {
+            if (registry.getSchema(SchemaLocation.of("classpath:$resourcePath")).validate(node).isEmpty()) {
                 if (node.has("execution_budget")) {
                     Json.decodeFromJsonElement(
                         io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer(),
@@ -82,6 +86,11 @@ object ExistingIdeDocuments {
                 }
                 Refinement.Refined(node)
             } else Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+        } catch (failure: SchemaException) {
+            Refinement.Rejected(
+                if (failure.cause is java.io.IOException) ExistingIdeFailure.SCHEMA_UNAVAILABLE
+                else ExistingIdeFailure.RESPONSE_REJECTED
+            )
         } catch (_: RuntimeException) {
             Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
         } catch (_: java.io.IOException) {
