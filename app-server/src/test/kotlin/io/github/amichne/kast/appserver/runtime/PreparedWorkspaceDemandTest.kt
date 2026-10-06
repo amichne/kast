@@ -144,7 +144,7 @@ class PreparedWorkspaceDemandTest {
                     opens++
                     IdeLifecycleResult.Opened(if (opens == 1) target else changed)
                 },
-                capacity = 2,
+                capacity = 1,
             )
         val demand =
             PreparedWorkspaceDemand(

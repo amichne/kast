@@ -1,17 +1,13 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.appserver.InstalledEpochRetention
 import io.github.amichne.kast.appserver.InstalledUpgradePreparation
 import io.github.amichne.kast.appserver.InstalledUpgradeRejection
 import io.github.amichne.kast.appserver.InstalledUpgradeSettlement
-import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstallationReplacementReceipt
 import io.github.amichne.kast.distribution.contract.InstallationReplacementStage
 import io.github.amichne.kast.distribution.contract.PreviousInstallationPayload
-import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
-import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
 import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
 import io.github.amichne.kast.distribution.managed.ControlInventoryFailure
@@ -179,11 +175,18 @@ internal object InstallationWorkflow {
                             InstallationRecoveryAdmission.Rejected ->
                                 return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
                         }
-                        if (
-                            validateStagedConfiguration(plan.configuration) !=
-                                InstallationConfigurationValidationOutcome.ADMITTED
-                        )
-                            return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                        when (val selected = observeInstallationConfigurationSelection(plan, plan.targetRoot)) {
+                            is Refinement.Refined -> {
+                                val configuration = selected.value
+                                if (
+                                    configuration !is InstallationConfigurationSelection.Prior ||
+                                        !configuration.preservesEndpoint()
+                                )
+                                    return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
+                            }
+                            is Refinement.Rejected ->
+                                return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                        }
                         return@activation
                     }
                 }
@@ -211,29 +214,28 @@ internal object InstallationWorkflow {
                             InstallationRecoveryAdmission.Rejected ->
                                 return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
                         }
-                if (canReuseExisting(plan, prior) && admitExisting(plan)) {
-                    if (
-                        validateStagedConfiguration(plan.configuration) !=
-                            InstallationConfigurationValidationOutcome.ADMITTED
-                    )
-                        return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                val configuration =
+                    when (val selected = observeInstallationConfigurationSelection(plan, prior)) {
+                        is Refinement.Refined -> selected.value
+                        is Refinement.Rejected ->
+                            return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                    }
+                val existing = canReuseExisting(plan, prior) && admitExisting(plan)
+                if (
+                    existing &&
+                        configuration is InstallationConfigurationSelection.Prior &&
+                        configuration.preservesEndpoint()
+                ) {
                     return@activation
                 }
-                if (prior == plan.targetRoot && plan.request.force == InstallationSwitch.DISABLED && samePayload(plan))
+                if (!existing && untrustedExistingCandidate(plan, prior))
                     return InstallationOutcome.Rejected(InstallationFailure.CANDIDATE_EXISTING_UNTRUSTED)
                 val staged =
-                    when (val stage = stage(plan)) {
+                    when (val stage = stage(plan, configuration)) {
                         is StageResult.Complete -> stage.root
                         is StageResult.Rejected -> return InstallationOutcome.Rejected(stage.failure)
                     }
                 try {
-                    if (plan.request.controlOnly == InstallationSwitch.ENABLED && prior != null) {
-                        Files.copy(
-                            prior.resolve("config/environment"),
-                            staged.resolve("config/environment"),
-                            StandardCopyOption.REPLACE_EXISTING,
-                        )
-                    }
                     if (
                         validateStagedConfiguration(staged.resolve("config/environment")) !=
                             InstallationConfigurationValidationOutcome.ADMITTED
@@ -241,6 +243,7 @@ internal object InstallationWorkflow {
                         return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
                     if (qualifyCandidate(plan, staged) != InstallationChildOutcome.COMPLETED)
                         return InstallationOutcome.Rejected(InstallationFailure.CANDIDATE_QUALIFICATION_REJECTED)
+                    var retiredPrior: PriorRetirement? = null
                     if (plan.request.controlOnly == InstallationSwitch.ENABLED) {
                         if (prior != plan.targetRoot)
                             return InstallationOutcome.Rejected(InstallationFailure.PRIOR_SELECTION_REJECTED)
@@ -256,7 +259,7 @@ internal object InstallationWorkflow {
                     }
                     if (prior != null) {
                         if (plan.request.force == InstallationSwitch.DISABLED) {
-                            when (val admission = admitPrior(prior, staged, plan.request)) {
+                            when (val admission = admitPrior(prior, staged, plan.request, PriorInspection.PAYLOAD)) {
                                 is Refinement.Refined -> Unit
                                 is Refinement.Rejected -> return InstallationOutcome.Rejected(admission.failure)
                             }
@@ -282,51 +285,25 @@ internal object InstallationWorkflow {
                                     }
                             }
                             when (val retired = retire(retirement)) {
-                                is Refinement.Refined -> Unit
+                                is Refinement.Refined -> retiredPrior = retirement
                                 is Refinement.Rejected ->
                                     return if (plan.request.controlOnly == InstallationSwitch.ENABLED)
                                         ControlInstallationRecovery.restoreRunningPrior(plan, retired.failure)
-                                    else InstallationOutcome.Rejected(retired.failure)
+                                    else retirement.restore(retired.failure, staged, plan.request)
                             }
-                            val priorRegistry = prior.resolve("config/workspaces.json")
-                            if (!Files.notExists(priorRegistry, LinkOption.NOFOLLOW_LINKS)) {
-                                val retention =
-                                    InstalledWorkspaceRegistryRetention.retain(
-                                        priorRegistry,
-                                        staged.resolve("config/workspaces.json"),
-                                    )
-                                reportRegistryRetention(retention)
-                                if (retention is io.github.amichne.kast.appserver.WorkspaceRegistryRetention.Rejected)
+                            when (val admission = admitPrior(prior, staged, plan.request)) {
+                                is Refinement.Refined -> Unit
+                                is Refinement.Rejected ->
                                     return if (plan.request.controlOnly == InstallationSwitch.ENABLED)
-                                        ControlInstallationRecovery.restoreRunningPrior(
-                                            plan,
-                                            InstallationFailure.CONFIGURATION_REJECTED,
-                                        )
-                                    else InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                                        ControlInstallationRecovery.restoreRunningPrior(plan, admission.failure)
+                                    else retirement.restore(admission.failure, staged, plan.request)
                             }
-                            if (plan.request.controlOnly == InstallationSwitch.DISABLED) {
-                                val state = prior.resolve("state")
-                                if (Files.exists(state, LinkOption.NOFOLLOW_LINKS)) {
-                                    when (
-                                        val copied =
-                                            copyInstallationSnapshot(
-                                                state,
-                                                staged.resolve("state"),
-                                                InstallationSnapshotKind.STATE,
-                                            )
-                                    ) {
-                                        InstallationSnapshot.Copied -> Unit
-                                        is InstallationSnapshot.Rejected ->
-                                            return InstallationOutcome.Rejected(copied.failure.installationFailure())
-                                    }
-                                }
-                                when (val epoch = InstalledEpochRetention.retain(prior, staged, plan.targetRoot)) {
-                                    InstalledEpochRetention.Absent,
-                                    InstalledEpochRetention.Preserved,
-                                    InstalledEpochRetention.Regenerate -> Unit
-                                    is InstalledEpochRetention.Rejected ->
-                                        return InstallationOutcome.Rejected(epoch.failure.installationFailure())
-                                }
+                            when (val retained = PriorInstallationRetention.retain(plan, prior, staged)) {
+                                is Refinement.Refined -> Unit
+                                is Refinement.Rejected ->
+                                    return if (plan.request.controlOnly == InstallationSwitch.ENABLED)
+                                        ControlInstallationRecovery.restoreRunningPrior(plan, retained.failure)
+                                    else retirement.restore(retained.failure, staged, plan.request)
                             }
                         } else
                             when (val reset = admitReplacement(resetInstallation(prior, plan.request.home.value))) {
@@ -346,6 +323,8 @@ internal object InstallationWorkflow {
                         is ActivationResult.Rejected ->
                             return if (plan.request.controlOnly == InstallationSwitch.ENABLED && prior != null)
                                 ControlInstallationRecovery.restoreRunningPrior(plan, activated.failure)
+                            else if (retiredPrior != null)
+                                retiredPrior.restore(activated.failure, plan.request.controlRoot.value, plan.request)
                             else InstallationOutcome.Rejected(activated.failure)
                     }
                 } finally {
@@ -383,7 +362,10 @@ internal object InstallationWorkflow {
         return InstallationOutcome.Complete(plan.report(activation))
     }
 
-    private fun stage(plan: VerifiedInstallationPlan): StageResult {
+    private fun stage(
+        plan: VerifiedInstallationPlan,
+        configuration: InstallationConfigurationSelection,
+    ): StageResult {
         val staged = Files.createTempDirectory(plan.request.installRoot.value, ".install-")
         var completed = false
         try {
@@ -392,7 +374,11 @@ internal object InstallationWorkflow {
             writeLauncher(plan, staged, "kast-codex")
             writeLauncher(plan, staged, "kast-mcp")
             writeLauncher(plan, staged, "kast-tool-rpc")
-            writeConfiguration(plan, staged.resolve("config/environment"))
+            writeInstallationConfiguration(
+                plan = plan,
+                stagedConfiguration = staged.resolve("config/environment"),
+                configuration = configuration,
+            )
             Files.writeString(
                 staged.resolve("config/selected-ide.json"),
                 Json { encodeDefaults = true }
@@ -438,28 +424,25 @@ internal object InstallationWorkflow {
         )
     }
 
-    private fun writeConfiguration(plan: VerifiedInstallationPlan, stagedConfiguration: Path) {
+    private fun writeInstallationConfiguration(
+        plan: VerifiedInstallationPlan,
+        stagedConfiguration: Path,
+        configuration: InstallationConfigurationSelection,
+    ) {
         Files.createDirectories(stagedConfiguration.parent)
-        val target = plan.targetRoot
-        val request = plan.request
-        val values =
-            KastConfigurationCatalogue.declarations
-                .filter { declaration ->
-                    ConfigurationSource.SAVED_INSTALLATION in declaration.sources && declaration.defaultValue != null
-                }
-                .associate { declaration -> declaration.key to checkNotNull(declaration.defaultValue) }
-                .plus(
-                    mapOf(
-                        "KAST_INSTALL_IDEA_HOME" to request.ideaHome.value.toString(),
-                        "KAST_RUNTIME_DIRECTORY" to target.resolve("state/run").toString(),
-                        "KAST_APP_SERVER_PUBLIC_ENDPOINT" to request.publicEndpoint.configurationValue,
-                    )
-                )
-        val content = buildString {
-            appendLine("# Kast runtime configuration. Values are literal; shell syntax is not evaluated.")
-            values.toSortedMap().forEach { (key, value) -> appendLine("$key=$value") }
+        if (
+            configuration is InstallationConfigurationSelection.Prior &&
+                plan.request.controlOnly == InstallationSwitch.ENABLED &&
+                plan.request.publicEndpoint == InstallationPublicEndpointSelection.Unspecified
+        ) {
+            Files.copy(configuration.root.resolve("config/environment"), stagedConfiguration)
+            return
         }
-        Files.writeString(stagedConfiguration, content, StandardOpenOption.CREATE_NEW)
+        Files.writeString(
+            stagedConfiguration,
+            installationConfigurationContent(plan, configuration),
+            StandardOpenOption.CREATE_NEW,
+        )
         setMode(stagedConfiguration, "rw-------")
     }
 
@@ -579,6 +562,9 @@ internal object InstallationWorkflow {
         prior == plan.targetRoot &&
             plan.request.controlOnly == InstallationSwitch.DISABLED &&
             plan.request.force == InstallationSwitch.DISABLED
+
+    private fun untrustedExistingCandidate(plan: VerifiedInstallationPlan, prior: Path?): Boolean =
+        prior == plan.targetRoot && plan.request.force == InstallationSwitch.DISABLED && samePayload(plan)
 
     private fun admitExisting(plan: VerifiedInstallationPlan): Boolean {
         if (!physicalDirectory(plan.targetRoot)) return false

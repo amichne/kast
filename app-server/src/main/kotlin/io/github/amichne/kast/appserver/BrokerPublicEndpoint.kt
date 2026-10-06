@@ -3,6 +3,8 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPath
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPathFailure
 import io.github.amichne.kast.kernel.Validation
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 
 /** Discovery policy is independent of the installation-owned upstream transport. */
@@ -46,5 +48,23 @@ internal class CodexControlSocketPath private constructor(val path: Path) {
     companion object {
         fun from(codexHome: Path): CodexControlSocketPath =
             CodexControlSocketPath(codexHome.resolve("app-server-control/app-server-control.sock"))
+    }
+}
+
+/** Passive nofollow occupancy of the canonical endpoint; this admits no incumbent process identity. */
+enum class CodexControlSocketAvailability {
+    AVAILABLE,
+    OCCUPIED,
+    UNAVAILABLE;
+
+    companion object {
+        fun observe(codexHome: Path): CodexControlSocketAvailability {
+            val socket = CodexControlSocketPath.from(codexHome).path
+            return when {
+                Files.exists(socket, LinkOption.NOFOLLOW_LINKS) -> OCCUPIED
+                Files.notExists(socket, LinkOption.NOFOLLOW_LINKS) -> AVAILABLE
+                else -> UNAVAILABLE
+            }
+        }
     }
 }

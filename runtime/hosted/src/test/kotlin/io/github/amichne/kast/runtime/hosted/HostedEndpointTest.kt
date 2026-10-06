@@ -62,7 +62,7 @@ class HostedEndpointTest {
         )
         assertEquals(
             Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST),
-            HostedRequests.decode(hosted(canonical.replace("kast.query.run.v3", "kast.query.run.v1"))),
+            HostedRequests.decode(hosted(canonical.replace("kast.query.run.v4", "kast.query.run.v1"))),
         )
         assertEquals(
             Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST),

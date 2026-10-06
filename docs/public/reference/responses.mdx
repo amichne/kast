@@ -18,6 +18,29 @@ Confirmed rows remain useful with qualifications. Empty qualified results do not
 
 Diagnostics cover the reported IDEA scope. Source changes require their own [verification and recovery evidence](/change#read-the-receipt).
 
+## Read an automatic symbol query
+
+The response shape uses `kast.query.run.v4`; Host and Control must provide the same contract.
+
+A `query_symbols` `RUN` that returns symbol rows follows issued resumable execution internally. One call returns the accumulated rows in page order, with their exact references and multiplicity. Empty advancing pages can continue. The original query, scope, output, and semantic basis stay fixed.
+
+The invocation shares one elapsed-time, work, and retention allowance. It stops when work finishes or needs a new decision, including a budget increase, invalid state, or a terminal limit. It does not restart discovery after a stale state or hard timeout. Manual `RESUME`, `READ_RESULT`, and other output kinds keep their existing behavior.
+
+| Response field | Meaning |
+| --- | --- |
+| `invocation.accumulated_row_count` | Rows accumulated across admitted execution pages. |
+| `invocation.preview.type` | `INLINE` includes every accumulated row; `PREFIX` includes an ordered preview. |
+| `invocation.preview.row_count` and `encoded_bytes` | Actual preview rows and UTF-8 bytes of the encoded `items` array. |
+| `invocation.stop.type` | Typed reason the invocation stopped, with failure evidence when applicable. |
+| `retention` and `next_cursor` | Issued retained-result reference and position for reading more rows. |
+| `evidence_window` | Independent emitted evidence positions: `start`, `end`, and `total`. `type: MORE` means evidence remains; `FINAL` reaches its retained end. |
+
+Small results appear inline. Larger results have a preview bounded by row count and encoded bytes, plus a retained-result reference when retention succeeds. Use `READ_RESULT` with that reference and cursor to retrieve additional rows without running semantic providers again.
+
+Accumulated failures, omissions, and observations also use bounded pages. Use `READ_RESULT.evidence_cursor` with `evidence_window.end` when its type is `MORE`. Evidence follows a fixed sequence: failures, omissions, walk observations, reference observations, discovery observations, then relation observations. Track row and evidence positions independently. Once the rows are drained, keep the row `cursor` at `invocation.accumulated_row_count` while advancing the evidence cursor. An evidence-only page does not advance the row cursor.
+
+Coverage describes semantic execution. Preview truncation describes presentation. A complete retained result remains complete when its preview omits rows. Reading every retained page preserves terminal upstream limitations. Retention failure returns qualified coverage and an explicit retention outcome without inventing a reference.
+
 ## Follow progress, not row count
 
 ```mermaid

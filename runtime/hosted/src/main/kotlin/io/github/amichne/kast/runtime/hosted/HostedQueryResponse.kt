@@ -77,27 +77,18 @@ private fun encodeHostedQueryResponseDocument(
         is OperationOutcome.Rejected -> return original
     }
     val rows = evidence.payload.items.values.size
-    val size = evidence.payload.presentationUnitCount
     if (original.fitsRows(rows, maximumResults)) {
         return original.publishEncodedPage(semantic, published)
     }
+    if (
+        (evidence.payload.invocation != null || evidence.payload.evidenceWindow != null) &&
+            evidence.payload.retention != io.github.amichne.kast.protocol.contract.QueryResultRetention.NotRequested
+    )
+        return fitHostedAutomaticQueryPreview(semantic, limits, maximumResults, maximumBytes, published)
     if (original is HostedResponse.Oversized) observation.terminated(IntellijReadTermination.RESPONSE_BYTE_LIMIT)
-    val rejection =
-        if (original is HostedResponse.Oversized) original
-        else HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
-    // Without a continuation owner no prefix may be irreversibly published.
-    if (retain == null) return rejection
-    if (evidence.payload.presentationPrefix(size) is Refinement.Rejected)
-        return rejectedQueryRetention(
-            io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause.INVALID_FITTED_PAGE
-        )
     val exhausted = queryPageLimitations(limitations, original, rows, maximumResults)
-    val fitting = QueryPageEncoding(evidence, minimum, exhausted, semantic.preparedCoverage(), limits, maximumBytes)
-    val maximumPrefix = if (rows > maximumResults.value) maximumResults.value else size - 1
-    val bestCount = largestHostedQueryPrefix(maximumPrefix, fitting::placeholder)
-    // An empty prefix cannot advance a byte-bound continuation. Fail with finite rejection instead.
-    if (bestCount == 0) return rejection
-    return fitting.retainPrefix(semantic, bestCount, retain, published, observation)
+    return QueryPageEncoding(evidence, minimum, exhausted, semantic.preparedCoverage(), limits, maximumBytes)
+        .fit(semantic, original, retain, published, observation, maximumResults)
 }
 
 private fun HostedResponse.fitsRows(rows: Int, maximumResults: ResultLimit): Boolean =
@@ -124,6 +115,31 @@ private class QueryPageEncoding(
     val limits: ReadLimits,
     val maximumBytes: ReturnedByteLimit,
 ) {
+    fun fit(
+        semantic: HostedQueryOutcome,
+        original: HostedResponse,
+        retain: ((HostedQueryOutcome) -> HostedOutputRetention)?,
+        published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
+        observation: IntellijReadObservation,
+        maximumResults: ResultLimit,
+    ): HostedResponse {
+        val rejection =
+            if (original is HostedResponse.Oversized) original
+            else HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
+        if (retain == null) return rejection
+        if (evidence.payload.presentationPrefix(evidence.payload.presentationUnitCount) is Refinement.Rejected)
+            return rejectedQueryRetention(
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause.INVALID_FITTED_PAGE
+            )
+        val rows = evidence.payload.items.values.size
+        val maximumPrefix =
+            if (rows > maximumResults.value) maximumResults.value else evidence.payload.presentationUnitCount - 1
+        val bestCount = largestHostedQueryPrefix(maximumPrefix, ::placeholder)
+        // An empty prefix cannot advance a byte-bound continuation.
+        if (bestCount == 0) return rejection
+        return retainPrefix(semantic, bestCount, retain, published, observation)
+    }
+
     fun retainPrefix(
         semantic: HostedQueryOutcome,
         count: Int,
@@ -353,7 +369,7 @@ internal fun HostedQueryOutcome.publicationPage(): io.github.amichne.kast.query.
     }
 
 /** Carries the successful encoding bound into the existing publication owner without encoding again. */
-private fun encodedPublication(
+internal fun encodedPublication(
     page: io.github.amichne.kast.query.protocol.QueryPublishedPage,
     response: HostedResponse.Canonical<*, *, *>,
 ): io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded =

@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.BrokerJvmUserHomeOption
-import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
 import io.github.amichne.kast.kernel.Refinement
 
 internal data class ControlInstallationLocations(
@@ -23,7 +22,7 @@ private data class ControlInstallationOwner(
 private data class ControlInstallationSwitches(val force: InstallationSwitch, val controlOnly: InstallationSwitch)
 
 internal data class ControlInstallationOptions(
-    val endpoint: BrokerPublicEndpointMode,
+    val endpoint: InstallationPublicEndpointSelection,
     val profile: InstallationProfile,
     val force: InstallationSwitch,
     val controlOnly: InstallationSwitch,
@@ -155,7 +154,8 @@ internal class ControlInstallationInput(private val environment: Map<String, Str
     fun options(): Refinement<ControlInstallationOptions, InstallationRequestFailure> {
         val endpoint =
             when (
-                val admitted = BrokerPublicEndpointMode.admit(environment[InstallationEnvironment.PUBLIC_ENDPOINT.key])
+                val admitted =
+                    InstallationPublicEndpointSelection.admit(environment[InstallationEnvironment.PUBLIC_ENDPOINT.key])
             ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->

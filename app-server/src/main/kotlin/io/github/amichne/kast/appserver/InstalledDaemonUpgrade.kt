@@ -171,6 +171,14 @@ internal sealed interface UpgradePresence {
 
 internal enum class UpgradeServiceMarkers {
     Absent,
+    /** Normal disable retains the launch document after removing all runtime and login markers. */
+    ConfigurationOnly,
+    Retained,
+    Rejected,
+}
+
+internal enum class UpgradeMarkerPresence {
+    Absent,
     Retained,
     Rejected,
 }
@@ -186,7 +194,8 @@ internal fun classifyUpgradePresence(
             else UpgradePresence.Active
         BrokerLifecycleObservation.ABSENT ->
             when (markers) {
-                UpgradeServiceMarkers.Absent -> UpgradePresence.Absent
+                UpgradeServiceMarkers.Absent,
+                UpgradeServiceMarkers.ConfigurationOnly -> UpgradePresence.Absent
                 UpgradeServiceMarkers.Retained ->
                     UpgradePresence.Rejected(InstalledUpgradeRejection.RetainedServiceEvidence)
                 UpgradeServiceMarkers.Rejected ->
@@ -200,33 +209,39 @@ internal fun classifyUpgradePresence(
             UpgradePresence.Rejected(InstalledUpgradeRejection.Lifecycle(InstalledUpgradeLifecycleFailure.TIMED_OUT))
     }
 
-private fun observeUpgradeMarkers(command: BrokerServiceLaunchCommand): UpgradeServiceMarkers =
+internal fun observeUpgradeMarkers(command: BrokerServiceLaunchCommand): UpgradeServiceMarkers =
     try {
+        val configuration = command.stateDirectory.resolve("service.plist")
+        val configurationPresence = observeUpgradeMarker(configuration)
+        if (
+            configurationPresence == UpgradeMarkerPresence.Rejected ||
+                (configurationPresence == UpgradeMarkerPresence.Retained &&
+                    !Files.isRegularFile(configuration, LinkOption.NOFOLLOW_LINKS))
+        )
+            return UpgradeServiceMarkers.Rejected
         val agent = command.userHome.resolve("Library/LaunchAgents/${command.serviceLabel.value}.login.plist")
-        val markers =
-            listOf(
-                command.stateDirectory.resolve("service.plist"),
-                command.readinessFile,
-                command.publicSocket,
-                agent,
-            )
+        val markers = listOf(command.readinessFile, command.publicSocket, agent)
         var retained = false
         for (path in markers) {
             when (observeUpgradeMarker(path)) {
-                UpgradeServiceMarkers.Absent -> Unit
-                UpgradeServiceMarkers.Retained -> retained = true
-                UpgradeServiceMarkers.Rejected -> return UpgradeServiceMarkers.Rejected
+                UpgradeMarkerPresence.Absent -> Unit
+                UpgradeMarkerPresence.Retained -> retained = true
+                UpgradeMarkerPresence.Rejected -> return UpgradeServiceMarkers.Rejected
             }
         }
-        if (retained) UpgradeServiceMarkers.Retained else UpgradeServiceMarkers.Absent
+        when {
+            retained -> UpgradeServiceMarkers.Retained
+            configurationPresence == UpgradeMarkerPresence.Retained -> UpgradeServiceMarkers.ConfigurationOnly
+            else -> UpgradeServiceMarkers.Absent
+        }
     } catch (_: SecurityException) {
         UpgradeServiceMarkers.Rejected
     }
 
-internal fun observeUpgradeMarker(path: Path): UpgradeServiceMarkers =
+internal fun observeUpgradeMarker(path: Path): UpgradeMarkerPresence =
     when {
-        Files.isSymbolicLink(path) -> UpgradeServiceMarkers.Rejected
-        Files.exists(path, LinkOption.NOFOLLOW_LINKS) -> UpgradeServiceMarkers.Retained
-        Files.notExists(path, LinkOption.NOFOLLOW_LINKS) -> UpgradeServiceMarkers.Absent
-        else -> UpgradeServiceMarkers.Rejected
+        Files.isSymbolicLink(path) -> UpgradeMarkerPresence.Rejected
+        Files.exists(path, LinkOption.NOFOLLOW_LINKS) -> UpgradeMarkerPresence.Retained
+        Files.notExists(path, LinkOption.NOFOLLOW_LINKS) -> UpgradeMarkerPresence.Absent
+        else -> UpgradeMarkerPresence.Rejected
     }

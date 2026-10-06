@@ -799,6 +799,15 @@
       "maximum": 1000000,
       "description": "Optional presentation offset in the immutable retained result. Omission or null starts at zero; this cursor does not resume semantic execution."
     },
+    "EvidenceCursor": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1000000,
+      "description": "Optional offset in the retained result's evidence. It is independent of the row presentation cursor and performs no semantic execution. Omission or null preserves the existing evidence presentation."
+    },
     "ResultSource": {
       "type": "object",
       "properties": {
@@ -973,6 +982,16 @@
               "type": "null"
             }
           ]
+        },
+        "evidence_cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceCursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -980,7 +999,8 @@
         "result",
         "cursor",
         "output",
-        "executionBudget"
+        "executionBudget",
+        "evidence_cursor"
       ],
       "additionalProperties": false,
       "description": "Present an immutable retained result, starting at the supplied result cursor; this performs no query evaluation."

@@ -31,7 +31,7 @@ icon: "plug"
     </Accordion>
 
     <Accordion title="App Server transport">
-      New persistent installations publish the broker at the standard Codex control socket. Managed `codex` invocations can discover it automatically. Compatible desktop builds also use the service's daemon-selection flag on a fresh launch.
+      New persistent installations use the standard Codex control socket when available. If it is occupied or cannot be inspected, Kast installs with a private endpoint. Routine installation preserves your saved endpoint. At the standard socket, managed `codex` invocations can discover Kast automatically. Compatible desktop builds also use the service's daemon-selection flag on a fresh launch.
 
       Quit and reopen an existing desktop app. Saved `private` endpoints and client overrides can bypass discovery. Desktop tool exposure depends on the [tested client boundary](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
 

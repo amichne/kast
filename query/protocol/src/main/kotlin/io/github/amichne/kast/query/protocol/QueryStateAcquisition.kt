@@ -49,7 +49,10 @@ internal class QueryStateAcquisition(
             CheckpointExecution.Ready -> Unit
         }
         if (pending.owner != null) return ProducerAcquisition.Unavailable
-        val reserve = maximumPageBytes.saturatedMultiply(4L).saturatedAdd(4096L)
+        val reserve =
+            maximumPageBytes
+                .saturatedMultiply(QUERY_PAGE_RESERVATION_MULTIPLIER)
+                .saturatedAdd(QUERY_PAGE_RESERVATION_OVERHEAD)
         if (reserve > maximumBytes || !retention.reserveFor(reserve, setOf(key))) {
             return ProducerAcquisition.CapacityExceeded
         }

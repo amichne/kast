@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import java.util.UUID
@@ -58,11 +59,45 @@ internal class WorkspacePreparations(
         entries[root]?.let {
             return Refinement.Refined(it)
         }
-        if (records.size >= capacity) return Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED)
+        return create(root)
+    }
+
+    /** Demand rechecks terminal availability; held prior outcomes remain immutable. */
+    @Synchronized
+    fun prepareForDemand(root: CanonicalRoot): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
+        if (closed || !worker.isActive) return Refinement.Rejected(WorkspacePreparationFailure.CLOSED)
+        val previous = entries[root] ?: return create(root)
+        val outcome = previous.state.value
+        return if (
+            outcome is WorkspacePreparationOutcome.Blocked &&
+                outcome.reason in
+                    setOf(
+                        IdeLifecycleFailure.HOST_UNAVAILABLE,
+                        IdeLifecycleFailure.PLUGIN_UNAVAILABLE,
+                        IdeLifecycleFailure.COMPATIBILITY_REJECTED,
+                    )
+        )
+            create(root, previous.id)
+        else Refinement.Refined(previous)
+    }
+
+    private fun create(
+        root: CanonicalRoot,
+        previous: WorkspacePreparationId? = null,
+    ): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
+        val retired =
+            if (records.size < capacity) null
+            else
+                records.values.firstOrNull {
+                    it.state.value is WorkspacePreparationOutcome.Terminal &&
+                        (entries[it.root] !== it || (it.root == root && it.id == previous))
+                } ?: return Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED)
         val id = newId()
         if (id in records) return Refinement.Rejected(WorkspacePreparationFailure.IDENTITY_REJECTED)
         val entry = WorkspacePreparation(id, root)
-        val job = work.launch(start = CoroutineStart.LAZY) { run(entry) }
+        val job = work.launch(start = CoroutineStart.LAZY) { run(entry, previous) }
+        // Admission precedes retirement; lookup eviction never rewrites the held terminal result.
+        if (retired != null) records.remove(retired.id)
         entries[root] = entry
         records[id] = entry
         observer.observe(entry.activity())
@@ -70,6 +105,7 @@ internal class WorkspacePreparations(
         return Refinement.Refined(entry)
     }
 
+    /** Historical lookup is bounded; absence proves neither prior issuance nor an original outcome. */
     @Synchronized
     fun observe(id: WorkspacePreparationId): Refinement<WorkspacePreparation, WorkspacePreparationFailure> =
         records[id]?.let { Refinement.Refined(it) }
@@ -102,10 +138,10 @@ internal class WorkspacePreparations(
         observer.observe(entry.activity())
     }
 
-    private suspend fun run(entry: WorkspacePreparation) {
+    private suspend fun run(entry: WorkspacePreparation, previous: WorkspacePreparationId?) {
         try {
             val result =
-                withTimeoutOrNull(budget) { prepareNative(entry) }
+                withTimeoutOrNull(budget) { prepareNative(entry, previous) }
                     ?: WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
             publish(entry, result)
         } finally {
@@ -119,7 +155,17 @@ internal class WorkspacePreparations(
         }
     }
 
-    private suspend fun prepareNative(entry: WorkspacePreparation): WorkspacePreparationOutcome {
+    private suspend fun prepareNative(
+        entry: WorkspacePreparation,
+        previous: WorkspacePreparationId?,
+    ): WorkspacePreparationOutcome {
+        val inspectedHost =
+            if (previous == null) null
+            else
+                when (val admitted = inspectRecovery(entry, previous)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted.failure
+                }
         val requestId = entry.id.value.toString()
         var response = exchange(WorkspaceLifecycleRequest.Open(entry.root.path.toString(), requestId))
         var progress: NativePreparationProgress? = null
@@ -129,11 +175,46 @@ internal class WorkspacePreparations(
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return WorkspacePreparationOutcome.Rejected(admitted.failure)
                 }
+            if (inspectedHost != null && progress.host != inspectedHost)
+                return WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
             publish(entry, WorkspacePreparationOutcome.Pending(progress.stage))
             delay(interval)
             response = exchange(WorkspaceLifecycleRequest.Status(progress.host.toString(), requestId))
         }
-        return completion(entry, response, progress?.host)
+        return completion(entry, response, inspectedHost ?: progress?.host)
+    }
+
+    private suspend fun inspectRecovery(
+        entry: WorkspacePreparation,
+        previous: WorkspacePreparationId,
+    ): Refinement<UUID, WorkspacePreparationOutcome.Terminal> {
+        observer.observe(
+            WorkspacePreparationActivity(
+                entry.id.value.toString(),
+                WorkspacePreparationActivityOutcome.CheckingHost(previous.value.toString()),
+            )
+        )
+        val host =
+            when (val inspected = exchange(WorkspaceLifecycleRequest.Inspect)) {
+                is IdeLifecycleResult.Inspected ->
+                    canonicalPreparationUuid(inspected.host)
+                        ?: return Refinement.Rejected(
+                            WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
+                        )
+                is IdeLifecycleResult.Blocked ->
+                    return Refinement.Rejected(WorkspacePreparationOutcome.Blocked(inspected.reason))
+                else ->
+                    return Refinement.Rejected(
+                        WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
+                    )
+            }
+        observer.observe(
+            WorkspacePreparationActivity(
+                entry.id.value.toString(),
+                WorkspacePreparationActivityOutcome.RetryingHost(previous.value.toString()),
+            )
+        )
+        return Refinement.Refined(host)
     }
 
     private fun completion(

@@ -36,6 +36,7 @@ sealed interface QueryResultRestoration {
         val request: QueryRunRequest.Run,
         val result: QueryRetainedResult,
         val rowIds: List<QueryResultRowReference>,
+        val evidenceMode: QueryRetainedEvidenceMode = QueryRetainedEvidenceMode.WHOLE,
     ) : QueryResultRestoration
 
     data object Unavailable : QueryResultRestoration

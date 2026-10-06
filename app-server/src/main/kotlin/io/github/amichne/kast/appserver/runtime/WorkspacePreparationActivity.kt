@@ -30,6 +30,14 @@ internal sealed interface WorkspacePreparationActivityOutcome {
     @Serializable
     @SerialName("blocked")
     data class Blocked(val reason: IdeLifecycleFailure) : WorkspacePreparationActivityOutcome
+
+    @Serializable
+    @SerialName("checking_host")
+    data class CheckingHost(val previousRequestId: String) : WorkspacePreparationActivityOutcome
+
+    @Serializable
+    @SerialName("retrying_host")
+    data class RetryingHost(val previousRequestId: String) : WorkspacePreparationActivityOutcome
 }
 
 internal fun interface WorkspacePreparationObserver {

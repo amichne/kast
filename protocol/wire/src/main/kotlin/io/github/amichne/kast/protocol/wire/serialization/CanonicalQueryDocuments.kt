@@ -206,6 +206,8 @@ private fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
 
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
+        invocation = invocation,
+        evidenceWindow = evidenceWindow,
         question = question,
         impactAccounting = impactAccounting,
         items = items.values.map(QueryResultItemDocument::toWire),
@@ -238,28 +240,26 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                                                 references.bounded().flatMapConverted { boundedReferences ->
                                                     discoveryObservations.bounded().flatMapConverted {
                                                         boundedDiscoveries ->
-                                                        relationObservations
-                                                            .convertEach { it.toContract() }
-                                                            .flatMapConverted { convertedRelations ->
-                                                                convertedRelations.bounded().mapConverted {
-                                                                    boundedRelations ->
-                                                                    QueryRunResult(
-                                                                        question = question,
-                                                                        impactAccounting = impactAccounting,
-                                                                        items = boundedItems,
-                                                                        failures = boundedFailures,
-                                                                        omissions = boundedOmissions,
-                                                                        walkObservations = boundedObservations,
-                                                                        referenceObservations = boundedReferences,
-                                                                        discoveryObservations = boundedDiscoveries,
-                                                                        relationObservations = boundedRelations,
-                                                                        retention = retention,
-                                                                        nextCursor = nextCursor,
-                                                                        executionBudget = executionBudget,
-                                                                        referenceAcquisitions = referenceAcquisitions,
-                                                                    )
-                                                                }
-                                                            }
+                                                        relationObservations.toBoundedRelations().mapConverted {
+                                                            boundedRelations ->
+                                                            QueryRunResult(
+                                                                invocation = invocation,
+                                                                evidenceWindow = evidenceWindow,
+                                                                question = question,
+                                                                impactAccounting = impactAccounting,
+                                                                items = boundedItems,
+                                                                failures = boundedFailures,
+                                                                omissions = boundedOmissions,
+                                                                walkObservations = boundedObservations,
+                                                                referenceObservations = boundedReferences,
+                                                                discoveryObservations = boundedDiscoveries,
+                                                                relationObservations = boundedRelations,
+                                                                retention = retention,
+                                                                nextCursor = nextCursor,
+                                                                executionBudget = executionBudget,
+                                                                referenceAcquisitions = referenceAcquisitions,
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
@@ -271,6 +271,9 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
             }
         }
     }
+
+private fun List<QueryRelationObservationWireDocument>.toBoundedRelations() =
+    convertEach(QueryRelationObservationWireDocument::toContract).flatMapConverted { it.bounded() }
 
 private fun QueryRelationOmissionDocument.toWire(): QueryRelationOmissionWireDocument =
     QueryRelationOmissionWireDocument(

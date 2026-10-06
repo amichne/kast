@@ -14,7 +14,7 @@ import io.github.amichne.kast.query.protocol.QueryStateKey as Key
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.UUID
 
-private const val ROW_REFERENCE_CHARGE_BYTES = 256L
+internal const val QUERY_ROW_REFERENCE_CHARGE_BYTES = 256L
 
 /** One bounded project-owned lifetime for detached execution progress and immutable semantic rows. */
 class QueryStateStore(
@@ -148,6 +148,17 @@ class QueryStateStore(
     fun retentionMeasurements(): QueryRetentionMeasurements =
         queryRetentionMeasurements(retainedBytes(), highWaterBytes, entries.size, retention.revocationCount())
 
+    /** Actual store charges for the issued pages and successors of one automatic invocation. */
+    @Synchronized
+    internal fun invocationRetainedBytes(tokens: Set<QueryExecutionContinuation>): QueryRetentionByteCount {
+        expire()
+        val bytes = tokens.fold(0L) { total, token -> total.saturatedAdd(entries[token.key()]?.bytes ?: 0L) }
+        return when (val measured = QueryRetentionByteCount.parse(bytes)) {
+            is Refinement.Refined -> measured.value
+            is Refinement.Rejected -> error("Retained invocation accounting became negative")
+        }
+    }
+
     @Synchronized
     fun issueCheckpoint(
         request: QueryRunRequest.Run,
@@ -202,13 +213,14 @@ class QueryStateStore(
         result: QueryRetainedResult,
         protectedCheckpoint: QueryExecutionContinuation.Pipeline? = null,
         publicationOwner: QueryExecutionClaim? = null,
+        evidenceMode: QueryRetainedEvidenceMode = QueryRetainedEvidenceMode.WHOLE,
     ): QueryResultIssuance {
         if (lifetime == Lifetime.RETIRED || publicationOwner != null && !owns(publicationOwner))
             return QueryResultIssuance.Unavailable
         expire()
         val normalized = request.copy(executionBudget = null)
         val rowCount = result.rowCount
-        val rowBytes = rowCount.toLong().saturatedMultiply(ROW_REFERENCE_CHARGE_BYTES)
+        val rowBytes = rowCount.toLong().saturatedMultiply(QUERY_ROW_REFERENCE_CHARGE_BYTES)
         val bytes =
             entryBytes(result.retainedBytes.saturatedAdd(rowBytes), normalized)
                 ?: return QueryResultIssuance.CapacityExceeded
@@ -219,7 +231,8 @@ class QueryStateStore(
                 is Refinement.Rejected -> error("A generated result reference must satisfy its syntax")
             }
         val rowIds = java.util.Collections.unmodifiableList(List(rowCount) { generatedRowReference() })
-        entries[Key.Result(reference)] = Entry.Result(normalized, result, rowIds, clock(), bytes, publicationOwner)
+        entries[Key.Result(reference)] =
+            Entry.Result(normalized, result, rowIds, evidenceMode, clock(), bytes, publicationOwner)
         retainedBytes()
         return QueryResultIssuance.Issued(reference, rowIds)
     }
@@ -237,7 +250,7 @@ class QueryStateStore(
         if (!entries.inputAvailable(key, publicationOwner, transientClaims, clock(), ttlMillis))
             return QueryResultRestoration.Unavailable
         if (entry.lease != lease) return QueryResultRestoration.StaleBasis
-        return QueryResultRestoration.Restored(entry.request, entry.result, entry.rowIds)
+        return QueryResultRestoration.Restored(entry.request, entry.result, entry.rowIds, entry.evidenceMode)
     }
 
     @Synchronized

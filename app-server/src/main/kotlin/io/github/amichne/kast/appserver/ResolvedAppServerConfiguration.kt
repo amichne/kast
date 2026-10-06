@@ -9,7 +9,7 @@ import io.github.amichne.kast.kernel.Refinement
 class AdmittedAppServerConfiguration
 private constructor(
     val configuration: ResolvedKastConfiguration,
-    internal val publicEndpointMode: BrokerPublicEndpointMode,
+    val publicEndpointMode: BrokerPublicEndpointMode,
 ) {
     companion object {
         fun admit(

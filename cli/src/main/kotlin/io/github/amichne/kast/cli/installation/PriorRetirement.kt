@@ -10,6 +10,7 @@ import java.nio.file.Path
 /** Admission preserves the exact prior command and environment across update sealing and retirement. */
 internal class PriorRetirement
 private constructor(
+    private val prior: Path,
     private val control: PriorServiceControl,
     val daemonExecutable: Path,
     val environment: Map<String, String>,
@@ -19,6 +20,30 @@ private constructor(
 
     val command: List<String>
         get() = control.command
+
+    /** Restart the still selected prior without changing its workspace registrations. */
+    fun restore(
+        failure: InstallationFailure,
+        candidate: Path,
+        request: InstallationRequest,
+    ): InstallationOutcome.Recovery {
+        if (Thread.currentThread().isInterrupted)
+            return InstallationOutcome.RecoveryRequired(failure, InstallationFailure.INTERRUPTED)
+        when (val admission = admitPrior(prior, candidate, request, PriorInspection.PAYLOAD)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return InstallationOutcome.RecoveryRequired(failure, admission.failure)
+        }
+        return when (
+            executeInstallationChild(InstallationChildStage.PRIOR_RECOVERY, control.resumeCommand, environment)
+        ) {
+            InstallationChildOutcome.COMPLETED -> InstallationOutcome.RolledBack(failure)
+            InstallationChildOutcome.EXIT_REJECTED,
+            InstallationChildOutcome.DEADLINE_EXCEEDED,
+            InstallationChildOutcome.IO_REJECTED,
+            InstallationChildOutcome.INTERRUPTED ->
+                InstallationOutcome.RecoveryRequired(failure, InstallationFailure.PRIOR_RECOVERY_REJECTED)
+        }
+    }
 
     companion object {
         fun admit(prior: Path, request: InstallationRequest): Refinement<PriorRetirement, InstallationFailure> {
@@ -44,6 +69,7 @@ private constructor(
                 )
             return Refinement.Refined(
                 PriorRetirement(
+                    prior,
                     control,
                     prior.resolve("bin/kast"),
                     (recorded?.values
@@ -71,13 +97,16 @@ internal fun retire(admitted: PriorRetirement): Refinement<Unit, InstallationFai
 internal sealed interface PriorServiceControl {
     val executable: Path
     val command: List<String>
+    val resumeCommand: List<String>
 
     data class Private(override val executable: Path) : PriorServiceControl {
         override val command: List<String> = listOf(executable.toString(), "disable")
+        override val resumeCommand: List<String> = listOf(executable.toString(), "bootstrap")
     }
 
     data class Legacy(override val executable: Path) : PriorServiceControl {
         override val command: List<String> = listOf(executable.toString(), "app-server", "disable")
+        override val resumeCommand: List<String> = listOf(executable.toString(), "app-server", "enable")
     }
 
     companion object {
@@ -105,18 +134,19 @@ internal fun admitPrior(
     prior: Path,
     target: Path,
     request: InstallationRequest,
+    inspection: PriorInspection = PriorInspection.STATE,
 ): Refinement<Unit, InstallationFailure> {
     val lifecycle = target.resolve("share/kast/installation-lifecycle.py")
     if (!regularPriorFile(lifecycle)) return Refinement.Rejected(InstallationFailure.PRIOR_ADMISSION_FILE_REJECTED)
     val child =
         executeInstallationChild(
-            InstallationChildStage.PRIOR_ADMISSION,
+            inspection.stage,
             listOf(
                 "python3",
                 lifecycle.toString(),
                 "--installation",
                 prior.toString(),
-                "inspect",
+                inspection.operation,
                 "--json",
             ),
             mapOf(
@@ -126,6 +156,12 @@ internal fun admitPrior(
             ),
         )
     return child.priorAdmission()
+}
+
+/** Live state becomes snapshot evidence only after the admitted service has retired. */
+internal enum class PriorInspection(val operation: String, val stage: InstallationChildStage) {
+    PAYLOAD("inspect-payload", InstallationChildStage.PRIOR_PAYLOAD_ADMISSION),
+    STATE("inspect", InstallationChildStage.PRIOR_ADMISSION),
 }
 
 private fun InstallationChildOutcome.priorAdmission(): Refinement<Unit, InstallationFailure> =

@@ -205,6 +205,7 @@ enum class QueryLimitation {
     TRAVERSAL_INCOMPLETE,
     ROW_SELECTION_INCOMPLETE,
     IMPACT_COVERAGE_UNPROVEN,
+    EXECUTION_INCOMPLETE,
 }
 
 sealed interface QueryCoverage {
@@ -245,6 +246,17 @@ enum class QueryExecutionRejection {
 }
 
 sealed interface QueryExecutionResult {
+    val workUsage: QueryWorkUsage
+        get() = QueryWorkUsage.Unobserved
+
+    fun observedWork(count: QueryWorkCount): QueryExecutionResult =
+        when (this) {
+            is Complete -> Complete.create(result, coverage, QueryWorkUsage.Observed(count))
+            is Qualified -> copy(workUsage = QueryWorkUsage.Observed(count))
+            is ImpactRejected -> this
+            is Rejected -> this
+        }
+
     sealed interface Rejection : QueryExecutionResult
 
     data class ImpactRejected(val failure: QueryImpactExecutionFailure) : Rejection
@@ -254,10 +266,15 @@ sealed interface QueryExecutionResult {
     private constructor(
         val result: QueryResult,
         val coverage: QueryCoverage.Complete,
+        override val workUsage: QueryWorkUsage = QueryWorkUsage.Unobserved,
     ) : QueryExecutionResult {
         companion object {
             /** Terminal qualifications cannot be erased by labeling the detached evidence complete. */
-            fun create(result: QueryResult, coverage: QueryCoverage.Complete): QueryExecutionResult {
+            fun create(
+                result: QueryResult,
+                coverage: QueryCoverage.Complete,
+                workUsage: QueryWorkUsage = QueryWorkUsage.Unobserved,
+            ): QueryExecutionResult {
                 val snapshot =
                     result.copy(
                         failures = Collections.unmodifiableList(result.failures.toList()),
@@ -270,7 +287,7 @@ sealed interface QueryExecutionResult {
                 return if (snapshot.hasUnresolvedRequiredEvidence()) {
                     Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
                 } else {
-                    Complete(snapshot, coverage)
+                    Complete(snapshot, coverage, workUsage)
                 }
             }
         }
@@ -281,6 +298,7 @@ sealed interface QueryExecutionResult {
         val coverage: QueryCoverage.Qualified,
         val continuation: QueryContinuationState =
             QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
+        override val workUsage: QueryWorkUsage = QueryWorkUsage.Unobserved,
     ) : QueryExecutionResult
 
     data class Rejected(

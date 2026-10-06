@@ -451,6 +451,26 @@ class LifecycleTest(unittest.TestCase):
         code, result = self.invoke('reset')
         self.assertNotEqual(0, code)
         self.assertEqual('STATE_REJECTED', result['failure'])
+    def test_payload_admission_defers_live_state_inspection(self):
+        (self.root / 'state/live-link').symlink_to(self.workspace, target_is_directory=True)
+        code, result = self.invoke('inspect-payload')
+        self.assertEqual(0, code, result)
+        self.assertEqual({'type': 'PAYLOAD_ADMITTED', 'payloadIdentity': self.manifest['payloadIdentity']}, result)
+        self.assertEqual({'type': 'PAYLOAD_ADMITTED'}, json.loads(self.last_stderr))
+        self.assertFalse(self.log.exists())
+        code, result = self.invoke('inspect')
+        self.assertNotEqual(0, code)
+        self.assertEqual('STATE_REJECTED', result['failure'])
+        self.assertEqual({'type': 'ADMISSION_REJECTED', 'failure': 'STATE_REJECTED'},
+                         json.loads(self.last_stderr))
+    def test_payload_admission_rejects_changed_executable_without_retirement(self):
+        self.kast.write_text('#!/bin/sh\nexit 0\n')
+        code, result = self.invoke('inspect-payload')
+        self.assertNotEqual(0, code)
+        self.assertEqual('MANIFEST_REJECTED', result['failure'])
+        self.assertEqual({'type': 'ADMISSION_REJECTED', 'failure': 'MANIFEST_REJECTED'},
+                         json.loads(self.last_stderr))
+        self.assertFalse(self.log.exists())
     def test_changed_payload_is_rejected_before_execution(self):
         self.kast.write_text('#!/bin/sh\nexit 0\n')
         code, result = self.invoke('reset')

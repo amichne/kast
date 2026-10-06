@@ -11,11 +11,13 @@ enum class QueryTerminalReasonDocument {
     @SerialName("no-progress") NO_PROGRESS,
 }
 
+@Serializable
 enum class QueryExecutionRejectionDocument {
     RESULT_UNAVAILABLE,
     RESULT_STALE_BASIS,
     RESULT_ROW_UNAVAILABLE,
     RESULT_CURSOR_OUT_OF_RANGE,
+    EVIDENCE_CURSOR_OUT_OF_RANGE,
     RESULT_FIELD_UNAVAILABLE,
     TEXT_MATCH_LIMIT_EXCEEDED,
     RIGHT_INPUT_INCOMPLETE,

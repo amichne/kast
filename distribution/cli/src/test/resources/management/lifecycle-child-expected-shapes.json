@@ -1,0 +1,48 @@
+[
+  {
+    "type": "STARTED",
+    "action": "BOOTSTRAP",
+    "purpose": "SERVICE",
+    "stage": "START",
+    "component": "kast-lifecycle-child"
+  },
+  {
+    "type": "EXITED",
+    "action": "BOOTSTRAP",
+    "purpose": "SERVICE",
+    "exitCode": 64,
+    "stage": "WAIT",
+    "component": "kast-lifecycle-child"
+  },
+  {
+    "type": "DEADLINE_EXCEEDED",
+    "action": "INSTALL",
+    "purpose": "INSTALLER",
+    "stage": "WAIT",
+    "component": "kast-lifecycle-child"
+  },
+  {
+    "type": "UNAVAILABLE",
+    "action": "DISABLE",
+    "purpose": "SERVICE",
+    "failure": "START_REJECTED",
+    "stage": "START",
+    "component": "kast-lifecycle-child"
+  },
+  {
+    "type": "UNAVAILABLE",
+    "action": "DISABLE",
+    "purpose": "SERVICE",
+    "failure": "OBSERVATION_REJECTED",
+    "stage": "WAIT",
+    "component": "kast-lifecycle-child"
+  },
+  {
+    "type": "UNAVAILABLE",
+    "action": "DISABLE",
+    "purpose": "SERVICE",
+    "failure": "INTERRUPTED",
+    "stage": "WAIT",
+    "component": "kast-lifecycle-child"
+  }
+]

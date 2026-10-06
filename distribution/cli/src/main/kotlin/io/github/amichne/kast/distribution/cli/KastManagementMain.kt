@@ -19,12 +19,7 @@ import kotlin.system.exitProcess
 
 fun main(arguments: Array<String>) {
     if (arguments.firstOrNull() == "--internal-install") {
-        try {
-            internalInstall(arguments.toList(), System.getenv())
-        } catch (failure: ManagementRejected) {
-            System.err.println("kast: ${failure.stage}: ${failure.reason}")
-            exitProcess(1)
-        }
+        executeInternalInstall(arguments.toList())
         return
     }
     when (val parsed = parseManagementCommand(arguments.toList())) {
@@ -42,8 +37,19 @@ fun main(arguments: Array<String>) {
     }
 }
 
+private fun executeInternalInstall(arguments: List<String>) {
+    val exit =
+        try {
+            internalInstall(arguments, System.getenv())
+        } catch (failure: ManagementRejected) {
+            System.err.println("kast: ${failure.stage}: ${failure.reason}")
+            exitProcess(1)
+        }
+    if (exit != InternalInstallExit.COMPLETED) exitProcess(exit.code)
+}
+
 @Suppress("ThrowsCount")
-private fun internalInstall(arguments: List<String>, environment: Map<String, String>) {
+private fun internalInstall(arguments: List<String>, environment: Map<String, String>): InternalInstallExit {
     if (arguments.size != 2) throw ManagementRejected("installer-protocol", "invalid request")
     if ("KAST_INSTALL_ROOT" !in environment)
         throw ManagementRejected("installer-protocol", "installation root unavailable")
@@ -54,21 +60,41 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
                 throw ManagementRejected("installer-protocol", resolved.failure.reason)
         }
     when (arguments[1]) {
-        "preflight" -> println(preflightPublicExecutable(root, environment).path)
-        "commit" -> {
-            val channel =
-                when (environment["KAST_MANAGEMENT_CHANNEL"]) {
-                    "stable" -> ReleaseChannel.STABLE
-                    "developer" -> ReleaseChannel.DEVELOPER
-                    else -> throw ManagementRejected("installer-protocol", "release channel unavailable")
-                }
-            val destination = commitPublicExecutable(root, environment, channel)
-            println(destination.path)
-            if (!destination.onPath)
-                System.err.println("kast: installed ${destination.path}; add ${destination.path.parent} to PATH")
+        "preflight" -> {
+            println(preflightPublicExecutable(root, environment).path)
+            return InternalInstallExit.COMPLETED
         }
+        "commit" -> return completeInternalInstall(root, environment, InstallationCompletion.STAGED)
+        "commit-active" -> return completeInternalInstall(root, environment, InstallationCompletion.ACTIVATE)
         else -> throw ManagementRejected("installer-protocol", "invalid request")
     }
+}
+
+private fun completeInternalInstall(
+    root: Path,
+    environment: Map<String, String>,
+    completion: InstallationCompletion,
+): InternalInstallExit {
+    val channel =
+        when (environment["KAST_MANAGEMENT_CHANNEL"]) {
+            "stable" -> ReleaseChannel.STABLE
+            "developer" -> ReleaseChannel.DEVELOPER
+            else -> throw ManagementRejected("installer-protocol", "release channel unavailable")
+        }
+    val result = completePublicInstallation(root, environment, channel, completion)
+    val destination = result.destination
+    println(destination.path)
+    if (!destination.onPath)
+        System.err.println("kast: installed ${destination.path}; add ${destination.path.parent} to PATH")
+    return when (result) {
+        is InstallationCompletionResult.Published -> InternalInstallExit.COMPLETED
+        is InstallationCompletionResult.ActivationRejected -> InternalInstallExit.ACTIVATION_REJECTED
+    }
+}
+
+private enum class InternalInstallExit(val code: Int) {
+    COMPLETED(0),
+    ACTIVATION_REJECTED(1),
 }
 
 internal sealed interface ManagementParsing {

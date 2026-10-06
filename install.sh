@@ -173,6 +173,13 @@ PYTHON
   return "$status"
 }
 
+# Preserve the private path-only response while the existing presenter handles diagnostics.
+run_management_completion() {
+  local report="$1"
+  shift
+  "$@" > "$report"
+}
+
 usage() {
   cat <<'USAGE'
 Bootstrap Kast for the current user.
@@ -758,6 +765,14 @@ fi
 control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
 [[ -x "$control_root/share/kast/libexec/kast-service" ]] || fail "control archive has no executable installer"
+installation_commit=commit
+completion_capability="$control_root/share/kast/install-completion-v1"
+if [[ "$stage_only" == 0 && ( -e "$completion_capability" || -L "$completion_capability" ) ]]; then
+  [[ -f "$completion_capability" && ! -L "$completion_capability" ]] || fail "installation completion capability is invalid"
+  [[ "$(wc -c < "$completion_capability")" =~ ^[[:space:]]*2[[:space:]]*$ ]] || fail "installation completion capability is incompatible"
+  [[ "$(cat "$completion_capability")" == 1 ]] || fail "installation completion capability is incompatible"
+  installation_commit=commit-active
+fi
 if [[ "$component" == pair ]]; then
   [[ -f "$control_root/share/kast/host-installation.py" ]] || fail "control convenience installer has no host installation helper"
   run_installer_step "IDEA host payload preflight" "" python3 "$control_root/share/kast/host-installation.py" \
@@ -827,12 +842,15 @@ else
       --release-record "$temporary_root/$host_record_name" --required-control "$control_root/share/kast/ide-host.json"
   fi
   export KAST_MANAGEMENT_CHANNEL="$([[ "$developer_latest" == 1 ]] && printf developer || printf stable)"
-  if ! installed_management="$("$management_executable" --internal-install commit)"; then
+  completion_report="$temporary_root/management-completion"
+  if ! run_installer_step "Native installation completion" "" run_management_completion "$completion_report" \
+    "$management_executable" --internal-install "$installation_commit"; then
     if [[ "$control_only" == 1 ]]; then
       run_installer_step "Control recovery after publication failure" "" "$control_root/share/kast/libexec/kast-service" recover-control publication || true
     fi
     fail "native executable activation failed; inspect the reported control recovery outcome"
   fi
+  installed_management="$(cat "$completion_report")"
   [[ "$installed_management" == "$management_destination" ]] ||
     fail "native executable destination changed during installation"
   if [[ "$codex_mcp_choice" == register ]]; then

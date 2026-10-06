@@ -66,8 +66,18 @@ class HostReleaseFixture:
     sourceRevision: str = '1' * 40
 
 
+@dataclass(frozen=True)
+class CompletionRejectedFixture:
+    type: str = 'REJECTED'
+    operation: str = 'REINSTALL'
+    stage: str = 'ACTIVATION'
+    failure: str = 'FENCE_REJECTED'
+    component: str = 'kast-lifecycle'
+
+
 class InstallerEntrypointTest(unittest.TestCase):
-    def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False):
+    def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False,
+                          completion_capability: bytes | None = b"1\n"):
         root = Path(directory).resolve()
         home = root / "home"
         idea = root / "IntelliJ IDEA.app/Contents"
@@ -98,6 +108,10 @@ class InstallerEntrypointTest(unittest.TestCase):
         info.size = len(executable)
         with tarfile.open(control, "w:gz") as archive:
             archive.addfile(info, io.BytesIO(executable))
+            if completion_capability is not None:
+                capability = tarfile.TarInfo("share/kast/install-completion-v1")
+                capability.mode, capability.size = 0o644, len(completion_capability)
+                archive.addfile(capability, io.BytesIO(completion_capability))
             if reset_capability:
                 capability = tarfile.TarInfo("share/kast/reset-fence-v1")
                 capability.mode, capability.size = 0o644, 2
@@ -106,10 +120,15 @@ class InstallerEntrypointTest(unittest.TestCase):
 set -eu
 [ "$1" = --internal-install ] || exit 92
 case "$2" in
-  preflight|commit) printf '%s\\n' "$HOME/.local/bin/kast" ;;
+  preflight) printf '%s\\n' "$HOME/.local/bin/kast" ;;
+  commit|commit-active)
+    printf 'completion=%s\\n' "$2" >&2
+    printf '%s\\n' "$HOME/.local/bin/kast" ;;
   *) exit 93 ;;
 esac
 '''
+            if completion_capability is None:
+                management = management.replace(b"commit|commit-active)", b"commit)")
             item = tarfile.TarInfo('share/kast/libexec/kast-management')
             item.mode, item.size = 0o755, len(management)
             archive.addfile(item, io.BytesIO(management))
@@ -144,6 +163,33 @@ esac
             "KAST_INSTALL_ROOT": str(home / ".local/share/kast"), "KAST_BIN_DIR": str(home / ".local/bin"),
         }
         return idea, assets, environment
+
+    def test_legacy_control_completion_uses_only_its_supported_commit_protocol(self):
+        with tempfile.TemporaryDirectory(prefix='kast-completion-legacy-') as directory:
+            idea, environment, _, log = self.upgrade_fixture(directory, completion_capability=False)
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('completion=commit\n', result.stderr)
+            self.assertNotIn('completion=commit-active', result.stderr)
+            self.assertEqual(['service', 'plugin', 'seal', 'review'], log.read_text().splitlines())
+
+    def test_invalid_completion_capability_rejects_before_private_installation(self):
+        for marker in (b'2\n', b'1', b'1\n\n', b'x' * 4097):
+            with self.subTest(marker=marker[:8]), tempfile.TemporaryDirectory(prefix='kast-completion-invalid-') as directory:
+                idea, _, environment = self.installer_fixture(directory, completion_capability=marker)
+                result = subprocess.run(
+                    [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+                )
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn('installation completion capability is incompatible', result.stderr)
+                self.assertNotIn('profile=', result.stderr)
+                self.assertNotIn('completion=', result.stderr)
+                self.assertFalse((Path(environment['KAST_INSTALL_ROOT']) / 'installation').exists())
+                self.assertFalse((Path(directory) / 'home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted').exists())
 
     def test_cold_stage_rejects_incompatible_release_before_private_installer(self):
         with tempfile.TemporaryDirectory(prefix='kast-stage-old-') as directory:
@@ -187,8 +233,10 @@ else:
         binary.chmod(0o755)
         return {"PATH": str(binary.parent) + os.pathsep + TOOL_PATH}
 
-    def upgrade_fixture(self, directory, *, cold_staging=False, version='1.2.4'):
-        idea, assets, environment = self.installer_fixture(directory, version=version)
+    def upgrade_fixture(self, directory, *, cold_staging=False, version='1.2.4', completion_capability=True):
+        idea, assets, environment = self.installer_fixture(
+            directory, version=version, completion_capability=b'1\n' if completion_capability else None,
+        )
         root = Path(directory).resolve()
         install = Path(environment['KAST_INSTALL_ROOT'])
         prior = install / 'installation'
@@ -203,7 +251,14 @@ set -eu
 if [ "$1" = --internal-install ]; then
   case "$2" in
     preflight) ;;
-    commit) mkdir -p "$HOME/.local/bin"; cp "$0" "$HOME/.local/bin/kast" ;;
+    commit|commit-active)
+      printf 'completion=%s\\n' "$2" >&2
+      mkdir -p "$HOME/.local/bin"; cp "$0" "$HOME/.local/bin/kast"
+      if [ "${FAIL_COMPLETION:-0}" != 0 ]; then
+        printf '%s\\n' '__COMPLETION_REJECTED__' >&2
+        printf '%s\\n' "$HOME/.local/bin/kast"
+        exit "$FAIL_COMPLETION"
+      fi ;;
     *) exit 93 ;;
   esac
   printf '%s\\n' "$HOME/.local/bin/kast"
@@ -275,6 +330,15 @@ assert sys.argv[1] in ('check', 'install')
 with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.argv[1] + '\\n')
 ''',
         }
+        scripts['share/kast/libexec/kast-management'] = scripts['share/kast/libexec/kast-management'].replace(
+            b'__COMPLETION_REJECTED__', json.dumps(asdict(CompletionRejectedFixture())).encode(),
+        )
+        if completion_capability:
+            scripts['share/kast/install-completion-v1'] = b'1\n'
+        else:
+            scripts['share/kast/libexec/kast-management'] = scripts['share/kast/libexec/kast-management'].replace(
+                b'commit|commit-active)', b'commit)',
+            )
         if cold_staging: scripts['share/kast/reset-fence-v1'] = b'1\n'
         control = assets / f'kast-control-v{version}-macos-aarch64.tar.gz'
         with tarfile.open(control, 'w:gz') as archive:
@@ -310,10 +374,28 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(['service', 'plugin', 'seal', 'review'], log.read_text().splitlines())
+            self.assertIn('completion=commit-active', result.stderr)
             self.assertTrue(prior.exists())  # Stable payload retirement is proved separately by lifecycle tests.
             self.assertEqual('', result.stdout)
             self.assertNotIn('{', result.stderr)
             self.assertIn('1 prior Kast entries retained', result.stderr)
+
+    def test_completion_rejection_preserves_native_path_and_reports_finite_activation_failure(self):
+        with tempfile.TemporaryDirectory(prefix='kast-completion-rejected-') as directory:
+            idea, environment, _, log = self.upgrade_fixture(directory)
+            environment['FAIL_COMPLETION'] = '42'
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertEqual('', result.stdout)
+            self.assertNotIn('{', result.stderr)
+            self.assertIn('Native installation completion failed (exit 42)', result.stderr)
+            self.assertIn('ACTIVATION', result.stderr)
+            self.assertIn('FENCE_REJECTED', result.stderr)
+            self.assertTrue((Path(environment['HOME']) / '.local/bin/kast').is_file())
+            self.assertEqual(['service', 'plugin'], log.read_text().splitlines())
 
     def test_verbose_preserves_structured_stage_and_recovery_output(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-verbose-') as directory:
@@ -467,6 +549,8 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                 '--force'], cwd=ROOT, env=environment, capture_output=True, text=True, timeout=10)
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(['service', 'seal'], log.read_text().splitlines())
+            self.assertIn('completion=commit\n', result.stderr)
+            self.assertNotIn('completion=commit-active', result.stderr)
             self.assertIn('staged Kast Control 1.2.4', result.stderr)
             self.assertNotIn('admitted running IntelliJ', result.stderr)
             self.assertNotIn('Register a user-level Kast MCP server', result.stderr)

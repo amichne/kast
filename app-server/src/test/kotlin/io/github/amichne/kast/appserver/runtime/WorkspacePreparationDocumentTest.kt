@@ -65,4 +65,22 @@ class WorkspacePreparationDocumentTest {
             json.decodeFromString<WorkspacePreparationActivity>(incompatible)
         }
     }
+
+    @Test
+    fun `availability recovery activity preserves original request identity in its typed outcome`() {
+        for (outcome in
+            listOf(
+                WorkspacePreparationActivityOutcome.CheckingHost(requestId) to "checking_host",
+                WorkspacePreparationActivityOutcome.RetryingHost(requestId) to "retrying_host",
+            )) {
+            val activity = WorkspacePreparationActivity("00000000-0000-0000-0000-000000000002", outcome.first)
+            val encoded = json.encodeToJsonElement(WorkspacePreparationActivity.serializer(), activity).jsonObject
+            assertEquals(setOf("requestId", "outcome", "event"), encoded.keys)
+            assertEquals("workspace-preparation", encoded.getValue("event").jsonPrimitive.content)
+            val evidence = encoded.getValue("outcome").jsonObject
+            assertEquals(setOf("type", "previousRequestId"), evidence.keys)
+            assertEquals(outcome.second, evidence.getValue("type").jsonPrimitive.content)
+            assertEquals(requestId, evidence.getValue("previousRequestId").jsonPrimitive.content)
+        }
+    }
 }

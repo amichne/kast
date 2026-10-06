@@ -7,6 +7,11 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class QueryRunResultWireDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("evidence_window")
+    val evidenceWindow: io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument? = null,
     val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
     @SerialName("impact_accounting")
     val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,
@@ -39,6 +44,7 @@ internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("result-stale-basis") RESULT_STALE_BASIS,
     @SerialName("result-row-unavailable") RESULT_ROW_UNAVAILABLE,
     @SerialName("result-cursor-out-of-range") RESULT_CURSOR_OUT_OF_RANGE,
+    @SerialName("evidence-cursor-out-of-range") EVIDENCE_CURSOR_OUT_OF_RANGE,
     @SerialName("result-field-unavailable") RESULT_FIELD_UNAVAILABLE,
     @SerialName("text-match-limit-exceeded") TEXT_MATCH_LIMIT_EXCEEDED,
     @SerialName("right-input-incomplete") RIGHT_INPUT_INCOMPLETE,
@@ -85,4 +91,5 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("row-selection-incomplete") ROW_SELECTION_INCOMPLETE,
     @SerialName("IMPACT_COVERAGE_UNPROVEN") IMPACT_COVERAGE_UNPROVEN,
     @SerialName("retention-limit-reached") RETENTION_LIMIT_REACHED,
+    @SerialName("execution-incomplete") EXECUTION_INCOMPLETE,
 }

@@ -17,6 +17,13 @@ internal enum class InstallationConfigurationValidationOutcome {
     OWNER_REJECTED,
 }
 
+/** Admission cannot represent a rejection carrying the successful validation outcome. */
+internal enum class InstallationConfigurationFailure(val observation: InstallationConfigurationValidationOutcome) {
+    SOURCE_REJECTED(InstallationConfigurationValidationOutcome.SOURCE_REJECTED),
+    RESOLUTION_REJECTED(InstallationConfigurationValidationOutcome.RESOLUTION_REJECTED),
+    OWNER_REJECTED(InstallationConfigurationValidationOutcome.OWNER_REJECTED),
+}
+
 @Serializable
 internal data class InstallationConfigurationValidationObservation(
     val event: String = "kast_installation_configuration",
@@ -35,19 +42,29 @@ internal fun validateStagedConfiguration(
         return outcome
     }
 
+    return when (val read = readInstallationConfiguration(path)) {
+        is Refinement.Refined -> recorded(InstallationConfigurationValidationOutcome.ADMITTED)
+        is Refinement.Rejected -> recorded(read.failure.observation)
+    }
+}
+
+/** Saved installation ingress is shared with broker startup; ambient inputs cannot replace saved values. */
+internal fun readInstallationConfiguration(
+    path: Path
+): Refinement<AdmittedAppServerConfiguration, InstallationConfigurationFailure> {
     val sources =
         when (val read = InstalledSavedConfigurationIngress.read(path.toString(), emptyMap())) {
             is SavedConfigurationIngress.Loaded -> read.sources
             is SavedConfigurationIngress.Rejected ->
-                return recorded(InstallationConfigurationValidationOutcome.SOURCE_REJECTED)
+                return Refinement.Rejected(InstallationConfigurationFailure.SOURCE_REJECTED)
         }
-    val resolved =
+    val configuration =
         when (val resolution = ResolvedKastConfiguration.resolve(sources)) {
             is Refinement.Refined -> resolution.value
-            is Refinement.Rejected -> return recorded(InstallationConfigurationValidationOutcome.RESOLUTION_REJECTED)
+            is Refinement.Rejected -> return Refinement.Rejected(InstallationConfigurationFailure.RESOLUTION_REJECTED)
         }
-    return when (AdmittedAppServerConfiguration.admit(resolved)) {
-        is Refinement.Refined -> recorded(InstallationConfigurationValidationOutcome.ADMITTED)
-        is Refinement.Rejected -> recorded(InstallationConfigurationValidationOutcome.OWNER_REJECTED)
+    return when (val owner = AdmittedAppServerConfiguration.admit(configuration)) {
+        is Refinement.Refined -> owner
+        is Refinement.Rejected -> Refinement.Rejected(InstallationConfigurationFailure.OWNER_REJECTED)
     }
 }

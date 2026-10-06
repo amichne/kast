@@ -84,7 +84,7 @@ private data class PreparedEndpointDocument(
     val protocol: Int = 3,
     val host: String = "00000000-0000-0000-0000-000000000002",
     val hostPid: Long = 123,
-    val querySchema: String = "kast.query.run.v3",
+    val querySchema: String = "kast.query.run.v4",
     val operations: List<String> =
         listOf(
             "DESCRIBE",

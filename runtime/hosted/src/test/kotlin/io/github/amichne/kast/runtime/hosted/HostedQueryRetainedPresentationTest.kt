@@ -298,7 +298,7 @@ class HostedQueryRetainedPresentationTest {
             QueryByteLimit.parse(100_000).refined(),
         )
 
-    private fun page(
+    internal fun page(
         start: Int,
         end: Int,
         resultEnd: Int,

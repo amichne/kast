@@ -34,6 +34,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 object CanonicalQueryCliDocuments {
+    /** Exact UTF-8 size of the public items array, including punctuation and retained row identities. */
+    fun symbolPreviewBytes(items: List<QueryResultItemDocument.ExactSymbol>): Long =
+        CanonicalJsonDocument.encodedBytes(
+            kotlinx.serialization.builtins.ListSerializer(QueryResultItemCliDocument.serializer()),
+            items.map(QueryResultItemDocument::toCliDocument),
+        )
+
     val itemFailureSerializer: KSerializer<*>
         get() = QueryItemFailureCliDocument.serializer()
 
@@ -123,6 +130,8 @@ private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?):
             pageProgress = result.pageProgress(),
             executionBudget = result.executionBudget,
             referenceAcquisitions = result.referenceAcquisitions,
+            invocation = result.invocation,
+            evidenceWindow = result.evidenceWindow,
             live = live,
         )
     )
@@ -159,12 +168,19 @@ private fun projectQualified(
             terminalReason = qualification.progress.terminalReason,
             executionBudget = result.executionBudget,
             referenceAcquisitions = result.referenceAcquisitions,
+            invocation = result.invocation,
+            evidenceWindow = result.evidenceWindow,
             live = live,
         )
     )
 
 @Serializable
 private data class QueryCompleteCliDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("evidence_window")
+    val evidenceWindow: io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument? = null,
     val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
     @SerialName("impact_accounting")
     val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,
@@ -199,6 +215,11 @@ private data class QueryCompleteCliDocument(
 
 @Serializable
 private data class QueryQualifiedCliDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("evidence_window")
+    val evidenceWindow: io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument? = null,
     val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
     @SerialName("impact_accounting")
     val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,

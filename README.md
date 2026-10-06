@@ -135,6 +135,19 @@ Kast uses `$HOME/.local/share/kast/installation`. For older `current` layouts, r
 the published installer. Uncertain legacy removal requires `yes` per item.
 Noninteractive upgrades keep and report those items.
 
+Routine installation verifies the prior payload, retires its service, then checks
+the state to retain. A stopped service's retained configuration does not prevent
+installation. If retirement, state retention, or payload activation fails, Kast attempts to restart the prior service
+and reports both the installation and recovery outcomes. Successful installation
+resumes a valid shutdown left by `kast stop`. An existing tool session
+rechecks a previous unavailable or incompatible Host or plugin when its next request
+needs the workspace; restart IDEA after installing a Host update to load it.
+
+Routine installation preserves admitted saved settings, including the App Server
+endpoint, unless you explicitly select another. A fresh installation uses the standard Codex socket when available
+and selects a private endpoint when that socket is occupied or cannot be inspected. Direct MCP and
+the installed `kast-codex` launcher remain usable with a private endpoint.
+
 ## Develop
 
 Use Java 25 or newer and Python from [`.python-version`](.python-version).

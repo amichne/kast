@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -52,6 +53,32 @@ class ControlOnlyUpgradeWorkflowTest {
         assertFalse(Files.exists(fixture.selected.resolve("state/prior-session")))
         assertFalse(Files.exists(fixture.selected.resolve("share/kast/plugins")))
         assertFalse(Files.exists(fixture.selected.resolve(".kast-plugin-sha256")))
+        fixture.assertHostUnchanged()
+    }
+
+    @Test
+    fun `explicit control endpoint overrides prior choice while preserving other saved settings`(
+        @TempDir temporary: Path
+    ) {
+        val fixture = Fixture(temporary)
+        fixture.prior()
+        val configuration = fixture.selected.resolve("config/environment")
+        Files.writeString(configuration, "KAST_DEBUG=1\nKAST_APP_SERVER_PUBLIC_ENDPOINT=private\n")
+        val request = fixture.candidate(endpoint = BrokerPublicEndpointMode.CODEX_CONTROL)
+        val outcome =
+            assertInstanceOf(
+                InstallationOutcome.Complete::class.java,
+                executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
+            )
+        assertEquals(InstallationActivation.Ready, outcome.report.activation)
+        val admitted =
+            (readInstallationConfiguration(configuration) as io.github.amichne.kast.kernel.Refinement.Refined).value
+        assertEquals("1", admitted.configuration.launchEnvironment().variables["KAST_DEBUG"])
+        assertEquals(
+            "codex-control",
+            admitted.configuration.launchEnvironment().variables["KAST_APP_SERVER_PUBLIC_ENDPOINT"],
+        )
+        assertEquals(listOf("C2 host-admission", "C1 disable", "C2 enable", "C2 host-admission"), fixture.effects())
         fixture.assertHostUnchanged()
     }
 
@@ -242,7 +269,11 @@ class ControlOnlyUpgradeWorkflowTest {
             )
         }
 
-        fun candidate(preflight: Int = 0, reconnect: Int = 0): InstallationRequest {
+        fun candidate(
+            preflight: Int = 0,
+            reconnect: Int = 0,
+            endpoint: BrokerPublicEndpointMode? = null,
+        ): InstallationRequest {
             val request =
                 releaseRequest(
                     root,
@@ -252,7 +283,12 @@ class ControlOnlyUpgradeWorkflowTest {
                     codex,
                     "1.2.4",
                     environmentOverrides =
-                        mapOf("KAST_INSTALL_PROFILE" to "persistent", "KAST_INSTALL_CONTROL_ONLY" to "1"),
+                        mapOf("KAST_INSTALL_PROFILE" to "persistent", "KAST_INSTALL_CONTROL_ONLY" to "1") +
+                            endpoint
+                                ?.let {
+                                    mapOf(InstallationEnvironment.PUBLIC_ENDPOINT.key to it.configurationValue)
+                                }
+                                .orEmpty(),
                 )
             service(request, "C2", preflight, reconnect, 0)
             return request
