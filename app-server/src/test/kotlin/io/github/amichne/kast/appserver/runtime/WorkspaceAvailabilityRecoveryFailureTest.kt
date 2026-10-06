@@ -32,7 +32,12 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
 
     @Test
     fun `nonavailability failures remain terminal without inspection or semantic execution`() = runTest {
-        val excluded = setOf(IdeLifecycleFailure.HOST_UNAVAILABLE, IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
+        val excluded =
+            setOf(
+                IdeLifecycleFailure.HOST_UNAVAILABLE,
+                IdeLifecycleFailure.PLUGIN_UNAVAILABLE,
+                IdeLifecycleFailure.COMPATIBILITY_REJECTED,
+            )
         for (reason in IdeLifecycleFailure.entries.filterNot { it in excluded }) {
             val script = Script(listOf(open(firstId) to IdeLifecycleResult.Blocked(reason)))
             val preparations = WorkspacePreparations(this, script::exchange, newId = { firstId })
@@ -161,7 +166,7 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
     }
 
     @Test
-    fun `recovery capacity rejection preserves the prior outcome without another effect`() = runTest {
+    fun `recovery identity rejection preserves the prior outcome without another effect`() = runTest {
         val script = Script(listOf(open(firstId) to IdeLifecycleResult.Blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)))
         val preparations = WorkspacePreparations(this, script::exchange, capacity = 1, newId = { firstId })
         val original = (preparations.prepare(root) as Refinement.Refined).value
@@ -169,7 +174,7 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
         val result = rejectedDemand(preparations).query(root, ExistingIdeOperation.Status)
         assertEquals(
             WorkspaceDemandResult.Rejected(
-                WorkspaceDemandFailure.Admission(root, WorkspacePreparationFailure.CAPACITY_EXCEEDED)
+                WorkspaceDemandFailure.Admission(root, WorkspacePreparationFailure.IDENTITY_REJECTED)
             ),
             result,
         )

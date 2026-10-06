@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.BrokerJvmUserHomeOption
-import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
 import io.github.amichne.kast.distribution.contract.configuration.RetiredConfigurationSetting
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.InvalidPathException
@@ -150,7 +149,7 @@ private constructor(
     val codexHome: InstallationPath,
     val profile: InstallationProfile,
     val mode: InstallationMode,
-    val publicEndpoint: BrokerPublicEndpointMode,
+    val publicEndpoint: InstallationPublicEndpointSelection,
     val force: InstallationSwitch,
     val controlOnly: InstallationSwitch,
 ) {

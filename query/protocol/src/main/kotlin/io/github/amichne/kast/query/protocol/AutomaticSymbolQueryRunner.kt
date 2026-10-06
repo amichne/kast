@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
@@ -51,6 +52,8 @@ internal data class AccumulatedSymbolQuery(
 internal sealed interface QueryInvocationTransition {
     data class Continue(val token: QueryExecutionContinuation.Pipeline) : QueryInvocationTransition
 
+    data class Rejected(val reason: QueryRunRejection) : QueryInvocationTransition
+
     data class Stopped(val reason: QueryInvocationStop, val failure: QueryRunRejection? = null) :
         QueryInvocationTransition
 }
@@ -71,8 +74,10 @@ internal class AutomaticSymbolQueryRunner(
         const val SEMANTIC_SLICE_MILLIS = 250L
     }
 
-    suspend fun run(request: QueryRunRequest.Run, allowance: QueryBudget): AccumulatedSymbolQuery =
-        Invocation(request, allowance).run()
+    suspend fun run(
+        request: QueryRunRequest.Run,
+        allowance: QueryBudget,
+    ): Refinement<AccumulatedSymbolQuery, QueryRunRejection> = Invocation(request, allowance).run()
 
     private inner class Invocation(private val request: QueryRunRequest.Run, private val allowance: QueryBudget) {
         private val facts = QueryInvocationFacts(lease, policy)
@@ -83,18 +88,25 @@ internal class AutomaticSymbolQueryRunner(
         private var pending: QueryExecutionContinuation.Pipeline? = null
         private var pendingProgress: QueryQualifiedProgressDocument.Resumable? = null
 
-        suspend fun run(): AccumulatedSymbolQuery {
+        suspend fun run(): Refinement<AccumulatedSymbolQuery, QueryRunRejection> {
             var action: QueryRunRequest = request.copy(retention = QueryRetentionModeDocument.DISCARD)
-            var transition: QueryInvocationTransition
-            do {
-                transition = step(action)
-                if (transition is QueryInvocationTransition.Continue) action = QueryRunRequest.Resume(transition.token)
-            } while (transition is QueryInvocationTransition.Continue)
-            val stopped = transition as QueryInvocationTransition.Stopped
-            val progress = validProgress(stopped.reason)
-            return facts
-                .finish(stopped, progress)
-                .copy(issuedProgress = if (progress is QueryContinuationState.Resumable) pendingProgress else null)
+            while (true) {
+                when (val transition = step(action)) {
+                    is QueryInvocationTransition.Continue -> action = QueryRunRequest.Resume(transition.token)
+                    is QueryInvocationTransition.Rejected -> return Refinement.Rejected(transition.reason)
+                    is QueryInvocationTransition.Stopped -> {
+                        val progress = validProgress(transition.reason)
+                        return Refinement.Refined(
+                            facts
+                                .finish(transition, progress)
+                                .copy(
+                                    issuedProgress =
+                                        if (progress is QueryContinuationState.Resumable) pendingProgress else null
+                                )
+                        )
+                    }
+                }
+            }
         }
 
         private suspend fun step(action: QueryRunRequest): QueryInvocationTransition {
@@ -107,6 +119,8 @@ internal class AutomaticSymbolQueryRunner(
             if (token != null && !consumed.add(token))
                 return QueryInvocationTransition.Stopped(QueryInvocationStop.NON_ADVANCING)
             val observed = execute(action, budget)
+            if (action is QueryRunRequest.Run && observed.page is OperationOutcome.Rejected)
+                return QueryInvocationTransition.Rejected(observed.page.reason)
             val page =
                 when (val admitted = SymbolInvocationPage.admit(observed, request)) {
                     is Refinement.Refined -> admitted.value

@@ -37,6 +37,7 @@ internal class AutomaticSymbolQueryReplayTest : AutomaticSymbolQueryCase() {
                     }
                 }
                 .run(request, budget)
+                .refined()
         assertEquals(QueryInvocationStop.NON_ADVANCING, accumulated.stop)
         assertEquals(2, accumulated.items.size)
         assertEquals(2, script.calls)

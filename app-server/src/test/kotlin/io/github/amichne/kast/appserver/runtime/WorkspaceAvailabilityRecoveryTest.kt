@@ -27,7 +27,12 @@ import org.junit.jupiter.api.Test
 internal class WorkspaceAvailabilityRecoveryTest {
     @Test
     fun `one persistent owner recovers an unavailable host before sending the query once`() = runTest {
-        for (reason in listOf(IdeLifecycleFailure.HOST_UNAVAILABLE, IdeLifecycleFailure.PLUGIN_UNAVAILABLE)) {
+        for (reason in
+            listOf(
+                IdeLifecycleFailure.HOST_UNAVAILABLE,
+                IdeLifecycleFailure.PLUGIN_UNAVAILABLE,
+                IdeLifecycleFailure.COMPATIBILITY_REJECTED,
+            )) {
             val case = RecoveryCase(this, reason)
             val original = (case.preparations.prepare(case.root) as Refinement.Refined).value
             runCurrent()

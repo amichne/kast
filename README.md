@@ -140,8 +140,13 @@ the state to retain. A stopped service's retained configuration does not prevent
 installation. If retirement, state retention, or payload activation fails, Kast attempts to restart the prior service
 and reports both the installation and recovery outcomes. Successful installation
 resumes a valid shutdown left by `kast stop`. An existing tool session
-rechecks a previous unavailable Host or plugin when its next request needs the
-workspace; restart IDEA after installing a Host update to load it.
+rechecks a previous unavailable or incompatible Host or plugin when its next request
+needs the workspace; restart IDEA after installing a Host update to load it.
+
+Routine installation preserves admitted saved settings, including the App Server
+endpoint, unless you explicitly select another. A fresh installation uses the standard Codex socket when available
+and selects a private endpoint when that socket is occupied or cannot be inspected. Direct MCP and
+the installed `kast-codex` launcher remain usable with a private endpoint.
 
 ## Develop
 

@@ -62,7 +62,7 @@ internal class WorkspacePreparations(
         return create(root)
     }
 
-    /** Demand rechecks only terminal host availability; observation retains every original outcome. */
+    /** Demand rechecks terminal availability; held prior outcomes remain immutable. */
     @Synchronized
     fun prepareForDemand(root: CanonicalRoot): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
         if (closed || !worker.isActive) return Refinement.Rejected(WorkspacePreparationFailure.CLOSED)
@@ -70,8 +70,12 @@ internal class WorkspacePreparations(
         val outcome = previous.state.value
         return if (
             outcome is WorkspacePreparationOutcome.Blocked &&
-                (outcome.reason == IdeLifecycleFailure.HOST_UNAVAILABLE ||
-                    outcome.reason == IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
+                outcome.reason in
+                    setOf(
+                        IdeLifecycleFailure.HOST_UNAVAILABLE,
+                        IdeLifecycleFailure.PLUGIN_UNAVAILABLE,
+                        IdeLifecycleFailure.COMPATIBILITY_REJECTED,
+                    )
         )
             create(root, previous.id)
         else Refinement.Refined(previous)
@@ -81,11 +85,19 @@ internal class WorkspacePreparations(
         root: CanonicalRoot,
         previous: WorkspacePreparationId? = null,
     ): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
-        if (records.size >= capacity) return Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED)
+        val retired =
+            if (records.size < capacity) null
+            else
+                records.values.firstOrNull {
+                    it.state.value is WorkspacePreparationOutcome.Terminal &&
+                        (entries[it.root] !== it || (it.root == root && it.id == previous))
+                } ?: return Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED)
         val id = newId()
         if (id in records) return Refinement.Rejected(WorkspacePreparationFailure.IDENTITY_REJECTED)
         val entry = WorkspacePreparation(id, root)
         val job = work.launch(start = CoroutineStart.LAZY) { run(entry, previous) }
+        // Admission precedes retirement; lookup eviction never rewrites the held terminal result.
+        if (retired != null) records.remove(retired.id)
         entries[root] = entry
         records[id] = entry
         observer.observe(entry.activity())
@@ -93,6 +105,7 @@ internal class WorkspacePreparations(
         return Refinement.Refined(entry)
     }
 
+    /** Historical lookup is bounded; absence proves neither prior issuance nor an original outcome. */
     @Synchronized
     fun observe(id: WorkspacePreparationId): Refinement<WorkspacePreparation, WorkspacePreparationFailure> =
         records[id]?.let { Refinement.Refined(it) }

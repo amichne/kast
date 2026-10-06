@@ -158,6 +158,7 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
                     )
                 }
                 .run(request, budget)
+                .refined()
         assertEquals(1, calls)
         assertEquals(QueryInvocationStop.BUDGET_INCREASE_REQUIRED, accumulated.stop)
         val presented = present(store, accumulated) as OperationOutcome.Qualified

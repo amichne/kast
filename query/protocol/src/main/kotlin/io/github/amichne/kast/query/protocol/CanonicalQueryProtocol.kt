@@ -41,10 +41,16 @@ class CanonicalQueryProtocol(
                 peerSiteAdmissions = peerSiteAdmissions,
             )
         val accumulated =
-            AutomaticSymbolQueryRunner(state, lease, policy) { action, remaining ->
-                    recording.page(remaining) { pages.execute(action, lease, remaining) }
-                }
-                .run(request, budget)
+            when (
+                val execution =
+                    AutomaticSymbolQueryRunner(state, lease, policy) { action, remaining ->
+                            recording.page(remaining) { pages.execute(action, lease, remaining) }
+                        }
+                        .run(request, budget)
+            ) {
+                is Refinement.Refined -> execution.value
+                is Refinement.Rejected -> return OperationOutcome.Rejected(execution.failure)
+            }
         return when (val acquired = state.acquireInitial(lease)) {
             is QueryInitialAcquisition.Acquired ->
                 pagePublication.execute(acquired.claim) {

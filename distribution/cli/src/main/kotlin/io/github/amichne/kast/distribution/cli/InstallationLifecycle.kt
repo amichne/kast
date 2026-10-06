@@ -11,7 +11,6 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
-import java.util.concurrent.TimeUnit
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -278,75 +277,4 @@ internal fun payloadOwned(installation: Path, manifest: BundledManifest, relativ
 private enum class LifecycleServiceAction(val command: String) {
     DISABLE("disable"),
     BOOTSTRAP("bootstrap"),
-}
-
-private const val SERVICE_DEADLINE_SECONDS = 45L
-private const val FRESH_INSTALLER_DEADLINE_SECONDS = 300L
-private const val SERVICE_TERMINATION_SECONDS = 5L
-
-internal enum class LifecycleChildPurpose(val deadlineSeconds: Long) {
-    SERVICE(SERVICE_DEADLINE_SECONDS),
-    INSTALLER(FRESH_INSTALLER_DEADLINE_SECONDS),
-}
-
-internal object NativeLifecycleChildExecutor : LifecycleChildExecutor {
-    override fun execute(
-        command: List<String>,
-        directory: Path,
-        environment: Map<String, String>,
-    ): LifecycleChildObservation = executeBounded(command, directory, environment, LifecycleChildPurpose.SERVICE)
-
-    internal fun executeBounded(
-        command: List<String>,
-        directory: Path,
-        environment: Map<String, String>,
-        purpose: LifecycleChildPurpose,
-    ): LifecycleChildObservation {
-        val child =
-            try {
-                ProcessBuilder(command)
-                    .directory(directory.toFile())
-                    .apply {
-                        environment().clear()
-                        environment().putAll(environment)
-                    }
-                    .redirectOutput(
-                        if (purpose == LifecycleChildPurpose.INSTALLER)
-                            ProcessBuilder.Redirect.appendTo(Path.of("/dev/stderr").toFile())
-                        else ProcessBuilder.Redirect.DISCARD
-                    )
-                    .redirectError(
-                        if (purpose == LifecycleChildPurpose.INSTALLER) ProcessBuilder.Redirect.INHERIT
-                        else ProcessBuilder.Redirect.DISCARD
-                    )
-                    .start()
-            } catch (_: Exception) {
-                return LifecycleChildObservation.Unavailable
-            }
-        return try {
-            if (child.waitFor(purpose.deadlineSeconds, TimeUnit.SECONDS))
-                LifecycleChildObservation.Exited(child.exitValue())
-            else {
-                terminateChild(child, purpose)
-                child.waitFor(SERVICE_TERMINATION_SECONDS, TimeUnit.SECONDS)
-                LifecycleChildObservation.DeadlineExceeded
-            }
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-            LifecycleChildObservation.Unavailable
-        } catch (_: Exception) {
-            LifecycleChildObservation.Unavailable
-        } finally {
-            if (child.isAlive) terminateChild(child, purpose)
-        }
-    }
-
-    private fun terminateChild(child: Process, purpose: LifecycleChildPurpose) {
-        if (purpose == LifecycleChildPurpose.INSTALLER) {
-            child.descendants().use { descendants ->
-                descendants.toList().asReversed().forEach { it.destroyForcibly() }
-            }
-        }
-        child.destroyForcibly()
-    }
 }
