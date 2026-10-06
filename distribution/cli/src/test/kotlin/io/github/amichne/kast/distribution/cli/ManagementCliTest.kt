@@ -150,7 +150,9 @@ class ManagementCliTest {
         val target = home.resolve(".pi/agent/extensions/kast.ts")
         Files.createDirectories(target.parent)
         Files.writeString(target, "release adapter")
-        org.junit.jupiter.api.assertThrows<ManagementRejected> { connectHarness(root, home, HarnessConnection.PI) }
+        org.junit.jupiter.api.assertThrows<ManagementRejected> {
+            connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REQUIRE_OWNED)
+        }
         assertEquals("release adapter", Files.readString(target))
         assertEquals(emptyList<ManagedRegistration>(), (readReceipt(root) as ReceiptRead.Read).receipt.registrations)
     }

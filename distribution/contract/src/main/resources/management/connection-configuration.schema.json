@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/schemas/management/connection-configuration.schema.json",
+  "title": "Kast saved connection directories",
+  "description": "User preferences, distinct from installation ownership. Each connection retains one absolute normalized directory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "connections"],
+  "properties": {
+    "schemaVersion": {"type": "integer", "enum": [1], "examples": [1]},
+    "connections": {
+      "type": "array",
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/connection"},
+      "allOf": [
+        {"contains": {"properties": {"type": {"enum": ["CODEX_MCP"]}}, "required": ["type"]}, "minContains": 0, "maxContains": 1},
+        {"contains": {"properties": {"type": {"enum": ["CODEX_APP_SERVER"]}}, "required": ["type"]}, "minContains": 0, "maxContains": 1},
+        {"contains": {"properties": {"type": {"enum": ["COPILOT"]}}, "required": ["type"]}, "minContains": 0, "maxContains": 1},
+        {"contains": {"properties": {"type": {"enum": ["PI"]}}, "required": ["type"]}, "minContains": 0, "maxContains": 1}
+      ],
+      "examples": [[{"type": "PI", "directory": "/Users/developer/.config/pi/agent"}]]
+    }
+  },
+  "$defs": {
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "directory"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["CODEX_MCP", "CODEX_APP_SERVER", "COPILOT", "PI"],
+          "examples": ["CODEX_MCP", "CODEX_APP_SERVER", "COPILOT", "PI"]
+        },
+        "directory": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^/(?:((?!\\.{1,2}(?:/|$))[^/\\u0000-\\u001f]+)(?:/((?!\\.{1,2}(?:/|$))[^/\\u0000-\\u001f]+))*)?$",
+          "description": "Pi agent home, Copilot home, Codex MCP home, or the Codex App Server launcher directory.",
+          "examples": ["/Users/developer/.config/pi/agent", "/Users/developer/.copilot", "/Users/developer/.codex", "/Users/developer/.local/bin"]
+        }
+      },
+      "examples": [{"type": "PI", "directory": "/Users/developer/.config/pi/agent"}]
+    }
+  },
+  "examples": [{
+    "schemaVersion": 1,
+    "connections": [
+      {"type": "CODEX_MCP", "directory": "/Users/developer/.codex"},
+      {"type": "CODEX_APP_SERVER", "directory": "/Users/developer/.local/bin"},
+      {"type": "COPILOT", "directory": "/Users/developer/.copilot"},
+      {"type": "PI", "directory": "/Users/developer/.config/pi/agent"}
+    ]
+  }]
+}

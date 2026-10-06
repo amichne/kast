@@ -91,7 +91,14 @@ class AppServerRegistrationTest {
         val receipt = (readReceipt(root) as ReceiptRead.Read).receipt
         assertEquals(2, receipt.schemaVersion)
         assertEquals(
-            listOf(ManagedRegistration(HarnessConnection.CODEX_APP_SERVER, launcher.toString(), sha256(launcher))),
+            listOf(
+                ManagedRegistration(
+                    HarnessConnection.CODEX_APP_SERVER,
+                    launcher.toString(),
+                    sha256(launcher),
+                    home.resolve(".local/bin").toString(),
+                )
+            ),
             receipt.registrations,
         )
         assertTrue(Files.readString(receiptPath(root)).contains("\"connection\":\"CODEX_APP_SERVER\""))
@@ -141,6 +148,7 @@ class AppServerRegistrationTest {
                 root,
                 home,
                 HarnessConnection.CODEX_APP_SERVER,
+                RegistrationOwnership.REQUIRE_OWNED,
                 executeCodex = { error("unexpected MCP call") },
             )
         }

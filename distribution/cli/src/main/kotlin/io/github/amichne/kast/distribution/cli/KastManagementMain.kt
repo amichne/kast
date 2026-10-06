@@ -9,6 +9,7 @@ import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.arguments.optional
+import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
@@ -156,6 +157,19 @@ private class ReinstallCommand : ManagementNode("reinstall") {
 
 private class ConnectCommand : ManagementNode("connect") {
     private val force by option("--force", help = "Replace only this harness's Kast registration slot.").flag()
+    private val strict by
+        option("--no-recover", help = "Reject a conflicting Kast slot instead of recovering it.").flag()
+    private val directory by
+        option(
+                "--destination",
+                help = "Harness home directory; for Codex app-server, the directory containing kast-codex.",
+            )
+            .convert { raw ->
+                when (val admitted = ConnectionDirectory.admit(raw)) {
+                    is ConnectionDirectoryAdmission.Admitted -> admitted.directory
+                    is ConnectionDirectoryAdmission.Rejected -> fail(admitted.failure.explanation)
+                }
+            }
     private val harness by
         argument("harness")
             .convert { raw ->
@@ -168,18 +182,28 @@ private class ConnectCommand : ManagementNode("connect") {
         "Register the release-bundled integration at user scope. Codex requires mcp or app-server."
 
     override fun selection(): ManagementCommand {
-        if (force && harness == null) throw CliktError("--force requires a selected harness")
-        val connection =
-            when (val admission = admitConnection(harness, transport)) {
-                is ConnectionAdmission.Selected -> admission.connection
-                is ConnectionAdmission.Rejected -> throw CliktError(admission.failure.explanation)
-                ConnectionAdmission.ListAvailable -> null
-            }
+        val requiresHarness = force || strict || directory != null
+        if (requiresHarness && harness == null)
+            throw CliktError("--force, --destination and --no-recover require a selected harness")
+        if (force && strict) throw CliktError("--force and --no-recover cannot be combined")
+        val connection = selectedConnection()
         return ManagementCommand.Connect(
             connection,
-            if (force) RegistrationOwnership.REPLACE_SELECTED_SLOT else RegistrationOwnership.REQUIRE_OWNED,
+            when {
+                force -> RegistrationOwnership.REPLACE_SELECTED_SLOT
+                strict -> RegistrationOwnership.REQUIRE_OWNED
+                else -> RegistrationOwnership.RECOVER_SELECTED_SLOT
+            },
+            directory,
         )
     }
+
+    private fun selectedConnection(): HarnessConnection? =
+        when (val admission = admitConnection(harness, transport)) {
+            is ConnectionAdmission.Selected -> admission.connection
+            is ConnectionAdmission.Rejected -> throw CliktError(admission.failure.explanation)
+            ConnectionAdmission.ListAvailable -> null
+        }
 }
 
 private class DisconnectCommand : ManagementNode("disconnect") {
@@ -258,13 +282,26 @@ private fun perform(command: ManagementCommand) {
         is ManagementCommand.Connect -> {
             if (command.connection == null) println("Supported integrations: codex mcp, codex app-server, copilot, pi")
             else {
-                val repeated = connectHarness(root, Path.of(home), command.connection, command.ownership)
+                val repeated =
+                    connectHarness(
+                        root,
+                        Path.of(home),
+                        command.connection,
+                        command.ownership,
+                        directory = command.directory,
+                        environment = environment,
+                    )
                 println(
                     if (repeated) "${command.connection.publicName} is already registered"
                     else "Registered ${command.connection.publicName}"
                 )
                 if (command.connection == HarnessConnection.CODEX_APP_SERVER) {
-                    val launcher = Path.of(home).resolve(".local/bin/kast-codex")
+                    val launcher =
+                        (readReceipt(root) as ReceiptRead.Read)
+                            .receipt
+                            .registrations
+                            .single { it.connection == command.connection }
+                            .destination
                     println("Launch $launcher for Codex, or $launcher app-server for an App Server client.")
                 } else println("Restart the harness to load it")
             }

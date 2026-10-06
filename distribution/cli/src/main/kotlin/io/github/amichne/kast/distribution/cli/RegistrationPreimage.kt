@@ -3,6 +3,7 @@ package io.github.amichne.kast.distribution.cli
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 private const val MAXIMUM_REGISTRATION_PREIMAGE_BYTES = 16_777_216L
 
@@ -61,3 +62,87 @@ internal fun registrationPostimage(path: Path): RegistrationPostimage =
     } catch (_: java.io.IOException) {
         RegistrationPostimage.Unavailable
     }
+
+internal fun RegistrationPreimage.restore(expected: RegistrationPostimage): RegistrationRecovery =
+    try {
+        requireRegistrationPath(destination, anchor)
+        val observed = registrationPostimage(destination)
+        val original =
+            when (this) {
+                is RegistrationPreimage.Absent -> RegistrationPostimage.Absent
+                is RegistrationPreimage.Present -> RegistrationPostimage.Present(digest)
+            }
+        if (
+            observed != original ||
+                this is RegistrationPreimage.Present && Files.getPosixFilePermissions(destination) != permissions
+        ) {
+            check(expected != RegistrationPostimage.Unavailable && observed == expected)
+            when (this) {
+                is RegistrationPreimage.Absent -> Files.deleteIfExists(destination)
+                is RegistrationPreimage.Present -> restoreBytes()
+            }
+        }
+        discard()
+        RegistrationRecovery.Restored
+    } catch (_: Exception) {
+        RegistrationRecovery.Required(
+            when (this) {
+                is RegistrationPreimage.Absent -> "remove newly created registration at $destination"
+                is RegistrationPreimage.Present -> "restore $destination from preserved backup $backup"
+            }
+        )
+    }
+
+internal fun RegistrationPreimage.discard() {
+    if (this is RegistrationPreimage.Present) Files.deleteIfExists(backup)
+}
+
+@Suppress("TooGenericExceptionCaught") // Cleanup must retain the original failure for every capture effect.
+internal fun captureRegistrationPreimage(destination: Path, anchor: Path): RegistrationPreimage {
+    requireRegistrationPath(destination, anchor)
+    Files.createDirectories(destination.parent)
+    if (!Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) return RegistrationPreimage.Absent(destination, anchor)
+    val backup = Files.createTempFile(destination.parent, ".kast-", ".prior")
+    try {
+        Files.copy(destination, backup, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES)
+        // Backups may contain Codex credentials. Keep access restricted even for a permissive original.
+        Files.setPosixFilePermissions(
+            backup,
+            java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"),
+        )
+        val digest = sha256(destination)
+        check(sha256(backup) == digest)
+        return RegistrationPreimage.Present(
+            destination,
+            anchor,
+            backup,
+            digest,
+            Files.getPosixFilePermissions(destination),
+        )
+    } catch (failure: Exception) {
+        Files.deleteIfExists(backup)
+        throw failure
+    }
+}
+
+private fun RegistrationPreimage.Present.restoreBytes() {
+    val staged = Files.createTempFile(destination.parent, ".kast-", ".restore")
+    try {
+        Files.copy(
+            backup,
+            staged,
+            StandardCopyOption.REPLACE_EXISTING,
+            StandardCopyOption.COPY_ATTRIBUTES,
+        )
+        Files.setPosixFilePermissions(staged, permissions)
+        Files.move(
+            staged,
+            destination,
+            StandardCopyOption.ATOMIC_MOVE,
+            StandardCopyOption.REPLACE_EXISTING,
+        )
+        check(sha256(destination) == digest)
+    } finally {
+        Files.deleteIfExists(staged)
+    }
+}
