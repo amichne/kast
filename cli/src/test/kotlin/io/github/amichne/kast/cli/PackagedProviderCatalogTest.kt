@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
@@ -9,9 +10,19 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class PackagedProviderCatalogTest {
+    @Test
+    fun `packaged callback contracts fit the unchanged provider admission allowance`() {
+        val bytes =
+            Json.encodeToString(PackagedCatalogDocument.serializer(), PackagedProviderCatalog.document())
+                .toByteArray(Charsets.UTF_8)
+                .size
+        assertTrue(bytes <= BrokerOperationalLimits.maximumKastSchemaBytes, "Packaged catalog uses $bytes bytes")
+    }
+
     @Test
     fun `packaged contract preserves canonical hosted schemas without executable metadata`() {
         val graph = CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created

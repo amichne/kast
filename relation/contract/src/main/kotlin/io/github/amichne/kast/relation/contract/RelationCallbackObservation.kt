@@ -11,6 +11,7 @@ enum class CallbackExclusionReason {
     CROSSINLINE_ARGUMENT,
     STORED_CALLBACK,
     RETURNED_CALLBACK,
+    DEFAULT_PARAMETER,
 }
 
 enum class RelationCallbackObservationFailure {
@@ -27,6 +28,8 @@ enum class CallbackNamedCallUnavailableCause {
 }
 
 sealed interface CallbackNamedCallPolicy {
+    data object AdmittedDirect : CallbackNamedCallPolicy
+
     data object AdmittedInline : CallbackNamedCallPolicy
 
     data class Unavailable(val cause: CallbackNamedCallUnavailableCause) : CallbackNamedCallPolicy
@@ -68,7 +71,7 @@ private constructor(
             meaning == request.meaning
 
     fun supportsNamedFact(fact: RelationFact): Boolean =
-        policy == CallbackNamedCallPolicy.AdmittedInline &&
+        (policy == CallbackNamedCallPolicy.AdmittedInline || policy == CallbackNamedCallPolicy.AdmittedDirect) &&
             fact.subject.fingerprint == subject &&
             fact.authority == basis.identity &&
             fact.meaning == meaning &&
@@ -164,6 +167,7 @@ private fun CallbackInvocationFlowRead.matchesCallback(
 
 private fun CallbackNamedCallPolicy.canonicalProjection(): String =
     when (this) {
+        CallbackNamedCallPolicy.AdmittedDirect -> "ADMITTED_DIRECT"
         CallbackNamedCallPolicy.AdmittedInline -> "ADMITTED_INLINE"
         is CallbackNamedCallPolicy.Excluded -> "EXCLUDED:${reason.name}:${boundary.file.stableValue}:${boundary.range}"
         is CallbackNamedCallPolicy.Unavailable -> "UNAVAILABLE:${cause.name}"

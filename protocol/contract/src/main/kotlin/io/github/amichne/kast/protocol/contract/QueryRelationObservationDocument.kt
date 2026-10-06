@@ -158,6 +158,8 @@ data class QueryRelationObservationDocument(
     val scopeExclusions: BoundedProtocolList<QueryScopeExclusionDocument>,
     val callbackObservations: BoundedProtocolList<QueryCallbackObservationDocument> =
         (BoundedProtocolList.create(emptyList<QueryCallbackObservationDocument>()) as Refinement.Refined).value,
+    val callableObservations: BoundedProtocolList<QueryCallableObservationDocument> =
+        (BoundedProtocolList.create(emptyList<QueryCallableObservationDocument>()) as Refinement.Refined).value,
 ) {
     companion object {
         val Empty: BoundedProtocolList<QueryRelationObservationDocument> =

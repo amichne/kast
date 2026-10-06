@@ -14,6 +14,7 @@ enum class CallbackInvocationFlowCause {
     EXTERNAL_CALLABLE,
     OUTSIDE_DOMAIN,
     PARAMETER_ESCAPES,
+    CALLBACK_CYCLE,
     NESTED_CALLBACK_EXECUTION,
     NO_INVOCATION_PROVEN,
     WORK_LIMIT_REACHED,
@@ -24,6 +25,10 @@ enum class CallbackInvocationFlowCause {
 
 sealed interface CallbackBindingEvidence {
     data class Bound(val binding: CallbackArgumentBinding) : CallbackBindingEvidence
+
+    data class Default(val binding: CallbackDefaultBinding) : CallbackBindingEvidence
+
+    data class Direct(val binding: CallbackDirectInvocationBinding) : CallbackBindingEvidence
 
     data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackBindingEvidence
 }
@@ -38,6 +43,7 @@ private constructor(
     val invocations: List<CallbackParameterInvocation>,
     val obligations: Set<CallbackInvocationFlowCause>,
     val ownerBindings: List<CallbackBodyBinding> = emptyList(),
+    val scan: CallbackInvocationScan = CallbackInvocationScan.INCOMPLETE,
 ) {
     /** Conservative detached proof storage; wire presentation retains its independent encoded byte guard. */
     val retainedBytes: Long =
@@ -45,6 +51,8 @@ private constructor(
             canonicalProjection().toByteArray(Charsets.UTF_8).size * 4L +
             when (binding) {
                 is CallbackBindingEvidence.Bound -> valueSiteStorageBytes(binding.binding.invocation.resultSite())
+                is CallbackBindingEvidence.Default,
+                is CallbackBindingEvidence.Direct,
                 is CallbackBindingEvidence.Unavailable -> 256L
             }
 
@@ -65,6 +73,7 @@ private constructor(
                 invocations = invocations,
                 obligations = Collections.unmodifiableSet(obligations + combined.flatMap { it.obligations }),
                 ownerBindings = Collections.unmodifiableList(combined.toList()),
+                scan = scan,
             )
         )
     }
@@ -76,30 +85,23 @@ private constructor(
             binding: CallbackBindingEvidence,
             invocations: List<CallbackParameterInvocation>,
             obligations: Set<CallbackInvocationFlowCause>,
+            scan: CallbackInvocationScan = CallbackInvocationScan.INCOMPLETE,
         ): Refinement<CallbackInvocationFlow, CallbackInvocationFlowFailure> {
-            val admitted =
-                when (binding) {
-                    is CallbackBindingEvidence.Bound ->
-                        admitBoundCallbackFlow(
-                            basis = basis,
-                            body = body,
-                            binding = binding.binding,
-                            invocations = invocations,
-                        )
-                    is CallbackBindingEvidence.Unavailable ->
-                        admitUnboundCallbackFlow(binding, invocations, obligations)
-                }
+            val admitted = admitCallbackFlowEvidence(basis, body, binding, invocations, obligations)
             when (admitted) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
+            if (scan == CallbackInvocationScan.EXHAUSTIVE && !admitsExhaustiveCallbackScan(obligations))
+                return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_SCAN_PROOF)
             if (invocations.distinct().size != invocations.size)
                 return Refinement.Rejected(CallbackInvocationFlowFailure.DUPLICATE_INVOCATION)
-            if (invocations.isEmpty() && obligations.isEmpty())
-                return Refinement.Rejected(CallbackInvocationFlowFailure.MISSING_OBLIGATION)
+            when (val scanProof = admitCallbackScan(binding, scan, invocations, obligations)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return scanProof
+            }
             if (
-                binding is CallbackBindingEvidence.Bound &&
-                    callbackExecutionNeedsQualification(binding.binding, invocations) &&
+                callbackExecutionNeedsQualification(binding, invocations) &&
                     CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION !in obligations
             )
                 return Refinement.Rejected(CallbackInvocationFlowFailure.MISSING_OBLIGATION)
@@ -110,6 +112,7 @@ private constructor(
                     binding = binding,
                     invocations = Collections.unmodifiableList(invocations.toList()),
                     obligations = Collections.unmodifiableSet(obligations.toSet()),
+                    scan = scan,
                 )
             )
         }
@@ -132,6 +135,8 @@ enum class CallbackInvocationFlowFailure {
     INVOCATION_OUTSIDE_SUPPLYING_OWNER,
     OWNER_BINDING_MISMATCH,
     DUPLICATE_OWNER_BINDING,
+    INVALID_SCAN_PROOF,
+    INVALID_FORWARDING_PATH,
 }
 
 sealed interface CallbackInvocationFlowRead {

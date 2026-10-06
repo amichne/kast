@@ -32,7 +32,7 @@ internal sealed interface CallOwnershipFailure {
 
     /** A proven callback boundary has no named caller edge in the static call graph. */
     data class ExcludedCallback(
-        val boundary: org.jetbrains.kotlin.psi.KtFunctionLiteral,
+        val boundary: org.jetbrains.kotlin.psi.KtFunction,
         val reason: io.github.amichne.kast.relation.contract.CallbackExclusionReason,
     ) : CallOwnershipFailure
 }
@@ -118,20 +118,29 @@ internal fun PsiElement.nearestDeclaration(
 
 private fun PsiElement.lexicalDeclaration(): ContainingDeclaration {
     for (element in generateSequence(this as PsiElement?) { it.parent }) {
-        when (element) {
-            is org.jetbrains.kotlin.psi.KtFunctionLiteral,
-            is org.jetbrains.kotlin.psi.KtPropertyAccessor -> return ContainingDeclaration.Deferred(element)
-            is org.jetbrains.kotlin.psi.KtProperty -> if (!element.isLocal) return ContainingDeclaration.Found(element)
-            is org.jetbrains.kotlin.psi.KtParameter -> Unit
-            // Object literals run their constructor and initializer path in the enclosing callable.
-            // Named members are found first and retain their own lexical ownership.
-            is KtObjectDeclaration -> if (!element.isObjectLiteral()) return ContainingDeclaration.Found(element)
-            is KtNamedDeclaration -> return ContainingDeclaration.Found(element)
-            is com.intellij.psi.PsiMember -> if (element is PsiNamedElement) return ContainingDeclaration.Found(element)
-        }
+        val candidate = lexicalDeclarationSite(element)
+        if (candidate != null) return candidate
     }
     return ContainingDeclaration.Unsupported
 }
+
+private fun lexicalDeclarationSite(element: PsiElement): ContainingDeclaration? =
+    when (element) {
+        is org.jetbrains.kotlin.psi.KtFunctionLiteral,
+        is org.jetbrains.kotlin.psi.KtPropertyAccessor -> ContainingDeclaration.Deferred(element)
+        is org.jetbrains.kotlin.psi.KtProperty -> if (!element.isLocal) ContainingDeclaration.Found(element) else null
+        is org.jetbrains.kotlin.psi.KtParameter -> null
+        is org.jetbrains.kotlin.psi.KtNamedFunction -> element.callableDeclaration()
+        // Object literals run their constructor and initializer path in the enclosing callable.
+        // Named members are found first and retain their own lexical ownership.
+        is KtObjectDeclaration -> if (!element.isObjectLiteral()) ContainingDeclaration.Found(element) else null
+        is KtNamedDeclaration -> ContainingDeclaration.Found(element)
+        is com.intellij.psi.PsiMember -> if (element is PsiNamedElement) ContainingDeclaration.Found(element) else null
+        else -> null
+    }
+
+private fun org.jetbrains.kotlin.psi.KtNamedFunction.callableDeclaration(): ContainingDeclaration =
+    if (name == null) ContainingDeclaration.Deferred(this) else ContainingDeclaration.Found(this)
 
 /** A deferred body qualifies its lexical owner but cannot authorize an edge from that owner. */
 internal fun ContainingDeclaration.Deferred.enclosingDeclaration(): ContainingDeclaration {

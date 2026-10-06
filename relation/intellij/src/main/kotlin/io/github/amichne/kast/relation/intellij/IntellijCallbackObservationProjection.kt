@@ -12,7 +12,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 internal fun detachCallbackObservation(
     request: RelationRequest,
     reference: PsiReference,
-    immediate: org.jetbrains.kotlin.psi.KtFunctionLiteral,
+    immediate: org.jetbrains.kotlin.psi.KtFunction,
     policy: NativeCallbackPolicy,
     target: PsiNamedElement,
     projection: IntellijK2RelationProjection,
@@ -74,6 +74,8 @@ private fun detachNamedCallbackPolicy(
 ): Refinement<io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy, RelationLimitation> {
     return Refinement.Refined(
         when (policy) {
+            NativeCallbackPolicy.Direct ->
+                io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy.AdmittedDirect
             NativeCallbackPolicy.Inline ->
                 io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy.AdmittedInline
             is NativeCallbackPolicy.Unavailable ->
@@ -111,6 +113,8 @@ private fun detachNamedCallbackPolicy(
 }
 
 internal sealed interface NativeCallbackPolicy {
+    data object Direct : NativeCallbackPolicy
+
     data object Inline : NativeCallbackPolicy
 
     data class Unavailable(val evidence: CallOwnershipFailure.Incomplete) : NativeCallbackPolicy
@@ -140,7 +144,7 @@ internal class IntellijCallbackObservationEmitter(
         val immediate = reference.element.nearestDeclaration()
         if (immediate !is ContainingDeclaration.Deferred) return Refinement.Refined(NativeCallbackObservation.None)
         val literal =
-            immediate.boundary as? org.jetbrains.kotlin.psi.KtFunctionLiteral
+            immediate.boundary as? org.jetbrains.kotlin.psi.KtFunction
                 ?: return Refinement.Rejected(RelationLimitation.UNSUPPORTED_ITEM)
         return when (
             val detached =
@@ -148,7 +152,12 @@ internal class IntellijCallbackObservationEmitter(
                     request,
                     reference,
                     literal,
-                    policy,
+                    if (
+                        policy == NativeCallbackPolicy.Inline &&
+                            classifyCallbackFunctionSupply(literal) is IntellijCallbackLambdaSupply.Invocation
+                    )
+                        NativeCallbackPolicy.Direct
+                    else policy,
                     target,
                     projection,
                     scope,

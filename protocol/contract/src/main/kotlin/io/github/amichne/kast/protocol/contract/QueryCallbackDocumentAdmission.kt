@@ -36,14 +36,17 @@ private fun QueryCallbackObservationDocument.admitObservedFlow(
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
     if (!flow.body.validBody()) return rejected(QueryCallbackDocumentFailure.ANONYMOUS_IDENTITY_MISMATCH)
     if (!flow.body.occurrence.sameSite(callbackBody)) return rejected(QueryCallbackDocumentFailure.FLOW_BODY_MISMATCH)
-    if (flow.invocations.values.distinct().size != flow.invocations.values.size)
-        return rejected(QueryCallbackDocumentFailure.DUPLICATE_INVOCATION)
-    if (
-        flow.obligations.values.distinct().size != flow.obligations.values.size ||
-            flow.invocations.values.isEmpty() && flow.obligations.values.isEmpty()
-    )
-        return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
+    when (val inventory = flow.admitInvocationInventory()) {
+        is Refinement.Rejected -> return inventory
+        is Refinement.Refined -> Unit
+    }
+    when (val scan = flow.admitScanProof()) {
+        is Refinement.Rejected -> return scan
+        is Refinement.Refined -> Unit
+    }
     return when (val binding = flow.binding) {
+        is QueryCallbackBindingDocument.Default -> admitDefaultFlow(flow, binding)
+        is QueryCallbackBindingDocument.Direct -> admitDirectFlow(flow, binding)
         is QueryCallbackBindingDocument.Unavailable -> binding.admitUnavailable(flow)
         is QueryCallbackBindingDocument.Bound ->
             when (val admitted = admitBinding(flow, binding)) {
@@ -53,10 +56,42 @@ private fun QueryCallbackObservationDocument.admitObservedFlow(
     }
 }
 
+private fun QueryCallbackFlowDocument.Observed.admitInvocationInventory():
+    Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (invocations.values.distinct().size != invocations.values.size)
+        return rejected(QueryCallbackDocumentFailure.DUPLICATE_INVOCATION)
+    if (obligations.values.distinct().size != obligations.values.size)
+        return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
+    if (hasUnprovenEmptyInventory()) return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
+    return Refinement.Refined(Unit)
+}
+
+private fun QueryCallbackFlowDocument.Observed.hasUnprovenEmptyInventory(): Boolean =
+    invocations.values.isEmpty() &&
+        obligations.values.isEmpty() &&
+        scan == QueryCallbackInvocationScanDocument.INCOMPLETE
+
+private fun QueryCallbackFlowDocument.Observed.admitScanProof(): Refinement<Unit, QueryCallbackDocumentFailure> =
+    when (scan) {
+        QueryCallbackInvocationScanDocument.EXHAUSTIVE ->
+            if (obligations.values.any { it != QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION })
+                rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+            else Refinement.Refined(Unit)
+        QueryCallbackInvocationScanDocument.INCOMPLETE -> Refinement.Refined(Unit)
+        QueryCallbackInvocationScanDocument.NOT_APPLICABLE ->
+            if (binding !is QueryCallbackBindingDocument.Direct)
+                rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+            else Refinement.Refined(Unit)
+    }
+
 private fun QueryCallbackBindingDocument.Unavailable.admitUnavailable(
     flow: QueryCallbackFlowDocument.Observed
 ): Refinement<Unit, QueryCallbackDocumentFailure> =
-    if (flow.invocations.values.isNotEmpty() || cause !in flow.obligations.values)
+    if (
+        flow.invocations.values.isNotEmpty() ||
+            cause !in flow.obligations.values ||
+            flow.scan != QueryCallbackInvocationScanDocument.INCOMPLETE
+    )
         rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     else Refinement.Refined(Unit)
 
@@ -65,7 +100,7 @@ private fun QueryCallbackObservationDocument.admitBinding(
     bound: QueryCallbackBindingDocument.Bound,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
     if (
-        bound.invocationOwner is QueryCallbackBodyDocument.Anonymous &&
+        !bound.invocationOwner.isReceivingCallable(lexicalOwner) &&
             QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in flow.obligations.values
     )
         return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
@@ -118,69 +153,70 @@ internal fun QueryCallbackBodyDocument.admitOwner():
 private fun admitInvocations(
     flow: QueryCallbackFlowDocument.Observed,
     bound: QueryCallbackBindingDocument.Bound,
+): Refinement<Unit, QueryCallbackDocumentFailure> =
+    flow.admitParameterInvocations(
+        QueryCallbackParameterIdentityDocument(bound.callable, bound.position, bound.parameter),
+        bound.invocation.callable,
+    )
+
+private fun admitDefaultFlow(
+    flow: QueryCallbackFlowDocument.Observed,
+    binding: QueryCallbackBindingDocument.Default,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
-    for (invocation in flow.invocations.values) {
-        val owner =
-            when (val admitted = invocation.owner.admitOwner()) {
-                is Refinement.Rejected -> return admitted
-                is Refinement.Refined -> admitted.value
-            }
-        if (
-            !invocation.owner.isReceivingCallable(bound) &&
-                QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in flow.obligations.values
-        )
-            return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
-        if (
-            !bound.callable.declaration.contains(invocation.occurrence) ||
-                !bound.callable.declaration.contains(owner) ||
-                !owner.contains(invocation.occurrence)
-        )
-            return rejected(QueryCallbackDocumentFailure.INVOCATION_OWNER_MISMATCH)
-        if (!invocation.validTransfers(bound)) return rejected(QueryCallbackDocumentFailure.TRANSFER_PROOF_MISMATCH)
-    }
+    if (
+        !binding.parameter.validParameter() ||
+            !binding.parameter.parameter.contains(binding.defaultValue) ||
+            !binding.defaultValue.contains(flow.body.occurrence)
+    )
+        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    return flow.admitParameterInvocations(binding.parameter, binding.parameter.callable.reference(flow.basis))
+}
+
+private fun QueryCallbackObservationDocument.admitDirectFlow(
+    flow: QueryCallbackFlowDocument.Observed,
+    binding: QueryCallbackBindingDocument.Direct,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    val owner =
+        when (val admitted = binding.owner.admitOwner()) {
+            is Refinement.Rejected -> return admitted
+            is Refinement.Refined -> admitted.value
+        }
+    if (binding.basis != flow.basis || !binding.occurrence.contains(flow.body.occurrence))
+        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    if (!owner.contains(binding.occurrence) || !lexicalOwner.declaration.contains(owner))
+        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    if (flow.scan != QueryCallbackInvocationScanDocument.NOT_APPLICABLE || flow.invocations.values.isNotEmpty())
+        return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+    if (
+        binding.owner is QueryCallbackBodyDocument.Anonymous &&
+            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in flow.obligations.values
+    )
+        return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     return Refinement.Refined(Unit)
 }
 
-private fun QueryCallbackBodyDocument.isReceivingCallable(bound: QueryCallbackBindingDocument.Bound): Boolean =
-    when (this) {
-        is QueryCallbackBodyDocument.Named ->
-            callable.compilerTarget.compilerEvidence.identity == bound.callable.compilerTarget.compilerEvidence.identity
-        is QueryCallbackBodyDocument.Anonymous -> false
-    }
+internal fun QueryCallbackParameterIdentityDocument.validParameter(): Boolean {
+    val signature =
+        callable.compilerTarget.compilerEvidence.signature as? CompilerSignatureDocument.Function ?: return false
+    return callable.validCallable() &&
+        callable.declaration.contains(parameter) &&
+        position.value in signature.valueParameters.values.indices
+}
 
-private fun QueryCallbackInvocationDocument.validTransfers(bound: QueryCallbackBindingDocument.Bound): Boolean {
-    val transfers = callableTransfers.values
-    if (transfers.any { !it.validTransfer(bound.invocation.callable) }) return false
-    if (transfers.zipWithNext().any { (left, right) -> left.target != right.source }) return false
-    if (transfers.isEmpty()) return true
-    if (
-        transfers.first().source.role != ImpactValueRoleDocument.ExpressionResult ||
-            transfers.last().target.role != ImpactValueRoleDocument.LocalRead
+internal fun QueryCallbackBindingDocument.Bound.parameterIdentity() =
+    QueryCallbackParameterIdentityDocument(callable, position, parameter)
+
+internal fun QueryCallbackBindingDocument.Bound.validInvocationSite(): Boolean =
+    invocation.range.start == invocationOccurrence.range.startInclusive &&
+        invocation.range.end == invocationOccurrence.range.endExclusive
+
+private fun QueryCallbackCallableDocument.reference(basis: ImpactSemanticBasisDocument) =
+    ImpactDeclarationReferenceDocument(
+        basis,
+        compilerTarget.file,
+        ImpactSourceRangeDocument(declaration.range.startInclusive, declaration.range.endExclusive),
+        compilerTarget.compilerEvidence.identity,
     )
-        return false
-    val terminal = transfers.last().target
-    return terminal.enclosing.file == occurrence.file &&
-        terminal.range.start.value >= occurrence.range.startInclusive.value &&
-        terminal.range.end.value <= occurrence.range.endExclusive.value
-}
-
-private fun ImpactCompilerTransferDocument.validTransfer(callable: ImpactDeclarationReferenceDocument): Boolean {
-    if (!validRoles() || source == target) return false
-    if (source.enclosing != callable || target.enclosing != callable) return false
-    return source.validSite() && target.validSite()
-}
-
-private fun ImpactCompilerTransferDocument.validRoles(): Boolean =
-    when (kind) {
-        ImpactTransferKindDocument.LOCAL_BINDING -> target.role == ImpactValueRoleDocument.LocalBinding
-        ImpactTransferKindDocument.LOCAL_READ ->
-            source.role == ImpactValueRoleDocument.LocalBinding && target.role == ImpactValueRoleDocument.LocalRead
-        ImpactTransferKindDocument.ARGUMENT,
-        ImpactTransferKindDocument.RETURN,
-        ImpactTransferKindDocument.PROPERTY_ASSIGNMENT,
-        ImpactTransferKindDocument.BRANCH_ALTERNATIVE,
-        ImpactTransferKindDocument.WRAPPER_RETURN -> false
-    }
 
 private fun QueryCallbackCallableDocument.validDeclaration(): Boolean =
     declaration.file == compilerTarget.file &&
@@ -206,9 +242,3 @@ internal fun RelationOccurrenceDocument.sameSite(other: RelationOccurrenceDocume
 
 private fun rejected(failure: QueryCallbackDocumentFailure): Refinement.Rejected<QueryCallbackDocumentFailure> =
     Refinement.Rejected(failure)
-
-private fun ImpactValueSiteReferenceDocument.validSite(): Boolean =
-    range.start.value < range.end.value &&
-        enclosing.range.start.value < enclosing.range.end.value &&
-        range.start.value >= enclosing.range.start.value &&
-        range.end.value <= enclosing.range.end.value

@@ -108,6 +108,8 @@ data class QueryWalkObservationDocument(
         (BoundedProtocolList.create(emptyList<QueryWalkScopeExclusionDocument>()) as Refinement.Refined).value,
     val callbackObservations: BoundedProtocolList<QueryWalkCallbackObservationDocument> =
         (BoundedProtocolList.create(emptyList<QueryWalkCallbackObservationDocument>()) as Refinement.Refined).value,
+    val callableObservations: BoundedProtocolList<QueryWalkCallableObservationDocument> =
+        (BoundedProtocolList.create(emptyList<QueryWalkCallableObservationDocument>()) as Refinement.Refined).value,
     val inheritedOmissions: BoundedProtocolList<TraversalPartialExpansionDocument> =
         TraversalPartialExpansionDocument.Empty,
     val referenceOccurrences: BoundedProtocolList<TraversalReferenceObservationDocument> =

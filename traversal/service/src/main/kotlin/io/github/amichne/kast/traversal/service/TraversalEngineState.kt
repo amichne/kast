@@ -1,10 +1,12 @@
 package io.github.amichne.kast.traversal.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationOmissionMeasurement
+import io.github.amichne.kast.traversal.contract.TraversalCallableObservation
 import io.github.amichne.kast.traversal.contract.TraversalCheckpoint
 import io.github.amichne.kast.traversal.contract.TraversalFrontierEntry
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
@@ -17,6 +19,7 @@ import io.github.amichne.kast.traversal.contract.TraversalPlan
 import io.github.amichne.kast.traversal.contract.TraversalPosition
 import io.github.amichne.kast.traversal.contract.TraversalProgress
 import io.github.amichne.kast.traversal.contract.TraversalRecord
+import io.github.amichne.kast.traversal.contract.TraversalRejection
 
 internal class MutableTraversalState(
     val frontier: MutableList<TraversalFrontierEntry>,
@@ -139,10 +142,13 @@ internal class TraversalAccounting(
 
     val callbackObservations = mutableListOf<io.github.amichne.kast.traversal.contract.TraversalCallbackObservation>()
 
+    val callableObservations = mutableListOf<io.github.amichne.kast.traversal.contract.TraversalCallableObservation>()
+
     val retainedResultCount: Int
         get() =
             semanticResultCount +
                 scopeExclusions.size +
+                callableObservations.size +
                 callbackObservations.count { callback ->
                     records.none { it.fact.occurrence == callback.observation.occurrence }
                 }
@@ -156,6 +162,25 @@ internal class TraversalAccounting(
                             it.fact.target == observation.reference.target
                     }
                 }
+
+    /** Completes page accounting only after the final detached callable proofs have been preserved. */
+    fun retainReadCompletion(
+        plan: TraversalPlan,
+        entry: TraversalFrontierEntry,
+        batch: RelationBatch,
+        elapsed: OneHopElapsedMillis,
+    ): Refinement<Unit, TraversalRejection> {
+        for (callable in batch.callableObservations) {
+            when (val observed = TraversalCallableObservation.create(plan, entry, callable)) {
+                is Refinement.Refined -> callableObservations += observed.value
+                is Refinement.Rejected -> return Refinement.Rejected(TraversalRejection.ReaderContractViolation)
+            }
+        }
+        encodedBytes += batch.encodedBytes.value
+        examinedWorkUnits += batch.examinedWorkUnits.value
+        elapsedMillis += elapsed.value
+        return Refinement.Refined(Unit)
+    }
 
     /**
      * Proof transition: `(TraversalAccounting, TraversalPlan) -> Refinement<TraversalPage, TraversalPageFailure>`.
@@ -190,6 +215,7 @@ internal class TraversalAccounting(
             referenceOccurrences.sorted(),
             scopeExclusions.sorted(),
             callbackObservations.sorted(),
+            callableObservations.sorted(),
         )
     }
 }

@@ -8,6 +8,7 @@ import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlow
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
+import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
@@ -23,9 +24,11 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtFunctionLiteral
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtSafeQualifiedExpression
 
 /** Request-local native projection and shared allowance; no live PSI or K2 object escapes the read. */
 internal class IntellijCallbackFlowContext(
@@ -58,6 +61,7 @@ internal class IntellijCallbackFlowContext(
         binding: CallbackBindingEvidence,
         invocations: List<CallbackParameterInvocation>,
         obligations: Set<CallbackInvocationFlowCause>,
+        scan: CallbackInvocationScan = CallbackInvocationScan.INCOMPLETE,
     ): CallbackInvocationFlowRead =
         when (
             val result =
@@ -67,6 +71,7 @@ internal class IntellijCallbackFlowContext(
                     binding = binding,
                     invocations = invocations,
                     obligations = obligations,
+                    scan = scan,
                 )
         ) {
             is Refinement.Refined -> CallbackInvocationFlowRead.Observed(result.value)
@@ -135,11 +140,11 @@ internal class IntellijCallbackFlowContext(
                         }
                     IntellijRelationDeclarationProjection.Unsupported -> null
                 }
-            is ContainingDeclaration.Deferred -> (found.boundary as? KtFunctionLiteral)?.let(::anonymous)
+            is ContainingDeclaration.Deferred -> (found.boundary as? KtFunction)?.let(::anonymous)
             ContainingDeclaration.Unsupported -> null
         }
 
-    fun anonymous(literal: KtFunctionLiteral): RelationCallableBody.Anonymous? {
+    fun anonymous(literal: KtFunction): RelationCallableBody.Anonymous? {
         val nativeFile = literal.containingFile?.virtualFile ?: return null
         if (!scope.nativeScope.contains(nativeFile)) return null
         val file =
@@ -150,7 +155,13 @@ internal class IntellijCallbackFlowContext(
         val range = range(literal) ?: return null
         val signature =
             analyze(literal) {
-                val symbol = literal.symbol as? KaFunctionSymbol ?: return@analyze null
+                val symbol =
+                    when (literal) {
+                        is KtFunctionLiteral -> literal.symbol
+                        is KtNamedFunction -> literal.symbol
+                        else -> null
+                    }
+                        as? KaFunctionSymbol ?: return@analyze null
                 when (
                     val parsed =
                         CanonicalCompilerSignature.function(
@@ -205,7 +216,8 @@ internal class IntellijCallbackFlowContext(
         val call =
             when (val parent = expression.parent) {
                 is KtCallExpression -> parent.takeIf { it.calleeExpression === expression }
-                is KtDotQualifiedExpression ->
+                is KtDotQualifiedExpression,
+                is KtSafeQualifiedExpression ->
                     if (parent.receiverExpression === expression)
                         (parent.selectorExpression as? KtCallExpression)?.takeIf {
                             it.calleeExpression?.text == "invoke"
@@ -216,12 +228,9 @@ internal class IntellijCallbackFlowContext(
         return if (confirmsFunctionInvoke(call)) call else null
     }
 
-    private fun confirmsFunctionInvoke(call: KtCallExpression): Boolean =
+    fun confirmsFunctionInvoke(call: KtCallExpression): Boolean =
         analyze(call) {
-            val symbol = call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol
-            val id = symbol?.callableId
-            symbol?.name?.asString() == "invoke" &&
-                id?.packageName?.asString() in setOf("kotlin", "kotlin.coroutines") &&
-                id?.className?.asString()?.matches(Regex("(?:Suspend)?Function[0-9]+")) == true
+            val symbol = call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol ?: return@analyze false
+            confirmsBuiltinFunctionInvoke(symbol)
         }
 }

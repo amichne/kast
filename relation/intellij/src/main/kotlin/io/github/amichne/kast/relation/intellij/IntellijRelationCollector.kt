@@ -3,15 +3,22 @@ package io.github.amichne.kast.relation.intellij
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationByteCount
+import io.github.amichne.kast.relation.contract.RelationCallableObservation
+import io.github.amichne.kast.relation.contract.RelationCallableTarget
+import io.github.amichne.kast.relation.contract.RelationCallbackObservation
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationOmissionSample
+import io.github.amichne.kast.relation.contract.RelationProviderConsumption
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationReferenceOccurrence
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationScopeExclusion
+import io.github.amichne.kast.relation.contract.SourceLessCallableDisposition
 import io.github.amichne.kast.relation.contract.retainedLimitations
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -26,15 +33,12 @@ internal class IntellijRelationCollector(
     private val limits: ReadLimits = ReadLimits.Default,
     private val allowance: IntellijRelationAllowance = IntellijRelationAllowance(clockNanoseconds),
 ) {
-    var providerConsumption: io.github.amichne.kast.relation.contract.RelationProviderConsumption =
-        io.github.amichne.kast.relation.contract.RelationProviderConsumption.Unconfirmed
+    var providerConsumption: RelationProviderConsumption = RelationProviderConsumption.Unconfirmed
         private set
 
     private val facts = mutableListOf<RelationFact>()
     private val referenceOccurrences = mutableListOf<RelationReferenceOccurrence>()
-    private val scopeExclusions = mutableListOf<io.github.amichne.kast.relation.contract.RelationScopeExclusion>()
-    private val callbackObservations =
-        mutableListOf<io.github.amichne.kast.relation.contract.RelationCallbackObservation>()
+    private val evidence = IntellijRelationEvidenceBuffer(request)
     private var providerState: RelationProviderState? =
         (request.position as? RelationReadPosition.Resume)?.continuation?.providerState
     private val limitations = request.retainedLimitations.toMutableSet()
@@ -101,11 +105,11 @@ internal class IntellijRelationCollector(
         when {
             examined >= request.budget.resources.workUnitLimit.value ->
                 haltAdmission(RelationLimitation.WORK_LIMIT_REACHED)
-            semanticResultCount() + scopeExclusions.size + standaloneCallbackCount() >=
-                request.budget.resources.resultLimit.value -> haltAdmission(RelationLimitation.RESULT_LIMIT_REACHED)
+            evidence.resultCount(evidenceAllowance()) >= request.budget.resources.resultLimit.value ->
+                haltAdmission(RelationLimitation.RESULT_LIMIT_REACHED)
             else -> {
                 pendingProviderItem = item
-                providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.Unconfirmed
+                providerConsumption = RelationProviderConsumption.Unconfirmed
                 allowance.examine()
                 IntellijRelationProviderItemAdmission.READY
             }
@@ -133,14 +137,11 @@ internal class IntellijRelationCollector(
      */
     fun accept(
         fact: RelationFact,
-        callback: io.github.amichne.kast.relation.contract.RelationCallbackObservation? = null,
+        callback: RelationCallbackObservation? = null,
     ): Boolean {
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         val pending = pendingProviderItem ?: return contractHalt()
-        if (
-            semanticResultCount() + scopeExclusions.size + standaloneCallbackCount() >=
-                request.budget.resources.resultLimit.value
-        ) {
+        if (evidence.resultCount(evidenceAllowance()) >= request.budget.resources.resultLimit.value) {
             return halt(RelationLimitation.RESULT_LIMIT_REACHED)
         }
 
@@ -159,54 +160,61 @@ internal class IntellijRelationCollector(
         pendingProviderItem = null
         retainedBytes += factBytes
         facts += fact
-        if (callback != null) callbackObservations += callback
-        providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.GraphConfirmed(fact)
+        if (callback != null) evidence.retainNamedCallback(callback)
+        providerConsumption = RelationProviderConsumption.GraphConfirmed(fact)
         observation.count(IntellijReadCounter.RELATION_FACTS)
         return if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
     }
 
     /** Retains a proven domain exit before consuming its provider item; an overflow remains resumable. */
-    fun acceptScopeExclusion(value: io.github.amichne.kast.relation.contract.RelationScopeExclusion): Boolean {
-        if (state != IntellijRelationCollectionState.COLLECTING) return false
-        if (pendingProviderItem == null || !value.belongsTo(request)) return contractHalt()
-        if (value in scopeExclusions) return dismissProviderItem()
-        if (
-            semanticResultCount() + scopeExclusions.size + standaloneCallbackCount() >=
-                request.budget.resources.resultLimit.value
-        )
-            return halt(RelationLimitation.RESULT_LIMIT_REACHED)
-        val bytes = value.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-        if (retainedBytes + bytes > request.budget.returnedBytes.value)
-            return halt(RelationLimitation.BYTE_LIMIT_REACHED)
-        scopeExclusions += value
-        retainedBytes += bytes
-        return dismissProviderItem()
-    }
+    fun acceptScopeExclusion(value: RelationScopeExclusion): Boolean =
+        acceptEvidence({ evidence.accept(value, evidenceAllowance()) }) { bytes -> retainedBytes += bytes.value }
 
     /** Callback ownership evidence consumes the same bounded page allowance as other exact evidence. */
     fun acceptCallbackObservation(
-        value: io.github.amichne.kast.relation.contract.RelationCallbackObservation,
+        value: RelationCallbackObservation,
         unavailable: RelationLimitation? = null,
+    ): Boolean =
+        acceptEvidence({ evidence.accept(value, evidenceAllowance()) }) { bytes ->
+            if (unavailable != null) {
+                omissions.record(unavailable, RelationOmissionSample.Located(value.occurrence))
+                qualify(unavailable)
+            }
+            retainedBytes += bytes.value
+        }
+
+    /** Exact symbolic targets share page bounds with named edges and remain detached evidence. */
+    fun acceptCallableObservation(value: RelationCallableObservation): Boolean =
+        acceptEvidence({ evidence.accept(value, evidenceAllowance()) }) { bytes ->
+            retainedBytes += bytes.value
+            val target = value.target
+            if (
+                target is RelationCallableTarget.SourceLess &&
+                    target.disposition == SourceLessCallableDisposition.LIBRARY_SOURCE_UNAVAILABLE
+            ) {
+                omissions.record(RelationLimitation.UNSUPPORTED_ITEM, RelationOmissionSample.Located(value.occurrence))
+                qualify(RelationLimitation.UNSUPPORTED_ITEM)
+            }
+        }
+
+    private fun acceptEvidence(
+        admission: () -> IntellijRelationEvidenceAdmission,
+        recorded: (RelationByteCount) -> Unit,
     ): Boolean {
         if (state != IntellijRelationCollectionState.COLLECTING) return false
-        if (pendingProviderItem == null || !value.belongsTo(request)) return contractHalt()
-        if (value in callbackObservations) return dismissProviderItem()
-        if (
-            semanticResultCount() + scopeExclusions.size + standaloneCallbackCount() >=
-                request.budget.resources.resultLimit.value
-        )
-            return halt(RelationLimitation.RESULT_LIMIT_REACHED)
-        val bytes = value.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-        if (retainedBytes + bytes > request.budget.returnedBytes.value)
-            return halt(RelationLimitation.BYTE_LIMIT_REACHED)
-        callbackObservations += value
-        if (unavailable != null) {
-            omissions.record(unavailable, RelationOmissionSample.Located(value.occurrence))
-            qualify(unavailable)
+        if (pendingProviderItem == null) return contractHalt()
+        return when (val outcome = admission()) {
+            IntellijRelationEvidenceAdmission.ContractRejected -> contractHalt()
+            IntellijRelationEvidenceAdmission.Duplicate -> dismissProviderItem()
+            is IntellijRelationEvidenceAdmission.Limited -> halt(outcome.limitation)
+            is IntellijRelationEvidenceAdmission.Recorded -> {
+                recorded(outcome.encodedBytes)
+                dismissProviderItem()
+            }
         }
-        retainedBytes += bytes
-        return dismissProviderItem()
     }
+
+    private fun evidenceAllowance() = IntellijRelationEvidenceAllowance(facts, referenceOccurrences, retainedBytes)
 
     /** Records one explicit compiler/provider coverage loss without manufacturing a fact. */
     fun qualify(limitation: RelationLimitation) {
@@ -236,8 +244,9 @@ internal class IntellijRelationCollector(
                 request = request,
                 facts = facts,
                 occurrences = referenceOccurrences,
-                scopeExclusions = scopeExclusions,
-                callbackObservations = callbackObservations,
+                scopeExclusions = evidence.scopeExclusions,
+                callbackObservations = evidence.callbackObservations,
+                callableObservations = evidence.callableObservations,
                 examined = examined,
                 state = state,
                 pending = pendingProviderItem != null,
@@ -260,12 +269,6 @@ internal class IntellijRelationCollector(
 
     val providerItemConsumed: Boolean
         get() = pendingProviderItem == null
-
-    private fun semanticResultCount(): Int =
-        referenceOccurrences.size +
-            facts.count { fact ->
-                referenceOccurrences.none { it.occurrence == fact.occurrence && it.target == fact.target }
-            }
 
     fun retainProviderState(value: RelationProviderState, preparedPartition: Boolean = false): Boolean {
         if (value.provider != requestedCursor.provider) return contractHalt()
@@ -296,16 +299,12 @@ internal class IntellijRelationCollector(
         nextProviderCursor = nextProviderCursor.advance(pending)
         pendingProviderItem = null
         retainedBytes += bytes
-        providerConsumption = io.github.amichne.kast.relation.contract.RelationProviderConsumption.Confirmed(value)
+        providerConsumption = RelationProviderConsumption.Confirmed(value)
         referenceOccurrences += value
         omissions.observeReferenceOwnership(value).forEach(::qualify)
         if (fact != null) facts += fact
         observation.count(IntellijReadCounter.RELATION_FACTS)
         return if (elapsedLimitReached()) halt(RelationLimitation.TIME_LIMIT_REACHED) else true
-    }
-
-    private fun standaloneCallbackCount(): Int = callbackObservations.count { callback ->
-        facts.none(callback::supportsNamedFact)
     }
 
     fun admitCallbackWork(): CallbackWorkAdmission = allowance.admitCallbackWork(request.budget.resources)

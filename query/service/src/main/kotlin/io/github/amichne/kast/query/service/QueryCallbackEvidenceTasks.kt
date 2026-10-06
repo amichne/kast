@@ -27,10 +27,18 @@ internal class QueryCallbackEvidenceTasks(
     private val reject: (QueryExecutionRejection) -> Unit,
 ) {
     fun walk(task: PipelineTask.WalkObservation, append: () -> Unit): Boolean =
-        emit(task.value.callbackObservations.isNotEmpty(), task.value.projectedUtf8Size(), append)
+        emit(
+            task.value.callbackObservations.isNotEmpty() || task.value.callableObservations.isNotEmpty(),
+            task.value.projectedUtf8Size(),
+            append,
+        )
 
     fun relation(task: PipelineTask.RelationObservation, append: () -> Unit): Boolean =
-        emit(task.value.callbackObservations.isNotEmpty(), task.value.projectedUtf8Size(), append)
+        emit(
+            task.value.callbackObservations.isNotEmpty() || task.value.callableObservations.isNotEmpty(),
+            task.value.projectedUtf8Size(),
+            append,
+        )
 
     private fun emit(hasCallbacks: Boolean, bytes: Long, append: () -> Unit): Boolean {
         if (!hasCallbacks) return evaluate(bytes, append)

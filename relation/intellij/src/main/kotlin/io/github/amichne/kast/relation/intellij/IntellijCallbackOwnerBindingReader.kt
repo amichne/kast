@@ -17,24 +17,39 @@ import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtExpression
-import org.jetbrains.kotlin.psi.KtFunctionLiteral
-import org.jetbrains.kotlin.psi.KtLambdaExpression
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
 /** Maps a nested body's direct supply without enumerating or activating the receiving body. */
 internal class IntellijCallbackOwnerBindingReader(private val context: IntellijCallbackFlowContext) {
     fun read(
-        literal: KtFunctionLiteral,
+        literal: KtFunction,
         body: RelationCallableBody.Anonymous,
         enclosing: RelationEndpoint,
     ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
-        val lambda = literal.parent as? KtLambdaExpression
         val obligations = linkedSetOf(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
-        return when (
-            val supply = lambda?.let(::classifyCallbackLambdaSupply) ?: IntellijCallbackLambdaSupply.Unsupported
-        ) {
+        return when (val supply = classifyCallbackFunctionSupply(literal)) {
             is IntellijCallbackLambdaSupply.Argument -> readArgument(supply, body, enclosing, obligations)
-            is IntellijCallbackLambdaSupply.Invocation -> unavailableSource(body, supply, obligations)
+            is IntellijCallbackLambdaSupply.DefaultParameter ->
+                readDeclared(
+                    body,
+                    CallbackBodySupply.DefaultParameter(
+                        context.occurrence(supply.parameter)
+                            ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+                    ),
+                    IntellijCallbackDeclaredSupplyReader(context).prepareDefault(supply),
+                    obligations,
+                )
+            is IntellijCallbackLambdaSupply.Invocation ->
+                readDeclared(
+                    body,
+                    CallbackBodySupply.DirectInvocation(
+                        context.occurrence(supply.call.valueInvocationExpression())
+                            ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+                    ),
+                    IntellijCallbackDeclaredSupplyReader(context).prepareDirect(supply),
+                    obligations,
+                )
             is IntellijCallbackLambdaSupply.Returned -> unavailableSource(body, supply, obligations)
             IntellijCallbackLambdaSupply.Stored ->
                 unavailable(body, CallbackBodySupply.Stored, CallbackInvocationFlowCause.STORED_CALLBACK, obligations)
@@ -47,6 +62,26 @@ internal class IntellijCallbackOwnerBindingReader(private val context: IntellijC
                 )
         }
     }
+
+    private fun readDeclared(
+        body: RelationCallableBody.Anonymous,
+        supply: CallbackBodySupply,
+        read: CallbackBindingPreparation,
+        obligations: Set<CallbackInvocationFlowCause>,
+    ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> =
+        when (read) {
+            is CallbackBindingPreparation.Direct ->
+                CallbackBodyBinding.fromCompiler(
+                    body,
+                    supply,
+                    CallbackBindingEvidence.Direct(read.binding),
+                    obligations,
+                )
+            is CallbackBindingPreparation.Prepared ->
+                CallbackBodyBinding.fromCompiler(body, supply, read.value.binding, obligations)
+            is CallbackBindingPreparation.ContractRejected -> Refinement.Rejected(read.cause)
+            is CallbackBindingPreparation.Unavailable -> unavailable(body, supply, read.cause, obligations)
+        }
 
     private fun readArgument(
         argument: IntellijCallbackLambdaSupply.Argument,
@@ -80,35 +115,18 @@ internal class IntellijCallbackOwnerBindingReader(private val context: IntellijC
 
     private fun unavailableSource(
         body: RelationCallableBody.Anonymous,
-        supply: IntellijCallbackLambdaSupply,
+        supply: IntellijCallbackLambdaSupply.Returned,
         obligations: Set<CallbackInvocationFlowCause>,
     ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
-        val element =
-            when (supply) {
-                is IntellijCallbackLambdaSupply.Invocation -> supply.call.valueInvocationExpression()
-                is IntellijCallbackLambdaSupply.Returned -> supply.occurrence
-                else -> return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
-            }
         val occurrence =
-            context.occurrence(element)
+            context.occurrence(supply.occurrence)
                 ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
-        return when (supply) {
-            is IntellijCallbackLambdaSupply.Invocation ->
-                unavailable(
-                    body,
-                    CallbackBodySupply.Invocation(occurrence),
-                    CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY,
-                    obligations,
-                )
-            is IntellijCallbackLambdaSupply.Returned ->
-                unavailable(
-                    body,
-                    CallbackBodySupply.Returned(occurrence),
-                    CallbackInvocationFlowCause.RETURNED_CALLBACK,
-                    obligations,
-                )
-            else -> Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
-        }
+        return unavailable(
+            body,
+            CallbackBodySupply.Returned(occurrence),
+            CallbackInvocationFlowCause.RETURNED_CALLBACK,
+            obligations,
+        )
     }
 
     private fun binding(

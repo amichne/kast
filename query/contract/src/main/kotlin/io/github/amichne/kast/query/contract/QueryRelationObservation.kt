@@ -41,6 +41,7 @@ private constructor(
     val coverage: QueryRelationCoverage,
     val scopeExclusions: List<io.github.amichne.kast.relation.contract.RelationScopeExclusion>,
     val callbackObservations: List<io.github.amichne.kast.relation.contract.RelationCallbackObservation>,
+    val callableObservations: List<io.github.amichne.kast.relation.contract.RelationCallableObservation>,
 ) {
     val retainedBytes: Long
         get() =
@@ -52,17 +53,24 @@ private constructor(
                 question.effectiveConstraints.fingerprintFields().sumOf { it.length * 2L } +
                 SymbolSearchScope.snapshot(question.effectiveScope).toString().length * 2L +
                 callbackObservations.sumOf { it.retainedBytes } +
+                callableObservations.sumOf { it.retainedBytes } +
                 scopeExclusions.sumOf { it.canonicalProjection().length * 2L }
 
     fun projectedUtf8Size(): Long = DOCUMENT_OVERHEAD_BYTES + retainedBytes * UTF8_EXPANSION_FACTOR
 
     fun evidenceUnits(): List<QueryRelationObservation> =
-        if (scopeExclusions.size + callbackObservations.size <= 1) listOf(this)
+        if (scopeExclusions.size + callbackObservations.size + callableObservations.size <= 1) listOf(this)
         else {
-            val structural = copy(scopeExclusions = emptyList(), callbackObservations = emptyList())
+            val structural =
+                copy(
+                    scopeExclusions = emptyList(),
+                    callbackObservations = emptyList(),
+                    callableObservations = emptyList(),
+                )
             Collections.unmodifiableList(
                 scopeExclusions.map { structural.copy(scopeExclusions = Collections.singletonList(it)) } +
-                    callbackObservations.map { structural.copy(callbackObservations = Collections.singletonList(it)) }
+                    callbackObservations.map { structural.copy(callbackObservations = Collections.singletonList(it)) } +
+                    callableObservations.map { structural.copy(callableObservations = Collections.singletonList(it)) }
             )
         }
 
@@ -73,6 +81,7 @@ private constructor(
                 QueryRelationCoverage.Exhausted,
                 result.batch.scopeExclusions,
                 result.batch.callbackObservations,
+                result.batch.callableObservations,
             )
 
         fun from(result: RelationReadResult.Qualified): QueryRelationObservation =
@@ -88,6 +97,7 @@ private constructor(
                 },
                 result.batch.scopeExclusions,
                 result.batch.callbackObservations,
+                result.batch.callableObservations,
             )
 
         private fun observation(
@@ -95,6 +105,7 @@ private constructor(
             coverage: QueryRelationCoverage,
             exclusions: List<io.github.amichne.kast.relation.contract.RelationScopeExclusion>,
             callbacks: List<io.github.amichne.kast.relation.contract.RelationCallbackObservation>,
+            callables: List<io.github.amichne.kast.relation.contract.RelationCallableObservation>,
         ): QueryRelationObservation =
             QueryRelationObservation(
                 QueryRelationQuestion(
@@ -108,6 +119,7 @@ private constructor(
                 coverage,
                 Collections.unmodifiableList(exclusions.toList()),
                 Collections.unmodifiableList(callbacks.toList()),
+                Collections.unmodifiableList(callables.toList()),
             )
     }
 }

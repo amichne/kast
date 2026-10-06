@@ -262,6 +262,7 @@ private data class ExpectedQueryPageProgress(
     @kotlinx.serialization.SerialName("relation_evidence") val relationEvidence: Int = 0,
     @kotlinx.serialization.SerialName("scope_exclusions") val scopeExclusions: Int = 0,
     @kotlinx.serialization.SerialName("callback_observations") val callbackObservations: Int = 0,
+    @kotlinx.serialization.SerialName("callable_observations") val callableObservations: Int = 0,
     @kotlinx.serialization.SerialName("excluded_callbacks") val excludedCallbacks: Int = 0,
     val omissions: Int = 0,
     val failures: Int = 0,

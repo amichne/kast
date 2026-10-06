@@ -5,7 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtFunction
 
 /** Bounded native proof attached to callback observations without changing named-call ownership. */
 internal fun readCallbackInvocationFlow(
@@ -21,7 +21,7 @@ internal fun readCallbackInvocationFlow(
         is Refinement.Rejected -> return CallbackInvocationFlowRead.Unavailable(allowed.failure)
     }
     val literal =
-        boundary as? KtFunctionLiteral
+        boundary as? KtFunction
             ?: return CallbackInvocationFlowRead.Unavailable(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
     val body =
         context.anonymous(literal)
@@ -30,6 +30,7 @@ internal fun readCallbackInvocationFlow(
         is CallbackBindingPreparation.Unavailable ->
             unavailableCallbackSupply(context, literal, body, lexicalOwner, prepared.cause)
         is CallbackBindingPreparation.ContractRejected -> CallbackInvocationFlowRead.ContractRejected(prepared.cause)
+        is CallbackBindingPreparation.Direct -> readDirectCallbackFlow(context, prepared, body, lexicalOwner)
         is CallbackBindingPreparation.Prepared -> IntellijCallbackFlowScan(context, prepared.value, body).read()
     }
 }

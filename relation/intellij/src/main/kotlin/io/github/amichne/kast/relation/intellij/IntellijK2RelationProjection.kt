@@ -150,6 +150,10 @@ internal class IntellijK2RelationProjection(
         val declaration =
             when (val resolved = resolve(reference)) {
                 is IntellijK2ResolvedDeclaration.Found -> resolved.declaration
+                IntellijK2ResolvedDeclaration.InvokeReceiver,
+                is IntellijK2ResolvedDeclaration.ParameterInvocation,
+                is IntellijK2ResolvedDeclaration.SourceLess -> return IntellijReferenceTargetResult.Different
+                is IntellijK2ResolvedDeclaration.Unsupported,
                 IntellijK2ResolvedDeclaration.Unresolved -> return IntellijReferenceTargetResult.Unresolved
             }
         val evidence =
@@ -239,25 +243,27 @@ internal class IntellijK2RelationProjection(
     /** Resolves one Kotlin call/reference target to a source declaration through K2. */
     fun resolve(reference: KtReference): IntellijK2ResolvedDeclaration =
         analyze(reference.element) {
-            val symbol = reference.resolveToSymbol()
-            val psi = symbol?.psi
-            val declaration = psi as? PsiNamedElement
-            when {
-                symbol == null -> {
-                    observation.terminated(IntellijReadTermination.K2_UNRESOLVED_SYMBOL)
-                    IntellijK2ResolvedDeclaration.Unresolved
+                val symbol = reference.resolveToSymbol()
+                val parameterInvocation = symbol?.let { resolvedParameterInvocation(reference, it) }
+                if (parameterInvocation != null) return@analyze parameterInvocation
+                val psi = symbol?.psi
+                val declaration = psi as? PsiNamedElement
+                when {
+                    symbol == null -> {
+                        IntellijK2ResolvedDeclaration.Unresolved
+                    }
+                    psi == null -> {
+                        observation.terminated(IntellijReadTermination.K2_SYMBOL_WITHOUT_PSI)
+                        sourceLessCallable(symbol)
+                    }
+                    declaration == null -> {
+                        observation.terminated(IntellijReadTermination.K2_NON_KOTLIN_PSI)
+                        IntellijK2ResolvedDeclaration.Unresolved
+                    }
+                    else -> IntellijK2ResolvedDeclaration.Found(declaration)
                 }
-                psi == null -> {
-                    observation.terminated(IntellijReadTermination.K2_SYMBOL_WITHOUT_PSI)
-                    IntellijK2ResolvedDeclaration.Unresolved
-                }
-                declaration == null -> {
-                    observation.terminated(IntellijReadTermination.K2_NON_KOTLIN_PSI)
-                    IntellijK2ResolvedDeclaration.Unresolved
-                }
-                else -> IntellijK2ResolvedDeclaration.Found(declaration)
             }
-        }
+            .observedResolutionBy(observation)
 
     /** Java resolution finds the declaration; K2 then proves its exact retained compiler identity. */
     fun confirmJavaReferenceTarget(reference: PsiReference, subject: RelationEndpoint): IntellijReferenceTargetResult {

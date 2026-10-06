@@ -4,6 +4,10 @@ package io.github.amichne.kast.protocol.contract
 sealed interface QueryCallbackBodySupplyDocument {
     data class Invocation(val occurrence: RelationOccurrenceDocument) : QueryCallbackBodySupplyDocument
 
+    data class DefaultParameter(val parameter: RelationOccurrenceDocument) : QueryCallbackBodySupplyDocument
+
+    data class DirectInvocation(val occurrence: RelationOccurrenceDocument) : QueryCallbackBodySupplyDocument
+
     data class Returned(val occurrence: RelationOccurrenceDocument) : QueryCallbackBodySupplyDocument
 
     data object Unsupported : QueryCallbackBodySupplyDocument

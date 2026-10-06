@@ -87,6 +87,129 @@ class QueryRetainedCallbackPresentationTest {
         assertNull(first.evidence.payload.nextCursor)
     }
 
+    @Test
+    fun `retained symbolic callable evidence partitions and projects inspect refs without semantic replay`() = runTest {
+        val observation = callableObservation()
+        val callables = observation.callableObservations
+        val units = observation.evidenceUnits()
+        assertEquals(callables, units.flatMap { it.callableObservations })
+        org.junit.jupiter.api.Assertions.assertTrue(observation.retainedBytes >= callables.sumOf { it.retainedBytes })
+        val issued = issueCallbackEvidence(units)
+        val result =
+            callbackProtocol()
+                .execute(
+                    QueryRunRequest.ReadResult.symbols(
+                        issued.reference,
+                        output = QueryOutputDocument.Symbols(bounded(emptyList())),
+                    ),
+                    fixture.authority,
+                    budget,
+                ) as OperationOutcome.Complete
+        assertEquals(0, result.evidence.payload.items.values.size)
+        val projected = result.evidence.payload.relationObservations.values.flatMap { it.callableObservations.values }
+        assertEquals(listOf(1, 2, 3), projected.map { it.occurrence.range.startInclusive.value })
+        assertEquals(3, projected.map { it.occurrence.candidateSelector }.distinct().size)
+        org.junit.jupiter.api.Assertions.assertTrue(
+            projected.all {
+                it.target is io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument.SourceLess
+            }
+        )
+    }
+
+    @Test
+    fun `zero row evidence continuations preserve exact callable occurrence authority`() = runTest {
+        val units = callableObservation().evidenceUnits()
+        val paged = issueCallbackEvidence(units, QueryRetainedEvidenceMode.PAGED)
+        val protocol = callbackProtocol()
+        var evidenceCursor: io.github.amichne.kast.protocol.contract.QueryEvidenceCursor? = null
+        val pageBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
+        for (offset in 1..3) {
+            val page =
+                protocol.execute(
+                    QueryRunRequest.ReadResult.symbols(
+                        paged.reference,
+                        output = QueryOutputDocument.Symbols(bounded(emptyList())),
+                        evidenceCursor = evidenceCursor,
+                    ),
+                    fixture.authority,
+                    pageBudget,
+                ) as OperationOutcome.Complete
+            assertEquals(0, page.evidence.payload.items.values.size)
+            assertNull(page.evidence.payload.nextCursor)
+            val item = page.evidence.payload.relationObservations.values.single().callableObservations.values.single()
+            assertEquals(offset, item.occurrence.range.startInclusive.value)
+            val decoded =
+                fixture.references.restoreCandidate(item.occurrence.candidateSelector, fixture.authority)
+                    as CanonicalSelectorDecoding.Decoded
+            val restored = decoded.value as io.github.amichne.kast.symbol.contract.CandidateSelector.Range
+            assertEquals(fixture.authority, restored.lease)
+            assertEquals(fixture.selector.file, restored.file)
+            assertEquals(offset, restored.startInclusive.value)
+            assertEquals(offset + 1, restored.endExclusive.value)
+            evidenceCursor = page.evidence.payload.evidenceWindow!!.nextCursor
+            assertEquals(if (offset < 3) offset else null, evidenceCursor?.value)
+        }
+        assertNull(evidenceCursor)
+    }
+
+    private fun callableObservation(): io.github.amichne.kast.query.contract.QueryRelationObservation {
+        val request = RelationRequest.start(fixture.selector, RelationMeaning.Callees, fixture.budget)
+        val evidence = CompilerGroundedSymbolEvidence.fromSelector(fixture.selector)
+        val callables = callables(request, evidence)
+        val batch =
+            io.github.amichne.kast.relation.contract.RelationBatch.create(
+                    request,
+                    emptyList(),
+                    io.github.amichne.kast.relation.contract.RelationByteCount.parse(
+                            callables.sumOf {
+                                it.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong()
+                            }
+                        )
+                        .refined(),
+                    io.github.amichne.kast.relation.contract.RelationWorkCount.parse(3L).refined(),
+                    io.github.amichne.kast.relation.contract.RelationResultCount.parse(0).refined(),
+                    callableObservations = callables,
+                )
+                .refined()
+        return io.github.amichne.kast.query.contract.QueryRelationObservation.from(
+            io.github.amichne.kast.relation.contract.RelationReadResult.Complete(
+                batch,
+                io.github.amichne.kast.relation.contract.RelationCompilation.complete(batch).coverage,
+            )
+        )
+    }
+
+    private fun callables(
+        request: RelationRequest,
+        evidence: CompilerGroundedSymbolEvidence,
+    ): List<io.github.amichne.kast.relation.contract.RelationCallableObservation> {
+        val body = io.github.amichne.kast.relation.contract.RelationCallableBody.Named.fromCompiler(evidence).refined()
+        val target =
+            io.github.amichne.kast.relation.contract.SourceLessCallable.fromCompiler(
+                    evidence.signature,
+                    evidence.kind,
+                    io.github.amichne.kast.relation.contract.SourceLessCallableOrigin.LIBRARY,
+                    io.github.amichne.kast.relation.contract.SourceLessCallableModuleKind.BUILTINS,
+                    io.github.amichne.kast.relation.contract.SourceLessCallableModuleName.parse("Built-ins").refined(),
+                )
+                .refined()
+        return (1..3)
+            .map { offset ->
+                io.github.amichne.kast.relation.contract.RelationCallableObservation.fromNativeBoundary(
+                        request,
+                        RelationOccurrence.fromBoundary(fixture.selector.file, offset, offset + 1).refined(),
+                        evidence,
+                        body,
+                        io.github.amichne.kast.relation.contract.RelationCallableTarget.SourceLess(
+                            target,
+                            io.github.amichne.kast.relation.contract.SourceLessCallableDisposition.BUILTIN_BOUNDARY,
+                        ),
+                    )
+                    .refined()
+            }
+            .sorted()
+    }
+
     private fun callbackObservation(): io.github.amichne.kast.query.contract.QueryRelationObservation {
         val request = RelationRequest.start(fixture.selector, RelationMeaning.Callees, fixture.budget)
         val evidence = CompilerGroundedSymbolEvidence.fromSelector(fixture.selector)
@@ -138,7 +261,8 @@ class QueryRetainedCallbackPresentationTest {
     }
 
     private fun issueCallbackEvidence(
-        units: List<io.github.amichne.kast.query.contract.QueryRelationObservation>
+        units: List<io.github.amichne.kast.query.contract.QueryRelationObservation>,
+        evidenceMode: QueryRetainedEvidenceMode = QueryRetainedEvidenceMode.WHOLE,
     ): QueryResultIssuance.Issued {
         val execution =
             QueryExecutionResult.Complete.create(
@@ -152,6 +276,7 @@ class QueryRetainedCallbackPresentationTest {
         return store.issueResult(
             run(QueryOutputDocument.Symbols(bounded(emptyList()))),
             QueryRetainedResult.capture(fixture.authority, execution).refined(),
+            evidenceMode = evidenceMode,
         ) as QueryResultIssuance.Issued
     }
 

@@ -18,6 +18,8 @@ enum class QueryCallbackDocumentFailure {
     TRANSFER_PROOF_MISMATCH,
     OWNER_BINDING_MISMATCH,
     DUPLICATE_OWNER_BINDING,
+    INVALID_SCAN_PROOF,
+    INVALID_FORWARDING_PATH,
 }
 
 @Serializable
@@ -27,6 +29,7 @@ enum class QueryCallbackExclusionReasonDocument {
     NOINLINE_ARGUMENT,
     CROSSINLINE_ARGUMENT,
     STORED_CALLBACK,
+    DEFAULT_PARAMETER,
 }
 
 @Serializable
@@ -38,6 +41,8 @@ enum class QueryCallbackNamedUnavailableCauseDocument {
 /** Named-call ownership and possible callback invocation remain separate facts. */
 sealed interface QueryCallbackNamedPolicyDocument {
     data object AdmittedInline : QueryCallbackNamedPolicyDocument
+
+    data object AdmittedDirect : QueryCallbackNamedPolicyDocument
 
     data class Unavailable(val cause: QueryCallbackNamedUnavailableCauseDocument) : QueryCallbackNamedPolicyDocument
 
@@ -118,6 +123,7 @@ enum class QueryCallbackFlowCauseDocument {
     EXTERNAL_CALLABLE,
     OUTSIDE_DOMAIN,
     PARAMETER_ESCAPES,
+    CALLBACK_CYCLE,
     NESTED_CALLBACK_EXECUTION,
     NO_INVOCATION_PROVEN,
     WORK_LIMIT_REACHED,
@@ -143,6 +149,8 @@ enum class QueryCallbackFlowFailureDocument {
     CALLABLE_TRANSFER_BINDING_MISMATCH,
     OWNER_BINDING_MISMATCH,
     DUPLICATE_OWNER_BINDING,
+    INVALID_SCAN_PROOF,
+    INVALID_FORWARDING_PATH,
 }
 
 sealed interface QueryCallbackBodyDocument {
@@ -152,6 +160,19 @@ sealed interface QueryCallbackBodyDocument {
         val occurrence: RelationOccurrenceDocument,
         val compilerEvidence: CompilerSymbolEvidenceDocument,
     ) : QueryCallbackBodyDocument
+}
+
+data class QueryCallbackParameterIdentityDocument(
+    val callable: QueryCallbackCallableDocument,
+    val position: ProtocolOffset,
+    val parameter: RelationOccurrenceDocument,
+)
+
+@Serializable
+enum class QueryCallbackInvocationScanDocument {
+    EXHAUSTIVE,
+    INCOMPLETE,
+    NOT_APPLICABLE,
 }
 
 sealed interface QueryCallbackBindingDocument {
@@ -164,13 +185,32 @@ sealed interface QueryCallbackBindingDocument {
         val parameter: RelationOccurrenceDocument,
     ) : QueryCallbackBindingDocument
 
+    data class Default(
+        val parameter: QueryCallbackParameterIdentityDocument,
+        val defaultValue: RelationOccurrenceDocument,
+    ) : QueryCallbackBindingDocument
+
+    data class Direct(
+        val basis: ImpactSemanticBasisDocument,
+        val occurrence: RelationOccurrenceDocument,
+        val owner: QueryCallbackBodyDocument,
+    ) : QueryCallbackBindingDocument
+
     data class Unavailable(val cause: QueryCallbackFlowCauseDocument) : QueryCallbackBindingDocument
 }
+
+data class QueryCallbackForwardingDocument(
+    val source: QueryCallbackParameterIdentityDocument,
+    val argument: RelationOccurrenceDocument,
+    val target: QueryCallbackBindingDocument.Bound,
+)
 
 data class QueryCallbackInvocationDocument(
     val occurrence: RelationOccurrenceDocument,
     val owner: QueryCallbackBodyDocument,
     val callableTransfers: BoundedProtocolList<ImpactCompilerTransferDocument>,
+    val forwardings: BoundedProtocolList<QueryCallbackForwardingDocument> =
+        (BoundedProtocolList.create(emptyList<QueryCallbackForwardingDocument>()) as Refinement.Refined).value,
 )
 
 sealed interface QueryCallbackFlowDocument {
@@ -181,6 +221,7 @@ sealed interface QueryCallbackFlowDocument {
         val invocations: BoundedProtocolList<QueryCallbackInvocationDocument>,
         val obligations: BoundedProtocolList<QueryCallbackFlowCauseDocument>,
         val ownerBindings: BoundedProtocolList<QueryCallbackBodyBindingDocument>,
+        val scan: QueryCallbackInvocationScanDocument = QueryCallbackInvocationScanDocument.INCOMPLETE,
     ) : QueryCallbackFlowDocument
 
     data class Unavailable(val cause: QueryCallbackFlowCauseDocument) : QueryCallbackFlowDocument

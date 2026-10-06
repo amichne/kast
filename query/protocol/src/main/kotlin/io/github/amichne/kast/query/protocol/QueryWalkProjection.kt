@@ -28,16 +28,15 @@ internal fun QueryWalkObservation.projectWalkObservation(
             is ExactSelectorIssuance.Issued -> QueryReferenceDocument.ExactSymbol(issued.selector)
             is ExactSelectorIssuance.Rejected -> return null
         }
-    val depth = ProtocolCount.parse(budget.depth.value).refinedWalkOrNull() ?: return null
-    val frontier = QueryExpandedFrontierDocument.parse(expandedFrontier.value).refinedWalkOrNull() ?: return null
+    val measures = projectPageMeasures() ?: return null
     val partials = partialExpansions.protocolDocuments(authority) ?: return null
     val projectedCoverage = coverage.protocolDocument() ?: return null
     val domain = projectQuestionDomain() ?: return null
     return QueryWalkObservationDocument(
         subject = subject,
         relation = meaning.protocolDocument(),
-        maximumDepth = depth,
-        expandedFrontier = frontier,
+        maximumDepth = measures.maximumDepth,
+        expandedFrontier = measures.expandedFrontier,
         progress =
             TraversalProgressDocument(
                 progress.checkpointSequence,
@@ -56,9 +55,24 @@ internal fun QueryWalkObservation.projectWalkObservation(
         callbackObservations =
             callbackObservations.mapProjected { it.projectCallbackObservation(authority) }.boundedProjectedOrNull()
                 ?: return null,
+        callableObservations =
+            callableObservations.mapProjected { it.projectCallableObservation(authority) }.boundedProjectedOrNull()
+                ?: return null,
         scopeExclusions =
             scopeExclusions.mapProjected { it.projectScopeExclusion(authority) }.boundedProjectedOrNull()
                 ?: return null,
+    )
+}
+
+private data class WalkPageMeasures(
+    val maximumDepth: ProtocolCount,
+    val expandedFrontier: QueryExpandedFrontierDocument,
+)
+
+private fun QueryWalkObservation.projectPageMeasures(): WalkPageMeasures? {
+    return WalkPageMeasures(
+        ProtocolCount.parse(budget.depth.value).refinedWalkOrNull() ?: return null,
+        QueryExpandedFrontierDocument.parse(expandedFrontier.value).refinedWalkOrNull() ?: return null,
     )
 }
 
