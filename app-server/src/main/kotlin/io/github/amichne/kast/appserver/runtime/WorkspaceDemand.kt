@@ -72,7 +72,7 @@ internal class PreparedWorkspaceDemand(
 
     private suspend fun queryOnce(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult {
         val entry =
-            when (val admitted = preparations.prepare(root)) {
+            when (val admitted = preparations.prepareForDemand(root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return WorkspaceDemandResult.Rejected(WorkspaceDemandFailure.Admission(root, admitted.failure))

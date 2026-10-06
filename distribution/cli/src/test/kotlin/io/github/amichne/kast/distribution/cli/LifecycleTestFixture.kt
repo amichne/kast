@@ -29,6 +29,7 @@ internal fun createLifecycleFixture(temporary: Path): LifecycleFixture {
     val payloads =
         listOf(
                 "share/kast/libexec/kast-service",
+                "share/kast/libexec/kast-management",
                 "share/kast/one-shot-observation-v1",
                 "lib/kast.jar",
                 "share/kast/lifecycle-fence-v1",
@@ -50,7 +51,7 @@ internal fun createLifecycleFixture(temporary: Path): LifecycleFixture {
     Files.createDirectories(config)
     Files.writeString(config.resolve("environment"), "owned-config")
     createSelectedHost(temporary, config)
-    val native = temporary.resolve("kast-command")
+    val native = temporary.toRealPath().resolve("kast-command")
     Files.writeString(native, "native-fixture")
     writeManagementReceipt(
         root,

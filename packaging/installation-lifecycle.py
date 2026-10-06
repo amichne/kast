@@ -63,6 +63,28 @@ class LifecycleRejection:
     retirement: Optional['RetirementRejection'] = None
     status: str = 'rejected'
 
+class AdmissionType(str, Enum):
+    PAYLOAD_ADMITTED = 'PAYLOAD_ADMITTED'
+    STATE_ADMITTED = 'STATE_ADMITTED'
+
+@dataclass(frozen=True)
+class PayloadAdmission:
+    payloadIdentity: str
+    type: AdmissionType = field(default=AdmissionType.PAYLOAD_ADMITTED, init=False)
+
+@dataclass(frozen=True)
+class AdmissionAccepted:
+    type: AdmissionType
+
+@dataclass(frozen=True)
+class AdmissionRejected:
+    failure: Failure
+    type: str = field(default='ADMISSION_REJECTED', init=False)
+
+def observe_admission(observation):
+    # Only a finite outcome is emitted; paths, configuration and source data stay private.
+    print(json.dumps(asdict(observation), separators=(',', ':')), file=sys.stderr)
+
 @dataclass(frozen=True)
 class PruneReport:
     operation: str
@@ -898,7 +920,7 @@ def remove_anchors(installation):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--installation', required=True)
-    parser.add_argument('operation', choices=('inspect', 'recover-read-only', 'reset', 'remove', 'prune'))
+    parser.add_argument('operation', choices=('inspect-payload', 'inspect', 'recover-read-only', 'reset', 'remove', 'prune'))
     parser.add_argument('--control-only', action='store_true', help='Remove only the owned control installation.')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--json', action='store_true')
@@ -907,8 +929,13 @@ def main():
         if arguments.control_only and arguments.operation != 'remove':
             raise Rejected(Failure.MANIFEST_REJECTED)
         installation = Installation.admit(arguments.installation)
-        if arguments.operation == 'inspect':
+        if arguments.operation == 'inspect-payload':
+            installation.revalidate()
+            report = asdict(PayloadAdmission(installation.manifest['payloadIdentity']))
+            observe_admission(AdmissionAccepted(AdmissionType.PAYLOAD_ADMITTED))
+        elif arguments.operation == 'inspect':
             report = execute(installation, arguments.operation, arguments.dry_run)
+            observe_admission(AdmissionAccepted(AdmissionType.STATE_ADMITTED))
         else:
             lock = installation.managed_root / 'activation.lock'
             descriptor = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
@@ -927,9 +954,13 @@ def main():
         print(json.dumps(report, separators=(',', ':')))
         return 0
     except Rejected as rejected:
+        if arguments.operation in {'inspect-payload', 'inspect'}:
+            observe_admission(AdmissionRejected(rejected.failure))
         print(json.dumps(asdict(LifecycleRejection(rejected.failure, rejected.limit, rejected.retirement))))
         return 1
     except (OSError, ValueError, TypeError, KeyError):
+        if arguments.operation in {'inspect-payload', 'inspect'}:
+            observe_admission(AdmissionRejected(Failure.FILESYSTEM_REJECTED))
         print(json.dumps(asdict(LifecycleRejection(Failure.FILESYSTEM_REJECTED))))
         return 1
 

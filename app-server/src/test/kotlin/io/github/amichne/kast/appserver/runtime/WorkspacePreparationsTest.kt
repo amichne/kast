@@ -44,7 +44,7 @@ class WorkspacePreparationsTest {
             )
         val first = (preparations.prepare(root) as Refinement.Refined).value
         assertEquals(emptyList<String>(), preparations.activeRoots())
-        val joined = (preparations.prepare(CanonicalRoot(Path.of("/workspace"))) as Refinement.Refined).value
+        val joined = (preparations.prepareForDemand(CanonicalRoot(Path.of("/workspace"))) as Refinement.Refined).value
         assertSame(first, joined)
         assertEquals(setOf(UpgradeBlocker.PREPARATION_ACTIVE), preparations.upgradeBlockers())
         runCurrent()

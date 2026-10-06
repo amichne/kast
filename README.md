@@ -135,6 +135,14 @@ Kast uses `$HOME/.local/share/kast/installation`. For older `current` layouts, r
 the published installer. Uncertain legacy removal requires `yes` per item.
 Noninteractive upgrades keep and report those items.
 
+Routine installation verifies the prior payload, retires its service, then checks
+the state to retain. A stopped service's retained configuration does not prevent
+installation. If retirement, state retention, or payload activation fails, Kast attempts to restart the prior service
+and reports both the installation and recovery outcomes. Successful installation
+resumes a valid shutdown left by `kast stop`. An existing tool session
+rechecks a previous unavailable Host or plugin when its next request needs the
+workspace; restart IDEA after installing a Host update to load it.
+
 ## Develop
 
 Use Java 25 or newer and Python from [`.python-version`](.python-version).

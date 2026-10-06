@@ -53,6 +53,12 @@ private constructor(
         val next = readBundledManifest(installation)
         if (next !is BundledManifestRead.Read || !supportsShutdown(installation, next.manifest))
             return LifecycleEffect.Rejected(LifecycleFailure.OWNERSHIP_UNPROVEN)
+        if (fenceIdentity == FenceAttributes.Rejected) {
+            when (val admitted = admitExistingFence()) {
+                LifecycleEffect.Completed -> Unit
+                is LifecycleEffect.Rejected -> return admitted
+            }
+        }
         val path = root.resolve(SHUTDOWN_FENCE)
         val current = attributes(path)
         if (current !is FenceAttributes.Read || current != fenceIdentity)
@@ -122,6 +128,13 @@ private constructor(
                 NOFOLLOW_LINKS,
             )
         }
+        return admitExistingFence()
+    }
+
+    /** A completed installation may resume an exact persisted request without issuing another shutdown. */
+    private fun admitExistingFence(): LifecycleEffect {
+        val path = root.resolve(SHUTDOWN_FENCE)
+        val expected = InstallationShutdownRequest(installation.toString())
         val raw =
             readBoundedFile(path, RECORD_BYTES) ?: return LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED)
         val document =

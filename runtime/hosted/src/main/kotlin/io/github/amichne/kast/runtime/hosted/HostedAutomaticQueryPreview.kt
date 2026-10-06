@@ -105,7 +105,9 @@ private class HostedAutomaticQueryPreview(
     }
 
     fun fit(): HostedResponse {
-        var lower = 0
+        // A retained read must advance a cursor; an initial invocation may return an empty preview.
+        val minimumPrefix = if (invocation == null && original.presentationUnitCount > 0) 1 else 0
+        var lower = minimumPrefix
         var upper = original.presentationUnitCount
         var best: Pair<HostedQueryOutcome, HostedResponse>? = null
         while (lower <= upper) {
@@ -120,7 +122,7 @@ private class HostedAutomaticQueryPreview(
                 else -> return candidate.second
             }
         }
-        val fitted = best ?: return encode(0).second
+        val fitted = best ?: return encode(minimumPrefix).second
         val response = fitted.second
         if (response is HostedResponse.Canonical<*, *, *>)
             published?.invoke(encodedPublication(fitted.first.publicationPage(), response))

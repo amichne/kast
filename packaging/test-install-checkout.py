@@ -350,6 +350,7 @@ with open(os.environ["TEST_LOG"], "w") as output:
 PYTHON
 ''')
         (self.product / "share/kast").mkdir(parents=True)
+        (self.product / 'share/kast/install-completion-v1').write_bytes(b'1\n')
         (self.product / "share/kast/libexec").mkdir()
         shutil.copy2(self.product / "bin/kast", self.product / "share/kast/libexec/kast-service")
         self.write_script(self.product / 'share/kast/libexec/kast-management', '''#!/usr/bin/env bash
@@ -357,7 +358,8 @@ set -euo pipefail
 destination="$HOME/.local/bin/kast"
 case "$*" in
   '--internal-install preflight') printf '%s\\n' "$destination" ;;
-  '--internal-install commit')
+  '--internal-install commit'|'--internal-install commit-active')
+    printf 'completion=%s\\n' "$2" >&2
     mkdir -p "$(dirname "$destination")"
     cp "$0" "$destination"
     printf '%s\\n' "$destination"
@@ -496,6 +498,7 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
     def test_programmatic_plugin_install_uses_verified_release_line_archive(self):
         result = self.run_installer()
         self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn('completion=commit-active', result.stderr)
         self.assertIn("connect codex mcp", (self.root / "mcp-calls").read_text())
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())

@@ -109,12 +109,14 @@ class InstallationUpgradeSafetyTest {
                         lifecycleInspectionExit = if (brokenRetirement) 0 else 17,
                     )
                 )
-            val rejected = assertInstanceOf(InstallationOutcome.Rejected::class.java, upgraded)
-            assertEquals(
-                if (brokenRetirement) InstallationFailure.PRIOR_RETIREMENT_EXIT_REJECTED
-                else InstallationFailure.PRIOR_ADMISSION_EXIT_REJECTED,
-                rejected.failure,
-            )
+            val expected =
+                if (brokenRetirement)
+                    InstallationOutcome.RecoveryRequired(
+                        InstallationFailure.PRIOR_RETIREMENT_EXIT_REJECTED,
+                        InstallationFailure.PRIOR_RECOVERY_REJECTED,
+                    )
+                else InstallationOutcome.Rejected(InstallationFailure.PRIOR_ADMISSION_EXIT_REJECTED)
+            assertEquals(expected, upgraded)
             val selected = installation.resolve("installation")
             assertEquals(prior, selected)
             assertFalse(Files.exists(commands.resolve("kast")))
