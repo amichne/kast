@@ -1,6 +1,8 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.core.ToolPresentation
+import io.github.amichne.kast.protocol.wire.presentation.DiagnosticCoverageCliDocument
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -70,14 +72,16 @@ private fun diagnosticSummary(payload: JsonObject): String? {
     val status = payload.string("status")
     if (status != "complete" && status != "qualified") return null
     val diagnostics = payload["diagnostics"] as? JsonArray ?: return null
-    val progress = payload["progress"] as? JsonObject
-    val analyzed = (progress?.get("analyzedFiles") as? JsonArray)?.size
-    val inventory = progress?.get("inventory") as? JsonObject
-    val discovered = (inventory?.get("totalFiles") as? JsonPrimitive)?.intOrNull
+    val admittedCoverage =
+        (payload["coverage"] as? JsonObject)?.let {
+            Json.decodeFromJsonElement(DiagnosticCoverageCliDocument.serializer(), it)
+        }
+    val analyzed = admittedCoverage?.filesAnalyzed
+    val discovered = admittedCoverage?.filesDiscovered
     val coverage =
         if (analyzed != null && discovered != null) "$analyzed of $discovered analyzed files"
         else if (analyzed != null) "$analyzed analyzed files; discovery incomplete" else "coverage unavailable"
-    val clean = status == "complete" && diagnostics.isEmpty() && analyzed != null && analyzed == discovered
+    val clean = status == "complete" && diagnostics.isEmpty() && admittedCoverage?.exhaustive == true
     val opening =
         if (clean) "No diagnostics in $coverage."
         else {

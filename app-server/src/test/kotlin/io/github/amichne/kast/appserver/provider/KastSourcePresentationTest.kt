@@ -1,8 +1,29 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.kernel.EvidenceEnvelope
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.DiagnosticInventoryDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticProgressStage
+import io.github.amichne.kast.protocol.contract.DiagnosticProgressStop
+import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.ToolOutputDetail
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalDiagnosticCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -53,22 +74,124 @@ class KastSourcePresentationTest {
     }
 
     @Test
-    fun `diagnostic summary names IDE scope without implying a build`() {
-        val json = Json { encodeDefaults = true }
-        val document =
-            json
-                .encodeToJsonElement(
-                    DiagnosticPresentationEnvelope.serializer(),
-                    DiagnosticPresentationEnvelope(DiagnosticFixture()),
-                )
-                .jsonObject
-        val presentation = presentKastSourceOrOutcome(document, true)
-        assertEquals(
+    fun `compact and verbose diagnostic summaries retain exact coverage without implying a build`() {
+        assertDiagnosticSummary(
+            completeDiagnostics(diagnosticProgress()),
             "No diagnostics in 1 of 1 analyzed files. IDE file diagnostics; project build not run.",
-            presentation.content.first().text,
         )
-        assertEquals(document, json.parseToJsonElement(presentation.content.last().text))
     }
+
+    @Test
+    fun `qualified diagnostics preserve skipped files and incomplete coverage`() {
+        val progress = diagnosticProgress(discovered = 2)
+        val qualification =
+            DiagnosticCheckQualification.create(
+                knownDiagnosticCount = refined(DiagnosticKnownCountDocument.parse(0)),
+                resultLimitReached = false,
+                analyzedFiles = progress.analyzedFiles,
+                limitations =
+                    listOf(
+                        DiagnosticLimitationDocument(
+                            refined(ProtocolText.parse("src/B.kt")),
+                            DiagnosticLimitationReasonDocument.ANALYSIS_UNAVAILABLE,
+                        )
+                    ),
+            )
+        val result =
+            CanonicalDiagnosticCliDocuments.project(
+                OperationOutcome.Qualified(diagnosticEvidence(progress), refined(qualification))
+            )
+        assertDiagnosticSummary(
+            result,
+            "0 diagnostics returned; 1 of 2 analyzed files; scan incomplete. " +
+                "IDE file diagnostics; project build not run.",
+        )
+    }
+
+    @Test
+    fun `diagnostic enumeration does not invent a discovered file count`() {
+        val progress =
+            diagnosticProgress()
+                .copy(
+                    stage = DiagnosticProgressStage.ENUMERATION,
+                    inventory = DiagnosticInventoryDocument.Enumerating,
+                    analyzedFiles = emptyList(),
+                    stop = DiagnosticProgressStop.ENUMERATION_WORK_LIMIT,
+                )
+        val qualification =
+            DiagnosticCheckQualification.create(
+                knownDiagnosticCount = refined(DiagnosticKnownCountDocument.parse(0)),
+                resultLimitReached = true,
+                analyzedFiles = emptyList(),
+                limitations = emptyList(),
+            )
+        val result =
+            CanonicalDiagnosticCliDocuments.project(
+                OperationOutcome.Qualified(diagnosticEvidence(progress), refined(qualification))
+            )
+        assertDiagnosticSummary(
+            result,
+            "0 diagnostics returned; 0 analyzed files; discovery incomplete; scan incomplete. " +
+                "IDE file diagnostics; project build not run.",
+        )
+    }
+
+    @Test
+    fun `diagnostic result without coverage does not claim a clean scope`() {
+        assertDiagnosticSummary(
+            completeDiagnostics(null),
+            "0 diagnostics returned; coverage unavailable. IDE file diagnostics; project build not run.",
+        )
+    }
+
+    private fun assertDiagnosticSummary(result: ProjectedOperationOutcome, expected: String) {
+        for (detail in ToolOutputDetail.entries) {
+            val document = diagnosticEnvelope(result, detail)
+            val presentation = presentKastSourceOrOutcome(document, true)
+            assertEquals(expected, presentation.content.first().text)
+            assertEquals(document, Json.parseToJsonElement(presentation.content.last().text))
+        }
+    }
+
+    private fun completeDiagnostics(progress: DiagnosticProgressDocument?) =
+        CanonicalDiagnosticCliDocuments.project(OperationOutcome.Complete(diagnosticEvidence(progress)))
+
+    private fun diagnosticEvidence(progress: DiagnosticProgressDocument?) =
+        EvidenceEnvelope(
+            CanonicalOperation.DIAGNOSTIC_CHECK.id,
+            refined(EvidenceGeneration.parse(1)),
+            DiagnosticCheckResult(refined(BoundedProtocolList.create(emptyList())), progress),
+        )
+
+    private fun diagnosticProgress(discovered: Int = 1): DiagnosticProgressDocument {
+        val path = refined(ProtocolText.parse("src/A.kt"))
+        return DiagnosticProgressDocument(
+            stage = DiagnosticProgressStage.FINISHED,
+            inventory = DiagnosticInventoryDocument.Exhausted(refined(ProtocolCount.parse(discovered))),
+            analyzedFiles = listOf(path),
+            stop = DiagnosticProgressStop.FINISHED,
+            knownDiagnosticCount = refined(DiagnosticKnownCountDocument.parse(0)),
+            requestedPath = path,
+        )
+    }
+
+    private fun diagnosticEnvelope(result: ProjectedOperationOutcome, detail: ToolOutputDetail): JsonObject {
+        val json = Json { encodeDefaults = true }
+        val projected =
+            when (result) {
+                is ProjectedOperationOutcome.Complete -> result.document
+                is ProjectedOperationOutcome.Qualified -> result.document
+                is ProjectedOperationOutcome.Rejected -> result.document
+            }
+        return json
+            .encodeToJsonElement(
+                DiagnosticPresentationEnvelope.serializer(),
+                DiagnosticPresentationEnvelope(Json.parseToJsonElement(projected.present(detail).value).jsonObject),
+            )
+            .jsonObject
+    }
+
+    private fun <T> refined(result: Refinement<T, *>): T = (result as Refinement.Refined).value
 
     @Test
     fun `source presentation emits unchanged non ASCII source before structured detail`() {
@@ -119,24 +242,9 @@ private data class SearchItemFixture(
 
 @Serializable private data class SearchSignatureFixture(val qualifiedIdentity: String = "com.example.OrderService")
 
+/** The canonical projector owns this operation-specific document shape. */
 @Serializable
-private data class DiagnosticPresentationEnvelope(val document: DiagnosticFixture, val status: String = "completed")
-
-@Serializable
-private data class DiagnosticFixture(
-    val operation: String = "diagnostic.check",
-    val status: String = "complete",
-    val diagnostics: List<String> = emptyList(),
-    val progress: DiagnosticProgressFixture = DiagnosticProgressFixture(),
-)
-
-@Serializable
-private data class DiagnosticProgressFixture(
-    val analyzedFiles: List<String> = listOf("src/A.kt"),
-    val inventory: DiagnosticInventoryFixture = DiagnosticInventoryFixture(),
-)
-
-@Serializable private data class DiagnosticInventoryFixture(val type: String = "exhausted", val totalFiles: Int = 1)
+private data class DiagnosticPresentationEnvelope(val document: JsonObject, val status: String = "completed")
 
 @Serializable
 private data class PresentationFixture(
