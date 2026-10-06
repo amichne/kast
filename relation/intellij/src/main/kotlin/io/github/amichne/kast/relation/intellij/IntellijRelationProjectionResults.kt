@@ -54,7 +54,31 @@ internal enum class IntellijK2DefinitionConfirmation {
 internal sealed interface IntellijK2ResolvedDeclaration {
     data class Found(val declaration: PsiNamedElement) : IntellijK2ResolvedDeclaration
 
+    data class ParameterInvocation(
+        val callable: org.jetbrains.kotlin.psi.KtNamedFunction,
+        val parameter: org.jetbrains.kotlin.psi.KtParameter,
+        val position: io.github.amichne.kast.relation.contract.ValueArgumentPosition,
+        val call: org.jetbrains.kotlin.psi.KtCallExpression,
+    ) : IntellijK2ResolvedDeclaration
+
+    data class SourceLess(val callable: io.github.amichne.kast.relation.contract.SourceLessCallable) :
+        IntellijK2ResolvedDeclaration
+
+    /** The value reference is an invoke receiver; the independently resolved invoke reference owns the callee. */
+    data object InvokeReceiver : IntellijK2ResolvedDeclaration
+
+    data class Unsupported(val cause: IntellijResolvedCallableFailure) : IntellijK2ResolvedDeclaration
+
     data object Unresolved : IntellijK2ResolvedDeclaration
+}
+
+internal enum class IntellijResolvedCallableFailure {
+    COMPILER_IDENTITY_UNAVAILABLE,
+    UNSUPPORTED_MODULE,
+    UNSUPPORTED_ORIGIN,
+    MODULE_IDENTITY_UNAVAILABLE,
+    PARAMETER_OWNER_UNAVAILABLE,
+    PARAMETER_POSITION_UNAVAILABLE,
 }
 
 internal sealed interface IntellijDetachedRelationFile {

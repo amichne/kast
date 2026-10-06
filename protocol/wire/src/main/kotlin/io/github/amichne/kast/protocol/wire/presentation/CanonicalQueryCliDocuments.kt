@@ -68,6 +68,12 @@ object CanonicalQueryCliDocuments {
     val referenceObservationSerializer: KSerializer<*>
         get() = RelationReferenceOccurrenceWireDocument.serializer()
 
+    val callbackObservationSerializer: KSerializer<*>
+        get() = io.github.amichne.kast.protocol.wire.QueryCallbackObservationWireDocument.serializer()
+
+    val callableObservationSerializer: KSerializer<*>
+        get() = io.github.amichne.kast.protocol.wire.QueryCallableObservationWireDocument.serializer()
+
     val walkObservationSerializer: KSerializer<*>
         get() = QueryWalkObservationCliDocument.serializer()
 
@@ -288,6 +294,9 @@ private data class QueryPageProgressCliDocument(
     @SerialName("callback_observations")
     val callbackObservations: Int,
     @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
+    @SerialName("callable_observations")
+    val callableObservations: Int,
+    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
     @SerialName("excluded_callbacks")
     val excludedCallbacks: Int,
     @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
@@ -309,6 +318,9 @@ private fun QueryRunResult.pageProgress(): QueryPageProgressCliDocument =
         callbackObservations =
             relationObservations.values.sumOf { it.callbackObservations.values.size } +
                 walkObservations.values.sumOf { it.callbackObservations.values.size },
+        callableObservations =
+            relationObservations.values.sumOf { it.callableObservations.values.size } +
+                walkObservations.values.sumOf { it.callableObservations.values.size },
         excludedCallbacks =
             relationObservations.values.sumOf { observation ->
                 observation.callbackObservations.values.count {

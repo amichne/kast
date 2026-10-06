@@ -156,6 +156,16 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "liveReadEvidence" to liveReadEvidenceSchema(),
             "hostedEndpointRejection" to HostedRejectionSchemas.endpoint,
             "hostedReadRejection" to HostedRejectionSchemas.read,
+            "callbackObservation" to
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+                        .callbackObservationSerializer
+                ),
+            "callableObservation" to
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+                        .callableObservationSerializer
+                ),
             "queryResultItem" to queryResultItemSchema(),
             "queryItemFailure" to queryItemFailureSchema(),
             "ExactSymbolRef" to queryTypedPropertySchema("exact-symbol", "ref"),

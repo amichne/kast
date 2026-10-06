@@ -62,6 +62,8 @@ internal fun QueryRelationObservation.projectRelationObservation(
         callbackObservations
             .mapProjected { it.projectCallbackObservation(authority, question) }
             .boundedProjectedOrNull() ?: return null,
+        callableObservations.mapProjected { it.projectCallableObservation(authority) }.boundedProjectedOrNull()
+            ?: return null,
     )
 }
 

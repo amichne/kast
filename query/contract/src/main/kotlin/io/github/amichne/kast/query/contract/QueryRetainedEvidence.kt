@@ -115,6 +115,7 @@ internal fun retainedStorageBytes(
         .saturatedAdd(
             walkObservations.sumOf { observation ->
                 observation.callbackObservations.sumOf { it.observation.retainedBytes } +
+                    observation.callableObservations.sumOf { it.observation.retainedBytes } +
                     observation.scopeExclusions.sumOf { it.exclusion.canonicalProjection().utf8UpperBound() }
             }
         )

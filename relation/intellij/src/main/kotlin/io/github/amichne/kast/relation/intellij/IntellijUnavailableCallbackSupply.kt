@@ -5,12 +5,12 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtFunction
 
 /** Unsupported formal mappings can still preserve exact syntactic supply facts, without claiming activation. */
 internal fun unavailableCallbackSupply(
     context: IntellijCallbackFlowContext,
-    literal: KtFunctionLiteral,
+    literal: KtFunction,
     body: RelationCallableBody.Anonymous,
     lexicalOwner: CompilerGroundedSymbolEvidence,
     cause: CallbackInvocationFlowCause,

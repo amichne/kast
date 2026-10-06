@@ -11,16 +11,34 @@ internal fun admitCallbackOwnerBindings(
     val owners =
         flow.invocations.map { it.owner } +
             flow.body +
-            listOfNotNull((flow.binding as? CallbackBindingEvidence.Bound)?.binding?.invocationOwner)
+            flow.invocations.flatMap { invocation -> invocation.forwardings.map { it.target.invocationOwner } } +
+            listOfNotNull(
+                when (val binding = flow.binding) {
+                    is CallbackBindingEvidence.Bound -> binding.binding.invocationOwner
+                    is CallbackBindingEvidence.Direct -> binding.binding.owner
+                    is CallbackBindingEvidence.Default,
+                    is CallbackBindingEvidence.Unavailable -> null
+                }
+            )
     if (bindings.any { it.body !in owners })
         return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
     if (
         bindings.any {
-            (it.binding as? CallbackBindingEvidence.Bound)?.binding?.invocation?.basis?.let { basis ->
-                basis != flow.basis
-            } == true
+            when (val binding = it.binding) {
+                is CallbackBindingEvidence.Bound -> binding.binding.invocation.basis != flow.basis
+                is CallbackBindingEvidence.Default -> binding.binding.parameter.callable.lease.identity != flow.basis
+                is CallbackBindingEvidence.Direct -> binding.binding.basis != flow.basis
+                is CallbackBindingEvidence.Unavailable -> false
+            }
         }
     )
         return Refinement.Rejected(CallbackInvocationFlowFailure.BASIS_MISMATCH)
+    if (
+        flow.scan == CallbackInvocationScan.EXHAUSTIVE &&
+            bindings.any { binding ->
+                binding.obligations.any { it != CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION }
+            }
+    )
+        return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_SCAN_PROOF)
     return Refinement.Refined(Unit)
 }

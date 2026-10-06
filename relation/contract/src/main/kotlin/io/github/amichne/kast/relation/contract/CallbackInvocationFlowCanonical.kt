@@ -14,17 +14,9 @@ internal fun CallbackInvocationFlow.canonicalProjection(): String = buildString 
     field(basis.revisionKey.value)
     body(body)
     binding(binding)
+    field(scan.name)
     field(invocations.size.toString())
-    invocations.forEach { invocation ->
-        occurrence(invocation.occurrence)
-        body(invocation.owner)
-        field(invocation.callableTransfers.size.toString())
-        invocation.callableTransfers.forEach { transfer ->
-            field(transfer.kind.name)
-            site(transfer.source)
-            site(transfer.target)
-        }
-    }
+    invocations.forEach { invocation(it) }
     field(ownerBindings.size.toString())
     ownerBindings.forEach { ownerBinding(it) }
     obligations(obligations)
@@ -32,11 +24,42 @@ internal fun CallbackInvocationFlow.canonicalProjection(): String = buildString 
 
 internal fun CallbackBodyBinding.canonicalProjection(): String = buildString { ownerBinding(this@canonicalProjection) }
 
+internal fun CallbackParameterInvocation.canonicalProjection(): String = buildString {
+    invocation(this@canonicalProjection)
+}
+
+private fun StringBuilder.invocation(invocation: CallbackParameterInvocation) {
+    field(invocation.forwardings.size.toString())
+    invocation.forwardings.forEach {
+        endpoint(it.source.callable)
+        field(it.source.position.value.toString())
+        occurrence(it.source.parameter)
+        occurrence(it.argument)
+        binding(CallbackBindingEvidence.Bound(it.target))
+    }
+    occurrence(invocation.occurrence)
+    body(invocation.owner)
+    field(invocation.callableTransfers.size.toString())
+    invocation.callableTransfers.forEach { transfer ->
+        field(transfer.kind.name)
+        site(transfer.source)
+        site(transfer.target)
+    }
+}
+
 private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding) {
     body(owner.body)
     when (val supply = owner.supply) {
         is CallbackBodySupply.Invocation -> {
             field("INVOCATION")
+            occurrence(supply.occurrence)
+        }
+        is CallbackBodySupply.DefaultParameter -> {
+            field("DEFAULT_PARAMETER")
+            occurrence(supply.parameter)
+        }
+        is CallbackBodySupply.DirectInvocation -> {
+            field("DIRECT_INVOCATION")
             occurrence(supply.occurrence)
         }
         CallbackBodySupply.Stored -> field("STORED")
@@ -60,6 +83,20 @@ private fun StringBuilder.binding(evidence: CallbackBindingEvidence) {
             endpoint(evidence.binding.invocation.callable)
             field(evidence.binding.position.value.toString())
             occurrence(evidence.binding.parameter)
+        }
+        is CallbackBindingEvidence.Default -> {
+            field("DEFAULT")
+            endpoint(evidence.binding.parameter.callable)
+            field(evidence.binding.parameter.position.value.toString())
+            occurrence(evidence.binding.parameter.parameter)
+            occurrence(evidence.binding.defaultValue)
+        }
+        is CallbackBindingEvidence.Direct -> {
+            field("DIRECT")
+            field(evidence.binding.basis.workspaceRoot.value)
+            field(evidence.binding.basis.revisionKey.value)
+            occurrence(evidence.binding.occurrence)
+            body(evidence.binding.owner)
         }
         is CallbackBindingEvidence.Unavailable -> {
             field("UNAVAILABLE")

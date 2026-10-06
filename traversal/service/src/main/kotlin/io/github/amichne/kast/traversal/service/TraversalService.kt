@@ -173,9 +173,10 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                         return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
                 }
             }
-            accounting.encodedBytes += batch.encodedBytes.value
-            accounting.examinedWorkUnits += batch.examinedWorkUnits.value
-            accounting.elapsedMillis += read.elapsedMillis.value
+            when (val retained = accounting.retainReadCompletion(plan, entry, batch, read.elapsedMillis)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return TraversalResult.Rejected(retained.failure)
+            }
             for (record in records) {
                 // Breadth-first results at the requested depth need no further expansion.
                 if (plan.strategy == TraversalStrategy.BreadthFirst && nextDepth.value == plan.budget.depth.value) {

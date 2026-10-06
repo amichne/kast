@@ -23,6 +23,7 @@ internal data class IntellijRelationPageCompletion(
     private val occurrences: List<RelationReferenceOccurrence>,
     private val scopeExclusions: List<io.github.amichne.kast.relation.contract.RelationScopeExclusion>,
     private val callbackObservations: List<io.github.amichne.kast.relation.contract.RelationCallbackObservation>,
+    private val callableObservations: List<io.github.amichne.kast.relation.contract.RelationCallableObservation>,
     private val examined: Long,
     private val state: IntellijRelationCollectionState,
     private val pending: Boolean,
@@ -59,25 +60,13 @@ internal data class IntellijRelationPageCompletion(
     private fun batch(): Refinement<RelationBatch, RelationCompilerRejection> {
         val orderedFacts = facts.distinct().sorted()
         val orderedOccurrences = occurrences.distinct().sorted()
-        val byteCount =
-            orderedFacts.sumOf { it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() } +
-                orderedOccurrences.sumOf {
-                    it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-                } +
-                scopeExclusions.distinct().sumOf {
-                    it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-                }
-        val callbackBytes =
-            callbackObservations.distinct().sumOf {
-                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-            }
         val semanticCount =
             orderedOccurrences.size +
                 orderedFacts.count { fact ->
                     orderedOccurrences.none { it.occurrence == fact.occurrence && it.target == fact.target }
                 }
         val bytes =
-            when (val parsed = RelationByteCount.parse(byteCount + callbackBytes)) {
+            when (val parsed = RelationByteCount.parse(canonicalEncodedBytes(orderedFacts, orderedOccurrences))) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return compilerContractRejected()
             }
@@ -100,8 +89,32 @@ internal data class IntellijRelationPageCompletion(
                 referenceOccurrences = orderedOccurrences,
                 scopeExclusions = scopeExclusions.distinct().sorted(),
                 callbackObservations = callbackObservations.distinct().sorted(),
+                callableObservations = callableObservations.distinct().sorted(),
             )
             .withObservedOmissions()
+    }
+
+    private fun canonicalEncodedBytes(
+        orderedFacts: List<RelationFact>,
+        orderedOccurrences: List<RelationReferenceOccurrence>,
+    ): Long {
+        val byteCount =
+            orderedFacts.sumOf { it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() } +
+                orderedOccurrences.sumOf {
+                    it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+                } +
+                scopeExclusions.distinct().sumOf {
+                    it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+                }
+        val callbackBytes =
+            callbackObservations.distinct().sumOf {
+                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+            }
+        return byteCount +
+            callbackBytes +
+            callableObservations.distinct().sumOf {
+                it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
+            }
     }
 
     private fun Refinement<RelationBatch, io.github.amichne.kast.relation.contract.RelationBatchFailure>

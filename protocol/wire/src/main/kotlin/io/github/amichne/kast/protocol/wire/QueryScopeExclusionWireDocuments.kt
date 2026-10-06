@@ -2,6 +2,8 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryCallableObservationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
@@ -13,6 +15,7 @@ import io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocu
 import io.github.amichne.kast.protocol.contract.QueryScopeExclusionDocument
 import io.github.amichne.kast.protocol.contract.QueryScopeExclusionReasonDocument
 import io.github.amichne.kast.protocol.contract.QueryScopeMembershipAuthorityDocument
+import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDispositionDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkScopeExclusionDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
@@ -58,6 +61,7 @@ internal data class QueryRelationObservationWireDocument(
     val coverage: QueryRelationCoverageDocument,
     @SerialName("scope_exclusions") val scopeExclusions: List<QueryScopeExclusionWireDocument>,
     @SerialName("callback_observations") val callbackObservations: List<QueryCallbackObservationWireDocument>,
+    @SerialName("callable_observations") val callableObservations: List<QueryCallableObservationWireDocument>,
 )
 
 internal fun QueryScopeExclusionDocument.toWireDocument() =
@@ -133,6 +137,7 @@ internal fun QueryRelationObservationDocument.toWireDocument() =
         coverage,
         scopeExclusions.values.map(QueryScopeExclusionDocument::toWireDocument),
         callbackObservations.values.map { it.toWireDocument() },
+        callableObservations.values.map { it.toWireDocument() },
     )
 
 internal fun QueryRelationObservationWireDocument.toContract():
@@ -141,30 +146,48 @@ internal fun QueryRelationObservationWireDocument.toContract():
         scopeExclusions.convertEach(QueryScopeExclusionWireDocument::toContract).flatMapConverted { exclusions ->
             callbackObservations.convertEach(QueryCallbackObservationWireDocument::toContract).flatMapConverted {
                 callbacks ->
-                if (
-                    callbacks.any { callback ->
-                        !callback.matchesQuestion(this)
+                callableObservations.convertEach(QueryCallableObservationWireDocument::toContract).flatMapConverted {
+                    callables ->
+                    if (callbacks.any { !it.matchesQuestion(this) } || !admitsCallableObservations(callables))
+                        return@flatMapConverted WireDocumentConversion.Rejected
+                    combineConverted(
+                        BoundedProtocolList.create(exclusions).toWireDocumentConversion(),
+                        BoundedProtocolList.create(callbacks).toWireDocumentConversion(),
+                        BoundedProtocolList.create(callables).toWireDocumentConversion(),
+                    ) { admittedExclusions, admittedCallbacks, admittedCallables ->
+                        QueryRelationObservationDocument(
+                            QueryReferenceDocument.ExactSymbol(token),
+                            relation,
+                            provider,
+                            requestedDomain,
+                            effectiveDomain,
+                            domainFingerprint,
+                            coverage,
+                            admittedExclusions,
+                            admittedCallbacks,
+                            admittedCallables,
+                        )
                     }
-                )
-                    return@flatMapConverted WireDocumentConversion.Rejected
-                combineConverted(
-                    BoundedProtocolList.create(exclusions).toWireDocumentConversion(),
-                    BoundedProtocolList.create(callbacks).toWireDocumentConversion(),
-                ) { admittedExclusions, admittedCallbacks ->
-                    QueryRelationObservationDocument(
-                        QueryReferenceDocument.ExactSymbol(token),
-                        relation,
-                        provider,
-                        requestedDomain,
-                        effectiveDomain,
-                        domainFingerprint,
-                        coverage,
-                        admittedExclusions,
-                        admittedCallbacks,
-                    )
                 }
             }
         }
+    }
+
+private fun QueryRelationObservationWireDocument.admitsCallableObservations(
+    values: List<QueryCallableObservationDocument>
+): Boolean =
+    when {
+        values.isNotEmpty() && relation != RelationKindDocument.CALLEES -> false
+        values.any { !it.admitsDomain(effectiveDomain) } -> false
+        coverage == QueryRelationCoverageDocument.Exhausted && values.any { it.requiresLibrarySource() } -> false
+        else -> true
+    }
+
+private fun QueryCallableObservationDocument.requiresLibrarySource(): Boolean =
+    when (val value = target) {
+        is QueryCallableTargetDocument.ParameterInvocation -> false
+        is QueryCallableTargetDocument.SourceLess ->
+            value.disposition == QuerySourceLessCallableDispositionDocument.LIBRARY_SOURCE_UNAVAILABLE
     }
 
 private fun QueryCallbackObservationDocument.matchesQuestion(value: QueryRelationObservationWireDocument): Boolean =

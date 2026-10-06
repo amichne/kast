@@ -41,6 +41,7 @@ internal data class QueryWalkObservationWireDocument(
     @SerialName("reference_occurrences") val referenceOccurrences: List<TraversalReferenceObservationWireDocument>,
     @SerialName("scope_exclusions") val scopeExclusions: List<QueryWalkScopeExclusionWireDocument>,
     @SerialName("callback_observations") val callbackObservations: List<QueryWalkCallbackObservationWireDocument>,
+    @SerialName("callable_observations") val callableObservations: List<QueryWalkCallableObservationWireDocument>,
 )
 
 @Serializable
@@ -150,6 +151,7 @@ internal fun QueryWalkObservationDocument.toWireDocument() =
         referenceOccurrences = referenceOccurrences.values.map(TraversalReferenceObservationDocument::toWireDocument),
         scopeExclusions = scopeExclusions.values.map { it.toWireDocument() },
         callbackObservations = callbackObservations.values.map { it.toWireDocument() },
+        callableObservations = callableObservations.values.map { it.toWireDocument() },
     )
 
 private fun QueryWalkCoverageDocument.toWireDocument(): QueryWalkCoverageWireDocument =
@@ -193,27 +195,58 @@ private fun QueryWalkObservationWireDocument.retainedWalkEvidence(
                 callbackObservations
                     .convertBounded { convertCallback(it) }
                     .flatMapConverted { callbacks ->
-                        coverage.toContract().mapConverted { admittedCoverage ->
-                            QueryWalkObservationDocument(
-                                subject = QueryReferenceDocument.ExactSymbol(token),
-                                relation = relation.toContract(),
-                                maximumDepth = depth,
-                                expandedFrontier = frontier,
-                                progress = progress,
-                                strategy = strategy,
-                                partialExpansions = partials,
-                                coverage = admittedCoverage,
-                                requestedDomain = requestedDomain,
-                                effectiveDomain = effectiveDomain,
-                                domainFingerprint = domainFingerprint,
-                                inheritedOmissions = inherited,
-                                referenceOccurrences = references,
-                                scopeExclusions = exits,
-                                callbackObservations = callbacks,
-                            )
-                        }
+                        callableObservations
+                            .convertBounded { convertCallable(it) }
+                            .flatMapConverted { callables ->
+                                coverage.toContract().mapConverted { admittedCoverage ->
+                                    QueryWalkObservationDocument(
+                                        subject = QueryReferenceDocument.ExactSymbol(token),
+                                        relation = relation.toContract(),
+                                        maximumDepth = depth,
+                                        expandedFrontier = frontier,
+                                        progress = progress,
+                                        strategy = strategy,
+                                        partialExpansions = partials,
+                                        coverage = admittedCoverage,
+                                        requestedDomain = requestedDomain,
+                                        effectiveDomain = effectiveDomain,
+                                        domainFingerprint = domainFingerprint,
+                                        inheritedOmissions = inherited,
+                                        referenceOccurrences = references,
+                                        scopeExclusions = exits,
+                                        callbackObservations = callbacks,
+                                        callableObservations = callables,
+                                    )
+                                }
+                            }
                     }
             }
+        }
+    }
+
+private fun QueryWalkObservationWireDocument.convertCallable(
+    callable: QueryWalkCallableObservationWireDocument
+): WireDocumentConversion<io.github.amichne.kast.protocol.contract.QueryWalkCallableObservationDocument> =
+    callable.toContract().flatMapConverted { admitted ->
+        when {
+            admitted.depth.value >= maximumDepth ||
+                relation.toContract() != io.github.amichne.kast.protocol.contract.RelationKindDocument.CALLEES ->
+                WireDocumentConversion.Rejected
+            admitted.requestedDomain != requestedDomain || admitted.effectiveDomain != effectiveDomain ->
+                WireDocumentConversion.Rejected
+            admitted.depth.value == 0 && admitted.subject.token.value != subject.token ->
+                WireDocumentConversion.Rejected
+            admitted.subject.token.value == subject.token && admitted.depth.value != 0 ->
+                WireDocumentConversion.Rejected
+            admitted.subject.token.value == subject.token && admitted.domainFingerprint != domainFingerprint ->
+                WireDocumentConversion.Rejected
+            coverage == QueryWalkCoverageWireDocument.Complete &&
+                (admitted.observation.target
+                        as? io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument.SourceLess)
+                    ?.disposition ==
+                    io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDispositionDocument
+                        .LIBRARY_SOURCE_UNAVAILABLE -> WireDocumentConversion.Rejected
+            else -> WireDocumentConversion.Converted(admitted)
         }
     }
 

@@ -4,11 +4,9 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
-import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
-import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBodyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackCallableDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackExclusionReasonDocument
@@ -16,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedUnavailableCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
@@ -47,6 +46,8 @@ internal sealed interface QueryCallbackNamedPolicyWireDocument {
 
     @Serializable @SerialName("ADMITTED_INLINE") data object AdmittedInline : QueryCallbackNamedPolicyWireDocument
 
+    @Serializable @SerialName("ADMITTED_DIRECT") data object AdmittedDirect : QueryCallbackNamedPolicyWireDocument
+
     @Serializable
     @SerialName("EXCLUDED")
     data class Excluded(
@@ -71,29 +72,11 @@ internal sealed interface QueryCallbackBodyWireDocument {
 }
 
 @Serializable
-@JsonClassDiscriminator("type")
-internal sealed interface QueryCallbackBindingWireDocument {
-    @Serializable
-    @SerialName("BOUND")
-    data class Bound(
-        val invocation: ImpactInvocationReferenceDocument,
-        @SerialName("invocation_occurrence") val invocationOccurrence: RelationOccurrenceWireDocument,
-        @SerialName("invocation_owner") val invocationOwner: QueryCallbackBodyWireDocument,
-        val callable: QueryCallbackCallableWireDocument,
-        val position: Int,
-        val parameter: RelationOccurrenceWireDocument,
-    ) : QueryCallbackBindingWireDocument
-
-    @Serializable
-    @SerialName("UNAVAILABLE")
-    data class Unavailable(val cause: QueryCallbackFlowCauseDocument) : QueryCallbackBindingWireDocument
-}
-
-@Serializable
 internal data class QueryCallbackInvocationWireDocument(
     val occurrence: RelationOccurrenceWireDocument,
     val owner: QueryCallbackBodyWireDocument,
     @SerialName("callable_transfers") val callableTransfers: List<ImpactCompilerTransferDocument>,
+    @ProtocolCollectionConstraint(maximumItems = 1000) val forwardings: List<QueryCallbackForwardingWireDocument>,
 )
 
 @Serializable
@@ -108,6 +91,7 @@ internal sealed interface QueryCallbackFlowWireDocument {
         val invocations: List<QueryCallbackInvocationWireDocument>,
         val obligations: List<QueryCallbackFlowCauseDocument>,
         @SerialName("owner_bindings") val ownerBindings: List<QueryCallbackBodyBindingWireDocument>,
+        val scan: QueryCallbackInvocationScanDocument,
     ) : QueryCallbackFlowWireDocument
 
     @Serializable
@@ -140,10 +124,10 @@ internal data class QueryWalkCallbackObservationWireDocument(
     val observation: QueryCallbackObservationWireDocument,
 )
 
-private fun RelationOccurrenceDocument.callbackWire() =
+internal fun RelationOccurrenceDocument.callbackWire() =
     RelationOccurrenceWireDocument(candidateSelector.value, file.value, range.toWireDocument())
 
-private fun QueryCallbackCallableDocument.callbackWire() =
+internal fun QueryCallbackCallableDocument.callbackWire() =
     QueryCallbackCallableWireDocument(
         declaration.callbackWire(),
         QueryExcludedCompilerTargetWireDocument(
@@ -158,24 +142,10 @@ private fun QueryCallbackCallableDocument.callbackWire() =
 internal fun QueryCallbackBodyDocument.Anonymous.callbackWire() =
     QueryCallbackBodyWireDocument.Anonymous(occurrence.callbackWire(), compilerEvidence.toWireDocument())
 
-private fun QueryCallbackBodyDocument.callbackWire(): QueryCallbackBodyWireDocument =
+internal fun QueryCallbackBodyDocument.callbackWire(): QueryCallbackBodyWireDocument =
     when (this) {
         is QueryCallbackBodyDocument.Named -> QueryCallbackBodyWireDocument.Named(callable.callbackWire())
         is QueryCallbackBodyDocument.Anonymous -> callbackWire()
-    }
-
-internal fun QueryCallbackBindingDocument.callbackWire(): QueryCallbackBindingWireDocument =
-    when (this) {
-        is QueryCallbackBindingDocument.Bound ->
-            QueryCallbackBindingWireDocument.Bound(
-                invocation,
-                invocationOccurrence.callbackWire(),
-                invocationOwner.callbackWire(),
-                callable.callbackWire(),
-                position.value,
-                parameter.callbackWire(),
-            )
-        is QueryCallbackBindingDocument.Unavailable -> QueryCallbackBindingWireDocument.Unavailable(cause)
     }
 
 private fun QueryCallbackFlowDocument.callbackWire(): QueryCallbackFlowWireDocument =
@@ -190,10 +160,12 @@ private fun QueryCallbackFlowDocument.callbackWire(): QueryCallbackFlowWireDocum
                         it.occurrence.callbackWire(),
                         it.owner.callbackWire(),
                         it.callableTransfers.values,
+                        it.forwardings.values.map { forwarding -> forwarding.callbackWire() },
                     )
                 },
                 obligations.values,
                 ownerBindings.values.map { it.callbackWire() },
+                scan,
             )
         is QueryCallbackFlowDocument.Unavailable -> QueryCallbackFlowWireDocument.Unavailable(cause)
         is QueryCallbackFlowDocument.ContractRejected -> QueryCallbackFlowWireDocument.ContractRejected(cause)
@@ -209,6 +181,7 @@ internal fun QueryCallbackObservationDocument.toWireDocument() =
             is QueryCallbackNamedPolicyDocument.Unavailable ->
                 QueryCallbackNamedPolicyWireDocument.Unavailable(policy.cause)
             QueryCallbackNamedPolicyDocument.AdmittedInline -> QueryCallbackNamedPolicyWireDocument.AdmittedInline
+            QueryCallbackNamedPolicyDocument.AdmittedDirect -> QueryCallbackNamedPolicyWireDocument.AdmittedDirect
             is QueryCallbackNamedPolicyDocument.Excluded ->
                 QueryCallbackNamedPolicyWireDocument.Excluded(policy.reason, policy.excludedBoundary.callbackWire())
         },
@@ -226,7 +199,7 @@ internal fun QueryWalkCallbackObservationDocument.toWireDocument() =
         observation.toWireDocument(),
     )
 
-private fun QueryCallbackCallableWireDocument.toContract(): WireDocumentConversion<QueryCallbackCallableDocument> =
+internal fun QueryCallbackCallableWireDocument.toContract(): WireDocumentConversion<QueryCallbackCallableDocument> =
     declaration.toContract().flatMapConverted { declaration ->
         combineConverted(
                 ProtocolText.parse(compilerTarget.file).toWireDocumentConversion(),
@@ -247,36 +220,11 @@ internal fun QueryCallbackBodyWireDocument.Anonymous.toContract():
         QueryCallbackBodyDocument.Anonymous(occurrence, evidence)
     }
 
-private fun QueryCallbackBodyWireDocument.toContract(): WireDocumentConversion<QueryCallbackBodyDocument> =
+internal fun QueryCallbackBodyWireDocument.toContract(): WireDocumentConversion<QueryCallbackBodyDocument> =
     when (this) {
         is QueryCallbackBodyWireDocument.Named ->
             callable.toContract().mapConverted { QueryCallbackBodyDocument.Named(it) }
         is QueryCallbackBodyWireDocument.Anonymous -> toContract().mapConverted { it }
-    }
-
-internal fun QueryCallbackBindingWireDocument.toContract(): WireDocumentConversion<QueryCallbackBindingDocument> =
-    when (this) {
-        is QueryCallbackBindingWireDocument.Unavailable ->
-            WireDocumentConversion.Converted(QueryCallbackBindingDocument.Unavailable(cause))
-        is QueryCallbackBindingWireDocument.Bound ->
-            invocationOccurrence.toContract().flatMapConverted { callOccurrence ->
-                invocationOwner.toContract().flatMapConverted { supplyingOwner ->
-                    combineConverted(
-                        callable.toContract(),
-                        ProtocolOffset.parse(position).toWireDocumentConversion(),
-                        parameter.toContract(),
-                    ) { callable, position, parameter ->
-                        QueryCallbackBindingDocument.Bound(
-                            invocation,
-                            callOccurrence,
-                            supplyingOwner,
-                            callable,
-                            position,
-                            parameter,
-                        )
-                    }
-                }
-            }
     }
 
 private fun QueryCallbackFlowWireDocument.toContract(): WireDocumentConversion<QueryCallbackFlowDocument> =
@@ -289,16 +237,7 @@ private fun QueryCallbackFlowWireDocument.toContract(): WireDocumentConversion<Q
             body.toContract().flatMapConverted { body ->
                 binding.toContract().flatMapConverted { binding ->
                     invocations
-                        .convertEach { invocation ->
-                            combineConverted(invocation.occurrence.toContract(), invocation.owner.toContract()) {
-                                    occurrence,
-                                    owner ->
-                                    BoundedProtocolList.create(invocation.callableTransfers)
-                                        .toWireDocumentConversion()
-                                        .mapConverted { QueryCallbackInvocationDocument(occurrence, owner, it) }
-                                }
-                                .flattenConverted()
-                        }
+                        .convertEach { it.toContract() }
                         .flatMapConverted { calls ->
                             ownerBindings
                                 .convertEach { it.toContract() }
@@ -315,6 +254,7 @@ private fun QueryCallbackFlowWireDocument.toContract(): WireDocumentConversion<Q
                                             calls,
                                             obligations,
                                             owners,
+                                            scan,
                                         )
                                     }
                                 }
@@ -337,6 +277,8 @@ internal fun QueryCallbackObservationWireDocument.toContract():
                                 )
                             QueryCallbackNamedPolicyWireDocument.AdmittedInline ->
                                 WireDocumentConversion.Converted(QueryCallbackNamedPolicyDocument.AdmittedInline)
+                            QueryCallbackNamedPolicyWireDocument.AdmittedDirect ->
+                                WireDocumentConversion.Converted(QueryCallbackNamedPolicyDocument.AdmittedDirect)
                             is QueryCallbackNamedPolicyWireDocument.Excluded ->
                                 policy.excludedBoundary.toContract().mapConverted {
                                     QueryCallbackNamedPolicyDocument.Excluded(policy.reason, it)
@@ -372,3 +314,18 @@ internal fun QueryWalkCallbackObservationWireDocument.toContract():
     ) { token, depth, observation ->
         QueryWalkCallbackObservationDocument(QueryReferenceDocument.ExactSymbol(token), depth, observation)
     }
+
+private fun QueryCallbackInvocationWireDocument.toContract(): WireDocumentConversion<QueryCallbackInvocationDocument> =
+    combineConverted(occurrence.toContract(), owner.toContract()) { occurrence, owner ->
+            forwardings
+                .convertEach { it.toContract() }
+                .flatMapConverted { forwardings ->
+                    combineConverted(
+                        BoundedProtocolList.create(callableTransfers).toWireDocumentConversion(),
+                        BoundedProtocolList.create(forwardings).toWireDocumentConversion(),
+                    ) { transfers, forwardings ->
+                        QueryCallbackInvocationDocument(occurrence, owner, transfers, forwardings)
+                    }
+                }
+        }
+        .flattenConverted()

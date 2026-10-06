@@ -7,7 +7,11 @@ internal fun QueryCallbackFlowDocument.Observed.admitOwnerBindings(): Refinement
     val owners =
         listOf(body) +
             invocations.values.map { it.owner } +
-            listOfNotNull((binding as? QueryCallbackBindingDocument.Bound)?.invocationOwner)
+            listOfNotNull(
+                (binding as? QueryCallbackBindingDocument.Bound)?.invocationOwner,
+                (binding as? QueryCallbackBindingDocument.Direct)?.owner,
+            ) +
+            invocations.values.flatMap { it.forwardings.values.map { hop -> hop.target.invocationOwner } }
     if (ownerBindings.values.map { it.body }.distinct().size != ownerBindings.values.size)
         return Refinement.Rejected(QueryCallbackDocumentFailure.DUPLICATE_OWNER_BINDING)
     for (owner in ownerBindings.values) {
@@ -33,16 +37,83 @@ private fun QueryCallbackBodyBindingDocument.admitOwnerBinding(
         return Refinement.Rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     if (binding is QueryCallbackBindingDocument.Unavailable && binding.cause !in obligations.values)
         return Refinement.Rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
-    return when (val supplied = supply) {
+    return admitSupply(basis)
+}
+
+private fun QueryCallbackBodyBindingDocument.admitSupply(
+    basis: ImpactSemanticBasisDocument
+): Refinement<Unit, QueryCallbackDocumentFailure> =
+    when (val supplied = supply) {
         QueryCallbackBodySupplyDocument.Stored -> admitUnavailableSupply(QueryCallbackFlowCauseDocument.STORED_CALLBACK)
         QueryCallbackBodySupplyDocument.Unsupported ->
             admitUnavailableSupply(QueryCallbackFlowCauseDocument.UNSUPPORTED_CALLBACK_SUPPLY)
-        is QueryCallbackBodySupplyDocument.Returned ->
-            if (supplied.occurrence.contains(body.occurrence))
-                admitUnavailableSupply(QueryCallbackFlowCauseDocument.RETURNED_CALLBACK)
-            else Refinement.Rejected(QueryCallbackDocumentFailure.CALLBACK_CONTAINMENT_MISMATCH)
+        is QueryCallbackBodySupplyDocument.Returned -> admitReturnedSupply(supplied.occurrence)
         is QueryCallbackBodySupplyDocument.Invocation -> admitInvocationSupply(supplied, basis)
+        is QueryCallbackBodySupplyDocument.DefaultParameter -> admitDefaultSupply(supplied.parameter)
+        is QueryCallbackBodySupplyDocument.DirectInvocation -> admitDirectSupply(supplied.occurrence, basis)
     }
+
+private fun QueryCallbackBodyBindingDocument.admitReturnedSupply(
+    occurrence: RelationOccurrenceDocument
+): Refinement<Unit, QueryCallbackDocumentFailure> =
+    if (occurrence.contains(body.occurrence)) admitUnavailableSupply(QueryCallbackFlowCauseDocument.RETURNED_CALLBACK)
+    else Refinement.Rejected(QueryCallbackDocumentFailure.CALLBACK_CONTAINMENT_MISMATCH)
+
+private fun QueryCallbackBodyBindingDocument.admitDefaultSupply(
+    parameter: RelationOccurrenceDocument
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (!parameter.contains(body.occurrence))
+        return Refinement.Rejected(QueryCallbackDocumentFailure.CALLBACK_CONTAINMENT_MISMATCH)
+    return when (val mapped = binding) {
+        is QueryCallbackBindingDocument.Default -> mapped.admitDefaultMapping(parameter, body.occurrence)
+        is QueryCallbackBindingDocument.Unavailable -> Refinement.Refined(Unit)
+        is QueryCallbackBindingDocument.Bound,
+        is QueryCallbackBindingDocument.Direct ->
+            Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
+    }
+}
+
+private fun QueryCallbackBindingDocument.Default.admitDefaultMapping(
+    suppliedParameter: RelationOccurrenceDocument,
+    body: RelationOccurrenceDocument,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (!parameter.validParameter() || !suppliedParameter.sameSite(parameter.parameter))
+        return Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
+    if (!parameter.parameter.contains(defaultValue) || !defaultValue.contains(body))
+        return Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
+    return Refinement.Refined(Unit)
+}
+
+private fun QueryCallbackBodyBindingDocument.admitDirectSupply(
+    occurrence: RelationOccurrenceDocument,
+    basis: ImpactSemanticBasisDocument,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (!occurrence.contains(body.occurrence))
+        return Refinement.Rejected(QueryCallbackDocumentFailure.CALLBACK_CONTAINMENT_MISMATCH)
+    return when (val mapped = binding) {
+        is QueryCallbackBindingDocument.Direct -> mapped.admitDirectMapping(occurrence, body.occurrence, basis)
+        is QueryCallbackBindingDocument.Unavailable -> Refinement.Refined(Unit)
+        is QueryCallbackBindingDocument.Bound,
+        is QueryCallbackBindingDocument.Default ->
+            Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
+    }
+}
+
+private fun QueryCallbackBindingDocument.Direct.admitDirectMapping(
+    suppliedOccurrence: RelationOccurrenceDocument,
+    body: RelationOccurrenceDocument,
+    suppliedBasis: ImpactSemanticBasisDocument,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    val owner =
+        when (val admitted = this.owner.admitOwner()) {
+            is Refinement.Rejected -> return admitted
+            is Refinement.Refined -> admitted.value
+        }
+    if (basis != suppliedBasis || !suppliedOccurrence.sameSite(occurrence))
+        return Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
+    if (!occurrence.contains(body) || !owner.contains(occurrence))
+        return Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
+    return Refinement.Refined(Unit)
 }
 
 private fun QueryCallbackBodyBindingDocument.admitUnavailableSupply(
@@ -59,6 +130,9 @@ private fun QueryCallbackBodyBindingDocument.admitInvocationSupply(
         return Refinement.Rejected(QueryCallbackDocumentFailure.CALLBACK_CONTAINMENT_MISMATCH)
     return when (val mapped = binding) {
         is QueryCallbackBindingDocument.Unavailable -> Refinement.Refined(Unit)
+        is QueryCallbackBindingDocument.Default,
+        is QueryCallbackBindingDocument.Direct ->
+            Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
         is QueryCallbackBindingDocument.Bound -> {
             if (!supply.occurrence.sameSite(mapped.invocationOccurrence))
                 return Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)

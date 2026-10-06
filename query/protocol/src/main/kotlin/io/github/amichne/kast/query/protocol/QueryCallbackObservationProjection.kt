@@ -11,9 +11,11 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackBodyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBodySupplyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackCallableDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityDocument
 import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
@@ -29,6 +31,7 @@ import io.github.amichne.kast.relation.contract.CallbackBodySupply
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlow
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy
+import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationCallbackObservation
@@ -60,6 +63,7 @@ private fun RelationCallbackObservation.projectCallbackObservation(
                 is CallbackNamedCallPolicy.Unavailable ->
                     QueryCallbackNamedPolicyDocument.Unavailable(policy.cause.protocolCallbackDocument())
                 CallbackNamedCallPolicy.AdmittedInline -> QueryCallbackNamedPolicyDocument.AdmittedInline
+                CallbackNamedCallPolicy.AdmittedDirect -> QueryCallbackNamedPolicyDocument.AdmittedDirect
                 is CallbackNamedCallPolicy.Excluded ->
                     QueryCallbackNamedPolicyDocument.Excluded(
                         policy.reason.protocolCallbackDocument(),
@@ -94,7 +98,7 @@ internal fun TraversalCallbackObservation.projectCallbackObservation(
     )
 }
 
-private class CallbackProjection(val authority: QueryReferenceAuthority, val basis: SemanticReadAuthority) {
+internal class CallbackProjection(val authority: QueryReferenceAuthority, val basis: SemanticReadAuthority) {
     fun occurrence(value: RelationOccurrence): RelationOccurrenceDocument? {
         val issued =
             when (
@@ -171,7 +175,7 @@ private class CallbackProjection(val authority: QueryReferenceAuthority, val bas
         )
     }
 
-    private fun body(value: RelationCallableBody): QueryCallbackBodyDocument? =
+    fun body(value: RelationCallableBody): QueryCallbackBodyDocument? =
         when (value) {
             is RelationCallableBody.Named -> callable(value.evidence)?.let(QueryCallbackBodyDocument::Named)
             is RelationCallableBody.Anonymous -> anonymous(value)
@@ -203,6 +207,7 @@ private class CallbackProjection(val authority: QueryReferenceAuthority, val bas
                 .callbackValue() ?: return null,
             BoundedProtocolList.create(flow.ownerBindings.map { ownerBinding(it) ?: return null }).callbackValue()
                 ?: return null,
+            flow.scan.protocolCallbackDocument(),
         )
     }
 
@@ -214,6 +219,10 @@ private class CallbackProjection(val authority: QueryReferenceAuthority, val bas
                     QueryCallbackBodySupplyDocument.Invocation(occurrence(supply.occurrence) ?: return null)
                 CallbackBodySupply.Stored -> QueryCallbackBodySupplyDocument.Stored
                 CallbackBodySupply.Unsupported -> QueryCallbackBodySupplyDocument.Unsupported
+                is CallbackBodySupply.DefaultParameter ->
+                    QueryCallbackBodySupplyDocument.DefaultParameter(occurrence(supply.parameter) ?: return null)
+                is CallbackBodySupply.DirectInvocation ->
+                    QueryCallbackBodySupplyDocument.DirectInvocation(occurrence(supply.occurrence) ?: return null)
                 is CallbackBodySupply.Returned ->
                     QueryCallbackBodySupplyDocument.Returned(occurrence(supply.occurrence) ?: return null)
             },
@@ -233,6 +242,24 @@ private class CallbackProjection(val authority: QueryReferenceAuthority, val bas
                     }
                 )
                 .callbackValue() ?: return null,
+            BoundedProtocolList.create(
+                    value.forwardings.map {
+                        QueryCallbackForwardingDocument(
+                            parameter(it.source) ?: return null,
+                            occurrence(it.argument) ?: return null,
+                            bound(it.target) ?: return null,
+                        )
+                    }
+                )
+                .callbackValue() ?: return null,
+        )
+    }
+
+    fun parameter(value: CallbackParameterIdentity): QueryCallbackParameterIdentityDocument? {
+        return QueryCallbackParameterIdentityDocument(
+            callable(value.callable) ?: return null,
+            ProtocolOffset.parse(value.position.value).callbackValue() ?: return null,
+            occurrence(value.parameter) ?: return null,
         )
     }
 
@@ -241,6 +268,17 @@ private class CallbackProjection(val authority: QueryReferenceAuthority, val bas
             is CallbackBindingEvidence.Unavailable ->
                 QueryCallbackBindingDocument.Unavailable(value.cause.protocolCallbackDocument())
             is CallbackBindingEvidence.Bound -> bound(value.binding)
+            is CallbackBindingEvidence.Default ->
+                QueryCallbackBindingDocument.Default(
+                    parameter(value.binding.parameter) ?: return null,
+                    occurrence(value.binding.defaultValue) ?: return null,
+                )
+            is CallbackBindingEvidence.Direct ->
+                QueryCallbackBindingDocument.Direct(
+                    value.binding.basis.impactDocument().callbackValue() ?: return null,
+                    occurrence(value.binding.occurrence) ?: return null,
+                    body(value.binding.owner) ?: return null,
+                )
         }
     }
 

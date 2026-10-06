@@ -46,6 +46,12 @@ fun nestedInline(): String = ordinaryInline { ordinaryInline { inlineTarget() } 
 fun repeatedInline(): String = ordinaryInline { inlineTarget() + inlineTarget() }
 fun returnedInline(): () -> String = { inlineTarget() }
 fun immediateLiteralCallback(): String = ({ inlineTarget() })()
+fun explicitLiteralCallback(): String = ({ inlineTarget() }).invoke()
+fun explicitAnonymousCallback(): String = (fun(): String { return inlineTarget() }).invoke()
+fun ignoredCallbackTarget(): Unit = Unit
+operator fun (() -> Unit).invoke(ignored: Int) {}
+fun ignoredExplicitCallback(): Unit = ({ ignoredCallbackTarget() }).invoke(1)
+fun ignoredImplicitCallback(): Unit = ({ ignoredCallbackTarget() })(1)
 fun storedInline(): String { val stored = { inlineTarget() }; return stored() }
 fun callbackInline(): String = ordinaryCallback { inlineTarget() }
 fun homonymousInline(): String = ordinaryInline(1) { inlineTarget() }
@@ -81,3 +87,39 @@ fun storedOperationCallback(): String = storeOperation { inlineTarget() }
 fun selectedOperation(unused: () -> String, selected: () -> String): String = selected()
 fun selectedParameterCallback(): String = selectedOperation(unused = { "unused" }, selected = { inlineTarget() })
 fun uninvokedParameterCallback(): String = selectedOperation(unused = { inlineTarget() }, selected = { "selected" })
+
+inline fun defaultInlineDefinition(block: () -> String = { inlineTarget() }): String = block()
+fun omittedDefaultInline(): String = defaultInlineDefinition()
+fun suppliedDefaultInline(): String = defaultInlineDefinition { inlineTarget() }
+fun replacedDefaultInline(): String = defaultInlineDefinition { "replacement" }
+fun defaultOrdinaryDefinition(block: () -> String = { inlineTarget() }): String = block()
+fun omittedDefaultOrdinary(): String = defaultOrdinaryDefinition()
+fun suppliedDefaultOrdinary(): String = defaultOrdinaryDefinition { inlineTarget() }
+fun replacedDefaultOrdinary(): String = defaultOrdinaryDefinition { "replacement" }
+inline fun defaultMethodInlineDefinition(client: ChildClient, block: () -> String = { client.fetch() }): String = block()
+fun omittedDefaultMethodInline(client: ChildClient): String = defaultMethodInlineDefinition(client)
+fun replacedDefaultMethodInline(client: ChildClient): String = defaultMethodInlineDefinition(client) { "replacement" }
+fun defaultMethodOrdinaryDefinition(client: ChildClient, block: () -> String = { client.fetch() }): String = block()
+fun omittedDefaultMethodOrdinary(client: ChildClient): String = defaultMethodOrdinaryDefinition(client)
+fun replacedDefaultMethodOrdinary(client: ChildClient): String = defaultMethodOrdinaryDefinition(client) { "replacement" }
+
+fun labelledInline(): String = ordinaryInline label@ { inlineTarget() }
+fun labelledOrdinary(): String = ordinaryCallback label@ { inlineTarget() }
+fun nestedDirectInline(): String = ordinaryInline { ({ inlineTarget() })() }
+fun nestedDirectOrdinary(): String = ordinaryCallback { ({ inlineTarget() })() }
+fun anonymousFunInline(): String = ordinaryInline(fun(): String { return inlineTarget() })
+fun anonymousFunOrdinary(): String = ordinaryCallback(fun(): String { return inlineTarget() })
+
+inline fun forwardingInlineHelper(block: () -> String): String = ordinaryInline(block)
+inline fun forwardingInlineTwiceHelper(block: () -> String): String = forwardingInlineHelper(block)
+fun forwardedInline(): String = forwardingInlineHelper { inlineTarget() }
+fun forwardedInlineTwice(): String = forwardingInlineTwiceHelper { inlineTarget() }
+
+fun nestedNamedForwardingHelper(block: () -> String): String {
+    fun deferred(): String = ordinaryCallback(block)
+    return "deferred"
+}
+fun nestedNamedForwardingCallback(): String = nestedNamedForwardingHelper { inlineTarget() }
+
+inline fun nestedCrossinlineHelper(crossinline block: () -> String): String = ordinaryCallback { block() }
+fun nestedCrossinlineCallback(): String = nestedCrossinlineHelper { inlineTarget() }

@@ -7,6 +7,10 @@ import java.util.Collections
 sealed interface CallbackBodySupply {
     data class Invocation(val occurrence: RelationOccurrence) : CallbackBodySupply
 
+    data class DefaultParameter(val parameter: RelationOccurrence) : CallbackBodySupply
+
+    data class DirectInvocation(val occurrence: RelationOccurrence) : CallbackBodySupply
+
     data object Stored : CallbackBodySupply
 
     data class Returned(val occurrence: RelationOccurrence) : CallbackBodySupply
@@ -54,6 +58,8 @@ private fun admitBodySupply(
 ): Refinement<Unit, CallbackInvocationFlowFailure> {
     val admitted =
         when (supply) {
+            is CallbackBodySupply.DefaultParameter -> admitDefaultSupply(body, supply, evidence)
+            is CallbackBodySupply.DirectInvocation -> admitDirectSupply(body, supply, evidence)
             is CallbackBodySupply.Invocation -> admitInvocationSupply(body, supply, evidence)
             CallbackBodySupply.Stored -> admitUnavailableBinding(evidence, CallbackInvocationFlowCause.STORED_CALLBACK)
             is CallbackBodySupply.Returned -> admitReturnedSupply(body, supply, evidence)
@@ -69,6 +75,44 @@ private fun admitBodySupply(
     return Refinement.Refined(Unit)
 }
 
+private fun admitDefaultSupply(
+    body: RelationCallableBody.Anonymous,
+    supply: CallbackBodySupply.DefaultParameter,
+    evidence: CallbackBindingEvidence,
+): Refinement<Unit, CallbackInvocationFlowFailure> {
+    if (!supply.parameter.containsBody(body))
+        return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+    return when (evidence) {
+        is CallbackBindingEvidence.Default ->
+            if (
+                evidence.binding.parameter.parameter == supply.parameter &&
+                    evidence.binding.defaultValue.containsBody(body)
+            )
+                Refinement.Refined(Unit)
+            else Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        is CallbackBindingEvidence.Unavailable -> Refinement.Refined(Unit)
+        is CallbackBindingEvidence.Direct,
+        is CallbackBindingEvidence.Bound -> Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+    }
+}
+
+private fun admitDirectSupply(
+    body: RelationCallableBody.Anonymous,
+    supply: CallbackBodySupply.DirectInvocation,
+    evidence: CallbackBindingEvidence,
+): Refinement<Unit, CallbackInvocationFlowFailure> {
+    if (!supply.occurrence.containsBody(body))
+        return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+    return when (evidence) {
+        is CallbackBindingEvidence.Direct ->
+            if (evidence.binding.occurrence == supply.occurrence) Refinement.Refined(Unit)
+            else Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        is CallbackBindingEvidence.Unavailable -> Refinement.Refined(Unit)
+        is CallbackBindingEvidence.Default,
+        is CallbackBindingEvidence.Bound -> Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+    }
+}
+
 private fun admitInvocationSupply(
     body: RelationCallableBody.Anonymous,
     supply: CallbackBodySupply.Invocation,
@@ -76,6 +120,8 @@ private fun admitInvocationSupply(
 ): Refinement<Unit, CallbackInvocationFlowFailure> {
     if (!supply.occurrence.containsBody(body))
         return Refinement.Rejected(CallbackInvocationFlowFailure.BODY_OUTSIDE_ARGUMENT)
+    if (evidence is CallbackBindingEvidence.Default || evidence is CallbackBindingEvidence.Direct)
+        return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
     if (evidence is CallbackBindingEvidence.Bound && !evidence.binding.matchesSupply(supply))
         return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
     return Refinement.Refined(Unit)

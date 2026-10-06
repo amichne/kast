@@ -222,27 +222,35 @@ internal class IntellijK2RelationSearch(
         fun callees(): IntellijRelationTermination =
             retainedReader().callees(request, subject, collector, ::processCallee, ::termination)
 
-        private fun processCallee(candidate: CalleeProviderItem): Boolean {
-            val owner =
-                when (val admitted = projection.callOwner(candidate.owner)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected -> return retainUnownedCallee(candidate, admitted.failure)
-                }
-            return when (candidate) {
+        private fun processCallee(candidate: CalleeProviderItem): Boolean =
+            when (candidate) {
                 is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
                 is CalleeProviderItem.Reference ->
                     when (val resolved = projection.resolve(candidate.reference)) {
+                        IntellijK2ResolvedDeclaration.InvokeReceiver -> collector.dismissProviderItem()
                         IntellijK2ResolvedDeclaration.Unresolved -> {
                             observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
                             incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
                         }
+                        is IntellijK2ResolvedDeclaration.Unsupported ->
+                            incompleteCallee(candidate, RelationLimitation.UNSUPPORTED_ITEM)
+                        is IntellijK2ResolvedDeclaration.ParameterInvocation ->
+                            callableEmitter.retainParameterInvocation(candidate, resolved)
+                        is IntellijK2ResolvedDeclaration.SourceLess ->
+                            callableEmitter.retainSourceLessCallable(candidate, resolved.callable)
                         is IntellijK2ResolvedDeclaration.Found -> {
                             observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
-                            processCalleeTarget(owner, resolved.declaration, candidate.reference)
+                            when (val owner = projection.callOwner(candidate.owner)) {
+                                is Refinement.Refined ->
+                                    processCalleeTarget(owner.value, resolved.declaration, candidate.reference)
+                                is Refinement.Rejected -> retainUnownedCallee(candidate, owner.failure)
+                            }
                         }
                     }
             }
-        }
+
+        private val callableEmitter =
+            IntellijCallableObservationEmitter(request, subject, projection, scope, collector, ::incompleteCallee)
 
         private fun retainUnownedCallee(candidate: CalleeProviderItem, failure: CallOwnershipFailure): Boolean {
             val policy =
@@ -259,12 +267,19 @@ internal class IntellijK2RelationSearch(
                 is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, limitation)
                 is CalleeProviderItem.Reference ->
                     when (val target = projection.resolve(candidate.reference)) {
+                        IntellijK2ResolvedDeclaration.InvokeReceiver -> collector.dismissProviderItem()
                         is IntellijK2ResolvedDeclaration.Found -> {
                             observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
                             admitCalleeTarget(target.declaration, candidate.reference) {
                                 callbackEmitter.retain(candidate.reference, target.declaration, policy)
                             }
                         }
+                        is IntellijK2ResolvedDeclaration.ParameterInvocation ->
+                            callableEmitter.retainParameterInvocation(candidate, target)
+                        is IntellijK2ResolvedDeclaration.SourceLess ->
+                            callableEmitter.retainSourceLessCallable(candidate, target.callable)
+                        is IntellijK2ResolvedDeclaration.Unsupported ->
+                            incompleteCallee(candidate, RelationLimitation.UNSUPPORTED_ITEM)
                         IntellijK2ResolvedDeclaration.Unresolved -> {
                             observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
                             incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)

@@ -3,10 +3,12 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.protocol.contract.QueryCallbackExclusionReasonDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedUnavailableCauseDocument
 import io.github.amichne.kast.relation.contract.CallbackExclusionReason
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
+import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackNamedCallUnavailableCause
 
 internal fun CallbackNamedCallUnavailableCause.protocolCallbackDocument(): QueryCallbackNamedUnavailableCauseDocument =
@@ -24,6 +26,7 @@ internal fun CallbackExclusionReason.protocolCallbackDocument(): QueryCallbackEx
         CallbackExclusionReason.CROSSINLINE_ARGUMENT -> QueryCallbackExclusionReasonDocument.CROSSINLINE_ARGUMENT
         CallbackExclusionReason.STORED_CALLBACK -> QueryCallbackExclusionReasonDocument.STORED_CALLBACK
         CallbackExclusionReason.RETURNED_CALLBACK -> QueryCallbackExclusionReasonDocument.RETURNED_CALLBACK
+        CallbackExclusionReason.DEFAULT_PARAMETER -> QueryCallbackExclusionReasonDocument.DEFAULT_PARAMETER
     }
 
 internal fun CallbackInvocationFlowCause.protocolCallbackDocument(): QueryCallbackFlowCauseDocument =
@@ -41,6 +44,7 @@ internal fun CallbackInvocationFlowCause.protocolCallbackDocument(): QueryCallba
         CallbackInvocationFlowCause.EXTERNAL_CALLABLE -> QueryCallbackFlowCauseDocument.EXTERNAL_CALLABLE
         CallbackInvocationFlowCause.OUTSIDE_DOMAIN -> QueryCallbackFlowCauseDocument.OUTSIDE_DOMAIN
         CallbackInvocationFlowCause.PARAMETER_ESCAPES -> QueryCallbackFlowCauseDocument.PARAMETER_ESCAPES
+        CallbackInvocationFlowCause.CALLBACK_CYCLE -> QueryCallbackFlowCauseDocument.CALLBACK_CYCLE
         CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION ->
             QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION
         CallbackInvocationFlowCause.NO_INVOCATION_PROVEN -> QueryCallbackFlowCauseDocument.NO_INVOCATION_PROVEN
@@ -52,6 +56,9 @@ internal fun CallbackInvocationFlowCause.protocolCallbackDocument(): QueryCallba
 
 internal fun CallbackInvocationFlowFailure.protocolCallbackDocument(): QueryCallbackFlowFailureDocument =
     when (this) {
+        CallbackInvocationFlowFailure.INVALID_SCAN_PROOF -> QueryCallbackFlowFailureDocument.INVALID_SCAN_PROOF
+        CallbackInvocationFlowFailure.INVALID_FORWARDING_PATH ->
+            QueryCallbackFlowFailureDocument.INVALID_FORWARDING_PATH
         CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH -> QueryCallbackFlowFailureDocument.OWNER_BINDING_MISMATCH
         CallbackInvocationFlowFailure.DUPLICATE_OWNER_BINDING ->
             QueryCallbackFlowFailureDocument.DUPLICATE_OWNER_BINDING
@@ -76,4 +83,11 @@ internal fun CallbackInvocationFlowFailure.protocolCallbackDocument(): QueryCall
             QueryCallbackFlowFailureDocument.CALLABLE_TRANSFER_BINDING_MISMATCH
         CallbackInvocationFlowFailure.INVOCATION_OUTSIDE_SUPPLYING_OWNER ->
             QueryCallbackFlowFailureDocument.INVOCATION_OUTSIDE_SUPPLYING_OWNER
+    }
+
+internal fun CallbackInvocationScan.protocolCallbackDocument(): QueryCallbackInvocationScanDocument =
+    when (this) {
+        CallbackInvocationScan.EXHAUSTIVE -> QueryCallbackInvocationScanDocument.EXHAUSTIVE
+        CallbackInvocationScan.INCOMPLETE -> QueryCallbackInvocationScanDocument.INCOMPLETE
+        CallbackInvocationScan.NOT_APPLICABLE -> QueryCallbackInvocationScanDocument.NOT_APPLICABLE
     }

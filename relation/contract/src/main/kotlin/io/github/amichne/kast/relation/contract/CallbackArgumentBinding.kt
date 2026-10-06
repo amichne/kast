@@ -43,12 +43,17 @@ private constructor(
     val occurrence: RelationOccurrence,
     val owner: RelationCallableBody,
     val callableTransfers: List<ValueTransfer>,
+    val forwardings: List<CallbackParameterForwarding>,
 ) {
+    val retainedBytes: Long
+        get() = 4096L + canonicalProjection().toByteArray(Charsets.UTF_8).size * 4L
+
     companion object {
         fun fromCompiler(
             occurrence: RelationOccurrence,
             owner: RelationCallableBody,
             callableTransfers: List<ValueTransfer> = emptyList(),
+            forwardings: List<CallbackParameterForwarding> = emptyList(),
         ): Refinement<CallbackParameterInvocation, CallbackInvocationFlowFailure> {
             if (owner.file != occurrence.file || !owner.range.containsValueRange(occurrence.range))
                 return Refinement.Rejected(CallbackInvocationFlowFailure.INVOCATION_OUTSIDE_OWNER)
@@ -65,6 +70,7 @@ private constructor(
                     occurrence,
                     owner,
                     Collections.unmodifiableList(callableTransfers.toList()),
+                    Collections.unmodifiableList(forwardings.toList()),
                 )
             )
         }

@@ -10,6 +10,7 @@ from contextlib import closing
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
+import re
 
 import jsonschema
 import reproduce_semantic_queries as replay
@@ -47,6 +48,27 @@ class Oracle:
     invocation: bool
     obligation: str | tuple[str, ...] | None = None
     occurrences: int = 1
+    body_expression: str | None = None
+    forbidden_obligations: tuple[str, ...] = ()
+    scan: str | None = None
+    forwarding_receivers: tuple[str, ...] = ()
+    exhaustive_budget: bool = False
+    default_expression: str | None = None
+    direct_anonymous_owner: bool = False
+    direct_invocation: str = '({ inlineTarget() })()'
+    policy_cause: str | None = None
+    binding_cause: str | None = None
+    named_edge: bool | None = None
+    forwarding_owner_expressions: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ParameterOracle:
+    definition: str
+    parameter: str
+    position: int
+    invocation: str
+    anonymous_owner: bool = False
 
 
 FIXTURE_ORACLES = (
@@ -61,14 +83,79 @@ FIXTURE_ORACLES = (
     Oracle('unsupportedOuter', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', True, 'NESTED_CALLBACK_EXECUTION'),
     Oracle('storedInline', 'EXCLUDED', 'STORED_CALLBACK', 'UNAVAILABLE', False, 'STORED_CALLBACK'),
     Oracle('returnedInline', 'EXCLUDED', 'RETURNED_CALLBACK', 'UNAVAILABLE', False, 'RETURNED_CALLBACK'),
-    Oracle('immediateLiteralCallback', 'UNAVAILABLE', None, 'UNAVAILABLE', False, 'UNSUPPORTED_CALLBACK_SUPPLY'),
+    Oracle('immediateLiteralCallback', 'ADMITTED_DIRECT', None, 'DIRECT', False,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'NO_INVOCATION_PROVEN'), scan='NOT_APPLICABLE'),
+    Oracle('explicitLiteralCallback', 'ADMITTED_DIRECT', None, 'DIRECT', False,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'NO_INVOCATION_PROVEN'), scan='NOT_APPLICABLE',
+           direct_invocation='({ inlineTarget() }).invoke()'),
+    Oracle('explicitAnonymousCallback', 'ADMITTED_DIRECT', None, 'DIRECT', False,
+           body_expression='fun(): String { return inlineTarget() }',
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'NO_INVOCATION_PROVEN'), scan='NOT_APPLICABLE',
+           direct_invocation='(fun(): String { return inlineTarget() }).invoke()'),
     Oracle('storedParameterCallback', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', True),
     Oracle('explicitParameterCallback', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', True),
     Oracle('mutableParameterCallback', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', False, 'PARAMETER_ESCAPES'),
     Oracle('storedOperationCallback', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', False, 'PARAMETER_ESCAPES'),
     Oracle('selectedParameterCallback', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', True),
-    Oracle('uninvokedParameterCallback', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', False, 'NO_INVOCATION_PROVEN'),
+    Oracle('uninvokedParameterCallback', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', False,
+           forbidden_obligations=('NO_INVOCATION_PROVEN',), scan='EXHAUSTIVE'),
     Oracle('unresolvedCallback', 'UNAVAILABLE', None, 'UNAVAILABLE', False, 'UNRESOLVED_ARGUMENT_MAPPING'),
+    Oracle('labelledInline', 'ADMITTED_INLINE', None, 'BOUND', True,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING')),
+    Oracle('labelledOrdinary', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', True,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING')),
+    Oracle('nestedDirectInline', 'ADMITTED_DIRECT', None, 'DIRECT', False, 'NESTED_CALLBACK_EXECUTION',
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'NO_INVOCATION_PROVEN'),
+           scan='NOT_APPLICABLE', exhaustive_budget=True, direct_anonymous_owner=True),
+    Oracle('nestedDirectOrdinary', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'DIRECT', False, 'NESTED_CALLBACK_EXECUTION',
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'NO_INVOCATION_PROVEN'),
+           scan='NOT_APPLICABLE', exhaustive_budget=True, direct_anonymous_owner=True),
+    Oracle('anonymousFunInline', 'ADMITTED_INLINE', None, 'BOUND', True,
+           body_expression='fun(): String { return inlineTarget() }',
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING')),
+    Oracle('anonymousFunOrdinary', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', True,
+           body_expression='fun(): String { return inlineTarget() }',
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING')),
+    Oracle('defaultInlineDefinition', 'EXCLUDED', 'DEFAULT_PARAMETER', 'DEFAULT', True,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING'),
+           scan='EXHAUSTIVE', exhaustive_budget=True, default_expression='{ inlineTarget() }'),
+    Oracle('defaultOrdinaryDefinition', 'EXCLUDED', 'DEFAULT_PARAMETER', 'DEFAULT', True,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING'),
+           scan='EXHAUSTIVE', exhaustive_budget=True, default_expression='{ inlineTarget() }'),
+    Oracle('suppliedDefaultInline', 'ADMITTED_INLINE', None, 'BOUND', True,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING'),
+           scan='EXHAUSTIVE', exhaustive_budget=True, default_expression='{ inlineTarget() }'),
+    Oracle('suppliedDefaultOrdinary', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', True,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING'),
+           scan='EXHAUSTIVE', exhaustive_budget=True, default_expression='{ inlineTarget() }'),
+    Oracle('forwardedInline', 'ADMITTED_INLINE', None, 'BOUND', True,
+           forbidden_obligations=('PARAMETER_ESCAPES', 'NO_INVOCATION_PROVEN', 'UNRESOLVED_ARGUMENT_MAPPING'),
+           scan='EXHAUSTIVE', forwarding_receivers=('ordinaryInline(block:',), exhaustive_budget=True),
+    Oracle('forwardedInlineTwice', 'ADMITTED_INLINE', None, 'BOUND', True,
+           forbidden_obligations=('PARAMETER_ESCAPES', 'NO_INVOCATION_PROVEN', 'UNRESOLVED_ARGUMENT_MAPPING'),
+           scan='EXHAUSTIVE', forwarding_receivers=('forwardingInlineHelper', 'ordinaryInline(block:'),
+           exhaustive_budget=True),
+    Oracle('nestedNamedForwardingCallback', 'EXCLUDED', 'NON_INLINE_ARGUMENT', 'BOUND', True,
+           'NESTED_CALLBACK_EXECUTION',
+           forbidden_obligations=('PARAMETER_ESCAPES', 'NO_INVOCATION_PROVEN', 'UNRESOLVED_ARGUMENT_MAPPING'),
+           scan='EXHAUSTIVE', forwarding_receivers=('ordinaryCallback',), exhaustive_budget=True,
+           forwarding_owner_expressions=('fun deferred(): String = ordinaryCallback(block)',)),
+    Oracle('nestedCrossinlineCallback', 'EXCLUDED', 'CROSSINLINE_ARGUMENT', 'BOUND', True,
+           'NESTED_CALLBACK_EXECUTION', scan='EXHAUSTIVE', exhaustive_budget=True),
+)
+
+METHOD_DEFAULT_ORACLES = tuple(
+    Oracle(owner, 'EXCLUDED', 'DEFAULT_PARAMETER', 'DEFAULT', True,
+           forbidden_obligations=('UNSUPPORTED_CALLBACK_SUPPLY', 'UNRESOLVED_ARGUMENT_MAPPING'),
+           scan='EXHAUSTIVE', exhaustive_budget=True, default_expression='{ client.fetch() }')
+    for owner in ('defaultMethodInlineDefinition', 'defaultMethodOrdinaryDefinition')
+)
+
+IGNORED_INVOKE_ORACLES = tuple(
+    Oracle(owner, 'UNAVAILABLE', None, 'UNAVAILABLE', False, 'UNRESOLVED_ARGUMENT_MAPPING',
+           scan='INCOMPLETE', exhaustive_budget=True, policy_cause='UNSUPPORTED_BOUNDARY',
+           binding_cause='UNRESOLVED_ARGUMENT_MAPPING', named_edge=False)
+    for owner in ('ignoredExplicitCallback', 'ignoredImplicitCallback')
 )
 
 
@@ -89,8 +176,54 @@ RECEIVERS = {
     'storedOperationCallback': ('storeOperation', 'block', None),
     'selectedParameterCallback': ('selectedOperation', 'selected', 'selected()'),
     'uninvokedParameterCallback': ('selectedOperation', 'unused', None),
+    'labelledInline': ('ordinaryInline(block:', 'block', 'block()'),
+    'labelledOrdinary': ('ordinaryCallback', 'block', 'block()'),
+    'anonymousFunInline': ('ordinaryInline(block:', 'block', 'block()'),
+    'anonymousFunOrdinary': ('ordinaryCallback', 'block', 'block()'),
+    'defaultInlineDefinition': ('defaultInlineDefinition', 'block', 'block()'),
+    'defaultOrdinaryDefinition': ('defaultOrdinaryDefinition', 'block', 'block()'),
+    'suppliedDefaultInline': ('defaultInlineDefinition', 'block', 'block()'),
+    'suppliedDefaultOrdinary': ('defaultOrdinaryDefinition', 'block', 'block()'),
+    'forwardedInline': ('forwardingInlineHelper', 'block', 'block()'),
+    'forwardedInlineTwice': ('forwardingInlineTwiceHelper', 'block', 'block()'),
+    'nestedNamedForwardingCallback': ('nestedNamedForwardingHelper', 'block', 'block()'),
+    'nestedCrossinlineCallback': ('nestedCrossinlineHelper', 'block', 'block()'),
+    'defaultMethodInlineDefinition': ('defaultMethodInlineDefinition', 'block', 'block()'),
+    'defaultMethodOrdinaryDefinition': ('defaultMethodOrdinaryDefinition', 'block', 'block()'),
     'read': ('nativeBoundary', 'operation', 'operation()'),
 }
+
+DEFAULT_CALL_SITES = (
+    ('omittedDefaultInline', 'defaultInlineDefinition()', 'inlineTarget'),
+    ('replacedDefaultInline', 'defaultInlineDefinition { "replacement" }', 'inlineTarget'),
+    ('omittedDefaultOrdinary', 'defaultOrdinaryDefinition()', 'inlineTarget'),
+    ('replacedDefaultOrdinary', 'defaultOrdinaryDefinition { "replacement" }', 'inlineTarget'),
+    ('omittedDefaultMethodInline', 'defaultMethodInlineDefinition(client)', 'fetch'),
+    ('replacedDefaultMethodInline', 'defaultMethodInlineDefinition(client) { "replacement" }', 'fetch'),
+    ('omittedDefaultMethodOrdinary', 'defaultMethodOrdinaryDefinition(client)', 'fetch'),
+    ('replacedDefaultMethodOrdinary', 'defaultMethodOrdinaryDefinition(client) { "replacement" }', 'fetch'),
+)
+
+PARAMETER_CALLEE_ORACLES = (
+    ParameterOracle('ordinaryInline(block:', 'block: () -> String', 0, 'block()'),
+    ParameterOracle('ordinaryInline(marker:', 'block: () -> String', 1, 'block()'),
+    ParameterOracle('ordinaryCallback', 'block: () -> String', 0, 'block()'),
+    ParameterOracle('noinlineHelper', 'noinline block: () -> String', 0, 'block()'),
+    ParameterOracle('crossinlineHelper', 'crossinline block: () -> String', 0, 'block()'),
+    ParameterOracle('defaultInlineDefinition', 'block: () -> String = { inlineTarget() }', 0, 'block()'),
+    ParameterOracle('defaultOrdinaryDefinition', 'block: () -> String = { inlineTarget() }', 0, 'block()'),
+    ParameterOracle('defaultMethodInlineDefinition', 'block: () -> String = { client.fetch() }', 1, 'block()'),
+    ParameterOracle('defaultMethodOrdinaryDefinition', 'block: () -> String = { client.fetch() }', 1, 'block()'),
+    ParameterOracle('explicitParameter', 'block: () -> String', 0, 'block.invoke()'),
+    ParameterOracle('selectedOperation', 'selected: () -> String', 1, 'selected()'),
+    ParameterOracle('nestedCrossinlineHelper', 'crossinline block: () -> String', 0, 'block()', True),
+)
+
+
+def next_function(text, start):
+    """The fixture oracle owns top-level declarations, including inline helpers."""
+    match = re.search(r'\n(?:inline )?fun ', text[start:])
+    return len(text) if match is None else start + match.start()
 
 
 def authored_region(root, owner, production=False):
@@ -102,7 +235,7 @@ def authored_region(root, owner, production=False):
     text = file.read_text()
     marker = 'suspend fun read(' if production else 'fun ' + owner + '('
     start = text.index(marker)
-    end = text.find('\n    private fun readPrepared', start) if production else text.find('\nfun ', start + len(marker))
+    end = text.find('\n    private fun readPrepared', start) if production else next_function(text, start + len(marker))
     return file, text, start, len(text) if end < 0 else end
 
 
@@ -126,31 +259,82 @@ def expected_occurrences(root, oracle, target, production):
 
 
 def check_mapping(observation, oracle, invocation=True):
-    if oracle.binding != 'BOUND':
+    if oracle.binding not in ('BOUND', 'DEFAULT'):
         return
     receiver, parameter, expression = RECEIVERS[oracle.owner]
     binding = observation['flow']['binding']
-    expected_position = (5 if oracle.owner == 'read' else 1 if oracle.owner in ('homonymousInline', 'selectedParameterCallback') else 0)
+    if binding['type'] == 'DEFAULT':
+        binding = binding['parameter']
+    expected_position = (5 if oracle.owner == 'read' else 1 if oracle.owner in (
+        'homonymousInline', 'selectedParameterCallback', 'defaultMethodInlineDefinition',
+        'defaultMethodOrdinaryDefinition') else 0)
     assert binding['position'] == expected_position, binding
     assert callable_name(binding['callable']) == receiver.split('(')[0], binding
     declaration = binding['callable']['declaration']
     text = Path(declaration['file']).read_text()
     marker = 'fun <Result> nativeBoundary(' if oracle.owner == 'read' else 'fun ' + receiver
     start = text.index(marker)
-    end = text.find('\nfun ', start + len(marker))
-    if end < 0:
-        end = len(text)
+    end = next_function(text, start + len(marker))
     parameter_site = binding['parameter']
     bounds = parameter_site['range']
-    modifier = {'noinlineBoundary': 'noinline ', 'crossinlineBoundary': 'crossinline '}.get(oracle.owner, '')
+    modifier = {'noinlineHelper': 'noinline ', 'crossinlineHelper': 'crossinline ',
+                'nestedCrossinlineHelper': 'crossinline '}.get(receiver, '')
     parameter_text = modifier + parameter + ': () -> ' + ('Result' if oracle.owner == 'read' else 'String')
+    if oracle.default_expression:
+        parameter_text += ' = ' + oracle.default_expression
     parameter_start = len(text[:text.index(parameter_text, start, end)].encode('utf-16-le')) // 2
     assert bounds == dict(startInclusive=parameter_start, endExclusive=parameter_start + len(parameter_text)), (parameter_site, parameter_text)
     if expression and invocation:
+        if oracle.forwarding_receivers:
+            receiver = oracle.forwarding_receivers[-1]
+            declaration = next(iter(observation['flow']['invocations']))['owner']['callable']['declaration']
+            text = Path(declaration['file']).read_text()
+            marker = 'fun ' + receiver
+            start = text.index(marker)
+            end = next_function(text, start + len(marker))
         offset = text.index(expression, start, end)
         utf16 = len(text[:offset].encode('utf-16-le')) // 2
         assert Counter(site_key(i['occurrence']) for i in observation['flow']['invocations']) == Counter([
             (declaration['file'], utf16, utf16 + len(expression))]), observation['flow']
+
+
+def source_text(site):
+    bounds = site['range']
+    text = Path(site['file']).read_text().encode('utf-16-le')
+    return text[bounds['startInclusive'] * 2:bounds['endExclusive'] * 2].decode('utf-16-le')
+
+
+def check_forwardings(invocation, observation, oracle):
+    forwardings = invocation['forwardings']
+    assert len(forwardings) == len(oracle.forwarding_receivers), forwardings
+    previous = observation['flow']['binding']
+    if oracle.forwarding_owner_expressions:
+        assert len(oracle.forwarding_owner_expressions) == len(forwardings), oracle
+    for index, (forwarding, receiver) in enumerate(zip(forwardings, oracle.forwarding_receivers)):
+        source, argument, target = forwarding['source'], forwarding['argument'], forwarding['target']
+        assert source['callable'] == previous['callable'], forwarding
+        assert source['position'] == previous['position'], forwarding
+        assert source['parameter'] == previous['parameter'], forwarding
+        assert source_text(argument) == 'block', forwarding
+        assert argument['candidateSelector'], forwarding
+        assert callable_name(target['callable']) == receiver.split('(')[0], forwarding
+        assert target['position'] == 0, forwarding
+        assert source_text(target['parameter']) == 'block: () -> String', forwarding
+        assert source_text(target['invocation_occurrence']) == receiver.split('(')[0] + '(block)', forwarding
+        assert target['invocation_owner']['type'] == 'NAMED', forwarding
+        owner = target['invocation_owner']['callable']
+        if oracle.forwarding_owner_expressions:
+            assert source_text(owner['declaration']) == oracle.forwarding_owner_expressions[index], forwarding
+            assert owner != source['callable'], forwarding
+            assert owner['declaration']['file'] == source['callable']['declaration']['file'], forwarding
+            assert source['callable']['declaration']['range']['startInclusive'] <= owner['declaration']['range']['startInclusive'], forwarding
+            assert owner['declaration']['range']['endExclusive'] <= source['callable']['declaration']['range']['endExclusive'], forwarding
+        else:
+            assert owner == source['callable'], forwarding
+        previous = target
+    if forwardings:
+        assert invocation['owner']['type'] == 'NAMED', invocation
+        assert invocation['owner']['callable'] == previous['callable'], invocation
 
 
 def request(name, directory, direction, walk, budget, source=None):
@@ -177,6 +361,32 @@ def observations(pages):
                 yield item['observation']
 
 
+def callable_observations(pages):
+    for page in pages:
+        for relation in page.get('relation_observations', []):
+            yield from relation.get('callable_observations', [])
+        for walk in page.get('walk_observations', []):
+            for item in walk.get('callable_observations', []):
+                yield item['observation']
+
+
+def named_relations(pages):
+    for page in pages:
+        for item in page['items']:
+            if item['type'] == 'occurrence':
+                yield item['relation']
+            elif item['type'] == 'traversal_record':
+                yield item['record']['relation']
+
+
+def check_named_edge(pages, oracle, target):
+    if oracle.named_edge is None:
+        return
+    matched = [fact for fact in named_relations(pages)
+               if fact['source']['name'] == oracle.owner and fact['target']['name'] == target]
+    assert bool(matched) == oracle.named_edge, (oracle.owner, target, matched)
+
+
 def callable_name(value):
     return value['compiler_target']['name']
 
@@ -188,8 +398,8 @@ def check(observation, oracle, target, budget=None):
     assert policy['type'] == oracle.policy, policy
     if oracle.reason:
         assert policy['reason'] == oracle.reason, policy
-    if oracle.owner == 'immediateLiteralCallback':
-        assert policy['cause'] == 'UNSUPPORTED_BOUNDARY', policy
+    if oracle.policy_cause:
+        assert policy['cause'] == oracle.policy_cause, policy
     site = observation['occurrence']
     text = Path(site['file']).read_text()
     bounds = site['range']
@@ -203,6 +413,11 @@ def check(observation, oracle, target, budget=None):
         lambda_start = text.index('{\n                val started', text.index('suspend fun read('))
         lambda_end = text.index('\n            .also', lambda_start)
         lambda_end = text.rfind('}', lambda_start, lambda_end) + 1
+    elif oracle.body_expression:
+        region_start = text.index('fun ' + oracle.owner + '(')
+        region_end = next_function(text, region_start + len('fun ' + oracle.owner + '('))
+        lambda_start = text.index(oracle.body_expression, region_start, region_end)
+        lambda_end = lambda_start + len(oracle.body_expression)
     else:
         lambda_start = text.rfind('{', 0, target_offset)
         lambda_end = text.index('}', target_offset) + 1
@@ -217,6 +432,21 @@ def check(observation, oracle, target, budget=None):
         'anonymous@' + body['file'] + '#' + str(expected_body['startInclusive']) + ':' +
         str(expected_body['endExclusive']))
     assert flow['binding']['type'] == oracle.binding, flow
+    if oracle.binding_cause:
+        assert flow['binding']['cause'] == oracle.binding_cause, flow
+    if oracle.scan:
+        assert flow['scan'] == oracle.scan, flow
+    if oracle.binding == 'DEFAULT':
+        assert site_key(flow['binding']['default_value']) == site_key(body), flow
+        assert source_text(flow['binding']['default_value']) == oracle.default_expression, flow
+    if oracle.binding == 'DIRECT':
+        binding = flow['binding']
+        assert source_text(binding['occurrence']) == oracle.direct_invocation, binding
+        assert binding['owner']['type'] == ('ANONYMOUS' if oracle.direct_anonymous_owner else 'NAMED'), binding
+        if oracle.direct_anonymous_owner:
+            assert source_text(binding['owner']['occurrence']) == '{ ({ inlineTarget() })() }', binding
+        else:
+            assert callable_name(binding['owner']['callable']) == oracle.owner, binding
     if oracle.owner in ('selectedParameterCallback', 'uninvokedParameterCallback'):
         assert flow['binding']['position'] == (1 if oracle.owner == 'selectedParameterCallback' else 0), flow
     # Authored scans retain the outer anonymous owner or immutable alias before
@@ -232,19 +462,21 @@ def check(observation, oracle, target, budget=None):
     if oracle.obligation:
         expected_causes = (oracle.obligation,) if isinstance(oracle.obligation, str) else oracle.obligation
         assert set(expected_causes) & set(flow['obligations']), flow
+    assert not set(oracle.forbidden_obligations) & set(flow['obligations']), flow
     if oracle.owner == 'storedParameterCallback' and expected_invocation:
         assert any(i.get('callable_transfers') for i in flow['invocations']), flow
     for invocation in flow['invocations']:
+        check_forwardings(invocation, observation, oracle)
         assert invocation['occurrence']['candidateSelector']
         owner = invocation['owner']
         exact = owner['occurrence'] if owner['type'] == 'ANONYMOUS' else owner['callable']['declaration']
         assert exact['file'] == invocation['occurrence']['file']
         assert exact['range']['startInclusive'] <= invocation['occurrence']['range']['startInclusive']
         assert invocation['occurrence']['range']['endExclusive'] <= exact['range']['endExclusive']
-    anonymous_owners = [flow['binding']['invocation_owner']] if flow['binding']['type'] == 'BOUND' else []
+    anonymous_owners = [flow['binding']['invocation_owner']] if flow['binding']['type'] == 'BOUND' else (
+        [flow['binding']['owner']] if flow['binding']['type'] == 'DIRECT' else [])
     anonymous_owners.extend(i['owner'] for i in flow['invocations'])
-    primary_supply = {'storedInline': 'STORED', 'returnedInline': 'RETURNED',
-                      'immediateLiteralCallback': 'INVOCATION'}.get(oracle.owner)
+    primary_supply = {'storedInline': 'STORED', 'returnedInline': 'RETURNED'}.get(oracle.owner)
     if primary_supply:
         anonymous_owners.append(dict(type='ANONYMOUS', **flow['body']))
     expected_owners = {site_key(owner['occurrence']) for owner in anonymous_owners if owner['type'] == 'ANONYMOUS'}
@@ -254,9 +486,9 @@ def check(observation, oracle, target, budget=None):
         assert 'RESULT_LIMIT_REACHED' in flow['obligations'], flow
     owner_bindings = flow['owner_bindings']
     assert {site_key(owner['body']['occurrence']) for owner in owner_bindings} == expected_owners, flow
-    if oracle.owner in ('nestedInline', 'unsupportedOuter'):
+    if oracle.owner in ('nestedInline', 'unsupportedOuter', 'nestedDirectInline', 'nestedDirectOrdinary'):
         region_start = text.index('fun ' + oracle.owner + '(')
-        region_end = text.index('\nfun ', region_start)
+        region_end = next_function(text, region_start + len('fun ' + oracle.owner + '('))
         outer_start = text.index('{', region_start, region_end)
         outer_end = text.rfind('}', region_start, region_end) + 1
         expected_outer = (site['file'], len(text[:outer_start].encode('utf-16-le')) // 2,
@@ -264,13 +496,15 @@ def check(observation, oracle, target, budget=None):
         assert len(owner_bindings) == 1, owner_bindings
         assert site_key(owner_bindings[0]['body']['occurrence']) == expected_outer, owner_bindings
         outer_binding = owner_bindings[0]['binding']
-        receiver = 'ordinaryInline' if oracle.owner == 'nestedInline' else 'ordinaryCallback'
+        receiver = 'ordinaryInline' if oracle.owner in ('nestedInline', 'nestedDirectInline') else 'ordinaryCallback'
         assert outer_binding['type'] == 'BOUND' and outer_binding['position'] == 0, outer_binding
         assert callable_name(outer_binding['callable']) == receiver, outer_binding
         parameter_start = text.index('block: () -> String', text.index('fun ' + receiver + '(block:'))
         parameter_utf16 = len(text[:parameter_start].encode('utf-16-le')) // 2
         assert outer_binding['parameter']['range'] == dict(startInclusive=parameter_utf16,
             endExclusive=parameter_utf16 + len('block: () -> String')), outer_binding
+        if oracle.owner == 'nestedDirectOrdinary':
+            assert site_key(policy['excluded_boundary']) == expected_outer, policy
     for owner in owner_bindings:
         assert 'NESTED_CALLBACK_EXECUTION' in owner['obligations'], owner
         supply = owner['supply']
@@ -379,12 +613,14 @@ def run(args):
             observed = session.catalog()
             assert {t['name']: t['inputSchema'] for t in observed['tools']} == {
                 t['name']: t['inputSchema'] for t in tools}, 'session catalog changed'
-            qualify(args, budget, output, validator, session)
+            result_schema = next(t['outputSchema'] for t in observed['tools'] if t['name'] == 'query_symbols')
+            result_validator = jsonschema.Draft202012Validator(result_schema)
+            qualify(args, budget, output, validator, session, result_validator)
     else:
         qualify(args, budget, output, validator)
 
 
-def qualify(args, budget, output, validator, session=None):
+def qualify(args, budget, output, validator, session=None, result_validator=None):
     counter = 0
     terminal_pages = []
 
@@ -398,6 +634,8 @@ def qualify(args, budget, output, validator, session=None):
         call = replay.ReplayCall(payload['request']['type'], payload, process, document, [], [], 'UNAVAILABLE')
         replay.write(output / f'call-{counter:04d}.json', asdict(call))
         counter += 1
+        if document is not None and result_validator is not None:
+            result_validator.validate(document)
         return call
 
     def drain(payload):
@@ -422,7 +660,7 @@ def qualify(args, budget, output, validator, session=None):
 
     inspected = set()
 
-    def inspect_source(site, basis):
+    def inspect_source(site, basis=None, live=None):
         candidate = site['candidateSelector']
         if candidate in inspected:
             return
@@ -432,9 +670,12 @@ def qualify(args, budget, output, validator, session=None):
         assert document and document['operation'] == 'source.read', document
         assert document['status'] == 'complete', document
         assert document['snapshot']['file'] == site['file'], document
-        assert basis['type'] == 'LIVE', basis
-        assert document['snapshot']['live'] == dict(root=basis['root'], host=basis['host'],
-            epoch=basis['epoch'], contentView=basis['contentView'], version=basis['referenceVersion']), document
+        if basis is not None:
+            assert basis['type'] == 'LIVE', basis
+            live = dict(root=basis['root'], host=basis['host'], epoch=basis['epoch'],
+                        contentView=basis['contentView'], version=basis['referenceVersion'])
+        assert live and 'host' in live and 'epoch' in live and 'version' in live, live
+        assert document['snapshot']['live'] == live, document
         assert document['region']['selection']['range'] == site['range'], document
         assert document['text']['type'] == 'returned', document
         bounds = site['range']
@@ -454,10 +695,23 @@ def qualify(args, budget, output, validator, session=None):
                 inspect_source(site, basis)
             owner = binding['invocation_owner']
             inspect_source(owner['occurrence'] if owner['type'] == 'ANONYMOUS' else owner['callable']['declaration'], basis)
+        if binding['type'] == 'DEFAULT':
+            for site in (binding['parameter']['parameter'], binding['parameter']['callable']['declaration'],
+                         binding['default_value']):
+                inspect_source(site, basis)
+        if binding['type'] == 'DIRECT':
+            inspect_source(binding['occurrence'], basis)
+            owner = binding['owner']
+            inspect_source(owner['occurrence'] if owner['type'] == 'ANONYMOUS' else owner['callable']['declaration'], basis)
         for invocation in observation['flow']['invocations']:
             inspect_source(invocation['occurrence'], basis)
             owner = invocation['owner']
             inspect_source(owner['occurrence'] if owner['type'] == 'ANONYMOUS' else owner['callable']['declaration'], basis)
+            for forwarding in invocation['forwardings']:
+                source, argument, target = forwarding['source'], forwarding['argument'], forwarding['target']
+                for site in (source['parameter'], source['callable']['declaration'], argument,
+                             target['parameter'], target['callable']['declaration'], target['invocation_occurrence']):
+                    inspect_source(site, basis)
         for owner in observation['flow']['owner_bindings']:
             inspect_source(owner['body']['occurrence'], basis)
             if owner['supply']['type'] in ('INVOCATION', 'RETURNED'):
@@ -466,6 +720,12 @@ def qualify(args, budget, output, validator, session=None):
             if binding['type'] == 'BOUND':
                 for site in (binding['parameter'], binding['invocation_occurrence'], binding['callable']['declaration']):
                     inspect_source(site, basis)
+            if binding['type'] == 'DEFAULT':
+                for site in (binding['parameter']['parameter'], binding['parameter']['callable']['declaration'],
+                             binding['default_value']):
+                    inspect_source(site, basis)
+            if binding['type'] == 'DIRECT':
+                inspect_source(binding['occurrence'], basis)
 
     if args.value_flow:
         checks = qualify_value_bindings(args, budget, invoke, drain)
@@ -483,31 +743,104 @@ def qualify(args, budget, output, validator, session=None):
     else:
         target, directory, cases = 'inlineTarget', 'logging/src/main/kotlin', FIXTURE_ORACLES
     checks = []
-    for walk in (False, True):
-        pages = drain(request(target, directory, 'CALLERS', walk, budget))
-        caller_observations = list(observations(pages))
-        for oracle in cases:
-            matched = [o for o in caller_observations if callable_name(o['lexical_owner']) == oracle.owner]
-            expected = expected_occurrences(args.root, oracle, target, args.production)
-            assert Counter(site_key(o['occurrence']) for o in matched) == expected, (oracle.owner, 'CALLERS', matched, expected)
-            for observation in matched:
-                check(observation, oracle, target, budget)
-                inspect_observation(observation)
-            declaration = matched[0]['lexical_owner']['declaration']
-            source = dict(type='AT_LOCATION', file=str(Path(declaration['file']).relative_to(args.root)),
-                          offset=declaration['range']['startInclusive'])
-            pages = drain(request(oracle.owner, directory, 'CALLEES', walk, budget, source))
-            callee_observations = [o for o in observations(pages) if callable_name(o['target']) == target]
-            assert Counter(site_key(o['occurrence']) for o in callee_observations) == expected, (oracle.owner, 'CALLEES', callee_observations, expected)
-            for observation in callee_observations:
-                check(observation, oracle, target, budget)
-            checks.append(dict(owner=oracle.owner, walk=walk, matchedOccurrences=len(matched),
-                               bindingCauses=[o['flow']['binding'].get('cause') for o in matched],
-                               obligations=[o['flow']['obligations'] for o in matched]))
+    matrix_budget = Budget(maxResults=1000, maxReturnedBytes=budget.maxReturnedBytes)
+    groups = [(target, cases, None)]
+    if not args.production:
+        file, text, _, _ = authored_region(args.root, 'defaultMethodInlineDefinition')
+        offset = text.index('fetch()', text.index('interface BaseClient'))
+        method_source = dict(type='AT_LOCATION', file=str(file.relative_to(args.root)),
+                             offset=len(text[:offset].encode('utf-16-le')) // 2)
+        groups.append(('fetch', METHOD_DEFAULT_ORACLES, method_source))
+        groups.append(('ignoredCallbackTarget', IGNORED_INVOKE_ORACLES, None))
+    for target, cases, caller_source in groups:
+        for walk in (False, True):
+            caller_observations = (list(observations(drain(request(target, directory, 'CALLERS', walk, budget, caller_source))))
+                                   if any(not o.exhaustive_budget for o in cases) else [])
+            exhaustive_pages = (drain(request(target, directory, 'CALLERS', walk, matrix_budget, caller_source))
+                                if any(o.exhaustive_budget for o in cases) else [])
+            exhaustive_observations = list(observations(exhaustive_pages))
+            for oracle in cases:
+                case_budget = matrix_budget if oracle.exhaustive_budget else budget
+                available = exhaustive_observations if oracle.exhaustive_budget else caller_observations
+                matched = [o for o in available if callable_name(o['lexical_owner']) == oracle.owner]
+                expected = expected_occurrences(args.root, oracle, target, args.production)
+                assert Counter(site_key(o['occurrence']) for o in matched) == expected, (oracle.owner, 'CALLERS', matched, expected)
+                for observation in matched:
+                    check(observation, oracle, target, case_budget)
+                    inspect_observation(observation)
+                check_named_edge(exhaustive_pages, oracle, target)
+                declaration = matched[0]['lexical_owner']['declaration']
+                source = dict(type='AT_LOCATION', file=str(Path(declaration['file']).relative_to(args.root)),
+                              offset=declaration['range']['startInclusive'])
+                pages = drain(request(oracle.owner, directory, 'CALLEES', walk, case_budget, source))
+                check_named_edge(pages, oracle, target)
+                callee_observations = [o for o in observations(pages) if callable_name(o['target']) == target]
+                assert Counter(site_key(o['occurrence']) for o in callee_observations) == expected, (oracle.owner, 'CALLEES', callee_observations, expected)
+                for observation in callee_observations:
+                    check(observation, oracle, target, case_budget)
+                checks.append(dict(owner=oracle.owner, target=target, walk=walk, matchedOccurrences=len(matched),
+                                   bindingCauses=[o['flow']['binding'].get('cause') for o in matched],
+                                   obligations=[o['flow']['obligations'] for o in matched],
+                                   budget=asdict(case_budget)))
+            if not args.production:
+                # Declaration-bound defaults are possible inputs to the formal parameter.
+                # A direct callee read at an omitted or replaced call must not attach every
+                # default body in the receiving declaration to the lexical caller.
+                for owner, expression, call_target in DEFAULT_CALL_SITES:
+                    if call_target != target:
+                        continue
+                    file, text, start, end = authored_region(args.root, owner)
+                    assert text.index(expression, start, end) >= start
+                    source = dict(type='AT_LOCATION', file=str(file.relative_to(args.root)),
+                                  offset=len(text[:start].encode('utf-16-le')) // 2)
+                    pages = drain(request(owner, directory, 'CALLEES', walk, matrix_budget, source))
+                    callbacks = [o for o in observations(pages) if callable_name(o['target']) == target]
+                    assert not callbacks, (owner, callbacks)
+                    checks.append(dict(owner=owner, target=target, walk=walk, matchedOccurrences=0,
+                                       defaultAttribution='DECLARATION_CONTEXT_REQUIRED', budget=asdict(matrix_budget)))
+    if not args.production:
+        file, text, _, _ = authored_region(args.root, 'ordinaryCallback')
+        for walk in (False, True):
+            for oracle in PARAMETER_CALLEE_ORACLES:
+                marker = 'fun ' + oracle.definition
+                start = text.index(marker)
+                end = next_function(text, start + len(marker))
+                name = oracle.definition.split('(')[0]
+                source = dict(type='AT_LOCATION', file=str(file.relative_to(args.root)),
+                              offset=len(text[:start].encode('utf-16-le')) // 2)
+                pages = drain(request(name, directory, 'CALLEES', walk, matrix_budget, source))
+                assert pages[-1]['status'] == 'complete', (oracle.definition, pages[-1])
+                parameter_calls = [o for o in callable_observations(pages)
+                                   if o['target']['type'] == 'PARAMETER_INVOCATION']
+                assert len(parameter_calls) == 1, (oracle.definition, parameter_calls)
+                observation = parameter_calls[0]
+                parameter = observation['target']['parameter']
+                assert callable_name(observation['lexical_owner']) == name, observation
+                assert parameter['callable'] == observation['lexical_owner'], observation
+                assert parameter['position'] == oracle.position, parameter
+                parameter_offset = len(text[:text.index(oracle.parameter, start, end)].encode('utf-16-le')) // 2
+                assert site_key(parameter['parameter']) == (str(file), parameter_offset,
+                    parameter_offset + len(oracle.parameter)), parameter
+                invocation_offset = len(text[:text.index(oracle.invocation, start, end)].encode('utf-16-le')) // 2
+                assert site_key(observation['occurrence']) == (str(file), invocation_offset,
+                    invocation_offset + len(oracle.invocation)), observation
+                body = observation['body']
+                assert body['type'] == ('ANONYMOUS' if oracle.anonymous_owner else 'NAMED'), body
+                if oracle.anonymous_owner:
+                    assert source_text(body['occurrence']) == '{ block() }', body
+                else:
+                    assert body['callable'] == parameter['callable'], body
+                for site in (observation['occurrence'], parameter['parameter'], parameter['callable']['declaration'],
+                             body['occurrence'] if oracle.anonymous_owner else body['callable']['declaration']):
+                    inspect_source(site, live=pages[-1]['live'])
+                checks.append(dict(owner=name, walk=walk, target='PARAMETER_INVOCATION',
+                                   parameterPosition=oracle.position, matchedOccurrences=1,
+                                   body=body['type'], budget=asdict(matrix_budget)))
     replay.write(output / 'qualification.json', dict(type='INSTALLED_CALLBACK_QUALIFIED', calls=counter,
         root=str(args.root), rpc=str(args.rpc), rpcSha256=replay.digest(args.rpc),
         transport='MCP_SESSION' if session else 'TOOL_RPC',
-        budget=asdict(budget), inspectedSourceRanges=len(inspected), checks=checks, terminalPages=terminal_pages))
+        budget=asdict(budget), matrixBudget=asdict(matrix_budget),
+        inspectedSourceRanges=len(inspected), checks=checks, terminalPages=terminal_pages))
     print(output / 'qualification.json')
 
 

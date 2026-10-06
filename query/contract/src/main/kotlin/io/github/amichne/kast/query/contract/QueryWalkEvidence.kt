@@ -109,6 +109,7 @@ private constructor(
     val referenceOccurrences: List<io.github.amichne.kast.traversal.contract.TraversalReferenceObservation>,
     val scopeExclusions: List<io.github.amichne.kast.traversal.contract.TraversalScopeExclusion>,
     val callbackObservations: List<io.github.amichne.kast.traversal.contract.TraversalCallbackObservation>,
+    val callableObservations: List<io.github.amichne.kast.traversal.contract.TraversalCallableObservation>,
 ) {
     /** Partition independent proof payloads before output accounting; their shared progress is a witness, not a sum. */
     fun evidenceUnits(): List<QueryWalkObservation> {
@@ -117,7 +118,8 @@ private constructor(
                 inheritedOmissions.size +
                 referenceOccurrences.size +
                 scopeExclusions.size +
-                callbackObservations.size <= 1
+                callbackObservations.size +
+                callableObservations.size <= 1
         )
             return listOf(this)
         val structural =
@@ -127,13 +129,15 @@ private constructor(
                 referenceOccurrences = emptyList(),
                 scopeExclusions = emptyList(),
                 callbackObservations = emptyList(),
+                callableObservations = emptyList(),
             )
         val units =
             partialExpansions.map { structural.copy(partialExpansions = listOf(it)) } +
                 inheritedOmissions.map { structural.copy(inheritedOmissions = listOf(it)) } +
                 referenceOccurrences.map { structural.copy(referenceOccurrences = listOf(it)) } +
                 scopeExclusions.map { structural.copy(scopeExclusions = listOf(it)) } +
-                callbackObservations.map { structural.copy(callbackObservations = listOf(it)) }
+                callbackObservations.map { structural.copy(callbackObservations = listOf(it)) } +
+                callableObservations.map { structural.copy(callableObservations = listOf(it)) }
         return java.util.Collections.unmodifiableList(units)
     }
 
@@ -177,6 +181,7 @@ private constructor(
                 referenceOccurrences = page.referenceOccurrences,
                 scopeExclusions = page.scopeExclusions,
                 callbackObservations = page.callbackObservations,
+                callableObservations = page.callableObservations,
             )
     }
 }

@@ -142,6 +142,7 @@ class QueryCallbackObservationAdmissionTest {
                 QueryRelationCoverageDocument.Exhausted,
                 emptyList(),
                 listOf(callback),
+                emptyList(),
             )
         assertTrue(original.toContract() is WireDocumentConversion.Converted)
         for (forged in

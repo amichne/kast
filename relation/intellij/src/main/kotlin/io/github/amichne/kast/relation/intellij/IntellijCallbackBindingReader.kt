@@ -4,6 +4,9 @@ package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
+import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
+import io.github.amichne.kast.relation.contract.CallbackDefaultBinding
+import io.github.amichne.kast.relation.contract.CallbackDirectInvocationBinding
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
 import io.github.amichne.kast.relation.contract.RelationEndpoint
@@ -13,8 +16,7 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
-import org.jetbrains.kotlin.psi.KtFunctionLiteral
-import org.jetbrains.kotlin.psi.KtLambdaExpression
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 
@@ -22,12 +24,29 @@ internal data class PreparedCallbackFlow(
     val function: KtNamedFunction,
     val parameter: KtParameter,
     val target: RelationEndpoint,
-    val binding: CallbackArgumentBinding,
-    val supplyingCall: KtCallElement,
+    val origin: PreparedCallbackOrigin,
 )
+
+internal sealed interface PreparedCallbackOrigin {
+    data class Argument(val binding: CallbackArgumentBinding, val call: KtCallElement) : PreparedCallbackOrigin
+
+    data class Default(val binding: CallbackDefaultBinding) : PreparedCallbackOrigin
+}
+
+internal val PreparedCallbackFlow.binding: CallbackBindingEvidence
+    get() =
+        when (val supply = origin) {
+            is PreparedCallbackOrigin.Argument -> CallbackBindingEvidence.Bound(supply.binding)
+            is PreparedCallbackOrigin.Default -> CallbackBindingEvidence.Default(supply.binding)
+        }
 
 internal sealed interface CallbackBindingPreparation {
     data class Prepared(val value: PreparedCallbackFlow) : CallbackBindingPreparation
+
+    data class Direct(
+        val binding: CallbackDirectInvocationBinding,
+        val call: org.jetbrains.kotlin.psi.KtCallExpression,
+    ) : CallbackBindingPreparation
 
     data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackBindingPreparation
 
@@ -45,14 +64,19 @@ internal class IntellijCallbackBindingReader(
     private val context: IntellijCallbackFlowContext,
     private val lexicalOwner: CompilerGroundedSymbolEvidence,
 ) {
-    fun prepare(literal: KtFunctionLiteral): CallbackBindingPreparation {
-        val lambda =
-            literal.parent as? KtLambdaExpression
-                ?: return unavailable(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
+    fun prepare(literal: KtFunction): CallbackBindingPreparation {
         val argument =
-            when (val result = callbackSupplyArgument(lambda)) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected -> return unavailable(result.failure)
+            when (val supply = classifyCallbackFunctionSupply(literal)) {
+                is IntellijCallbackLambdaSupply.Argument -> supply
+                is IntellijCallbackLambdaSupply.DefaultParameter ->
+                    return IntellijCallbackDeclaredSupplyReader(context).prepareDefault(supply)
+                is IntellijCallbackLambdaSupply.Invocation ->
+                    return IntellijCallbackDeclaredSupplyReader(context).prepareDirect(supply)
+                IntellijCallbackLambdaSupply.Stored -> return unavailable(CallbackInvocationFlowCause.STORED_CALLBACK)
+                is IntellijCallbackLambdaSupply.Returned ->
+                    return unavailable(CallbackInvocationFlowCause.RETURNED_CALLBACK)
+                IntellijCallbackLambdaSupply.Unsupported ->
+                    return unavailable(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
             }
         val call =
             supplyingCallbackCall(argument.argument)
@@ -79,7 +103,7 @@ internal class IntellijCallbackBindingReader(
             mapped.declaration as? KtNamedFunction
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
         val file =
-            function.containingFile?.virtualFile
+            function.containingFile.virtualFile
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
         if (!context.scope.nativeScope.contains(file))
             return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
@@ -124,8 +148,7 @@ internal class IntellijCallbackBindingReader(
                         function = target.function,
                         parameter = target.parameter,
                         target = target.endpoint,
-                        binding = admitted.value,
-                        supplyingCall = call,
+                        origin = PreparedCallbackOrigin.Argument(admitted.value, call),
                     )
                 )
             is Refinement.Rejected -> CallbackBindingPreparation.ContractRejected(admitted.failure)

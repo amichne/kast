@@ -15,6 +15,7 @@ class QueryCallbackObservationWireTest {
         val cases =
             listOf(
                 QueryCallbackNamedPolicyWireDocument.AdmittedInline to "callback-policy-inline.json",
+                QueryCallbackNamedPolicyWireDocument.AdmittedDirect to "callback-policy-direct.json",
                 QueryCallbackNamedPolicyWireDocument.Excluded(
                     QueryCallbackExclusionReasonDocument.NON_INLINE_ARGUMENT,
                     RelationOccurrenceWireDocument("candidate:lambda", "Seed.kt", SourceRangeWireDocument(4, 18)),

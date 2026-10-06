@@ -19,6 +19,14 @@ internal sealed interface QueryCallbackBodySupplyWireDocument {
     data class Invocation(val occurrence: RelationOccurrenceWireDocument) : QueryCallbackBodySupplyWireDocument
 
     @Serializable
+    @SerialName("DEFAULT_PARAMETER")
+    data class DefaultParameter(val parameter: RelationOccurrenceWireDocument) : QueryCallbackBodySupplyWireDocument
+
+    @Serializable
+    @SerialName("DIRECT_INVOCATION")
+    data class DirectInvocation(val occurrence: RelationOccurrenceWireDocument) : QueryCallbackBodySupplyWireDocument
+
+    @Serializable
     @SerialName("RETURNED")
     data class Returned(val occurrence: RelationOccurrenceWireDocument) : QueryCallbackBodySupplyWireDocument
 
@@ -41,6 +49,10 @@ internal fun QueryCallbackBodyBindingDocument.callbackWire() =
         when (val supplied = supply) {
             is QueryCallbackBodySupplyDocument.Invocation ->
                 QueryCallbackBodySupplyWireDocument.Invocation(supplied.occurrence.callbackSupplyWire())
+            is QueryCallbackBodySupplyDocument.DefaultParameter ->
+                QueryCallbackBodySupplyWireDocument.DefaultParameter(supplied.parameter.callbackSupplyWire())
+            is QueryCallbackBodySupplyDocument.DirectInvocation ->
+                QueryCallbackBodySupplyWireDocument.DirectInvocation(supplied.occurrence.callbackSupplyWire())
             is QueryCallbackBodySupplyDocument.Returned ->
                 QueryCallbackBodySupplyWireDocument.Returned(supplied.occurrence.callbackSupplyWire())
             QueryCallbackBodySupplyDocument.Unsupported -> QueryCallbackBodySupplyWireDocument.Unsupported
@@ -63,6 +75,10 @@ private fun QueryCallbackBodySupplyWireDocument.toContract(): WireDocumentConver
             occurrence.toContract().mapConverted {
                 QueryCallbackBodySupplyDocument.Invocation(it)
             }
+        is QueryCallbackBodySupplyWireDocument.DefaultParameter ->
+            parameter.toContract().mapConverted { QueryCallbackBodySupplyDocument.DefaultParameter(it) }
+        is QueryCallbackBodySupplyWireDocument.DirectInvocation ->
+            occurrence.toContract().mapConverted { QueryCallbackBodySupplyDocument.DirectInvocation(it) }
         is QueryCallbackBodySupplyWireDocument.Returned ->
             occurrence.toContract().mapConverted { QueryCallbackBodySupplyDocument.Returned(it) }
         QueryCallbackBodySupplyWireDocument.Unsupported ->

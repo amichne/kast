@@ -61,6 +61,7 @@ enum class RelationBatchFailure {
     INVALID_OMISSION_EVIDENCE,
     INVALID_SCOPE_EXCLUSION,
     INVALID_CALLBACK_EXCLUSION,
+    INVALID_CALLABLE_OBSERVATION,
 }
 
 @ConsistentCopyVisibility
@@ -75,6 +76,7 @@ private constructor(
     val referenceOccurrences: List<RelationReferenceOccurrence>,
     val scopeExclusions: List<RelationScopeExclusion>,
     val callbackObservations: List<RelationCallbackObservation>,
+    val callableObservations: List<RelationCallableObservation>,
 ) {
     val semanticResultCount: Int
         get() =
@@ -105,13 +107,16 @@ private constructor(
                     occurrences.none { it.occurrence == fact.occurrence && it.target == fact.target }
                 }
 
-        private fun admitEncodedBytes(
+        private fun admitCanonicalEncoding(
             facts: List<RelationFact>,
             occurrences: List<RelationReferenceOccurrence>,
             exclusions: List<RelationScopeExclusion>,
             callbacks: List<RelationCallbackObservation>,
+            callables: List<RelationCallableObservation>,
             expected: RelationByteCount,
         ): Refinement<Unit, RelationBatchFailure> {
+            if (facts != facts.distinct().sorted() || occurrences != occurrences.distinct().sorted())
+                return Refinement.Rejected(RelationBatchFailure.NON_DETERMINISTIC_ORDER)
             val factBytes = facts.sumOf { it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() }
             val occurrenceBytes = occurrences.sumOf {
                 it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
@@ -122,7 +127,14 @@ private constructor(
             val callbackBytes = callbacks.sumOf {
                 it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
             }
-            return if (factBytes + occurrenceBytes + exclusionBytes + callbackBytes == expected.value)
+            return if (
+                factBytes +
+                    occurrenceBytes +
+                    exclusionBytes +
+                    callbackBytes +
+                    callables.sumOf { it.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() } ==
+                    expected.value
+            )
                 Refinement.Refined(Unit)
             else Refinement.Rejected(RelationBatchFailure.ENCODED_BYTE_COUNT_MISMATCH)
         }
@@ -144,21 +156,13 @@ private constructor(
             referenceOccurrences: List<RelationReferenceOccurrence> = emptyList(),
             scopeExclusions: List<RelationScopeExclusion> = emptyList(),
             callbackObservations: List<RelationCallbackObservation> = emptyList(),
+            callableObservations: List<RelationCallableObservation> = emptyList(),
         ): Refinement<RelationBatch, RelationBatchFailure> {
-            when (val admitted = admitCallbacks(request, facts, callbackObservations)) {
+            val observations = RelationBatchObservations(scopeExclusions, callbackObservations, callableObservations)
+            when (val admitted = observations.admit(request, facts, semanticResultCount(facts, referenceOccurrences))) {
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
             }
-            if (
-                scopeExclusions.any { !it.belongsTo(request) } || scopeExclusions != scopeExclusions.distinct().sorted()
-            )
-                return Refinement.Rejected(RelationBatchFailure.INVALID_SCOPE_EXCLUSION)
-            if (
-                scopeExclusions.size +
-                    callbackObservations.count { callback -> facts.none(callback::supportsNamedFact) } +
-                    semanticResultCount(facts, referenceOccurrences) > request.budget.resources.resultLimit.value
-            )
-                return Refinement.Rejected(RelationBatchFailure.RESULT_LIMIT_EXCEEDED)
             when (val admitted = request.admitRelations(facts, referenceOccurrences)) {
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
@@ -168,14 +172,16 @@ private constructor(
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
             }
-            if (
-                facts != facts.distinct().sorted() || referenceOccurrences != referenceOccurrences.distinct().sorted()
-            ) {
-                return Refinement.Rejected(RelationBatchFailure.NON_DETERMINISTIC_ORDER)
-            }
             when (
                 val admitted =
-                    admitEncodedBytes(facts, referenceOccurrences, scopeExclusions, callbackObservations, encodedBytes)
+                    admitCanonicalEncoding(
+                        facts,
+                        referenceOccurrences,
+                        scopeExclusions,
+                        callbackObservations,
+                        callableObservations,
+                        encodedBytes,
+                    )
             ) {
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
@@ -191,10 +197,43 @@ private constructor(
                     java.util.Collections.unmodifiableList(referenceOccurrences.toList()),
                     java.util.Collections.unmodifiableList(scopeExclusions.toList()),
                     java.util.Collections.unmodifiableList(callbackObservations.toList()),
+                    java.util.Collections.unmodifiableList(callableObservations.toList()),
                 )
             )
         }
     }
+}
+
+private data class RelationBatchObservations(
+    val scopeExclusions: List<RelationScopeExclusion>,
+    val callbackObservations: List<RelationCallbackObservation>,
+    val callableObservations: List<RelationCallableObservation>,
+)
+
+private fun RelationBatchObservations.admit(
+    request: RelationRequest,
+    facts: List<RelationFact>,
+    semanticCount: Int,
+): Refinement<Unit, RelationBatchFailure> {
+    if (
+        callableObservations.any { !it.belongsTo(request) } ||
+            callableObservations != callableObservations.distinct().sorted()
+    )
+        return Refinement.Rejected(RelationBatchFailure.INVALID_CALLABLE_OBSERVATION)
+    when (val admitted = admitCallbacks(request, facts, callbackObservations)) {
+        is Refinement.Rejected -> return admitted
+        is Refinement.Refined -> Unit
+    }
+    if (scopeExclusions.any { !it.belongsTo(request) } || scopeExclusions != scopeExclusions.distinct().sorted())
+        return Refinement.Rejected(RelationBatchFailure.INVALID_SCOPE_EXCLUSION)
+    if (
+        scopeExclusions.size +
+            callableObservations.size +
+            callbackObservations.count { callback -> facts.none(callback::supportsNamedFact) } +
+            semanticCount > request.budget.resources.resultLimit.value
+    )
+        return Refinement.Rejected(RelationBatchFailure.RESULT_LIMIT_EXCEEDED)
+    return Refinement.Refined(Unit)
 }
 
 private fun admitCallbacks(
@@ -204,11 +243,19 @@ private fun admitCallbacks(
 ): Refinement<Unit, RelationBatchFailure> =
     when {
         observations.any { callback ->
-            callback.policy == CallbackNamedCallPolicy.AdmittedInline && facts.none(callback::supportsNamedFact)
+            callback.policy.requiresSupportingFact() && facts.none(callback::supportsNamedFact)
         } -> Refinement.Rejected(RelationBatchFailure.INVALID_CALLBACK_EXCLUSION)
         observations.any { !it.belongsTo(request) } || observations != observations.distinct().sorted() ->
             Refinement.Rejected(RelationBatchFailure.INVALID_CALLBACK_EXCLUSION)
         else -> Refinement.Refined(Unit)
+    }
+
+private fun CallbackNamedCallPolicy.requiresSupportingFact(): Boolean =
+    when (this) {
+        CallbackNamedCallPolicy.AdmittedDirect,
+        CallbackNamedCallPolicy.AdmittedInline -> true
+        is CallbackNamedCallPolicy.Excluded,
+        is CallbackNamedCallPolicy.Unavailable -> false
     }
 
 private fun RelationRequest.admitOccurrences(

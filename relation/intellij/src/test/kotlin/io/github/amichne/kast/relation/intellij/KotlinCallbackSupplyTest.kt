@@ -7,8 +7,10 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import java.nio.file.Path
 import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -27,6 +29,45 @@ class KotlinCallbackSupplyTest {
                 Refinement.Rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY),
                 callbackSupplyArgument(lambda),
             )
+        }
+
+    @Test
+    fun `explicit literal invoke retains qualified call and other receiver methods remain unsupported`(
+        @TempDir home: Path
+    ) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            for (expression in listOf("({ target() }).invoke()", "(fun() { target() }).invoke()")) {
+                val file = factory.createFile("fun outer() = $expression")
+                assertNull(PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java))
+                val function =
+                    PsiTreeUtil.findChildrenOfType(file, org.jetbrains.kotlin.psi.KtFunction::class.java).single {
+                        it is org.jetbrains.kotlin.psi.KtFunctionLiteral ||
+                            it is org.jetbrains.kotlin.psi.KtNamedFunction && it.name == null
+                    }
+                val supply = classifyCallbackFunctionSupply(function) as IntellijCallbackLambdaSupply.Invocation
+                assertEquals(expression, supply.call.valueInvocationExpression().text)
+            }
+            val file = factory.createFile("fun outer() = ({ target() }).other()")
+            val lambda = PsiTreeUtil.findChildOfType(file, KtLambdaExpression::class.java)!!
+            assertSame(IntellijCallbackLambdaSupply.Unsupported, classifyCallbackLambdaSupply(lambda))
+        }
+
+    @Test
+    fun `custom invoke overload shapes retain syntax without proving callback activation`(@TempDir home: Path) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            for (expression in listOf("({ target() }).invoke(1)", "({ target() })(1)")) {
+                val file =
+                    factory.createFile(
+                        "fun target(): Unit = Unit\n" +
+                            "operator fun (() -> Unit).invoke(ignored: Int) {}\n" +
+                            "fun outer(): Unit = $expression"
+                    )
+                assertNull(PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java))
+                val lambda = PsiTreeUtil.findChildOfType(file, KtLambdaExpression::class.java)!!
+                val supply = classifyCallbackLambdaSupply(lambda) as IntellijCallbackLambdaSupply.Invocation
+                assertEquals(expression, supply.call.valueInvocationExpression().text)
+                assertEquals("1", supply.call.valueArguments.single().getArgumentExpression()!!.text)
+            }
         }
 
     @Test
@@ -94,5 +135,36 @@ class KotlinCallbackSupplyTest {
             assertEquals(expression, supply.expression.text)
             assertSame(supply.expression, supply.argument.getArgumentExpression())
             assertEquals("consume($expression)", supplyingCallbackCall(supply.argument)!!.text)
+        }
+
+    @Test
+    fun `labelled callback argument retains compiler mapping expression`(@TempDir home: Path) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            val file = factory.createFile("fun outer() = consume(label@ { target() })")
+            val lambda = PsiTreeUtil.findChildOfType(file, KtLambdaExpression::class.java)!!
+            val supply = classifyCallbackLambdaSupply(lambda)
+            assertTrue(supply is IntellijCallbackLambdaSupply.Argument)
+            assertEquals("label@ { target() }", (supply as IntellijCallbackLambdaSupply.Argument).expression.text)
+        }
+
+    @Test
+    fun `default lambda is a known formal supply rather than unsupported`(@TempDir home: Path) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            for (modifier in listOf("", "inline ")) {
+                val file = factory.createFile("${modifier}fun outer(block: () -> Int = { target() }) = block()")
+                val lambda = PsiTreeUtil.findChildOfType(file, KtLambdaExpression::class.java)!!
+                assertNotEquals(IntellijCallbackLambdaSupply.Unsupported, classifyCallbackLambdaSupply(lambda))
+            }
+        }
+
+    @Test
+    fun `anonymous function is retained as a callable boundary`(@TempDir home: Path) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            val file = factory.createFile("fun outer() = consume(fun(): Int { return target() })")
+            val call =
+                PsiTreeUtil.findChildrenOfType(file, org.jetbrains.kotlin.psi.KtCallExpression::class.java).single {
+                    it.calleeExpression?.text == "target"
+                }
+            assertTrue(call.nearestDeclaration() is ContainingDeclaration.Deferred)
         }
 }

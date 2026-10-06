@@ -10,8 +10,7 @@ import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
-import org.jetbrains.kotlin.psi.KtFunctionLiteral
-import org.jetbrains.kotlin.psi.KtLambdaExpression
+import org.jetbrains.kotlin.psi.KtFunction
 
 /**
  * Refines lexical ownership without changing the occurrence or resolving its target. Every crossed literal lambda must
@@ -28,7 +27,7 @@ internal fun refineCallOwnership(
             is ContainingDeclaration.Found -> Refinement.Refined(lexical)
             ContainingDeclaration.Unsupported -> Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
             is ContainingDeclaration.Deferred -> {
-                val literal = lexical.boundary as? KtFunctionLiteral
+                val literal = lexical.boundary as? KtFunction
                 if (literal == null) Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
                 else analyze(literal) { refineInlineOwner(lexical) }
             }
@@ -74,14 +73,40 @@ private fun KaSession.refineInlineOwner(
 private fun KaSession.inlineEnclosingOwner(
     owner: ContainingDeclaration.Deferred
 ): Refinement<ContainingDeclaration, CallOwnershipFailure> {
-    val lambda =
-        owner.boundary.parent as? KtLambdaExpression
+    val functionBody =
+        owner.boundary as? KtFunction ?: return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
+    return when (val supply = classifyCallbackFunctionSupply(functionBody)) {
+        is IntellijCallbackLambdaSupply.Argument -> inlineArgumentOwner(owner, supply)
+        is IntellijCallbackLambdaSupply.Invocation -> directInvocationOwner(supply)
+        is IntellijCallbackLambdaSupply.DefaultParameter ->
+            excludedCallback(
+                owner,
+                io.github.amichne.kast.relation.contract.CallbackExclusionReason.DEFAULT_PARAMETER,
+            )
+        IntellijCallbackLambdaSupply.Stored ->
+            excludedCallback(owner, io.github.amichne.kast.relation.contract.CallbackExclusionReason.STORED_CALLBACK)
+        is IntellijCallbackLambdaSupply.Returned ->
+            excludedCallback(owner, io.github.amichne.kast.relation.contract.CallbackExclusionReason.RETURNED_CALLBACK)
+        IntellijCallbackLambdaSupply.Unsupported -> Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
+    }
+}
+
+private fun KaSession.directInvocationOwner(
+    supply: IntellijCallbackLambdaSupply.Invocation
+): Refinement<ContainingDeclaration, CallOwnershipFailure> {
+    val resolved =
+        supply.call.resolveCall() ?: return Refinement.Rejected(CallOwnershipFailure.UnresolvedArgumentMapping)
+    val function =
+        resolved.signature.symbol as? KaNamedFunctionSymbol
             ?: return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
-    val argument =
-        when (val admitted = callbackInlineSupply(owner, lambda)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return admitted
-        }
+    if (!confirmsBuiltinFunctionInvoke(function)) return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
+    return Refinement.Refined(supply.call.nearestDeclaration())
+}
+
+private fun KaSession.inlineArgumentOwner(
+    owner: ContainingDeclaration.Deferred,
+    argument: IntellijCallbackLambdaSupply.Argument,
+): Refinement<ContainingDeclaration, CallOwnershipFailure> {
     val call =
         supplyingCallbackCall(argument.argument) ?: return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
     val resolved = call.resolveCall() ?: return Refinement.Rejected(CallOwnershipFailure.UnresolvedArgumentMapping)
@@ -116,20 +141,6 @@ private fun KaSession.inlineEnclosingOwner(
     return Refinement.Refined(call.nearestDeclaration())
 }
 
-private fun callbackInlineSupply(
-    owner: ContainingDeclaration.Deferred,
-    lambda: KtLambdaExpression,
-): Refinement<IntellijCallbackLambdaSupply.Argument, CallOwnershipFailure> =
-    when (val supply = classifyCallbackLambdaSupply(lambda)) {
-        is IntellijCallbackLambdaSupply.Argument -> Refinement.Refined(supply)
-        IntellijCallbackLambdaSupply.Stored ->
-            excludedCallback(owner, io.github.amichne.kast.relation.contract.CallbackExclusionReason.STORED_CALLBACK)
-        is IntellijCallbackLambdaSupply.Returned ->
-            excludedCallback(owner, io.github.amichne.kast.relation.contract.CallbackExclusionReason.RETURNED_CALLBACK)
-        is IntellijCallbackLambdaSupply.Invocation,
-        IntellijCallbackLambdaSupply.Unsupported -> Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
-    }
-
 internal enum class InlineCallbackClassification {
     INLINE,
     EXCLUDED,
@@ -151,7 +162,7 @@ private fun excludedCallback(
     owner: ContainingDeclaration.Deferred,
     reason: io.github.amichne.kast.relation.contract.CallbackExclusionReason,
 ): Refinement<Nothing, CallOwnershipFailure> =
-    when (val literal = owner.boundary as? KtFunctionLiteral) {
+    when (val literal = owner.boundary as? KtFunction) {
         null -> Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
         else -> Refinement.Rejected(CallOwnershipFailure.ExcludedCallback(literal, reason))
     }
