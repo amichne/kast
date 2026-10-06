@@ -102,8 +102,13 @@ internal fun observeInstallationConfigurationSelection(
     plan: VerifiedInstallationPlan,
     prior: Path?,
 ): Refinement<InstallationConfigurationSelection, InstallationConfigurationFailure> {
+    val retainedSettings =
+        when (plan.request.force) {
+            InstallationSwitch.DISABLED -> prior
+            InstallationSwitch.ENABLED -> null
+        }
     val selected =
-        selectInstallationConfiguration(plan.request.publicEndpoint, prior) {
+        selectInstallationConfiguration(plan.request.publicEndpoint, retainedSettings) {
             CodexControlSocketAvailability.observe(plan.request.codexHome.value)
         }
     when (selected) {

@@ -165,6 +165,10 @@ class InstallationWorkflowTest {
         val run = Files.createDirectories(selected.resolve("state/run"))
         val stale = Files.writeString(run.resolve("c.sock"), "stale socket")
         Files.writeString(selected.resolve("config/workspaces.json"), "broken registry")
+        Files.writeString(
+            selected.resolve("config/environment"),
+            "CODEX_HOME=${root.resolve("custom-codex")}\nKAST_DEBUG=1\nKAST_APP_SERVER_PUBLIC_ENDPOINT=private\n",
+        )
         val unrelated = Files.writeString(root.resolve("keep"), "keep")
         val forced = request(mapOf("KAST_INSTALL_FORCE" to "1"))
         assertInstanceOf(
@@ -175,6 +179,15 @@ class InstallationWorkflowTest {
         assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(forced))
         assertTrue(Files.notExists(stale))
         assertTrue(Files.notExists(selected.resolve("config/workspaces.json")))
+        val configuration =
+            (readInstallationConfiguration(selected.resolve("config/environment")) as Refinement.Refined)
+                .value
+                .configuration
+                .launchEnvironment()
+                .variables
+        assertEquals(null, configuration["CODEX_HOME"])
+        assertEquals("0", configuration["KAST_DEBUG"])
+        assertEquals("codex-control", configuration["KAST_APP_SERVER_PUBLIC_ENDPOINT"])
         assertEquals("keep", Files.readString(unrelated))
         assertTrue(Files.notExists(root.resolve("home/.local/bin/kast")))
         assertTrue(Files.notExists(selected.resolve(".recovery-detached")))
