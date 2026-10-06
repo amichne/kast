@@ -87,7 +87,7 @@
       "minLength": 1,
       "maxLength": 128,
       "examples": [
-        "kast.query.run.v3"
+        "kast.query.run.v4"
       ]
     }
   },
@@ -102,7 +102,7 @@
         "DESCRIBE"
       ],
       "host": "00000000-0000-0000-0000-000000000001",
-      "querySchema": "kast.query.run.v3"
+      "querySchema": "kast.query.run.v4"
     }
   ]
 }

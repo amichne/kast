@@ -87,7 +87,7 @@ class QueryService(
             while (tasks.isNotEmpty()) {
                 if (!executeNext()) break
             }
-            return rejection ?: finish()
+            return (rejection ?: finish()).observedWork(state.consumedWork())
         }
 
         private suspend fun executeNext(): Boolean {

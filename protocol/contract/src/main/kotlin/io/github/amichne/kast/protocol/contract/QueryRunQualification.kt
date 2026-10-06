@@ -16,6 +16,7 @@ enum class QueryLimitationDocument {
     ROW_SELECTION_INCOMPLETE,
     IMPACT_COVERAGE_UNPROVEN,
     RETENTION_LIMIT_REACHED,
+    EXECUTION_INCOMPLETE,
 }
 
 enum class QueryKnownMinimumFailure {

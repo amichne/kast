@@ -206,6 +206,7 @@ private fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
 
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
+        invocation = invocation,
         question = question,
         impactAccounting = impactAccounting,
         items = items.values.map(QueryResultItemDocument::toWire),
@@ -244,6 +245,7 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                                                                 convertedRelations.bounded().mapConverted {
                                                                     boundedRelations ->
                                                                     QueryRunResult(
+                                                                        invocation = invocation,
                                                                         question = question,
                                                                         impactAccounting = impactAccounting,
                                                                         items = boundedItems,

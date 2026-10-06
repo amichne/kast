@@ -5,6 +5,9 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import kotlinx.serialization.json.Json
 
 /** Conservative byte charges and bounded store measurements; these helpers allocate no retained identity. */
+internal const val QUERY_PAGE_RESERVATION_MULTIPLIER = 4L
+internal const val QUERY_PAGE_RESERVATION_OVERHEAD = 4096L
+
 internal fun Long.saturatedAdd(other: Long): Long =
     if (this < 0L || other < 0L || this > Long.MAX_VALUE - other) Long.MAX_VALUE else this + other
 

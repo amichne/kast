@@ -17,7 +17,45 @@ class CanonicalQueryProtocol(
     peerSiteAdmissions: List<QueryImpactPeerSiteAdmission> = emptyList(),
 ) {
     private val peerSiteAdmissions = java.util.Collections.unmodifiableList(peerSiteAdmissions.toList())
+    private val pagePublication = QueryPagePublication(state, publication)
     private val projection = QueryOutcomeProjection(authority, state, retentionObservation)
+
+    /** Shared automatic entry point. Manual transitions and every other output keep their existing behavior. */
+    suspend fun executeAutomatically(
+        request: QueryRunRequest,
+        lease: SemanticReadAuthority,
+        budget: QueryBudget,
+        policy: QueryInvocationPolicy,
+    ): QueryPublishedPage {
+        if (request !is QueryRunRequest.Run || request.output !is QueryOutputDocument.Symbols)
+            return execute(request, lease, budget)
+        val recording = QueryInvocationExecution(operations)
+        val pages =
+            CanonicalQueryProtocol(
+                operations = recording,
+                authority = authority,
+                state = state,
+                publication = QueryExecutionPublication.Immediate,
+                producerSeeds = producerSeeds,
+                retentionObservation = retentionObservation,
+                peerSiteAdmissions = peerSiteAdmissions,
+            )
+        val accumulated =
+            AutomaticSymbolQueryRunner(state, lease, policy) { action, remaining ->
+                    recording.page(remaining) { pages.execute(action, lease, remaining) }
+                }
+                .run(request, budget)
+        return when (val acquired = state.acquireInitial(lease)) {
+            is QueryInitialAcquisition.Acquired ->
+                pagePublication.execute(acquired.claim) {
+                    QueryInvocationProjection(authority, state, retentionObservation)
+                        .project(request, lease, accumulated, policy, acquired.claim)
+                }
+            QueryInitialAcquisition.Unavailable -> rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
+            QueryInitialAcquisition.CapacityExceeded ->
+                rejected(QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED)
+        }
+    }
 
     suspend fun execute(
         request: QueryRunRequest,
@@ -41,7 +79,7 @@ class CanonicalQueryProtocol(
             is QueryRunRequest.ReadResult ->
                 when (val acquired = state.acquireInitial(lease, setOf(request.result))) {
                     is QueryInitialAcquisition.Acquired ->
-                        executePage(acquired.claim) {
+                        pagePublication.execute(acquired.claim) {
                             projection.readRetained(request, lease, acquired.claim, budget.resources.resultLimit)
                         }
                     QueryInitialAcquisition.Unavailable ->
@@ -57,7 +95,7 @@ class CanonicalQueryProtocol(
         budget: QueryBudget,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> =
         when (val acquired = state.acquireCheckpoint(token, lease, budget.returnedBytes.value)) {
-            is QueryCheckpointAcquisition.Published -> executePage(acquired.claim) { acquired.page }
+            is QueryCheckpointAcquisition.Published -> pagePublication.execute(acquired.claim) { acquired.page }
             QueryCheckpointAcquisition.InUse -> rejected(QueryExecutionRejectionDocument.CONTINUATION_IN_USE)
             QueryCheckpointAcquisition.Unavailable -> rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
             QueryCheckpointAcquisition.Mismatch -> rejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH)
@@ -74,8 +112,8 @@ class CanonicalQueryProtocol(
         budget: QueryBudget,
     ): QueryPublishedPage =
         when (val acquired = state.acquireOutput(token, lease, budget.returnedBytes.value)) {
-            is QueryOutputAcquisition.Acquired -> executePage(acquired.claim) { acquired.page }
-            is QueryOutputAcquisition.Published -> executePage(acquired.claim) { acquired.page }
+            is QueryOutputAcquisition.Acquired -> pagePublication.execute(acquired.claim) { acquired.page }
+            is QueryOutputAcquisition.Published -> pagePublication.execute(acquired.claim) { acquired.page }
             QueryOutputAcquisition.InUse -> rejected(QueryExecutionRejectionDocument.CONTINUATION_IN_USE)
             QueryOutputAcquisition.Unavailable -> rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
             QueryOutputAcquisition.Mismatch -> rejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH)
@@ -91,29 +129,7 @@ class CanonicalQueryProtocol(
         lease: SemanticReadAuthority,
         budget: QueryBudget,
     ): QueryPublishedPage {
-        return executePage(claim) { executeAdmitted(request, lease, budget, checkpoint, claim) }
-    }
-
-    private suspend fun executePage(
-        claim: QueryExecutionClaim,
-        compute: suspend () -> QueryPublishedPage,
-    ): QueryPublishedPage {
-        var prepared = false
-        return try {
-            val page = compute()
-            if (page is OperationOutcome.Rejected) page
-            else
-                when (val published = publication.prepare(state, claim, page)) {
-                    QueryExecutionPublicationResult.COMMITTED -> page
-                    QueryExecutionPublicationResult.PREPARED -> {
-                        prepared = true
-                        page
-                    }
-                    is QueryExecutionPublicationResult.Rejected -> rejected(published.failure.rejection())
-                }
-        } finally {
-            if (!prepared) state.releasePublication(claim)
-        }
+        return pagePublication.execute(claim) { executeAdmitted(request, lease, budget, checkpoint, claim) }
     }
 
     private suspend fun executeAdmitted(
@@ -164,7 +180,7 @@ class CanonicalQueryProtocol(
         budget: QueryBudget,
     ): Refinement<QueryPlanAcquisition, QueryRunRejection> {
         val retained =
-            when (val restored = restoreInputs(request, lease, publicationOwner)) {
+            when (val restored = QueryRetainedInputAdmission(state).restore(request, lease, publicationOwner)) {
                 is Refinement.Refined -> restored.value
                 is Refinement.Rejected -> return restored
             }
@@ -212,33 +228,6 @@ class CanonicalQueryProtocol(
         if (source is QueryFromDocument.Impact)
             source.investigation.admitImpact(lease, admissionAuthority, producerSeeds, budget, peerSiteAdmissions)
         else Refinement.Refined(null)
-
-    private fun restoreInputs(
-        request: QueryRunRequest.Run,
-        lease: SemanticReadAuthority,
-        publicationOwner: QueryExecutionClaim?,
-    ): Refinement<Map<QueryFromDocument.Result, QueryRetainedResult>, QueryRunRejection> {
-        val retained = linkedMapOf<QueryFromDocument.Result, QueryRetainedResult>()
-        for (source in request.resultInputs()) {
-            if (source in retained) continue
-            when (val restored = state.restoreResult(source.reference, lease, publicationOwner)) {
-                is QueryResultRestoration.Restored -> {
-                    val selected =
-                        restored.selectRows(source.rowIds?.values)
-                            ?: return rejectedResultInput(QueryExecutionRejectionDocument.RESULT_ROW_UNAVAILABLE)
-                    retained[source] = selected
-                }
-                QueryResultRestoration.Unavailable ->
-                    return rejectedResultInput(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE)
-                QueryResultRestoration.StaleBasis ->
-                    return rejectedResultInput(QueryExecutionRejectionDocument.RESULT_STALE_BASIS)
-            }
-        }
-        return Refinement.Refined(retained)
-    }
-
-    private fun rejectedResultInput(reason: QueryExecutionRejectionDocument): Refinement.Rejected<QueryRunRejection> =
-        Refinement.Rejected(QueryRunRejection.ExecutionRejected(reason))
 
     private fun remainingResources(
         budget: QueryBudget,
@@ -316,33 +305,6 @@ class CanonicalQueryProtocol(
 }
 
 private data class QueryPlanAcquisition(val plan: AdmittedQueryPlan, val examinedWork: Long)
-
-private fun QueryRunRequest.Run.resultInputs(): List<QueryFromDocument.Result> = buildList {
-    (from as? QueryFromDocument.Result)?.let(::add)
-    steps.values.forEach { step ->
-        when (step) {
-            is QueryStepDocument.Concat -> (step.input as? QueryFromDocument.Result)?.let(::add)
-            is QueryStepDocument.Join -> (step.right as? QueryFromDocument.Result)?.let(::add)
-            is QueryStepDocument.Intersect -> add(step.right)
-            is QueryStepDocument.Union -> add(step.right)
-            is QueryStepDocument.Difference -> add(step.right)
-            else -> Unit
-        }
-    }
-}
-
-private fun QueryResultRestoration.Restored.selectRows(
-    selectedIds: List<QueryResultRowReference>?
-): QueryRetainedResult? {
-    if (selectedIds == null) return result
-    if (selectedIds.distinct().size != selectedIds.size) return null
-    val positions = rowIds.withIndex().associate { (position, rowId) -> rowId to position }
-    val indices = selectedIds.map { positions[it] ?: return null }
-    return when (val selected = result.selectRows(indices)) {
-        is Refinement.Refined -> selected.value
-        is Refinement.Rejected -> null
-    }
-}
 
 private fun QueryFromDocument.peerSelections(
     lease: SemanticReadAuthority

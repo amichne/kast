@@ -7,6 +7,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class QueryRunResultWireDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
     val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
     @SerialName("impact_accounting")
     val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,
@@ -85,4 +87,5 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("row-selection-incomplete") ROW_SELECTION_INCOMPLETE,
     @SerialName("IMPACT_COVERAGE_UNPROVEN") IMPACT_COVERAGE_UNPROVEN,
     @SerialName("retention-limit-reached") RETENTION_LIMIT_REACHED,
+    @SerialName("execution-incomplete") EXECUTION_INCOMPLETE,
 }

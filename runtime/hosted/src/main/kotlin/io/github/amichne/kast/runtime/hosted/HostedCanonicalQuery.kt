@@ -27,6 +27,7 @@ import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
+import kotlinx.coroutines.currentCoroutineContext
 
 /** Only the admitted project's pure query service and its bounded read ports enter this graph. */
 internal suspend fun evaluateHostedCanonicalQuery(
@@ -68,6 +69,7 @@ private suspend fun evaluateHostedQuery(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
         }
+    val callerContext = currentCoroutineContext()
     val publication = HostedQueryPublicationSession(context, request.request)
     return QueryPresentationExecution.evaluateAndFit(
         evaluate = { presentationOwner ->
@@ -79,23 +81,34 @@ private suspend fun evaluateHostedQuery(
                     presentationOwner,
                     peerAdmissions,
                 )
-                .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
+                .executeAutomatically(
+                    request.request,
+                    context.authority,
+                    services.budgets.hostedQueryBudget,
+                    hostedSymbolInvocationPolicy(context, services.budgets, callerContext),
+                )
         },
-        fit = { outcome ->
-            context.observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.ENCODING)
-            encodeHostedQueryResponse(
-                semantic =
-                    outcome.withQueryBudget(
-                        io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
-                    ),
-                limits = context.limits,
-                observation = context.observation,
-                maximumResults = context.executionBudget.results.effective,
-                maximumBytes = context.executionBudget.returnedBytes.effective,
-                published = publication::fitted,
-                retain = publication::retain,
-            )
-        },
+        fit = { outcome -> fitHostedQueryOutcome(outcome, context, publication) },
+    )
+}
+
+private fun fitHostedQueryOutcome(
+    outcome: HostedQueryOutcome,
+    context: HostedSemanticReadContext,
+    publication: HostedQueryPublicationSession,
+): HostedResponse {
+    context.observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.ENCODING)
+    return encodeHostedQueryResponse(
+        semantic =
+            outcome.withQueryBudget(
+                io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
+            ),
+        limits = context.limits,
+        observation = context.observation,
+        maximumResults = context.executionBudget.results.effective,
+        maximumBytes = context.executionBudget.returnedBytes.effective,
+        published = publication::fitted,
+        retain = publication::retain,
     )
 }
 

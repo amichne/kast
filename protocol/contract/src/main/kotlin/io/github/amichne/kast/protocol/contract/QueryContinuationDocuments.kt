@@ -11,6 +11,7 @@ enum class QueryTerminalReasonDocument {
     @SerialName("no-progress") NO_PROGRESS,
 }
 
+@Serializable
 enum class QueryExecutionRejectionDocument {
     RESULT_UNAVAILABLE,
     RESULT_STALE_BASIS,

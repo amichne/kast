@@ -26,6 +26,10 @@ private constructor(
     fun present(detail: ToolOutputDetail): CanonicalJsonDocument = CanonicalJsonDocument(render(detail), render)
 
     companion object {
+        /** Byte measurement uses the same serializer settings as the public process document. */
+        internal fun <Value> encodedBytes(serializer: KSerializer<Value>, value: Value): Long =
+            cliJson.encodeToString(serializer, value).toByteArray(Charsets.UTF_8).size.toLong()
+
         /** Selects the generated serializer for one closed CLI document type. */
         fun <Value> generated(
             serializer: KSerializer<Value>,

@@ -30,6 +30,10 @@ internal class QueryExecutionState(
 ) {
     private val startedAt = clock.now()
     private var usedWork = 0L
+
+    fun consumedWork(): io.github.amichne.kast.query.contract.QueryWorkCount =
+        io.github.amichne.kast.query.contract.QueryWorkCount.parse(usedWork).refined()
+
     private var usedBytes = 0L
     private val failures = mutableListOf<QueryItemFailure>()
     val limitations = linkedSetOf<QueryLimitation>()

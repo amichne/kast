@@ -448,12 +448,15 @@ data class QueryRunResult(
     /** Offset proof for a retained presentation; never serialized or inferred from a successor cursor. */
     val presentationWindow: QueryRetainedPresentationWindow? = null,
     val impactAccounting: ImpactAccountingDocument = ImpactAccountingDocument.NotApplicable,
+    val invocation: QueryInvocationDocument? = null,
 ) : OperationResult
 
+@Serializable
 enum class QuerySourceRejectionReason {
     UNSUPPORTED_DECLARATION_KIND
 }
 
+@Serializable
 enum class QueryReferenceRejectionReason {
     REVALIDATION_WRONG_KIND,
     REVALIDATION_UNRETAINED,
