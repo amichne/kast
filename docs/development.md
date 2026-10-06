@@ -1,6 +1,17 @@
 # Develop and validate Kast
 
 Use Java 25 or newer and the Python version in [`.python-version`](../.python-version).
+The project [mise configuration](../mise.toml) pins GraalVM 25.0.2 and sets
+`JAVA_HOME` and `GRAALVM_HOME` to that installation. With mise shell activation,
+entering this checkout selects the JVM automatically. For scripts and shells
+without activation, run commands through mise:
+
+```shell
+mise install
+mise exec -- ./gradlew :app-server:check
+mise exec -- git push
+```
+
 Native assembly requires a Java 25 toolchain with GraalVM Native Image. Gradle
 selects that toolchain independently of the shell's Java and provisions it through
 the configured Foojay resolver when no matching local installation is detected.
