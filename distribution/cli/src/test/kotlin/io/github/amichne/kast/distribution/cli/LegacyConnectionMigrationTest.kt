@@ -43,6 +43,7 @@ class LegacyConnectionMigrationTest {
                 HarnessConnection.CODEX_MCP,
                 fixture.destination.toString(),
                 sha256(fixture.destination),
+                fixture.config.parent.toString(),
             ),
             registration,
         )

@@ -90,22 +90,39 @@ Use the exact reference for the function I selected to find its callers. Show th
 
 [Find and trace code](/search) explains the results. For missing tools or readiness blockers, use [Troubleshooting](/troubleshooting).
 
-## A connection already exists
+## Choose a connection destination
 
-Matching registrations stay in place. For a conflict, inspect the existing registration before replacement.
+Pass an absolute directory when connecting:
 
-<Accordion title="Explicitly replace a conflicting registration">
-  Run only the command for your chosen integration:
+```shell
+kast connect pi --destination "$HOME/.config/pi/agent"
+kast connect copilot --destination "$HOME/.config/copilot"
+kast connect codex mcp --destination "$HOME/.config/codex"
+kast connect codex app-server --destination "$HOME/bin"
+```
 
-  ```shell
-  kast connect codex app-server --force
-  # or: kast connect codex mcp --force
-  # or: kast connect copilot --force
-  # or: kast connect pi --force
-  ```
+| Connection | What the directory contains |
+| --- | --- |
+| Pi | `extensions/kast.ts` under the Pi agent home |
+| Copilot | `extensions/kast/extension.mjs` under the Copilot home |
+| Codex MCP | Codex's `config.toml`; the registered executable stays in the Kast installation |
+| Codex App Server | The `kast-codex` launcher |
 
-  `--force` replaces that harness's Kast slot. Kast verifies the payload and captures the previous registration. Failed replacement attempts restoration. Failed restoration reports the backup and recovery destination.
-</Accordion>
+Kast saves the selected directories in `~/.config/kast/config.json`. Reconnect, upgrade, and disconnect reuse them. An explicit `--destination` takes precedence over saved preferences. With no saved destination, Pi uses `PI_CODING_AGENT_DIR`, Copilot uses `COPILOT_HOME`, and Codex MCP uses `CODEX_HOME`, then their ordinary default directories. App Server defaults to `~/.local/bin`.
+
+Run Pi, Copilot, or Codex with the same harness home when using a custom directory. For example, `PI_CODING_AGENT_DIR="$HOME/.config/pi/agent" pi` loads the Pi adapter installed there. Kast's preference does not change the harness's own settings.
+
+Changing `--destination` moves an owned connection: Kast verifies the new connection and removes the prior owned slot within the same transaction. Other harness settings remain in place.
+
+## Recover an existing connection
+
+Matching registrations stay in place. By default, `kast connect` recovers a conflicting Kast slot using the verified release payload. It retains the displaced bytes in a private backup and prints its location. Other extensions and registration names remain in place.
+
+Failed connection attempts restore the previous connection, Kast preferences, checkpoint, and ownership receipt. If a concurrent change or filesystem refusal prevents restoration, Kast retains the recovery copy and reports the exact remaining action. Unverified release payloads and symbolic-link slots reject before replacement.
+
+Kast keeps a verified configuration checkpoint in `~/.config/kast/config.last-good.json`. A damaged or missing config recovers from that checkpoint on reconnect. If both copies are invalid, Kast rebuilds preferences from recorded connection directories and retains the rejected copies. When an older receipt lacks that routing proof, supply `--destination` to rebuild the preferences while retaining the rejected config.
+
+Use `--no-recover` to reject conflicts without replacing them. `--force` remains available for explicit replacement of the selected Kast slot.
 
 ## Disconnect or upgrade
 

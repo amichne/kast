@@ -22,7 +22,9 @@ class ForcedRegistrationTest {
         val sibling = target.resolveSibling("other.ts")
         Files.writeString(sibling, "unrelated")
         val receipt = Files.readAllBytes(receiptPath(root))
-        org.junit.jupiter.api.assertThrows<ManagementRejected> { connectHarness(root, home, HarnessConnection.PI) }
+        org.junit.jupiter.api.assertThrows<ManagementRejected> {
+            connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REQUIRE_OWNED)
+        }
         assertEquals("foreign adapter", Files.readString(target))
         assertFalse(connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT))
         assertEquals("release adapter", Files.readString(target))

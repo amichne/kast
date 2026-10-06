@@ -1,0 +1,97 @@
+[
+  {},
+  {
+    "schemaVersion": 2,
+    "connections": []
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [],
+    "extra": true
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "UNKNOWN",
+        "directory": "/chosen"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "PI"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "PI",
+        "directory": null
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "PI",
+        "directory": "/chosen",
+        "extra": true
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "PI",
+        "directory": "relative"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "PI",
+        "directory": "/chosen/../other"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "PI",
+        "directory": "/chosen//other"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "PI",
+        "directory": "/chosen/"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "connections": [
+      {
+        "type": "PI",
+        "directory": "/chosen"
+      },
+      {
+        "type": "PI",
+        "directory": "/other"
+      }
+    ]
+  }
+]

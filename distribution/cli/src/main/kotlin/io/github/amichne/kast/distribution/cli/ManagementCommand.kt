@@ -56,6 +56,7 @@ internal fun admitConnection(harness: Harness?, transport: String?): ConnectionA
 
 internal enum class RegistrationOwnership {
     REQUIRE_OWNED,
+    RECOVER_SELECTED_SLOT,
     REPLACE_SELECTED_SLOT,
 }
 
@@ -66,7 +67,8 @@ internal sealed interface ManagementCommand {
 
     data class Connect(
         val connection: HarnessConnection?,
-        val ownership: RegistrationOwnership = RegistrationOwnership.REQUIRE_OWNED,
+        val ownership: RegistrationOwnership = RegistrationOwnership.RECOVER_SELECTED_SLOT,
+        val directory: ConnectionDirectory? = null,
     ) : ManagementCommand
 
     data class Disconnect(val harness: Harness) : ManagementCommand

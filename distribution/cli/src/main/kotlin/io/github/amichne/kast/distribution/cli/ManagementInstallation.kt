@@ -5,6 +5,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermission
+import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import kotlinx.serialization.encodeToString
 
@@ -208,5 +209,16 @@ private sealed interface ManagementPathAdmission {
                 else -> Admitted(path)
             }
         }
+    }
+}
+
+internal fun writeConnectionConfiguration(path: Path, configuration: ConnectionConfiguration) {
+    val staged = Files.createTempFile(path.parent, ".kast-config-", ".new")
+    try {
+        Files.setPosixFilePermissions(staged, PosixFilePermissions.fromString("rw-------"))
+        Files.writeString(staged, encodeConnectionConfiguration(configuration))
+        Files.move(staged, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+    } finally {
+        Files.deleteIfExists(staged)
     }
 }

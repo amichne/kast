@@ -33,6 +33,9 @@ internal object KastCleanSlateModules {
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementInstallationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/IntegrationRegistrationKt"),
+                // Existing registration mutation and rollback effects, split into their owning files.
+                JvmClassName("io/github/amichne/kast/distribution/cli/IntegrationDisconnectionKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/RegistrationPreimageKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementLifecycleKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/InstallationLifecycle"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ForceResetRoot"),

@@ -5,6 +5,8 @@ import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
@@ -17,10 +19,13 @@ internal enum class ReleaseChannel {
 }
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 internal data class ManagedRegistration(
     val connection: HarnessConnection,
     val destination: String,
     val payloadSha256: String,
+    // Receipts predating destination selection lack this routing proof.
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val directory: String? = null,
 )
 
 @Serializable private data class ReceiptVersion(val schemaVersion: Int)
@@ -148,7 +153,7 @@ internal fun readReceipt(root: Path): ReceiptRead {
             receipt.installationRoot != root.toString() ||
             receipt.registrations.map { it.connection }.toSet().size != receipt.registrations.size ||
             !validSha256(receipt.executableSha256) ||
-            receipt.registrations.any { !validSha256(it.payloadSha256) }
+            receipt.registrations.any { !validManagedRegistration(root, it) }
     )
         return ReceiptRead.Unavailable("receipt_invalid")
     val executable =
@@ -160,6 +165,23 @@ internal fun readReceipt(root: Path): ReceiptRead {
     if (!executable.isAbsolute || executable.normalize() != executable)
         return ReceiptRead.Unavailable("receipt_invalid")
     return ReceiptRead.Read(receipt)
+}
+
+private fun validManagedRegistration(root: Path, registration: ManagedRegistration): Boolean {
+    if (!validSha256(registration.payloadSha256)) return false
+    // Legacy receipts are refined at connect; never manufacture their missing routing proof.
+    val rawDirectory = registration.directory ?: return true
+    val directory =
+        when (val admitted = ConnectionDirectory.admit(rawDirectory)) {
+            is ConnectionDirectoryAdmission.Admitted -> admitted.directory
+            is ConnectionDirectoryAdmission.Rejected -> return false
+        }
+    val destination =
+        when (val admitted = ConnectionDirectory.admit(registration.destination)) {
+            is ConnectionDirectoryAdmission.Admitted -> admitted.directory.path
+            is ConnectionDirectoryAdmission.Rejected -> return false
+        }
+    return registrationDestinationFor(root, registration.connection, directory) == destination
 }
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod")
@@ -221,7 +243,7 @@ internal fun readBoundedFile(path: Path, maximumBytes: Long): String? =
         else
             Files.newInputStream(path, LinkOption.NOFOLLOW_LINKS).use { input ->
                 val bytes = input.readNBytes((maximumBytes + 1).toInt())
-                bytes.takeIf { it.size <= maximumBytes }?.decodeToString()
+                bytes.takeIf { it.size <= maximumBytes }?.decodeToString(throwOnInvalidSequence = true)
             }
     } catch (_: Exception) {
         null

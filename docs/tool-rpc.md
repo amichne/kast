@@ -46,6 +46,9 @@ kast connect copilot
 copilot --experimental
 ```
 
+For a custom Copilot home, set `COPILOT_HOME` or pass
+`kast connect copilot --destination /absolute/copilot/home`.
+
 The extension obtains the live catalog and registers each tool with the Copilot
 SDK. All tools use Copilot's normal permission policy. The extension does not
 request permission to bypass tool prompts when it loads. No Copilot MCP server is needed.
@@ -57,6 +60,17 @@ Register the bundled Pi adapter:
 ```shell
 kast connect pi
 ```
+
+The first connection respects `PI_CODING_AGENT_DIR`. You can also select its
+agent home with `kast connect pi --destination /absolute/pi/agent`.
+All connection commands accept `--destination` and retain the selected directory
+in `~/.config/kast/config.json` for reconnect, upgrade, and disconnect. Start the
+harness with the same home setting so it discovers the installed connection.
+
+By default, connecting recovers a conflicting Kast slot from the verified release
+and retains a private backup of the displaced bytes. Failed transactions restore
+the prior connection and Kast configuration. Use `--no-recover` to reject a
+conflict without replacement.
 
 It registers the same live catalog in Pi.
 For `add_declaration`, it asks for interactive approval and refuses the call without an
