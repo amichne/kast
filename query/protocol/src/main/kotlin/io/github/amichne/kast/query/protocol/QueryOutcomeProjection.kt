@@ -3,6 +3,8 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
+import io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
@@ -84,26 +86,58 @@ internal class QueryOutcomeProjection(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return rejected(admitted.failure)
             }
-        return project(
-            request = restored.request,
-            lease = lease,
-            result = presentation.result,
-            coverage = presentation.coverage,
-            continuationState = presentation.producerProgress,
-            output = request.output,
-            presentedRetention = QueryResultRetention.Retained(request.result),
-            presentedRowIds = presentation.rowIds,
-            originalPathRowIds = presentation.originalPathRowIds,
-            protectedResult = request.result,
-            presentationWindow = presentation.window,
-            progressOrigin = QueryProgressOrigin.RETAINED_RESULT,
-            presentationOrigin =
-                when (val original = restored.result.coverage) {
-                    is QueryCoverage.Complete -> original.resultCount.value
-                    is QueryCoverage.Qualified -> original.knownMinimum.value
-                },
-        )
+        val evidence =
+            if (restored.evidenceMode == QueryRetainedEvidenceMode.PAGED || request.evidenceCursor != null)
+                when (
+                    val selected =
+                        QueryEvidencePresentation.create(
+                            presentation.result,
+                            request.evidenceCursor ?: QueryEvidenceCursor.Start,
+                            maximumResults,
+                        )
+                ) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected -> return rejected(selected.failure)
+                }
+            else null
+        val outcome =
+            project(
+                request = restored.request,
+                lease = lease,
+                result = evidence?.result ?: presentation.result,
+                coverage = presentation.coverage,
+                continuationState = presentation.producerProgress,
+                output = request.output,
+                presentedRetention = QueryResultRetention.Retained(request.result),
+                presentedRowIds = presentation.rowIds,
+                originalPathRowIds = presentation.originalPathRowIds,
+                protectedResult = request.result,
+                presentationWindow = presentation.window,
+                progressOrigin = QueryProgressOrigin.RETAINED_RESULT,
+                presentationOrigin =
+                    when (val original = restored.result.coverage) {
+                        is QueryCoverage.Complete -> original.resultCount.value
+                        is QueryCoverage.Qualified -> original.knownMinimum.value
+                    },
+            )
+        return withEvidenceWindow(outcome, evidence?.window)
     }
+
+    private fun withEvidenceWindow(
+        outcome: QueryPublishedPage,
+        window: QueryEvidenceWindowDocument?,
+    ): QueryPublishedPage =
+        when (outcome) {
+            is OperationOutcome.Complete ->
+                outcome.copy(
+                    evidence = outcome.evidence.copy(payload = outcome.evidence.payload.copy(evidenceWindow = window))
+                )
+            is OperationOutcome.Qualified ->
+                outcome.copy(
+                    evidence = outcome.evidence.copy(payload = outcome.evidence.payload.copy(evidenceWindow = window))
+                )
+            is OperationOutcome.Rejected -> outcome
+        }
 
     private fun project(
         request: QueryRunRequest.Run,

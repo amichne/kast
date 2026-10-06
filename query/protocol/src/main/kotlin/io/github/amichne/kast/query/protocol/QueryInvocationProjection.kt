@@ -6,6 +6,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
+import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
+import io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
@@ -82,9 +84,22 @@ internal class QueryInvocationProjection(
                 }
             val evidence =
                 when (
+                    val selected =
+                        QueryEvidencePresentation.create(
+                            raw.copy(rows = QueryRows.Symbols.of(emptyList())),
+                            QueryEvidenceCursor.Start,
+                            policy.previewRows,
+                        )
+                ) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected ->
+                        return OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(selected.failure))
+                }
+            val projectedEvidence =
+                when (
                     val projected =
                         QueryProjectedEvidence.from(
-                            result = raw.copy(rows = QueryRows.Symbols.of(emptyList())),
+                            result = evidence.result,
                             output = request.output,
                             authority = authority,
                         )
@@ -92,8 +107,8 @@ internal class QueryInvocationProjection(
                     is Refinement.Refined -> projected.value
                     is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
                 }
-            if (!retentionRequired()) {
-                val inline = present(evidence, null)
+            if (!retentionRequired(evidence.window)) {
+                val inline = present(projectedEvidence, null, evidence.window)
                 when (policy.inlinePresentation(inline)) {
                     QueryInlinePresentation.FITS -> return inline
                     QueryInlinePresentation.RETENTION_REQUIRED -> Unit
@@ -101,12 +116,16 @@ internal class QueryInvocationProjection(
                 }
             }
             return when (val retained = retain()) {
-                is Refinement.Refined -> present(evidence, retained.value)
+                is Refinement.Refined -> present(projectedEvidence, retained.value, evidence.window)
                 is Refinement.Rejected -> OperationOutcome.Rejected(retained.failure)
             }
         }
 
-        private fun present(evidence: QueryProjectedEvidence, issuance: QueryResultIssuance?): QueryPublishedPage {
+        private fun present(
+            evidence: QueryProjectedEvidence,
+            issuance: QueryResultIssuance?,
+            evidenceWindow: QueryEvidenceWindowDocument,
+        ): QueryPublishedPage {
             val preview =
                 when (val fitted = preview(issuance)) {
                     is Refinement.Refined -> fitted.value
@@ -123,13 +142,16 @@ internal class QueryInvocationProjection(
                     presentationOrigin = QueryKnownMinimum.parse(count).required(),
                 )
             return coverage(
-                envelope.copy(payload = envelope.payload.copy(invocation = preview.summary)),
+                envelope.copy(
+                    payload = envelope.payload.copy(invocation = preview.summary, evidenceWindow = evidenceWindow)
+                ),
                 preview.retention,
             )
         }
 
-        private fun retentionRequired(): Boolean =
+        private fun retentionRequired(evidenceWindow: QueryEvidenceWindowDocument): Boolean =
             request.retention == QueryRetentionModeDocument.RETAIN ||
+                evidenceWindow.nextCursor != null ||
                 count > minOf(policy.previewRows.value, MAX_PROTOCOL_ITEMS) ||
                 policy.previewBytes(accumulated.items) > policy.previewBytesLimit.value
 
@@ -151,6 +173,7 @@ internal class QueryInvocationProjection(
                     result = snapshot,
                     protectedCheckpoint = checkpoint,
                     publicationOwner = owner,
+                    evidenceMode = QueryRetainedEvidenceMode.PAGED,
                 )
             observation.observe(
                 QueryResultRetentionEvidence.Issuance(

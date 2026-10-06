@@ -10,11 +10,12 @@ import io.github.amichne.kast.protocol.contract.QueryPreviewDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.presentationPrefix
+import io.github.amichne.kast.protocol.contract.presentationUnitCount
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.protocol.QueryPublicationPageCharge
 
-/** A full-envelope fit of an already retained automatic result changes presentation alone. */
+/** A full-envelope fit of retained rows and independently paged evidence changes presentation alone. */
 internal fun fitHostedAutomaticQueryPreview(
     semantic: HostedQueryOutcome,
     limits: ReadLimits,
@@ -45,8 +46,19 @@ private class HostedAutomaticQueryPreview(
     private val maximumBytes: ReturnedByteLimit,
     private val published: ((QueryPublicationPageCharge.Encoded) -> Unit)?,
 ) {
-    private val original = evidence.payload
-    private val invocation = original.invocation ?: error("Automatic preview requires its invocation proof")
+    private val original = boundedRows(evidence.payload)
+    private val invocation = original.invocation
+
+    private fun boundedRows(payload: QueryRunResult): QueryRunResult =
+        when (val selected = payload.presentationPrefix(minOf(payload.items.values.size, maximumRows.value))) {
+            is Refinement.Refined ->
+                payload.copy(
+                    items = selected.value.items,
+                    nextCursor = selected.value.nextCursor,
+                    presentationWindow = selected.value.presentationWindow,
+                )
+            is Refinement.Rejected -> error("Retained rows lost their admitted presentation window")
+        }
 
     private fun encode(count: Int): Pair<HostedQueryOutcome, HostedResponse> {
         val window =
@@ -55,19 +67,27 @@ private class HostedAutomaticQueryPreview(
                 is Refinement.Rejected ->
                     return semantic to HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
             }
-        val rows = original.items.values.take(count)
+        val rows = window.items.values
         val bytes =
             CanonicalQueryCliDocuments.symbolPreviewBytes(rows.filterIsInstance<QueryResultItemDocument.ExactSymbol>())
-        val preview =
-            if (count == invocation.accumulatedRowCount) QueryPreviewDocument.Inline(count, bytes)
-            else QueryPreviewDocument.Prefix(count, bytes)
+        val preview = invocation?.let {
+            if (rows.size == it.accumulatedRowCount) QueryPreviewDocument.Inline(rows.size, bytes)
+            else QueryPreviewDocument.Prefix(rows.size, bytes)
+        }
+        val evidenceWindow =
+            original.evidenceWindow?.let {
+                when (val selected = it.prefix(window.presentationUnitCount - rows.size)) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected ->
+                        return semantic to HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
+                }
+            }
         val payload =
-            original.copy(
-                items = window.items,
-                nextCursor = window.nextCursor,
-                presentationWindow = window.presentationWindow,
+            window.copy(
+                evidenceWindow = evidenceWindow,
                 invocation =
-                    when (val admitted = invocation.withPreview(preview)) {
+                    when (val admitted = preview?.let { invocation?.withPreview(it) }) {
+                        null -> null
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected ->
                             return semantic to HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
@@ -86,7 +106,7 @@ private class HostedAutomaticQueryPreview(
 
     fun fit(): HostedResponse {
         var lower = 0
-        var upper = minOf(original.items.values.size, maximumRows.value)
+        var upper = original.presentationUnitCount
         var best: Pair<HostedQueryOutcome, HostedResponse>? = null
         while (lower <= upper) {
             val count = lower + (upper - lower) / 2

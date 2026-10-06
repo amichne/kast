@@ -784,6 +784,20 @@
       "x-kotlin-type": "QueryResultCursor",
       "description": "Optional presentation offset in the immutable retained result. Omission or null starts at zero; this cursor does not resume semantic execution."
     },
+    "EvidenceCursor": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1000000,
+      "x-kotlin-type": "QueryEvidenceCursor",
+      "description": "Optional offset in the retained result's evidence. It is independent of the row presentation cursor and performs no semantic execution. Omission or null preserves the existing evidence presentation.",
+      "examples": [
+        0,
+        25
+      ]
+    },
     "ResultSource": {
       "type": "object",
       "properties": {
@@ -916,6 +930,9 @@
         },
         "executionBudget": {
           "$ref": "#/$defs/ExecutionBudget"
+        },
+        "evidence_cursor": {
+          "$ref": "#/$defs/EvidenceCursor"
         }
       },
       "required": [

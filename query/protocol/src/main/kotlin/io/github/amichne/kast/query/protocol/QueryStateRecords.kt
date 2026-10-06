@@ -78,6 +78,7 @@ internal sealed interface QueryStateEntry {
         val request: QueryRunRequest.Run,
         val result: QueryRetainedResult,
         val rowIds: List<QueryResultRowReference>,
+        val evidenceMode: QueryRetainedEvidenceMode,
         override val createdAt: Long,
         override val bytes: Long,
         override val owner: QueryExecutionClaim? = null,

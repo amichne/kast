@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
+import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
@@ -277,6 +278,9 @@ internal data class PublicToolReadResultAction(
     val cursor: QueryResultCursor? = null,
     val output: PublicToolReadResultOutput? = null,
     val executionBudget: PublicToolExecutionBudget? = null,
+    @SerialName("evidence_cursor")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val evidenceCursor: QueryEvidenceCursor? = null,
 ) : PublicToolAction
 
 @Serializable

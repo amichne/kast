@@ -14,6 +14,82 @@ import org.junit.jupiter.api.Test
 
 class HostedAutomaticQueryPreviewTest {
     @Test
+    fun `evidence only retained read fits bytes and advances only its evidence cursor`() {
+        val semantic = evidenceOnlyRead()
+        val failures = semantic.evidence.payload.failures
+        val qualification = semantic.qualification
+        val response =
+            encodeHostedQueryResponse(
+                semantic,
+                maximumBytes = ReturnedByteLimit.parse(8_000).refined(),
+                retain = { error("Retained evidence must not issue another output continuation") },
+            )
+                as HostedResponse.Canonical<*, *, *>
+        assertTrue(response.document.toByteArray().size <= 8_000)
+        val fitted = (response.semantic as OperationOutcome.Qualified).evidence.payload as QueryRunResult
+        assertTrue(fitted.failures.values.size in 1 until 100)
+        assertEquals(failures.values.take(fitted.failures.values.size), fitted.failures.values)
+        assertEquals(100 + fitted.failures.values.size, fitted.evidenceWindow!!.end.value)
+        assertEquals(1100, fitted.evidenceWindow!!.total.value)
+        assertEquals(120, fitted.presentationWindow!!.start.value)
+        assertEquals(120, fitted.presentationWindow!!.end.value)
+        assertEquals(null, fitted.nextCursor)
+        assertEquals(qualification, (response.semantic as OperationOutcome.Qualified).qualification)
+    }
+
+    private fun evidenceOnlyRead() = run {
+        val original = HostedQueryRetainedPresentationTest().page(120, 120, 120, longTokens = true)
+        val ref =
+            (HostedQueryRetainedPresentationTest()
+                    .page(0, 1, 120, longTokens = true)
+                    .evidence
+                    .payload
+                    .items
+                    .values
+                    .single() as io.github.amichne.kast.protocol.contract.QueryResultItemDocument.ExactSymbol)
+                .ref
+        val evidenceWindow =
+            io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument.create(
+                    io.github.amichne.kast.protocol.contract.QueryEvidenceCursor.parse(100).refined(),
+                    io.github.amichne.kast.protocol.contract.QueryEvidenceCursor.parse(200).refined(),
+                    io.github.amichne.kast.protocol.contract.QueryEvidenceCursor.parse(1100).refined(),
+                )
+                .refined()
+        val qualification =
+            io.github.amichne.kast.protocol.contract.QueryRunQualification.create(
+                    io.github.amichne.kast.protocol.contract.QueryKnownMinimum.parse(120).refined(),
+                    listOf(io.github.amichne.kast.protocol.contract.QueryLimitationDocument.REFINEMENT_INCOMPLETE),
+                    io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.TerminalIncomplete(
+                        io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                    ),
+                )
+                .refined()
+        OperationOutcome.Qualified(
+            original.evidence.copy(
+                payload =
+                    original.evidence.payload.copy(
+                        failures = predicateFailures(ref),
+                        evidenceWindow = evidenceWindow,
+                    )
+            ),
+            qualification,
+        )
+    }
+
+    private fun predicateFailures(ref: io.github.amichne.kast.protocol.contract.QueryReferenceDocument.ExactSymbol) =
+        io.github.amichne.kast.protocol.contract.BoundedProtocolList.create<
+                io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
+            >(
+                List(100) {
+                    io.github.amichne.kast.protocol.contract.QueryItemFailureDocument.Predicate(
+                        ref,
+                        io.github.amichne.kast.protocol.contract.QueryPredicateFailureDocument.PREDICATE_UNPROVEN,
+                    )
+                }
+            )
+            .refined()
+
+    @Test
     fun `automatic retained complete query stays complete after full envelope preview fitting`() {
         val original = HostedQueryRetainedPresentationTest().page(0, 10, 120, longTokens = true)
         val invocation =

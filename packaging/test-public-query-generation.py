@@ -65,6 +65,17 @@ class PublicQueryGenerationTest(unittest.TestCase):
         self.assertIn("val requestedSites:\n        BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument>? =\n        null,", source)
         self.assertTrue(all(len(line) <= 120 for line in source.splitlines()), source)
 
+    def test_evidence_cursor_reuses_its_canonical_scalar(self):
+        generated = generator.render_tools(self.authority)
+        source = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt"]
+        self.assertIn('import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor', source)
+        self.assertIn('@SerialName("evidence_cursor")', source)
+        self.assertIn('val evidenceCursor: QueryEvidenceCursor? = null,', source)
+        self.assertNotIn('class PublicToolEvidenceCursor', source)
+        cursor = self.authority['$defs']['EvidenceCursor']
+        self.assertEqual(['integer', 'null'], cursor['type'])
+        self.assertEqual((0, 1000000), (cursor['minimum'], cursor['maximum']))
+
     def test_missing_and_invalid_control_defaults_reject(self):
         for replacement in (None, 0, 1001):
             with self.subTest(replacement=replacement):

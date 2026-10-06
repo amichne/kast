@@ -80,6 +80,9 @@ internal open class AutomaticSymbolQueryCase {
         private val terminal: Boolean = false,
         private val observedWork: Boolean = true,
         private val afterPage: () -> Unit = {},
+        private val resultForPage: (List<QuerySymbol>, Int) -> QueryResult = { rows, _ ->
+            QueryResult(QueryRows.Symbols.of(rows), emptyList())
+        },
     ) {
         private var unexpectedCalls = 0
         var calls = 0
@@ -97,7 +100,7 @@ internal open class AutomaticSymbolQueryCase {
             val rows = pages[calls++]
             if (staleAfterFirst && calls > 1)
                 return@QueryOperations QueryExecutionResult.Rejected(QueryExecutionRejection.REFERENCE_STALE)
-            val result = QueryResult(QueryRows.Symbols.of(rows), emptyList())
+            val result = resultForPage(rows, calls)
             val count = QueryCount.parse(pages.take(calls).sumOf { it.size }).refined()
             val outcome =
                 if (calls == pages.size && !terminal && !repeatCheckpoint)

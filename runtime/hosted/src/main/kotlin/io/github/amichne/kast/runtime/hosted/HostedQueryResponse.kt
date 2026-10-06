@@ -81,7 +81,7 @@ private fun encodeHostedQueryResponseDocument(
         return original.publishEncodedPage(semantic, published)
     }
     if (
-        evidence.payload.invocation != null &&
+        (evidence.payload.invocation != null || evidence.payload.evidenceWindow != null) &&
             evidence.payload.retention != io.github.amichne.kast.protocol.contract.QueryResultRetention.NotRequested
     )
         return fitHostedAutomaticQueryPreview(semantic, limits, maximumResults, maximumBytes, published)

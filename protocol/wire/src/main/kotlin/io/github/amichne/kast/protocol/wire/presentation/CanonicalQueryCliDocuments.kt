@@ -131,6 +131,7 @@ private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?):
             executionBudget = result.executionBudget,
             referenceAcquisitions = result.referenceAcquisitions,
             invocation = result.invocation,
+            evidenceWindow = result.evidenceWindow,
             live = live,
         )
     )
@@ -168,6 +169,7 @@ private fun projectQualified(
             executionBudget = result.executionBudget,
             referenceAcquisitions = result.referenceAcquisitions,
             invocation = result.invocation,
+            evidenceWindow = result.evidenceWindow,
             live = live,
         )
     )
@@ -176,6 +178,9 @@ private fun projectQualified(
 private data class QueryCompleteCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("evidence_window")
+    val evidenceWindow: io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument? = null,
     val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
     @SerialName("impact_accounting")
     val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,
@@ -212,6 +217,9 @@ private data class QueryCompleteCliDocument(
 private data class QueryQualifiedCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("evidence_window")
+    val evidenceWindow: io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument? = null,
     val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
     @SerialName("impact_accounting")
     val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,

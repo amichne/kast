@@ -223,6 +223,10 @@ sealed interface QueryRunRequest : OperationRequest {
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("evidence_cursor")
+        @ProtocolIntegerConstraint(minimum = 0, maximum = 1_000_000)
+        val evidenceCursor: QueryEvidenceCursor? = null,
     ) : QueryRunRequest {
         companion object {
             fun symbols(
@@ -230,38 +234,46 @@ sealed interface QueryRunRequest : OperationRequest {
                 cursor: QueryResultCursor = QueryResultCursor.Start,
                 output: QueryOutputDocument.Symbols,
                 executionBudget: ExecutionBudgetDocument? = null,
-            ): ReadResult = ReadResult(result, cursor, output, executionBudget)
+                evidenceCursor: QueryEvidenceCursor? = null,
+            ): ReadResult = ReadResult(result, cursor, output, executionBudget, evidenceCursor)
 
             fun occurrences(
                 result: QueryResultReference,
                 cursor: QueryResultCursor = QueryResultCursor.Start,
                 executionBudget: ExecutionBudgetDocument? = null,
-            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.Occurrences, executionBudget)
+                evidenceCursor: QueryEvidenceCursor? = null,
+            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.Occurrences, executionBudget, evidenceCursor)
 
             fun traversalRecords(
                 result: QueryResultReference,
                 cursor: QueryResultCursor = QueryResultCursor.Start,
                 executionBudget: ExecutionBudgetDocument? = null,
-            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.TraversalRecords, executionBudget)
+                evidenceCursor: QueryEvidenceCursor? = null,
+            ): ReadResult =
+                ReadResult(result, cursor, QueryOutputDocument.TraversalRecords, executionBudget, evidenceCursor)
 
             fun bindingRows(
                 result: QueryResultReference,
                 cursor: QueryResultCursor = QueryResultCursor.Start,
                 executionBudget: ExecutionBudgetDocument? = null,
-            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.BindingRows, executionBudget)
+                evidenceCursor: QueryEvidenceCursor? = null,
+            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.BindingRows, executionBudget, evidenceCursor)
 
             fun impactWitness(
                 result: QueryResultReference,
                 section: ImpactWitnessSectionDocument,
                 cursor: QueryResultCursor = QueryResultCursor.Start,
                 executionBudget: ExecutionBudgetDocument? = null,
-            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.ImpactWitness(section), executionBudget)
+                evidenceCursor: QueryEvidenceCursor? = null,
+            ): ReadResult =
+                ReadResult(result, cursor, QueryOutputDocument.ImpactWitness(section), executionBudget, evidenceCursor)
 
             fun valuePaths(
                 result: QueryResultReference,
                 cursor: QueryResultCursor = QueryResultCursor.Start,
                 executionBudget: ExecutionBudgetDocument? = null,
-            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.ValuePaths, executionBudget)
+                evidenceCursor: QueryEvidenceCursor? = null,
+            ): ReadResult = ReadResult(result, cursor, QueryOutputDocument.ValuePaths, executionBudget, evidenceCursor)
         }
     }
 }
@@ -449,6 +461,7 @@ data class QueryRunResult(
     val presentationWindow: QueryRetainedPresentationWindow? = null,
     val impactAccounting: ImpactAccountingDocument = ImpactAccountingDocument.NotApplicable,
     val invocation: QueryInvocationDocument? = null,
+    val evidenceWindow: QueryEvidenceWindowDocument? = null,
 ) : OperationResult
 
 @Serializable

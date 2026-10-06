@@ -111,19 +111,24 @@ private fun PublicToolReadResultAction.lowerReadResultRequest(): QueryRunRequest
     val retainedCursor = cursor ?: QueryResultCursor.Start
     val budget = (executionBudget ?: PublicToolDefaults.executionBudget).lower()
     return when (selected) {
-        is QueryOutputDocument.Symbols -> QueryRunRequest.ReadResult.symbols(result, retainedCursor, selected, budget)
-        QueryOutputDocument.Occurrences -> QueryRunRequest.ReadResult.occurrences(result, retainedCursor, budget)
+        is QueryOutputDocument.Symbols ->
+            QueryRunRequest.ReadResult.symbols(result, retainedCursor, selected, budget, evidenceCursor)
+        QueryOutputDocument.Occurrences ->
+            QueryRunRequest.ReadResult.occurrences(result, retainedCursor, budget, evidenceCursor)
         QueryOutputDocument.TraversalRecords ->
-            QueryRunRequest.ReadResult.traversalRecords(result, retainedCursor, budget)
-        QueryOutputDocument.ValuePaths -> QueryRunRequest.ReadResult.valuePaths(result, retainedCursor, budget)
+            QueryRunRequest.ReadResult.traversalRecords(result, retainedCursor, budget, evidenceCursor)
+        QueryOutputDocument.ValuePaths ->
+            QueryRunRequest.ReadResult.valuePaths(result, retainedCursor, budget, evidenceCursor)
         is QueryOutputDocument.ImpactWitness ->
             QueryRunRequest.ReadResult.impactWitness(
                 result = result,
                 section = selected.section,
                 cursor = retainedCursor,
                 executionBudget = budget,
+                evidenceCursor = evidenceCursor,
             )
-        QueryOutputDocument.BindingRows -> QueryRunRequest.ReadResult.bindingRows(result, retainedCursor, budget)
+        QueryOutputDocument.BindingRows ->
+            QueryRunRequest.ReadResult.bindingRows(result, retainedCursor, budget, evidenceCursor)
     }
 }
 
