@@ -59,10 +59,8 @@ class GhInvocation:
     arguments: list[str]
 
 
-def scripted_gh(arguments: list[str]) -> int:
+def scripted_gh(state: Path, calls: Path, violation: Path, arguments: list[str]) -> int:
     """Respond only to the case's finite external calls; never delegate to GitHub."""
-    state = Path(os.environ["KAST_TEST_GH_SCRIPT"])
-    violation = Path(os.environ["KAST_TEST_GH_VIOLATION"])
     try:
         raw = json.loads(state.read_text())
         script = GhScript([GhCall(**call) for call in raw["calls"]], raw["consumed"])
@@ -78,7 +76,7 @@ def scripted_gh(arguments: list[str]) -> int:
                 raise AssertionError("unexpected release creation command")
         elif arguments != expected.arguments:
             raise AssertionError("unexpected GitHub command")
-        with Path(os.environ["KAST_TEST_GH_CALLS"]).open("a") as log:
+        with calls.open("a") as log:
             log.write(json.dumps(asdict(GhInvocation(arguments))) + "\n")
         script.consumed += 1
         state.write_text(json.dumps(asdict(script)))
@@ -131,7 +129,9 @@ class DeveloperPublicationTest(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
         gh = self.bin / "gh"
-        gh.write_text(f"#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(Path(__file__).resolve()))} --scripted-gh \"$@\"\n")
+        command = [sys.executable, str(Path(__file__).resolve()), "--scripted-gh",
+                   str(self.script), str(self.calls), str(self.violation)]
+        gh.write_text("#!/bin/sh\nexec " + shlex.join(command) + ' "$@"\n')
         gh.chmod(0o700)
         (self.root / "home").mkdir()
         (self.root / "tmp").mkdir()
@@ -139,8 +139,7 @@ class DeveloperPublicationTest(unittest.TestCase):
             "PATH": os.pathsep.join((str(self.bin), str(Path(sys.executable).resolve().parent), os.defpath)),
             "HOME": str(self.root / "home"), "TMPDIR": str(self.root / "tmp"),
             "GH_TOKEN": "owned-fixture-token", "GITHUB_REPOSITORY": REPOSITORY,
-            "KAST_TEST_GH_SCRIPT": str(self.script), "KAST_TEST_GH_CALLS": str(self.calls),
-            "KAST_TEST_GH_VIOLATION": str(self.violation), "PYTHONDONTWRITEBYTECODE": "1", "LC_ALL": "C",
+            "PYTHONDONTWRITEBYTECODE": "1", "LC_ALL": "C",
         }
 
     def pointer_calls(self) -> list[GhCall]:
@@ -213,5 +212,5 @@ class DeveloperPublicationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--scripted-gh"]:
-        raise SystemExit(scripted_gh(sys.argv[2:]))
+        raise SystemExit(scripted_gh(Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4]), sys.argv[5:]))
     unittest.main()
