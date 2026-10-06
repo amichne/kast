@@ -424,6 +424,28 @@ internal object InstallationWorkflow {
         )
     }
 
+    private fun writeInstallationConfiguration(
+        plan: VerifiedInstallationPlan,
+        stagedConfiguration: Path,
+        configuration: InstallationConfigurationSelection,
+    ) {
+        Files.createDirectories(stagedConfiguration.parent)
+        if (
+            configuration is InstallationConfigurationSelection.Prior &&
+                plan.request.controlOnly == InstallationSwitch.ENABLED &&
+                plan.request.publicEndpoint == InstallationPublicEndpointSelection.Unspecified
+        ) {
+            Files.copy(configuration.root.resolve("config/environment"), stagedConfiguration)
+            return
+        }
+        Files.writeString(
+            stagedConfiguration,
+            installationConfigurationContent(plan, configuration),
+            StandardOpenOption.CREATE_NEW,
+        )
+        setMode(stagedConfiguration, "rw-------")
+    }
+
     private fun writeLauncher(plan: VerifiedInstallationPlan, staged: Path, executable: String) {
         val launcher = staged.resolve("bin/$executable-complete")
         val dispatch =

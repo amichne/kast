@@ -2,35 +2,9 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardOpenOption
-import java.nio.file.attribute.PosixFilePermissions
 
-/** Staged configuration keeps its admitted selection until this single filesystem write boundary. */
-internal fun writeInstallationConfiguration(
-    plan: VerifiedInstallationPlan,
-    stagedConfiguration: Path,
-    configuration: InstallationConfigurationSelection,
-) {
-    Files.createDirectories(stagedConfiguration.parent)
-    if (
-        configuration is InstallationConfigurationSelection.Prior &&
-            plan.request.controlOnly == InstallationSwitch.ENABLED &&
-            plan.request.publicEndpoint == InstallationPublicEndpointSelection.Unspecified
-    ) {
-        Files.copy(configuration.root.resolve("config/environment"), stagedConfiguration)
-        return
-    }
-    Files.writeString(
-        stagedConfiguration,
-        configurationContent(plan, configuration),
-        StandardOpenOption.CREATE_NEW,
-    )
-    Files.setPosixFilePermissions(stagedConfiguration, PosixFilePermissions.fromString("rw-------"))
-}
-
-private fun configurationContent(
+/** Pure literal materialization retains the admitted settings and selected installation paths. */
+internal fun installationConfigurationContent(
     plan: VerifiedInstallationPlan,
     configuration: InstallationConfigurationSelection,
 ): String {
