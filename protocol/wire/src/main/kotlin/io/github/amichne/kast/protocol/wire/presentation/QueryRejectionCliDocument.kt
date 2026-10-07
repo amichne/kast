@@ -7,6 +7,14 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal sealed interface QueryRejectionCliDocument {
     @Serializable
+    @SerialName("COMPLETION_UNSUPPORTED")
+    data class CompletionUnsupported(val detail: QueryRunRejection.CompletionUnsupported) : QueryRejectionCliDocument
+
+    @Serializable
+    @SerialName("COMPLETION_UNPROVEN")
+    data class CompletionUnproven(val detail: QueryRunRejection.CompletionUnproven) : QueryRejectionCliDocument
+
+    @Serializable
     @SerialName("IMPACT_EXECUTION_REJECTED")
     data class ImpactExecutionRejected(
         val cause: io.github.amichne.kast.protocol.contract.ImpactExecutionFailureDocument
@@ -54,6 +62,8 @@ internal sealed interface QueryRejectionCliDocument {
 
 internal fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
     when (this) {
+        is QueryRunRejection.CompletionUnsupported -> QueryRejectionCliDocument.CompletionUnsupported(this)
+        is QueryRunRejection.CompletionUnproven -> QueryRejectionCliDocument.CompletionUnproven(this)
         is QueryRunRejection.ImpactSourceRejected -> QueryRejectionCliDocument.ImpactSourceRejected(cause)
         is QueryRunRejection.ImpactExecutionRejected -> QueryRejectionCliDocument.ImpactExecutionRejected(cause)
         is QueryRunRejection.ImpactPresentationRejected -> QueryRejectionCliDocument.ImpactPresentationRejected(cause)

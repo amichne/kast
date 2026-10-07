@@ -86,7 +86,7 @@ internal fun admitDirectCallbackFlow(
         else -> Refinement.Refined(Unit)
     }
 
-private fun admitInvocationRoutes(
+internal fun admitInvocationRoutes(
     basis: SemanticReadIdentity,
     source: RelationEndpoint,
     position: ValueArgumentPosition,
@@ -156,11 +156,16 @@ internal fun callbackExecutionNeedsQualification(
             is CallbackBindingEvidence.Direct -> return binding.binding.owner is RelationCallableBody.Anonymous
             is CallbackBindingEvidence.Unavailable -> return false
         }
-    return invocations.any { invocation ->
-        val callable = invocation.forwardings.lastOrNull()?.target?.invocation?.callable ?: source
-        invocation.forwardings.any { !it.target.invocationOwner.isNamedOwnerOf(it.source.callable) } ||
-            !invocation.owner.isNamedOwnerOf(callable)
-    }
+    return callbackInvocationsNeedQualification(source, invocations)
+}
+
+internal fun callbackInvocationsNeedQualification(
+    source: RelationEndpoint,
+    invocations: List<CallbackParameterInvocation>,
+): Boolean = invocations.any { invocation ->
+    val callable = invocation.forwardings.lastOrNull()?.target?.invocation?.callable ?: source
+    invocation.forwardings.any { !it.target.invocationOwner.isNamedOwnerOf(it.source.callable) } ||
+        !invocation.owner.isNamedOwnerOf(callable)
 }
 
 private fun RelationCallableBody.isNamedOwnerOf(callable: RelationEndpoint): Boolean =

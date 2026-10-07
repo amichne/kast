@@ -28,7 +28,6 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
 import io.github.amichne.kast.topology.contract.TopologyEdge
-import io.github.amichne.kast.topology.contract.TopologyEdgeKind
 import io.github.amichne.kast.topology.contract.TopologySnapshotContent
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
 import io.github.amichne.kast.topology.contract.TopologySnapshotContentReader
@@ -46,9 +45,9 @@ import java.nio.charset.StandardCharsets
  * request. Each read preserves the request lease, selector, scope, edge meaning, pagination, and budgets. It has no K2,
  * IntelliJ, Gradle, module-model, or filesystem capability.
  */
-class SqliteTopologyRelationCompiler private constructor(private val content: TopologySnapshotContent) :
-    RelationCompilerPort {
+class SqliteTopologyRelationCompiler private constructor(content: TopologySnapshotContent) : RelationCompilerPort {
     private val snapshot: PublishedTopologySnapshot = content.snapshot
+    private val index = SqliteTopologyRelationIndex(content)
     private val publication: RelationPublishedSnapshotIdentity =
         RelationPublishedSnapshotIdentity.admit(snapshot.identity.lease, snapshot.manifest.digest.value).refinedOrNull()
             ?: error("An admitted topology snapshot has a canonical digest")
@@ -99,9 +98,9 @@ class SqliteTopologyRelationCompiler private constructor(private val content: To
             return RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
         }
         val subjects =
-            content.symbols
+            index
+                .candidates(request.subject.compilerIdentity)
                 .asSequence()
-                .filter { it.evidence.compilerIdentity == request.subject.compilerIdentity }
                 .mapNotNull { candidate ->
                     when (
                         val validation =
@@ -147,10 +146,9 @@ class SqliteTopologyRelationCompiler private constructor(private val content: To
         subject: RevalidatedTopologySubject,
     ): Refinement<RelationProviderState, RelationCompilerRejection> {
         val eligible =
-            content.edges
-                .asSequence()
-                .filter { subject.matches(request.meaning, it) }
-                .filter { it.source.inside(request.subject.scope) && it.target.inside(request.subject.scope) }
+            index.edges(request.meaning, subject.nodeIdentity).asSequence().filter {
+                it.source.inside(request.subject.scope) && it.target.inside(request.subject.scope)
+            }
         val facts = mutableListOf<RelationFact>()
         for (edge in eligible) {
             when (val projection = edge.toRelationFact(request)) {
@@ -321,7 +319,8 @@ private constructor(
 ) {
     fun inside(scope: SymbolSearchScope): Boolean = symbol.inside(scope)
 
-    fun matches(meaning: RelationMeaning, edge: TopologyEdge): Boolean = edge.matches(meaning, symbol)
+    val nodeIdentity: io.github.amichne.kast.topology.contract.TopologyNodeIdentity
+        get() = symbol.nodeIdentity
 
     companion object {
         /**
@@ -359,17 +358,6 @@ private sealed interface RelationFactProjection {
 
     data object Rejected : RelationFactProjection
 }
-
-private fun TopologyEdge.matches(meaning: RelationMeaning, subject: TopologySymbol): Boolean =
-    when (meaning) {
-        RelationMeaning.Callees -> kind == TopologyEdgeKind.CALL && source == subject
-        RelationMeaning.Callers -> kind == TopologyEdgeKind.CALL && target == subject
-        RelationMeaning.References -> kind == TopologyEdgeKind.REFERENCE && target == subject
-        RelationMeaning.TypeUses -> kind == TopologyEdgeKind.TYPE_USE && target == subject
-        RelationMeaning.Implementations,
-        RelationMeaning.Inheritors -> kind == TopologyEdgeKind.INHERITANCE && target == subject
-        RelationMeaning.Overrides -> kind == TopologyEdgeKind.OVERRIDE && target == subject
-    }
 
 private fun TopologySymbol.inside(scope: SymbolSearchScope): Boolean {
     val root = file.sourceRoot

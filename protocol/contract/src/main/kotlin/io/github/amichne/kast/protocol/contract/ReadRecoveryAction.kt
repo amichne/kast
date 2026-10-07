@@ -47,6 +47,8 @@ fun SourceReadFailure.recoveryAction(): ReadRecoveryAction =
 fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
     when (val rejection = reason()) {
         QueryRunRejection.WorkspaceNotReady -> ReadRecoveryAction.WAIT_FOR_WORKSPACE
+        is QueryRunRejection.CompletionUnsupported -> ReadRecoveryAction.CORRECT_REQUEST
+        is QueryRunRejection.CompletionUnproven -> ReadRecoveryAction.REPORT_FAILURE
         is QueryRunRejection.ReferenceRejected -> rejection.reason.recoveryAction()
         is QueryRunRejection.StepReferenceRejected -> rejection.reason.recoveryAction()
         is QueryRunRejection.SourceRejected -> ReadRecoveryAction.CORRECT_REQUEST
@@ -79,8 +81,13 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
                 QueryExecutionRejectionDocument.BUDGET_REJECTED -> ReadRecoveryAction.CORRECT_REQUEST
                 QueryExecutionRejectionDocument.CONTINUATION_IN_USE -> ReadRecoveryAction.WAIT_FOR_CHECKPOINT
                 QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED,
-                QueryExecutionRejectionDocument.TEXT_MATCH_LIMIT_EXCEEDED -> ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
+                QueryExecutionRejectionDocument.TEXT_MATCH_LIMIT_EXCEEDED,
+                QueryExecutionRejectionDocument.INVOCATION_TIME_LIMIT,
+                QueryExecutionRejectionDocument.INVOCATION_WORK_LIMIT,
+                QueryExecutionRejectionDocument.INVOCATION_RETAINED_BYTES_LIMIT ->
+                    ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE
                 QueryExecutionRejectionDocument.REFERENCE_STALE -> ReadRecoveryAction.REACQUIRE_AUTHORITY
+                QueryExecutionRejectionDocument.INVOCATION_CANCELLED,
                 QueryExecutionRejectionDocument.DISCOVERY_REJECTED,
                 QueryExecutionRejectionDocument.PUBLISHED_PAGE_MISMATCH,
                 QueryExecutionRejectionDocument.NON_ADVANCING_CONTINUATION,

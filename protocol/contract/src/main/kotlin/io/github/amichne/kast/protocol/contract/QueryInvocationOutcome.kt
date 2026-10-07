@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface QueryInvocationOutcome {
     val kind: QueryInvocationStop
-    val failure: QueryRunRejection?
+    val failure: QueryOriginalFailureDocument?
         get() = null
 
     @Serializable
@@ -33,14 +33,14 @@ sealed interface QueryInvocationOutcome {
 
     @Serializable
     @SerialName("INVALID_STATE")
-    data class InvalidState(override val failure: QueryRunRejection) : QueryInvocationOutcome {
+    data class InvalidState(override val failure: QueryOriginalFailureDocument) : QueryInvocationOutcome {
         override val kind
             get() = QueryInvocationStop.INVALID_STATE
     }
 
     @Serializable
     @SerialName("NON_ADVANCING")
-    data class NonAdvancing(override val failure: QueryRunRejection) : QueryInvocationOutcome {
+    data class NonAdvancing(override val failure: QueryOriginalFailureDocument) : QueryInvocationOutcome {
         override val kind
             get() = QueryInvocationStop.NON_ADVANCING
     }
@@ -77,14 +77,14 @@ sealed interface QueryInvocationOutcome {
     @SerialName("RETENTION_FAILED")
     data class RetentionFailed(
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-        override val failure: QueryRunRejection? = null
+        override val failure: QueryOriginalFailureDocument? = null
     ) : QueryInvocationOutcome {
         override val kind
             get() = QueryInvocationStop.RETENTION_FAILED
     }
 
     companion object {
-        internal fun from(kind: QueryInvocationStop, failure: QueryRunRejection?): QueryInvocationOutcome =
+        internal fun from(kind: QueryInvocationStop, failure: QueryOriginalFailureDocument?): QueryInvocationOutcome =
             when (kind) {
                 QueryInvocationStop.COMPLETED -> Completed
                 QueryInvocationStop.TERMINAL_INCOMPLETE -> TerminalIncomplete

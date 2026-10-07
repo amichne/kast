@@ -63,7 +63,7 @@ private constructor(
     val stop: QueryInvocationStop
         get() = outcome.kind
 
-    val failure: QueryRunRejection?
+    val failure: QueryOriginalFailureDocument?
         get() = outcome.failure
 
     fun withPreview(value: QueryPreviewDocument): Refinement<QueryInvocationDocument, QueryInvocationDocumentFailure> =
@@ -74,7 +74,7 @@ private constructor(
             count: Int,
             preview: QueryPreviewDocument,
             stop: QueryInvocationStop,
-            failure: QueryRunRejection? = null,
+            failure: QueryOriginalFailureDocument? = null,
         ): Refinement<QueryInvocationDocument, QueryInvocationDocumentFailure> =
             when {
                 count < 0 || preview.rowCount !in 0..count ->

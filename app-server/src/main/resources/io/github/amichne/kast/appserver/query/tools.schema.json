@@ -876,6 +876,17 @@
         },
         "executionBudget": {
           "$ref": "#/$defs/ExecutionBudget"
+        },
+        "completion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CompletionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -5176,6 +5187,59 @@
       ],
       "additionalProperties": false,
       "description": "Read the exact source range of an issued callback, occurrence, or declaration candidate. The existing source owner validates authority and freshness; this does not execute a query."
+    },
+    "CompletionPolicy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProgressiveCompletion"
+        },
+        {
+          "$ref": "#/$defs/CompleteOnlyCompletion"
+        }
+      ],
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument"
+    },
+    "ProgressiveCompletion": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PROGRESSIVE"
+          ],
+          "default": "PROGRESSIVE"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive"
+    },
+    "CompleteOnlyCompletion": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "COMPLETE_ONLY"
+          ],
+          "default": "COMPLETE_ONLY"
+        },
+        "model": {
+          "type": "string",
+          "enum": [
+            "COMPILER_RESOLVED_STATIC_V1"
+          ],
+          "default": "COMPILER_RESOLVED_STATIC_V1"
+        }
+      },
+      "required": [
+        "type",
+        "model"
+      ],
+      "additionalProperties": false,
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.CompleteOnly"
     }
   },
   "tools": [

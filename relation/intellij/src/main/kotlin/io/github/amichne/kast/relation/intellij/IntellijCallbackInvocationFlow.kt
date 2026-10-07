@@ -14,6 +14,7 @@ internal fun readCallbackInvocationFlow(
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
     admitWork: () -> CallbackWorkAdmission,
+    summaries: CallbackParameterSummaries,
 ): CallbackInvocationFlowRead {
     val context = IntellijCallbackFlowContext(scope, projection, admitWork)
     when (val allowed = context.permit()) {
@@ -31,6 +32,7 @@ internal fun readCallbackInvocationFlow(
             unavailableCallbackSupply(context, literal, body, lexicalOwner, prepared.cause)
         is CallbackBindingPreparation.ContractRejected -> CallbackInvocationFlowRead.ContractRejected(prepared.cause)
         is CallbackBindingPreparation.Direct -> readDirectCallbackFlow(context, prepared, body, lexicalOwner)
-        is CallbackBindingPreparation.Prepared -> IntellijCallbackFlowScan(context, prepared.value, body).read()
+        is CallbackBindingPreparation.Prepared ->
+            IntellijCallbackFlowScan(context, prepared.value, body, summaries).read()
     }
 }

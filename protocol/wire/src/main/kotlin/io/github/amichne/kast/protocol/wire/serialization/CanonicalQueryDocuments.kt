@@ -119,6 +119,15 @@ internal enum class QueryRelationFailureWireDocument {
 @Serializable
 internal sealed interface QueryRunRejectionWireDocument {
     @Serializable
+    @SerialName("COMPLETION_UNSUPPORTED")
+    data class CompletionUnsupported(val detail: QueryRunRejection.CompletionUnsupported) :
+        QueryRunRejectionWireDocument
+
+    @Serializable
+    @SerialName("COMPLETION_UNPROVEN")
+    data class CompletionUnproven(val detail: QueryRunRejection.CompletionUnproven) : QueryRunRejectionWireDocument
+
+    @Serializable
     @SerialName("IMPACT_EXECUTION_REJECTED")
     data class ImpactExecutionRejected(
         val cause: io.github.amichne.kast.protocol.contract.ImpactExecutionFailureDocument
@@ -206,6 +215,7 @@ private fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
 
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
+        interpretation = interpretation,
         invocation = invocation,
         evidenceWindow = evidenceWindow,
         question = question,
@@ -243,6 +253,7 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                                                         relationObservations.toBoundedRelations().mapConverted {
                                                             boundedRelations ->
                                                             QueryRunResult(
+                                                                interpretation = interpretation,
                                                                 invocation = invocation,
                                                                 evidenceWindow = evidenceWindow,
                                                                 question = question,
@@ -390,6 +401,8 @@ private fun QueryRunQualificationWireDocument.toContract(): WireDocumentConversi
 
 private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocument =
     when (this) {
+        is QueryRunRejection.CompletionUnsupported -> QueryRunRejectionWireDocument.CompletionUnsupported(this)
+        is QueryRunRejection.CompletionUnproven -> QueryRunRejectionWireDocument.CompletionUnproven(this)
         is QueryRunRejection.ImpactSourceRejected -> QueryRunRejectionWireDocument.ImpactSourceRejected(cause)
         is QueryRunRejection.ImpactExecutionRejected -> QueryRunRejectionWireDocument.ImpactExecutionRejected(cause)
         is QueryRunRejection.ImpactPresentationRejected ->
@@ -417,6 +430,8 @@ private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocume
 
 private fun QueryRunRejectionWireDocument.toContract(): WireDocumentConversion<QueryRunRejection> =
     when (this) {
+        is QueryRunRejectionWireDocument.CompletionUnsupported -> WireDocumentConversion.Converted(detail)
+        is QueryRunRejectionWireDocument.CompletionUnproven -> WireDocumentConversion.Converted(detail)
         is QueryRunRejectionWireDocument.ImpactSourceRejected ->
             WireDocumentConversion.Converted(QueryRunRejection.ImpactSourceRejected(cause))
         is QueryRunRejectionWireDocument.ImpactExecutionRejected ->

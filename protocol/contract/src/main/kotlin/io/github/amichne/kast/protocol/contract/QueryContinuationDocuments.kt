@@ -13,6 +13,10 @@ enum class QueryTerminalReasonDocument {
 
 @Serializable
 enum class QueryExecutionRejectionDocument {
+    INVOCATION_TIME_LIMIT,
+    INVOCATION_WORK_LIMIT,
+    INVOCATION_RETAINED_BYTES_LIMIT,
+    INVOCATION_CANCELLED,
     RESULT_UNAVAILABLE,
     RESULT_STALE_BASIS,
     RESULT_ROW_UNAVAILABLE,

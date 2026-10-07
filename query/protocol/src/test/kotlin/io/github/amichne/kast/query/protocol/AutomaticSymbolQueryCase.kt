@@ -67,7 +67,7 @@ internal open class AutomaticSymbolQueryCase {
             ResultLimit.parse(rows).refined(),
             QueryByteLimit.parse(byteLimit).refined(),
             QueryByteLimit.parse(retainedBytes).refined(),
-            previewBytes = CanonicalQueryCliDocuments::symbolPreviewBytes,
+            previewBytes = CanonicalQueryCliDocuments::previewBytes,
             nanoTime = nanoTime,
             cancelled = cancelled,
             inlinePresentation = inlinePresentation,
