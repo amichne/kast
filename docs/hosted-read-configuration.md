@@ -1,6 +1,6 @@
 # Configure semantic reads and diagnose limits
 
-The existing-IDE read path admits an immutable settings policy when its project service starts. The CLI and provider admit their policy when their processes start. Defaults preserve the previous capacities and deadlines. The authoritative parameter identities, ranges and cross-limit checks are in [ReadLimits.kt](../kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt); `kast config schema --json` exposes the generated catalogue. Client exchange time must strictly exceed host connection time, and both provider invocation deadlines must strictly exceed client exchange time. Equality rejects configuration so an outer timer cannot expire at the inner boundary. Semantic and hosted query settings may remain equal because hosted admission reserves completion time before selecting the effective semantic grant.
+The existing-IDE read path admits an immutable settings policy when its project service starts. The CLI and provider admit their policy when their processes start. Caller execution budgets control semantic output; default transport byte capacities impose only the JVM representation ceiling. The authoritative parameter identities, ranges and cross-limit checks are in [ReadLimits.kt](../kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt); `kast config schema --json` exposes the generated catalogue. Client exchange time must strictly exceed host connection time, and both provider invocation deadlines must strictly exceed client exchange time. Equality rejects configuration so an outer timer cannot expire at the inner boundary. Semantic and hosted query settings may remain equal because hosted admission reserves completion time before selecting the effective semantic grant.
 
 ## Apply a setting
 
@@ -69,8 +69,8 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `SOURCE_RETURNED_BYTES` | 49,152 | bytes |
 | `TRAVERSAL_DEPTH` | 16 | count |
 | `TRAVERSAL_FRONTIER` | 128 | count |
-| `HOST_REQUEST_BYTES` | 16,384 | bytes |
-| `HOST_RESPONSE_BYTES` | 65,536 | bytes |
+| `HOST_REQUEST_BYTES` | 2,147,483,646 | bytes |
+| `HOST_RESPONSE_BYTES` | 2,147,483,646 | bytes |
 | `HOST_DESCRIPTOR_BYTES` | 16,384 | bytes |
 | `HOST_ACCEPT_BACKLOG` | 64 | count |
 | `HOST_CONNECTIONS` | 16 | count |
@@ -85,11 +85,11 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `DIAGNOSTIC_FAILURES` | 16 | count |
 | `DIAGNOSTIC_FRAMES` | 8 | count |
 | `DIAGNOSTIC_TEXT_CHARACTERS` | 256 | characters |
-| `PROVIDER_OUTPUT_BYTES` | 524,288 | bytes |
+| `PROVIDER_OUTPUT_BYTES` | 2,147,483,646 | bytes |
 | `PROVIDER_INVOCATION_MILLIS` | 1,080,000 | milliseconds |
 | `PROVIDER_GRAPH_INVOCATION_MILLIS` | 1,260,000 | milliseconds |
-| `PROCESS_INPUT_BYTES` | 4,194,304 | bytes |
-| `PROCESS_OUTPUT_BYTES` | 67,108,864 | bytes |
+| `PROCESS_INPUT_BYTES` | 2,147,483,646 | bytes |
+| `PROCESS_OUTPUT_BYTES` | 2,147,483,646 | bytes |
 | `PROCESS_TIMEOUT_MILLIS` | 1,260,000 | milliseconds |
 
 ## Read the evidence
@@ -175,9 +175,16 @@ accept an optional `execution_budget` object with
 Supplied numbers must be positive integers. Omitted controls select configured
 defaults. Intent tools also normalize null controls to defaults. The IDE admits each dimension against the corresponding
 `KAST_READ_EXECUTION_MAX_*` operator ceiling and applicable transport capacity.
-These ceilings default to 2,147,483,646; existing semantic defaults, the 1,000-item
-canonical page capacity, response bytes, and remaining hosted deadline still
-apply. Raising a caller allowance cannot extend the configured host or client
+These ceilings and transport byte capacities default to 2,147,483,646, leaving
+one unit of headroom for signed JVM count APIs and overflow probes. A caller's
+512 KiB or 1.5 MiB byte grant therefore requires no transport overrides. The
+49,152-byte semantic/source defaults still apply when the caller omits a grant.
+Explicitly lowered transport capacities still clamp grants and reject oversized
+frames. The broker also uses the representation ceiling for semantic messages,
+process I/O and client messages; tool payloads reserve 4,096 bytes within it for
+the existing RPC envelope. This ceiling is not a promise that a near-ceiling
+payload fits available memory. Result paging, retention quotas, schema admission,
+concurrency and remaining hosted deadlines still apply. Raising a caller allowance cannot extend the configured host or client
 deadline. The admitted time excludes already elapsed model work and reserves
 publication headroom.
 

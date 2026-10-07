@@ -5,6 +5,19 @@ import org.junit.jupiter.api.Test
 
 class ReadLimitsTest {
     @Test
+    fun `larger semantic byte defaults need no transport overrides`() {
+        val bytes = 128 * 1_024 * 1_024
+        val limits =
+            ReadLimits.resolve(
+                mapOf(
+                    ReadLimitParameter.SEMANTIC_RETURNED_BYTES.environmentKey to bytes.toString(),
+                    ReadLimitParameter.SOURCE_RETURNED_BYTES.environmentKey to bytes.toString(),
+                )
+            )
+        assertTrue(limits is Refinement.Refined)
+    }
+
+    @Test
     fun `defaults are complete and overrides preserve parameter identity and provenance`() {
         val limits =
             ReadLimits.resolve(

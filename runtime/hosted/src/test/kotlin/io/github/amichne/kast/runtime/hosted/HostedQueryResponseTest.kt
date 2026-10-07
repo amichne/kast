@@ -48,6 +48,14 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryResponseTest {
     @Test
+    fun `caller byte grant encodes a complete response above the historical transport cap`() {
+        val original = OperationOutcome.Complete(envelope(List(40) { item() }, emptyList()))
+        val response = encodeHostedQueryResponse(original, maximumBytes = ReturnedByteLimit.parse(524_288).refined())
+        assertTrue(response.document.toByteArray(Charsets.UTF_8).size > 65_536)
+        assertEquals(original, (response as HostedResponse.Canonical<*, *, *>).semantic)
+    }
+
+    @Test
     fun `caller byte allowance includes grant evidence and emits each retained failure once`() {
         val report = ExecutionBudgetReport.from(queryTestGrant())
         val all = List(4) { item() }
@@ -248,7 +256,11 @@ class HostedQueryResponseTest {
 
     @Test
     fun `projection without retention refuses irreversible clipping`() {
-        val response = encodeHostedQueryResponse(OperationOutcome.Complete(envelope(List(40) { item() }, emptyList())))
+        val response =
+            encodeHostedQueryResponse(
+                OperationOutcome.Complete(envelope(List(40) { item() }, emptyList())),
+                maximumBytes = ReturnedByteLimit.parse(65_536).refined(),
+            )
         assertTrue(response is HostedResponse.Oversized)
     }
 
@@ -263,7 +275,7 @@ class HostedQueryResponseTest {
     }
 
     private fun encodeWithRetention(semantic: HostedQueryOutcome): HostedResponse =
-        encodeHostedQueryResponse(semantic) {
+        encodeHostedQueryResponse(semantic, maximumBytes = ReturnedByteLimit.parse(65_536).refined()) {
             HostedOutputRetention.Retained(
                 ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000").refined()
             )
