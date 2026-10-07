@@ -68,6 +68,10 @@ internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("request-rejected") REQUEST_REJECTED,
     @SerialName("discovery-rejected") DISCOVERY_REJECTED,
     @SerialName("reference-stale") REFERENCE_STALE,
+    @SerialName("invocation-time-limit") INVOCATION_TIME_LIMIT,
+    @SerialName("invocation-work-limit") INVOCATION_WORK_LIMIT,
+    @SerialName("invocation-retained-bytes-limit") INVOCATION_RETAINED_BYTES_LIMIT,
+    @SerialName("invocation-cancelled") INVOCATION_CANCELLED,
     @SerialName("budget-rejected") BUDGET_REJECTED,
     @SerialName("internal-contract-violation") INTERNAL_CONTRACT_VIOLATION,
 }
