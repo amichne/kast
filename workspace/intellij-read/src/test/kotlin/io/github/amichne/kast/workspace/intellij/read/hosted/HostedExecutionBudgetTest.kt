@@ -15,6 +15,44 @@ import org.junit.jupiter.api.Test
 
 class HostedExecutionBudgetTest {
     @Test
+    fun `explicit operator transport capacity retains its clamp evidence`() {
+        val limits = ReadLimits.resolve(mapOf("KAST_READ_HOST_RESPONSE_BYTES" to "65536")).proven()
+        val grant =
+            admitHostedExecutionBudget(
+                limits,
+                HostedExecutionBudgetRequest(
+                    RequestedExecutionBudget(
+                        returnedBytes = ExecutionAllowance.Requested(ReturnedByteLimit.parse(524_288).proven())
+                    )
+                ),
+                ElapsedTimeLimitMillis.parse(2_000).proven(),
+            )
+        assertEquals(65_536L, grant.returnedBytes.effective.value)
+        assertEquals(setOf(ExecutionBudgetClamp.TRANSPORT_CAPACITY), grant.returnedBytes.clamping)
+    }
+
+    @Test
+    fun `semantic and source caller byte grants survive default transport admission`() {
+        for (profile in HostedBudgetProfile.entries) {
+            for (bytes in listOf(524_288L, 1_572_864L, 128L * 1_024 * 1_024)) {
+                val grant =
+                    admitHostedExecutionBudget(
+                        ReadLimits.Default,
+                        HostedExecutionBudgetRequest(
+                            RequestedExecutionBudget(
+                                returnedBytes = ExecutionAllowance.Requested(ReturnedByteLimit.parse(bytes).proven())
+                            ),
+                            profile,
+                        ),
+                        ElapsedTimeLimitMillis.parse(2_000).proven(),
+                    )
+                assertEquals(bytes, grant.returnedBytes.effective.value)
+                assertEquals(emptySet<ExecutionBudgetClamp>(), grant.returnedBytes.clamping)
+            }
+        }
+    }
+
+    @Test
     fun `admission subtracts elapsed model time and publication reserve from larger caller allowance`() {
         var now = 0L
         val request =
@@ -33,7 +71,7 @@ class HostedExecutionBudgetTest {
         assertEquals(2_750L, grant.elapsed.effective.value)
         assertEquals(5L, grant.work.effective.value)
         assertEquals(1_000, grant.results.effective.value)
-        assertEquals(65_536L, grant.returnedBytes.effective.value)
+        assertEquals(100_000L, grant.returnedBytes.effective.value)
         assertEquals(setOf(ExecutionBudgetClamp.DEADLINE_REMAINING), grant.elapsed.clamping)
         now = 3_750_000_000L
         assertEquals(Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), deadline.admit(null))

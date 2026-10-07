@@ -1,5 +1,8 @@
 package io.github.amichne.kast.kernel
 
+/** Signed JVM byte/count APIs require one unit of headroom for overflow probes. This is representation, not policy. */
+const val MAXIMUM_TRANSPORT_BYTES: Int = Int.MAX_VALUE - 1
+
 /** Operational capacities, separate from compiler identities and protocol grammar. */
 enum class ReadLimitUnit {
     COUNT,
@@ -47,8 +50,8 @@ enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, va
     TRAVERSAL_FRONTIER(128, ReadLimitUnit.COUNT),
     HOST_REFERENCE_ENTRIES(DEFAULT_HOST_REFERENCE_ENTRIES, ReadLimitUnit.COUNT),
     HOST_REFERENCE_BYTES(DEFAULT_HOST_REFERENCE_BYTES, ReadLimitUnit.BYTES),
-    HOST_REQUEST_BYTES(16_384, ReadLimitUnit.BYTES, 256),
-    HOST_RESPONSE_BYTES(65_536, ReadLimitUnit.BYTES, 256),
+    HOST_REQUEST_BYTES(MAXIMUM_TRANSPORT_BYTES, ReadLimitUnit.BYTES, 256),
+    HOST_RESPONSE_BYTES(MAXIMUM_TRANSPORT_BYTES, ReadLimitUnit.BYTES, 256),
     HOST_DESCRIPTOR_BYTES(16_384, ReadLimitUnit.BYTES, 256),
     HOST_ACCEPT_BACKLOG(DEFAULT_HOST_ACCEPT_BACKLOG, ReadLimitUnit.COUNT),
     HOST_CONNECTIONS(DEFAULT_HOST_CONNECTIONS, ReadLimitUnit.COUNT),
@@ -64,11 +67,11 @@ enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, va
     DIAGNOSTIC_FAILURES(16, ReadLimitUnit.COUNT),
     DIAGNOSTIC_FRAMES(8, ReadLimitUnit.COUNT),
     DIAGNOSTIC_TEXT_CHARACTERS(256, ReadLimitUnit.CHARACTERS),
-    PROVIDER_OUTPUT_BYTES(512 * 1_024, ReadLimitUnit.BYTES, 256),
+    PROVIDER_OUTPUT_BYTES(MAXIMUM_TRANSPORT_BYTES, ReadLimitUnit.BYTES, 256),
     PROVIDER_INVOCATION_MILLIS(1_080_000, ReadLimitUnit.MILLISECONDS),
     PROVIDER_GRAPH_INVOCATION_MILLIS(1_260_000, ReadLimitUnit.MILLISECONDS),
-    PROCESS_INPUT_BYTES(4 * 1_024 * 1_024, ReadLimitUnit.BYTES, 256),
-    PROCESS_OUTPUT_BYTES(64 * 1_024 * 1_024, ReadLimitUnit.BYTES, 256),
+    PROCESS_INPUT_BYTES(MAXIMUM_TRANSPORT_BYTES, ReadLimitUnit.BYTES, 256),
+    PROCESS_OUTPUT_BYTES(MAXIMUM_TRANSPORT_BYTES, ReadLimitUnit.BYTES, 256),
     PROCESS_TIMEOUT_MILLIS(1_260_000, ReadLimitUnit.MILLISECONDS);
 
     val environmentKey: String

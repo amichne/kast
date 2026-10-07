@@ -5,6 +5,7 @@ import io.github.amichne.kast.distribution.contract.configuration.ConfigurationO
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationScope
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationUnit
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.MAXIMUM_TRANSPORT_BYTES
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 
 /**
@@ -12,15 +13,16 @@ import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
  * injectable at their existing typed policy boundaries. Per-phase deadlines are not aggregate bounds.
  */
 object BrokerOperationalLimits {
-    const val maximumMessageBytes: Int = 64 * 1_024 * 1_024
+    const val maximumMessageBytes: Int = MAXIMUM_TRANSPORT_BYTES
     const val maximumConnections: Int = 8
     const val inFlightCallsPerConnection: Int = 8
     const val inFlightCallsPerProvider: Int = 4
     const val maximumDescriptorCount: Int = 64
     const val maximumCatalogBytes: Int = 1_024 * 1_024
-    const val maximumToolArgumentBytes: Int = 64 * 1_024
-    const val maximumToolResultBytes: Int = 1_024 * 1_024
     const val toolRpcEnvelopeAllowanceBytes: Int = 4_096
+    // Reserve the existing RPC envelope inside the representable frame, rather than imposing another payload policy.
+    const val maximumToolArgumentBytes: Int = MAXIMUM_TRANSPORT_BYTES - toolRpcEnvelopeAllowanceBytes
+    const val maximumToolResultBytes: Int = MAXIMUM_TRANSPORT_BYTES - toolRpcEnvelopeAllowanceBytes
     const val maximumToolRpcResponseBytes: Int = maximumToolResultBytes + toolRpcEnvelopeAllowanceBytes
     const val defaultWorkspaceQueued: Int = 32
     const val maximumWorkspaceQueued: Int = 4_096
@@ -33,13 +35,13 @@ object BrokerOperationalLimits {
     const val installedCodexSchemaBytes: Int = 32 * 1_024 * 1_024
     const val maximumCodexSchemaFiles: Int = 2_048
     const val maximumCodexCommandOutputBytes: Int = 1_024 * 1_024
-    const val maximumProcessInputBytes: Int = 4 * 1_024 * 1_024
-    const val maximumProcessOutputBytes: Int = 64 * 1_024 * 1_024
+    const val maximumProcessInputBytes: Int = MAXIMUM_TRANSPORT_BYTES
+    const val maximumProcessOutputBytes: Int = MAXIMUM_TRANSPORT_BYTES
     const val maximumGradleOutputBytes: Int = 512 * 1_024
     const val maximumKastVersionBytes: Int = 4 * 1_024
     // Schema introspection carries the full catalog, independently of per-read result allowances.
     const val maximumKastSchemaBytes: Int = maximumCatalogBytes
-    const val maximumKastOutputBytes: Int = 512 * 1_024
+    const val maximumKastOutputBytes: Int = maximumToolResultBytes
     const val maximumWorkspaces: Int = 256
     const val maximumRegistryBytes: Int = 1_048_576
     const val maximumInvocationJournalBytes: Int = 2_097_152
@@ -49,7 +51,7 @@ object BrokerOperationalLimits {
     const val maximumSeedConsentBytes: Int = 4_096
     const val maximumControlStateBytes: Int = 16_384
     const val maximumDesktopInspectionBytes: Int = 1_024
-    const val maximumClientMessageBytes: Int = 4 * 1_024 * 1_024
+    const val maximumClientMessageBytes: Int = MAXIMUM_TRANSPORT_BYTES
     const val maximumInventoryEntries: Int = ControlDistributionLimits.maximumEntryCount
     const val maximumInventoryBytes: Long = ControlDistributionLimits.maximumPayloadBytes
     const val maximumEpochBytes: Int = 1_024

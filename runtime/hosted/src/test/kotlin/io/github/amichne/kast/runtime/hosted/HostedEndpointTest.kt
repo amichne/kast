@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -92,7 +93,12 @@ class HostedEndpointTest {
             val observer = HostedEndpointObserver { stage, outcome -> observations += stage to outcome }
             val invalid = ByteArrayOutputStream().also { DataOutputStream(it).writeInt(16_385) }
             val rejectedOutput = ByteArrayOutputStream()
-            serveHostedConnection(ByteArrayInputStream(invalid.toByteArray()), rejectedOutput, observer) {
+            serveHostedConnection(
+                ByteArrayInputStream(invalid.toByteArray()),
+                rejectedOutput,
+                observer,
+                smallRequestLimits,
+            ) {
                 fail("Rejected frames must not reach semantic dispatch")
             }
             assertEquals(
@@ -196,7 +202,7 @@ class HostedEndpointTest {
         val oversized = ByteArrayOutputStream().also { DataOutputStream(it).writeInt(16_385) }
         assertEquals(
             Refinement.Rejected(HostedEndpointFailure.REQUEST_TOO_LARGE),
-            HostedFrames.read(ByteArrayInputStream(oversized.toByteArray())),
+            HostedFrames.read(ByteArrayInputStream(oversized.toByteArray()), smallRequestLimits),
         )
         val truncated =
             ByteArrayOutputStream().also {
@@ -210,6 +216,9 @@ class HostedEndpointTest {
             HostedFrames.read(ByteArrayInputStream(truncated.toByteArray())),
         )
     }
+
+    private val smallRequestLimits =
+        (ReadLimits.resolve(mapOf("KAST_READ_HOST_REQUEST_BYTES" to "16384")) as Refinement.Refined).value
 
     @Test
     fun `wire parser closes operation and field shapes before semantic admission`() {

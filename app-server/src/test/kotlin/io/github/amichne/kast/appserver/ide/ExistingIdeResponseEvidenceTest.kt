@@ -29,6 +29,42 @@ import org.junit.jupiter.api.Test
 
 class ExistingIdeResponseEvidenceTest {
     @Test
+    fun `unrepresentable default frame rejects before reading its body`() {
+        val input = framed(Int.MAX_VALUE, byteArrayOf(1))
+        val evidence = ArrayList<ExistingIdeResponseEvidence>()
+        val exchange =
+            readExistingIdeResponse(input, ReadLimits.Default, evidence::add) {
+                error("Unrepresentable response reached decoder")
+            }
+        assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED), exchange)
+        assertEquals(1, input.available())
+        assertEquals(
+            listOf(
+                ExistingIdeResponseEvidence.Frame(
+                    Int.MAX_VALUE,
+                    2_147_483_646,
+                    ExistingIdeResponseFrameOutcome.OVER_LIMIT,
+                )
+            ),
+            evidence,
+        )
+    }
+
+    @Test
+    fun `default framing drains and validates a response larger than the historical cap`() {
+        val fixture = ResponseFixture()
+        val bytes = fixture.reply() + ByteArray(1_572_864) { 32 }
+        val evidence = ArrayList<ExistingIdeResponseEvidence>()
+        val exchange =
+            readExistingIdeResponse(framed(bytes.size, bytes), ReadLimits.Default, evidence::add) {
+                ExistingIdeDocuments.responseWithEvidence(it, fixture.root, fixture.operation, fixture.descriptor)
+            }
+        assertInstanceOf(ExistingIdeExchange.Semantic::class.java, exchange)
+        assertEquals(ExistingIdeResponseBodyOutcome.DRAINED, (evidence[1] as ExistingIdeResponseEvidence.Body).outcome)
+        assertEquals(ExistingIdeResponseEvidence.Decoded(ExistingIdeResponseDecodeOutcome.SEMANTIC), evidence.last())
+    }
+
+    @Test
     fun `valid semantic response records exact frame body and accepted decoder outcome`() {
         val fixture = ResponseFixture()
         val bytes = fixture.reply()
@@ -183,7 +219,8 @@ class ExistingIdeResponseEvidenceTest {
         return DataInputStream(ByteArrayInputStream(output.toByteArray()))
     }
 
-    private val hostLimits = ReadLimits.Default
+    private val hostLimits =
+        (ReadLimits.resolve(mapOf("KAST_READ_HOST_RESPONSE_BYTES" to "65536")) as Refinement.Refined).value
 }
 
 private class ResponseFixture {

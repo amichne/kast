@@ -6,6 +6,8 @@ import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.JsonSchemaViolationEvidence
 import io.github.amichne.kast.appserver.schema.canonicalJson
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
@@ -211,14 +213,22 @@ private constructor(
     val providerStartupTimeoutMillis: Long,
 ) {
     companion object {
-        internal fun defaults(): BrokerLimits =
+        internal fun defaults(readLimits: ReadLimits = ReadLimits.Default): BrokerLimits =
             BrokerLimits(
                 inFlightCallsPerConnection = BrokerOperationalLimits.inFlightCallsPerConnection,
                 inFlightCallsPerProvider = BrokerOperationalLimits.inFlightCallsPerProvider,
                 maximumDescriptorCount = BrokerOperationalLimits.maximumDescriptorCount,
                 maximumCatalogBytes = BrokerOperationalLimits.maximumCatalogBytes,
-                maximumToolArgumentBytes = BrokerOperationalLimits.maximumToolArgumentBytes,
-                maximumToolResultBytes = BrokerOperationalLimits.maximumToolResultBytes,
+                maximumToolArgumentBytes =
+                    minOf(
+                        BrokerOperationalLimits.maximumToolArgumentBytes,
+                        readLimits[ReadLimitParameter.HOST_REQUEST_BYTES].value,
+                    ),
+                maximumToolResultBytes =
+                    minOf(
+                        BrokerOperationalLimits.maximumToolResultBytes,
+                        readLimits[ReadLimitParameter.HOST_RESPONSE_BYTES].value,
+                    ),
                 providerStartupTimeoutMillis = BrokerOperationalLimits.providerStartup.value,
             )
     }

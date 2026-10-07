@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver.core
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
@@ -21,6 +22,23 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class BrokerCatalogTest {
+    @Test
+    fun `default broker preserves schema admitted arguments and results above historical byte ceilings`(
+        @TempDir temporary: Path
+    ) = runBlocking {
+        val expected = "x".repeat(1_572_864)
+        val broker = Broker.create(listOf(echoProvider("echo")), BrokerLimits.defaults()).validatedValue()
+        val dispatch =
+            broker.dispatch(
+                BrokerDispatchRequest(
+                    ToolAddress(namespace("echo"), toolName("say")),
+                    kotlinx.serialization.json.Json.encodeToJsonElement(EchoInput.serializer(), EchoInput(expected)),
+                    invocationContext(temporary),
+                )
+            )
+        assertEquals(expected, dispatch.completedText())
+    }
+
     @Test
     fun `observer markdown is disjoint from model-facing tool content`() {
         val presentation =
@@ -108,7 +126,9 @@ class BrokerCatalogTest {
         val argumentBroker =
             Broker.create(
                     listOf(echoProvider("echo")),
-                    BrokerLimits.defaults(),
+                    BrokerLimits.defaults(
+                        ReadLimits.resolve(mapOf("KAST_READ_HOST_REQUEST_BYTES" to "65536")).refinedValue()
+                    ),
                 )
                 .validatedValue()
         val oversizedArgument =
@@ -127,7 +147,9 @@ class BrokerCatalogTest {
         val resultBroker =
             Broker.create(
                     listOf(echoProvider("echo", outputValue = { "x".repeat(1_024 * 1_024) })),
-                    BrokerLimits.defaults(),
+                    BrokerLimits.defaults(
+                        ReadLimits.resolve(mapOf("KAST_READ_HOST_RESPONSE_BYTES" to "1048576")).refinedValue()
+                    ),
                 )
                 .validatedValue()
         val oversizedResult =
@@ -266,7 +288,7 @@ class BrokerCatalogTest {
             is Validation.Rejected -> throw AssertionError("Expected validation, received $failures")
         }
 
-    private data class EchoInput(val value: String)
+    @kotlinx.serialization.Serializable private data class EchoInput(val value: String)
 
     private data class EchoOutput(val value: String)
 
