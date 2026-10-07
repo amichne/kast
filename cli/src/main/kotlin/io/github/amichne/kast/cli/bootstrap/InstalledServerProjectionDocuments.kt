@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.cliName
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -25,7 +26,16 @@ internal data class ServerSchemaProperty(
     val required: Boolean = true,
 )
 
+private val installedOperationOutputSchemas = ConcurrentHashMap<CanonicalOperation, JsonObject>()
+private val installedOperationSemanticSchemas = ConcurrentHashMap<CanonicalOperation, JsonObject>()
+private val installedToolSemanticSchemas = ConcurrentHashMap<PublicToolIdentity, JsonObject>()
+private val installedToolOutputSchemas = ConcurrentHashMap<PublicToolIdentity, JsonObject>()
+
+// Keys are closed protocol enums; schema construction consumes only immutable canonical contracts.
 internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObject =
+    installedOperationOutputSchemas.computeIfAbsent(operation) { buildInstalledServerOutputSchema(it) }
+
+private fun buildInstalledServerOutputSchema(operation: CanonicalOperation): JsonObject =
     unionSchema(
             objectSchema(
                 ServerSchemaProperty("status", constantSchema("completed", "Process outcome.")),
@@ -40,13 +50,20 @@ internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObj
 
 /** The operation owns its semantic document across hosted, MCP, and RPC projections. */
 internal fun installedSemanticResultSchema(operation: CanonicalOperation): JsonObject =
-    operationProcessDocumentSchema(operation).withLocalOutputDefinitions()
+    installedOperationSemanticSchemas.computeIfAbsent(operation) {
+        operationProcessDocumentSchema(it).withLocalOutputDefinitions()
+    }
 
 /** A facade may route distinct closed actions to their existing canonical result owners. */
 internal fun installedPublicToolSemanticResultSchema(identity: PublicToolIdentity): JsonObject =
-    publicToolProcessDocumentSchema(identity).withLocalOutputDefinitions()
+    installedToolSemanticSchemas.computeIfAbsent(identity) {
+        publicToolProcessDocumentSchema(it).withLocalOutputDefinitions()
+    }
 
 internal fun installedPublicToolOutputSchema(identity: PublicToolIdentity): JsonObject =
+    installedToolOutputSchemas.computeIfAbsent(identity) { buildInstalledPublicToolOutputSchema(it) }
+
+private fun buildInstalledPublicToolOutputSchema(identity: PublicToolIdentity): JsonObject =
     unionSchema(
             objectSchema(
                 ServerSchemaProperty("status", constantSchema("completed", "Process outcome.")),
@@ -195,6 +212,11 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "gradleJvmOutcome" to gradleJvmSelectionOutcomeSchema(),
         )
         .apply {
+            for ((name, serializer) in
+                io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers) {
+                check(name !in this) { "Duplicate canonical callback schema address: $name" }
+                this[name] = generatedRequestSchema(serializer)
+            }
             for ((name, definition) in
                 HostedRejectionSchemas.readDefinitions.entries + HostedRejectionSchemas.endpointDefinitions.entries) {
                 check(name !in this || this[name] == definition) {

@@ -7,7 +7,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -95,13 +94,17 @@ class MintlifyCallableReferenceTest {
                 tool.approvalPolicy,
                 kastMetadata.getValue("approvalPolicy").jsonPrimitive.content,
             )
-            assertEquals(
-                tool.inputSchema.expandSchema(tool.inputSchema),
-                components.getValue(requestReference).expandSchema(reference),
+            assertResolvedSchemaEquals(
+                tool.inputSchema,
+                components.getValue(requestReference),
+                tool.inputSchema,
+                reference,
             )
-            assertEquals(
-                tool.outputSchema.expandSchema(tool.outputSchema),
-                components.getValue(responseReference).expandSchema(reference),
+            assertResolvedSchemaEquals(
+                tool.outputSchema,
+                components.getValue(responseReference),
+                tool.outputSchema,
+                reference,
             )
             assertEquals(
                 "Inputs and response fields for ${tool.name}.",
@@ -288,27 +291,41 @@ class MintlifyCallableReferenceTest {
                 }
             else -> emptyList()
         }
+}
 
-    /** Compare resolved validation assertions independently of definition placement and UI annotations. */
-    private fun JsonElement.expandSchema(root: JsonElement): JsonElement =
-        when (this) {
-            is JsonArray -> Json.encodeToJsonElement(map { it.expandSchema(root) })
-            is JsonObject -> {
-                val ref = get("\$ref")
-                if (ref != null) {
-                    ref.jsonPrimitive.content
-                        .removePrefix("#/")
-                        .split('/')
-                        .fold(root) { node, key ->
-                            node.jsonObject.getValue(key)
-                        }
-                        .expandSchema(root)
-                } else
-                    Json.encodeToJsonElement(
-                        filterKeys { it != "\$defs" && it != "title" }
-                            .mapValues { (_, value) -> value.expandSchema(root) }
-                    )
+/** Resolve one node at a time so shared definitions need not expand into duplicate trees. */
+private fun assertResolvedSchemaEquals(
+    expected: JsonElement,
+    actual: JsonElement,
+    expectedRoot: JsonElement,
+    actualRoot: JsonElement,
+) {
+    val left = expected.resolveSchema(expectedRoot)
+    val right = actual.resolveSchema(actualRoot)
+    when (left) {
+        is JsonObject -> {
+            val expectedFields = left.filterKeys { it != "\$defs" && it != "title" }
+            val actualFields = right.jsonObject.filterKeys { it != "\$defs" && it != "title" }
+            assertEquals(expectedFields.keys, actualFields.keys)
+            expectedFields.forEach { (name, value) ->
+                assertResolvedSchemaEquals(value, actualFields.getValue(name), expectedRoot, actualRoot)
             }
-            else -> this
         }
+        is JsonArray -> {
+            assertEquals(left.size, right.jsonArray.size)
+            left.indices.forEach { index ->
+                assertResolvedSchemaEquals(left[index], right.jsonArray[index], expectedRoot, actualRoot)
+            }
+        }
+        else -> assertEquals(left, right)
+    }
+}
+
+private fun JsonElement.resolveSchema(root: JsonElement): JsonElement {
+    val reference = (this as? JsonObject)?.get("\$ref") ?: return this
+    return reference.jsonPrimitive.content
+        .removePrefix("#/")
+        .split('/')
+        .fold(root) { node, key -> node.jsonObject.getValue(key) }
+        .resolveSchema(root)
 }

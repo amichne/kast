@@ -110,6 +110,13 @@ sealed interface RelationProviderLocator {
             override val descriptor: RelationProviderItemDescriptor,
         ) : Callee
 
+        data class CallbackSupplies(
+            override val file: SymbolDiscoveryFileIdentity,
+            override val range: ExactDeclarationTextRange,
+            override val descriptor: RelationProviderItemDescriptor,
+            val elementClass: RelationProviderElementClass,
+        ) : Callee
+
         data class UnresolvedCall(
             override val file: SymbolDiscoveryFileIdentity,
             override val range: ExactDeclarationTextRange,
@@ -131,6 +138,7 @@ internal fun RelationProviderLocator.canonicalIdentity(): String {
                 "unsupported-definition:${elementClass.value}:${providerFile.stableValue}"
             is RelationProviderLocator.Callee.Reference -> "callee-reference"
             is RelationProviderLocator.Callee.UnresolvedCall -> "unresolved-call:${elementClass.value}"
+            is RelationProviderLocator.Callee.CallbackSupplies -> "callback-supplies:${elementClass.value}"
         }
     return "$kind:${file.stableValue}:${range.startInclusive}:${range.endExclusive}:${descriptor.value}"
 }
@@ -142,6 +150,7 @@ internal fun RelationProviderLocator.detachedTextUnits(): Long =
             is RelationProviderLocator.Definition ->
                 elementClass.value.length.toLong() + providerFile.stableValue.length
             is RelationProviderLocator.Callee.UnresolvedCall -> elementClass.value.length.toLong()
+            is RelationProviderLocator.Callee.CallbackSupplies -> elementClass.value.length.toLong()
             is RelationProviderLocator.PublishedFact ->
                 publication.digest.length +
                     fact.subject.detachedTextUnits() +

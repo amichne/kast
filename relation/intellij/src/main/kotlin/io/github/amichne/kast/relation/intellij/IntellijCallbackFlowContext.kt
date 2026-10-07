@@ -95,6 +95,12 @@ internal class IntellijCallbackFlowContext(
             is Refinement.Rejected -> null
         }
 
+    fun receiverDeclaration(element: com.intellij.psi.PsiNamedElement): CompilerGroundedSymbolEvidence? =
+        when (val result = projection.project(element)) {
+            is IntellijRelationDeclarationProjection.Projected -> result.evidence
+            IntellijRelationDeclarationProjection.Unsupported -> null
+        }
+
     fun target(function: KtNamedFunction): Refinement<RelationEndpoint.Resolved, CallbackInvocationFlowCause> {
         when (scope.request.searchConstraints.packageName.admitPackage { function.relationPackageEvidence() }) {
             IntellijRelationPackageAdmission.ADMITTED -> Unit

@@ -27,7 +27,13 @@ internal constructor(
     val compiler: CompilerSymbolIdentity,
     val file: SymbolDiscoveryFileIdentity,
     val range: ExactDeclarationTextRange,
-)
+) {
+    companion object {
+        fun fromCompiler(
+            evidence: io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+        ): ValueDeclarationIdentity = ValueDeclarationIdentity(evidence.compilerIdentity, evidence.file, evidence.range)
+    }
+}
 
 data class ValueInvocationIdentity
 internal constructor(

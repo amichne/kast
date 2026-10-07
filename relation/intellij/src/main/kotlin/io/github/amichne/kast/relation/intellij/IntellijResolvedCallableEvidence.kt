@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtParenthesizedExpression
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 /** Only a compiler-resolved builtin function invocation is a symbolic function-value parameter callee. */
@@ -38,7 +39,8 @@ internal fun KaSession.resolvedParameterInvocation(
     val invoked = call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol ?: return null
     if (!confirmsBuiltinFunctionInvoke(invoked))
         return if (resolved is KaValueParameterSymbol) IntellijK2ResolvedDeclaration.InvokeReceiver else null
-    val parameterSymbol = resolvedInvocationParameter(call, resolved) ?: return null
+    val parameterSymbol =
+        resolvedInvocationParameter(call, resolved) ?: return resolvedValueReceiver(call, resolved, invoked)
     val owner =
         parameterSymbol.containingDeclaration as? KaFunctionSymbol
             ?: return unsupported(IntellijResolvedCallableFailure.PARAMETER_OWNER_UNAVAILABLE)
@@ -55,6 +57,18 @@ internal fun KaSession.resolvedParameterInvocation(
         }
     return IntellijK2ResolvedDeclaration.ParameterInvocation(callable, parameter, position, call)
 }
+
+private fun KaSession.resolvedValueReceiver(
+    call: KtCallExpression,
+    resolved: KaSymbol,
+    invoked: KaNamedFunctionSymbol,
+): IntellijK2ResolvedDeclaration? =
+    when {
+        (resolved.psi as? KtProperty)?.isLocal == true -> IntellijK2ResolvedDeclaration.InvokeReceiver
+        resolved is KaNamedFunctionSymbol && confirmsBuiltinFunctionInvoke(resolved) ->
+            functionValueInvocation(call, invoked)
+        else -> null
+    }
 
 private fun KaSession.resolvedInvocationParameter(
     call: KtCallExpression,
@@ -91,6 +105,33 @@ internal fun KaSession.confirmsBuiltinFunctionInvoke(symbol: KaNamedFunctionSymb
     return symbol.containingModule is KaBuiltinsModule ||
         (symbol.containingModule is KaLibraryModule && symbol.origin == KaSymbolOrigin.LIBRARY)
 }
+
+/** A complex invoke receiver can have no reference symbol while its complete call resolves exactly. */
+internal fun KaSession.resolvedFunctionValueInvocation(reference: KtReference): KaNamedFunctionSymbol? {
+    val call = reference.element.parent as? KtCallExpression ?: return null
+    if (call.calleeExpression !== reference.element) return null
+    val invoked = call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol ?: return null
+    return invoked.takeIf { confirmsBuiltinFunctionInvoke(it) }
+}
+
+/** Preserves the compiler binding while assigning value proof to the exact whole invocation. */
+internal fun KaSession.functionValueInvocation(
+    reference: KtReference,
+    symbol: KaNamedFunctionSymbol,
+): IntellijK2ResolvedDeclaration {
+    val call = reference.element.parent as? KtCallExpression ?: return IntellijK2ResolvedDeclaration.Unresolved
+    return functionValueInvocation(call, symbol)
+}
+
+private fun KaSession.functionValueInvocation(
+    call: KtCallExpression,
+    symbol: KaNamedFunctionSymbol,
+): IntellijK2ResolvedDeclaration =
+    when (val projected = sourceLessCallable(symbol)) {
+        is IntellijK2ResolvedDeclaration.SourceLess ->
+            IntellijK2ResolvedDeclaration.FunctionInvocation(call, projected.callable)
+        else -> projected
+    }
 
 /** Module and origin prove a known source boundary; missing PSI alone proves nothing about membership. */
 internal fun KaSession.sourceLessCallable(symbol: KaSymbol): IntellijK2ResolvedDeclaration {

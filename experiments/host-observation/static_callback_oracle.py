@@ -19,11 +19,14 @@ class FixtureIntegrityError(ValueError):
 
 class GraphRejectionType(str, Enum):
     UNRESOLVED = 'UNRESOLVED'
+    UNAVAILABLE = 'UNAVAILABLE'
     CALLABLE_VALUE_UNPROVEN = 'CALLABLE_VALUE_UNPROVEN'
 
 
 class FlowObligation(str, Enum):
     EXTERNAL_CALLABLE = 'EXTERNAL_CALLABLE'
+    PARAMETER_ESCAPES = 'PARAMETER_ESCAPES'
+    STORED_CALLBACK = 'STORED_CALLBACK'
     CALLBACK_CYCLE = 'CALLBACK_CYCLE'
     NO_INVOCATION_PROVEN = 'NO_INVOCATION_PROVEN'
     RESULT_LIMIT_REACHED = 'RESULT_LIMIT_REACHED'
@@ -82,11 +85,21 @@ class SupplyOracle:
 
 
 @dataclass(frozen=True)
+class TransferOracle:
+    source: SourceSpan
+    target: SourceSpan
+    source_role: str
+    target_role: str
+    kind: str
+
+
+@dataclass(frozen=True)
 class ForwardingOracle:
     source: FormalOracle
     target: FormalOracle
     argument: SourceSpan
     call: SourceSpan
+    transfers: tuple[TransferOracle, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -131,7 +144,13 @@ class CallableValueRejection:
     type: GraphRejectionType = GraphRejectionType.CALLABLE_VALUE_UNPROVEN
 
 
-RejectionOracle = UnresolvedRejection | CallableValueRejection
+@dataclass(frozen=True)
+class UnavailableRejection:
+    cause: FlowObligation
+    type: GraphRejectionType = GraphRejectionType.UNAVAILABLE
+
+
+RejectionOracle = UnresolvedRejection | CallableValueRejection | UnavailableRejection
 
 
 @dataclass(frozen=True)
@@ -189,14 +208,38 @@ class RejectedLambdaCase:
 
 
 @dataclass(frozen=True)
+class AbsentReceiver:
+    type: str = field(default='ABSENT', init=False)
+
+
+@dataclass(frozen=True)
+class UnboundReceiver:
+    type: str = field(default='UNBOUND', init=False)
+
+
+@dataclass(frozen=True)
+class BoundReceiver:
+    occurrence: SourceSpan
+    type: str = field(default='BOUND', init=False)
+
+
+ReferenceReceiver = AbsentReceiver | UnboundReceiver | BoundReceiver
+
+
+@dataclass(frozen=True)
 class ExcludedReferenceCase:
-    """Named calls exclude this reference; no callback transfer proof is asserted."""
+    """Named calls exclude value creation; a supplied reference retains its callback proof."""
     name: str
     supplier: SymbolOracle
     target: SymbolOracle
     call: SourceSpan
     reference: SourceSpan
     target_occurrence: SourceSpan
+    graph: ForwardingGraphOracle
+    forwardings: tuple[ForwardingOracle, ...]
+    invocation: InvocationOracle
+    dispatch_receiver: ReferenceReceiver = AbsentReceiver()
+    extension_receiver: ReferenceReceiver = AbsentReceiver()
 
 
 @dataclass(frozen=True)
@@ -205,7 +248,7 @@ class RejectedFormalCase:
     owner: SymbolOracle
     formal: FormalOracle
     invocation: InvocationOracle
-    rejection: CallableValueRejection
+    rejection: UnavailableRejection
 
 
 @dataclass(frozen=True)
@@ -216,6 +259,7 @@ class RejectedResourceCase:
     rejection: UnresolvedRejection
     max_results: int
     cause_site: SourceSpan
+    lexical_rejection: UnresolvedRejection
     original_coverage: CompleteCoverageOracle = CompleteCoverageOracle()
 
     def __post_init__(self):
@@ -301,7 +345,7 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
     if tuple(source.relative_path for source in sources) != SOURCE_FILES:
         raise FixtureIntegrityError('the exact ordered three-source inventory is required')
     suppliers, forwarding, invocation = sources
-    declarations: tuple[tuple[SourceDocument, str, str], ...] = (
+    declarations = (
         (suppliers, 'alphaEntry',
          '// The suppliers share the formal route, but each owns a distinct callback body.\n'
          'fun alphaEntry(): String {\n'
@@ -310,7 +354,7 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
          '}'),
         (suppliers, 'betaEntry', 'fun betaEntry(): String = sharedWrapper { betaSink() }'),
         (suppliers, 'callableReferenceEntry',
-         '// Callable references remain outside the admitted COMPLETE_ONLY callback model.\n'
+         '// Callable references retain supplied-value proof without becoming named calls.\n'
          'fun callableReferenceEntry(): String = sharedWrapper(::referenceSink)'),
         (suppliers, 'recursiveEntry',
          '// Static recursive graphs: never execute these functions to qualify a query.\n'
@@ -347,9 +391,24 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
         (invocation, 'selfRecursiveSink', 'fun selfRecursiveSink(): String = "self-recursive"'),
         (invocation, 'mutualRecursiveSink', 'fun mutualRecursiveSink(): String = "mutual-recursive"'),
         (invocation, 'escapeSink', 'fun escapeSink(): String = "escape"'),
+        (invocation, 'aliasSink', 'fun aliasSink(): String = "alias"'),
+        (invocation, 'mutableAliasSink', 'fun mutableAliasSink(): String = "mutable"'),
+        (suppliers, 'aliasEntry', 'fun aliasEntry(): String = fixture.staticcallbacks.forwarding.aliasWrapper { fixture.staticcallbacks.invocation.aliasSink(); "alias" }'),
+        (suppliers, 'mutableAliasEntry', 'fun mutableAliasEntry(): String = fixture.staticcallbacks.forwarding.mutableAliasWrapper { fixture.staticcallbacks.invocation.mutableAliasSink(); "mutable" }'),
+        (forwarding, 'aliasWrapper', 'fun aliasWrapper(block: () -> String): String {\n'
+         '    val first = block\n    val second = first\n    return invokeCallback(second)\n}'),
+        (forwarding, 'mutableAliasWrapper', 'fun mutableAliasWrapper(block: () -> String): String {\n'
+         '    var alias = block\n    return invokeCallback(alias)\n}'),
+        (invocation, 'boundSink', 'fun boundSink(): String = "bound"', 'ReferenceReceiver'),
+        (invocation, 'unboundSink', 'fun unboundSink(): String = "unbound"', 'ReferenceReceiver'),
+        (invocation, 'invokeReceiverCallback', 'fun invokeReceiverCallback(receiver: ReferenceReceiver, block: (ReferenceReceiver) -> String): String = block(receiver)'),
+        (suppliers, 'boundReferenceEntry', 'fun boundReferenceEntry(receiver: fixture.staticcallbacks.invocation.ReferenceReceiver): String =\n'
+         '    fixture.staticcallbacks.forwarding.sharedWrapper(receiver::boundSink)'),
+        (suppliers, 'unboundReferenceEntry', 'fun unboundReferenceEntry(receiver: fixture.staticcallbacks.invocation.ReferenceReceiver): String =\n'
+         '    fixture.staticcallbacks.invocation.invokeReceiverCallback(receiver, fixture.staticcallbacks.invocation.ReferenceReceiver::unboundSink)'),
     )
 
-    def symbol(source: SourceDocument, name: str, declaration: str) -> SymbolOracle:
+    def symbol(source: SourceDocument, name: str, declaration: str, owner: str = '') -> SymbolOracle:
         package = source.text.splitlines()[0].removeprefix('package ')
         if package != 'fixture.staticcallbacks.' + source.relative_path.split('/')[0]:
             raise FixtureIntegrityError('fixture package must match its owning module')
@@ -360,7 +419,7 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
         name_start = _unique_start(source.text, 'fun ' + name + '(') + len('fun ')
         offset = _utf16_length(source.text[:name_start])
         name_site = SourceSpan(str(Path(root) / source.relative_path), Utf16Range(offset, offset + len(name)), name)
-        return SymbolOracle(name, package + '.' + name, _span(root, source, declaration), name_site)
+        return SymbolOracle(name, package + '.' + (owner + '.' if owner else '') + name, _span(root, source, declaration), name_site)
 
     symbols = tuple(symbol(*declaration) for declaration in declarations)
 
@@ -375,13 +434,15 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
 
     def formal(name: str) -> FormalOracle:
         value = named(name)
+        if name == 'invokeReceiverCallback':
+            return FormalOracle(value, within(value, 'block: (ReferenceReceiver) -> String'), 1)
         return FormalOracle(value, within(value, 'block: () -> String'), 0)
 
-    def supply(entry: str, sink: str, receiver: str, body: str) -> SupplyOracle:
+    def supply(entry: str, sink: str, receiver: str, body: str, qualifier: str = "") -> SupplyOracle:
         supplier, target = named(entry), named(sink)
         targets = _occurrences(root, source_for(supplier), sink, body, 1)
         return SupplyOracle(supplier, target, within(supplier, body), targets,
-                            within(supplier, receiver + ' ' + body), formal(receiver))
+                            within(supplier, qualifier + receiver + ' ' + body), formal(receiver))
 
     def forward(source: str, target: str) -> ForwardingOracle:
         origin, destination = formal(source), formal(target)
@@ -438,18 +499,58 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
         within(named('callableReferenceEntry'), 'sharedWrapper(::referenceSink)'),
         within(named('callableReferenceEntry'), '::referenceSink'),
         within(named('callableReferenceEntry'), 'referenceSink'),
+        shared_graph, shared_route, terminal,
     )
+    bound_reference = ExcludedReferenceCase(
+        'bound-callable-reference', named('boundReferenceEntry'), named('boundSink'),
+        within(named('boundReferenceEntry'), 'fixture.staticcallbacks.forwarding.sharedWrapper(receiver::boundSink)'),
+        within(named('boundReferenceEntry'), 'receiver::boundSink'),
+        within(named('boundReferenceEntry'), 'boundSink'), shared_graph, shared_route, terminal,
+        BoundReceiver(_span(root, suppliers, 'receiver', 'receiver::boundSink')))
+    unbound_formal = formal('invokeReceiverCallback')
+    unbound_reference = ExcludedReferenceCase(
+        'unbound-callable-reference', named('unboundReferenceEntry'), named('unboundSink'),
+        within(named('unboundReferenceEntry'), 'fixture.staticcallbacks.invocation.invokeReceiverCallback(receiver, fixture.staticcallbacks.invocation.ReferenceReceiver::unboundSink)'),
+        within(named('unboundReferenceEntry'), 'fixture.staticcallbacks.invocation.ReferenceReceiver::unboundSink'),
+        within(named('unboundReferenceEntry'), 'unboundSink'),
+        ForwardingGraphOracle(unbound_formal, (unbound_formal,), ()), (),
+        InvocationOracle(named('invokeReceiverCallback'), within(named('invokeReceiverCallback'), 'block(receiver)')),
+        UnboundReceiver())
     formal_invocation = RejectedFormalCase('formal-invocation', named('invokeCallback'),
-                                          formal('invokeCallback'), terminal, CallableValueRejection())
+                                          formal('invokeCallback'), terminal, UnavailableRejection(FlowObligation.STORED_CALLBACK))
     # One grant retains sharedWrapper -> forwardOnce, then the next forwarding
     # admission is rejected. No terminal invocation has been retained. The two
     # authored alpha occurrences remain separately observable, with their exact
     # distinct supply proofs and closed, canonical-order resource obligations.
     resource = RejectedResourceCase(
         'alpha-result-capacity', alpha.supplies,
+        UnresolvedRejection((FlowObligation.RESULT_LIMIT_REACHED,)),
+        1, alpha.supply.call,
         UnresolvedRejection((FlowObligation.NO_INVOCATION_PROVEN, FlowObligation.RESULT_LIMIT_REACHED)),
-        1, shared_route[1].call,
     )
+    alias_owner = named('aliasWrapper')
+    def alias_site(expression: str, region: str) -> SourceSpan:
+        return _span(root, forwarding, expression, region)
+    first_binding = within(alias_owner, 'val first = block')
+    second_binding = within(alias_owner, 'val second = first')
+    parameter_read = alias_site('block', 'val first = block')
+    first_read = alias_site('first', 'val second = first')
+    second_read = alias_site('second', 'invokeCallback(second)')
+    alias_route = (ForwardingOracle(formal('aliasWrapper'), formal('invokeCallback'), second_read,
+        within(alias_owner, 'invokeCallback(second)'), (
+            TransferOracle(parameter_read, first_binding, 'EXPRESSION_RESULT', 'LOCAL_BINDING', 'LOCAL_BINDING'),
+            TransferOracle(first_binding, first_read, 'LOCAL_BINDING', 'LOCAL_READ', 'LOCAL_READ'),
+            TransferOracle(first_read, second_binding, 'LOCAL_READ', 'LOCAL_BINDING', 'LOCAL_BINDING'),
+            TransferOracle(second_binding, second_read, 'LOCAL_BINDING', 'LOCAL_READ', 'LOCAL_READ'),
+        )),)
+    alias = CompleteCase('immutable-alias-forwarding',
+        (supply('aliasEntry', 'aliasSink', 'aliasWrapper', '{ fixture.staticcallbacks.invocation.aliasSink(); "alias" }', 'fixture.staticcallbacks.forwarding.'),), alias_route,
+        terminal, (named('betaSink'),),
+        ForwardingGraphOracle(formal('aliasWrapper'), (formal('aliasWrapper'), formal('invokeCallback')), alias_route))
+    mutable = RejectedLambdaCase('mutable-alias-forwarding',
+        supply('mutableAliasEntry', 'mutableAliasSink', 'mutableAliasWrapper', '{ fixture.staticcallbacks.invocation.mutableAliasSink(); "mutable" }', 'fixture.staticcallbacks.forwarding.'), (),
+        UnresolvedRejection((FlowObligation.PARAMETER_ESCAPES, FlowObligation.NO_INVOCATION_PROVEN)),
+        within(named('mutableAliasWrapper'), 'var alias = block'))
     digest = sha256()
     for source in sources:
         digest.update(source.relative_path.encode())
@@ -457,8 +558,8 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
         digest.update(source.text.encode())
         digest.update(b'\0')
     return SuiteOracle(root, digest.hexdigest(), symbols,
-                       (alpha, beta, recursive, self_recursive, mutual_recursive), (escaped, formal_invocation),
-                       (reference,), (resource,))
+                       (alpha, beta, recursive, self_recursive, mutual_recursive, alias), (escaped, formal_invocation, mutable),
+                       (reference, bound_reference, unbound_reference), (resource,))
 
 
 def load_oracle(root: Path) -> SuiteOracle:

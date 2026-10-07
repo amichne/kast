@@ -7,7 +7,7 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class RetainedTopologyBoundaryTest {
     @Test
-    fun `topology remains buildable outside the shipped runtime graph`() {
+    fun `host ships exact semantic fact owners while publication remains outside shipped graphs`() {
         val modules = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             KastArchitecturePolicy.validate(),
         ).architecture.modules
@@ -30,10 +30,21 @@ class RetainedTopologyBoundaryTest {
                 dependencies(dependency) + dependency
             }
 
-        setOf(ModuleId.RUNTIME_HOSTED, ModuleId.CLI, ModuleId.APP_SERVER).forEach { runtime ->
-            assertTrue(
-                dependencies(runtime).intersect(topology + persistence.id).isEmpty(),
-                "${runtime.projectPath} must not ship the retained topology implementation",
+        val semanticFacts = setOf(
+            ModuleId.TOPOLOGY_CONTRACT,
+            ModuleId.TOPOLOGY_BUILD,
+            ModuleId.TOPOLOGY_INTELLIJ,
+        )
+        val expected = mapOf(
+            ModuleId.RUNTIME_HOSTED to semanticFacts,
+            ModuleId.CLI to emptySet(),
+            ModuleId.APP_SERVER to emptySet(),
+        )
+        expected.forEach { (runtime, shipped) ->
+            assertEquals(
+                shipped,
+                dependencies(runtime).intersect(topology + persistence.id),
+                "${runtime.projectPath} must ship only its exact semantic fact owners",
             )
         }
     }

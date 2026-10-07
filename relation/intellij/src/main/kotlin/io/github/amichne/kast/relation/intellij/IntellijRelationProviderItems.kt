@@ -72,6 +72,8 @@ internal sealed interface CalleeProviderItem {
 
     data class Unresolved(val call: KtCallElement, override val owner: ContainingDeclaration) : CalleeProviderItem
 
+    data class CallbackSupplies(val call: KtCallElement, override val owner: ContainingDeclaration) : CalleeProviderItem
+
     data class Reference(val reference: KtReference, override val owner: ContainingDeclaration) : CalleeProviderItem
 }
 

@@ -166,6 +166,8 @@ enum class CallbackInvocationFlowFailure {
 }
 
 sealed interface CallbackInvocationFlowRead {
+    data class Immutable(val flow: ImmutableCallbackInvocationFlow) : CallbackInvocationFlowRead
+
     data class Observed(val flow: CallbackInvocationFlow) : CallbackInvocationFlowRead
 
     data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackInvocationFlowRead

@@ -30,6 +30,20 @@ STATIC_COUNTERS = (
     'CALLBACK_FIXED_POINTS_COMPLETED', 'CALLBACK_FIXED_POINTS_REJECTED',
 )
 
+SEMANTIC_FACT_COUNTERS = (
+    'SEMANTIC_FACT_PARTITIONS_EXTRACTED', 'SEMANTIC_FACT_PARTITIONS_REUSED',
+    'SEMANTIC_FACT_PARTITIONS_INVALIDATED', 'SEMANTIC_FACT_DEPENDENCY_REVALIDATIONS',
+    'SEMANTIC_FACT_DEPENDENCY_REJECTIONS', 'SEMANTIC_FACT_GENERATIONS_PUBLISHED',
+    'SEMANTIC_FACT_GENERATIONS_REJECTED',
+    'SEMANTIC_FACT_SUPPLIER_INVENTORIES_EXTRACTED',
+    'SEMANTIC_FACT_SUPPLIER_INVENTORIES_REUSED',
+    'SEMANTIC_FACT_SUPPLIER_INVENTORIES_INVALIDATED',
+    'SEMANTIC_FACT_NAMED_PARTITIONS_EXTRACTED',
+    'SEMANTIC_FACT_NAMED_PARTITIONS_REUSED',
+    'SEMANTIC_FACT_NAMED_PARTITIONS_INVALIDATED',
+    'SEMANTIC_FACT_NAMED_PARTITIONS_INELIGIBLE',
+)
+
 POLICY_EVIDENCE_COUNTERS = (
     'QUERY_POLICY_EVIDENCE_PUBLICATIONS_COMMITTED',
     'QUERY_POLICY_EVIDENCE_COMMIT_REJECTIONS',
@@ -160,13 +174,16 @@ class StaticGrants:
     presentation: Budget
 
 
-def static_grants(max_returned_bytes):
-    # The largest authored graph has one root formal, three forwarding witnesses, one invocation,
-    # and one optional detached summary. Eight leaves room for the complete
-    # semantic result; presentation has its own one-record allowance.
-    return StaticGrants((Budget(maxResults=8, maxReturnedBytes=max_returned_bytes),
-        Budget(maxResults=32, maxReturnedBytes=max_returned_bytes)),
-        Budget(maxResults=1, maxReturnedBytes=max_returned_bytes))
+def static_grants(max_returned_bytes, max_elapsed_ms=20000, max_work_units=20000):
+    if min(max_returned_bytes, max_elapsed_ms, max_work_units) <= 0:
+        raise ValueError("static qualification grants must be positive")
+    # Positive grants retain both lexical callback evidence and the atomic
+    # selected-supply inventory. The former eight-slot premise is a separate
+    # finite resource rejection, not an admissible complete result.
+    return StaticGrants(tuple(Budget(maxElapsedMs=max_elapsed_ms, maxWorkUnits=max_work_units,
+        maxResults=results, maxReturnedBytes=max_returned_bytes) for results in (32, 128)),
+        Budget(maxElapsedMs=max_elapsed_ms, maxWorkUnits=max_work_units,
+               maxResults=1, maxReturnedBytes=max_returned_bytes))
 
 
 @dataclass(frozen=True)
@@ -277,6 +294,7 @@ class StaticTrialQualification:
     retainedEvidencePages: int
     nativeCounters: dict[str, int]
     policyEvidenceCounters: dict[str, int]
+    semanticFactCounters: dict[str, int]
     verdict: str
     totalElapsedNanos: int
 
@@ -944,6 +962,22 @@ def assert_forwarding(actual, expected):
     assert target['invocation_owner']['type'] == 'NAMED', target
     assert_callable(target['invocation_owner']['callable'], expected.source.callable)
 
+    transfers = actual['callable_transfers']
+    assert len(transfers) == len(expected.transfers), 'forwarding transfer inventory changed'
+    owner = expected.source.callable.declaration
+    identity = actual['source']['callable']['compiler_target']['compiler_evidence']['identity']
+    for actual_transfer, expected_transfer in zip(transfers, expected.transfers):
+        assert actual_transfer['kind'] == expected_transfer.kind, 'forwarding transfer kind changed'
+        for endpoint, span, role in (('source', expected_transfer.source, expected_transfer.source_role),
+                                     ('target', expected_transfer.target, expected_transfer.target_role)):
+            site = actual_transfer[endpoint]
+            assert site['range'] == dict(start=span.range.startInclusive, end=span.range.endExclusive), 'forwarding transfer site changed'
+            assert site['role'] == dict(type=role), 'forwarding transfer role changed'
+            enclosing = site['enclosing']
+            assert enclosing['file'] == owner.file, 'forwarding transfer file changed'
+            assert enclosing['range'] == dict(start=owner.range.startInclusive, end=owner.range.endExclusive), 'forwarding transfer owner changed'
+            assert enclosing['compilerIdentity'] == identity, 'forwarding transfer identity changed'
+
 
 def case_supplies(case):
     if isinstance(case, (static.CompleteCase, static.CompleteEmptyCase, static.RejectedResourceCase)):
@@ -998,9 +1032,121 @@ def assert_complete_callback(pages, case):
         assert len(invocation['forwardings']) == len(case.forwardings), invocation
         for actual, expected in zip(invocation['forwardings'], case.forwardings):
             assert_forwarding(actual, expected)
-    assert list(callable_observations(pages)) == [], 'unexpected unsupported callable evidence'
+    assert selected_supply_extras(pages, case) == [], 'unexpected unsupported callable evidence'
     names = {callable_name(o['target']) for o in observations(pages)}
     assert not names & {target.name for target in case.forbidden_targets}, 'supplier context crossed'
+
+
+def assert_named_reference(pages, case):
+    assert list(observations(pages)) == [], 'named reference became an anonymous callback'
+    values = selected_supply_extras(pages, case)
+    assert len(values) == 1, 'reference observation inventory changed'
+    observed, = values
+    assert_span(observed['occurrence'], case.reference)
+    assert_callable(observed['lexical_owner'], case.supplier)
+    assert observed['body']['type'] == 'NAMED', observed
+    assert_callable(observed['body']['callable'], case.supplier)
+    assert observed['target']['type'] == 'NAMED_REFERENCE', observed
+    reference = observed['target']['reference']
+    assert_callable(reference['target'], case.target)
+    for name in ('dispatch_receiver', 'extension_receiver'):
+        receiver = getattr(case, name)
+        assert reference[name]['type'] == receiver.type, 'reference receiver kind changed'
+        if isinstance(receiver, static.BoundReceiver):
+            assert_span(reference[name]['occurrence'], receiver.occurrence)
+    flow = reference['flow']
+    assert flow['type'] == 'SUPPLIED', flow
+    binding = flow['binding']
+    assert binding['type'] == 'BOUND', binding
+    assert_formal(binding, case.graph.root)
+    assert_span(binding['invocation_occurrence'], case.call)
+    assert binding['invocation_owner']['type'] == 'NAMED', binding
+    assert_callable(binding['invocation_owner']['callable'], case.supplier)
+    assert_exhausted_graph(flow['forwarding'], case.graph)
+    assert len(flow['invocations']) == 1, 'reference terminal inventory changed'
+    invocation, = flow['invocations']
+    assert_span(invocation['occurrence'], case.invocation.occurrence)
+    assert invocation['owner']['type'] == 'NAMED', invocation
+    assert_callable(invocation['owner']['callable'], case.invocation.owner)
+    assert invocation['callable_transfers'] == [], invocation
+    assert len(invocation['forwardings']) == len(case.forwardings), invocation
+    for actual, expected in zip(invocation['forwardings'], case.forwardings):
+        assert_forwarding(actual, expected)
+
+
+def selected_supply_extras(pages, case):
+    """Additional callee supply inventory must preserve the same authored binding and graph."""
+    remaining = []
+    seen = set()
+    named = isinstance(case, static.ExcludedReferenceCase)
+    supplies = (case,) if named else case_supplies(case)
+    for observation in callable_observations(pages):
+        target = observation['target']
+        if target['type'] != 'CALLBACK_SUPPLIES':
+            remaining.append(observation)
+            continue
+        site = site_key(observation['occurrence'])
+        assert site not in seen, 'selected supply observation duplicated'
+        seen.add(site)
+        matched = [supply for supply in supplies if site == (supply.call.file, supply.call.range.startInclusive, supply.call.range.endExclusive)]
+        assert len(matched) == 1, 'selected supply call outside authored inventory'
+        expected = matched[0]
+        assert_callable(observation['lexical_owner'], expected.supplier)
+        assert observation['body']['type'] == 'NAMED'
+        assert_callable(observation['body']['callable'], expected.supplier)
+        assert len(target['formals']) == len(target['supplies']) == 1
+        formal = case.graph.root if named else expected.formal
+        assert_formal(target['formals'][0], formal)
+        use = target['supplies'][0]
+        assert 'type' not in use, 'concrete selected supply has an unexpected discriminator'
+        supplier = use['supplier']
+        binding = supplier['binding']
+        assert binding['type'] == 'BOUND'
+        assert_formal(binding, formal)
+        assert_span(binding['invocation_occurrence'], expected.call)
+        assert binding['invocation_owner']['type'] == 'NAMED'
+        assert_callable(binding['invocation_owner']['callable'], expected.supplier)
+        assert supplier['selection']['type'] == 'EXPLICIT'
+        value = supplier['value']
+        assert value['factories'] == []
+        origin = value['origin']
+        source = expected.reference if named else expected.body
+        if named:
+            assert origin['type'] == 'NAMED'
+            assert_callable(origin['target'], expected.target)
+            assert_span(origin['occurrence'], source)
+            for receiver_name in ('dispatch_receiver', 'extension_receiver'):
+                receiver = getattr(expected, receiver_name)
+                assert origin[receiver_name]['type'] == receiver.type
+                if isinstance(receiver, static.BoundReceiver): assert_span(origin[receiver_name]['occurrence'], receiver.occurrence)
+        else:
+            assert origin['type'] == 'ANONYMOUS'
+            assert_span(origin['body']['occurrence'], source)
+        assert value['source']['range'] == dict(start=source.range.startInclusive, end=source.range.endExclusive)
+        assert value['source']['role'] == dict(type='EXPRESSION_RESULT')
+        assert value['destination'] == supplier['selection']['argument']
+        for site in (value['source'], value['destination']):
+            assert site['range'] == dict(start=source.range.startInclusive, end=source.range.endExclusive)
+            owner = site['enclosing']
+            assert owner['file'] == expected.supplier.declaration.file
+            assert owner['range'] == dict(start=expected.supplier.declaration.range.startInclusive, end=expected.supplier.declaration.range.endExclusive)
+            assert owner['compilerIdentity'] == observation['lexical_owner']['compiler_target']['compiler_evidence']['identity']
+        assert value['destination']['role'] == dict(type='ARGUMENT', invocation=binding['invocation'], index=formal.position)
+        assert value['transfers'] == [dict(source=value['source'], target=value['destination'], kind='ARGUMENT')]
+        assert len(value['invoked_callables']) == 1
+        assert_callable(value['invoked_callables'][0], formal.callable)
+        assert_exhausted_graph(use['forwarding'], case.graph)
+        if isinstance(case, static.CompleteEmptyCase):
+            assert use['invocations'] == []
+        else:
+            assert len(use['invocations']) == 1
+            invocation = use['invocations'][0]
+            assert_span(invocation['occurrence'], case.invocation.occurrence)
+            assert invocation['owner']['type'] == 'NAMED'
+            assert_callable(invocation['owner']['callable'], case.invocation.owner)
+            assert len(invocation['forwardings']) == len(case.forwardings)
+            for actual, expected_forward in zip(invocation['forwardings'], case.forwardings): assert_forwarding(actual, expected_forward)
+    return remaining
 
 
 def completion_rejection(document, expected):
@@ -1014,6 +1160,16 @@ def completion_rejection(document, expected):
     assert cause == json.loads(json.dumps(asdict(expected))), (cause, expected)
     assert detail['policyProgress'] == dict(type='EVIDENCE_ONLY'), detail
     assert detail['evidence']['type'] == 'RETAINED', detail
+    return detail
+
+
+def assert_cold_selected_capacity(document):
+    """A fresh host's eight-slot selected-supply proof cannot be retained."""
+    detail = completion_rejection(document, static.UnresolvedRejection((static.FlowObligation.RESULT_LIMIT_REACHED,)))
+    assert detail['originalCoverage'] == {'type': 'COMPLETE'}
+    failure = detail['cause']['graphFailure']
+    assert failure['origin'] == 'RELATION' and type(failure['group']) is int and failure['group'] >= 0
+    assert type(failure['observation']) is int and failure['observation'] >= 0
     return detail
 
 
@@ -1085,6 +1241,11 @@ def native_scoped_counters(call, live, required):
     return selected
 
 
+def native_semantic_fact_counters(call, live):
+    """Admit explicit bounded observations; zero alone does not prove store use."""
+    return native_scoped_counters(call, live, SEMANTIC_FACT_COUNTERS)
+
+
 def native_callback_counters(call, live):
     selected = native_scoped_counters(call, live, STATIC_COUNTERS)
     assert selected['CALLBACK_BODY_SCANS'] == selected['CALLBACK_BODY_SCANS_COMPLETED'] + selected['CALLBACK_BODY_SCANS_INCOMPLETE'], selected
@@ -1106,12 +1267,31 @@ def assert_policy_evidence_publication(call, live):
     return counts
 
 
+def assert_unavailable_resource_supplies(pages, case):
+    observed = list(callable_observations(pages))
+    expected = {site_key({'file': supply.call.file, 'range': asdict(supply.call.range)}): supply for supply in case.supplies}
+    assert len(observed) == len(expected), 'resource supplier inventory missing or duplicated'
+    assert Counter(site_key(item['occurrence']) for item in observed) == Counter(expected.keys()), 'resource supplier sites changed'
+    for item in observed:
+        supply = expected[site_key(item['occurrence'])]
+        assert item['target'] == {'type': 'UNAVAILABLE_SUPPLY', 'causes': list(case.rejection.obligations)}
+        assert_callable(item['lexical_owner'], supply.supplier)
+        assert item['body']['type'] == 'NAMED'
+        assert_callable(item['body']['callable'], supply.supplier)
+
+
 def assert_rejection_pointer(detail, groups, case):
     failure = detail['cause']['graphFailure']
     assert failure['origin'] == 'RELATION', 'static rejection has wrong observation origin'
     assert 0 <= failure['group'] < len(groups), 'static rejection group unavailable'
     group = groups[failure['group']]
-    if isinstance(case, static.RejectedFormalCase):
+    if isinstance(case, static.RejectedResourceCase):
+        values = group['callable_observations']
+        assert 0 <= failure['observation'] < len(values), 'resource rejection supply unavailable'
+        observed = values[failure['observation']]
+        assert_span(observed['occurrence'], case.cause_site)
+        assert observed['target'] == {'type': 'UNAVAILABLE_SUPPLY', 'causes': list(case.rejection.obligations)}
+    elif isinstance(case, static.RejectedFormalCase):
         values = group['callable_observations']
         assert 0 <= failure['observation'] < len(values), 'static rejection callable unavailable'
         assert_span(values[failure['observation']]['occurrence'], case.invocation.occurrence)
@@ -1125,17 +1305,33 @@ def assert_rejection_pointer(detail, groups, case):
         }, 'static rejection points at another callback'
 
 
-def assert_complete_scan_reuse(case, direction, counts):
-    if direction == StaticRelation.CALLEES:
-        expected = {'CALLBACK_BODY_SCANS': len(case.graph.formals),
-            'CALLBACK_BODY_SCANS_COMPLETED': len(case.graph.formals),
-            'CALLBACK_BODY_SCANS_INCOMPLETE': 0, 'CALLBACK_SUMMARY_MISSES': 1,
-            'CALLBACK_SUMMARY_HITS': len(case.supplies) - 1, 'CALLBACK_SUMMARIES_RETAINED': 1,
-            'CALLBACK_SUMMARY_REJECTIONS': 0, 'CALLBACK_SUMMARY_RETENTION_REJECTIONS': 0,
-            'CALLBACK_FORWARDING_FORMALS': len(case.graph.formals),
-            'CALLBACK_FORWARDING_EDGES': len(case.graph.forwardings),
-            'CALLBACK_FIXED_POINTS_COMPLETED': 1, 'CALLBACK_FIXED_POINTS_REJECTED': 0}
-        assert counts == expected, case.name + ' formal scan/reuse evidence differs from authored graph'
+def named_call_site(call, receiver):
+    # Named relation occurrences identify the callee token, while binding evidence
+    # retains the complete call expression (which can have a package qualifier).
+    if call.text.count(receiver.name) != 1:
+        raise ValueError('oracle named callee must occur exactly once in the supplying call')
+    start = call.range.startInclusive + len(call.text[:call.text.index(receiver.name)].encode('utf-16-le')) // 2
+    return call.file, start, start + len(receiver.name.encode('utf-16-le')) // 2
+
+
+def assert_complete_scan_reuse(case, direction, counts, fact_counts=None):
+    if direction != StaticRelation.CALLEES: return
+    # Selected-supply and lexical inventories each own a summary lookup context.
+    # The selected inventory extracts first on a cold query; lexical suppliers
+    # then instantiate that exact summary. Each lexical supplier counts one hit.
+    extracted = 1 if fact_counts is None else fact_counts['SEMANTIC_FACT_PARTITIONS_EXTRACTED']
+    assert extracted in (0, 1), 'fixture extracts at most one formal summary'
+    if fact_counts is not None:
+        assert fact_counts['SEMANTIC_FACT_PARTITIONS_REUSED'] == 2 - extracted, 'two admitted summary contexts required'
+    expected = dict.fromkeys(STATIC_COUNTERS, 0)
+    expected['CALLBACK_SUMMARY_HITS'] = len(case.supplies)
+    if extracted:
+        expected.update(CALLBACK_BODY_SCANS=len(case.graph.formals),
+            CALLBACK_BODY_SCANS_COMPLETED=len(case.graph.formals),
+            CALLBACK_FORWARDING_FORMALS=len(case.graph.formals),
+            CALLBACK_FORWARDING_EDGES=len(case.graph.forwardings),
+            CALLBACK_FIXED_POINTS_COMPLETED=1)
+    assert counts == expected, case.name + ' formal scan/reuse evidence differs from authored graph'
 
 
 def assert_relation_direction(groups, direction):
@@ -1183,7 +1379,7 @@ def stable_static_semantics(rows, evidence, seeds):
 
 def qualify_static(args, output, invoke, pinned):
     suite = static.load_oracle(args.root)
-    allowances = static_grants(args.max_returned_bytes)
+    allowances = static_grants(args.max_returned_bytes, args.static_max_elapsed_ms, args.static_max_work_units)
     grants, presentation = allowances.complete, allowances.presentation
     manifest = StaticQualification(suite, replay.artifact_identity(pinned), grants, presentation,
         SourceFingerprint(**{key: pinned['source'][key] for key in SourceFingerprint.__dataclass_fields__}),
@@ -1196,7 +1392,7 @@ def qualify_static(args, output, invoke, pinned):
             (), SymbolsOutput(), StaticRetention.DISCARD, grants[-1]))
         call = invoke(payload)
         document = call.response
-        assert document is not None and document['status'] == 'complete', document
+        assert document is not None and document.get('status') == 'complete', document
         assert len(document['items']) == 1, document
         item = document['items'][0]
         assert item['type'] == 'exact-symbol' and item['name'] == symbol.name, item
@@ -1246,9 +1442,11 @@ def qualify_static(args, output, invoke, pinned):
         if isinstance(case, (static.CompleteCase, static.CompleteEmptyCase)):
             assert_complete_callback(pages, case)
         elif isinstance(case, (static.RejectedLambdaCase, static.RejectedResourceCase)):
+            expected_flow = case.lexical_rejection if isinstance(case, static.RejectedResourceCase) else case.rejection
+            if isinstance(case, static.RejectedResourceCase): assert_unavailable_resource_supplies(pages, case)
             for observation, supply, occurrence in mapped_callback_observations(pages, case):
                 flow = assert_supply(observation, supply, occurrence)
-                assert flow['scan'] == case.rejection.scan and flow['obligations'] == list(case.rejection.obligations), flow
+                assert flow['scan'] == expected_flow.scan and flow['obligations'] == list(expected_flow.obligations), flow
                 assert flow['invocations'] == [], flow
         elif isinstance(case, static.RejectedFormalCase):
             assert list(observations(pages)) == [], 'formal invocation became anonymous callback'
@@ -1259,19 +1457,21 @@ def qualify_static(args, output, invoke, pinned):
             assert_callable(observed['lexical_owner'], case.owner)
             assert observed['target']['type'] == 'PARAMETER_INVOCATION', observed
             assert_formal(observed['target']['parameter'], case.formal)
+            assert observed['target']['suppliers'] == {'type': 'UNAVAILABLE', 'cause': case.rejection.cause}
+            assert_span(observed['target']['invocation']['occurrence'], case.invocation.occurrence)
             assert observed['body']['type'] == 'NAMED', observed
             assert_callable(observed['body']['callable'], case.owner)
         else:
-            assert list(observations(pages)) == [] and list(callable_observations(pages)) == [], 'excluded callable reference became invocation evidence'
+            assert_named_reference(pages, case)
         # Only the named supplier-to-wrapper edge is admitted; callback sinks remain derivation evidence.
         if direction == StaticRelation.CALLERS or isinstance(case, static.RejectedFormalCase):
             expected_calls = []
         elif isinstance(case, static.ExcludedReferenceCase):
-            receiver = next(symbol for symbol in suite.symbols if symbol.name == 'sharedWrapper')
+            receiver = case.graph.root.callable
             expected_calls = [(case.supplier, receiver, case.call)]
         else:
             expected_calls = [(supply.supplier, supply.formal.callable, supply.call) for supply in case_supplies(case)]
-        calls_by_site = {(site.file, site.range.startInclusive, site.range.startInclusive + len(receiver.name)):
+        calls_by_site = {named_call_site(site, receiver):
             (owner, receiver) for owner, receiver, site in expected_calls}
         assert len(calls_by_site) == len(expected_calls), 'oracle named call occurrence duplicated'
         assert len(rows) == len(expected_calls), (case.name, direction, rows)
@@ -1285,13 +1485,16 @@ def qualify_static(args, output, invoke, pinned):
             assert relation['coverage'] == 'exact-compiler-confirmed' and relation['provenance'] == 'k2-authored-source', relation
         totals = {counter: 0 for counter in STATIC_COUNTERS}
         publication_totals = {counter: 0 for counter in POLICY_EVIDENCE_COUNTERS}
+        fact_totals = dict.fromkeys(SEMANTIC_FACT_COUNTERS, 0)
         for call in calls:
             for counter, count in native_callback_counters(call, live).items(): totals[counter] += count
             for counter, count in assert_policy_evidence_publication(call, live).items(): publication_totals[counter] += count
-        if isinstance(case, (static.CompleteCase, static.CompleteEmptyCase)): assert_complete_scan_reuse(case, direction, totals)
+            for counter, count in native_semantic_fact_counters(call, live).items(): fact_totals[counter] += count
+        if isinstance(case, (static.CompleteCase, static.CompleteEmptyCase)): assert_complete_scan_reuse(case, direction, totals, fact_totals)
         for call in row_pages + evidence_calls:
             counts = native_callback_counters(call, live)
             assert all(count == 0 for count in counts.values()), 'retained presentation reran callback work'
+            assert all(count == 0 for count in native_semantic_fact_counters(call, live).values()), 'retained presentation reran fact preparation'
             assert_policy_evidence_publication(call, live)
         groups = [group for page in pages for group in page.get('relation_observations', [])]
         if rejected is not None: assert_rejection_pointer(rejected, groups, case)
@@ -1312,18 +1515,28 @@ def qualify_static(args, output, invoke, pinned):
         if key in semantics: assert semantics[key] == semantic, 'semantic evidence changed with admissible grant'
         else: semantics[key] = semantic
         check = StaticTrialQualification(case.name, direction, grant, presentation, len(rows), len(list(observations(pages))),
-            len(row_pages), len(evidence_calls), totals, publication_totals, 'REFERENCE_EXCLUDED' if isinstance(case, static.ExcludedReferenceCase)
+            len(row_pages), len(evidence_calls), totals, publication_totals, fact_totals, 'REFERENCE_SUPPLY_VERIFIED' if isinstance(case, static.ExcludedReferenceCase)
             else 'COMPLETE' if rejected is None else 'EXPECTED_TYPED_RESOURCE_REJECTION' if isinstance(case, static.RejectedResourceCase)
             else 'EXPECTED_TYPED_REJECTION', time.monotonic_ns() - started)
         checks.append(check)
         manifest.trials = checks
         replay.write(output / 'qualification.json', asdict(manifest))
+    # This control is run before any relation query on the freshly restarted
+    # candidate. Cached summaries can legitimately fit eight slots; they cannot
+    # stand in for this independent cold resource rejection.
+    cold = invoke(static_request(suite.complete_cases[0].supply.supplier,
+        Budget(args.static_max_elapsed_ms, args.static_max_work_units, 8, args.max_returned_bytes), args.root))
+    assert_cold_selected_capacity(cold.response)
+    replay.write(output / 'alpha-eight-slot-cold-rejection.json', asdict(cold))
     for grant in grants:
         for case in suite.cases: evaluate(case, grant)
         for case in suite.complete_cases: evaluate(case, grant, StaticRelation.CALLERS)
         for case in suite.excluded_cases: evaluate(case, grant, StaticRelation.CALLERS)
     for case in suite.resource_cases:
         evaluate(case, Budget(maxResults=case.max_results, maxReturnedBytes=args.max_returned_bytes))
+    alpha_trials = [trial for trial in checks if trial.case == 'alpha' and trial.direction == StaticRelation.CALLEES]
+    assert len(alpha_trials) == len(grants), 'cross-query alpha inventory missing'
+    assert alpha_trials[-1].semanticFactCounters['SEMANTIC_FACT_PARTITIONS_REUSED'] == 2, 'cross-query project summary reuse unproven'
     manifest.type = StaticQualificationStatus.ANSWER_VERIFIED
     manifest.semantics = semantics
     replay.write(output / 'qualification.json', asdict(manifest))
@@ -1634,6 +1847,8 @@ if __name__ == '__main__':
     parser.add_argument('--mcp', action='store_true', help='Reuse one installed public MCP session')
     parser.add_argument('--timeout', type=int, default=300)
     parser.add_argument('--max-returned-bytes', type=int, default=524288)
+    parser.add_argument('--static-max-elapsed-ms', type=int, default=20000, help='Declared time grant for each static native invocation')
+    parser.add_argument('--static-max-work-units', type=int, default=20000, help='Declared work grant for each static native invocation')
     parser.add_argument('--static-cross-module', action='store_true', help='Opt-in exact candidate native static callback suite')
     parser.add_argument('--pin', type=Path)
     parser.add_argument('--candidate-plugin', type=Path)

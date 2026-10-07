@@ -151,6 +151,7 @@ internal class IntellijK2RelationProjection(
             when (val resolved = resolve(reference)) {
                 is IntellijK2ResolvedDeclaration.Found -> resolved.declaration
                 IntellijK2ResolvedDeclaration.InvokeReceiver,
+                is IntellijK2ResolvedDeclaration.FunctionInvocation,
                 is IntellijK2ResolvedDeclaration.ParameterInvocation,
                 is IntellijK2ResolvedDeclaration.SourceLess -> return IntellijReferenceTargetResult.Different
                 is IntellijK2ResolvedDeclaration.Unsupported,
@@ -244,14 +245,20 @@ internal class IntellijK2RelationProjection(
     fun resolve(reference: KtReference): IntellijK2ResolvedDeclaration =
         analyze(reference.element) {
                 val symbol = reference.resolveToSymbol()
-                val parameterInvocation = symbol?.let { resolvedParameterInvocation(reference, it) }
+                if (symbol == null) {
+                    val invocation = resolvedFunctionValueInvocation(reference)
+                    if (invocation == null) {
+                        IntellijInvokeCallRefinement.UNRESOLVED.observe(observation)
+                        return@analyze IntellijK2ResolvedDeclaration.Unresolved
+                    }
+                    IntellijInvokeCallRefinement.CONFIRMED.observe(observation)
+                    return@analyze functionValueInvocation(reference, invocation)
+                }
+                val parameterInvocation = resolvedParameterInvocation(reference, symbol)
                 if (parameterInvocation != null) return@analyze parameterInvocation
-                val psi = symbol?.psi
+                val psi = symbol.psi
                 val declaration = psi as? PsiNamedElement
                 when {
-                    symbol == null -> {
-                        IntellijK2ResolvedDeclaration.Unresolved
-                    }
                     psi == null -> {
                         observation.terminated(IntellijReadTermination.K2_SYMBOL_WITHOUT_PSI)
                         sourceLessCallable(symbol)

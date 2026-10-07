@@ -4,6 +4,7 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 
 fun CallbackInvocationFlowRead.canonicalProjection(): String =
     when (this) {
+        is CallbackInvocationFlowRead.Immutable -> "IMMUTABLE:${flow.canonicalProjection()}"
         is CallbackInvocationFlowRead.Unavailable -> "UNAVAILABLE:${cause.name}"
         is CallbackInvocationFlowRead.ContractRejected -> "CONTRACT_REJECTED:${cause.name}"
         is CallbackInvocationFlowRead.Observed -> "OBSERVED:${flow.canonicalProjection()}"
@@ -70,6 +71,12 @@ private fun StringBuilder.forwarding(forwarding: CallbackParameterForwarding) {
     formal(forwarding.source)
     occurrence(forwarding.argument)
     binding(CallbackBindingEvidence.Bound(forwarding.target))
+    field(forwarding.callableTransfers.size.toString())
+    forwarding.callableTransfers.forEach { transfer ->
+        field(transfer.kind.name)
+        site(transfer.source)
+        site(transfer.target)
+    }
 }
 
 private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding) {
@@ -193,4 +200,168 @@ private fun StringBuilder.field(value: String) {
     append(value.toByteArray(Charsets.UTF_8).size)
     append(':')
     append(value)
+}
+
+internal fun ImmutableCallbackValue.canonicalProjection(): String = buildString {
+    when (val value = origin) {
+        is ImmutableCallbackValueOrigin.Returned -> factory(value.factory)
+        is ImmutableCallbackValueOrigin.Anonymous -> body(value.body)
+        is ImmutableCallbackValueOrigin.Named -> {
+            field("NAMED_REFERENCE")
+            occurrence(value.occurrence)
+            endpoint(value.target)
+            field(value.receivers.dispatch.canonicalProjection())
+            field(value.receivers.extension.canonicalProjection())
+        }
+    }
+    site(source)
+    site(destination)
+    field(transfers.size.toString())
+    transfers.forEach {
+        field(it.kind.name)
+        site(it.source)
+        site(it.target)
+    }
+}
+
+internal fun ImmutableCallbackInvocationFlow.canonicalProjection(): String = buildString {
+    field("IMMUTABLE")
+    when (val value = origin) {
+        is ImmutableCallbackValueOrigin.Returned -> factory(value.factory)
+        is ImmutableCallbackValueOrigin.Anonymous -> body(value.body)
+        is ImmutableCallbackValueOrigin.Named -> {
+            occurrence(value.occurrence)
+            endpoint(value.target)
+            field(value.receivers.dispatch.canonicalProjection())
+            field(value.receivers.extension.canonicalProjection())
+        }
+    }
+    site(source)
+    field(scan.name)
+    obligations(obligations)
+    field(uses.size.toString())
+    uses.forEach { immutableUse(it) }
+}
+
+internal fun CallbackParameterSupplier.canonicalProjection(): String = buildString {
+    binding(CallbackBindingEvidence.Bound(binding))
+    when (val selected = selection) {
+        is CallbackSupplierSelection.Explicit -> {
+            field("EXPLICIT")
+            site(selected.argument)
+        }
+        is CallbackSupplierSelection.Default -> {
+            field("DEFAULT")
+            binding(CallbackBindingEvidence.Default(selected.declaration))
+        }
+    }
+    field(value.canonicalProjection())
+}
+
+private fun StringBuilder.factory(value: CallbackFactoryReturn) {
+    field("FACTORY_RETURN")
+    endpoint(value.invocation.enclosing)
+    endpoint(value.invocation.callable)
+    field(value.invocation.range.startInclusive.toString())
+    field(value.invocation.range.endExclusive.toString())
+    field(value.returnedValue.canonicalProjection())
+    factoryBody(value.bodyCalls)
+    field(value.captures.size.toString())
+    value.captures.forEach { capture ->
+        binding(CallbackBindingEvidence.Bound(capture.binding))
+        when (val selected = capture.selection) {
+            is CallbackFactoryCaptureSelection.Explicit -> {
+                field("EXPLICIT")
+                site(selected.value)
+            }
+            is CallbackFactoryCaptureSelection.Default -> {
+                field("DEFAULT")
+                binding(CallbackBindingEvidence.Default(selected.declaration))
+            }
+        }
+        when (val content = capture.content) {
+            CallbackFactoryCaptureContent.Scalar -> field("SCALAR")
+            is CallbackFactoryCaptureContent.Callable -> {
+                field("CALLABLE")
+                field(content.values.size.toString())
+                content.values.forEach { field(it.canonicalProjection()) }
+                field(content.invocations.size.toString())
+                content.invocations.forEach { invocation(it) }
+            }
+        }
+    }
+}
+
+private fun StringBuilder.factoryBody(proof: CallbackFactoryBodyCalls) {
+    when (proof) {
+        CallbackFactoryBodyCalls.NotApplicable -> field("NOT_APPLICABLE")
+        is CallbackFactoryBodyCalls.Exhaustive -> {
+            field("EXHAUSTIVE")
+            body(proof.body)
+            field(proof.calls.size.toString())
+            proof.calls.forEach { call ->
+                occurrence(call.occurrence)
+                when (call) {
+                    is CallbackFactoryBodyCall.Named -> {
+                        field("NAMED")
+                        endpoint(call.target)
+                    }
+                    is CallbackFactoryBodyCall.Captured -> {
+                        field("CAPTURED")
+                        formal(call.formal)
+                        invocation(call.invocation)
+                    }
+                    is CallbackFactoryBodyCall.Boundary -> {
+                        field("BOUNDARY")
+                        field(call.callable.signature.canonicalEncoding().value)
+                        field(call.callable.kind.name)
+                        field(call.callable.compilerIdentity.value)
+                        field(call.callable.origin.name)
+                        field(call.callable.moduleKind.name)
+                        field(call.callable.moduleName.value)
+                        field(call.disposition.name)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun StringBuilder.immutableUse(use: ImmutableCallbackInvocationUse) {
+    field(use.value.canonicalProjection())
+    when (use) {
+        is ImmutableCallbackInvocationUse.Unused -> field("UNUSED")
+        is ImmutableCallbackInvocationUse.Direct -> {
+            field("DIRECT")
+            binding(CallbackBindingEvidence.Direct(use.binding))
+        }
+        is ImmutableCallbackInvocationUse.Supplied -> {
+            field("SUPPLIED")
+            binding(CallbackBindingEvidence.Bound(use.supplier.binding))
+            formal(use.summary.formal)
+            field(use.summary.invocations.size.toString())
+            use.summary.invocations.forEach { invocation(it) }
+            when (val selection = use.supplier.selection) {
+                is CallbackSupplierSelection.Explicit -> {
+                    field("EXPLICIT")
+                    site(selection.argument)
+                }
+                is CallbackSupplierSelection.Default -> {
+                    field("DEFAULT")
+                    occurrence(selection.declaration.defaultValue)
+                }
+            }
+            when (val graph = use.summary.forwarding) {
+                CallbackForwardingEvidence.InvocationRoutes -> field("INVOCATION_ROUTES")
+                is CallbackForwardingEvidence.ExhaustedGraph -> {
+                    field("EXHAUSTED_GRAPH")
+                    formal(graph.graph.root)
+                    field(graph.graph.formals.size.toString())
+                    graph.graph.formals.forEach { formal(it) }
+                    field(graph.graph.forwardings.size.toString())
+                    graph.graph.forwardings.forEach { forwarding(it) }
+                }
+            }
+        }
+    }
 }

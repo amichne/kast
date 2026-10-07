@@ -59,6 +59,7 @@ private constructor(
                 canonicalProjection().length * 4L +
                 when (val observed = flow) {
                     is CallbackInvocationFlowRead.Observed -> observed.flow.retainedBytes
+                    is CallbackInvocationFlowRead.Immutable -> observed.flow.retainedBytes
                     is CallbackInvocationFlowRead.Unavailable,
                     is CallbackInvocationFlowRead.ContractRejected -> 256L
                 }
@@ -157,6 +158,11 @@ private fun CallbackInvocationFlowRead.matchesCallback(
     callback: RelationOccurrence,
 ): Boolean =
     when (this) {
+        is CallbackInvocationFlowRead.Immutable ->
+            flow.basis == request.subject.lease.identity &&
+                flow.origin is ImmutableCallbackValueOrigin.Anonymous &&
+                flow.origin.file == callback.file &&
+                flow.origin.range == callback.range
         is CallbackInvocationFlowRead.Observed ->
             flow.basis == request.subject.lease.identity &&
                 flow.body.file == callback.file &&

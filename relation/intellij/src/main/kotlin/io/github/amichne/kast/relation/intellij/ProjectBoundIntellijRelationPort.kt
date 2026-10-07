@@ -23,6 +23,8 @@ object ProjectBoundIntellijRelationPort {
         fileAdmission: IntellijSemanticSourceFileAdmission,
         observation: IntellijReadObservation = IntellijReadObservation.None,
         limits: ReadLimits = ReadLimits.Default,
+        summaries: io.github.amichne.kast.relation.contract.CallbackSummaryCachePreparationPort =
+            io.github.amichne.kast.relation.contract.CallbackSummaryCachePreparationPort.Disabled,
     ): RelationCompilerPort {
         val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
         return RelationCompilerPort { request ->
@@ -40,6 +42,7 @@ object ProjectBoundIntellijRelationPort {
                     },
                     observation,
                     limits,
+                    summaries,
                 )
             query.read(project, authority, request, compiledModel)
         }

@@ -15,6 +15,11 @@ internal class IntellijRelationAllowance(private val clockNanoseconds: () -> Lon
     var nativeCandidates: Int = 0
         private set
 
+    /** Native dependency preparation shares the exact original grant and survives read-action retry. */
+    fun chargePreparation(work: io.github.amichne.kast.relation.contract.RelationWorkCount) {
+        examined = if (work.value > Long.MAX_VALUE - examined) Long.MAX_VALUE else examined + work.value
+    }
+
     fun examine() {
         examined += 1L
     }
@@ -32,6 +37,34 @@ internal class IntellijRelationAllowance(private val clockNanoseconds: () -> Lon
         }
 
     fun elapsedNanoseconds(): Long = (clockNanoseconds() - startedAt).coerceAtLeast(0L)
+
+    fun remainingResources(
+        resources: io.github.amichne.kast.kernel.ResourceBudget
+    ): io.github.amichne.kast.kernel.Refinement<
+        io.github.amichne.kast.kernel.ResourceBudget,
+        io.github.amichne.kast.kernel.PositiveLimitFailure,
+    > {
+        val work =
+            when (
+                val parsed = io.github.amichne.kast.kernel.WorkUnitLimit.parse(resources.workUnitLimit.value - examined)
+            ) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected -> return parsed
+            }
+        val time =
+            when (
+                val parsed =
+                    io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(
+                        resources.elapsedTimeLimit.value - elapsedNanoseconds() / NANOS_PER_MILLISECOND
+                    )
+            ) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected -> return parsed
+            }
+        return io.github.amichne.kast.kernel.Refinement.Refined(
+            resources.copy(workUnitLimit = work, elapsedTimeLimit = time)
+        )
+    }
 
     fun elapsedLimitReached(resources: io.github.amichne.kast.kernel.ResourceBudget): Boolean =
         elapsedNanoseconds() >= resources.elapsedTimeLimit.value * NANOS_PER_MILLISECOND

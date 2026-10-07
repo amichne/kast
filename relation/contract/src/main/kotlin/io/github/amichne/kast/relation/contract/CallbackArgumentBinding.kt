@@ -77,7 +77,7 @@ private constructor(
     }
 }
 
-private fun admitsCallableRoute(transfers: List<ValueTransfer>, occurrence: RelationOccurrence): Boolean {
+internal fun admitsCallableRoute(transfers: List<ValueTransfer>, occurrence: RelationOccurrence): Boolean {
     if (transfers.isEmpty()) return true
     if (transfers.zipWithNext().any { (left, right) -> left.target != right.source }) return false
     if (transfers.first().source.role != ValueRole.ExpressionResult) return false

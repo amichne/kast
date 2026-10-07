@@ -17,11 +17,18 @@ internal fun QueryCallbackObservationDocument.admit(): Refinement<Unit, QueryCal
     )
         return rejected(QueryCallbackDocumentFailure.EXCLUDED_BOUNDARY_MISMATCH)
     return when (val flow = flow) {
+        is QueryCallbackFlowDocument.Immutable -> admitImmutableDomain(flow.flow)
         is QueryCallbackFlowDocument.Unavailable -> Refinement.Refined(Unit)
         is QueryCallbackFlowDocument.ContractRejected -> Refinement.Refined(Unit)
         is QueryCallbackFlowDocument.Observed -> admitFlow(flow)
     }
 }
+
+private fun QueryCallbackObservationDocument.admitImmutableDomain(
+    flow: QueryImmutableCallbackFlowDocument
+): Refinement<Unit, QueryCallbackDocumentFailure> =
+    if (flow.admitsFactoryPolicy(effectiveDomain)) admitImmutableFlow(flow)
+    else rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
 
 private fun QueryCallbackObservationDocument.admitFlow(
     flow: QueryCallbackFlowDocument.Observed
@@ -245,12 +252,12 @@ internal fun QueryCallbackCallableDocument.reference(basis: ImpactSemanticBasisD
         compilerTarget.compilerEvidence.identity,
     )
 
-private fun QueryCallbackCallableDocument.validDeclaration(): Boolean =
+internal fun QueryCallbackCallableDocument.validDeclaration(): Boolean =
     declaration.file == compilerTarget.file &&
         declaration.range == compilerTarget.range &&
         compilerTarget.compilerEvidence.signature.supports(compilerTarget.kind)
 
-private fun QueryCallbackCallableDocument.validCallable(): Boolean =
+internal fun QueryCallbackCallableDocument.validCallable(): Boolean =
     validDeclaration() && compilerTarget.compilerEvidence.signature is CompilerSignatureDocument.Function
 
 internal fun QueryCallbackBodyDocument.Anonymous.validBody(): Boolean {
@@ -269,3 +276,12 @@ internal fun RelationOccurrenceDocument.sameSite(other: RelationOccurrenceDocume
 
 private fun rejected(failure: QueryCallbackDocumentFailure): Refinement.Rejected<QueryCallbackDocumentFailure> =
     Refinement.Rejected(failure)
+
+private fun QueryCallbackObservationDocument.admitImmutableFlow(
+    flow: QueryImmutableCallbackFlowDocument
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    val origin = flow.sourceValue.origin as? QueryImmutableCallbackValueOriginDocument.Anonymous
+    return if (origin == null || !origin.body.occurrence.sameSite(callbackBody))
+        Refinement.Rejected(QueryCallbackDocumentFailure.FLOW_BODY_MISMATCH)
+    else Refinement.Refined(Unit)
+}

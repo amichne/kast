@@ -25,7 +25,7 @@ class ProjectReadEpochNegativeTest {
                 .all { constructor -> Modifier.isPrivate(constructor.modifiers) }
         )
         assertEquals(
-            setOf("relationTo"),
+            setOf("relationTo", "environmentRelationTo"),
             ProjectReadEpoch::class
                 .java
                 .declaredMethods
@@ -152,6 +152,8 @@ class ProjectReadEpochNegativeTest {
             fun weaken(live: LiveSemanticReadAuthority) = publishedOnly(live)
             fun detached(ref: LiveSemanticReadReference): SemanticReadAuthority = ref
             fun erased(authority: SemanticReadAuthority) = authority.generation
+            fun continuity(previous: LiveSemanticReadAuthority, current: LiveSemanticReadAuthority) =
+                LiveSemanticEnvironmentContinuity(previous, current)
             """
                 .trimIndent(),
         )
@@ -178,5 +180,6 @@ class ProjectReadEpochNegativeTest {
         assertTrue("actual type is 'LiveSemanticReadAuthority'" in diagnostics, diagnostics)
         assertTrue("expected 'SemanticReadAuthority', actual 'LiveSemanticReadReference'" in diagnostics, diagnostics)
         assertTrue("unresolved reference 'generation'" in diagnostics, diagnostics)
+        assertTrue("LiveSemanticEnvironmentContinuity" in diagnostics, diagnostics)
     }
 }

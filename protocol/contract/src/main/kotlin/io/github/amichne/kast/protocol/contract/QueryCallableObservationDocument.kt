@@ -89,7 +89,25 @@ private constructor(
 }
 
 sealed interface QueryCallableTargetDocument {
-    data class ParameterInvocation(val parameter: QueryCallbackParameterIdentityDocument) : QueryCallableTargetDocument
+    data class DirectInvocations(val invocations: BoundedProtocolList<QueryImmutableCallbackUseDocument.Direct>) :
+        QueryCallableTargetDocument
+
+    data class UnavailableSupply(val obligations: QueryCallbackGraphObligationsDocument) : QueryCallableTargetDocument
+
+    data class CallbackSupplies(
+        val supplies: BoundedProtocolList<QueryImmutableCallbackUseDocument.Supplied>,
+        val formals: BoundedProtocolList<QueryCallbackParameterIdentityDocument>,
+    ) : QueryCallableTargetDocument
+
+    data class UnavailableReference(val cause: QueryCallbackFlowCauseDocument) : QueryCallableTargetDocument
+
+    data class NamedReference(val reference: QueryNamedCallbackReferenceDocument) : QueryCallableTargetDocument
+
+    data class ParameterInvocation(
+        val parameter: QueryCallbackParameterIdentityDocument,
+        val suppliers: QueryCallbackSupplierInventoryDocument,
+        val invocation: QueryCallbackInvocationDocument,
+    ) : QueryCallableTargetDocument
 
     data class SourceLess(
         val callable: QuerySourceLessCallableDocument,
@@ -105,21 +123,31 @@ private constructor(
     val body: QueryCallbackBodyDocument,
     val target: QueryCallableTargetDocument,
 ) {
-    fun admitsDomain(domain: QueryRelationDomainDocument): Boolean =
-        when (val value = target) {
-            is QueryCallableTargetDocument.ParameterInvocation -> true
-            is QueryCallableTargetDocument.SourceLess ->
-                when (value.disposition) {
-                    QuerySourceLessCallableDispositionDocument.BUILTIN_BOUNDARY ->
-                        value.callable.moduleKind == QuerySourceLessCallableModuleKindDocument.BUILTINS
-                    QuerySourceLessCallableDispositionDocument.LIBRARY_POLICY_EXCLUDED ->
-                        value.callable.moduleKind == QuerySourceLessCallableModuleKindDocument.LIBRARY &&
-                            domain.libraries == QueryDiscoveryInclusionPolicyDocument.EXCLUDE
-                    QuerySourceLessCallableDispositionDocument.LIBRARY_SOURCE_UNAVAILABLE ->
-                        value.callable.moduleKind == QuerySourceLessCallableModuleKindDocument.LIBRARY &&
-                            domain.libraries == QueryDiscoveryInclusionPolicyDocument.INCLUDE
-                }
-        }
+    fun admitsDomain(domain: QueryRelationDomainDocument, fingerprint: QueryRelationDomainFingerprint): Boolean =
+        target.admitsFactoryPolicy(domain) &&
+            when (val value = target) {
+                is QueryCallableTargetDocument.DirectInvocations,
+                is QueryCallableTargetDocument.UnavailableSupply,
+                is QueryCallableTargetDocument.CallbackSupplies,
+                is QueryCallableTargetDocument.UnavailableReference,
+                is QueryCallableTargetDocument.NamedReference -> true
+                is QueryCallableTargetDocument.ParameterInvocation ->
+                    when (val suppliers = value.suppliers) {
+                        is QueryCallbackSupplierInventoryDocument.Unavailable -> true
+                        is QueryCallbackSupplierInventoryDocument.Exhaustive -> suppliers.domain == fingerprint
+                    }
+                is QueryCallableTargetDocument.SourceLess ->
+                    when (value.disposition) {
+                        QuerySourceLessCallableDispositionDocument.BUILTIN_BOUNDARY ->
+                            value.callable.moduleKind == QuerySourceLessCallableModuleKindDocument.BUILTINS
+                        QuerySourceLessCallableDispositionDocument.LIBRARY_POLICY_EXCLUDED ->
+                            value.callable.moduleKind == QuerySourceLessCallableModuleKindDocument.LIBRARY &&
+                                domain.libraries == QueryDiscoveryInclusionPolicyDocument.EXCLUDE
+                        QuerySourceLessCallableDispositionDocument.LIBRARY_SOURCE_UNAVAILABLE ->
+                            value.callable.moduleKind == QuerySourceLessCallableModuleKindDocument.LIBRARY &&
+                                domain.libraries == QueryDiscoveryInclusionPolicyDocument.INCLUDE
+                    }
+            }
 
     companion object {
         fun create(
@@ -134,13 +162,27 @@ private constructor(
                     is Refinement.Rejected ->
                         return Refinement.Rejected(QueryCallableObservationDocumentFailure.INVALID_BODY)
                 }
-            if (
-                QueryCallbackBodyDocument.Named(lexicalOwner).admitOwner() is Refinement.Rejected ||
-                    !lexicalOwner.declaration.contains(owner) ||
-                    !owner.contains(occurrence)
-            )
+            if (!admittedCallableOwner(lexicalOwner, owner, occurrence))
                 return Refinement.Rejected(QueryCallableObservationDocumentFailure.INVALID_BODY)
-            if (target is QueryCallableTargetDocument.ParameterInvocation && !target.parameter.validParameter())
+            if (
+                target is QueryCallableTargetDocument.DirectInvocations &&
+                    !target.admitsDirectInvocations(occurrence, body)
+            )
+                return Refinement.Rejected(QueryCallableObservationDocumentFailure.INVALID_BOUNDARY)
+            if (
+                target is QueryCallableTargetDocument.CallbackSupplies &&
+                    !target.admitsSelectedSupplies(occurrence, body)
+            )
+                return Refinement.Rejected(QueryCallableObservationDocumentFailure.INVALID_BOUNDARY)
+            if (
+                target is QueryCallableTargetDocument.NamedReference &&
+                    !target.reference.admits(occurrence, lexicalOwner)
+            )
+                return Refinement.Rejected(QueryCallableObservationDocumentFailure.INVALID_BOUNDARY)
+            if (
+                target is QueryCallableTargetDocument.ParameterInvocation &&
+                    !target.admitsParameter(owner, occurrence, body)
+            )
                 return Refinement.Rejected(QueryCallableObservationDocumentFailure.INVALID_PARAMETER)
             return Refinement.Refined(QueryCallableObservationDocument(occurrence, lexicalOwner, body, target))
         }
@@ -156,3 +198,65 @@ data class QueryWalkCallableObservationDocument(
     val effectiveDomain: QueryRelationDomainDocument,
     val domainFingerprint: QueryRelationDomainFingerprint,
 )
+
+private fun QueryCallableTargetDocument.ParameterInvocation.admitsParameter(
+    owner: RelationOccurrenceDocument,
+    occurrence: RelationOccurrenceDocument,
+    body: QueryCallbackBodyDocument,
+): Boolean {
+    if (!parameter.validParameter() || !parameter.callable.declaration.contains(owner)) return false
+    if (!invocation.admitsObservedParameter(parameter, occurrence, body)) return false
+    return when (val proof = suppliers) {
+        is QueryCallbackSupplierInventoryDocument.Unavailable -> true
+        is QueryCallbackSupplierInventoryDocument.Exhaustive -> proof.root.sameParameter(parameter)
+    }
+}
+
+private fun QueryImmutableCallbackUseDocument.Supplied.admitsSelectedSupply(
+    occurrence: RelationOccurrenceDocument,
+    body: QueryCallbackBodyDocument,
+): Boolean {
+    val binding = supplier.binding
+    if (binding.invocationOwner !is QueryCallbackBodyDocument.Named || binding.invocationOwner != body) return false
+    if (!binding.invocationOccurrence.sameSite(occurrence)) return false
+    return CallbackInvocationRouteProof(value.source.enclosing.basis, invocations.values, emptyList(), forwarding)
+        .admitParameterInvocations(binding.parameterIdentity(), binding.invocation.callable) is Refinement.Refined
+}
+
+private fun QueryCallableTargetDocument.CallbackSupplies.admitsSelectedSupplies(
+    occurrence: RelationOccurrenceDocument,
+    body: QueryCallbackBodyDocument,
+): Boolean {
+    if (supplies.values.isEmpty() || supplies.values.distinct().size != supplies.values.size) return false
+    if (formals.values.any { !it.validParameter() }) return false
+    val required = formals.values.map { it.formalSite() }
+    if (
+        required.distinct().size != required.size ||
+            required.toSet() != supplies.values.map { it.supplier.binding.parameterIdentity().formalSite() }.toSet()
+    )
+        return false
+    val invocation = supplies.values.first().supplier.binding.invocation
+    return supplies.values.all {
+        it.supplier.binding.invocation == invocation && it.admitsSelectedSupply(occurrence, body)
+    }
+}
+
+private fun QueryCallableTargetDocument.DirectInvocations.admitsDirectInvocations(
+    occurrence: RelationOccurrenceDocument,
+    body: QueryCallbackBodyDocument,
+): Boolean {
+    val values = invocations.values
+    if (values.isEmpty() || values.distinct().size != values.size) return false
+    val binding = values.first().binding
+    if (binding.owner != body || !binding.occurrence.sameSite(occurrence)) return false
+    return values.all { it.binding == binding && it.admitDirect(it.value.source.enclosing.basis) is Refinement.Refined }
+}
+
+private fun admittedCallableOwner(
+    lexicalOwner: QueryCallbackCallableDocument,
+    owner: RelationOccurrenceDocument,
+    occurrence: RelationOccurrenceDocument,
+): Boolean =
+    QueryCallbackBodyDocument.Named(lexicalOwner).admitOwner() is Refinement.Refined &&
+        lexicalOwner.declaration.contains(owner) &&
+        owner.contains(occurrence)

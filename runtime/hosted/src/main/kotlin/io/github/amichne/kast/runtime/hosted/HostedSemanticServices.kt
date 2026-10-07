@@ -97,6 +97,7 @@ internal class HostedSemanticServices(
                 fileAdmission = context.sourceFiles,
                 observation = context.observation,
                 limits = context.limits,
+                summaries = project.getService(HostedSemanticCallbackFacts::class.java).preparation(project, context),
             ),
         )
     val references =

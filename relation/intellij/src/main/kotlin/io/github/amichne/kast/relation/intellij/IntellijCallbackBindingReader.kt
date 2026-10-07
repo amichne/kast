@@ -83,9 +83,19 @@ internal class IntellijCallbackBindingReader(
     private val context: IntellijCallbackFlowContext,
     private val lexicalOwner: CompilerGroundedSymbolEvidence,
 ) {
-    fun prepare(literal: KtFunction): CallbackBindingPreparation {
+    fun prepare(literal: KtFunction): CallbackBindingPreparation =
+        prepareSupply(classifyCallbackFunctionSupply(literal))
+
+    fun prepareExpression(expression: org.jetbrains.kotlin.psi.KtExpression): CallbackBindingPreparation {
+        var value = expression
+        while (value.parent is org.jetbrains.kotlin.psi.KtParenthesizedExpression) value =
+            value.parent as org.jetbrains.kotlin.psi.KtExpression
+        return prepareSupply(classifyCallbackValueSupply(value))
+    }
+
+    private fun prepareSupply(supply: IntellijCallbackLambdaSupply): CallbackBindingPreparation {
         val argument =
-            when (val supply = classifyCallbackFunctionSupply(literal)) {
+            when (supply) {
                 is IntellijCallbackLambdaSupply.Argument -> supply
                 is IntellijCallbackLambdaSupply.DefaultParameter ->
                     return IntellijCallbackDeclaredSupplyReader(context).prepareDefault(supply)

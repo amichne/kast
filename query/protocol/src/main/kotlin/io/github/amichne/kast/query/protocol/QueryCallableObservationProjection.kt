@@ -36,15 +36,30 @@ internal fun RelationCallableObservation.projectCallableObservation(
 
 private fun RelationCallableTarget.projectCallableTarget(projection: CallbackProjection): QueryCallableTargetDocument? =
     when (this) {
-        is RelationCallableTarget.ParameterInvocation ->
-            projection.parameter(parameter)?.let { QueryCallableTargetDocument.ParameterInvocation(it) }
+        is RelationCallableTarget.DirectInvocations -> projectDirectInvocations(projection)
+        is RelationCallableTarget.UnavailableSupply ->
+            when (
+                val proof =
+                    io.github.amichne.kast.protocol.contract.QueryCallbackGraphObligationsDocument.from(
+                        evidence.causes.sortedBy { it.ordinal }.map { it.protocolCallbackDocument() }
+                    )
+            ) {
+                is Refinement.Refined -> QueryCallableTargetDocument.UnavailableSupply(proof.value)
+                is Refinement.Rejected -> null
+            }
+        is RelationCallableTarget.CallbackSupplies -> projectSupplies(projection)
+        is RelationCallableTarget.UnavailableReference ->
+            QueryCallableTargetDocument.UnavailableReference(cause.protocolCallbackDocument())
+        is RelationCallableTarget.NamedReference ->
+            reference.projectNamedReference(projection)?.let { QueryCallableTargetDocument.NamedReference(it) }
+        is RelationCallableTarget.ParameterInvocation -> projectParameterInvocation(projection)
         is RelationCallableTarget.SourceLess ->
             callable.protocolDocument()?.let {
                 QueryCallableTargetDocument.SourceLess(it, disposition.protocolDocument())
             }
     }
 
-private fun SourceLessCallable.protocolDocument(): QuerySourceLessCallableDocument? {
+internal fun SourceLessCallable.protocolDocument(): QuerySourceLessCallableDocument? {
     val evidence =
         CompilerSymbolEvidenceDocument.restore(
                 ProtocolText.parse(compilerIdentity.value).callableValue() ?: return null,
@@ -90,7 +105,7 @@ private fun SourceLessCallableModuleKind.protocolDocument(): QuerySourceLessCall
         SourceLessCallableModuleKind.LIBRARY -> QuerySourceLessCallableModuleKindDocument.LIBRARY
     }
 
-private fun SourceLessCallableDisposition.protocolDocument(): QuerySourceLessCallableDispositionDocument =
+internal fun SourceLessCallableDisposition.protocolDocument(): QuerySourceLessCallableDispositionDocument =
     when (this) {
         SourceLessCallableDisposition.BUILTIN_BOUNDARY -> QuerySourceLessCallableDispositionDocument.BUILTIN_BOUNDARY
         SourceLessCallableDisposition.LIBRARY_POLICY_EXCLUDED ->
@@ -124,4 +139,52 @@ internal fun io.github.amichne.kast.traversal.contract.TraversalCallableObservat
         ) ?: return null,
         QueryRelationDomainFingerprint.parse(observation.effectiveDomain.value).callableValue() ?: return null,
     )
+}
+
+private fun RelationCallableTarget.CallbackSupplies.projectSupplies(
+    projection: CallbackProjection
+): QueryCallableTargetDocument? {
+    val values =
+        supplies.values.map {
+            (io.github.amichne.kast.relation.contract.ImmutableCallbackInvocationUse.Supplied(it.supplier, it.summary)
+                .projectUse(projection)
+                as? io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument.Supplied) ?: return null
+        }
+    val formals =
+        when (
+            val admitted =
+                io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                    supplies.formals.map { projection.parameter(it) ?: return null }
+                )
+        ) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return null
+        }
+    return when (val bounded = io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(values)) {
+        is Refinement.Refined -> QueryCallableTargetDocument.CallbackSupplies(bounded.value, formals)
+        is Refinement.Rejected -> null
+    }
+}
+
+private fun RelationCallableTarget.DirectInvocations.projectDirectInvocations(
+    projection: CallbackProjection
+): QueryCallableTargetDocument? {
+    val values =
+        invocations.values.map {
+            (it.projectUse(projection)
+                as? io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument.Direct) ?: return null
+        }
+    return when (val bounded = io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(values)) {
+        is Refinement.Refined -> QueryCallableTargetDocument.DirectInvocations(bounded.value)
+        is Refinement.Rejected -> null
+    }
+}
+
+private fun RelationCallableTarget.ParameterInvocation.projectParameterInvocation(
+    projection: CallbackProjection
+): QueryCallableTargetDocument? {
+    val formal = projection.parameter(parameter) ?: return null
+    val inventory = suppliers.projectSupplierInventory(projection) ?: return null
+    val proof = projection.invocation(invocation) ?: return null
+    return QueryCallableTargetDocument.ParameterInvocation(formal, inventory, proof)
 }

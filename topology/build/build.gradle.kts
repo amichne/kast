@@ -13,4 +13,6 @@ dependencies {
     implementation(libs.coroutines.core)
     implementation(project(":topology:contract"))
     implementation(project(":workspace:contract"))
+    implementation(project(":relation:contract"))
+    testImplementation(testFixtures(project(":workspace:contract")))
 }

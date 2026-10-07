@@ -52,16 +52,31 @@ class StaticCallbackQualificationTest(unittest.TestCase):
 
     def test_complete_route_grants_preserve_separate_small_presentation(self):
         grants = q.static_grants(65536)
-        self.assertEqual([8, 32], [budget.maxResults for budget in grants.complete])
+        self.assertEqual([32, 128], [budget.maxResults for budget in grants.complete])
         self.assertEqual(1, grants.presentation.maxResults)
         self.assertEqual([65536, 65536], [budget.maxReturnedBytes for budget in grants.complete])
         self.assertEqual(65536, grants.presentation.maxReturnedBytes)
+
+    def test_explicit_native_grants_apply_to_every_matched_execution(self):
+        grants = q.static_grants(65536, max_elapsed_ms=30000, max_work_units=400000)
+        for budget in (*grants.complete, grants.presentation):
+            self.assertEqual(30000, budget.maxElapsedMs)
+            self.assertEqual(400000, budget.maxWorkUnits)
+        for elapsed, work in ((0, 1), (1, 0), (-1, 1), (1, -1)):
+            with self.assertRaises(ValueError):
+                q.static_grants(65536, elapsed, work)
+
+    def test_qualified_binding_call_preserves_separate_named_callee_token(self):
+        case = next(case for case in self.suite.complete_cases if case.name == 'immutable-alias-forwarding')
+        site = q.named_call_site(case.supply.call, case.supply.formal.callable)
+        self.assertEqual(case.supply.call.range.startInclusive + len('fixture.staticcallbacks.forwarding.'), site[1])
+        self.assertEqual(site[1] + len('aliasWrapper'), site[2])
 
     def test_resource_control_retains_exact_capacity_cause_and_source_multiplicity(self):
         case = self.suite.resource_cases[0]
         document = self.rejected_document()
         document['rejection']['detail']['cause']['graphFailure']['cause'] = {
-            'type': 'UNRESOLVED', 'obligations': ['NO_INVOCATION_PROVEN', 'RESULT_LIMIT_REACHED'], 'scan': 'INCOMPLETE'}
+            'type': 'UNRESOLVED', 'obligations': ['RESULT_LIMIT_REACHED'], 'scan': 'INCOMPLETE'}
         detail = q.completion_rejection(document, case.rejection)
         self.assertEqual({'type': 'COMPLETE'}, detail['originalCoverage'])
         self.assertEqual(1, case.max_results)
@@ -69,6 +84,21 @@ class StaticCallbackQualificationTest(unittest.TestCase):
         self.assertEqual(self.suite.complete_cases[0].supplies, case.supplies)
         self.assertEqual(2, len({supply.body.range for supply in case.supplies}))
         self.assertEqual(2, len({supply.call.range for supply in case.supplies}))
+
+    def test_resource_supply_rejection_retains_exact_sites_and_rejects_missing_evidence(self):
+        case = self.suite.resource_cases[0]
+        items = [{'occurrence': {'file': supply.call.file, 'range': asdict(supply.call.range)},
+                  'lexical_owner': self.callable(supply.supplier),
+                  'body': {'type': 'NAMED', 'callable': self.callable(supply.supplier)},
+                  'target': {'type': 'UNAVAILABLE_SUPPLY', 'causes': ['RESULT_LIMIT_REACHED']}}
+                 for supply in case.supplies]
+        pages = [{'relation_observations': [{'callable_observations': items}]}]
+        q.assert_unavailable_resource_supplies(pages, case)
+        for changed in (items[:-1], items + items[:1], []):
+            with self.assertRaises(AssertionError):
+                q.assert_unavailable_resource_supplies([{'relation_observations': [{'callable_observations': changed}]}], case)
+        items[0]['target']['causes'] = []
+        with self.assertRaises(AssertionError): q.assert_unavailable_resource_supplies(pages, case)
 
     def test_retained_cursor_dto_preserves_zero_and_omits_absent_fields(self):
         absent = q.static_wire(q.StaticReadResultRequest('result:v1:opaque', q.Budget()))['request']
@@ -121,6 +151,22 @@ class StaticCallbackQualificationTest(unittest.TestCase):
             with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
                 q.native_callback_counters(call({}, diagnostics), LIVE)
 
+    def test_semantic_fact_counters_require_explicit_native_observations(self):
+        receipt = self.diagnostic()
+        receipt['counters'] = [dict(counter=name, contributor='NONE', count=0) for name in q.SEMANTIC_FACT_COUNTERS]
+        self.assertEqual(dict.fromkeys(q.SEMANTIC_FACT_COUNTERS, 0),
+                         q.native_semantic_fact_counters(call({}, [receipt]), LIVE))
+        for mutation in ('missing', 'duplicate', 'unavailable', 'wrong-basis', 'negative', 'saturated'):
+            changed = copy.deepcopy(receipt)
+            if mutation == 'missing': changed['counters'].pop()
+            if mutation == 'duplicate': changed['counters'].append(changed['counters'][0])
+            if mutation == 'wrong-basis': changed['correlation']['epoch'] += 1
+            if mutation == 'negative': changed['counters'][0]['count'] = -1
+            if mutation == 'saturated': changed['counters'][0]['count'] = 1000
+            receipts = [] if mutation == 'unavailable' else [changed]
+            with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                q.native_semantic_fact_counters(call({}, receipts), LIVE)
+
     def test_policy_rejected_run_requires_committed_retained_evidence(self):
         receipt = self.diagnostic()
         receipt['counters'][-3]['count'] = 1
@@ -168,15 +214,28 @@ class StaticCallbackQualificationTest(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'CALLBACK_BODY_SCANS'):
             q.native_callback_counters(call({}, [receipt]), LIVE)
 
+    def test_cold_eight_slot_selected_supply_rejection_is_exact_and_retained(self):
+        cause = {'type': 'UNRESOLVED', 'obligations': ['RESULT_LIMIT_REACHED'], 'scan': 'INCOMPLETE'}
+        document = {'status': 'rejected', 'rejection': {'type': 'COMPLETION_UNPROVEN', 'detail': {
+            'model': 'COMPILER_RESOLVED_STATIC_V1', 'cause': {'type': 'CALLBACK_GRAPH_UNPROVEN',
+                'graphFailure': {'cause': cause, 'origin': 'RELATION', 'group': 3, 'observation': 0}},
+            'originalCoverage': {'type': 'COMPLETE'}, 'evidence': {'type': 'RETAINED'},
+            'policyProgress': {'type': 'EVIDENCE_ONLY'}}}}
+        q.assert_cold_selected_capacity(document)
+        for status in ('complete', 'qualified'):
+            with self.assertRaises(AssertionError): q.assert_cold_selected_capacity({**document, 'status': status})
+        cause['obligations'] = []
+        with self.assertRaises(AssertionError): q.assert_cold_selected_capacity(document)
+
     def test_each_alpha_callees_grant_requires_exact_formal_scan_and_reuse_counts(self):
         case = self.suite.complete_cases[0]
         counts = {'CALLBACK_BODY_SCANS': 3, 'CALLBACK_BODY_SCANS_COMPLETED': 3,
-                  'CALLBACK_BODY_SCANS_INCOMPLETE': 0, 'CALLBACK_SUMMARY_HITS': 1,
-                  'CALLBACK_SUMMARY_MISSES': 1, 'CALLBACK_SUMMARY_REJECTIONS': 0,
-                  'CALLBACK_SUMMARIES_RETAINED': 1, 'CALLBACK_SUMMARY_RETENTION_REJECTIONS': 0,
+                  'CALLBACK_BODY_SCANS_INCOMPLETE': 0, 'CALLBACK_SUMMARY_HITS': 2,
+                  'CALLBACK_SUMMARY_MISSES': 0, 'CALLBACK_SUMMARY_REJECTIONS': 0,
+                  'CALLBACK_SUMMARIES_RETAINED': 0, 'CALLBACK_SUMMARY_RETENTION_REJECTIONS': 0,
                   'CALLBACK_FORWARDING_FORMALS': 3, 'CALLBACK_FORWARDING_EDGES': 2,
                   'CALLBACK_FIXED_POINTS_COMPLETED': 1, 'CALLBACK_FIXED_POINTS_REJECTED': 0}
-        for grant in (8, 32):
+        for grant in (32, 128):
             with self.subTest(grant=grant):
                 q.assert_complete_scan_reuse(case, q.StaticRelation.CALLEES, counts)
         for counter in counts:
@@ -185,15 +244,33 @@ class StaticCallbackQualificationTest(unittest.TestCase):
             with self.subTest(counter=counter), self.assertRaisesRegex(AssertionError, 'scan/reuse'):
                 q.assert_complete_scan_reuse(case, q.StaticRelation.CALLEES, changed)
 
+    def test_project_reuse_requires_one_summary_and_no_repeated_body_or_graph_work(self):
+        case = self.suite.complete_cases[0]
+        facts = dict.fromkeys(q.SEMANTIC_FACT_COUNTERS, 0)
+        facts['SEMANTIC_FACT_PARTITIONS_REUSED'] = 2
+        counts = dict.fromkeys(q.STATIC_COUNTERS, 0)
+        counts['CALLBACK_SUMMARY_HITS'] = 2
+        q.assert_complete_scan_reuse(case, q.StaticRelation.CALLEES, counts, facts)
+        for mutation in ('extra-reuse', 'extracted', 'scan', 'formal', 'edge', 'supplier-hit'):
+            changed_facts, changed_counts = dict(facts), dict(counts)
+            if mutation == 'extra-reuse': changed_facts['SEMANTIC_FACT_PARTITIONS_REUSED'] = 3
+            if mutation == 'extracted': changed_facts['SEMANTIC_FACT_PARTITIONS_EXTRACTED'] = 1
+            if mutation == 'scan': changed_counts['CALLBACK_BODY_SCANS'] = 1
+            if mutation == 'formal': changed_counts['CALLBACK_FORWARDING_FORMALS'] = 1
+            if mutation == 'edge': changed_counts['CALLBACK_FORWARDING_EDGES'] = 1
+            if mutation == 'supplier-hit': changed_counts['CALLBACK_SUMMARY_HITS'] = 1
+            with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                q.assert_complete_scan_reuse(case, q.StaticRelation.CALLEES, changed_counts, changed_facts)
+
     def test_recursive_native_cases_require_each_formal_scanned_once_and_exact_graph_work(self):
-        expected_sizes = {'recursive': (1, 1, 0), 'self-recursive-invocation': (1, 1, 1),
-                          'mutual-recursive-invocation': (3, 3, 0)}
+        expected_sizes = {'recursive': (1, 1, 1), 'self-recursive-invocation': (1, 1, 2),
+                          'mutual-recursive-invocation': (3, 3, 1)}
         cases = {case.name: case for case in self.suite.complete_cases}
         for name, (formals, edges, hits) in expected_sizes.items():
             counts = {'CALLBACK_BODY_SCANS': formals, 'CALLBACK_BODY_SCANS_COMPLETED': formals,
                 'CALLBACK_BODY_SCANS_INCOMPLETE': 0, 'CALLBACK_SUMMARY_HITS': hits,
-                'CALLBACK_SUMMARY_MISSES': 1, 'CALLBACK_SUMMARY_REJECTIONS': 0,
-                'CALLBACK_SUMMARIES_RETAINED': 1, 'CALLBACK_SUMMARY_RETENTION_REJECTIONS': 0,
+                'CALLBACK_SUMMARY_MISSES': 0, 'CALLBACK_SUMMARY_REJECTIONS': 0,
+                'CALLBACK_SUMMARIES_RETAINED': 0, 'CALLBACK_SUMMARY_RETENTION_REJECTIONS': 0,
                 'CALLBACK_FORWARDING_FORMALS': formals, 'CALLBACK_FORWARDING_EDGES': edges,
                 'CALLBACK_FIXED_POINTS_COMPLETED': 1, 'CALLBACK_FIXED_POINTS_REJECTED': 0}
             with self.subTest(case=name):
@@ -263,7 +340,7 @@ class StaticCallbackQualificationTest(unittest.TestCase):
         declaration = self.span(expected.declaration)
         return dict(declaration=declaration, compiler_target=dict(file=expected.declaration.file,
             range=asdict(expected.declaration.range), name=expected.name,
-            compiler_evidence=dict(signature=dict(qualifiedIdentity=expected.fqn))))
+            compiler_evidence=dict(identity="canonical-signature-sha256-v1|" + "a" * 64, signature=dict(qualifiedIdentity=expected.fqn))))
 
     def formal(self, expected):
         return dict(callable=self.callable(expected.callable), position=expected.position,
@@ -278,7 +355,15 @@ class StaticCallbackQualificationTest(unittest.TestCase):
             target = self.formal(forward.target)
             target.update(type='BOUND', invocation_occurrence=self.span(forward.call),
                 invocation_owner=dict(type='NAMED', callable=self.callable(forward.source.callable)))
-            return dict(source=self.formal(forward.source), argument=self.span(forward.argument), target=target)
+            owner = forward.source.callable.declaration
+            def site(span, role):
+                return dict(enclosing=dict(file=owner.file,
+                    range=dict(start=owner.range.startInclusive, end=owner.range.endExclusive),
+                    compilerIdentity='canonical-signature-sha256-v1|' + 'a' * 64),
+                    range=dict(start=span.range.startInclusive, end=span.range.endExclusive), role=dict(type=role))
+            return dict(source=self.formal(forward.source), argument=self.span(forward.argument), target=target,
+                callable_transfers=[dict(source=site(transfer.source, transfer.source_role),
+                    target=site(transfer.target, transfer.target_role), kind=transfer.kind) for transfer in forward.transfers])
         invocations = []
         if isinstance(case, oracle.CompleteCase):
             invocations.append(dict(occurrence=self.span(case.invocation.occurrence), owner=dict(type='NAMED',
@@ -294,6 +379,36 @@ class StaticCallbackQualificationTest(unittest.TestCase):
                 forwarding=dict(type='EXHAUSTED_GRAPH', root=self.formal(case.graph.root),
                     formals=[self.formal(formal) for formal in case.graph.formals],
                     forwardings=[forwarding(step) for step in case.graph.forwardings])))
+
+    def test_additional_selected_supply_preserves_exact_original_binding_body_and_graph(self):
+        case = self.suite.complete_cases[0]
+        supply = case.supply
+        original = self.observation(case, supply, supply.target_occurrences[0])
+        flow = original['flow']
+        owner = dict(file=supply.supplier.declaration.file,
+                     range=dict(start=supply.supplier.declaration.range.startInclusive, end=supply.supplier.declaration.range.endExclusive),
+                     compilerIdentity='canonical-signature-sha256-v1|' + 'a' * 64)
+        start = dict(enclosing=owner, range=dict(start=supply.body.range.startInclusive, end=supply.body.range.endExclusive), role=dict(type='EXPRESSION_RESULT'))
+        argument = dict(enclosing=owner, range=start['range'], role=dict(type='ARGUMENT', invocation=flow['binding']['invocation'], index=supply.formal.position))
+        value = dict(origin=dict(type='ANONYMOUS', body=flow['body']), source=start, destination=argument,
+                     transfers=[dict(source=start, target=argument, kind='ARGUMENT')], factories=[], invoked_callables=[self.callable(supply.formal.callable)])
+        use = dict(supplier=dict(binding=flow['binding'], selection=dict(type='EXPLICIT', argument=argument), value=value),
+                   forwarding=flow['forwarding'], invocations=flow['invocations'])
+        observed = dict(occurrence=self.span(supply.call), lexical_owner=self.callable(supply.supplier),
+                        body=dict(type='NAMED', callable=self.callable(supply.supplier)),
+                        target=dict(type='CALLBACK_SUPPLIES', formals=[self.formal(supply.formal)], supplies=[use]))
+        pages = [dict(relation_observations=[dict(callable_observations=[observed])])]
+        self.assertEqual([], q.selected_supply_extras(pages, case))
+        for mutation in ('body', 'formal', 'graph', 'owner', 'transfer'):
+            broken = copy.deepcopy(pages)
+            observation = broken[0]['relation_observations'][0]['callable_observations'][0]
+            supplied = observation['target']['supplies'][0]
+            if mutation == 'body': supplied['supplier']['value']['origin']['body']['occurrence']['range']['startInclusive'] += 1
+            if mutation == 'formal': observation['target']['formals'][0]['position'] += 1
+            if mutation == 'graph': supplied['forwarding']['formals'].clear()
+            if mutation == 'owner': supplied['supplier']['value']['source']['enclosing']['file'] = '/foreign'
+            if mutation == 'transfer': supplied['supplier']['value']['transfers'].clear()
+            with self.subTest(mutation=mutation), self.assertRaises(AssertionError): q.selected_supply_extras(broken, case)
 
     def test_complete_native_evidence_requires_exact_exhaustive_graph_and_cycle_edges(self):
         for case in self.suite.complete_cases:
@@ -315,6 +430,58 @@ class StaticCallbackQualificationTest(unittest.TestCase):
                 if mutation == 'graph-duplicate-edge': graph['forwardings'].append(copy.deepcopy(graph['forwardings'][0]))
                 with self.subTest(case=case.name, mutation=mutation), self.assertRaises((AssertionError, KeyError)):
                     q.assert_complete_callback([changed], case)
+
+    def test_named_reference_requires_exact_supply_graph_and_terminal(self):
+        case = self.suite.excluded_cases[0]
+        # These response fragments are opaque public documents consumed by the
+        # validator. Their expected identities come from the authored source oracle.
+        source_case = self.suite.complete_cases[0]
+        source = self.observation(source_case, source_case.supply, source_case.supply.target_occurrences[0])
+        binding = copy.deepcopy(source['flow']['binding'])
+        binding['invocation_occurrence'] = self.span(case.call)
+        binding['invocation_owner']['callable'] = self.callable(case.supplier)
+        invocations = copy.deepcopy(source['flow']['invocations'])
+        invocations[0]['callable_transfers'] = []
+        reference = dict(target=self.callable(case.target), dispatch_receiver=dict(type='ABSENT'),
+            extension_receiver=dict(type='ABSENT'), flow=dict(type='SUPPLIED', binding=binding,
+                invocations=invocations, forwarding=source['flow']['forwarding']))
+        observed = dict(occurrence=self.span(case.reference), lexical_owner=self.callable(case.supplier),
+            body=dict(type='NAMED', callable=self.callable(case.supplier)),
+            target=dict(type='NAMED_REFERENCE', reference=reference))
+        page = dict(relation_observations=[dict(callback_observations=[], callable_observations=[observed])])
+        q.assert_named_reference([page], case)
+        for mutation in ('receiver', 'target', 'supplier', 'occurrence', 'invocation', 'forwarding', 'multiplicity'):
+            changed = copy.deepcopy(page)
+            observation = changed['relation_observations'][0]['callable_observations'][0]
+            value = observation['target']['reference']
+            if mutation == 'receiver': value['dispatch_receiver'] = dict(type='UNBOUND')
+            if mutation == 'target': value['target'] = self.callable(source_case.supply.target)
+            if mutation == 'supplier': value['flow']['binding']['invocation_owner']['callable'] = self.callable(source_case.supply.supplier)
+            if mutation == 'occurrence': observation['occurrence']['range']['endExclusive'] += 1
+            if mutation == 'invocation': value['flow']['invocations'].clear()
+            if mutation == 'forwarding': value['flow']['forwarding']['forwardings'].pop()
+            if mutation == 'multiplicity': changed['relation_observations'][0]['callable_observations'].append(observation)
+            with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                q.assert_named_reference([changed], case)
+
+    def test_alias_proof_requires_each_exact_transfer_and_owner(self):
+        case = next(case for case in self.suite.complete_cases if case.name == 'immutable-alias-forwarding')
+        observed = self.observation(case, case.supply, case.supply.target_occurrences[0])
+        edge = observed['flow']['forwarding']['forwardings'][0]
+        q.assert_forwarding(edge, case.forwardings[0])
+        for mutation in ('missing', 'truncated', 'kind', 'source', 'target', 'owner', 'identity', 'role'):
+            changed = copy.deepcopy(edge)
+            transfers = changed['callable_transfers']
+            if mutation == 'missing': del changed['callable_transfers']
+            if mutation == 'truncated': transfers.pop()
+            if mutation == 'kind': transfers[0]['kind'] = 'ARGUMENT'
+            if mutation == 'source': transfers[0]['source']['range']['start'] += 1
+            if mutation == 'target': transfers[0]['target']['range']['end'] += 1
+            if mutation == 'owner': transfers[0]['source']['enclosing']['file'] += '-other'
+            if mutation == 'identity': transfers[0]['source']['enclosing']['compilerIdentity'] += 'wrong'
+            if mutation == 'role': transfers[0]['source']['role'] = dict(type='LOCAL_READ')
+            with self.subTest(mutation=mutation), self.assertRaises((AssertionError, KeyError)):
+                q.assert_forwarding(changed, case.forwardings[0])
 
     def test_source_oracle_checks_wire_policy_supplier_and_each_exact_forwarding(self):
         case = self.suite.complete_cases[0]

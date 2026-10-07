@@ -26,18 +26,42 @@ internal fun nativeTransparentWrapperReturn(
     val parameter =
         callable.valueParameters.getOrNull(argument.position.value)
             ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
-    val body =
-        when (val expression = callable.bodyExpression) {
-            is KtBlockExpression -> (expression.statements.singleOrNull() as? KtReturnExpression)?.returnedExpression
-            else -> expression
-        }
-            as? KtNameReferenceExpression ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
-    // Resolution compares actual parameter PSI in this native read, not spelling, signature or formal type.
-    val same =
-        analyze(body) {
-            val reference = body.references.filterIsInstance<KtReference>().singleOrNull()
-            reference?.resolveToSymbol()?.psi === parameter
-        }
-    if (!same) return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
-    return Refinement.Refined(Unit)
+    return when (val returned = nativeTransparentReturnedParameter(callable)) {
+        NativeTransparentReturnedParameter.NotTransparent ->
+            Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+        NativeTransparentReturnedParameter.Unresolved ->
+            Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+        is NativeTransparentReturnedParameter.Formal ->
+            if (returned.parameter.originalElement == parameter.originalElement) Refinement.Refined(Unit)
+            else Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+    }
+}
+
+internal sealed interface NativeTransparentReturnedParameter {
+    data object NotTransparent : NativeTransparentReturnedParameter
+
+    data object Unresolved : NativeTransparentReturnedParameter
+
+    data class Formal(val parameter: org.jetbrains.kotlin.psi.KtParameter) : NativeTransparentReturnedParameter
+}
+
+/** One syntactic return and an exact compiler formal target; branches and local aliases require separate proofs. */
+internal fun nativeTransparentReturnedParameter(callable: KtNamedFunction): NativeTransparentReturnedParameter {
+    var expression =
+        when (val body = callable.bodyExpression) {
+            is KtBlockExpression -> (body.statements.singleOrNull() as? KtReturnExpression)?.returnedExpression
+            else -> body
+        } ?: return NativeTransparentReturnedParameter.NotTransparent
+    while (expression is org.jetbrains.kotlin.psi.KtParenthesizedExpression) expression =
+        expression.expression ?: return NativeTransparentReturnedParameter.Unresolved
+    val read = expression as? KtNameReferenceExpression ?: return NativeTransparentReturnedParameter.NotTransparent
+    val declaration =
+        analyze(read) {
+            val reference = read.references.filterIsInstance<KtReference>().singleOrNull()
+            reference?.resolveToSymbol()?.psi
+        } ?: return NativeTransparentReturnedParameter.Unresolved
+    val parameter =
+        callable.valueParameters.singleOrNull { it.originalElement == declaration.originalElement }
+            ?: return NativeTransparentReturnedParameter.NotTransparent
+    return NativeTransparentReturnedParameter.Formal(parameter)
 }

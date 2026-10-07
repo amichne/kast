@@ -177,14 +177,25 @@ private fun QueryRelationObservationWireDocument.admitsCallableObservations(
     values: List<QueryCallableObservationDocument>
 ): Boolean =
     when {
-        values.isNotEmpty() && relation != RelationKindDocument.CALLEES -> false
-        values.any { !it.admitsDomain(effectiveDomain) } -> false
+        values.isNotEmpty() &&
+            relation != RelationKindDocument.CALLEES &&
+            !(relation == RelationKindDocument.CALLERS &&
+                values.all {
+                    (it.target is QueryCallableTargetDocument.NamedReference ||
+                        it.target is QueryCallableTargetDocument.UnavailableReference)
+                }) -> false
+        values.any { !it.admitsDomain(effectiveDomain, domainFingerprint) } -> false
         coverage == QueryRelationCoverageDocument.Exhausted && values.any { it.requiresLibrarySource() } -> false
         else -> true
     }
 
 private fun QueryCallableObservationDocument.requiresLibrarySource(): Boolean =
     when (val value = target) {
+        is QueryCallableTargetDocument.DirectInvocations,
+        is QueryCallableTargetDocument.UnavailableSupply,
+        is QueryCallableTargetDocument.CallbackSupplies,
+        is QueryCallableTargetDocument.UnavailableReference,
+        is QueryCallableTargetDocument.NamedReference -> false
         is QueryCallableTargetDocument.ParameterInvocation -> false
         is QueryCallableTargetDocument.SourceLess ->
             value.disposition == QuerySourceLessCallableDispositionDocument.LIBRARY_SOURCE_UNAVAILABLE

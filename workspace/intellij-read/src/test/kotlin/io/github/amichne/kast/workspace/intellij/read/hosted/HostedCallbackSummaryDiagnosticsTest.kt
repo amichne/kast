@@ -63,7 +63,7 @@ class HostedCallbackSummaryDiagnosticsTest {
         val callbackCounts =
             encoded
                 .map { it.jsonObject }
-                .filter { it.getValue("counter").jsonPrimitive.content.startsWith("CALLBACK_") }
+                .filter { it.getValue("counter").jsonPrimitive.content in counters.map { counter -> counter.name } }
         assertEquals(counters.size, callbackCounts.size)
         callbackCounts.forEachIndexed { index, count ->
             assertEquals(setOf("counter", "contributor", "count"), count.keys)

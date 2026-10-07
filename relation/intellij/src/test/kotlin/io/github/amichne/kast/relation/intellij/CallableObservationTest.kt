@@ -156,7 +156,7 @@ class CallableObservationTest {
         val request = fixture.request(RelationMeaning.Callees)
         val owner = owner(request)
         val longType = "library." + "LargeType".repeat(13_000)
-        val formal = fixture.fact(request, identity = longType).target
+        val formal = parameterOwner(request, longType)
         val identity =
             CallbackParameterIdentity.fromCompiler(
                     formal,
@@ -176,15 +176,7 @@ class CallableObservationTest {
                 .refined() as CanonicalCompilerSignature.Function
         val body =
             RelationCallableBody.Anonymous.fromCompiler(request.subject.file, range, anonymousSignature).refined()
-        val value =
-            RelationCallableObservation.fromNativeBoundary(
-                    request,
-                    RelationOccurrence.fromBoundary(request.subject.file, 43, 44).refined(),
-                    owner,
-                    body,
-                    RelationCallableTarget.ParameterInvocation(identity),
-                )
-                .refined()
+        val value = parameterObservation(request, identity, body)
         assertTrue(value.canonicalProjection().contains(owner.signature.canonicalEncoding().value))
         assertTrue(value.canonicalProjection().contains(formal.signature.canonicalEncoding().value))
         assertTrue(value.canonicalProjection().contains(anonymousSignature.canonicalEncoding().value))
@@ -206,23 +198,14 @@ class CallableObservationTest {
     @Test
     fun `exact parameter identity retains formal position and invocation body`() {
         val request = fixture.request(RelationMeaning.Callees)
-        val target = fixture.fact(request).target
+        val target = parameterOwner(request, "()->Unit")
         val parameter = RelationOccurrence.fromBoundary(target.file, 72, 73).refined()
         val identity =
             CallbackParameterIdentity.fromCompiler(target, ValueArgumentPosition.parse(0).refined(), parameter)
                 .refined()
-        val occurrence = RelationOccurrence.fromBoundary(request.subject.file, 43, 44).refined()
         val owner = owner(request)
         val body = RelationCallableBody.Named.fromCompiler(owner).refined()
-        val value =
-            RelationCallableObservation.fromNativeBoundary(
-                    request,
-                    occurrence,
-                    owner,
-                    body,
-                    RelationCallableTarget.ParameterInvocation(identity),
-                )
-                .refined()
+        val value = parameterObservation(request, identity, body)
         val collector = IntellijRelationCollector(request, { 0L })
         collector.beginProviderItem(fixture.providerItem("parameter"))
         assertTrue(collector.acceptCallableObservation(value))
@@ -241,8 +224,35 @@ class CallableObservationTest {
         )
         assertEquals(
             Refinement.Rejected(CallbackParameterIdentityFailure.PARAMETER_OUTSIDE_CALLABLE),
-            CallbackParameterIdentity.fromCompiler(target, ValueArgumentPosition.parse(0).refined(), occurrence),
+            CallbackParameterIdentity.fromCompiler(
+                target,
+                ValueArgumentPosition.parse(0).refined(),
+                RelationOccurrence.fromBoundary(request.subject.file, 101, 102).refined(),
+            ),
         )
+    }
+
+    private fun parameterObservation(
+        request: RelationRequest,
+        identity: CallbackParameterIdentity,
+        body: RelationCallableBody,
+    ): RelationCallableObservation {
+        val occurrence = RelationOccurrence.fromBoundary(request.subject.file, 43, 44).refined()
+        val invocation =
+            io.github.amichne.kast.relation.contract.CallbackParameterInvocation.fromCompiler(occurrence, body)
+                .refined()
+        val suppliers =
+            io.github.amichne.kast.relation.contract.CallbackSupplierInventoryEvidence.Unavailable(
+                io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.PARAMETER_ESCAPES
+            )
+        return RelationCallableObservation.fromNativeBoundary(
+                request,
+                occurrence,
+                owner(request),
+                body,
+                RelationCallableTarget.ParameterInvocation(identity, suppliers, invocation),
+            )
+            .refined()
     }
 
     private fun boundary(
@@ -267,6 +277,30 @@ class CallableObservationTest {
                 ),
             )
             .refined()
+
+    private fun parameterOwner(
+        request: RelationRequest,
+        parameterType: String,
+    ): io.github.amichne.kast.relation.contract.RelationEndpoint.Resolved {
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    request.subject.file,
+                    0,
+                    100,
+                    "enclosing",
+                    "sample.enclosing",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function("sample.enclosing", null, emptyList(), listOf(parameterType), 0)
+                        .refined(),
+                )
+                .refined()
+        return io.github.amichne.kast.relation.contract.RelationEndpoint.resolve(
+                request.subject.lease,
+                request.subject.scope,
+                evidence,
+            )
+            .refined()
+    }
 
     private fun owner(request: RelationRequest): CompilerGroundedSymbolEvidence =
         CompilerGroundedSymbolEvidence.fromBoundary(

@@ -39,7 +39,7 @@ class QueryCallableObservationWireTest {
         assertEquals(setOf("occurrence", "lexical_owner", "body", "target"), encoded.keys)
         assertEquals(JsonPrimitive("ANONYMOUS"), encoded.getValue("body").jsonObject.getValue("type"))
         val target = encoded.getValue("target").jsonObject
-        assertEquals(setOf("type", "parameter"), target.keys)
+        assertEquals(setOf("type", "parameter", "suppliers", "invocation"), target.keys)
         assertEquals(JsonPrimitive("PARAMETER_INVOCATION"), target.getValue("type"))
         assertEquals(setOf("callable", "position", "parameter"), target.getValue("parameter").jsonObject.keys)
         assertEquals(JsonPrimitive(0), target.getValue("parameter").jsonObject.getValue("position"))
@@ -60,7 +60,7 @@ class QueryCallableObservationWireTest {
             )) {
             assertEquals(
                 WireDocumentConversion.Rejected,
-                wire.copy(target = QueryCallableTargetWireDocument.ParameterInvocation(invalid)).toContract(),
+                wire.copy(target = admitted.copy(parameter = invalid)).toContract(),
             )
         }
         assertThrows(SerializationException::class.java) {
@@ -69,6 +69,25 @@ class QueryCallableObservationWireTest {
                 encoded.toString().replace("PARAMETER_INVOCATION", "UNKNOWN"),
             )
         }
+    }
+
+    @Test
+    fun `parameter invocation rejects substituted occurrence and owner`() {
+        val wire = parameterObservation().toWireDocument()
+        val target = wire.target as QueryCallableTargetWireDocument.ParameterInvocation
+        val invalid =
+            target.invocation.copy(
+                occurrence = target.invocation.occurrence.copy(range = SourceRangeWireDocument(29, 30))
+            )
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            wire.copy(target = target.copy(invocation = invalid)).toContract(),
+        )
+        val foreign = target.invocation.copy(owner = QueryCallbackBodyWireDocument.Named(target.parameter.callable))
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            wire.copy(target = target.copy(invocation = foreign)).toContract(),
+        )
     }
 
     @Test
@@ -181,7 +200,16 @@ class QueryCallableObservationWireTest {
                         owner,
                         ProtocolOffset.parse(0).refined(),
                         fixture.occurrence("Seed.kt", 8, 15),
-                    )
+                    ),
+                    io.github.amichne.kast.protocol.contract.QueryCallbackSupplierInventoryDocument.Unavailable(
+                        io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.PARAMETER_ESCAPES
+                    ),
+                    io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument(
+                        fixture.occurrence("Seed.kt", 20, 28),
+                        body,
+                        bounded(emptyList()),
+                        bounded(emptyList()),
+                    ),
                 ),
             )
             .refined()
