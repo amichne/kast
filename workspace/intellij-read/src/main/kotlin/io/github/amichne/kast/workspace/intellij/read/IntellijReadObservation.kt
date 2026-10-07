@@ -48,6 +48,22 @@ enum class IntellijReadCounter {
     SOURCE_STRUCTURAL_TASKS,
     SOURCE_ENTITIES_PROJECTED,
     RELATION_FACTS,
+    /** Actual formal-body traversals; completed means PSI inventory drainage, not static activation. */
+    CALLBACK_BODY_SCANS,
+    CALLBACK_BODY_SCANS_COMPLETED,
+    CALLBACK_BODY_SCANS_INCOMPLETE,
+    /** A hit requires successful supplier-specific instantiation of a detached formal summary. */
+    CALLBACK_SUMMARY_HITS,
+    CALLBACK_SUMMARY_MISSES,
+    /** Rejected supplier-specific instantiation; summary capture/admission is a separate contract boundary. */
+    CALLBACK_SUMMARY_REJECTIONS,
+    /** Successful retain calls, including idempotent success; not a count of distinct stored formals. */
+    CALLBACK_SUMMARIES_RETAINED,
+    CALLBACK_SUMMARY_RETENTION_REJECTIONS,
+    /** Exact fitted policy evidence may be retained while its query verdict remains rejected. */
+    QUERY_POLICY_EVIDENCE_PUBLICATIONS_COMMITTED,
+    QUERY_POLICY_EVIDENCE_COMMIT_REJECTIONS,
+    QUERY_POLICY_EVIDENCE_PUBLICATIONS_DISCARDED,
     VALUE_PRODUCER_SEED_READS,
     VALUE_PRODUCER_SEEDS_CONFIRMED,
     VALUE_PRODUCER_SEED_REJECTIONS,

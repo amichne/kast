@@ -1,18 +1,25 @@
 package io.github.amichne.kast.runtime.hosted
 
+import io.github.amichne.kast.kernel.AdmittedExecutionBudget
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ExecutionBudgetCapacity
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
@@ -23,6 +30,8 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
@@ -48,6 +57,7 @@ import io.github.amichne.kast.query.protocol.QueryPublishedPage
 import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.symbol.contract.SymbolDescription
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadRejectedPublication
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -70,6 +80,13 @@ class HostedCompletionRejectionPublicationTest {
         assertInstanceOf(HostedResponse.Canonical::class.java, response)
         assertNotNull(fitted, "A fitted rejection carrying retained evidence must reach publication")
         assertEquals(rejection, fitted!!.page)
+        assertEquals(
+            HostedReadRejectedPublication.RetainedEvidence(
+                (rejection.reason as QueryRunRejection.CompletionUnproven).evidence
+                    as QueryCompletionEvidenceDocument.Retained
+            ),
+            fittedRejectedQueryPublication(rejection, fitted!!),
+        )
         assertEquals(QueryPublicationCommit.Committed, case.store.commitPublication(case.claim, fitted!!.page, fitted))
         case.store.releasePublication(case.claim)
         val retained = case.read(rejection)
@@ -89,6 +106,88 @@ class HostedCompletionRejectionPublicationTest {
         assertEquals(1, case.executions)
         assertEquals(rejection, (response as HostedResponse.Canonical<*, *, *>).semantic)
         assertEncodedRejection(response, rejection)
+    }
+
+    @Test
+    fun `budgeted encoded policy rejection preserves exact publication identity and its admitted report`() = runTest {
+        val case = Case()
+        val rejection = case.run()
+        val report = case.budgetReport()
+        val budgeted = rejection.withQueryBudget(report)
+        var fitted: QueryPublicationPageCharge.Encoded? = null
+        val response =
+            assertInstanceOf(
+                HostedResponse.Canonical::class.java,
+                encodeHostedQueryResponse(budgeted, published = { fitted = it }),
+            )
+        assertNotNull(fitted)
+        assertEquals(rejection, fitted!!.page)
+        assertInstanceOf(
+            HostedReadRejectedPublication.RetainedEvidence::class.java,
+            fittedRejectedQueryPublication(rejection, fitted!!),
+        )
+        val decoded =
+            assertInstanceOf(
+                WireDecoding.Decoded::class.java,
+                CanonicalOperationWireBindings.queryRun.decodeOutcome(response.document),
+            )
+        val decodedRejection = assertInstanceOf(OperationOutcome.Rejected::class.java, decoded.value)
+        assertEquals(AdmittedQueryRunRejection(rejection.reason, report), decodedRejection.reason)
+        assertEquals(QueryPublicationCommit.Committed, case.store.commitPublication(case.claim, fitted!!.page, fitted))
+        case.store.releasePublication(case.claim)
+        assertInstanceOf(OperationOutcome.Qualified::class.java, case.read(rejection))
+        assertEquals(1, case.executions)
+    }
+
+    @Test
+    fun `ordinary encoded rejection has no retained policy publication capability`() {
+        val rejection =
+            OperationOutcome.Rejected(
+                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE)
+            )
+        val response = assertInstanceOf(HostedResponse.Canonical::class.java, encodeHostedQueryResponse(rejection))
+        assertEquals(
+            HostedReadRejectedPublication.Discard,
+            fittedRejectedQueryPublication(rejection, encodedPublication(rejection, response)),
+        )
+    }
+
+    @Test
+    fun `another fitted rejection cannot authorize publication of the prepared policy evidence`() = runTest {
+        val original = Case()
+        val other = Case()
+        val prepared = original.run()
+        val encodedRejection = other.run()
+        var fitted: QueryPublicationPageCharge.Encoded? = null
+        assertInstanceOf(
+            HostedResponse.Canonical::class.java,
+            encodeHostedQueryResponse(encodedRejection, published = { fitted = it }),
+        )
+        assertNotNull(fitted)
+        assertEquals(HostedReadRejectedPublication.Discard, fittedRejectedQueryPublication(prepared, fitted!!))
+        original.store.releasePublication(original.claim)
+        other.store.releasePublication(other.claim)
+        assertInstanceOf(OperationOutcome.Rejected::class.java, original.read(prepared))
+        assertInstanceOf(OperationOutcome.Rejected::class.java, other.read(encodedRejection))
+    }
+
+    @Test
+    fun `encoded completion rejection without retained evidence has no publication capability`() = runTest {
+        val case = Case()
+        val rejected = case.run()
+        val reason = rejected.reason as QueryRunRejection.CompletionUnproven
+        val unavailable =
+            OperationOutcome.Rejected(
+                reason.copy(
+                    evidence =
+                        QueryCompletionEvidenceDocument.Unavailable(QueryCompletionRetentionFailure.CAPACITY_EXCEEDED)
+                )
+            )
+        val response = assertInstanceOf(HostedResponse.Canonical::class.java, encodeHostedQueryResponse(unavailable))
+        val encoded = encodedPublication(unavailable, response)
+        assertEquals(HostedReadRejectedPublication.Discard, fittedRejectedQueryPublication(unavailable, encoded))
+        case.store.releasePublication(case.claim)
+        assertInstanceOf(OperationOutcome.Rejected::class.java, case.read(rejected))
     }
 
     @Test
@@ -197,6 +296,20 @@ class HostedCompletionRejectionPublicationTest {
                     QueryExecutionPublicationResult.PREPARED
                 },
             )
+
+        fun budgetReport(): ExecutionBudgetReport {
+            val bytes = ReturnedByteLimit.parse(budget.returnedBytes.value).refined()
+            return ExecutionBudgetReport.from(
+                AdmittedExecutionBudget.admit(
+                    RequestedExecutionBudget(),
+                    budget.resources,
+                    bytes,
+                    budget.resources,
+                    bytes,
+                    ExecutionBudgetCapacity(budget.resources.elapsedTimeLimit, budget.resources.resultLimit, bytes),
+                )
+            )
+        }
 
         suspend fun run(): OperationOutcome.Rejected<QueryRunRejection> {
             val result =

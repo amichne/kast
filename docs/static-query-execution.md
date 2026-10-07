@@ -39,6 +39,11 @@ storage rejection is explicit. Evidence reads retain the policy verdict and
 original coverage separately. A historical producer checkpoint does not grant a
 new strict execution allowance.
 
+A retained policy rejection is published only when its fitted rejection matches
+the prepared page exactly. Host freshness, deadline, and lifetime failures still
+revoke unpublished evidence. Publishing the evidence preserves the rejected
+verdict.
+
 ## Callback evidence
 
 The strict completion policy admits a finite static callback graph from exact
@@ -97,9 +102,52 @@ basis or parameter, and exercise retention limits. Snapshot relation tests compa
 independent expected edges at several page grants with unrelated and wrong-kind
 negative controls.
 
-The next acceptance boundary is a current imported Kotlin project: callers,
-callees, and callback flow across modules, with an independently enumerated
-expected answer and unsupported-flow negative controls. Then run the same query
+The opt-in native acceptance fixture is
+`experiments/host-observation/static-callback-fixture`. Its three modules separate
+lambda suppliers, two forwarding functions, and the terminal parameter
+invocation. `static_callback_oracle.py` authors exact declarations, UTF-16 source
+sites, supplier bindings, forwarding sites, and invocation sites independently of
+semantic responses. Changed or additional Kotlin sources reject the fixture.
+Alpha supplies two distinct lambda bodies at two wrapper call sites in one
+relation request. Each summary reuse must retain that supplier's own body and
+binding; beta checks a separate root and target.
+
+`qualify_callback_tracing.py --static-cross-module` reuses the existing installed
+schema admission, public MCP session, and retained-result drainer. It requires an
+exact candidate build receipt, loaded-class and artifact hashes, a current native
+model pin, and an explicitly selected fixture. It runs semantic result allowances
+of 4 and 32 and retained presentation grants of 1,
+checks the complete supplier-rooted `CALLEES` derivations, and checks that callback
+body calls do not become named `CALLERS` edges. Recursive and external escape
+routes must retain their typed rejection and original evidence. A formal-rooted
+parameter invocation must reject with `CALLABLE_VALUE_UNPROVEN`.
+
+The alpha route needs two retained forwarding witnesses, one terminal invocation,
+and one optional summary for reuse. A semantic allowance of 1 cannot retain that
+route. A separate control requires its `RESULT_LIMIT_REACHED` rejection and
+retained incomplete evidence. Increasing presentation capacity never supplies
+the missing semantic proof.
+
+A Gradle CLI candidate also needs the source-owned
+`distribution/cli/one-shot-observation-v1` session marker staged at
+`share/kast/one-shot-observation-v1`. The candidate receipt checks its exact
+source and destination hashes. This candidate composition qualifies native
+semantic execution; it does not qualify managed installation or release delivery.
+
+Callable references are a separate exclusion control. Their reference sites are
+excluded from these named-call relations; this suite does not establish
+callable-reference transfer completeness. It also does not qualify an unrestricted
+walk, recursive summaries, runtime activation, or topology activation.
+
+The native receipt records actual formal-body scans and supplier-specific summary
+hits, misses, instantiation rejections, and retention outcomes. A completed scan
+means the native PSI inventory drained, not that callback activation was proven.
+Missing counters reject qualification; they are never interpreted as zero.
+Retained row and evidence reads must report zero callback work. Semantic witnesses
+and verdicts must remain equal across the two grants before interpreting work or
+timing evidence.
+
+Run the same query
 and exact model on the representative enterprise corpus. Record hardware,
 compiler/project versions, snapshot identity, all grants, completion status,
 elapsed time, examined work, retained bytes, and emitted bytes. Compare matched

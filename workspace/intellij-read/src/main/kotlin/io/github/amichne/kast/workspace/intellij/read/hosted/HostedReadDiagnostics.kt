@@ -23,26 +23,7 @@ internal class HostedReadDiagnostics(
     private var nativePhase: HostedNativePhaseState = HostedNativePhaseState.NotEntered
     private var phaseStarted = 0L
     private val stages = linkedMapOf<HostedQueryStage, Long>()
-    private val counters = linkedMapOf<Pair<IntellijReadCounter, IntellijReadContributor>, Long>()
-
-    init {
-        // Explicit zeros prove page observation capability even when a workload never enters that provider.
-        counters[IntellijReadCounter.NATIVE_DISCOVERY_PAGES to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.NATIVE_RELATION_PAGES to IntellijReadContributor.NONE] = 0L
-        // Retained value evidence reads must prove that no compiler provider was replayed.
-        counters[IntellijReadCounter.VALUE_PRODUCER_SEED_READS to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.VALUE_MODEL_REVALIDATIONS to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.VALUE_MODEL_SITE_REVALIDATIONS to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.VALUE_MODEL_SITE_REVALIDATIONS_REJECTED to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.PEER_SITE_READS_STARTED to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.PEER_SITE_READS_COMPLETED to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.PEER_SITE_READS_REJECTED to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.VALUE_FLOW_READS to IntellijReadContributor.NONE] = 0L
-        // Both alternatives must remain observable when comparing locator retention across reads.
-        counters[IntellijReadCounter.REVALIDATION_LOCATORS_RETAINED to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.REVALIDATION_LOCATORS_REJECTED to IntellijReadContributor.NONE] = 0L
-        counters[IntellijReadCounter.EPOCH_READ_PREEMPTIONS to IntellijReadContributor.NONE] = 0L
-    }
+    private val counters = initialHostedReadCounters()
 
     private val gauges = linkedMapOf<IntellijReadGauge, IntellijReadGaugeValue>()
     private val terminations = linkedSetOf<Pair<IntellijReadTermination, IntellijReadContributor>>()

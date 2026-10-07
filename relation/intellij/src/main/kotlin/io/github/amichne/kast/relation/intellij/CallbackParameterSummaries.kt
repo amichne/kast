@@ -5,9 +5,13 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.CallbackParameterSummary
 import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
 /** Request-owned detached evidence. The exact formal retains its semantic basis; no PSI enters storage. */
-internal class CallbackParameterSummaries(budget: RelationBudget) {
+internal class CallbackParameterSummaries(
+    budget: RelationBudget,
+    val observation: IntellijReadObservation = IntellijReadObservation.None,
+) {
     val retention = CallbackFlowRetention(budget)
     private val summaries = linkedMapOf<CallbackParameterIdentity, CallbackParameterSummary>()
 

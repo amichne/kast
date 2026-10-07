@@ -22,6 +22,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadPublicationEffect
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadRejectedPublication
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
 
 /** One store owns execution, encoded suffixes and the final immutable published page. */
@@ -44,6 +45,15 @@ internal class HostedQueryPublicationSession(
     }
 
     private var state: State = State.Empty
+
+    override val rejectedPublication: HostedReadRejectedPublication
+        get() =
+            when (val active = state) {
+                is State.Fitted -> fittedRejectedQueryPublication(active.prepared.semantic, active.encoded)
+                State.Empty,
+                is State.Prepared,
+                State.Ended -> HostedReadRejectedPublication.Discard
+            }
 
     override fun prepare(
         store: QueryStateStore,
@@ -144,6 +154,26 @@ internal class HostedQueryPublicationSession(
             measureRetention(it.store)
         }
         state = State.Ended
+    }
+}
+
+/** Only the exact encoded page prepared by this owner can preserve rejected policy evidence. */
+internal fun fittedRejectedQueryPublication(
+    prepared: QueryPublishedPage,
+    encoded: QueryPublicationPageCharge.Encoded,
+): HostedReadRejectedPublication {
+    if (encoded.page != prepared) return HostedReadRejectedPublication.Discard
+    val rejected =
+        encoded.page as? io.github.amichne.kast.kernel.OperationOutcome.Rejected
+            ?: return HostedReadRejectedPublication.Discard
+    val completion =
+        rejected.reason as? io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
+            ?: return HostedReadRejectedPublication.Discard
+    return when (val evidence = completion.evidence) {
+        is io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained ->
+            HostedReadRejectedPublication.RetainedEvidence(evidence)
+        is io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Unavailable ->
+            HostedReadRejectedPublication.Discard
     }
 }
 
