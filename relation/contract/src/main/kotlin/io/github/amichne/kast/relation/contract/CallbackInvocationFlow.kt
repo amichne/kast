@@ -44,16 +44,25 @@ private constructor(
     val obligations: Set<CallbackInvocationFlowCause>,
     val ownerBindings: List<CallbackBodyBinding> = emptyList(),
     val scan: CallbackInvocationScan = CallbackInvocationScan.INCOMPLETE,
+    val forwarding: CallbackForwardingEvidence = CallbackForwardingEvidence.InvocationRoutes,
 ) {
     /** Conservative detached proof storage; wire presentation retains its independent encoded byte guard. */
     val retainedBytes: Long =
-        4096L +
-            canonicalProjection().toByteArray(Charsets.UTF_8).size * 4L +
-            when (binding) {
-                is CallbackBindingEvidence.Bound -> valueSiteStorageBytes(binding.binding.invocation.resultSite())
-                is CallbackBindingEvidence.Default,
-                is CallbackBindingEvidence.Direct,
-                is CallbackBindingEvidence.Unavailable -> 256L
+        4096L
+            .addBytes(canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong().multiplyBytes(4))
+            .addBytes(
+                when (binding) {
+                    is CallbackBindingEvidence.Bound -> valueSiteStorageBytes(binding.binding.invocation.resultSite())
+                    is CallbackBindingEvidence.Default,
+                    is CallbackBindingEvidence.Direct,
+                    is CallbackBindingEvidence.Unavailable -> 256L
+                }
+            )
+            .let { bytes ->
+                when (forwarding) {
+                    CallbackForwardingEvidence.InvocationRoutes -> bytes
+                    is CallbackForwardingEvidence.ExhaustedGraph -> bytes.addBytes(forwarding.graph.retainedBytes)
+                }
             }
 
     /** Refines actual anonymous-owner facts without discarding an existing binding or activation obligation. */
@@ -74,6 +83,7 @@ private constructor(
                 obligations = Collections.unmodifiableSet(obligations + combined.flatMap { it.obligations }),
                 ownerBindings = Collections.unmodifiableList(combined.toList()),
                 scan = scan,
+                forwarding = forwarding,
             )
         )
     }
@@ -86,6 +96,7 @@ private constructor(
             invocations: List<CallbackParameterInvocation>,
             obligations: Set<CallbackInvocationFlowCause>,
             scan: CallbackInvocationScan = CallbackInvocationScan.INCOMPLETE,
+            forwarding: CallbackForwardingEvidence = CallbackForwardingEvidence.InvocationRoutes,
         ): Refinement<CallbackInvocationFlow, CallbackInvocationFlowFailure> {
             val admitted = admitCallbackFlowEvidence(basis, body, binding, invocations, obligations)
             when (admitted) {
@@ -96,12 +107,16 @@ private constructor(
                 return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_SCAN_PROOF)
             if (invocations.distinct().size != invocations.size)
                 return Refinement.Rejected(CallbackInvocationFlowFailure.DUPLICATE_INVOCATION)
+            when (val graph = admitCallbackForwardingEvidence(binding, scan, invocations, forwarding, obligations)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return graph
+            }
             when (val scanProof = admitCallbackScan(binding, scan, invocations, obligations)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return scanProof
             }
             if (
-                callbackExecutionNeedsQualification(binding, invocations) &&
+                (callbackExecutionNeedsQualification(binding, invocations) || forwarding.needsQualification()) &&
                     CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION !in obligations
             )
                 return Refinement.Rejected(CallbackInvocationFlowFailure.MISSING_OBLIGATION)
@@ -113,11 +128,22 @@ private constructor(
                     invocations = Collections.unmodifiableList(invocations.toList()),
                     obligations = Collections.unmodifiableSet(obligations.toSet()),
                     scan = scan,
+                    forwarding = forwarding,
                 )
             )
         }
     }
 }
+
+internal fun CallbackForwardingEvidence.needsQualification(): Boolean =
+    when (this) {
+        CallbackForwardingEvidence.InvocationRoutes -> false
+        is CallbackForwardingEvidence.ExhaustedGraph ->
+            graph.forwardings.any {
+                val owner = it.target.invocationOwner
+                owner !is RelationCallableBody.Named || owner.compilerIdentity != it.source.callable.compilerIdentity
+            }
+    }
 
 enum class CallbackInvocationFlowFailure {
     BASIS_MISMATCH,

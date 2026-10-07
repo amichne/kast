@@ -96,6 +96,30 @@ class InvocationOracle:
 
 
 @dataclass(frozen=True)
+class ForwardingGraphOracle:
+    """Authored exhaustive formal inventory; cycles remain finite edge facts."""
+    root: FormalOracle
+    formals: tuple[FormalOracle, ...]
+    forwardings: tuple[ForwardingOracle, ...]
+
+    def __post_init__(self):
+        if not self.formals or self.root not in self.formals or len(set(self.formals)) != len(self.formals):
+            raise FixtureIntegrityError('graph must inventory its root and each exact formal once')
+        if len(set(self.forwardings)) != len(self.forwardings):
+            raise FixtureIntegrityError('graph forwarding edge duplicated')
+        if any(edge.source not in self.formals or edge.target not in self.formals for edge in self.forwardings):
+            raise FixtureIntegrityError('graph edge endpoint missing from exhaustive inventory')
+        reached = {self.root}
+        while True:
+            successor = reached | {edge.target for edge in self.forwardings if edge.source in reached}
+            if successor == reached:
+                break
+            reached = successor
+        if reached != set(self.formals):
+            raise FixtureIntegrityError('graph includes an unreachable formal')
+
+
+@dataclass(frozen=True)
 class UnresolvedRejection:
     obligations: tuple[FlowObligation, ...]
     scan: InvocationScan = InvocationScan.INCOMPLETE
@@ -122,13 +146,32 @@ class CompleteCase:
     forwardings: tuple[ForwardingOracle, ...]
     invocation: InvocationOracle
     forbidden_targets: tuple[SymbolOracle, ...]
+    graph: ForwardingGraphOracle
 
     def __post_init__(self):
         _admit_same_root_supplies(self.supplies)
+        _admit_graph_supplies(self.supplies, self.graph)
 
     @property
     def supply(self) -> SupplyOracle:
         """The root's first supply; callers checking inventory must use ``supplies``."""
+        return self.supplies[0]
+
+
+@dataclass(frozen=True)
+class CompleteEmptyCase:
+    """An exhausted closed graph with no terminal invocation, never activation proof."""
+    name: str
+    supplies: tuple[SupplyOracle, ...]
+    graph: ForwardingGraphOracle
+    forbidden_targets: tuple[SymbolOracle, ...]
+
+    def __post_init__(self):
+        _admit_same_root_supplies(self.supplies)
+        _admit_graph_supplies(self.supplies, self.graph)
+
+    @property
+    def supply(self) -> SupplyOracle:
         return self.supplies[0]
 
 
@@ -183,7 +226,8 @@ class RejectedResourceCase:
         return self.supplies[0]
 
 
-CaseOracle = CompleteCase | RejectedLambdaCase | RejectedFormalCase | ExcludedReferenceCase
+CompleteCaseOracle = CompleteCase | CompleteEmptyCase
+CaseOracle = CompleteCaseOracle | RejectedLambdaCase | RejectedFormalCase | ExcludedReferenceCase
 
 
 @dataclass(frozen=True)
@@ -191,7 +235,7 @@ class SuiteOracle:
     root: str
     source_sha256: str
     symbols: tuple[SymbolOracle, ...]
-    complete_cases: tuple[CompleteCase, ...]
+    complete_cases: tuple[CompleteCaseOracle, ...]
     rejected_cases: tuple[RejectedLambdaCase | RejectedFormalCase, ...]
     excluded_cases: tuple[ExcludedReferenceCase, ...]
     resource_cases: tuple[RejectedResourceCase, ...]
@@ -211,6 +255,11 @@ SOURCE_FILES = (SUPPLIERS_FILE, FORWARDING_FILE, INVOCATION_FILE)
 def _admit_same_root_supplies(supplies: tuple[SupplyOracle, ...]) -> None:
     if not supplies or any(supply.supplier != supplies[0].supplier for supply in supplies):
         raise FixtureIntegrityError('case supplies must be nonempty and belong to one exact named root')
+
+
+def _admit_graph_supplies(supplies: tuple[SupplyOracle, ...], graph: ForwardingGraphOracle) -> None:
+    if any(supply.formal != graph.root for supply in supplies):
+        raise FixtureIntegrityError('every supplier must bind the exact graph root')
 
 
 def _utf16_length(text: str) -> int:
@@ -264,12 +313,30 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
          '// Callable references remain outside the admitted COMPLETE_ONLY callback model.\n'
          'fun callableReferenceEntry(): String = sharedWrapper(::referenceSink)'),
         (suppliers, 'recursiveEntry',
-         '// Static negative controls: never execute these functions to qualify a query.\n'
+         '// Static recursive graphs: never execute these functions to qualify a query.\n'
          'fun recursiveEntry(): String = recursiveWrapper { recursiveSink() }'),
+        (suppliers, 'selfRecursiveEntry',
+         'fun selfRecursiveEntry(): String {\n'
+         '    selfInvokeWrapper { selfRecursiveSink() }\n'
+         '    return selfInvokeWrapper { selfRecursiveSink(); "self" }\n'
+         '}'),
+        (suppliers, 'mutualRecursiveEntry',
+         'fun mutualRecursiveEntry(): String = mutualFirst { mutualRecursiveSink() }'),
         (suppliers, 'externalEscapeEntry', 'fun externalEscapeEntry(): Int = externalEscapeWrapper { escapeSink() }'),
         (forwarding, 'sharedWrapper', 'fun sharedWrapper(block: () -> String): String = forwardOnce(block)'),
         (forwarding, 'forwardOnce', 'fun forwardOnce(block: () -> String): String = invokeCallback(block)'),
         (forwarding, 'recursiveWrapper', 'fun recursiveWrapper(block: () -> String): String = recursiveWrapper(block)'),
+        (forwarding, 'selfInvokeWrapper',
+         'fun selfInvokeWrapper(block: () -> String): String {\n'
+         '    block()\n'
+         '    return selfInvokeWrapper(block)\n'
+         '}'),
+        (forwarding, 'mutualFirst', 'fun mutualFirst(block: () -> String): String = mutualSecond(block)'),
+        (forwarding, 'mutualSecond',
+         'fun mutualSecond(block: () -> String): String {\n'
+         '    invokeCallback(block)\n'
+         '    return mutualFirst(block)\n'
+         '}'),
         (forwarding, 'externalEscapeWrapper', 'fun externalEscapeWrapper(block: () -> String): Int = externalEscape(block)'),
         (invocation, 'invokeCallback', 'fun invokeCallback(block: () -> String): String = block()'),
         (invocation, 'externalEscape', 'fun externalEscape(block: () -> String): Int = java.util.Collections.singletonList(block).size'),
@@ -277,6 +344,8 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
         (invocation, 'betaSink', 'fun betaSink(): String = "beta"'),
         (invocation, 'referenceSink', 'fun referenceSink(): String = "reference"'),
         (invocation, 'recursiveSink', 'fun recursiveSink(): String = "recursive"'),
+        (invocation, 'selfRecursiveSink', 'fun selfRecursiveSink(): String = "self-recursive"'),
+        (invocation, 'mutualRecursiveSink', 'fun mutualRecursiveSink(): String = "mutual-recursive"'),
         (invocation, 'escapeSink', 'fun escapeSink(): String = "escape"'),
     )
 
@@ -323,19 +392,40 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
         return ForwardingOracle(origin, destination, argument, site)
 
     shared_route = (forward('sharedWrapper', 'forwardOnce'), forward('forwardOnce', 'invokeCallback'))
+    shared_graph = ForwardingGraphOracle(formal('sharedWrapper'),
+        (formal('sharedWrapper'), formal('forwardOnce'), formal('invokeCallback')), shared_route)
     terminal = InvocationOracle(named('invokeCallback'), within(named('invokeCallback'), 'block()'))
     alpha = CompleteCase('alpha', (
         supply('alphaEntry', 'alphaSink', 'sharedWrapper', '{ alphaSink() }'),
         supply('alphaEntry', 'alphaSink', 'sharedWrapper', '{ alphaSink(); "alpha" }'),
     ), shared_route, terminal,
-                         (named('betaSink'), named('referenceSink')))
+                         (named('betaSink'), named('referenceSink')), shared_graph)
     beta = CompleteCase('beta', (supply('betaEntry', 'betaSink', 'sharedWrapper', '{ betaSink() }'),),
                         shared_route, terminal,
-                        (named('alphaSink'), named('referenceSink')))
-    recursive = RejectedLambdaCase(
-        'recursive', supply('recursiveEntry', 'recursiveSink', 'recursiveWrapper', '{ recursiveSink() }'), (),
-        UnresolvedRejection((FlowObligation.CALLBACK_CYCLE, FlowObligation.NO_INVOCATION_PROVEN)),
-        within(named('recursiveWrapper'), 'recursiveWrapper(block)'),
+                        (named('alphaSink'), named('referenceSink')), shared_graph)
+    recursive = CompleteEmptyCase(
+        'recursive', (supply('recursiveEntry', 'recursiveSink', 'recursiveWrapper', '{ recursiveSink() }'),),
+        ForwardingGraphOracle(formal('recursiveWrapper'), (formal('recursiveWrapper'),),
+                              (forward('recursiveWrapper', 'recursiveWrapper'),)),
+        (named('alphaSink'), named('betaSink')),
+    )
+    self_recursive = CompleteCase(
+        'self-recursive-invocation', (
+            supply('selfRecursiveEntry', 'selfRecursiveSink', 'selfInvokeWrapper', '{ selfRecursiveSink() }'),
+            supply('selfRecursiveEntry', 'selfRecursiveSink', 'selfInvokeWrapper', '{ selfRecursiveSink(); "self" }'),
+        ), (), InvocationOracle(named('selfInvokeWrapper'), within(named('selfInvokeWrapper'), 'block()')),
+        (named('alphaSink'), named('betaSink'), named('mutualRecursiveSink')),
+        ForwardingGraphOracle(formal('selfInvokeWrapper'), (formal('selfInvokeWrapper'),),
+                              (forward('selfInvokeWrapper', 'selfInvokeWrapper'),)),
+    )
+    mutual_route = (forward('mutualFirst', 'mutualSecond'), forward('mutualSecond', 'invokeCallback'))
+    mutual_recursive = CompleteCase(
+        'mutual-recursive-invocation',
+        (supply('mutualRecursiveEntry', 'mutualRecursiveSink', 'mutualFirst', '{ mutualRecursiveSink() }'),),
+        mutual_route, terminal, (named('alphaSink'), named('betaSink'), named('selfRecursiveSink')),
+        ForwardingGraphOracle(formal('mutualFirst'),
+            (formal('mutualFirst'), formal('mutualSecond'), formal('invokeCallback')),
+            (mutual_route[0], forward('mutualSecond', 'mutualFirst'), mutual_route[1])),
     )
     escaped = RejectedLambdaCase(
         'external-escape', supply('externalEscapeEntry', 'escapeSink', 'externalEscapeWrapper', '{ escapeSink() }'),
@@ -366,7 +456,8 @@ def materialize(root: str, sources: tuple[SourceDocument, ...]) -> SuiteOracle:
         digest.update(b'\0')
         digest.update(source.text.encode())
         digest.update(b'\0')
-    return SuiteOracle(root, digest.hexdigest(), symbols, (alpha, beta), (recursive, escaped, formal_invocation),
+    return SuiteOracle(root, digest.hexdigest(), symbols,
+                       (alpha, beta, recursive, self_recursive, mutual_recursive), (escaped, formal_invocation),
                        (reference,), (resource,))
 
 

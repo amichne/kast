@@ -71,8 +71,12 @@ private fun QueryCallbackFlowDocument.Observed.hasUnprovenEmptyInventory(): Bool
         obligations.values.isEmpty() &&
         scan == QueryCallbackInvocationScanDocument.INCOMPLETE
 
-private fun QueryCallbackFlowDocument.Observed.admitScanProof(): Refinement<Unit, QueryCallbackDocumentFailure> =
-    when (scan) {
+private fun QueryCallbackFlowDocument.Observed.admitScanProof(): Refinement<Unit, QueryCallbackDocumentFailure> {
+    when (val forwardingScan = admitForwardingScan()) {
+        is Refinement.Rejected -> return forwardingScan
+        is Refinement.Refined -> Unit
+    }
+    return when (scan) {
         QueryCallbackInvocationScanDocument.EXHAUSTIVE ->
             if (obligations.values.any { it != QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION })
                 rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
@@ -82,6 +86,29 @@ private fun QueryCallbackFlowDocument.Observed.admitScanProof(): Refinement<Unit
             if (binding !is QueryCallbackBindingDocument.Direct)
                 rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
             else Refinement.Refined(Unit)
+    }
+}
+
+private fun QueryCallbackFlowDocument.Observed.admitForwardingScan(): Refinement<Unit, QueryCallbackDocumentFailure> =
+    when (forwarding) {
+        QueryCallbackForwardingEvidenceDocument.InvocationRoutes -> Refinement.Refined(Unit)
+        is QueryCallbackForwardingEvidenceDocument.ExhaustedGraph ->
+            when (binding) {
+                is QueryCallbackBindingDocument.Bound,
+                is QueryCallbackBindingDocument.Default -> admitExhaustedGraphScan()
+                is QueryCallbackBindingDocument.Direct,
+                is QueryCallbackBindingDocument.Unavailable -> rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+            }
+    }
+
+private fun QueryCallbackFlowDocument.Observed.admitExhaustedGraphScan():
+    Refinement<Unit, QueryCallbackDocumentFailure> =
+    when (scan) {
+        QueryCallbackInvocationScanDocument.EXHAUSTIVE -> Refinement.Refined(Unit)
+        QueryCallbackInvocationScanDocument.INCOMPLETE ->
+            if (obligations.values.isEmpty()) rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+            else Refinement.Refined(Unit)
+        QueryCallbackInvocationScanDocument.NOT_APPLICABLE -> rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
     }
 
 private fun QueryCallbackBindingDocument.Unavailable.admitUnavailable(
@@ -210,7 +237,7 @@ internal fun QueryCallbackBindingDocument.Bound.validInvocationSite(): Boolean =
     invocation.range.start == invocationOccurrence.range.startInclusive &&
         invocation.range.end == invocationOccurrence.range.endExclusive
 
-private fun QueryCallbackCallableDocument.reference(basis: ImpactSemanticBasisDocument) =
+internal fun QueryCallbackCallableDocument.reference(basis: ImpactSemanticBasisDocument) =
     ImpactDeclarationReferenceDocument(
         basis,
         compilerTarget.file,

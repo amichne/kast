@@ -205,6 +205,17 @@ data class QueryCallbackForwardingDocument(
     val target: QueryCallbackBindingDocument.Bound,
 )
 
+/** Exhaustion of a finite formal graph is distinct from the routes retained for individual invocations. */
+sealed interface QueryCallbackForwardingEvidenceDocument {
+    data object InvocationRoutes : QueryCallbackForwardingEvidenceDocument
+
+    data class ExhaustedGraph(
+        val root: QueryCallbackParameterIdentityDocument,
+        val formals: BoundedProtocolList<QueryCallbackParameterIdentityDocument>,
+        val forwardings: BoundedProtocolList<QueryCallbackForwardingDocument>,
+    ) : QueryCallbackForwardingEvidenceDocument
+}
+
 data class QueryCallbackInvocationDocument(
     val occurrence: RelationOccurrenceDocument,
     val owner: QueryCallbackBodyDocument,
@@ -222,6 +233,8 @@ sealed interface QueryCallbackFlowDocument {
         val obligations: BoundedProtocolList<QueryCallbackFlowCauseDocument>,
         val ownerBindings: BoundedProtocolList<QueryCallbackBodyBindingDocument>,
         val scan: QueryCallbackInvocationScanDocument = QueryCallbackInvocationScanDocument.INCOMPLETE,
+        val forwarding: QueryCallbackForwardingEvidenceDocument =
+            QueryCallbackForwardingEvidenceDocument.InvocationRoutes,
     ) : QueryCallbackFlowDocument
 
     data class Unavailable(val cause: QueryCallbackFlowCauseDocument) : QueryCallbackFlowDocument

@@ -132,6 +132,10 @@ private class StaticCallbackGraphAdmission(
                     binding,
                 )
             )
+        when (val graph = admitStaticCallbackForwardingGraph(binding, flow.forwarding)) {
+            is Refinement.Refined -> edges += graph.value
+            is Refinement.Rejected -> return graph
+        }
         for (invocation in flow.invocations) {
             when (val route = route(origin, binding, invocation)) {
                 is Refinement.Refined -> edges += route.value
@@ -160,7 +164,8 @@ private class StaticCallbackGraphAdmission(
                     is Refinement.Refined -> StaticCallbackNode.Formal(admitted.value, binding)
                     is Refinement.Rejected -> return admitted
                 }
-            if (!seen.add(target)) return Refinement.Rejected(StaticCallbackGraphFailure.CyclicRoute)
+            if (!seen.add(target) && flow.forwarding == CallbackForwardingEvidence.InvocationRoutes)
+                return Refinement.Rejected(StaticCallbackGraphFailure.CyclicRoute)
             edges += StaticCallbackEdge.Forward(source, target, forward)
             source = target
         }

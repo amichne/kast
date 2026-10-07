@@ -6,16 +6,19 @@ import com.intellij.psi.search.PsiElementProcessor
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackBodyBinding
+import io.github.amichne.kast.relation.contract.CallbackForwardingEvidence
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
-import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackParameterForwarding
+import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
+import io.github.amichne.kast.relation.contract.CompleteCallbackForwardingGraph
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import org.jetbrains.kotlin.idea.references.KtInvokeFunctionReference
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -35,7 +38,6 @@ internal data class CallbackScanFrame(
 internal class IntellijCallbackFlowScan(
     private val context: IntellijCallbackFlowContext,
     private val prepared: PreparedCallbackFlow,
-    private val body: RelationCallableBody.Anonymous,
     private val summaries: CallbackParameterSummaries,
 ) {
     private val routes = CallbackValueRoutes(context)
@@ -43,52 +45,68 @@ internal class IntellijCallbackFlowScan(
     private val obligations = linkedSetOf<CallbackInvocationFlowCause>()
     private val ownerBindings = linkedMapOf<RelationCallableBody.Anonymous, CallbackBodyBinding>()
     private val retention = summaries.retention
+    private val forwardings = linkedSetOf<CallbackParameterForwarding>()
     private var capacityExhausted = false
     private var scanExhausted = true
 
-    fun read(): CallbackInvocationFlowRead {
-        val formal =
-            when (val admitted = prepared.formal()) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return CallbackInvocationFlowRead.Unavailable(admitted.failure)
+    fun read(
+        formal: CallbackParameterIdentity
+    ): Refinement<CallbackFormalScanSnapshot, io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure> =
+        when (val proof = scanGraph(formal)) {
+            is Refinement.Rejected -> proof
+            is Refinement.Refined ->
+                Refinement.Refined(
+                    CallbackFormalScanSnapshot(
+                        invocations.toList(),
+                        obligations.toSet(),
+                        ownerBindings.values.toList(),
+                        scanProof(),
+                        proof.value,
+                    )
+                )
+        }
+
+    private fun scanGraph(
+        formal: CallbackParameterIdentity
+    ): Refinement<CallbackForwardingEvidence, io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure> {
+        when (val allowed = retention.admitFormal(formal)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> {
+                stopCapacity(allowed.failure)
+                summaries.observation.count(IntellijReadCounter.CALLBACK_FIXED_POINTS_REJECTED)
+                return Refinement.Refined(CallbackForwardingEvidence.InvocationRoutes)
             }
-        val reuse = CallbackSummaryReuse(summaries)
-        val candidate =
-            when (val restored = reuse.restore(formal, body, prepared.binding)) {
-                is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(restored.failure)
-                is Refinement.Refined ->
-                    when (val value = restored.value) {
-                        is CallbackSummaryRestore.Reused -> {
-                            invocations += value.flow.invocations
-                            obligations += value.flow.obligations
-                            value.flow.ownerBindings.forEach { ownerBindings[it.body] = it }
-                            CallbackSummaryCandidate.None
-                        }
-                        CallbackSummaryRestore.Missing -> {
-                            scan(CallbackScanFrame(prepared, emptyList()))
-                            when (
-                                val captured =
-                                    reuse.capture(
-                                        formal,
-                                        invocations,
-                                        obligations,
-                                        ownerBindings.values.toList(),
-                                        scanProof(),
-                                    )
-                            ) {
-                                is Refinement.Refined -> captured.value
-                                is Refinement.Rejected ->
-                                    return CallbackInvocationFlowRead.ContractRejected(captured.failure)
-                            }
-                        }
-                    }
+        }
+        val worklist = CallbackFormalWorklist(formal, CallbackScanFrame(prepared, emptyList()))
+        summaries.observation.count(IntellijReadCounter.CALLBACK_FORWARDING_FORMALS)
+        var work = worklist.next()
+        while (work is CallbackFormalWork.Pending && scanExhausted && !capacityExhausted) {
+            scan(work.value, worklist)
+            work = worklist.next()
+        }
+        if (scanProof() != CallbackInvocationScan.EXHAUSTIVE) {
+            summaries.observation.count(IntellijReadCounter.CALLBACK_FIXED_POINTS_REJECTED)
+            return Refinement.Refined(CallbackForwardingEvidence.InvocationRoutes)
+        }
+        return when (
+            val graph =
+                CompleteCallbackForwardingGraph.fromCompiler(
+                    formal,
+                    worklist.formals,
+                    forwardings.toList(),
+                    scanProof(),
+                    obligations,
+                )
+        ) {
+            is Refinement.Refined -> {
+                summaries.observation.count(IntellijReadCounter.CALLBACK_FIXED_POINTS_COMPLETED)
+                Refinement.Refined(CallbackForwardingEvidence.ExhaustedGraph(graph.value))
             }
-        observeSupplier()
-        val scan = scanProof()
-        if (invocations.isEmpty() && scan == CallbackInvocationScan.INCOMPLETE)
-            obligations += CallbackInvocationFlowCause.NO_INVOCATION_PROVEN
-        val result = context.observed(body, prepared.binding, invocations.toList(), obligations.toSet(), scan)
-        return reuse.publish(result, ownerBindings.values.toList(), candidate)
+            is Refinement.Rejected -> {
+                summaries.observation.count(IntellijReadCounter.CALLBACK_FIXED_POINTS_REJECTED)
+                graph
+            }
+        }
     }
 
     private fun scanProof(): CallbackInvocationScan =
@@ -100,27 +118,12 @@ internal class IntellijCallbackFlowScan(
             CallbackInvocationScan.EXHAUSTIVE
         else CallbackInvocationScan.INCOMPLETE
 
-    private fun observeSupplier() {
-        when (val origin = prepared.origin) {
-            is PreparedCallbackOrigin.Argument -> {
-                if (
-                    origin.binding.invocationOwner !is RelationCallableBody.Named ||
-                        origin.binding.invocationOwner.compilerIdentity !=
-                            origin.binding.invocation.enclosing.compilerIdentity
-                )
-                    obligations += CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
-                observeOwnerBinding(origin.call, origin.binding.invocationOwner, origin.binding.invocation.enclosing)
-            }
-            is PreparedCallbackOrigin.Default -> Unit
-        }
-    }
-
-    private fun scan(frame: CallbackScanFrame) {
+    private fun scan(frame: CallbackScanFrame, worklist: CallbackFormalWorklist<CallbackScanFrame>) {
         when (
             observeCallbackBodyScan(summaries.observation) {
                 PsiTreeUtil.processElements(
                     frame.prepared.function,
-                    PsiElementProcessor<PsiElement> { visit(it, frame) },
+                    PsiElementProcessor<PsiElement> { visit(it, frame, worklist) },
                 )
             }
         ) {
@@ -129,7 +132,11 @@ internal class IntellijCallbackFlowScan(
         }
     }
 
-    private fun visit(element: PsiElement, frame: CallbackScanFrame): Boolean {
+    private fun visit(
+        element: PsiElement,
+        frame: CallbackScanFrame,
+        worklist: CallbackFormalWorklist<CallbackScanFrame>,
+    ): Boolean {
         ProgressManager.checkCanceled()
         if (capacityExhausted) return false
         when (val allowed = context.permit()) {
@@ -139,11 +146,15 @@ internal class IntellijCallbackFlowScan(
                 return false
             }
         }
-        if (element is KtNameReferenceExpression && routes.eligible(element, frame)) observe(element, frame)
+        if (element is KtNameReferenceExpression && routes.eligible(element, frame)) observe(element, frame, worklist)
         return true
     }
 
-    private fun observe(expression: KtNameReferenceExpression, frame: CallbackScanFrame) {
+    private fun observe(
+        expression: KtNameReferenceExpression,
+        frame: CallbackScanFrame,
+        worklist: CallbackFormalWorklist<CallbackScanFrame>,
+    ) {
         val reference =
             expression.references
                 .filterIsInstance<KtReference>()
@@ -153,11 +164,17 @@ internal class IntellijCallbackFlowScan(
         when (resolved) {
             NativeLocalValueReferenceResolution.Unresolved ->
                 obligations += CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE
-            is NativeLocalValueReferenceResolution.Resolved -> observeResolved(expression, resolved.declaration, frame)
+            is NativeLocalValueReferenceResolution.Resolved ->
+                observeResolved(expression, resolved.declaration, frame, worklist)
         }
     }
 
-    private fun observeResolved(expression: KtNameReferenceExpression, resolved: PsiElement, frame: CallbackScanFrame) {
+    private fun observeResolved(
+        expression: KtNameReferenceExpression,
+        resolved: PsiElement,
+        frame: CallbackScanFrame,
+        worklist: CallbackFormalWorklist<CallbackScanFrame>,
+    ) {
         val route =
             when {
                 resolved === frame.prepared.parameter -> routes.root(expression, frame)
@@ -168,7 +185,7 @@ internal class IntellijCallbackFlowScan(
             is Refinement.Rejected -> obligations += route.failure
             is Refinement.Refined -> {
                 val call = context.parameterInvocation(expression)
-                if (call == null) recordSupply(expression, route.value, frame)
+                if (call == null) recordSupply(expression, route.value, frame, worklist)
                 else recordInvocation(call, route.value, frame)
             }
         }
@@ -178,6 +195,7 @@ internal class IntellijCallbackFlowScan(
         expression: KtNameReferenceExpression,
         route: CallbackValueRoute,
         frame: CallbackScanFrame,
+        worklist: CallbackFormalWorklist<CallbackScanFrame>,
     ) {
         var value: PsiElement = expression
         while (value.parent is KtParenthesizedExpression) value = value.parent
@@ -195,7 +213,7 @@ internal class IntellijCallbackFlowScan(
                     .read(frame.prepared, expression, value.parent as KtValueArgument)
         ) {
             is CallbackForwardingRead.Unavailable -> obligations += forwarded.cause
-            is CallbackForwardingRead.Observed -> recordForwarding(expression, frame, forwarded)
+            is CallbackForwardingRead.Observed -> recordForwarding(expression, frame, forwarded, worklist)
         }
     }
 
@@ -203,21 +221,19 @@ internal class IntellijCallbackFlowScan(
         expression: KtNameReferenceExpression,
         frame: CallbackScanFrame,
         forwarded: CallbackForwardingRead.Observed,
+        worklist: CallbackFormalWorklist<CallbackScanFrame>,
     ) {
         val destination = forwarded.prepared
-        if (
-            destination.parameter === prepared.parameter ||
-                frame.forwardings.any {
-                    it.source.callable.valueIdentity == destination.target.valueIdentity &&
-                        it.source.parameter == forwarded.forwarding.target.parameter
+        if (forwarded.forwarding in forwardings) return
+        val formal =
+            when (val admitted = destination.formal()) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> {
+                    obligations += admitted.failure
+                    return
                 }
-        ) {
-            obligations += CallbackInvocationFlowCause.CALLBACK_CYCLE
-            return
-        }
-        when (
-            val allowed = retention.admit(4096L + forwarded.forwarding.target.invocation.resultSite().retainedBytes)
-        ) {
+            }
+        when (val allowed = retention.admitForwarding(forwarded.forwarding)) {
             is Refinement.Rejected -> stopCapacity(allowed.failure)
             is Refinement.Refined -> {
                 if (
@@ -227,7 +243,15 @@ internal class IntellijCallbackFlowScan(
                 )
                     obligations += CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
                 observeOwnerBinding(expression, forwarded.forwarding.target.invocationOwner, frame.prepared.target)
-                scan(CallbackScanFrame(destination, frame.forwardings + forwarded.forwarding))
+                forwardings += forwarded.forwarding
+                summaries.observation.count(IntellijReadCounter.CALLBACK_FORWARDING_EDGES)
+                when (
+                    worklist.schedule(formal, CallbackScanFrame(destination, frame.forwardings + forwarded.forwarding))
+                ) {
+                    CallbackFormalSchedule.SCHEDULED ->
+                        summaries.observation.count(IntellijReadCounter.CALLBACK_FORWARDING_FORMALS)
+                    CallbackFormalSchedule.ALREADY_DISCOVERED -> Unit
+                }
             }
         }
     }
@@ -285,8 +309,7 @@ internal class IntellijCallbackFlowScan(
     }
 
     private fun retainInvocation(invocation: CallbackParameterInvocation) {
-        val bytes = invocation.retainedBytes
-        when (val allowed = retention.admit(bytes)) {
+        when (val allowed = retention.admitInvocation(invocation)) {
             is Refinement.Refined -> invocations += invocation
             is Refinement.Rejected -> stopCapacity(allowed.failure)
         }
@@ -307,7 +330,7 @@ internal class IntellijCallbackFlowScan(
         when (val read = IntellijCallbackOwnerBindingReader(context).read(literal, owner, enclosing)) {
             is Refinement.Rejected -> obligations += CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING
             is Refinement.Refined ->
-                when (val permitted = retention.admit(read.value.retainedBytes)) {
+                when (val permitted = retention.admitOwner(read.value)) {
                     is Refinement.Refined -> {
                         ownerBindings[owner] = read.value
                         obligations += read.value.obligations

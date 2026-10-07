@@ -12,6 +12,7 @@ private constructor(
     val obligations: Set<CallbackInvocationFlowCause>,
     val ownerBindings: List<CallbackBodyBinding>,
     val scan: CallbackInvocationScan,
+    val forwarding: CallbackForwardingEvidence,
 ) {
     val retainedBytes: Long =
         invocations
@@ -20,6 +21,12 @@ private constructor(
             }
             .let { invocationBytes ->
                 ownerBindings.fold(invocationBytes) { bytes, binding -> bytes.addBytes(binding.retainedBytes) }
+            }
+            .let { bytes ->
+                when (forwarding) {
+                    CallbackForwardingEvidence.InvocationRoutes -> bytes
+                    is CallbackForwardingEvidence.ExhaustedGraph -> bytes.addBytes(forwarding.graph.retainedBytes)
+                }
             }
 
     fun instantiate(
@@ -59,7 +66,7 @@ private constructor(
             return Refinement.Rejected(CallbackInvocationFlowFailure.BASIS_MISMATCH)
         if (suppliedFormal != formal) return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_FORWARDING_PATH)
         val instanceObligations =
-            if (callbackExecutionNeedsQualification(binding, invocations))
+            if (callbackExecutionNeedsQualification(binding, invocations) || forwarding.needsQualification())
                 obligations + CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
             else obligations
         return when (
@@ -71,6 +78,7 @@ private constructor(
                     invocations,
                     instanceObligations,
                     scan,
+                    forwarding,
                 )
         ) {
             is Refinement.Refined -> flow.value.withOwnerBindings(ownerBindings)
@@ -85,31 +93,26 @@ private constructor(
             obligations: Set<CallbackInvocationFlowCause>,
             ownerBindings: List<CallbackBodyBinding> = emptyList(),
             scan: CallbackInvocationScan,
+            forwarding: CallbackForwardingEvidence = CallbackForwardingEvidence.InvocationRoutes,
         ): Refinement<CallbackParameterSummary, CallbackInvocationFlowFailure> {
             if (scan != CallbackInvocationScan.EXHAUSTIVE || !admitsExhaustiveCallbackScan(obligations))
                 return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_SCAN_PROOF)
             if (invocations.distinct().size != invocations.size)
                 return Refinement.Rejected(CallbackInvocationFlowFailure.DUPLICATE_INVOCATION)
-            when (
-                val admitted =
-                    admitInvocationRoutes(
-                        formal.callable.lease.identity,
-                        formal.callable,
-                        formal.position,
-                        formal.parameter,
-                        invocations,
-                    )
-            ) {
+            when (val admitted = admitSummaryRoutes(formal, invocations, forwarding)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
             if (
-                callbackInvocationsNeedQualification(formal.callable, invocations) &&
+                (callbackInvocationsNeedQualification(formal.callable, invocations) ||
+                    forwarding.needsQualification()) &&
                     CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION !in obligations
             )
                 return Refinement.Rejected(CallbackInvocationFlowFailure.MISSING_OBLIGATION)
             val owners =
-                invocations.map { it.owner } + invocations.flatMap { it.forwardings.map { it.target.invocationOwner } }
+                invocations.map { it.owner } +
+                    invocations.flatMap { it.forwardings.map { it.target.invocationOwner } } +
+                    forwarding.owners()
             when (
                 val admitted = admitCallbackOwnerBindings(formal.callable.lease.identity, scan, owners, ownerBindings)
             ) {
@@ -123,8 +126,31 @@ private constructor(
                     Collections.unmodifiableSet(obligations.toSet()),
                     Collections.unmodifiableList(ownerBindings.toList()),
                     scan,
+                    forwarding,
                 )
             )
         }
     }
+}
+
+private fun admitSummaryRoutes(
+    formal: CallbackParameterIdentity,
+    invocations: List<CallbackParameterInvocation>,
+    forwarding: CallbackForwardingEvidence,
+): Refinement<Unit, CallbackInvocationFlowFailure> {
+    when (forwarding) {
+        CallbackForwardingEvidence.InvocationRoutes -> Unit
+        is CallbackForwardingEvidence.ExhaustedGraph ->
+            when (val admitted = forwarding.graph.admitInvocations(formal, invocations)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+    }
+    return admitInvocationRoutes(
+        formal.callable.lease.identity,
+        formal.callable,
+        formal.position,
+        formal.parameter,
+        invocations,
+    )
 }

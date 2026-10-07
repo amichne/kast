@@ -10,6 +10,14 @@ private constructor(
     val argument: RelationOccurrence,
     val target: CallbackArgumentBinding,
 ) {
+    /** Both endpoints are detached storage; a call result site accounts only for its enclosing endpoint. */
+    val retainedBytes: Long
+        get() =
+            2048L
+                .addBytes(source.callable.detachedTextUnits().multiplyBytes(2))
+                .addBytes(target.invocation.enclosing.detachedTextUnits().multiplyBytes(2))
+                .addBytes(target.invocation.callable.detachedTextUnits().multiplyBytes(2))
+
     companion object {
         fun fromCompiler(
             source: CallbackParameterIdentity,

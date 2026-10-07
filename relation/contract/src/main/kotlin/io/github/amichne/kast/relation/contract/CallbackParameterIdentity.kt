@@ -17,6 +17,9 @@ private constructor(
     val position: ValueArgumentPosition,
     val parameter: RelationOccurrence,
 ) {
+    val retainedBytes: Long
+        get() = 2048L.addBytes(callable.detachedTextUnits().multiplyBytes(2))
+
     companion object {
         fun fromCompiler(
             callable: RelationEndpoint,

@@ -33,8 +33,64 @@ import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 
-internal class QueryCallbackWireFixture {
+class QueryCallbackWireFixture {
+    /** Actual serializer examples shared by wire admission and generated-schema validation. */
+    fun forwardingEvidenceExamples(): List<String> {
+        val root = forwardingRoot()
+        return listOf(
+                QueryCallbackForwardingEvidenceWireDocument.InvocationRoutes,
+                QueryCallbackForwardingEvidenceWireDocument.ExhaustedGraph(root, listOf(root), emptyList()),
+            )
+            .map { wireJson.encodeToString(QueryCallbackForwardingEvidenceWireDocument.serializer(), it) }
+    }
+
+    /** Deliberately incompatible DTOs exercise structural rejection without handwritten JSON. */
+    fun malformedForwardingEvidenceExamples(): List<String> {
+        val graph = malformedGraph()
+        return listOf(
+                MalformedForwardingEvidence(),
+                MalformedForwardingEvidence(type = "INVOCATION_ROUTES", formals = emptyList()),
+                MalformedForwardingEvidence(type = "EXHAUSTED_GRAPH"),
+                MalformedForwardingEvidence(type = "INVOCATION_ROUTES", extra = true),
+                graph.copy(type = null),
+                graph.copy(type = "EXHAUSTED"),
+                graph.copy(extra = true),
+            )
+            .map { wireJson.encodeToString(MalformedForwardingEvidence.serializer(), it) }
+    }
+
+    /** Missing or empty graph inventory is rejected by the schema and contextual graph admission. */
+    fun malformedForwardingInventoryExamples(): List<String> {
+        val graph = malformedGraph()
+        return listOf(
+                graph.copy(root = null),
+                graph.copy(formals = null),
+                graph.copy(forwardings = null),
+                graph.copy(formals = emptyList()),
+            )
+            .map { wireJson.encodeToString(MalformedForwardingEvidence.serializer(), it) }
+    }
+
+    private fun malformedGraph(): MalformedForwardingEvidence {
+        val root = forwardingRoot()
+        return MalformedForwardingEvidence(
+            type = "EXHAUSTED_GRAPH",
+            root = root,
+            formals = listOf(root),
+            forwardings = emptyList(),
+        )
+    }
+
+    private fun forwardingRoot(): QueryCallbackParameterIdentityWireDocument {
+        val flow = callbackDocument().toWireDocument().flow as QueryCallbackFlowWireDocument.Observed
+        val bound = flow.binding as QueryCallbackBindingWireDocument.Bound
+        return QueryCallbackParameterIdentityWireDocument(bound.callable, bound.position, bound.parameter)
+    }
+
     fun callbackDocument(): QueryCallbackObservationDocument {
         val owner = callable("Seed.kt", 0, 40, "sample.read", emptyList())
         val mapped = callable("Boundary.kt", 0, 30, "sample.nativeBoundary", listOf("kotlin.Function0<kotlin.Unit>"))
@@ -168,3 +224,14 @@ internal class QueryCallbackWireFixture {
             is Refinement.Rejected -> error("Invalid fixture: $failure")
         }
 }
+
+/** Only negative fixtures: nullable fields deliberately represent omitted required facts. */
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+private data class MalformedForwardingEvidence(
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val type: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val root: QueryCallbackParameterIdentityWireDocument? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val formals: List<QueryCallbackParameterIdentityWireDocument>? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val forwardings: List<QueryCallbackForwardingWireDocument>? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val extra: Boolean? = null,
+)

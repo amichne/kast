@@ -15,6 +15,17 @@ internal fun CallbackInvocationFlow.canonicalProjection(): String = buildString 
     body(body)
     binding(binding)
     field(scan.name)
+    when (val proof = forwarding) {
+        CallbackForwardingEvidence.InvocationRoutes -> field("INVOCATION_ROUTES")
+        is CallbackForwardingEvidence.ExhaustedGraph -> {
+            field("EXHAUSTED_GRAPH")
+            formal(proof.graph.root)
+            field(proof.graph.formals.size.toString())
+            proof.graph.formals.forEach { formal(it) }
+            field(proof.graph.forwardings.size.toString())
+            proof.graph.forwardings.forEach { forwarding(it) }
+        }
+    }
     field(invocations.size.toString())
     invocations.forEach { invocation(it) }
     field(ownerBindings.size.toString())
@@ -28,15 +39,17 @@ internal fun CallbackParameterInvocation.canonicalProjection(): String = buildSt
     invocation(this@canonicalProjection)
 }
 
+internal fun CallbackParameterIdentity.canonicalProjection(): String = buildString {
+    formal(this@canonicalProjection)
+}
+
+internal fun CallbackParameterForwarding.canonicalProjection(): String = buildString {
+    forwarding(this@canonicalProjection)
+}
+
 private fun StringBuilder.invocation(invocation: CallbackParameterInvocation) {
     field(invocation.forwardings.size.toString())
-    invocation.forwardings.forEach {
-        endpoint(it.source.callable)
-        field(it.source.position.value.toString())
-        occurrence(it.source.parameter)
-        occurrence(it.argument)
-        binding(CallbackBindingEvidence.Bound(it.target))
-    }
+    invocation.forwardings.forEach { forwarding(it) }
     occurrence(invocation.occurrence)
     body(invocation.owner)
     field(invocation.callableTransfers.size.toString())
@@ -45,6 +58,18 @@ private fun StringBuilder.invocation(invocation: CallbackParameterInvocation) {
         site(transfer.source)
         site(transfer.target)
     }
+}
+
+private fun StringBuilder.formal(formal: CallbackParameterIdentity) {
+    endpoint(formal.callable)
+    field(formal.position.value.toString())
+    occurrence(formal.parameter)
+}
+
+private fun StringBuilder.forwarding(forwarding: CallbackParameterForwarding) {
+    formal(forwarding.source)
+    occurrence(forwarding.argument)
+    binding(CallbackBindingEvidence.Bound(forwarding.target))
 }
 
 private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding) {

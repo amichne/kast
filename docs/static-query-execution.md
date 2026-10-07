@@ -51,22 +51,28 @@ direct and bound argument flows. Typed nodes distinguish named callables,
 anonymous bodies, and supplier-specific formals. Typed edges distinguish supply,
 forwarding, invocation, and a body's call to a named target. Graph admission
 checks exhaustive scans, exact owners, the original workspace basis, and absence
-of unresolved obligations or recursive formal routes. The enclosing query must
-separately exhaust its observation inventory. Existing flow projections retain
+of unresolved obligations. A bound argument's `EXHAUSTED_GRAPH` forwarding
+witness inventories every reachable exact formal and compiler-confirmed edge,
+including edges that close a recursive component. Each formal body is scanned
+once. The enclosing query must separately exhaust its observation inventory.
+Existing flow projections retain
 the derivation witnesses without converting lexical containment into a named
 call edge.
 
 A callback parameter summary contains detached compiler evidence for one exact
-formal parameter and semantic basis. The relation request may reuse an exhaustive
-summary for several supplied callbacks. Each reuse separately validates its
-supplier binding, anonymous body, and owner activation obligations. The cache is
+formal parameter and semantic basis. Its finite graph retains all forwarding
+edges; each terminal invocation retains one simple rooted path. The relation
+request may reuse an exhaustive summary for several supplied callbacks. Each
+reuse separately validates its supplier binding, anonymous body, and owner
+activation obligations. The cache is
 request-owned, contains no PSI, and shares the existing retention budget.
 
 This does not establish runtime activation. Stored, returned, externally supplied,
-unresolved, or recursively forwarded callback routes retain their typed
-obligations. Recursive forwarding remains a typed rejection. A recursive symbolic
-summary graph requires a different completeness contract before it can replace
-that boundary.
+or unresolved callback routes retain their typed obligations. An exhausted closed
+recursive graph with no terminal invocation is a complete static empty invocation
+inventory. It does not prove that the supplied callback executes, or that the
+recursive code terminates at runtime. Missing graph inventory, unproven forwarding,
+and exhausted resource grants remain typed rejections.
 
 ## Snapshot relation indexes
 
@@ -104,29 +110,45 @@ negative controls.
 
 The opt-in native acceptance fixture is
 `experiments/host-observation/static-callback-fixture`. Its three modules separate
-lambda suppliers, two forwarding functions, and the terminal parameter
-invocation. `static_callback_oracle.py` authors exact declarations, UTF-16 source
+lambda suppliers, the forwarding component, and a terminal parameter invocation.
+The component includes a self cycle, self recursion with a direct parameter
+invocation, and mutual recursion with a terminal route into the invocation module.
+This preserves acyclic Gradle module dependencies while exercising recursive
+formal edges. `static_callback_oracle.py` authors exact declarations, UTF-16 source
 sites, supplier bindings, forwarding sites, and invocation sites independently of
 semantic responses. Changed or additional Kotlin sources reject the fixture.
-Alpha supplies two distinct lambda bodies at two wrapper call sites in one
-relation request. Each summary reuse must retain that supplier's own body and
+Alpha and the self-recursive invocation case each supply two distinct lambda
+bodies at two wrapper call sites in one relation request. Each summary reuse must
+retain that supplier's own body and
 binding; beta checks a separate root and target.
 
 `qualify_callback_tracing.py --static-cross-module` reuses the existing installed
 schema admission, public MCP session, and retained-result drainer. It requires an
 exact candidate build receipt, loaded-class and artifact hashes, a current native
 model pin, and an explicitly selected fixture. It runs semantic result allowances
-of 4 and 32 and retained presentation grants of 1,
+of 8 and 32 and retained presentation grants of 1,
 checks the complete supplier-rooted `CALLEES` derivations, and checks that callback
-body calls do not become named `CALLERS` edges. Recursive and external escape
+body calls do not become named `CALLERS` edges. The recursive cases must retain
+their exhaustive formal and edge inventories, including closing edges. The
+closed self cycle must have no terminal invocation evidence. External escape
 routes must retain their typed rejection and original evidence. A formal-rooted
 parameter invocation must reject with `CALLABLE_VALUE_UNPROVEN`.
 
-The alpha route needs two retained forwarding witnesses, one terminal invocation,
-and one optional summary for reuse. A semantic allowance of 1 cannot retain that
+The largest complete fixture retains one root formal, three forwarding witnesses,
+one terminal invocation, and one optional summary for reuse: six result slots.
+The smaller complete allowance is 8. The alpha route needs one root formal, two
+forwarding witnesses, and one terminal invocation, plus an optional summary for
+the second supplier. A semantic allowance of 1 retains only the root formal and cannot retain that
 route. A separate control requires its `RESULT_LIMIT_REACHED` rejection and
 retained incomplete evidence. Increasing presentation capacity never supplies
 the missing semantic proof.
+
+Formal and forwarding storage includes all detached endpoint identity fields.
+An optional summary shares immutable records only when the same request's
+retention owner already admitted those exact objects; it then charges the new
+containers and references. Independent summaries retain their full storage
+charge. Encoded response fitting still applies separately under the existing
+65,536-byte transport ceiling.
 
 A Gradle CLI candidate also needs the source-owned
 `distribution/cli/one-shot-observation-v1` session marker staged at
@@ -137,15 +159,20 @@ semantic execution; it does not qualify managed installation or release delivery
 Callable references are a separate exclusion control. Their reference sites are
 excluded from these named-call relations; this suite does not establish
 callable-reference transfer completeness. It also does not qualify an unrestricted
-walk, recursive summaries, runtime activation, or topology activation.
+walk, runtime activation, or topology activation.
 
-The native receipt records actual formal-body scans and supplier-specific summary
-hits, misses, instantiation rejections, and retention outcomes. A completed scan
+The native receipt records actual formal-body scans, inventoried formal and edge
+counts, completed and rejected fixed-point scans, and supplier-specific summary
+hits, misses, instantiation rejections, and retention outcomes. Every complete
+supplier-rooted case must scan each authored formal once. Summary reuse must
+avoid additional scans and graph inventory work. A completed scan
 means the native PSI inventory drained, not that callback activation was proven.
 Missing counters reject qualification; they are never interpreted as zero.
 Retained row and evidence reads must report zero callback work. Semantic witnesses
 and verdicts must remain equal across the two grants before interpreting work or
-timing evidence.
+timing evidence. Fixture-integrity and scripted runner tests validate this oracle
+and acceptance boundary; only an exact pinned native receipt establishes live K2
+behavior for these cases.
 
 Run the same query
 and exact model on the representative enterprise corpus. Record hardware,

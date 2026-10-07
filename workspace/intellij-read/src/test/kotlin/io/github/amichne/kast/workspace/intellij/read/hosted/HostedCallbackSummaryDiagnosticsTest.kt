@@ -20,6 +20,10 @@ class HostedCallbackSummaryDiagnosticsTest {
             IntellijReadCounter.CALLBACK_SUMMARY_REJECTIONS,
             IntellijReadCounter.CALLBACK_SUMMARIES_RETAINED,
             IntellijReadCounter.CALLBACK_SUMMARY_RETENTION_REJECTIONS,
+            IntellijReadCounter.CALLBACK_FORWARDING_FORMALS,
+            IntellijReadCounter.CALLBACK_FORWARDING_EDGES,
+            IntellijReadCounter.CALLBACK_FIXED_POINTS_COMPLETED,
+            IntellijReadCounter.CALLBACK_FIXED_POINTS_REJECTED,
         )
 
     @Test
@@ -37,11 +41,15 @@ class HostedCallbackSummaryDiagnosticsTest {
         diagnostics.count(IntellijReadCounter.CALLBACK_BODY_SCANS_COMPLETED)
         diagnostics.count(IntellijReadCounter.CALLBACK_BODY_SCANS_INCOMPLETE)
         diagnostics.count(IntellijReadCounter.CALLBACK_SUMMARY_HITS)
+        diagnostics.count(IntellijReadCounter.CALLBACK_FORWARDING_FORMALS, amount = 3)
+        diagnostics.count(IntellijReadCounter.CALLBACK_FORWARDING_EDGES, amount = 4)
+        diagnostics.count(IntellijReadCounter.CALLBACK_FIXED_POINTS_COMPLETED)
+        diagnostics.count(IntellijReadCounter.CALLBACK_FIXED_POINTS_REJECTED)
         val outcome = HostedDiagnosticOutcome.Rejected(HostedQueryFailure.CANCELLED)
         diagnostics.finish(outcome)
         diagnostics.count(IntellijReadCounter.CALLBACK_BODY_SCANS_COMPLETED)
         assertEquals(outcome, receipts.single().outcome)
-        assertCounts(receipts.single(), listOf(2L, 1L, 1L, 1L, 0L, 0L, 0L, 0L))
+        assertCounts(receipts.single(), listOf(2L, 1L, 1L, 1L, 0L, 0L, 0L, 0L, 3L, 4L, 1L, 1L))
     }
 
     private fun assertCounts(receipt: HostedReadDiagnosticReceipt, expected: List<Long>) {

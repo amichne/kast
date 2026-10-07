@@ -7,6 +7,7 @@ import unittest
 
 from static_callback_oracle import (
     CallableValueRejection,
+    CompleteCase,
     FixtureIntegrityError,
     FlowObligation,
     SOURCE_FILES,
@@ -28,8 +29,31 @@ class StaticCallbackOracleTest(unittest.TestCase):
     def oracle(self, sources=None):
         return materialize(str(FIXTURE.resolve()), self.sources if sources is None else sources)
 
+    def test_recursive_graphs_preserve_cycle_edges_and_simple_invocation_routes(self):
+        cases = {case.name: case for case in self.oracle().complete_cases}
+        closed = cases['recursive']
+        self.assertEqual(['recursiveWrapper'], [formal.callable.name for formal in closed.graph.formals])
+        self.assertEqual([('recursiveWrapper', 'recursiveWrapper')],
+                         [(edge.source.callable.name, edge.target.callable.name) for edge in closed.graph.forwardings])
+        self.assertFalse(hasattr(closed, 'invocation'))
+        self_recursive = cases['self-recursive-invocation']
+        self.assertEqual(2, len(self_recursive.supplies))
+        self.assertEqual('selfInvokeWrapper', self_recursive.invocation.owner.name)
+        self.assertEqual((), self_recursive.forwardings)
+        self.assertEqual(1, len(self_recursive.graph.forwardings))
+        self.assertNotEqual(self_recursive.supplies[0].body, self_recursive.supplies[1].body)
+        mutual = cases['mutual-recursive-invocation']
+        self.assertEqual(['mutualFirst', 'mutualSecond', 'invokeCallback'],
+                         [formal.callable.name for formal in mutual.graph.formals])
+        self.assertEqual({('mutualFirst', 'mutualSecond'), ('mutualSecond', 'mutualFirst'),
+                          ('mutualSecond', 'invokeCallback')},
+                         {(edge.source.callable.name, edge.target.callable.name) for edge in mutual.graph.forwardings})
+        self.assertEqual(['mutualSecond', 'invokeCallback'],
+                         [edge.target.callable.name for edge in mutual.forwardings])
+        self.assertEqual('invokeCallback', mutual.invocation.owner.name)
+
     def test_two_suppliers_keep_distinct_bodies_while_sharing_cross_module_formals(self):
-        alpha, beta = self.oracle().complete_cases
+        alpha, beta = self.oracle().complete_cases[:2]
         self.assertEqual('alphaEntry', alpha.supply.supplier.name)
         self.assertEqual('betaEntry', beta.supply.supplier.name)
         self.assertEqual('{ alphaSink() }', alpha.supplies[0].body.text)
@@ -67,8 +91,11 @@ class StaticCallbackOracleTest(unittest.TestCase):
             for supply in case.supplies:
                 spans.extend(supply.target_occurrences)
                 spans.extend((supply.body, supply.call, supply.formal.parameter))
-            spans.append(case.invocation.occurrence)
-            for step in case.forwardings:
+            if isinstance(case, CompleteCase):
+                spans.append(case.invocation.occurrence)
+            for formal in case.graph.formals:
+                spans.append(formal.parameter)
+            for step in case.graph.forwardings:
                 spans.extend((step.source.parameter, step.target.parameter, step.argument, step.call))
         for span in spans:
             encoded = Path(span.file).read_text(encoding='utf-8').encode('utf-16-le')
@@ -90,12 +117,12 @@ class StaticCallbackOracleTest(unittest.TestCase):
         # Independently authored source boundaries. Kast projects PSI textRange;
         # an attached comment is part of the declaration, but not its name token.
         expected = (
-            ('alphaEntry', 491, 684, 576,
+            ('alphaEntry', 727, 920, 812,
              '// The suppliers share the formal route, but each owns a distinct callback body.\n'),
-            ('callableReferenceEntry', 741, 891, 826,
+            ('callableReferenceEntry', 977, 1127, 1062,
              '// Callable references remain outside the admitted COMPLETE_ONLY callback model.\n'),
-            ('recursiveEntry', 893, 1039, 976,
-             '// Static negative controls: never execute these functions to qualify a query.\n'),
+            ('recursiveEntry', 1129, 1274, 1211,
+             '// Static recursive graphs: never execute these functions to qualify a query.\n'),
         )
         for name, start, end, name_start, prefix in expected:
             symbol = by_name[name]
@@ -108,11 +135,8 @@ class StaticCallbackOracleTest(unittest.TestCase):
 
     def test_negative_controls_name_current_closed_model_boundaries(self):
         suite = self.oracle()
-        recursive, external, formal = suite.rejected_cases
+        external, formal = suite.rejected_cases
         reference, = suite.excluded_cases
-        self.assertEqual((FlowObligation.CALLBACK_CYCLE, FlowObligation.NO_INVOCATION_PROVEN),
-                         recursive.rejection.obligations)
-        self.assertEqual('recursiveWrapper(block)', recursive.cause_site.text)
         self.assertEqual((FlowObligation.EXTERNAL_CALLABLE, FlowObligation.NO_INVOCATION_PROVEN),
                          external.rejection.obligations)
         self.assertEqual('java.util.Collections.singletonList(block)', external.cause_site.text)
@@ -143,11 +167,25 @@ class StaticCallbackOracleTest(unittest.TestCase):
         self.assertNotIn(resource, suite.cases)
 
     def test_case_supplies_require_one_exact_named_root_and_nonempty_inventory(self):
-        alpha, beta = self.oracle().complete_cases
+        alpha, beta = self.oracle().complete_cases[:2]
         with self.assertRaises(FixtureIntegrityError):
             replace(alpha, supplies=())
         with self.assertRaises(FixtureIntegrityError):
             replace(alpha, supplies=(alpha.supply, beta.supply))
+        recursive = self.oracle().complete_cases[2]
+        with self.assertRaises(FixtureIntegrityError):
+            replace(alpha, graph=recursive.graph)
+
+    def test_graph_inventory_rejects_missing_unreachable_and_duplicate_formals_or_edges(self):
+        alpha, beta, recursive, self_recursive, mutual = self.oracle().complete_cases
+        for changed in (
+            {'formals': mutual.graph.formals[:2]},
+            {'formals': mutual.graph.formals + (recursive.graph.root,)},
+            {'formals': mutual.graph.formals + (mutual.graph.root,)},
+            {'forwardings': mutual.graph.forwardings + (mutual.graph.forwardings[0],)},
+        ):
+            with self.subTest(changed=changed), self.assertRaises(FixtureIntegrityError):
+                replace(mutual.graph, **changed)
 
     def test_mutated_route_and_duplicate_declaration_reject_fixture(self):
         route_change = replace(self.sources[1], text=self.sources[1].text.replace(

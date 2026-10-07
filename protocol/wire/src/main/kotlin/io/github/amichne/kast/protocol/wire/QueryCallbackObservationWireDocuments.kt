@@ -92,6 +92,7 @@ internal sealed interface QueryCallbackFlowWireDocument {
         val obligations: List<QueryCallbackFlowCauseDocument>,
         @SerialName("owner_bindings") val ownerBindings: List<QueryCallbackBodyBindingWireDocument>,
         val scan: QueryCallbackInvocationScanDocument,
+        val forwarding: QueryCallbackForwardingEvidenceWireDocument,
     ) : QueryCallbackFlowWireDocument
 
     @Serializable
@@ -166,6 +167,7 @@ private fun QueryCallbackFlowDocument.callbackWire(): QueryCallbackFlowWireDocum
                 obligations.values,
                 ownerBindings.values.map { it.callbackWire() },
                 scan,
+                forwarding.callbackWire(),
             )
         is QueryCallbackFlowDocument.Unavailable -> QueryCallbackFlowWireDocument.Unavailable(cause)
         is QueryCallbackFlowDocument.ContractRejected -> QueryCallbackFlowWireDocument.ContractRejected(cause)
@@ -243,20 +245,24 @@ private fun QueryCallbackFlowWireDocument.toContract(): WireDocumentConversion<Q
                                 .convertEach { it.toContract() }
                                 .flatMapConverted { owners ->
                                     combineConverted(
-                                        BoundedProtocolList.create(calls).toWireDocumentConversion(),
-                                        BoundedProtocolList.create(obligations).toWireDocumentConversion(),
-                                        BoundedProtocolList.create(owners).toWireDocumentConversion(),
-                                    ) { calls, obligations, owners ->
-                                        QueryCallbackFlowDocument.Observed(
-                                            basis,
-                                            body,
-                                            binding,
-                                            calls,
-                                            obligations,
-                                            owners,
-                                            scan,
-                                        )
-                                    }
+                                            BoundedProtocolList.create(calls).toWireDocumentConversion(),
+                                            BoundedProtocolList.create(obligations).toWireDocumentConversion(),
+                                            BoundedProtocolList.create(owners).toWireDocumentConversion(),
+                                        ) { calls, obligations, owners ->
+                                            forwarding.toContract().mapConverted { forwarding ->
+                                                QueryCallbackFlowDocument.Observed(
+                                                    basis,
+                                                    body,
+                                                    binding,
+                                                    calls,
+                                                    obligations,
+                                                    owners,
+                                                    scan,
+                                                    forwarding,
+                                                )
+                                            }
+                                        }
+                                        .flattenConverted()
                                 }
                         }
                 }
