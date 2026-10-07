@@ -84,13 +84,13 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
     }
 
     @Test
-    fun `remaining elapsed grant shrinks even after a resumable page limit`() = runTest {
+    fun `semantic pages receive the remaining invocation time without an unresumable slice`() = runTest {
         var now = 0L
         val script = Script(listOf(listOf(row), listOf(row)), afterPage = { now = 900_000_000L })
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val result = protocol.executeAutomatically(request, fixture.authority, budget, policy(nanoTime = { now }))
         assertInstanceOf(OperationOutcome.Complete::class.java, result)
-        assertEquals(listOf(250L, 100L), script.timeGrants)
+        assertEquals(listOf(1000L, 100L), script.timeGrants)
         script.assertDrained()
     }
 

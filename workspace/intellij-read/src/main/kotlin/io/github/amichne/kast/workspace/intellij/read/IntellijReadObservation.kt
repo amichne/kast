@@ -41,6 +41,8 @@ enum class IntellijReadCounter {
     RELATION_CALL_OWNERS_EXCLUDED,
     RELATION_CANDIDATES,
     RELATION_PARTITIONS_PREPARED,
+    /** Inventory admission or preparation failed; no unfinished native search is presented as resumable work. */
+    RELATION_INVENTORY_UNAVAILABLE,
     RELATION_LOCATORS_RESTORED,
     RELATION_REPLAYED_PREFIX,
     SOURCE_STRUCTURAL_TASKS,
