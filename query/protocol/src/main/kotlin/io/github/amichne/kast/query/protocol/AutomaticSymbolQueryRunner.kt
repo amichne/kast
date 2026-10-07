@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
@@ -27,7 +28,7 @@ class QueryInvocationPolicy(
     val previewRows: ResultLimit,
     val previewBytesLimit: QueryByteLimit,
     val retainedBytes: QueryByteLimit,
-    val previewBytes: (List<QueryResultItemDocument.ExactSymbol>) -> Long,
+    val previewBytes: (List<QueryResultItemDocument>) -> Long,
     val nanoTime: () -> Long = System::nanoTime,
     val cancelled: () -> Boolean = { false },
     val inlinePresentation: (QueryPublishedPage) -> QueryInlinePresentation = { QueryInlinePresentation.FITS },
@@ -43,7 +44,7 @@ internal data class QueryInvocationPage(val page: QueryPublishedPage, val execut
 
 internal data class AccumulatedSymbolQuery(
     val execution: QueryExecutionResult,
-    val items: List<QueryResultItemDocument.ExactSymbol>,
+    val items: List<QueryResultItemDocument>,
     val stop: QueryInvocationStop,
     val failure: QueryRunRejection?,
     val issuedProgress: QueryQualifiedProgressDocument.Resumable? = null,
@@ -91,6 +92,8 @@ internal class AutomaticSymbolQueryRunner(
                     is QueryInvocationTransition.Continue -> action = QueryRunRequest.Resume(transition.token)
                     is QueryInvocationTransition.Rejected -> return Refinement.Rejected(transition.reason)
                     is QueryInvocationTransition.Stopped -> {
+                        if (!facts.hasObservedRowShape && request.output !is QueryOutputDocument.Symbols)
+                            return Refinement.Rejected(transition.unobservedFailure())
                         val progress = validProgress(transition.reason)
                         return Refinement.Refined(
                             facts

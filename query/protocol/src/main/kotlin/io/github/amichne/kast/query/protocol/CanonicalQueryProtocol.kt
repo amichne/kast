@@ -16,30 +16,41 @@ class CanonicalQueryProtocol(
     private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
     peerSiteAdmissions: List<QueryImpactPeerSiteAdmission> = emptyList(),
 ) {
+    private var pageAdmission = PageAdmission.PUBLIC
+
     private val peerSiteAdmissions = java.util.Collections.unmodifiableList(peerSiteAdmissions.toList())
     private val pagePublication = QueryPagePublication(state, publication)
     private val projection = QueryOutcomeProjection(authority, state, retentionObservation)
 
-    /** Shared automatic entry point. Manual transitions and every other output keep their existing behavior. */
+    /** Shared automatic entry point for independent rows; investigation-ledger outputs retain their own accounting. */
     suspend fun executeAutomatically(
         request: QueryRunRequest,
         lease: SemanticReadAuthority,
         budget: QueryBudget,
         policy: QueryInvocationPolicy,
     ): QueryPublishedPage {
-        if (request !is QueryRunRequest.Run || request.output !is QueryOutputDocument.Symbols)
+        when (val admission = automaticOutputAdmission(request)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return OperationOutcome.Rejected(admission.failure)
+        }
+        if (
+            request !is QueryRunRequest.Run ||
+                request.output == QueryOutputDocument.ValuePaths ||
+                request.output is QueryOutputDocument.ImpactWitness
+        )
             return execute(request, lease, budget)
         val recording = QueryInvocationExecution(operations)
         val pages =
             CanonicalQueryProtocol(
-                operations = recording,
-                authority = authority,
-                state = state,
-                publication = QueryExecutionPublication.Immediate,
-                producerSeeds = producerSeeds,
-                retentionObservation = retentionObservation,
-                peerSiteAdmissions = peerSiteAdmissions,
-            )
+                    operations = recording,
+                    authority = authority,
+                    state = state,
+                    publication = QueryExecutionPublication.Immediate,
+                    producerSeeds = producerSeeds,
+                    retentionObservation = retentionObservation,
+                    peerSiteAdmissions = peerSiteAdmissions,
+                )
+                .also { it.pageAdmission = PageAdmission.AUTOMATIC_INVOCATION }
         val accumulated =
             when (
                 val execution =
@@ -145,6 +156,10 @@ class CanonicalQueryProtocol(
         checkpoint: QueryCheckpoint?,
         publicationOwner: QueryExecutionClaim? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
+        when (val admitted = completionAdmission(request, pageAdmission)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return OperationOutcome.Rejected(admitted.failure)
+        }
         val acquired =
             when (
                 val admission =
@@ -196,7 +211,7 @@ class CanonicalQueryProtocol(
                 is Refinement.Refined -> selected.value
                 is Refinement.Rejected -> return selected
             }
-        val admissionAuthority = admissionAuthority(request, lease, peerSelections)
+        val admissionAuthority = admissionAuthority(authority, request, lease, peerSelections)
         val impact =
             when (val admitted = admitImpactSource(source, lease, admissionAuthority, budget)) {
                 is Refinement.Refined -> admitted.value
@@ -275,37 +290,6 @@ class CanonicalQueryProtocol(
                 )
         }
 
-    private suspend fun admissionAuthority(
-        request: QueryRunRequest.Run,
-        lease: SemanticReadAuthority,
-        peers: List<QueryImpactPeerSelection>,
-    ): QueryReferenceAuthority {
-        val sourceReferences =
-            (request.from as? QueryFromDocument.References)
-                ?.values
-                ?.values
-                ?.filterIsInstance<QueryReferenceDocument.ExactSymbol>()
-                ?.map { it.token }
-                .orEmpty()
-        val concatenatedReferences =
-            request.steps.values
-                .filterIsInstance<QueryStepDocument.Concat>()
-                .mapNotNull { it.input as? QueryFromDocument.References }
-                .flatMap { it.values.values.map(QueryReferenceDocument.ExactSymbol::token) }
-        val impactReferences =
-            (request.from as? QueryFromDocument.Impact)
-                ?.investigation
-                ?.let {
-                    it.seeds.values.flatMap { seed -> listOf(seed.enclosing, seed.callable) } +
-                        it.declarations.values
-                            .filter { declaration -> peers.none { declaration in it.declarations } }
-                            .map { declaration -> declaration.reference }
-                }
-                .orEmpty()
-        val references = sourceReferences + concatenatedReferences + impactReferences
-        return if (references.isEmpty()) authority else authority.admitReadReferences(references, lease)
-    }
-
     private fun rejected(reason: QueryExecutionRejectionDocument): OperationOutcome.Rejected<QueryRunRejection> =
         OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))
 }
@@ -316,3 +300,35 @@ private fun QueryFromDocument.peerSelections(
     lease: SemanticReadAuthority
 ): Refinement<List<QueryImpactPeerSelection>, QueryRunRejection> =
     if (this is QueryFromDocument.Impact) investigation.selectPeerSites(lease) else Refinement.Refined(emptyList())
+
+private suspend fun admissionAuthority(
+    authority: QueryReferenceAuthority,
+    request: QueryRunRequest.Run,
+    lease: SemanticReadAuthority,
+    peers: List<QueryImpactPeerSelection>,
+): QueryReferenceAuthority {
+    val sourceReferences =
+        (request.from as? QueryFromDocument.References)
+            ?.values
+            ?.values
+            ?.filterIsInstance<QueryReferenceDocument.ExactSymbol>()
+            ?.map { it.token }
+            .orEmpty()
+    val concatenatedReferences =
+        request.steps.values
+            .filterIsInstance<QueryStepDocument.Concat>()
+            .mapNotNull { it.input as? QueryFromDocument.References }
+            .flatMap { it.values.values.map(QueryReferenceDocument.ExactSymbol::token) }
+    val impactReferences =
+        (request.from as? QueryFromDocument.Impact)
+            ?.investigation
+            ?.let {
+                it.seeds.values.flatMap { seed -> listOf(seed.enclosing, seed.callable) } +
+                    it.declarations.values
+                        .filter { declaration -> peers.none { declaration in it.declarations } }
+                        .map { declaration -> declaration.reference }
+            }
+            .orEmpty()
+    val references = sourceReferences + concatenatedReferences + impactReferences
+    return if (references.isEmpty()) authority else authority.admitReadReferences(references, lease)
+}

@@ -9,6 +9,7 @@ import io.github.amichne.kast.relation.contract.CallbackDefaultBinding
 import io.github.amichne.kast.relation.contract.CallbackDirectInvocationBinding
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
+import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
@@ -25,7 +26,25 @@ internal data class PreparedCallbackFlow(
     val parameter: KtParameter,
     val target: RelationEndpoint,
     val origin: PreparedCallbackOrigin,
-)
+) {
+    fun formal(): Refinement<CallbackParameterIdentity, CallbackInvocationFlowCause> =
+        when (val supply = origin) {
+            is PreparedCallbackOrigin.Default -> Refinement.Refined(supply.binding.parameter)
+            is PreparedCallbackOrigin.Argument ->
+                when (
+                    val admitted =
+                        CallbackParameterIdentity.fromCompiler(
+                            target,
+                            supply.binding.position,
+                            supply.binding.parameter,
+                        )
+                ) {
+                    is Refinement.Refined -> admitted
+                    is Refinement.Rejected ->
+                        Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                }
+        }
+}
 
 internal sealed interface PreparedCallbackOrigin {
     data class Argument(val binding: CallbackArgumentBinding, val call: KtCallElement) : PreparedCallbackOrigin

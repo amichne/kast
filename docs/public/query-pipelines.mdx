@@ -6,6 +6,38 @@ icon: "workflow"
 
 Retain results with `retention: "RETAIN"`, then combine their rows by exact symbol identity. Pass issued result references unchanged.
 
+## Require a complete static answer
+
+Set `completion` on a `RUN` request to require completion in the selected compiler
+model:
+
+```json
+{
+  "type": "COMPLETE_ONLY",
+  "model": "COMPILER_RESOLVED_STATIC_V1"
+}
+```
+
+Automatic execution drains symbol, occurrence, traversal, and binding rows under
+one execution budget. A bounded preview can reference retained rows without
+changing upstream completion. The model covers compiler-resolved source
+relationships in the admitted query domain. It does not prove runtime activation;
+walk completion remains relative to the requested maximum depth.
+The strict model admits exact direct and forwarded callback argument routes when
+compiler evidence establishes the finite graph. Stored, returned, default,
+recursive, unresolved, and unproven owner routes remain typed rejections. Other
+value-call boundaries require a supported graph model.
+
+Unsupported outputs receive `COMPLETION_UNSUPPORTED`. An incomplete execution or
+unproven callback graph receives `COMPLETION_UNPROVEN`, preserving the original
+coverage and a retained evidence reference when storage admits it. Use
+`READ_RESULT` with that reference to inspect the proven prefix and its exact
+evidence. Storage failure is explicit in the rejection. Omitting `completion`
+keeps progressive execution and its existing qualifications.
+Retained reads of rejected answers carry `POLICY_REJECTED_EVIDENCE`; inspecting
+their enumeration coverage does not reverse the model rejection. Original
+producer progress remains historical evidence. Policy recovery is `EVIDENCE_ONLY`.
+
 This example uses the [historical recording](/reference/schemas#recorded-walkthrough) against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts describe that run. **A**, **B**, and **C** are teaching labels. Use fresh references in your session.
 
 ## Retain a second query result

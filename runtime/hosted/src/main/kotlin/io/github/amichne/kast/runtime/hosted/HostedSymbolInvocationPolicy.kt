@@ -31,7 +31,7 @@ internal fun hostedSymbolInvocationPolicy(
                 QueryByteLimit.parse(minOf(SYMBOL_PREVIEW_BYTES, context.executionBudget.returnedBytes.effective.value))
             ),
         retainedBytes = budgets.hostedQueryBudget.checkpointBytes,
-        previewBytes = CanonicalQueryCliDocuments::symbolPreviewBytes,
+        previewBytes = CanonicalQueryCliDocuments::previewBytes,
         cancelled = { !caller.isActive },
         inlinePresentation = { outcome ->
             when (

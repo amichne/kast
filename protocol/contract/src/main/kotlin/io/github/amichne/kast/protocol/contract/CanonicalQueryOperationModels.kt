@@ -201,6 +201,8 @@ sealed interface QueryRunRequest : OperationRequest {
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val completion: QueryCompletionPolicyDocument = QueryCompletionPolicyDocument.Progressive,
     ) : QueryRunRequest
 
     @Serializable
@@ -462,6 +464,7 @@ data class QueryRunResult(
     val impactAccounting: ImpactAccountingDocument = ImpactAccountingDocument.NotApplicable,
     val invocation: QueryInvocationDocument? = null,
     val evidenceWindow: QueryEvidenceWindowDocument? = null,
+    val interpretation: QueryResultInterpretationDocument = QueryResultInterpretationDocument.QueryResult,
 ) : OperationResult
 
 @Serializable

@@ -74,7 +74,17 @@ private fun encodeHostedQueryResponseDocument(
             limitations = semantic.qualification.limitations
             minimum = semantic.qualification.knownMinimum
         }
-        is OperationOutcome.Rejected -> return original
+        is OperationOutcome.Rejected -> {
+            val completion =
+                semantic.reason.reason()
+                    as? io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
+            return if (
+                completion?.evidence
+                    is io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained
+            )
+                original.publishEncodedPage(semantic.publicationPage(), published)
+            else original
+        }
     }
     val rows = evidence.payload.items.values.size
     if (original.fitsRows(rows, maximumResults)) {

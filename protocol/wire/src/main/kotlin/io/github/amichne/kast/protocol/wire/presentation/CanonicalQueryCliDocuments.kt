@@ -35,7 +35,9 @@ import kotlinx.serialization.Serializable
 
 object CanonicalQueryCliDocuments {
     /** Exact UTF-8 size of the public items array, including punctuation and retained row identities. */
-    fun symbolPreviewBytes(items: List<QueryResultItemDocument.ExactSymbol>): Long =
+    fun symbolPreviewBytes(items: List<QueryResultItemDocument.ExactSymbol>): Long = previewBytes(items)
+
+    fun previewBytes(items: List<QueryResultItemDocument>): Long =
         CanonicalJsonDocument.encodedBytes(
             kotlinx.serialization.builtins.ListSerializer(QueryResultItemCliDocument.serializer()),
             items.map(QueryResultItemDocument::toCliDocument),
@@ -119,6 +121,7 @@ object CanonicalQueryCliDocuments {
 private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?): CanonicalJsonDocument =
     completeFactory.create(
         QueryCompleteCliDocument(
+            interpretation = result.interpretation,
             question = result.question,
             impactAccounting = result.impactAccounting,
             operation = QueryCliOperation.RUN,
@@ -149,6 +152,7 @@ private fun projectQualified(
 ): CanonicalJsonDocument =
     qualifiedFactory.create(
         QueryQualifiedCliDocument(
+            interpretation = result.interpretation,
             question = result.question,
             impactAccounting = result.impactAccounting,
             operation = QueryCliOperation.RUN,
@@ -182,6 +186,9 @@ private fun projectQualified(
 
 @Serializable
 private data class QueryCompleteCliDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val interpretation: io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument =
+        io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.QueryResult,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -221,6 +228,9 @@ private data class QueryCompleteCliDocument(
 
 @Serializable
 private data class QueryQualifiedCliDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val interpretation: io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument =
+        io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.QueryResult,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -272,70 +282,6 @@ private data class QueryQualifiedCliDocument(
 )
 
 @Serializable data class QueryCoverageCliDocument(val exhaustive: Boolean)
-
-/** Counts describe this returned page, including productive pages with no semantic rows. */
-@Serializable
-private data class QueryPageProgressCliDocument(
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    val rows: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    @SerialName("walk_evidence")
-    val walkEvidence: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    @SerialName("reference_evidence")
-    val referenceEvidence: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    @SerialName("relation_evidence")
-    val relationEvidence: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    @SerialName("scope_exclusions")
-    val scopeExclusions: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    @SerialName("callback_observations")
-    val callbackObservations: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    @SerialName("callable_observations")
-    val callableObservations: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    @SerialName("excluded_callbacks")
-    val excludedCallbacks: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    val omissions: Int,
-    @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
-    val failures: Int,
-)
-
-private fun QueryRunResult.pageProgress(): QueryPageProgressCliDocument =
-    QueryPageProgressCliDocument(
-        rows = items.values.size,
-        walkEvidence = walkObservations.values.size,
-        referenceEvidence =
-            referenceObservations.values.size + walkObservations.values.sumOf { it.referenceOccurrences.values.size },
-        relationEvidence = relationObservations.values.size,
-        scopeExclusions =
-            relationObservations.values.sumOf { it.scopeExclusions.values.size } +
-                walkObservations.values.sumOf { it.scopeExclusions.values.size },
-        callbackObservations =
-            relationObservations.values.sumOf { it.callbackObservations.values.size } +
-                walkObservations.values.sumOf { it.callbackObservations.values.size },
-        callableObservations =
-            relationObservations.values.sumOf { it.callableObservations.values.size } +
-                walkObservations.values.sumOf { it.callableObservations.values.size },
-        excludedCallbacks =
-            relationObservations.values.sumOf { observation ->
-                observation.callbackObservations.values.count {
-                    it.namedPolicy is io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument.Excluded
-                }
-            } +
-                walkObservations.values.sumOf { observation ->
-                    observation.callbackObservations.values.count {
-                        it.observation.namedPolicy is
-                            io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument.Excluded
-                    }
-                },
-        omissions = omissions.values.size,
-        failures = failures.values.size,
-    )
 
 @Serializable
 private data class QueryRejectedCliDocument(

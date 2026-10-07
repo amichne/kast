@@ -897,6 +897,16 @@
               "type": "null"
             }
           ]
+        },
+        "completion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CompletionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -905,7 +915,8 @@
         "steps",
         "output",
         "retention",
-        "executionBudget"
+        "executionBudget",
+        "completion"
       ],
       "additionalProperties": false,
       "description": "Run a query from the supplied source and ordered steps. Retain the completed result only when requested."
@@ -4819,6 +4830,53 @@
       ],
       "additionalProperties": false,
       "description": "Read the exact source range of an issued callback, occurrence, or declaration candidate. The existing source owner validates authority and freshness; this does not execute a query."
+    },
+    "CompletionPolicy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProgressiveCompletion"
+        },
+        {
+          "$ref": "#/$defs/CompleteOnlyCompletion"
+        }
+      ]
+    },
+    "ProgressiveCompletion": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PROGRESSIVE"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "CompleteOnlyCompletion": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "COMPLETE_ONLY"
+          ]
+        },
+        "model": {
+          "type": "string",
+          "enum": [
+            "COMPILER_RESOLVED_STATIC_V1"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "model"
+      ],
+      "additionalProperties": false
     }
   }
 }

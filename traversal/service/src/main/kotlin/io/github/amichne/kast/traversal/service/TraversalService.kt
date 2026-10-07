@@ -188,20 +188,14 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                         is Refinement.Rejected ->
                             return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
                     }
-                when (state.frontierAdmission(node)) {
-                    FrontierAdmission.Skip -> Unit
-                    FrontierAdmission.Admit -> {
-                        val frontier =
-                            when (val admitted = TraversalFrontierEntry.create(plan, node, nextDepth)) {
-                                is Refinement.Refined -> admitted.value
-                                is Refinement.Rejected ->
-                                    return TraversalResult.Rejected(TraversalRejection.TraversalContractViolation)
-                            }
-                        state.frontier += frontier
+                val frontier =
+                    when (val admitted = TraversalFrontierEntry.create(plan, node, nextDepth)) {
+                        is Refinement.Refined -> admitted.value
+                        is Refinement.Rejected ->
+                            return TraversalResult.Rejected(TraversalRejection.TraversalContractViolation)
                     }
-                }
+                state.enqueue(frontier)
             }
-            state.frontier.sort()
 
             when (relationResult) {
                 is RelationReadResult.Complete -> state.pending = TraversalPendingState.None
@@ -343,7 +337,7 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                 val admitted =
                     TraversalCheckpoint.create(
                         plan,
-                        state.frontier.sorted(),
+                        state.frontierSnapshot(),
                         state.visited,
                         state.pending,
                         state.terminalRelationLimitations,

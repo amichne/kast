@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
@@ -22,7 +23,7 @@ internal sealed class SymbolInvocationPage(
     val payload: QueryRunResult,
     val result: QueryResult,
     val work: QueryWorkUsage.Observed,
-    val items: List<QueryResultItemDocument.ExactSymbol>,
+    val items: List<QueryResultItemDocument>,
 ) {
     abstract val execution: QueryExecutionResult
     open val issuedToken: QueryExecutionContinuation?
@@ -33,7 +34,7 @@ internal sealed class SymbolInvocationPage(
         override val execution: QueryExecutionResult.Complete,
         payload: QueryRunResult,
         work: QueryWorkUsage.Observed,
-        items: List<QueryResultItemDocument.ExactSymbol>,
+        items: List<QueryResultItemDocument>,
     ) : SymbolInvocationPage(payload, execution.result, work, items)
 
     class Qualified
@@ -41,7 +42,7 @@ internal sealed class SymbolInvocationPage(
         override val execution: QueryExecutionResult.Qualified,
         payload: QueryRunResult,
         work: QueryWorkUsage.Observed,
-        items: List<QueryResultItemDocument.ExactSymbol>,
+        items: List<QueryResultItemDocument>,
         val qualification: QueryRunQualification,
     ) : SymbolInvocationPage(payload, execution.result, work, items) {
         override val issuedToken
@@ -67,7 +68,7 @@ internal sealed class SymbolInvocationPage(
                             raw,
                             page.evidence.payload,
                             usage,
-                            page.evidence.payload.items.values.filterIsInstance<QueryResultItemDocument.ExactSymbol>(),
+                            page.evidence.payload.items.values,
                         ),
                         request,
                     )
@@ -79,7 +80,7 @@ internal sealed class SymbolInvocationPage(
                             raw,
                             page.evidence.payload,
                             usage,
-                            page.evidence.payload.items.values.filterIsInstance<QueryResultItemDocument.ExactSymbol>(),
+                            page.evidence.payload.items.values,
                             page.qualification,
                         ),
                         request,
@@ -94,11 +95,32 @@ internal sealed class SymbolInvocationPage(
             request: QueryRunRequest.Run,
         ): Refinement<SymbolInvocationPage, QueryInvocationTransition.Stopped> {
             val rows = page.result.rows
-            if (rows !is QueryRows.Symbols) return Refinement.Rejected(invalidInvocation())
+            val count =
+                when (rows) {
+                    is QueryRows.Symbols -> rows.values.size
+                    is QueryRows.Occurrences -> rows.values.size
+                    is QueryRows.Bindings -> rows.values.size
+                    is QueryRows.ValuePaths,
+                    is QueryRows.ImpactWitness -> return Refinement.Rejected(invalidInvocation())
+                }
+            val validItems =
+                page.items.all { item ->
+                    when (request.output) {
+                        is QueryOutputDocument.Symbols -> item is QueryResultItemDocument.ExactSymbol
+                        QueryOutputDocument.Occurrences ->
+                            item is QueryResultItemDocument.Occurrence ||
+                                item is QueryResultItemDocument.ReferenceOccurrence
+                        QueryOutputDocument.TraversalRecords -> item is QueryResultItemDocument.TraversalRecord
+                        QueryOutputDocument.BindingRows -> item is QueryResultItemDocument.BindingRow
+                        QueryOutputDocument.ValuePaths,
+                        is QueryOutputDocument.ImpactWitness -> false
+                    }
+                }
+            if (!validItems) return Refinement.Rejected(invalidInvocation())
             return if (
                 page.payload.question != QueryQuestionDocument.from(request) ||
                     page.items.size != page.payload.items.values.size ||
-                    rows.values.size != page.items.size
+                    count != page.items.size
             )
                 Refinement.Rejected(invalidInvocation())
             else Refinement.Refined(page)

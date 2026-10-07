@@ -199,7 +199,20 @@ internal fun QueryPublishedPage.dependencies(): Set<QueryStateKey> = buildSet {
                 progress?.checkpoint?.token?.let { add(it.key()) }
                 page.evidence.payload
             }
-            is OperationOutcome.Rejected -> return@buildSet
+            is OperationOutcome.Rejected -> {
+                val rejection =
+                    page.reason as? io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
+                val evidence =
+                    rejection?.evidence
+                        as? io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained
+                evidence?.result?.let { add(QueryStateKey.Result(it)) }
+                val coverage =
+                    rejection?.originalCoverage
+                        as? io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument.Qualified
+                val progress = coverage?.progress as? QueryQualifiedProgressDocument.Resumable
+                progress?.checkpoint?.token?.let { add(it.key()) }
+                return@buildSet
+            }
         }
     (payload.retention as? QueryResultRetention.Retained)?.reference?.let { add(QueryStateKey.Result(it)) }
 }

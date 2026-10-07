@@ -262,6 +262,8 @@ internal data class PublicToolRunAction(
     val output: PublicToolOutput? = null,
     val retention: PublicToolRetention? = null,
     val executionBudget: PublicToolExecutionBudget? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val completion: io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument? = null,
 ) : PublicToolAction
 
 @Serializable

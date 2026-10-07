@@ -2,6 +2,7 @@ package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 
+@kotlinx.serialization.Serializable
 enum class QueryLimitationDocument {
     RESULT_LIMIT_REACHED,
     BYTE_LIMIT_REACHED,
@@ -17,6 +18,7 @@ enum class QueryLimitationDocument {
     IMPACT_COVERAGE_UNPROVEN,
     RETENTION_LIMIT_REACHED,
     EXECUTION_INCOMPLETE,
+    STATIC_MODEL_UNPROVEN,
 }
 
 enum class QueryKnownMinimumFailure {

@@ -323,6 +323,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
                     else:
                         raise ValueError(f'Optional facade field lacks a supported default: {key}.{prop}')
                 parameter = prop
+                if key == 'RunAction' and prop == 'completion':
+                    object_body.append('    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')
                 if 'x-kotlin-type' in resolved and '_' in prop:
                     parameter = prop.split('_')[0] + ''.join(part.title() for part in prop.split('_')[1:])
                     object_body.append(f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')

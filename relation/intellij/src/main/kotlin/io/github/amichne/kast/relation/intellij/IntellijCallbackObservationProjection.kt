@@ -18,6 +18,7 @@ internal fun detachCallbackObservation(
     projection: IntellijK2RelationProjection,
     scope: CompiledRelationScope,
     admitWork: () -> CallbackWorkAdmission,
+    summaries: CallbackParameterSummaries,
 ): Refinement<RelationCallbackObservation, RelationLimitation> {
     val lexical =
         (ContainingDeclaration.Deferred(immediate).enclosingDeclaration() as? ContainingDeclaration.Found)
@@ -50,7 +51,7 @@ internal fun detachCallbackObservation(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
-    val flow = readCallbackInvocationFlow(immediate, ownerEvidence, scope, projection, admitWork)
+    val flow = readCallbackInvocationFlow(immediate, ownerEvidence, scope, projection, admitWork, summaries)
     return when (
         val result =
             RelationCallbackObservation.fromNativeBoundary(
@@ -136,6 +137,8 @@ internal class IntellijCallbackObservationEmitter(
     private val collector: IntellijRelationCollector,
     private val omit: (RelationLimitation, com.intellij.psi.PsiElement, com.intellij.openapi.util.TextRange) -> Boolean,
 ) {
+    private val summaries = CallbackParameterSummaries(request.budget)
+
     fun observe(
         reference: PsiReference,
         target: PsiNamedElement,
@@ -162,6 +165,7 @@ internal class IntellijCallbackObservationEmitter(
                     projection,
                     scope,
                     collector::admitCallbackWork,
+                    summaries,
                 )
         ) {
             is Refinement.Refined -> Refinement.Refined(NativeCallbackObservation.Observed(detached.value))

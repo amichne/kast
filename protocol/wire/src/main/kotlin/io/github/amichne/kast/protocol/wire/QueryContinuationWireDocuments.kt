@@ -8,6 +8,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class QueryRunResultWireDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val interpretation: io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument =
+        io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.QueryResult,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("evidence_window")
@@ -65,6 +68,10 @@ internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("request-rejected") REQUEST_REJECTED,
     @SerialName("discovery-rejected") DISCOVERY_REJECTED,
     @SerialName("reference-stale") REFERENCE_STALE,
+    @SerialName("invocation-time-limit") INVOCATION_TIME_LIMIT,
+    @SerialName("invocation-work-limit") INVOCATION_WORK_LIMIT,
+    @SerialName("invocation-retained-bytes-limit") INVOCATION_RETAINED_BYTES_LIMIT,
+    @SerialName("invocation-cancelled") INVOCATION_CANCELLED,
     @SerialName("budget-rejected") BUDGET_REJECTED,
     @SerialName("internal-contract-violation") INTERNAL_CONTRACT_VIOLATION,
 }
@@ -92,4 +99,5 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("IMPACT_COVERAGE_UNPROVEN") IMPACT_COVERAGE_UNPROVEN,
     @SerialName("retention-limit-reached") RETENTION_LIMIT_REACHED,
     @SerialName("execution-incomplete") EXECUTION_INCOMPLETE,
+    @SerialName("STATIC_MODEL_UNPROVEN") STATIC_MODEL_UNPROVEN,
 }

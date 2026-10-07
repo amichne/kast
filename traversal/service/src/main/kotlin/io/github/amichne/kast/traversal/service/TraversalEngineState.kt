@@ -20,14 +20,32 @@ import io.github.amichne.kast.traversal.contract.TraversalPosition
 import io.github.amichne.kast.traversal.contract.TraversalProgress
 import io.github.amichne.kast.traversal.contract.TraversalRecord
 import io.github.amichne.kast.traversal.contract.TraversalRejection
+import java.util.PriorityQueue
 
-internal class MutableTraversalState(
-    val frontier: MutableList<TraversalFrontierEntry>,
+internal class MutableTraversalState
+private constructor(
+    frontier: List<TraversalFrontierEntry>,
     val visited: MutableSet<RelationEndpointFingerprint>,
     var pending: TraversalPendingState,
     val terminalRelationLimitations: MutableSet<RelationLimitation>,
     val retainedOmissions: MutableList<io.github.amichne.kast.traversal.contract.TraversalPartialExpansion>,
 ) {
+    private val frontier = PriorityQueue(frontier)
+    private val queued = frontier.mapTo(hashSetOf()) { it.node.fingerprint }
+
+    fun frontierSnapshot(): List<TraversalFrontierEntry> = frontier.sorted()
+
+    /** Admits each exact node once while retaining deterministic depth/fingerprint expansion order. */
+    fun enqueue(entry: TraversalFrontierEntry) {
+        when (frontierAdmission(entry.node)) {
+            FrontierAdmission.Skip -> Unit
+            FrontierAdmission.Admit -> {
+                frontier += entry
+                queued += entry.node.fingerprint
+            }
+        }
+    }
+
     /**
      * Proof transition: `MutableTraversalState -> TraversalWorkAvailability`.
      *
@@ -45,7 +63,7 @@ internal class MutableTraversalState(
                 if (frontier.isEmpty()) {
                     TraversalWorkAvailability.Exhausted
                 } else {
-                    TraversalWorkAvailability.Ready(frontier.first(), OneHopRelationPosition.Start)
+                    TraversalWorkAvailability.Ready(frontier.element(), OneHopRelationPosition.Start)
                 }
         }
 
@@ -59,7 +77,8 @@ internal class MutableTraversalState(
         when (work.position) {
             is OneHopRelationPosition.Resume -> work.entry
             OneHopRelationPosition.Start ->
-                frontier.removeAt(0).also { entry ->
+                frontier.remove().also { entry ->
+                    queued -= entry.node.fingerprint
                     visited += entry.node.fingerprint
                 }
         }
@@ -70,9 +89,8 @@ internal class MutableTraversalState(
      * Establishes that only an exact node absent from both visited and queued identities may enter the frontier.
      * [FrontierAdmission.Skip] is the closed duplicate/cycle outcome.
      */
-    fun frontierAdmission(node: TraversalNode): FrontierAdmission =
-        if (node.fingerprint in visited || frontier.any { it.node.fingerprint == node.fingerprint })
-            FrontierAdmission.Skip
+    private fun frontierAdmission(node: TraversalNode): FrontierAdmission =
+        if (node.fingerprint in visited || node.fingerprint in queued) FrontierAdmission.Skip
         else FrontierAdmission.Admit
 
     /** Repeated inherited qualifications carry no new measurement; observed page evidence remains distinct. */
@@ -90,7 +108,7 @@ internal class MutableTraversalState(
     companion object {
         fun from(checkpoint: TraversalCheckpoint): MutableTraversalState =
             MutableTraversalState(
-                checkpoint.frontier.toMutableList(),
+                checkpoint.frontier,
                 checkpoint.visited.toMutableSet(),
                 checkpoint.pending,
                 checkpoint.terminalRelationLimitations.toMutableSet(),

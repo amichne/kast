@@ -20,6 +20,10 @@ internal class QueryInvocationFacts(
     private val policy: QueryInvocationPolicy,
 ) {
     private val pages = mutableListOf<SymbolInvocationPage>()
+    private var observedEmptyRows: QueryRows? = null
+    val hasObservedRowShape: Boolean
+        get() = observedEmptyRows != null
+
     private val checkpoints = mutableSetOf<QueryCheckpoint>()
     private val limitations = linkedSetOf<QueryLimitation>()
     var retainedBytes = 0L
@@ -28,6 +32,10 @@ internal class QueryInvocationFacts(
     var progress: QueryContinuationState = QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
 
     fun append(page: SymbolInvocationPage, capacity: Long): Refinement<Unit, QueryInvocationTransition.Stopped> {
+        val previous = pages.firstOrNull()?.result?.rows
+        val current = page.result.rows
+        if (previous != null && !compatibleRows(previous, current)) return Refinement.Rejected(invalidInvocation())
+        if (observedEmptyRows == null) observedEmptyRows = emptyRows(current)
         val next =
             (page.execution as? QueryExecutionResult.Qualified)?.continuation as? QueryContinuationState.Resumable
         if (next != null && next.checkpoint in checkpoints)
@@ -64,7 +72,7 @@ internal class QueryInvocationFacts(
         val items = pages.flatMap { it.items }
         val combined =
             QueryResult(
-                rows = QueryRows.Symbols.of(facts.flatMap { (it.rows as QueryRows.Symbols).values }),
+                rows = combinedRows(facts.map { it.rows }),
                 failures = facts.flatMap { it.failures },
                 omissions = facts.flatMap { it.omissions },
                 walkObservations = facts.flatMap { it.walkObservations },
@@ -86,6 +94,35 @@ internal class QueryInvocationFacts(
             }
         return AccumulatedSymbolQuery(aggregate, items, stopped.reason, stopped.failure)
     }
+
+    private fun compatibleRows(left: QueryRows, right: QueryRows): Boolean =
+        when (left) {
+            is QueryRows.Symbols -> right is QueryRows.Symbols
+            is QueryRows.Occurrences -> right is QueryRows.Occurrences
+            is QueryRows.Bindings -> right is QueryRows.Bindings && left.mode == right.mode
+            is QueryRows.ValuePaths,
+            is QueryRows.ImpactWitness -> false
+        }
+
+    private fun emptyRows(rows: QueryRows): QueryRows =
+        when (rows) {
+            is QueryRows.Symbols -> QueryRows.Symbols.of(emptyList())
+            is QueryRows.Occurrences -> QueryRows.Occurrences.of(emptyList())
+            is QueryRows.Bindings -> QueryRows.Bindings.of(emptyList(), rows.mode)
+            is QueryRows.ValuePaths,
+            is QueryRows.ImpactWitness -> error("Invocation admitted an investigation ledger")
+        }
+
+    private fun combinedRows(rows: List<QueryRows>): QueryRows =
+        when (val first = rows.firstOrNull()) {
+            null -> observedEmptyRows ?: QueryRows.Symbols.of(emptyList())
+            is QueryRows.Symbols -> QueryRows.Symbols.of(rows.flatMap { (it as QueryRows.Symbols).values })
+            is QueryRows.Occurrences -> QueryRows.Occurrences.of(rows.flatMap { (it as QueryRows.Occurrences).values })
+            is QueryRows.Bindings ->
+                QueryRows.Bindings.of(rows.flatMap { (it as QueryRows.Bindings).values }, first.mode)
+            is QueryRows.ValuePaths,
+            is QueryRows.ImpactWitness -> error("Invocation admitted an investigation ledger")
+        }
 
     private fun qualifyStop(stop: QueryInvocationStop) {
         when (stop) {
