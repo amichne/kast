@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackBodySupplyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackCallableDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
@@ -28,9 +29,11 @@ import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
 import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
 import io.github.amichne.kast.relation.contract.CallbackBodyBinding
 import io.github.amichne.kast.relation.contract.CallbackBodySupply
+import io.github.amichne.kast.relation.contract.CallbackForwardingEvidence
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlow
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy
+import io.github.amichne.kast.relation.contract.CallbackParameterForwarding
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
 import io.github.amichne.kast.relation.contract.RelationCallableBody
@@ -208,6 +211,31 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
             BoundedProtocolList.create(flow.ownerBindings.map { ownerBinding(it) ?: return null }).callbackValue()
                 ?: return null,
             flow.scan.protocolCallbackDocument(),
+            forwardingEvidence(flow.forwarding) ?: return null,
+        )
+    }
+
+    private fun forwardingEvidence(value: CallbackForwardingEvidence): QueryCallbackForwardingEvidenceDocument? {
+        return when (value) {
+            CallbackForwardingEvidence.InvocationRoutes -> QueryCallbackForwardingEvidenceDocument.InvocationRoutes
+            is CallbackForwardingEvidence.ExhaustedGraph -> {
+                val graph = value.graph
+                QueryCallbackForwardingEvidenceDocument.ExhaustedGraph(
+                    parameter(graph.root) ?: return null,
+                    BoundedProtocolList.create(graph.formals.map { parameter(it) ?: return null }).callbackValue()
+                        ?: return null,
+                    BoundedProtocolList.create(graph.forwardings.map { forwarding(it) ?: return null }).callbackValue()
+                        ?: return null,
+                )
+            }
+        }
+    }
+
+    private fun forwarding(value: CallbackParameterForwarding): QueryCallbackForwardingDocument? {
+        return QueryCallbackForwardingDocument(
+            parameter(value.source) ?: return null,
+            occurrence(value.argument) ?: return null,
+            bound(value.target) ?: return null,
         )
     }
 
@@ -242,16 +270,8 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
                     }
                 )
                 .callbackValue() ?: return null,
-            BoundedProtocolList.create(
-                    value.forwardings.map {
-                        QueryCallbackForwardingDocument(
-                            parameter(it.source) ?: return null,
-                            occurrence(it.argument) ?: return null,
-                            bound(it.target) ?: return null,
-                        )
-                    }
-                )
-                .callbackValue() ?: return null,
+            BoundedProtocolList.create(value.forwardings.map { forwarding(it) ?: return null }).callbackValue()
+                ?: return null,
         )
     }
 

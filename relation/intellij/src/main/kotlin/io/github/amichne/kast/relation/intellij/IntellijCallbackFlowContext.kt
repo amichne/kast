@@ -5,6 +5,7 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
+import io.github.amichne.kast.relation.contract.CallbackForwardingEvidence
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlow
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
@@ -62,6 +63,7 @@ internal class IntellijCallbackFlowContext(
         invocations: List<CallbackParameterInvocation>,
         obligations: Set<CallbackInvocationFlowCause>,
         scan: CallbackInvocationScan = CallbackInvocationScan.INCOMPLETE,
+        forwarding: CallbackForwardingEvidence = CallbackForwardingEvidence.InvocationRoutes,
     ): CallbackInvocationFlowRead =
         when (
             val result =
@@ -72,6 +74,7 @@ internal class IntellijCallbackFlowContext(
                     invocations = invocations,
                     obligations = obligations,
                     scan = scan,
+                    forwarding = forwarding,
                 )
         ) {
             is Refinement.Refined -> CallbackInvocationFlowRead.Observed(result.value)

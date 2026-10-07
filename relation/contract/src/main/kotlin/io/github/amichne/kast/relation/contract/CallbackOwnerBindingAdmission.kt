@@ -10,6 +10,7 @@ internal fun admitCallbackOwnerBindings(
         flow.invocations.map { it.owner } +
             flow.body +
             flow.invocations.flatMap { invocation -> invocation.forwardings.map { it.target.invocationOwner } } +
+            flow.forwarding.owners() +
             listOfNotNull(
                 when (val binding = flow.binding) {
                     is CallbackBindingEvidence.Bound -> binding.binding.invocationOwner
@@ -20,6 +21,12 @@ internal fun admitCallbackOwnerBindings(
             )
     return admitCallbackOwnerBindings(flow.basis, flow.scan, owners, bindings)
 }
+
+internal fun CallbackForwardingEvidence.owners(): List<RelationCallableBody> =
+    when (this) {
+        CallbackForwardingEvidence.InvocationRoutes -> emptyList()
+        is CallbackForwardingEvidence.ExhaustedGraph -> graph.forwardings.map { it.target.invocationOwner }
+    }
 
 internal fun admitCallbackOwnerBindings(
     basis: io.github.amichne.kast.workspace.contract.SemanticReadIdentity,

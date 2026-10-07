@@ -33,6 +33,6 @@ internal fun readCallbackInvocationFlow(
         is CallbackBindingPreparation.ContractRejected -> CallbackInvocationFlowRead.ContractRejected(prepared.cause)
         is CallbackBindingPreparation.Direct -> readDirectCallbackFlow(context, prepared, body, lexicalOwner)
         is CallbackBindingPreparation.Prepared ->
-            IntellijCallbackFlowScan(context, prepared.value, body, summaries).read()
+            IntellijCallbackFlowRead(context, prepared.value, body, summaries).read()
     }
 }

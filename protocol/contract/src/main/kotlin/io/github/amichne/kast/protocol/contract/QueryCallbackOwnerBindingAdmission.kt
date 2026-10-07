@@ -11,7 +11,12 @@ internal fun QueryCallbackFlowDocument.Observed.admitOwnerBindings(): Refinement
                 (binding as? QueryCallbackBindingDocument.Bound)?.invocationOwner,
                 (binding as? QueryCallbackBindingDocument.Direct)?.owner,
             ) +
-            invocations.values.flatMap { it.forwardings.values.map { hop -> hop.target.invocationOwner } }
+            invocations.values.flatMap { it.forwardings.values.map { hop -> hop.target.invocationOwner } } +
+            when (val forwarding = forwarding) {
+                QueryCallbackForwardingEvidenceDocument.InvocationRoutes -> emptyList()
+                is QueryCallbackForwardingEvidenceDocument.ExhaustedGraph ->
+                    forwarding.forwardings.values.map { it.target.invocationOwner }
+            }
     if (ownerBindings.values.map { it.body }.distinct().size != ownerBindings.values.size)
         return Refinement.Rejected(QueryCallbackDocumentFailure.DUPLICATE_OWNER_BINDING)
     for (owner in ownerBindings.values) {

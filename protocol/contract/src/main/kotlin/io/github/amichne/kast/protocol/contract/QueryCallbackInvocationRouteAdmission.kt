@@ -13,6 +13,10 @@ internal fun QueryCallbackFlowDocument.Observed.admitParameterInvocations(
     initialReference: ImpactDeclarationReferenceDocument,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
     val receiver = CallbackInvocationReceiver(initial, initialReference)
+    when (val graph = admitForwardingEvidence(initial)) {
+        is Refinement.Rejected -> return graph
+        is Refinement.Refined -> Unit
+    }
     for (invocation in invocations.values) {
         val terminal =
             when (val route = admitForwardings(invocation, receiver)) {
@@ -26,6 +30,119 @@ internal fun QueryCallbackFlowDocument.Observed.admitParameterInvocations(
     }
     return Refinement.Refined(Unit)
 }
+
+private data class CallbackFormalSite(
+    val callable: QueryExcludedCompilerTargetDocument,
+    val declaration: SourceRangeDocument,
+    val parameterFile: ProtocolText,
+    val parameter: SourceRangeDocument,
+    val position: ProtocolOffset,
+)
+
+private fun QueryCallbackParameterIdentityDocument.formalSite() =
+    CallbackFormalSite(callable.compilerTarget, callable.declaration.range, parameter.file, parameter.range, position)
+
+private fun QueryCallbackFlowDocument.Observed.admitForwardingEvidence(
+    initial: QueryCallbackParameterIdentityDocument
+): Refinement<Unit, QueryCallbackDocumentFailure> =
+    when (val evidence = forwarding) {
+        QueryCallbackForwardingEvidenceDocument.InvocationRoutes -> Refinement.Refined(Unit)
+        is QueryCallbackForwardingEvidenceDocument.ExhaustedGraph -> admitExhaustedGraph(initial, evidence)
+    }
+
+private fun QueryCallbackFlowDocument.Observed.admitExhaustedGraph(
+    initial: QueryCallbackParameterIdentityDocument,
+    graph: QueryCallbackForwardingEvidenceDocument.ExhaustedGraph,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    val inventory = graph.formals.values.map { it.formalSite() }.toSet()
+    if (!initial.sameParameter(graph.root)) return rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
+    when (val formals = graph.admitFormalInventory(inventory)) {
+        is Refinement.Rejected -> return formals
+        is Refinement.Refined -> Unit
+    }
+    when (val edges = admitGraphForwardings(graph.forwardings.values, inventory)) {
+        is Refinement.Rejected -> return edges
+        is Refinement.Refined -> Unit
+    }
+    if (graph.reachableFormalSites() != inventory) return rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
+    if (invocations.values.any { !it.hasInventoriedForwardings(graph.forwardings.values) })
+        return rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
+    return Refinement.Refined(Unit)
+}
+
+private fun QueryCallbackForwardingEvidenceDocument.ExhaustedGraph.admitFormalInventory(
+    inventory: Set<CallbackFormalSite>
+): Refinement<Unit, QueryCallbackDocumentFailure> =
+    if (
+        formals.values.any { !it.validParameter() } ||
+            inventory.size != formals.values.size ||
+            root.formalSite() !in inventory
+    )
+        rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
+    else Refinement.Refined(Unit)
+
+private fun QueryCallbackFlowDocument.Observed.admitGraphForwardings(
+    edges: List<QueryCallbackForwardingDocument>,
+    inventory: Set<CallbackFormalSite>,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    for ((index, edge) in edges.withIndex()) {
+        if (
+            edge.source.formalSite() !in inventory ||
+                edge.target.parameterIdentity().formalSite() !in inventory ||
+                edges.subList(0, index).any { it.sameForwarding(edge) }
+        )
+            return rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
+        when (
+            val admitted =
+                edge.admitForwarding(
+                    CallbackInvocationReceiver(edge.source, edge.source.callable.reference(basis)),
+                    basis,
+                    obligations.values,
+                )
+        ) {
+            is Refinement.Rejected -> return admitted
+            is Refinement.Refined -> Unit
+        }
+    }
+    return Refinement.Refined(Unit)
+}
+
+private fun QueryCallbackForwardingEvidenceDocument.ExhaustedGraph.reachableFormalSites(): Set<CallbackFormalSite> {
+    val outgoing = forwardings.values.groupBy { it.source.formalSite() }
+    val reachable = mutableSetOf<CallbackFormalSite>()
+    val pending = ArrayDeque<CallbackFormalSite>()
+    pending.add(root.formalSite())
+    while (pending.isNotEmpty()) {
+        val source = pending.removeFirst()
+        if (!reachable.add(source)) continue
+        for (edge in outgoing[source].orEmpty()) pending.add(edge.target.parameterIdentity().formalSite())
+    }
+    return reachable
+}
+
+private fun QueryCallbackInvocationDocument.hasInventoriedForwardings(
+    edges: List<QueryCallbackForwardingDocument>
+): Boolean = forwardings.values.all { path -> edges.any { it.sameForwarding(path) } }
+
+private fun QueryCallbackForwardingDocument.sameForwarding(other: QueryCallbackForwardingDocument): Boolean =
+    source.sameParameter(other.source) &&
+        argument.sameSite(other.argument) &&
+        target.invocation == other.target.invocation &&
+        target.invocationOccurrence.sameSite(other.target.invocationOccurrence) &&
+        target.invocationOwner.sameOwner(other.target.invocationOwner) &&
+        target.parameterIdentity().sameParameter(other.target.parameterIdentity())
+
+private fun QueryCallbackBodyDocument.sameOwner(other: QueryCallbackBodyDocument): Boolean =
+    when (this) {
+        is QueryCallbackBodyDocument.Named ->
+            other is QueryCallbackBodyDocument.Named &&
+                callable.compilerTarget == other.callable.compilerTarget &&
+                callable.declaration.sameSite(other.callable.declaration)
+        is QueryCallbackBodyDocument.Anonymous ->
+            other is QueryCallbackBodyDocument.Anonymous &&
+                occurrence.sameSite(other.occurrence) &&
+                compilerEvidence == other.compilerEvidence
+    }
 
 private fun QueryCallbackFlowDocument.Observed.admitForwardings(
     invocation: QueryCallbackInvocationDocument,

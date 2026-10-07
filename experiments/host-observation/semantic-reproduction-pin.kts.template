@@ -53,6 +53,14 @@ run {
         "io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt",
         "io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt",
         "io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch",
+        "io.github.amichne.kast.relation.intellij.IntellijCallbackFlowRead",
+        "io.github.amichne.kast.relation.intellij.IntellijCallbackFlowScan",
+        "io.github.amichne.kast.relation.intellij.CallbackFormalWorklist",
+        "io.github.amichne.kast.relation.intellij.CallbackFlowRetention",
+        "io.github.amichne.kast.relation.intellij.CallbackRetainedRecords",
+        "io.github.amichne.kast.relation.intellij.CallbackParameterSummaries",
+        "io.github.amichne.kast.relation.contract.CompleteCallbackForwardingGraph",
+        "io.github.amichne.kast.relation.contract.CompleteStaticCallbackGraph",
         "io.github.amichne.kast.relation.contract.RelationReferenceOccurrence"
     ).associateWith { name ->
         val resource = loader.getResource(name.replace('.', '/') + ".class")!!

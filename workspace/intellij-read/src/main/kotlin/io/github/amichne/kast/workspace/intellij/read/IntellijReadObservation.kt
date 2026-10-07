@@ -52,6 +52,11 @@ enum class IntellijReadCounter {
     CALLBACK_BODY_SCANS,
     CALLBACK_BODY_SCANS_COMPLETED,
     CALLBACK_BODY_SCANS_INCOMPLETE,
+    /** Exact formal inventories and forwarding edges retained during a bounded fixed-point read. */
+    CALLBACK_FORWARDING_FORMALS,
+    CALLBACK_FORWARDING_EDGES,
+    CALLBACK_FIXED_POINTS_COMPLETED,
+    CALLBACK_FIXED_POINTS_REJECTED,
     /** A hit requires successful supplier-specific instantiation of a detached formal summary. */
     CALLBACK_SUMMARY_HITS,
     CALLBACK_SUMMARY_MISSES,

@@ -3,6 +3,7 @@ package io.github.amichne.kast.relation.intellij
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
 import io.github.amichne.kast.relation.contract.CallbackBodyBinding
+import io.github.amichne.kast.relation.contract.CallbackForwardingEvidence
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlow
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
@@ -56,10 +57,12 @@ internal class CallbackSummaryReuse(private val summaries: CallbackParameterSumm
         obligations: Set<CallbackInvocationFlowCause>,
         owners: List<CallbackBodyBinding>,
         scan: CallbackInvocationScan,
+        forwarding: CallbackForwardingEvidence = CallbackForwardingEvidence.InvocationRoutes,
     ): Refinement<CallbackSummaryCandidate, CallbackInvocationFlowFailure> {
         if (scan != CallbackInvocationScan.EXHAUSTIVE) return Refinement.Refined(CallbackSummaryCandidate.None)
         return when (
-            val captured = CallbackParameterSummary.fromCompiler(formal, invocations, obligations, owners, scan)
+            val captured =
+                CallbackParameterSummary.fromCompiler(formal, invocations, obligations, owners, scan, forwarding)
         ) {
             is Refinement.Refined -> Refinement.Refined(CallbackSummaryCandidate.Admitted(captured.value))
             is Refinement.Rejected -> captured

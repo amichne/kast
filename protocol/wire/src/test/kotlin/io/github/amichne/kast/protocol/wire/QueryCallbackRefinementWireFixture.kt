@@ -98,6 +98,48 @@ internal class QueryCallbackRefinementWireFixture {
         )
     }
 
+    fun exhaustedGraphObservation(): QueryCallbackObservationWireDocument {
+        val seed = forwardedObservation()
+        val observed = flow(seed)
+        val edge = observed.invocations.single().forwardings.single()
+        val target = edge.target as QueryCallbackBindingWireDocument.Bound
+        val terminal = QueryCallbackParameterIdentityWireDocument(target.callable, target.position, target.parameter)
+        return seed.copy(
+            flow =
+                observed.copy(
+                    forwarding =
+                        QueryCallbackForwardingEvidenceWireDocument.ExhaustedGraph(
+                            edge.source,
+                            listOf(edge.source, terminal),
+                            listOf(edge),
+                        )
+                )
+        )
+    }
+
+    fun recursiveGraphObservation(): QueryCallbackObservationWireDocument {
+        val seed = exhaustedGraphObservation()
+        val observed = flow(seed)
+        val graph = observed.forwarding as QueryCallbackForwardingEvidenceWireDocument.ExhaustedGraph
+        val back =
+            QueryCallbackForwardingWireDocument(
+                graph.formals.last(),
+                occurrence("Forward.kt", 14, 18),
+                QueryCallbackBindingWireDocument.Bound(
+                    ImpactInvocationReferenceDocument(
+                        range("Forward.kt", 10, 25),
+                        reference(observed, graph.root.callable),
+                    ),
+                    occurrence("Forward.kt", 10, 25),
+                    QueryCallbackBodyWireDocument.Named(graph.formals.last().callable),
+                    graph.root.callable,
+                    graph.root.position,
+                    graph.root.parameter,
+                ),
+            )
+        return seed.copy(flow = observed.copy(forwarding = graph.copy(forwardings = graph.forwardings + back)))
+    }
+
     fun nestedObservation(
         supply: QueryCallbackBodySupplyWireDocument,
         cause: QueryCallbackFlowCauseDocument,

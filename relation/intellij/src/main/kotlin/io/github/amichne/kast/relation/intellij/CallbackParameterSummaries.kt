@@ -19,7 +19,7 @@ internal class CallbackParameterSummaries(
 
     fun retain(summary: CallbackParameterSummary): Refinement<Unit, CallbackInvocationFlowCause> {
         if (summary.formal in summaries) return Refinement.Refined(Unit)
-        return when (val admitted = retention.admit(summary.retainedBytes)) {
+        return when (val admitted = retention.admitSummary(summary)) {
             is Refinement.Refined -> {
                 summaries[summary.formal] = summary
                 admitted

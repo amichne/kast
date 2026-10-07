@@ -26,6 +26,8 @@ STATIC_COUNTERS = (
     'CALLBACK_BODY_SCANS', 'CALLBACK_BODY_SCANS_COMPLETED', 'CALLBACK_BODY_SCANS_INCOMPLETE',
     'CALLBACK_SUMMARY_HITS', 'CALLBACK_SUMMARY_MISSES', 'CALLBACK_SUMMARY_REJECTIONS',
     'CALLBACK_SUMMARIES_RETAINED', 'CALLBACK_SUMMARY_RETENTION_REJECTIONS',
+    'CALLBACK_FORWARDING_FORMALS', 'CALLBACK_FORWARDING_EDGES',
+    'CALLBACK_FIXED_POINTS_COMPLETED', 'CALLBACK_FIXED_POINTS_REJECTED',
 )
 
 POLICY_EVIDENCE_COUNTERS = (
@@ -159,9 +161,10 @@ class StaticGrants:
 
 
 def static_grants(max_returned_bytes):
-    # Two forwarding witnesses, one invocation and an optional detached summary
-    # share one result grant. Presentation has its own one-record allowance.
-    return StaticGrants((Budget(maxResults=4, maxReturnedBytes=max_returned_bytes),
+    # The largest authored graph has one root formal, three forwarding witnesses, one invocation,
+    # and one optional detached summary. Eight leaves room for the complete
+    # semantic result; presentation has its own one-record allowance.
+    return StaticGrants((Budget(maxResults=8, maxReturnedBytes=max_returned_bytes),
         Budget(maxResults=32, maxReturnedBytes=max_returned_bytes)),
         Budget(maxResults=1, maxReturnedBytes=max_returned_bytes))
 
@@ -943,7 +946,7 @@ def assert_forwarding(actual, expected):
 
 
 def case_supplies(case):
-    if isinstance(case, (static.CompleteCase, static.RejectedResourceCase)):
+    if isinstance(case, (static.CompleteCase, static.CompleteEmptyCase, static.RejectedResourceCase)):
         return case.supplies
     return (case.supply,)
 
@@ -961,10 +964,32 @@ def mapped_callback_observations(pages, case):
     return [(actual_by_site[key], supply, site) for key, (supply, site) in expected_sites.items()]
 
 
+def assert_exhausted_graph(actual, expected):
+    """Compare finite graph inventory with authored source, including closing edges."""
+    assert actual['type'] == 'EXHAUSTED_GRAPH', 'complete formal graph witness missing'
+    assert_formal(actual['root'], expected.root)
+    expected_formals = {(formal.parameter.file, formal.parameter.range.startInclusive,
+                         formal.parameter.range.endExclusive): formal for formal in expected.formals}
+    assert len(actual['formals']) == len(expected_formals), 'exhaustive formal inventory changed'
+    assert Counter(site_key(formal['parameter']) for formal in actual['formals']) == Counter(expected_formals.keys()), 'exhaustive formal inventory changed'
+    for formal in actual['formals']:
+        assert_formal(formal, expected_formals[site_key(formal['parameter'])])
+    expected_edges = {(edge.argument.file, edge.argument.range.startInclusive,
+                      edge.argument.range.endExclusive): edge for edge in expected.forwardings}
+    assert len(actual['forwardings']) == len(expected_edges), 'exhaustive forwarding inventory changed'
+    assert Counter(site_key(edge['argument']) for edge in actual['forwardings']) == Counter(expected_edges.keys()), 'exhaustive forwarding inventory changed'
+    for edge in actual['forwardings']:
+        assert_forwarding(edge, expected_edges[site_key(edge['argument'])])
+
+
 def assert_complete_callback(pages, case):
     for observation, supply, occurrence in mapped_callback_observations(pages, case):
         flow = assert_supply(observation, supply, occurrence)
         assert flow['scan'] == 'EXHAUSTIVE' and flow['obligations'] == [], flow
+        assert_exhausted_graph(flow['forwarding'], case.graph)
+        if isinstance(case, static.CompleteEmptyCase):
+            assert flow['invocations'] == [], 'exhausted empty graph manufactured an invocation'
+            continue
         assert len(flow['invocations']) == 1, flow
         invocation = flow['invocations'][0]
         assert_span(invocation['occurrence'], case.invocation.occurrence)
@@ -1101,12 +1126,16 @@ def assert_rejection_pointer(detail, groups, case):
 
 
 def assert_complete_scan_reuse(case, direction, counts):
-    if case.name == 'alpha' and direction == StaticRelation.CALLEES:
-        expected = {'CALLBACK_BODY_SCANS': 3, 'CALLBACK_BODY_SCANS_COMPLETED': 3,
+    if direction == StaticRelation.CALLEES:
+        expected = {'CALLBACK_BODY_SCANS': len(case.graph.formals),
+            'CALLBACK_BODY_SCANS_COMPLETED': len(case.graph.formals),
             'CALLBACK_BODY_SCANS_INCOMPLETE': 0, 'CALLBACK_SUMMARY_MISSES': 1,
-            'CALLBACK_SUMMARY_HITS': 1, 'CALLBACK_SUMMARIES_RETAINED': 1,
-            'CALLBACK_SUMMARY_REJECTIONS': 0, 'CALLBACK_SUMMARY_RETENTION_REJECTIONS': 0}
-        assert counts == expected, 'alpha formal scan/reuse evidence differs from authored route'
+            'CALLBACK_SUMMARY_HITS': len(case.supplies) - 1, 'CALLBACK_SUMMARIES_RETAINED': 1,
+            'CALLBACK_SUMMARY_REJECTIONS': 0, 'CALLBACK_SUMMARY_RETENTION_REJECTIONS': 0,
+            'CALLBACK_FORWARDING_FORMALS': len(case.graph.formals),
+            'CALLBACK_FORWARDING_EDGES': len(case.graph.forwardings),
+            'CALLBACK_FIXED_POINTS_COMPLETED': 1, 'CALLBACK_FIXED_POINTS_REJECTED': 0}
+        assert counts == expected, case.name + ' formal scan/reuse evidence differs from authored graph'
 
 
 def assert_relation_direction(groups, direction):
@@ -1191,7 +1220,7 @@ def qualify_static(args, output, invoke, pinned):
         assert calls and all(call.response is not None for call in calls), 'native answer missing'
         terminal = calls[-1].response
         assert replay.continuation(terminal) is None, 'automatic execution did not drain'
-        if isinstance(case, (static.CompleteCase, static.ExcludedReferenceCase)):
+        if isinstance(case, (static.CompleteCase, static.CompleteEmptyCase, static.ExcludedReferenceCase)):
             assert terminal['status'] == 'complete' and terminal['coverage']['exhaustive'], terminal
             assert not terminal.get('failures') and not terminal.get('omissions'), terminal
             assert terminal['retention']['kind'] == 'retained', terminal
@@ -1214,7 +1243,7 @@ def qualify_static(args, output, invoke, pinned):
                 assert interpretation['type'] == 'POLICY_REJECTED_EVIDENCE', interpretation
                 assert interpretation['cause'] == rejected['cause'], interpretation
                 assert interpretation['originalCoverage'] == rejected['originalCoverage'], interpretation
-        if isinstance(case, static.CompleteCase):
+        if isinstance(case, (static.CompleteCase, static.CompleteEmptyCase)):
             assert_complete_callback(pages, case)
         elif isinstance(case, (static.RejectedLambdaCase, static.RejectedResourceCase)):
             for observation, supply, occurrence in mapped_callback_observations(pages, case):
@@ -1259,7 +1288,7 @@ def qualify_static(args, output, invoke, pinned):
         for call in calls:
             for counter, count in native_callback_counters(call, live).items(): totals[counter] += count
             for counter, count in assert_policy_evidence_publication(call, live).items(): publication_totals[counter] += count
-        if isinstance(case, static.CompleteCase): assert_complete_scan_reuse(case, direction, totals)
+        if isinstance(case, (static.CompleteCase, static.CompleteEmptyCase)): assert_complete_scan_reuse(case, direction, totals)
         for call in row_pages + evidence_calls:
             counts = native_callback_counters(call, live)
             assert all(count == 0 for count in counts.values()), 'retained presentation reran callback work'
