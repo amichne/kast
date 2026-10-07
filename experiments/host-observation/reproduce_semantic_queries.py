@@ -147,7 +147,7 @@ def pin(args):
     host = json.loads((output / "host.json").read_text())
     mcp = getattr(args, "public_mcp", False)
     rpc = getattr(args, "public_rpc", False) or mcp
-    catalog_cli = cli.parent / "kast-tool-rpc-complete" if mcp else cli
+    catalog_cli = getattr(args, 'catalog_rpc', None) or (cli.parent / "kast-tool-rpc-complete" if mcp else cli)
     version = capture([cli, "--version"], args.fixture) if not rpc else None
     schema = capture([catalog_cli, "catalog"] if rpc else [cli, "--schema"], args.fixture)
     if version is not None: write(output / "version-process.json", version)
@@ -1550,6 +1550,7 @@ def main():
     identify.add_argument("--source-tree", type=Path)
     identify.add_argument("--public-mcp", action="store_true", help="Pin the installed persistent MCP query path")
     identify.add_argument("--public-rpc", action="store_true", help="Pin the installed Tool RPC catalog and executable")
+    identify.add_argument("--catalog-rpc", type=Path, help="Exact sibling catalog launcher for a candidate Gradle distribution")
     identify.set_defaults(run=pin)
     play = commands.add_parser("replay", help="Read-only replay through the public CLI or production provider")
     play.add_argument("--pin", type=Path, required=True)

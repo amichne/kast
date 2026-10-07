@@ -7,13 +7,141 @@ continuation is retained. This runner neither installs nor restarts the user's I
 import argparse
 from collections import Counter
 from contextlib import closing
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from hashlib import sha256
+from io import BytesIO
 import json
 from pathlib import Path
 import re
+import time
+from zipfile import ZipFile
 
 import jsonschema
 import reproduce_semantic_queries as replay
+import static_callback_oracle as static
+
+
+STATIC_COUNTERS = (
+    'CALLBACK_BODY_SCANS', 'CALLBACK_BODY_SCANS_COMPLETED', 'CALLBACK_BODY_SCANS_INCOMPLETE',
+    'CALLBACK_SUMMARY_HITS', 'CALLBACK_SUMMARY_MISSES', 'CALLBACK_SUMMARY_REJECTIONS',
+    'CALLBACK_SUMMARIES_RETAINED', 'CALLBACK_SUMMARY_RETENTION_REJECTIONS',
+)
+
+POLICY_EVIDENCE_COUNTERS = (
+    'QUERY_POLICY_EVIDENCE_PUBLICATIONS_COMMITTED',
+    'QUERY_POLICY_EVIDENCE_COMMIT_REJECTIONS',
+    'QUERY_POLICY_EVIDENCE_PUBLICATIONS_DISCARDED',
+)
+
+
+@dataclass(frozen=True)
+class SourceFingerprint:
+    commit: str
+    patchSha256: str
+    untrackedHashes: dict[str, str]
+
+
+@dataclass(frozen=True)
+class CandidateCompositionReceipt:
+    markerSource: str
+    markerSourceSha256: str
+    markerDestination: str
+    markerDestinationSha256: str
+    type: str = field(default='STATIC_CALLBACK_CANDIDATE_COMPOSITION', init=False)
+
+
+@dataclass(frozen=True)
+class CandidateBuildReceipt:
+    sourceTree: str
+    sourceBefore: SourceFingerprint
+    sourceAfter: SourceFingerprint
+    candidatePluginSha256: str
+    candidateCliHashes: dict[str, str]
+    composition: CandidateCompositionReceipt
+    process: dict
+    type: str = field(default='STATIC_CALLBACK_CANDIDATE_BUILD', init=False)
+
+
+def source_fingerprint(source):
+    """Reuse the pin's source inventory; a checkout name is never runtime proof."""
+    def checked(arguments):
+        result = replay.capture(arguments, source)
+        assert result['outcome'] == 'completed' and result['exitCode'] == 0, result
+        return result['stdout']
+    commit = checked(['git', 'rev-parse', 'HEAD']).strip()
+    patch = checked(['git', 'diff', '--binary', 'HEAD'])
+    untracked = checked(['git', 'ls-files', '--others', '--exclude-standard']).splitlines()
+    return SourceFingerprint(commit, sha256(patch.encode()).hexdigest(),
+        {name: replay.digest(source / name) for name in untracked if (source / name).is_file()})
+
+
+def candidate_build_receipt(source, before, process, cli, plugin):
+    """Call immediately after the retained successful build process, before native setup."""
+    after = source_fingerprint(source)
+    assert before == after, 'SOURCE_CHANGED_DURING_CANDIDATE_BUILD'
+    assert process.get('outcome') == 'completed' and process.get('exitCode') == 0, 'CANDIDATE_BUILD_FAILED'
+    assert Path(process['cwd']).resolve() == source.resolve(), 'CANDIDATE_BUILD_WRONG_SOURCE'
+    assert {':runtime:hosted:hostedPlugin', ':cli:installDist'} <= set(process['command']), 'CANDIDATE_BUILD_TASKS_MISSING'
+    composition = candidate_composition_receipt(source, cli)
+    return CandidateBuildReceipt(str(source.resolve()), before, after, replay.digest(plugin), replay.inventory(cli), composition, process)
+
+
+def candidate_composition_receipt(source, cli):
+    """Admit a staged source-owned marker; this records no managed installation claim."""
+    origin = source.resolve() / 'distribution/cli/one-shot-observation-v1'
+    destination = cli.resolve() / 'share/kast/one-shot-observation-v1'
+    assert origin.is_file() and not origin.is_symlink(), 'CANONICAL_CANDIDATE_MARKER_UNAVAILABLE'
+    assert destination.is_file() and not destination.is_symlink(), 'CANDIDATE_MARKER_UNAVAILABLE'
+    assert origin.read_bytes() == b'1\n', 'CANONICAL_CANDIDATE_MARKER_REJECTED'
+    assert destination.read_bytes() == origin.read_bytes(), 'CANDIDATE_MARKER_MISMATCH'
+    return CandidateCompositionReceipt(str(origin), replay.digest(origin), str(destination), replay.digest(destination))
+
+
+def admit_candidate(args, pinned):
+    """Match selected artifacts, loaded classes and source to the retained build boundary."""
+    receipt = json.loads(args.build_receipt.read_text())
+    assert set(receipt) == set(CandidateBuildReceipt.__dataclass_fields__), 'INVALID_CANDIDATE_BUILD_RECEIPT'
+    assert receipt['type'] == 'STATIC_CALLBACK_CANDIDATE_BUILD', 'INVALID_CANDIDATE_BUILD_RECEIPT'
+    source = Path(receipt['sourceTree']).resolve(strict=True)
+    source_identity = source_fingerprint(source)
+    fingerprint = asdict(source_identity)
+    assert receipt['sourceBefore'] == receipt['sourceAfter'] == fingerprint, 'CANDIDATE_SOURCE_CHANGED'
+    process = receipt['process']
+    assert process.get('outcome') == 'completed' and process.get('exitCode') == 0, 'CANDIDATE_BUILD_FAILED'
+    assert Path(process['cwd']).resolve() == source, 'CANDIDATE_BUILD_WRONG_SOURCE'
+    assert {':runtime:hosted:hostedPlugin', ':cli:installDist'} <= set(process['command']), 'CANDIDATE_BUILD_TASKS_MISSING'
+    assert {key: pinned['source'][key] for key in fingerprint} == fingerprint, 'PIN_SOURCE_MISMATCH'
+    assert replay.digest(args.candidate_plugin) == receipt['candidatePluginSha256'], 'CANDIDATE_PLUGIN_CHANGED'
+    cli_inventory = replay.inventory(args.candidate_cli)
+    assert cli_inventory == receipt['candidateCliHashes'], 'CANDIDATE_CLI_CHANGED'
+    composition = candidate_composition_receipt(source, args.candidate_cli)
+    assert receipt['composition'] == asdict(composition), 'CANDIDATE_COMPOSITION_CHANGED'
+    assert receipt['candidateCliHashes']['share/kast/one-shot-observation-v1'] == receipt['composition']['markerDestinationSha256'], 'CANDIDATE_MARKER_INVENTORY_MISMATCH'
+    assert replay.digest(args.rpc) == pinned['cli']['sha256'], 'PIN_EXECUTABLE_CHANGED'
+    jars = {p.name: replay.digest(p) for p in (args.candidate_cli / 'lib').glob('*.jar')}
+    assert jars and sorted(jars.values()) == sorted(pinned['cli']['jars'].values()), 'PIN_CLI_JARS_MISMATCH'
+    plugin_jars, classes = {}, {}
+    assert pinned['plugin']['native']['classResources'], 'PIN_LOADED_CLASSES_MISSING'
+    with ZipFile(args.candidate_plugin) as archive:
+        for name in archive.namelist():
+            if '/lib/' not in name or not name.endswith('.jar'):
+                continue
+            data = archive.read(name)
+            plugin_jars[Path(name).name] = sha256(data).hexdigest()
+            with ZipFile(BytesIO(data)) as jar:
+                for owner in pinned['plugin']['native']['classResources']:
+                    resource = owner.replace('.', '/') + '.class'
+                    if resource in jar.namelist():
+                        assert owner not in classes, 'CANDIDATE_CLASS_AMBIGUOUS'
+                        classes[owner] = sha256(jar.read(resource)).hexdigest()
+    assert plugin_jars and sorted(plugin_jars.values()) == sorted(pinned['plugin']['jars'].values()), 'PIN_PLUGIN_JARS_MISMATCH'
+    assert classes == {name: value['sha256'] for name, value in pinned['plugin']['native']['classResources'].items()}, 'PIN_LOADED_CLASSES_MISMATCH'
+    assert pinned['fixture']['root'] == str(args.root.resolve()), 'PIN_FIXTURE_ROOT_MISMATCH'
+    assert pinned['fixture']['hashes'] == replay.inventory(args.root), 'PIN_FIXTURE_CHANGED'
+    assert pinned['cli']['transport'] == 'MCP_SESSION', 'STATIC_ACCEPTANCE_REQUIRES_MCP'
+    return CandidateBuildReceipt(str(source), source_identity, source_identity,
+        receipt['candidatePluginSha256'], cli_inventory, composition, process)
 
 
 @dataclass(frozen=True)
@@ -22,6 +150,20 @@ class Budget:
     maxWorkUnits: int = 20000
     maxResults: int = 1
     maxReturnedBytes: int = 524288
+
+
+@dataclass(frozen=True)
+class StaticGrants:
+    complete: tuple[Budget, Budget]
+    presentation: Budget
+
+
+def static_grants(max_returned_bytes):
+    # Two forwarding witnesses, one invocation and an optional detached summary
+    # share one result grant. Presentation has its own one-record allowance.
+    return StaticGrants((Budget(maxResults=4, maxReturnedBytes=max_returned_bytes),
+        Budget(maxResults=32, maxReturnedBytes=max_returned_bytes)),
+        Budget(maxResults=1, maxReturnedBytes=max_returned_bytes))
 
 
 @dataclass(frozen=True)
@@ -37,6 +179,137 @@ class WalkStep:
     type: str = 'WALK'
     maximumDepth: int = 1
     expansionScope: dict | None = None
+
+
+class StaticRelation(str, Enum):
+    CALLEES = 'CALLEES'
+    CALLERS = 'CALLERS'
+
+
+class StaticRetention(str, Enum):
+    RETAIN = 'RETAIN'
+    DISCARD = 'DISCARD'
+
+
+@dataclass(frozen=True)
+class WorkspaceDomain:
+    type: str = field(default='WORKSPACE', init=False)
+
+
+@dataclass(frozen=True)
+class AtLocation:
+    file: str
+    offset: int
+    type: str = field(default='AT_LOCATION', init=False)
+
+
+@dataclass(frozen=True)
+class CompleteOnlyPolicy:
+    type: str = field(default='COMPLETE_ONLY', init=False)
+    model: str = field(default='COMPILER_RESOLVED_STATIC_V1', init=False)
+
+
+@dataclass(frozen=True)
+class OccurrencesOutput:
+    type: str = field(default='OCCURRENCES', init=False)
+
+
+@dataclass(frozen=True)
+class SymbolsOutput:
+    fields: tuple[str, ...] = ('NAME', 'LOCATION', 'SIGNATURE')
+    type: str = field(default='SYMBOLS', init=False)
+
+
+@dataclass(frozen=True)
+class StaticRelationStep:
+    relation: StaticRelation
+    expansionScope: WorkspaceDomain = field(default_factory=WorkspaceDomain)
+    type: str = field(default='EXPAND_RELATION', init=False)
+
+
+@dataclass(frozen=True)
+class StaticRunRequest:
+    source: AtLocation
+    steps: tuple[StaticRelationStep, ...]
+    output: OccurrencesOutput | SymbolsOutput
+    retention: StaticRetention
+    executionBudget: Budget
+    completion: CompleteOnlyPolicy = field(default_factory=CompleteOnlyPolicy)
+    type: str = field(default='RUN', init=False)
+
+
+@dataclass(frozen=True)
+class StaticReadResultRequest:
+    result: str
+    executionBudget: Budget
+    cursor: str | None = None
+    evidence_cursor: int | None = None
+    output: OccurrencesOutput = field(default_factory=OccurrencesOutput)
+    type: str = field(default='READ_RESULT', init=False)
+
+
+@dataclass(frozen=True)
+class StaticQueryRequest:
+    request: StaticRunRequest | StaticReadResultRequest
+    verbose: bool = True
+
+
+def static_wire(request):
+    encoded = asdict(StaticQueryRequest(request))
+    if isinstance(request, StaticReadResultRequest):
+        for name in ('cursor', 'evidence_cursor'):
+            if encoded['request'][name] is None: del encoded['request'][name]
+    return json.loads(json.dumps(encoded))
+
+
+@dataclass(frozen=True)
+class StaticTrialQualification:
+    case: str
+    direction: StaticRelation
+    budget: Budget
+    presentationBudget: Budget
+    rows: int
+    callbackObservations: int
+    retainedRowPages: int
+    retainedEvidencePages: int
+    nativeCounters: dict[str, int]
+    policyEvidenceCounters: dict[str, int]
+    verdict: str
+    totalElapsedNanos: int
+
+
+class StaticQualificationStatus(str, Enum):
+    RUNNING = 'NATIVE_STATIC_CALLBACK_RUNNING'
+    ANSWER_VERIFIED = 'NATIVE_STATIC_CALLBACK_ANSWER_VERIFIED'
+    QUALIFIED = 'NATIVE_STATIC_CALLBACK_QUALIFIED'
+
+
+class StaticAcceptanceFailureCause(str, Enum):
+    REQUIRED_EVIDENCE_REJECTED = 'REQUIRED_EVIDENCE_REJECTED'
+    CANCELED = 'CANCELED'
+
+
+@dataclass(frozen=True)
+class StaticAcceptanceFailure:
+    cause: StaticAcceptanceFailureCause
+    type: str = field(default='NATIVE_STATIC_CALLBACK_FAILED', init=False)
+    stage: str = field(default='NATIVE_STATIC_CALLBACK_ACCEPTANCE', init=False)
+
+
+@dataclass
+class StaticQualification:
+    oracle: static.SuiteOracle
+    artifact: dict
+    grants: tuple[Budget, ...]
+    presentationBudget: Budget
+    source: SourceFingerprint
+    buildReceiptSha256: str
+    trials: list[StaticTrialQualification] = field(default_factory=list)
+    semantics: dict = field(default_factory=dict)
+    type: StaticQualificationStatus = StaticQualificationStatus.RUNNING
+    scope: str = field(default='ROOTED_RELATION_AND_BOUND_CALLBACK_FLOW', init=False)
+    model: str = field(default='COMPILER_RESOLVED_STATIC_V1', init=False)
+    evidenceLevel: str = field(default='NATIVE', init=False)
 
 
 @dataclass(frozen=True)
@@ -600,10 +873,465 @@ def qualify_value_bindings(args, budget, invoke, drain):
     return checked
 
 
+def static_location(symbol, root):
+    """The public syntax owns relative paths; compiler witnesses retain absolute paths."""
+    relative = Path(symbol.name_site.file).relative_to(Path(root).resolve()).as_posix()
+    return AtLocation(relative, symbol.name_site.range.startInclusive)
+
+
+def static_request(symbol, budget, root, direction=StaticRelation.CALLEES):
+    """One named relation hop; callback flow retains its independent formal route."""
+    return static_wire(StaticRunRequest(static_location(symbol, root),
+        (StaticRelationStep(direction),), OccurrencesOutput(), StaticRetention.RETAIN, budget))
+
+
+def assert_span(actual, expected):
+    assert site_key(actual) == (expected.file, expected.range.startInclusive, expected.range.endExclusive), (actual, expected)
+
+
+def assert_callable(actual, expected):
+    assert_span(actual['declaration'], expected.declaration)
+    target = actual['compiler_target']
+    assert target['name'] == expected.name, (target, expected)
+    assert_span(target, expected.declaration)
+    signature = target['compiler_evidence']['signature']
+    assert signature['qualifiedIdentity'] == expected.fqn, (signature, expected)
+
+
+def assert_formal(actual, expected):
+    assert_callable(actual['callable'], expected.callable)
+    assert_span(actual['parameter'], expected.parameter)
+    assert actual['position'] == expected.position, (actual, expected)
+
+
+def assert_supply(observation, expected, occurrence):
+    assert_callable(observation['lexical_owner'], expected.supplier)
+    assert_callable(observation['target'], expected.target)
+    assert_span(observation['occurrence'], occurrence)
+    assert_span(observation['callback_body'], expected.body)
+    assert observation['named_policy']['type'] == 'EXCLUDED', observation['named_policy']
+    assert observation['named_policy']['reason'] == 'NON_INLINE_ARGUMENT', observation['named_policy']
+    assert_span(observation['named_policy']['excluded_boundary'], expected.body)
+    flow = observation['flow']
+    assert flow['type'] == 'OBSERVED', flow
+    assert_span(flow['body']['occurrence'], expected.body)
+    evidence = flow['body']['compiler_evidence']
+    assert evidence['identity'].startswith('canonical-signature-sha256-v1|'), evidence
+    assert evidence['signature']['qualifiedIdentity'] == ('anonymous@' + expected.body.file + '#' +
+        str(expected.body.range.startInclusive) + ':' + str(expected.body.range.endExclusive)), evidence
+    binding = flow['binding']
+    assert binding['type'] == 'BOUND', binding
+    assert_formal(binding, expected.formal)
+    assert_span(binding['invocation_occurrence'], expected.call)
+    assert binding['invocation_owner']['type'] == 'NAMED', binding
+    assert_callable(binding['invocation_owner']['callable'], expected.supplier)
+    assert binding['invocation']['range'] == dict(start=expected.call.range.startInclusive,
+                                               end=expected.call.range.endExclusive), binding
+    assert flow['owner_bindings'] == [], flow
+    return flow
+
+
+def assert_forwarding(actual, expected):
+    assert_formal(actual['source'], expected.source)
+    assert_span(actual['argument'], expected.argument)
+    target = actual['target']
+    assert target['type'] == 'BOUND', target
+    assert_formal(target, expected.target)
+    assert_span(target['invocation_occurrence'], expected.call)
+    assert target['invocation_owner']['type'] == 'NAMED', target
+    assert_callable(target['invocation_owner']['callable'], expected.source.callable)
+
+
+def case_supplies(case):
+    if isinstance(case, (static.CompleteCase, static.RejectedResourceCase)):
+        return case.supplies
+    return (case.supply,)
+
+
+def mapped_callback_observations(pages, case):
+    observed = list(observations(pages))
+    expected_sites = {(site.file, site.range.startInclusive, site.range.endExclusive): (supply, site)
+        for supply in case_supplies(case) for site in supply.target_occurrences}
+    expected_count = sum(len(supply.target_occurrences) for supply in case_supplies(case))
+    assert len(expected_sites) == expected_count, 'oracle callback occurrence duplicated'
+    assert len(observed) == expected_count, (case.name, observed)
+    actual_by_site = {site_key(observation['occurrence']): observation for observation in observed}
+    assert len(actual_by_site) == len(observed), 'callback occurrence duplicated'
+    assert actual_by_site.keys() == expected_sites.keys(), 'callback source inventory changed'
+    return [(actual_by_site[key], supply, site) for key, (supply, site) in expected_sites.items()]
+
+
+def assert_complete_callback(pages, case):
+    for observation, supply, occurrence in mapped_callback_observations(pages, case):
+        flow = assert_supply(observation, supply, occurrence)
+        assert flow['scan'] == 'EXHAUSTIVE' and flow['obligations'] == [], flow
+        assert len(flow['invocations']) == 1, flow
+        invocation = flow['invocations'][0]
+        assert_span(invocation['occurrence'], case.invocation.occurrence)
+        assert invocation['owner']['type'] == 'NAMED', invocation
+        assert_callable(invocation['owner']['callable'], case.invocation.owner)
+        assert len(invocation['forwardings']) == len(case.forwardings), invocation
+        for actual, expected in zip(invocation['forwardings'], case.forwardings):
+            assert_forwarding(actual, expected)
+    assert list(callable_observations(pages)) == [], 'unexpected unsupported callable evidence'
+    names = {callable_name(o['target']) for o in observations(pages)}
+    assert not names & {target.name for target in case.forbidden_targets}, 'supplier context crossed'
+
+
+def completion_rejection(document, expected):
+    assert document['status'] == 'rejected', document
+    rejection = document['rejection']
+    assert rejection['type'] == 'COMPLETION_UNPROVEN', rejection
+    detail = rejection['detail']
+    assert detail['model'] == 'COMPILER_RESOLVED_STATIC_V1', detail
+    assert detail['cause']['type'] == 'CALLBACK_GRAPH_UNPROVEN', detail
+    cause = detail['cause']['graphFailure']['cause']
+    assert cause == json.loads(json.dumps(asdict(expected))), (cause, expected)
+    assert detail['policyProgress'] == dict(type='EVIDENCE_ONLY'), detail
+    assert detail['evidence']['type'] == 'RETAINED', detail
+    return detail
+
+
+def retained_static_result(reference, budget, invoke):
+    """Drain row and evidence cursors independently; retain every original response."""
+    rows, row_pages, evidence_pages = [], [], []
+    live, cursor, seen = None, None, set()
+    def present(cursor=None, evidence_cursor=None):
+        call = invoke(static_wire(StaticReadResultRequest(reference, budget, cursor, evidence_cursor)))
+        document = call.response
+        assert document is not None and document['status'] in ('complete', 'qualified'), document
+        assert document.get('live') is not None, 'retained basis missing'
+        assert not document.get('failures') and not document.get('omissions'), document
+        assert replay.continuation(document) is None, 'retained evidence cannot resume the producer'
+        return call
+    for _ in range(512):
+        call = present(cursor)
+        page = call.response
+        if live is None: live = page['live']
+        assert page['live'] == live, 'retained basis moved'
+        row_pages.append(call)
+        rows.extend(page['items'])
+        cursor = page.get('next_cursor')
+        if cursor is None: break
+        assert cursor not in seen, 'retained row cursor repeated'
+        seen.add(cursor)
+    else: raise AssertionError('retained row drainage incomplete')
+    identities = [item['row_id'] for item in rows]
+    assert len(set(identities)) == len(identities), 'retained row identity duplicated'
+    evidence_cursor, total = 0, None
+    for _ in range(512):
+        call = present(evidence_cursor=evidence_cursor)
+        page = call.response
+        assert page['live'] == live, 'retained evidence basis moved'
+        window = page['evidence_window']
+        if total is None: total = window['total']
+        assert window['total'] == total and window['start'] == evidence_cursor, 'retained evidence cursor moved'
+        assert window['start'] <= window['end'] <= total, window
+        emitted = sum(len(page.get(key, [])) for key in ('failures', 'omissions', 'walk_observations',
+            'reference_observations', 'discovery_observations', 'relation_observations'))
+        assert emitted == window['end'] - window['start'], 'evidence window does not match records'
+        evidence_pages.append(call)
+        if window['type'] == 'FINAL':
+            assert window['end'] == total, window
+            break
+        assert window['type'] == 'MORE' and window['end'] > evidence_cursor, 'retained evidence did not advance'
+        evidence_cursor = window['end']
+    else: raise AssertionError('retained evidence drainage incomplete')
+    return rows, row_pages, evidence_pages, live
+
+
+def native_scoped_counters(call, live, required):
+    assert len(call.diagnostics) == 1, 'native receipt missing or ambiguous'
+    receipt = call.diagnostics[0]
+    assert receipt['schemaVersion'] == 6, 'native diagnostic version unsupported'
+    correlation = receipt['correlation']
+    assert correlation.get('type') == 'bound' and correlation.get('host') == live['host'] and correlation.get('epoch') == live['epoch'], 'native receipt basis mismatch'
+    ceilings = [limit['value'] for limit in receipt['limits'] if limit['parameter'] == 'DIAGNOSTIC_COUNT']
+    assert len(ceilings) == 1 and type(ceilings[0]) is int and ceilings[0] > 0, 'native diagnostic ceiling missing'
+    selected = {}
+    for observation in receipt['counters']:
+        if observation['counter'] not in required:
+            continue
+        assert observation['contributor'] == 'NONE', observation
+        assert observation['counter'] not in selected, 'native counter duplicated'
+        assert type(observation['count']) is int and 0 <= observation['count'] < ceilings[0], 'native scoped counter invalid or saturated'
+        selected[observation['counter']] = observation['count']
+    assert set(selected) == set(required), 'native scoped work evidence missing'
+    return selected
+
+
+def native_callback_counters(call, live):
+    selected = native_scoped_counters(call, live, STATIC_COUNTERS)
+    assert selected['CALLBACK_BODY_SCANS'] == selected['CALLBACK_BODY_SCANS_COMPLETED'] + selected['CALLBACK_BODY_SCANS_INCOMPLETE'], selected
+    return selected
+
+
+def assert_policy_evidence_publication(call, live):
+    counts = native_scoped_counters(call, live, POLICY_EVIDENCE_COUNTERS)
+    expected = {counter: 0 for counter in POLICY_EVIDENCE_COUNTERS}
+    document = call.response
+    if document['status'] == 'rejected':
+        assert call.action == 'RUN', 'policy evidence was not published by the scoped RUN'
+        rejection = document['rejection']
+        assert rejection['type'] == 'COMPLETION_UNPROVEN' and rejection['detail']['evidence']['type'] == 'RETAINED', 'policy rejection evidence unavailable'
+        expected['QUERY_POLICY_EVIDENCE_PUBLICATIONS_COMMITTED'] = 1
+    else:
+        assert document['status'] in ('complete', 'qualified'), 'policy publication outcome unproven'
+    assert counts == expected, 'policy evidence publication counters differ from public outcome'
+    return counts
+
+
+def assert_rejection_pointer(detail, groups, case):
+    failure = detail['cause']['graphFailure']
+    assert failure['origin'] == 'RELATION', 'static rejection has wrong observation origin'
+    assert 0 <= failure['group'] < len(groups), 'static rejection group unavailable'
+    group = groups[failure['group']]
+    if isinstance(case, static.RejectedFormalCase):
+        values = group['callable_observations']
+        assert 0 <= failure['observation'] < len(values), 'static rejection callable unavailable'
+        assert_span(values[failure['observation']]['occurrence'], case.invocation.occurrence)
+    else:
+        values = group['callback_observations']
+        assert 0 <= failure['observation'] < len(values), 'static rejection callback unavailable'
+        observation = values[failure['observation']]
+        assert site_key(observation['occurrence']) in {
+            (site.file, site.range.startInclusive, site.range.endExclusive)
+            for supply in case_supplies(case) for site in supply.target_occurrences
+        }, 'static rejection points at another callback'
+
+
+def assert_complete_scan_reuse(case, direction, counts):
+    if case.name == 'alpha' and direction == StaticRelation.CALLEES:
+        expected = {'CALLBACK_BODY_SCANS': 3, 'CALLBACK_BODY_SCANS_COMPLETED': 3,
+            'CALLBACK_BODY_SCANS_INCOMPLETE': 0, 'CALLBACK_SUMMARY_MISSES': 1,
+            'CALLBACK_SUMMARY_HITS': 1, 'CALLBACK_SUMMARIES_RETAINED': 1,
+            'CALLBACK_SUMMARY_REJECTIONS': 0, 'CALLBACK_SUMMARY_RETENTION_REJECTIONS': 0}
+        assert counts == expected, 'alpha formal scan/reuse evidence differs from authored route'
+
+
+def assert_relation_direction(groups, direction):
+    """CanonicalReadDocuments serializes relation evidence separately from query syntax."""
+    expected = {StaticRelation.CALLEES: 'callees', StaticRelation.CALLERS: 'callers'}[direction]
+    assert all(group['relation'] == expected for group in groups), 'retained relation direction changed'
+
+
+def stable_static_semantics(rows, evidence, seeds):
+    """Normalize only independently proven handles; keep compiler facts and qualifications."""
+    handles = {}
+    def collect(value):
+        if isinstance(value, list):
+            for child in value: collect(child)
+        elif isinstance(value, dict):
+            signature = value.get('signature') or value.get('compilerEvidence', {}).get('signature')
+            location = value.get('location') or (dict(file=value['file'], range=value['range'])
+                if 'file' in value and 'range' in value else None)
+            if signature and location:
+                for key in ('ref', 'selector'):
+                    if isinstance(value.get(key), str):
+                        identity = dict(signature=signature, location=location)
+                        assert value[key] not in handles or handles[value[key]] == identity, 'handle identity changed'
+                        handles[value[key]] = identity
+            if 'candidateSelector' in value:
+                identity = dict(file=value['file'], range=value['range'])
+                token = value['candidateSelector']
+                assert token not in handles or handles[token] == identity, 'candidate identity changed'
+                handles[token] = identity
+            for child in value.values(): collect(child)
+    collect([rows, evidence, seeds])
+    def normalized(value):
+        if isinstance(value, list): return [normalized(child) for child in value]
+        if not isinstance(value, dict): return value
+        result = {}
+        for key, child in value.items():
+            if key == 'row_id': continue  # Row identity uniqueness was checked before semantic comparison.
+            if key in ('ref', 'selector', 'candidateSelector', 'token') and isinstance(child, str):
+                assert child in handles, 'unproven handle identity'
+                result[key] = handles[child]
+            else: result[key] = normalized(child)
+        return result
+    return normalized(dict(items=rows, evidence=evidence))
+
+
+def qualify_static(args, output, invoke, pinned):
+    suite = static.load_oracle(args.root)
+    allowances = static_grants(args.max_returned_bytes)
+    grants, presentation = allowances.complete, allowances.presentation
+    manifest = StaticQualification(suite, replay.artifact_identity(pinned), grants, presentation,
+        SourceFingerprint(**{key: pinned['source'][key] for key in SourceFingerprint.__dataclass_fields__}),
+        replay.digest(args.build_receipt))
+    replay.write(output / 'qualification.json', asdict(manifest))
+    seeds, checks, semantics = [], [], {}
+    live = None
+    for symbol in suite.symbols:
+        payload = static_wire(StaticRunRequest(static_location(symbol, args.root),
+            (), SymbolsOutput(), StaticRetention.DISCARD, grants[-1]))
+        call = invoke(payload)
+        document = call.response
+        assert document is not None and document['status'] == 'complete', document
+        assert len(document['items']) == 1, document
+        item = document['items'][0]
+        assert item['type'] == 'exact-symbol' and item['name'] == symbol.name, item
+        assert_span(item['location'], symbol.declaration)
+        assert item['signature']['qualifiedIdentity'] == symbol.fqn, item
+        if live is None: live = document['live']
+        assert document['live'] == live, 'native suite basis moved'
+        native_callback_counters(call, live)
+        assert_policy_evidence_publication(call, live)
+        seeds.append(item)
+
+    def evaluate(case, grant, direction=StaticRelation.CALLEES):
+        started = time.monotonic_ns()
+        if isinstance(case, static.ExcludedReferenceCase): supplier = case.supplier
+        elif isinstance(case, static.RejectedFormalCase): supplier = case.owner
+        else: supplier = case.supply.supplier
+        target = case.target if isinstance(case, static.ExcludedReferenceCase) else (
+            case.supply.target if not isinstance(case, static.RejectedFormalCase) else case.owner)
+        seed = target if direction == 'CALLERS' else supplier
+        calls = replay.drain_workload(static_request(seed, grant, args.root, direction), invoke, 512)
+        assert calls and all(call.response is not None for call in calls), 'native answer missing'
+        terminal = calls[-1].response
+        assert replay.continuation(terminal) is None, 'automatic execution did not drain'
+        if isinstance(case, (static.CompleteCase, static.ExcludedReferenceCase)):
+            assert terminal['status'] == 'complete' and terminal['coverage']['exhaustive'], terminal
+            assert not terminal.get('failures') and not terminal.get('omissions'), terminal
+            assert terminal['retention']['kind'] == 'retained', terminal
+            reference = terminal['retention']['reference']
+            rejected = None
+        else:
+            rejected = completion_rejection(terminal, case.rejection)
+            if isinstance(case, static.RejectedResourceCase):
+                assert rejected['originalCoverage'] == asdict(case.original_coverage), 'resource rejection erased original coverage'
+            reference = rejected['evidence']['result']
+        rows, row_pages, evidence_calls, basis = retained_static_result(reference, presentation, invoke)
+        assert basis == live, 'native suite basis moved'
+        pages = [call.response for call in evidence_calls]
+        for page in pages:
+            assert page['question']['completion'] == dict(type='COMPLETE_ONLY', model='COMPILER_RESOLVED_STATIC_V1'), page
+            if rejected is None:
+                assert page.get('interpretation', dict(type='QUERY_RESULT')) == dict(type='QUERY_RESULT'), page
+            else:
+                interpretation = page['interpretation']
+                assert interpretation['type'] == 'POLICY_REJECTED_EVIDENCE', interpretation
+                assert interpretation['cause'] == rejected['cause'], interpretation
+                assert interpretation['originalCoverage'] == rejected['originalCoverage'], interpretation
+        if isinstance(case, static.CompleteCase):
+            assert_complete_callback(pages, case)
+        elif isinstance(case, (static.RejectedLambdaCase, static.RejectedResourceCase)):
+            for observation, supply, occurrence in mapped_callback_observations(pages, case):
+                flow = assert_supply(observation, supply, occurrence)
+                assert flow['scan'] == case.rejection.scan and flow['obligations'] == list(case.rejection.obligations), flow
+                assert flow['invocations'] == [], flow
+        elif isinstance(case, static.RejectedFormalCase):
+            assert list(observations(pages)) == [], 'formal invocation became anonymous callback'
+            callables = list(callable_observations(pages))
+            assert len(callables) == 1, callables
+            observed = callables[0]
+            assert_span(observed['occurrence'], case.invocation.occurrence)
+            assert_callable(observed['lexical_owner'], case.owner)
+            assert observed['target']['type'] == 'PARAMETER_INVOCATION', observed
+            assert_formal(observed['target']['parameter'], case.formal)
+            assert observed['body']['type'] == 'NAMED', observed
+            assert_callable(observed['body']['callable'], case.owner)
+        else:
+            assert list(observations(pages)) == [] and list(callable_observations(pages)) == [], 'excluded callable reference became invocation evidence'
+        # Only the named supplier-to-wrapper edge is admitted; callback sinks remain derivation evidence.
+        if direction == StaticRelation.CALLERS or isinstance(case, static.RejectedFormalCase):
+            expected_calls = []
+        elif isinstance(case, static.ExcludedReferenceCase):
+            receiver = next(symbol for symbol in suite.symbols if symbol.name == 'sharedWrapper')
+            expected_calls = [(case.supplier, receiver, case.call)]
+        else:
+            expected_calls = [(supply.supplier, supply.formal.callable, supply.call) for supply in case_supplies(case)]
+        calls_by_site = {(site.file, site.range.startInclusive, site.range.startInclusive + len(receiver.name)):
+            (owner, receiver) for owner, receiver, site in expected_calls}
+        assert len(calls_by_site) == len(expected_calls), 'oracle named call occurrence duplicated'
+        assert len(rows) == len(expected_calls), (case.name, direction, rows)
+        assert Counter(site_key(row['relation']['occurrence']) for row in rows) == Counter(calls_by_site.keys()), 'named call inventory changed'
+        for row in rows:
+            relation = row['relation']
+            owner, receiver = calls_by_site[site_key(relation['occurrence'])]
+            for endpoint, expected in ((relation['source'], owner), (relation['target'], receiver)):
+                assert endpoint['name'] == expected.name and endpoint['qualifiedIdentity'] == expected.fqn, endpoint
+                assert_span(endpoint, expected.declaration)
+            assert relation['coverage'] == 'exact-compiler-confirmed' and relation['provenance'] == 'k2-authored-source', relation
+        totals = {counter: 0 for counter in STATIC_COUNTERS}
+        publication_totals = {counter: 0 for counter in POLICY_EVIDENCE_COUNTERS}
+        for call in calls:
+            for counter, count in native_callback_counters(call, live).items(): totals[counter] += count
+            for counter, count in assert_policy_evidence_publication(call, live).items(): publication_totals[counter] += count
+        if isinstance(case, static.CompleteCase): assert_complete_scan_reuse(case, direction, totals)
+        for call in row_pages + evidence_calls:
+            counts = native_callback_counters(call, live)
+            assert all(count == 0 for count in counts.values()), 'retained presentation reran callback work'
+            assert_policy_evidence_publication(call, live)
+        groups = [group for page in pages for group in page.get('relation_observations', [])]
+        if rejected is not None: assert_rejection_pointer(rejected, groups, case)
+        assert groups and groups[-1]['coverage']['type'] == 'EXHAUSTED', 'relation observation inventory unproven'
+        assert_relation_direction(groups, direction)
+        # Producer page grants may partition one exhausted relation differently. Keep its exact
+        # derivation witnesses and domain, while raw page coverage remains in every retained call.
+        group_keys = ('subject', 'relation', 'provider', 'requested_domain', 'effective_domain', 'domain_fingerprint')
+        domain = {key: groups[0][key] for key in group_keys}
+        assert all({key: group[key] for key in group_keys} == domain for group in groups), 'relation domain changed'
+        evidence = {**domain, **{key: [item for group in groups for item in group[key]] for key in (
+            'callback_observations', 'callable_observations', 'scope_exclusions')}}
+        assert not evidence['scope_exclusions'], 'fixture relation scope changed'
+        # Raw coverage remains per producer page. Exact graph witnesses, row identities and verdicts must match.
+        semantic = stable_static_semantics(rows, evidence, seeds)
+        semantic['rejection'] = None if rejected is None else dict(cause=rejected['cause'], originalCoverage=rejected['originalCoverage'])
+        key = case.name + '/' + direction
+        if key in semantics: assert semantics[key] == semantic, 'semantic evidence changed with admissible grant'
+        else: semantics[key] = semantic
+        check = StaticTrialQualification(case.name, direction, grant, presentation, len(rows), len(list(observations(pages))),
+            len(row_pages), len(evidence_calls), totals, publication_totals, 'REFERENCE_EXCLUDED' if isinstance(case, static.ExcludedReferenceCase)
+            else 'COMPLETE' if rejected is None else 'EXPECTED_TYPED_RESOURCE_REJECTION' if isinstance(case, static.RejectedResourceCase)
+            else 'EXPECTED_TYPED_REJECTION', time.monotonic_ns() - started)
+        checks.append(check)
+        manifest.trials = checks
+        replay.write(output / 'qualification.json', asdict(manifest))
+    for grant in grants:
+        for case in suite.cases: evaluate(case, grant)
+        for case in suite.complete_cases: evaluate(case, grant, StaticRelation.CALLERS)
+        for case in suite.excluded_cases: evaluate(case, grant, StaticRelation.CALLERS)
+    for case in suite.resource_cases:
+        evaluate(case, Budget(maxResults=case.max_results, maxReturnedBytes=args.max_returned_bytes))
+    manifest.type = StaticQualificationStatus.ANSWER_VERIFIED
+    manifest.semantics = semantics
+    replay.write(output / 'qualification.json', asdict(manifest))
+    return manifest
+
+
 def run(args):
+    try:
+        return run_admitted(args)
+    except (AssertionError, ValueError, OSError, jsonschema.ValidationError, KeyError, TypeError):
+        if args.static_cross_module and args.output.is_dir():
+            replay.write(args.output / 'failure.json', asdict(StaticAcceptanceFailure(
+                StaticAcceptanceFailureCause.REQUIRED_EVIDENCE_REJECTED)))
+        raise
+    except KeyboardInterrupt:
+        if args.static_cross_module and args.output.is_dir():
+            replay.write(args.output / 'failure.json', asdict(StaticAcceptanceFailure(StaticAcceptanceFailureCause.CANCELED)))
+        raise
+
+
+def run_admitted(args):
     budget = Budget(maxReturnedBytes=args.max_returned_bytes)
     output = replay.fresh(args.output)
-    catalog_rpc = args.rpc.parent / 'kast-tool-rpc-complete' if args.mcp else args.rpc
+    pinned = None
+    if args.static_cross_module:
+        pinned = json.loads(args.pin.read_text())
+        receipt = admit_candidate(args, pinned)
+        replay.write(output / 'candidate-build.json', asdict(receipt))
+        pin_args = argparse.Namespace(output=output / 'start-pin', fixture=args.root, cli=args.rpc,
+            idea_contents=args.idea_contents, source_tree=Path(receipt.sourceTree),
+            public_rpc=True, public_mcp=True, catalog_rpc=args.catalog_rpc)
+        assert replay.pin(pin_args) == 0, 'NATIVE_START_PIN_UNAVAILABLE'
+        current = json.loads((pin_args.output / 'pin.json').read_text())
+        assert replay.artifact_identity(current) == replay.artifact_identity(pinned), 'NATIVE_ARTIFACT_CHANGED'
+        assert current['fixture'] == pinned['fixture'] and current['limits'] == pinned['limits'], 'NATIVE_PIN_CHANGED'
+        pinned = current
+    catalog_rpc = args.catalog_rpc or (args.rpc.parent / 'kast-tool-rpc-complete' if args.mcp else args.rpc)
     catalog = replay.capture([catalog_rpc, 'catalog'], args.root, timeout=60)
     replay.write(output / 'catalog-process.json', catalog)
     tools = json.loads(catalog['stdout'])['catalog']['tools']
@@ -615,28 +1343,51 @@ def run(args):
                 t['name']: t['inputSchema'] for t in tools}, 'session catalog changed'
             result_schema = next(t['outputSchema'] for t in observed['tools'] if t['name'] == 'query_symbols')
             result_validator = jsonschema.Draft202012Validator(result_schema)
-            qualify(args, budget, output, validator, session, result_validator)
+            completed = qualify(args, budget, output, validator, session, result_validator, pinned)
     else:
         qualify(args, budget, output, validator)
+    if pinned is not None:
+        pin_args.output = output / 'end-pin'
+        assert replay.pin(pin_args) == 0, 'NATIVE_END_PIN_UNAVAILABLE'
+        ending = json.loads((pin_args.output / 'pin.json').read_text())
+        assert replay.artifact_identity(ending) == replay.artifact_identity(pinned), 'NATIVE_ARTIFACT_CHANGED'
+        for key in ('fixture', 'limits', 'source'):
+            assert ending[key] == pinned[key], 'NATIVE_PIN_CHANGED:' + key
+        for key in ('ideaBuild', 'jbr', 'kotlinPlugin', 'javaHome', 'pid', 'processStart', 'model'):
+            assert ending['host'][key] == pinned['host'][key], 'NATIVE_HOST_CHANGED:' + key
+        completed.type = StaticQualificationStatus.QUALIFIED
+        replay.write(output / 'qualification.json', asdict(completed))
+        print(output / 'qualification.json')
 
 
-def qualify(args, budget, output, validator, session=None, result_validator=None):
+def qualify(args, budget, output, validator, session=None, result_validator=None, pinned=None):
     counter = 0
     terminal_pages = []
 
     def invoke(payload):
         nonlocal counter
         validator.validate(payload)
+        before = args.idea_log.stat() if args.idea_log else None
         process = session.call(payload) if session else replay.capture(
             [args.rpc, 'call', 'query_symbols'], args.root, json.dumps(payload), args.timeout)
         envelope = json.loads(process['stdout']) if process['outcome'] == 'completed' else {}
         document = envelope.get('result', {}).get('structuredContent') if session else envelope.get('document')
-        call = replay.ReplayCall(payload['request']['type'], payload, process, document, [], [], 'UNAVAILABLE')
+        diagnostics, phases = replay.collect_observations(args.idea_log, before) if before else ([], [])
+        call = replay.ReplayCall(payload['request']['type'], payload, process, document, diagnostics, phases, 'UNAVAILABLE')
         replay.write(output / f'call-{counter:04d}.json', asdict(call))
         counter += 1
         if document is not None and result_validator is not None:
             result_validator.validate(document)
+        if args.static_cross_module:
+            assert process['outcome'] == 'completed' and process.get('exitCode') == 0, 'NATIVE_EXCHANGE_UNAVAILABLE'
+            assert document is not None, 'PUBLIC_SEMANTIC_DOCUMENT_MISSING'
+            grant = payload['request']['executionBudget']
+            assert len(document.get('items', [])) <= grant['maxResults'], 'page exceeds requested result grant'
+            assert len(json.dumps(document, ensure_ascii=False, separators=(',', ':')).encode()) <= grant['maxReturnedBytes'], 'page exceeds returned-byte grant'
         return call
+
+    if args.static_cross_module:
+        return qualify_static(args, output, invoke, pinned)
 
     def drain(payload):
         calls = replay.drain_workload(payload, invoke, 512)
@@ -854,4 +1605,18 @@ if __name__ == '__main__':
     parser.add_argument('--mcp', action='store_true', help='Reuse one installed public MCP session')
     parser.add_argument('--timeout', type=int, default=300)
     parser.add_argument('--max-returned-bytes', type=int, default=524288)
-    run(parser.parse_args())
+    parser.add_argument('--static-cross-module', action='store_true', help='Opt-in exact candidate native static callback suite')
+    parser.add_argument('--pin', type=Path)
+    parser.add_argument('--candidate-plugin', type=Path)
+    parser.add_argument('--candidate-cli', type=Path)
+    parser.add_argument('--build-receipt', type=Path)
+    parser.add_argument('--catalog-rpc', type=Path)
+    parser.add_argument('--idea-contents', type=Path)
+    parser.add_argument('--idea-log', type=Path)
+    args = parser.parse_args()
+    if args.static_cross_module:
+        if not args.mcp or args.production or args.value_flow:
+            parser.error('--static-cross-module requires --mcp and cannot combine other suites')
+        for name in ('pin', 'candidate_plugin', 'candidate_cli', 'build_receipt', 'idea_contents', 'idea_log'):
+            if getattr(args, name) is None: parser.error('--static-cross-module requires --' + name.replace('_', '-'))
+    run(args)

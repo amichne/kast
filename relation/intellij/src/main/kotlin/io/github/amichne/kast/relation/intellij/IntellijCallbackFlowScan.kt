@@ -116,13 +116,17 @@ internal class IntellijCallbackFlowScan(
     }
 
     private fun scan(frame: CallbackScanFrame) {
-        if (
-            !PsiTreeUtil.processElements(
-                frame.prepared.function,
-                PsiElementProcessor<PsiElement> { visit(it, frame) },
-            )
-        )
-            scanExhausted = false
+        when (
+            observeCallbackBodyScan(summaries.observation) {
+                PsiTreeUtil.processElements(
+                    frame.prepared.function,
+                    PsiElementProcessor<PsiElement> { visit(it, frame) },
+                )
+            }
+        ) {
+            CallbackBodyScanOutcome.EXHAUSTED -> Unit
+            CallbackBodyScanOutcome.STOPPED -> scanExhausted = false
+        }
     }
 
     private fun visit(element: PsiElement, frame: CallbackScanFrame): Boolean {

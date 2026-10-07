@@ -141,26 +141,28 @@ internal class HostedQueryExecutor(
 private fun <Value> HostedQueryProgress.publishAccepted(
     completed: HostedExecution<Value>,
     evaluation: HostedDiagnosticOutcome?,
-): HostedExecution<Value> =
-    when (completed) {
+): HostedExecution<Value> {
+    return when (completed) {
         is HostedExecution.Rejected -> {
             publicationEffects.discard()
             completed
         }
         is HostedExecution.Completed -> {
-            if (
-                evaluation is HostedDiagnosticOutcome.Rejected ||
-                    evaluation == HostedDiagnosticOutcome.Evaluated(HostedEvaluationOutcome.REJECTED)
-            ) {
+            if (evaluation is HostedDiagnosticOutcome.Rejected) {
                 publicationEffects.discard()
-                completed
-            } else
-                when (val published = publicationEffects.commit()) {
-                    is Refinement.Refined -> completed
-                    is Refinement.Rejected -> HostedExecution.Rejected(published.failure, stage, executionBudget)
-                }
+                return completed
+            }
+            val published =
+                if (evaluation == HostedDiagnosticOutcome.Evaluated(HostedEvaluationOutcome.REJECTED))
+                    publicationEffects.commitRetainedRejection()
+                else publicationEffects.commit()
+            when (published) {
+                is Refinement.Refined -> completed
+                is Refinement.Rejected -> HostedExecution.Rejected(published.failure, stage, executionBudget)
+            }
         }
     }
+}
 
 internal val HOSTED_QUERY_BUDGET_MILLIS = ReadLimits.Default[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()
 
@@ -183,7 +185,7 @@ internal class HostedQueryProgress(
     private val completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
 ) {
     private val deadline = HostedReadDeadline(limits, clock, executionBudget, publication)
-    val publicationEffects = HostedReadPublicationOwner()
+    val publicationEffects = HostedReadPublicationOwner { observation }
 
     @Volatile
     var executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent

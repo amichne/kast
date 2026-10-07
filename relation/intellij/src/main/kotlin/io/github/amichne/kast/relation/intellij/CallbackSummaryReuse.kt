@@ -12,6 +12,7 @@ import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
 import io.github.amichne.kast.relation.contract.CallbackParameterSummary
 import io.github.amichne.kast.relation.contract.RelationCallableBody
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 
 internal sealed interface CallbackSummaryRestore {
     data object Missing : CallbackSummaryRestore
@@ -32,10 +33,20 @@ internal class CallbackSummaryReuse(private val summaries: CallbackParameterSumm
         body: RelationCallableBody.Anonymous,
         binding: CallbackBindingEvidence,
     ): Refinement<CallbackSummaryRestore, CallbackInvocationFlowFailure> {
-        val cached = summaries.find(formal) ?: return Refinement.Refined(CallbackSummaryRestore.Missing)
+        val cached = summaries.find(formal)
+        if (cached == null) {
+            summaries.observation.count(IntellijReadCounter.CALLBACK_SUMMARY_MISSES)
+            return Refinement.Refined(CallbackSummaryRestore.Missing)
+        }
         return when (val instance = cached.instantiate(body, binding)) {
-            is Refinement.Refined -> Refinement.Refined(CallbackSummaryRestore.Reused(instance.value))
-            is Refinement.Rejected -> instance
+            is Refinement.Refined -> {
+                summaries.observation.count(IntellijReadCounter.CALLBACK_SUMMARY_HITS)
+                Refinement.Refined(CallbackSummaryRestore.Reused(instance.value))
+            }
+            is Refinement.Rejected -> {
+                summaries.observation.count(IntellijReadCounter.CALLBACK_SUMMARY_REJECTIONS)
+                instance
+            }
         }
     }
 
@@ -78,8 +89,10 @@ internal class CallbackSummaryReuse(private val summaries: CallbackParameterSumm
             CallbackSummaryCandidate.None -> Unit
             is CallbackSummaryCandidate.Admitted ->
                 when (summaries.retain(candidate.summary)) {
-                    is Refinement.Refined,
-                    is Refinement.Rejected -> Unit
+                    is Refinement.Refined ->
+                        summaries.observation.count(IntellijReadCounter.CALLBACK_SUMMARIES_RETAINED)
+                    is Refinement.Rejected ->
+                        summaries.observation.count(IntellijReadCounter.CALLBACK_SUMMARY_RETENTION_REJECTIONS)
                 }
         }
     }

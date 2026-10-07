@@ -7,6 +7,7 @@ import io.github.amichne.kast.relation.contract.RelationCallbackObservation
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationOmissionSample
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
 /** All live ownership/target evidence detaches before the provider item is consumed. */
 internal fun detachCallbackObservation(
@@ -135,9 +136,10 @@ internal class IntellijCallbackObservationEmitter(
     private val projection: IntellijK2RelationProjection,
     private val scope: CompiledRelationScope,
     private val collector: IntellijRelationCollector,
+    observation: IntellijReadObservation,
     private val omit: (RelationLimitation, com.intellij.psi.PsiElement, com.intellij.openapi.util.TextRange) -> Boolean,
 ) {
-    private val summaries = CallbackParameterSummaries(request.budget)
+    private val summaries = CallbackParameterSummaries(request.budget, observation)
 
     fun observe(
         reference: PsiReference,

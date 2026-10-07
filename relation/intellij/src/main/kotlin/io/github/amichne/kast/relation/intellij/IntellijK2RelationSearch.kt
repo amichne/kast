@@ -73,7 +73,10 @@ internal class IntellijK2RelationSearch(
             )
 
         private val callbackEmitter =
-            IntellijCallbackObservationEmitter(request, projection, scope, collector) { limitation, element, range ->
+            IntellijCallbackObservationEmitter(request, projection, scope, collector, observation) {
+                limitation,
+                element,
+                range ->
                 incompleteItem(limitation, element, range)
             }
 
