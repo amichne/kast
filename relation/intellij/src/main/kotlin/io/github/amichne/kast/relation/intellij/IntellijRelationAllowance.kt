@@ -31,8 +31,10 @@ internal class IntellijRelationAllowance(private val clockNanoseconds: () -> Lon
             IntellijRelationProviderEnumerationAdmission.READY
         }
 
+    fun elapsedNanoseconds(): Long = (clockNanoseconds() - startedAt).coerceAtLeast(0L)
+
     fun elapsedLimitReached(resources: io.github.amichne.kast.kernel.ResourceBudget): Boolean =
-        (clockNanoseconds() - startedAt).coerceAtLeast(0L) >= resources.elapsedTimeLimit.value * NANOS_PER_MILLISECOND
+        elapsedNanoseconds() >= resources.elapsedTimeLimit.value * NANOS_PER_MILLISECOND
 
     fun admitEnumeration(
         state: IntellijRelationCollectionState,

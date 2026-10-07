@@ -70,10 +70,6 @@ internal class AutomaticSymbolQueryRunner(
     private val policy: QueryInvocationPolicy,
     private val execute: suspend (QueryRunRequest, QueryBudget) -> QueryInvocationPage,
 ) {
-    private companion object {
-        const val SEMANTIC_SLICE_MILLIS = 250L
-    }
-
     suspend fun run(
         request: QueryRunRequest.Run,
         allowance: QueryBudget,
@@ -160,8 +156,9 @@ internal class AutomaticSymbolQueryRunner(
                     resources =
                         allowance.resources.copy(
                             workUnitLimit = WorkUnitLimit.parse(remainingWork).required(),
-                            elapsedTimeLimit =
-                                ElapsedTimeLimitMillis.parse(minOf(millis, SEMANTIC_SLICE_MILLIS)).required(),
+                            // Native inventory preparation cannot checkpoint an unfinished search. Preserve the
+                            // invocation's remaining grant through that effect and charge every successor below.
+                            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(millis).required(),
                         ),
                     returnedBytes = QueryByteLimit.parse(minOf(allowance.returnedBytes.value, output)).required(),
                     checkpointBytes =

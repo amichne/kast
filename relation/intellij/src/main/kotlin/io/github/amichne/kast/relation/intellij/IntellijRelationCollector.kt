@@ -21,6 +21,8 @@ import io.github.amichne.kast.relation.contract.RelationScopeExclusion
 import io.github.amichne.kast.relation.contract.SourceLessCallableDisposition
 import io.github.amichne.kast.relation.contract.retainedLimitations
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGaugeValue
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import java.nio.charset.StandardCharsets
@@ -51,6 +53,23 @@ internal class IntellijRelationCollector(
 
     private var retainedBytes = 0L
     private var state = IntellijRelationCollectionState.COLLECTING
+
+    fun observeInventoryAllowance() {
+        observeInventoryGauge(
+            IntellijReadGauge.RELATION_ELAPSED_LIMIT_MILLIS,
+            request.budget.resources.elapsedTimeLimit.value,
+        )
+        observeInventoryGauge(
+            IntellijReadGauge.RELATION_ELAPSED_BEFORE_PREPARATION_NANOS,
+            allowance.elapsedNanoseconds(),
+        )
+    }
+
+    private fun observeInventoryGauge(gauge: IntellijReadGauge, value: Long) =
+        when (val admitted = IntellijReadGaugeValue.parse(value)) {
+            is Refinement.Refined -> observation.measure(gauge, admitted.value)
+            is Refinement.Rejected -> error("Admitted time and monotone elapsed measurement cannot be negative")
+        }
 
     /** Bounds native materialization before a canonical provider order can be established. */
     fun admitProviderEnumeration(): IntellijRelationProviderEnumerationAdmission =

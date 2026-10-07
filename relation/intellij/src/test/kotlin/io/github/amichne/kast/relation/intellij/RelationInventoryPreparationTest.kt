@@ -28,6 +28,34 @@ class RelationInventoryPreparationTest {
     private val request = fixture.request(RelationMeaning.References)
 
     @Test
+    fun `inventory admission exposes its actual grant and time spent before preparation`() {
+        var now = 0L
+        val observation = Observation()
+        val collector = IntellijRelationCollector(request, { now }, observation)
+        now = 200_000_000L
+        assertEquals(
+            ProviderTermination.TERMINAL,
+            readRelationInventory(
+                request,
+                collector,
+                prepare = { RelationInventoryPreparation.Prepared(RelationProviderState.references(emptyList())) },
+                confirm = { _, _ -> error("Empty inventory has no confirmation work") },
+                cancellationCheck = {},
+                observation = observation,
+                clockNanoseconds = { now },
+            ),
+        )
+        assertEquals(
+            mapOf(
+                "RELATION_ELAPSED_LIMIT_MILLIS" to 1000L,
+                "RELATION_ELAPSED_BEFORE_PREPARATION_NANOS" to 200_000_000L,
+            ),
+            observation.admissionGauges,
+        )
+        assertEquals(0, observation.unavailable)
+    }
+
+    @Test
     fun `expired request cannot enter native inventory preparation`() {
         var now = 0L
         var preparations = 0
@@ -44,6 +72,7 @@ class RelationInventoryPreparationTest {
                 },
                 confirm = { _, _ -> error("Expired requests must not enter semantic confirmation") },
                 cancellationCheck = {},
+                observation = observation,
             )
         assertEquals(ProviderTermination.HALTED, termination)
         assertEquals(0, preparations)
@@ -53,6 +82,14 @@ class RelationInventoryPreparationTest {
         assertEquals(listOf(IntellijReadTermination.TIME_LIMIT), observation.terminations)
         assertEquals(0, observation.candidates)
         assertEquals(0, observation.prepared)
+        assertEquals(1, observation.unavailable)
+        assertEquals(
+            mapOf(
+                "RELATION_ELAPSED_LIMIT_MILLIS" to 1000L,
+                "RELATION_ELAPSED_BEFORE_PREPARATION_NANOS" to 1_000_000_000L,
+            ),
+            observation.admissionGauges,
+        )
     }
 
     @Test
@@ -228,6 +265,7 @@ class RelationInventoryPreparationTest {
         assertEquals(ProviderTermination.HALTED, unavailable)
         assertEquals(listOf(80L), observation.preparationNanos)
         assertEquals(emptyList<Long>(), observation.confirmationNanos)
+        assertEquals(1, observation.unavailable)
     }
 
     @Test
@@ -256,6 +294,8 @@ class RelationInventoryPreparationTest {
     private class Observation : IntellijReadObservation {
         var candidates = 0
         var prepared = 0
+        var unavailable = 0
+        val admissionGauges = mutableMapOf<String, Long>()
         val retentionEstimates = mutableListOf<Long>()
         val terminations = mutableListOf<IntellijReadTermination>()
         val preparationNanos = mutableListOf<Long>()
@@ -266,6 +306,8 @@ class RelationInventoryPreparationTest {
                 IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES -> retentionEstimates += value.value
                 IntellijReadGauge.RELATION_PREPARATION_NANOS -> preparationNanos += value.value
                 IntellijReadGauge.RELATION_CONFIRMATION_NANOS -> confirmationNanos += value.value
+                IntellijReadGauge.RELATION_ELAPSED_LIMIT_MILLIS,
+                IntellijReadGauge.RELATION_ELAPSED_BEFORE_PREPARATION_NANOS -> admissionGauges[gauge.name] = value.value
                 else -> error("Unexpected inventory gauge $gauge")
             }
         }
@@ -274,6 +316,7 @@ class RelationInventoryPreparationTest {
             when (counter) {
                 IntellijReadCounter.RELATION_CANDIDATES -> candidates += amount
                 IntellijReadCounter.RELATION_PARTITIONS_PREPARED -> prepared += amount
+                IntellijReadCounter.RELATION_INVENTORY_UNAVAILABLE -> unavailable += amount
                 else -> Unit
             }
         }

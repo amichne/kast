@@ -10,6 +10,10 @@ enum class IntellijReadGauge {
     QUERY_RETAINED_ENTRIES,
     /** Detached bytes required by the observed native inventory attempt, including a rejected final locator. */
     RELATION_INVENTORY_RETAINED_BYTES,
+    /** The current relation page's grant, which may be smaller than the hosted invocation budget. */
+    RELATION_ELAPSED_LIMIT_MILLIS,
+    /** Time already charged to that grant before inventory admission, including subject revalidation and retries. */
+    RELATION_ELAPSED_BEFORE_PREPARATION_NANOS,
     /** Synchronous native provider preparation for this invocation, separately from retained confirmation. */
     RELATION_PREPARATION_NANOS,
     RELATION_CONFIRMATION_NANOS,
@@ -43,6 +47,8 @@ internal fun IntellijReadGauge.merge(
         IntellijReadGauge.QUERY_RETAINED_BYTES,
         IntellijReadGauge.QUERY_RETAINED_ENTRIES,
         IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES,
+        IntellijReadGauge.RELATION_ELAPSED_LIMIT_MILLIS,
+        IntellijReadGauge.RELATION_ELAPSED_BEFORE_PREPARATION_NANOS,
         IntellijReadGauge.RELATION_PREPARATION_NANOS,
         IntellijReadGauge.RELATION_CONFIRMATION_NANOS,
         IntellijReadGauge.SOURCE_RETAINED_BYTES,

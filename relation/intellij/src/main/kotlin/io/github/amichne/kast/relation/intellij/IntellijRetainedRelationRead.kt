@@ -195,8 +195,11 @@ private fun RelationRequest.inventoryForInvocation(
     observation: IntellijReadObservation,
     clockNanoseconds: () -> Long,
 ): RelationInventoryPreparation {
-    if (collector.admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY)
+    collector.observeInventoryAllowance()
+    if (collector.admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY) {
+        observation.count(IntellijReadCounter.RELATION_INVENTORY_UNAVAILABLE)
         return RelationInventoryPreparation.Unavailable
+    }
     return when (val selected = position) {
         RelationReadPosition.Start -> {
             val started = clockNanoseconds()
@@ -212,6 +215,12 @@ private fun RelationRequest.inventoryForInvocation(
             }
         }
         is RelationReadPosition.Resume -> RelationInventoryPreparation.Prepared(selected.continuation.providerState)
+    }.also { prepared ->
+        when (prepared) {
+            is RelationInventoryPreparation.Prepared -> Unit
+            RelationInventoryPreparation.Unavailable ->
+                observation.count(IntellijReadCounter.RELATION_INVENTORY_UNAVAILABLE)
+        }
     }
 }
 
