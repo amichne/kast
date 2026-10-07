@@ -30,6 +30,8 @@ internal class IntellijK2RelationSearch(
     private val cancellationCheck: () -> Unit = ProgressManager::checkCanceled,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val limits: ReadLimits = ReadLimits.Default,
+    private val summaries: io.github.amichne.kast.relation.contract.CallbackSummaryCachePort =
+        io.github.amichne.kast.relation.contract.CallbackSummaryCachePort.Disabled,
 ) {
     /**
      * Proof transition: `(RelationRequest, exact K2 subject, IntellijRelationCollector) ->
@@ -73,7 +75,7 @@ internal class IntellijK2RelationSearch(
             )
 
         private val callbackEmitter =
-            IntellijCallbackObservationEmitter(request, projection, scope, collector, observation) {
+            IntellijCallbackObservationEmitter(request, projection, scope, collector, observation, summaries) {
                 limitation,
                 element,
                 range ->
@@ -130,6 +132,14 @@ internal class IntellijK2RelationSearch(
         }
 
         private fun processKotlinReference(plan: IntellijRelationPlan.References, reference: KtReference): Boolean {
+            if (
+                request.meaning == RelationMeaning.Callers &&
+                    (reference.element.parent as? org.jetbrains.kotlin.psi.KtCallableReferenceExpression)
+                        ?.callableReference === reference.element
+            )
+                return callableEmitter.retainNamedReference(
+                    CalleeProviderItem.Reference(reference, reference.element.nearestDeclaration())
+                )
             val admitted =
                 when (val admission = plan.admit(reference, observation)) {
                     IntellijRelationReferenceAdmission.Skipped -> return collector.dismissProviderItem()
@@ -227,33 +237,66 @@ internal class IntellijK2RelationSearch(
 
         private fun processCallee(candidate: CalleeProviderItem): Boolean =
             when (candidate) {
+                is CalleeProviderItem.CallbackSupplies -> callableEmitter.retainCallbackSupplies(candidate)
                 is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
                 is CalleeProviderItem.Reference ->
-                    when (val resolved = projection.resolve(candidate.reference)) {
-                        IntellijK2ResolvedDeclaration.InvokeReceiver -> collector.dismissProviderItem()
-                        IntellijK2ResolvedDeclaration.Unresolved -> {
-                            observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
-                            incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
-                        }
-                        is IntellijK2ResolvedDeclaration.Unsupported ->
-                            incompleteCallee(candidate, RelationLimitation.UNSUPPORTED_ITEM)
-                        is IntellijK2ResolvedDeclaration.ParameterInvocation ->
-                            callableEmitter.retainParameterInvocation(candidate, resolved)
-                        is IntellijK2ResolvedDeclaration.SourceLess ->
-                            callableEmitter.retainSourceLessCallable(candidate, resolved.callable)
-                        is IntellijK2ResolvedDeclaration.Found -> {
-                            observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
-                            when (val owner = projection.callOwner(candidate.owner)) {
-                                is Refinement.Refined ->
-                                    processCalleeTarget(owner.value, resolved.declaration, candidate.reference)
-                                is Refinement.Rejected -> retainUnownedCallee(candidate, owner.failure)
-                            }
-                        }
+                    if (candidate.reference.element.parent is org.jetbrains.kotlin.psi.KtCallableReferenceExpression)
+                        processNamedReference(candidate)
+                    else processResolvedCallee(candidate)
+            }
+
+        private fun processResolvedCallee(candidate: CalleeProviderItem.Reference): Boolean =
+            when (val resolved = projection.resolve(candidate.reference)) {
+                IntellijK2ResolvedDeclaration.InvokeReceiver -> collector.dismissProviderItem()
+                IntellijK2ResolvedDeclaration.Unresolved -> {
+                    observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
+                    incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
+                }
+                is IntellijK2ResolvedDeclaration.Unsupported ->
+                    incompleteCallee(candidate, RelationLimitation.UNSUPPORTED_ITEM)
+                is IntellijK2ResolvedDeclaration.ParameterInvocation ->
+                    callableEmitter.retainParameterInvocation(candidate, resolved)
+                is IntellijK2ResolvedDeclaration.FunctionInvocation ->
+                    callableEmitter.retainFunctionInvocation(candidate, resolved)
+                is IntellijK2ResolvedDeclaration.SourceLess ->
+                    callableEmitter.retainSourceLessCallable(candidate, resolved.callable)
+                is IntellijK2ResolvedDeclaration.Found -> {
+                    observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
+                    when (val owner = projection.callOwner(candidate.owner)) {
+                        is Refinement.Refined ->
+                            processCalleeTarget(owner.value, resolved.declaration, candidate.reference)
+                        is Refinement.Rejected -> retainUnownedCallee(candidate, owner.failure)
                     }
+                }
+            }
+
+        private fun processNamedReference(candidate: CalleeProviderItem.Reference): Boolean =
+            when (val resolved = projection.resolve(candidate.reference)) {
+                is IntellijK2ResolvedDeclaration.Found ->
+                    admitCalleeTarget(resolved.declaration, candidate.reference) {
+                        callableEmitter.retainNamedReference(candidate)
+                    }
+                is IntellijK2ResolvedDeclaration.FunctionInvocation ->
+                    callableEmitter.retainFunctionInvocation(candidate, resolved)
+                is IntellijK2ResolvedDeclaration.SourceLess ->
+                    callableEmitter.retainSourceLessCallable(candidate, resolved.callable)
+                IntellijK2ResolvedDeclaration.Unresolved,
+                IntellijK2ResolvedDeclaration.InvokeReceiver,
+                is IntellijK2ResolvedDeclaration.ParameterInvocation,
+                is IntellijK2ResolvedDeclaration.Unsupported -> callableEmitter.retainNamedReference(candidate)
             }
 
         private val callableEmitter =
-            IntellijCallableObservationEmitter(request, subject, projection, scope, collector, ::incompleteCallee)
+            IntellijCallableObservationEmitter(
+                request,
+                subject,
+                projection,
+                scope,
+                collector,
+                ::incompleteCallee,
+                observation,
+                summaries,
+            )
 
         private fun retainUnownedCallee(candidate: CalleeProviderItem, failure: CallOwnershipFailure): Boolean {
             val policy =
@@ -267,6 +310,7 @@ internal class IntellijK2RelationSearch(
                     is CallOwnershipFailure.Incomplete -> failure.limitation
                 }
             return when (candidate) {
+                is CalleeProviderItem.CallbackSupplies -> incompleteCallee(candidate, limitation)
                 is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, limitation)
                 is CalleeProviderItem.Reference ->
                     when (val target = projection.resolve(candidate.reference)) {
@@ -279,6 +323,8 @@ internal class IntellijK2RelationSearch(
                         }
                         is IntellijK2ResolvedDeclaration.ParameterInvocation ->
                             callableEmitter.retainParameterInvocation(candidate, target)
+                        is IntellijK2ResolvedDeclaration.FunctionInvocation ->
+                            callableEmitter.retainFunctionInvocation(candidate, target)
                         is IntellijK2ResolvedDeclaration.SourceLess ->
                             callableEmitter.retainSourceLessCallable(candidate, target.callable)
                         is IntellijK2ResolvedDeclaration.Unsupported ->
@@ -394,6 +440,12 @@ internal class IntellijK2RelationSearch(
             when (candidate) {
                 is CalleeProviderItem.Reference ->
                     incompleteItem(limitation, candidate.reference.element, candidate.reference.rangeInElement)
+                is CalleeProviderItem.CallbackSupplies ->
+                    incompleteItem(
+                        limitation,
+                        candidate.call,
+                        candidate.call.textRange.shiftLeft(candidate.call.textRange.startOffset),
+                    )
                 is CalleeProviderItem.Unresolved ->
                     incompleteItem(
                         limitation,

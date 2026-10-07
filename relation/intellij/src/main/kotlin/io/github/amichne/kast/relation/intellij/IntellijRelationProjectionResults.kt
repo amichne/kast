@@ -61,6 +61,12 @@ internal sealed interface IntellijK2ResolvedDeclaration {
         val call: org.jetbrains.kotlin.psi.KtCallExpression,
     ) : IntellijK2ResolvedDeclaration
 
+    /** A builtin invoke signature is only the binding; its receiver still requires complete immutable-value proof. */
+    data class FunctionInvocation(
+        val call: org.jetbrains.kotlin.psi.KtCallExpression,
+        val callable: io.github.amichne.kast.relation.contract.SourceLessCallable,
+    ) : IntellijK2ResolvedDeclaration
+
     data class SourceLess(val callable: io.github.amichne.kast.relation.contract.SourceLessCallable) :
         IntellijK2ResolvedDeclaration
 

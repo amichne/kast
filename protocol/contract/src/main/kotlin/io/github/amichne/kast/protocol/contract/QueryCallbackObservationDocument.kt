@@ -203,6 +203,8 @@ data class QueryCallbackForwardingDocument(
     val source: QueryCallbackParameterIdentityDocument,
     val argument: RelationOccurrenceDocument,
     val target: QueryCallbackBindingDocument.Bound,
+    val callableTransfers: BoundedProtocolList<ImpactCompilerTransferDocument> =
+        (BoundedProtocolList.create(emptyList<ImpactCompilerTransferDocument>()) as Refinement.Refined).value,
 )
 
 /** Exhaustion of a finite formal graph is distinct from the routes retained for individual invocations. */
@@ -225,6 +227,8 @@ data class QueryCallbackInvocationDocument(
 )
 
 sealed interface QueryCallbackFlowDocument {
+    data class Immutable(val flow: QueryImmutableCallbackFlowDocument) : QueryCallbackFlowDocument
+
     data class Observed(
         val basis: ImpactSemanticBasisDocument,
         val body: QueryCallbackBodyDocument.Anonymous,

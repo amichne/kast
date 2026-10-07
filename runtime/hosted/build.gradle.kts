@@ -85,6 +85,9 @@ dependencies {
     implementation(project(":relation:contract"))
     implementation(project(":relation:service"))
     implementation(project(":relation:intellij"))
+    implementation(project(":topology:contract"))
+    implementation(project(":topology:build"))
+    implementation(project(":topology:intellij"))
     implementation(project(":diagnostic:contract"))
     implementation(project(":diagnostic:service"))
     implementation(project(":diagnostic:intellij"))
@@ -94,6 +97,7 @@ dependencies {
     implementation(project(":workspace:intellij-read"))
     compileOnly(platform)
     testImplementation(testFixtures(project(":query:protocol")))
+    testImplementation(testFixtures(project(":workspace:contract")))
     testImplementation(platform)
     testImplementation(libs.json.schema.validator)
 }
@@ -140,6 +144,9 @@ val hostedPlugin =
                     "relation-contract-*.jar",
                     "relation-service-*.jar",
                     "relation-intellij-*.jar",
+                    "topology-contract-*.jar",
+                    "topology-build-*.jar",
+                    "topology-intellij-*.jar",
                     "traversal-contract-*.jar",
                     "traversal-service-*.jar",
                     "diagnostic-contract-*.jar",

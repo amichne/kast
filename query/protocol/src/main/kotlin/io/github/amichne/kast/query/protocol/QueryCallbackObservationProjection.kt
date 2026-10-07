@@ -186,6 +186,8 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
 
     fun flow(value: CallbackInvocationFlowRead): QueryCallbackFlowDocument? =
         when (value) {
+            is CallbackInvocationFlowRead.Immutable ->
+                value.flow.projectImmutableFlow(this)?.let { QueryCallbackFlowDocument.Immutable(it) }
             is CallbackInvocationFlowRead.Unavailable ->
                 QueryCallbackFlowDocument.Unavailable(value.cause.protocolCallbackDocument())
             is CallbackInvocationFlowRead.ContractRejected ->
@@ -215,7 +217,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         )
     }
 
-    private fun forwardingEvidence(value: CallbackForwardingEvidence): QueryCallbackForwardingEvidenceDocument? {
+    fun forwardingEvidence(value: CallbackForwardingEvidence): QueryCallbackForwardingEvidenceDocument? {
         return when (value) {
             CallbackForwardingEvidence.InvocationRoutes -> QueryCallbackForwardingEvidenceDocument.InvocationRoutes
             is CallbackForwardingEvidence.ExhaustedGraph -> {
@@ -231,11 +233,17 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         }
     }
 
-    private fun forwarding(value: CallbackParameterForwarding): QueryCallbackForwardingDocument? {
+    fun forwarding(value: CallbackParameterForwarding): QueryCallbackForwardingDocument? {
         return QueryCallbackForwardingDocument(
             parameter(value.source) ?: return null,
             occurrence(value.argument) ?: return null,
             bound(value.target) ?: return null,
+            BoundedProtocolList.create(
+                    value.callableTransfers.map {
+                        it.impactDocument().callbackValue() ?: return null
+                    }
+                )
+                .callbackValue() ?: return null,
         )
     }
 
@@ -260,7 +268,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         )
     }
 
-    private fun invocation(value: CallbackParameterInvocation): QueryCallbackInvocationDocument? {
+    fun invocation(value: CallbackParameterInvocation): QueryCallbackInvocationDocument? {
         return QueryCallbackInvocationDocument(
             occurrence(value.occurrence) ?: return null,
             body(value.owner) ?: return null,
@@ -302,7 +310,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         }
     }
 
-    private fun bound(value: CallbackArgumentBinding): QueryCallbackBindingDocument.Bound? {
+    fun bound(value: CallbackArgumentBinding): QueryCallbackBindingDocument.Bound? {
         return QueryCallbackBindingDocument.Bound(
             value.invocation.impactDocument().callbackValue() ?: return null,
             occurrence(

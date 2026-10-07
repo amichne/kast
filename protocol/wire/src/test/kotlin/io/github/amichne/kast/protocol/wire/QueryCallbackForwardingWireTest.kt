@@ -1,5 +1,12 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import kotlinx.serialization.json.jsonArray
@@ -40,8 +47,53 @@ class QueryCallbackForwardingWireTest {
                 .jsonArray
                 .single()
                 .jsonObject
-        assertEquals(setOf("source", "argument", "target"), encoded.keys)
+        assertEquals(setOf("source", "argument", "target", "callable_transfers"), encoded.keys)
         assertEquals("BOUND", encoded.getValue("target").jsonObject.getValue("type").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `forwarded immutable alias retains exact transfer evidence and rejects broken routes`() {
+        val wire = fixture.forwardedObservation()
+        val flow = fixture.flow(wire)
+        val invocation = flow.invocations.single()
+        val forwarding = invocation.forwardings.single()
+        val enclosing = (flow.binding as QueryCallbackBindingWireDocument.Bound).invocation.callable
+        fun offset(value: Int) = (ProtocolOffset.parse(value) as Refinement.Refined).value
+        fun site(start: Int, end: Int, role: ImpactValueRoleDocument) =
+            ImpactValueSiteReferenceDocument(enclosing, ImpactSourceRangeDocument(offset(start), offset(end)), role)
+        val source = site(11, 12, ImpactValueRoleDocument.ExpressionResult)
+        val local = site(9, 13, ImpactValueRoleDocument.LocalBinding)
+        val read = site(14, 18, ImpactValueRoleDocument.LocalRead)
+        val transfers =
+            listOf(
+                ImpactCompilerTransferDocument(source, local, ImpactTransferKindDocument.LOCAL_BINDING),
+                ImpactCompilerTransferDocument(local, read, ImpactTransferKindDocument.LOCAL_READ),
+            )
+        val aliased = forwarding.copy(callableTransfers = transfers)
+        val admitted = wire.copy(flow = flow.copy(invocations = listOf(invocation.copy(forwardings = listOf(aliased)))))
+        fixture.assertAdmitted(admitted)
+        assertEquals(
+            transfers,
+            fixture.flow(fixture.decode(admitted)).invocations.single().forwardings.single().callableTransfers,
+        )
+        for (wrong in
+            listOf(
+                transfers.reversed(),
+                transfers.drop(1),
+                listOf(
+                    transfers.first(),
+                    transfers.last().copy(target = site(19, 20, ImpactValueRoleDocument.LocalRead)),
+                ),
+                listOf(transfers.first().copy(kind = ImpactTransferKindDocument.PROPERTY_ASSIGNMENT), transfers.last()),
+            )) fixture.assertRejected(
+            wire.copy(
+                flow =
+                    flow.copy(
+                        invocations =
+                            listOf(invocation.copy(forwardings = listOf(forwarding.copy(callableTransfers = wrong))))
+                    )
+            )
+        )
     }
 
     @Test

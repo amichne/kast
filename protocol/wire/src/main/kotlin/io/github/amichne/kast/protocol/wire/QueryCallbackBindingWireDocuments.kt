@@ -2,6 +2,8 @@
 
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
@@ -60,6 +62,7 @@ internal data class QueryCallbackForwardingWireDocument(
     val source: QueryCallbackParameterIdentityWireDocument,
     val argument: RelationOccurrenceWireDocument,
     val target: QueryCallbackBindingWireDocument,
+    @SerialName("callable_transfers") val callableTransfers: List<ImpactCompilerTransferDocument>,
 )
 
 internal fun QueryCallbackBindingDocument.callbackWire(): QueryCallbackBindingWireDocument =
@@ -94,7 +97,12 @@ internal fun QueryCallbackParameterIdentityWireDocument.toContract():
     }
 
 internal fun QueryCallbackForwardingDocument.callbackWire() =
-    QueryCallbackForwardingWireDocument(source.callbackWire(), argument.callbackWire(), target.callbackWire())
+    QueryCallbackForwardingWireDocument(
+        source.callbackWire(),
+        argument.callbackWire(),
+        target.callbackWire(),
+        callableTransfers.values,
+    )
 
 internal fun QueryCallbackBindingWireDocument.toContract(): WireDocumentConversion<QueryCallbackBindingDocument> =
     when (this) {
@@ -135,7 +143,9 @@ internal fun QueryCallbackForwardingWireDocument.toContract(): WireDocumentConve
             target.toContract().flatMapConverted { target ->
                 when (target) {
                     is QueryCallbackBindingDocument.Bound ->
-                        WireDocumentConversion.Converted(QueryCallbackForwardingDocument(source, argument, target))
+                        BoundedProtocolList.create(callableTransfers).toWireDocumentConversion().mapConverted {
+                            QueryCallbackForwardingDocument(source, argument, target, it)
+                        }
                     is QueryCallbackBindingDocument.Unavailable,
                     is QueryCallbackBindingDocument.Default,
                     is QueryCallbackBindingDocument.Direct -> WireDocumentConversion.Rejected

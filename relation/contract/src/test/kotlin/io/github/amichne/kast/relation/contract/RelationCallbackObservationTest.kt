@@ -81,6 +81,34 @@ class RelationCallbackObservationTest {
         }
     }
 
+    @Test
+    fun `callers named reference matches subject compiler evidence across endpoint representations`() {
+        val read = request(RelationMeaning.Callers)
+        val subject = read.subject
+        val evidence = callbackEvidence(subject)
+        val target = RelationEndpoint.resolve(subject.lease, subject.scope, evidence, subject.constraints).refined()
+        val occurrence = RelationOccurrence.fromBoundary(subject.file, 43, 44).refined()
+        val reference =
+            NamedCallbackReference.fromCompiler(
+                    occurrence,
+                    target,
+                    CallbackReferenceReceivers(CallbackReferenceReceiver.Absent, CallbackReferenceReceiver.Absent),
+                    NamedCallbackReferenceFlow.Unavailable(CallbackInvocationFlowCause.STORED_CALLBACK),
+                )
+                .refined()
+        val observation =
+            RelationCallableObservation.fromNativeBoundary(
+                    read,
+                    occurrence,
+                    evidence,
+                    RelationCallableBody.Named.fromCompiler(evidence).refined(),
+                    RelationCallableTarget.NamedReference(reference),
+                )
+                .refined()
+        assertEquals(true, observation.belongsTo(read))
+        assertEquals(reference, (observation.target as RelationCallableTarget.NamedReference).reference)
+    }
+
     private fun callbackEvidence(endpoint: RelationEndpoint): CompilerGroundedSymbolEvidence {
         return CompilerGroundedSymbolEvidence.fromBoundary(
                 endpoint.file,

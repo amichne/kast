@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class CallbackSchemaReuseTest {
@@ -22,6 +23,18 @@ class CallbackSchemaReuseTest {
                 "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,
             )) {
             assertEquivalent(generatedRequestSchema(serializer), definitions.getValue(name), definitions)
+        }
+    }
+
+    @Test
+    fun `closed operation schemas retain one canonical projection per process`() {
+        for (operation in CanonicalOperation.entries) {
+            assertSame(installedServerOutputSchema(operation), installedServerOutputSchema(operation))
+            assertSame(installedSemanticResultSchema(operation), installedSemanticResultSchema(operation))
+        }
+        for (tool in io.github.amichne.kast.protocol.registry.PublicToolIdentity.entries) {
+            assertSame(installedPublicToolOutputSchema(tool), installedPublicToolOutputSchema(tool))
+            assertSame(installedPublicToolSemanticResultSchema(tool), installedPublicToolSemanticResultSchema(tool))
         }
     }
 

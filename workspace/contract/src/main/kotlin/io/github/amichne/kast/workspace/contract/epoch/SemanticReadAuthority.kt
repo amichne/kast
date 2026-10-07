@@ -79,6 +79,38 @@ private constructor(
             else -> Refinement.Refined(Unit)
         }
 
+    /** Source-issued epoch signal continuity only; consumers must revalidate source, compiler and external inputs. */
+    fun environmentContinuityFrom(
+        previous: LiveSemanticReadAuthority
+    ): Refinement<LiveSemanticEnvironmentContinuity, LiveSemanticEnvironmentContinuityFailure> =
+        when (
+            val owned = withCurrentOwner {
+                when (val sameOwner = requireSameOwner(previous)) {
+                    is Refinement.Rejected ->
+                        Refinement.Rejected(LiveSemanticEnvironmentContinuityFailure.Authority(sameOwner.failure))
+                    is Refinement.Refined ->
+                        when (admittedEpoch.environmentRelationTo(previous.admittedEpoch)) {
+                            ProjectReadEnvironmentRelation.SAME ->
+                                Refinement.Refined(LiveSemanticEnvironmentContinuity.issue(previous, this))
+                            ProjectReadEnvironmentRelation.CHANGED ->
+                                Refinement.Rejected(LiveSemanticEnvironmentContinuityFailure.EnvironmentChanged)
+                            ProjectReadEnvironmentRelation.UNOBSERVED ->
+                                Refinement.Rejected(LiveSemanticEnvironmentContinuityFailure.EnvironmentUnobserved)
+                            ProjectReadEnvironmentRelation.INCOMPARABLE ->
+                                Refinement.Rejected(
+                                    LiveSemanticEnvironmentContinuityFailure.Authority(
+                                        LiveSemanticReadFailure.INCOMPARABLE_EPOCH
+                                    )
+                                )
+                        }
+                }
+            }
+        ) {
+            is Refinement.Refined -> owned.value
+            is Refinement.Rejected ->
+                Refinement.Rejected(LiveSemanticEnvironmentContinuityFailure.Authority(owned.failure))
+        }
+
     internal companion object {
         @JvmSynthetic
         internal fun issue(
@@ -87,6 +119,27 @@ private constructor(
             owner: LiveSemanticReadOwner,
         ) = LiveSemanticReadAuthority(reference, epoch, owner)
     }
+}
+
+/** This proof does not revive [previous] or authorize publication after [current] ceases to be current. */
+class LiveSemanticEnvironmentContinuity
+private constructor(
+    val previous: LiveSemanticReadAuthority,
+    val current: LiveSemanticReadAuthority,
+) {
+    internal companion object {
+        @JvmSynthetic
+        internal fun issue(previous: LiveSemanticReadAuthority, current: LiveSemanticReadAuthority) =
+            LiveSemanticEnvironmentContinuity(previous, current)
+    }
+}
+
+sealed interface LiveSemanticEnvironmentContinuityFailure {
+    data class Authority(val cause: LiveSemanticReadFailure) : LiveSemanticEnvironmentContinuityFailure
+
+    data object EnvironmentChanged : LiveSemanticEnvironmentContinuityFailure
+
+    data object EnvironmentUnobserved : LiveSemanticEnvironmentContinuityFailure
 }
 
 enum class LiveSemanticReadFailure {

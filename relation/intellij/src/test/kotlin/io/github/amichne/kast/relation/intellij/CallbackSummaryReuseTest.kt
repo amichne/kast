@@ -39,6 +39,61 @@ class CallbackSummaryReuseTest {
             .refined()
 
     @Test
+    fun `project summary rejected by supplier proof is not observed as reused`() {
+        val candidate =
+            CallbackSummaryReuse(CallbackParameterSummaries(request.budget))
+                .capture(formal, emptyList(), emptySet(), emptyList(), CallbackInvocationScan.EXHAUSTIVE)
+                .refined() as CallbackSummaryCandidate.Admitted
+        var admitted = 0
+        val cache =
+            object : io.github.amichne.kast.relation.contract.CallbackSummaryCachePort {
+                override fun find(
+                    formal: CallbackParameterIdentity,
+                    readmit:
+                        (
+                            io.github.amichne.kast.relation.contract.CallbackParameterSummary
+                        ) -> io.github.amichne.kast.relation.contract.CallbackReadmission<
+                                io.github.amichne.kast.relation.contract.CallbackParameterSummary
+                            >,
+                ) = io.github.amichne.kast.relation.contract.CallbackSummaryCacheLookup.Found(candidate.summary)
+
+                override fun retain(summary: io.github.amichne.kast.relation.contract.CallbackParameterSummary): Unit =
+                    error("Unexpected extraction")
+
+                override fun admitted(summary: io.github.amichne.kast.relation.contract.CallbackParameterSummary) {
+                    admitted++
+                }
+            }
+        val summaries = CallbackParameterSummaries(request.budget, cache = cache)
+        val reuse = CallbackSummaryReuse(summaries)
+        val body = supplierFlow(72).body
+        assertEquals(
+            Refinement.Rejected(CallbackInvocationFlowFailure.UNBOUND_INVOCATION),
+            reuse.restore(
+                formal,
+                body,
+                CallbackBindingEvidence.Unavailable(CallbackInvocationFlowCause.STORED_CALLBACK),
+            ),
+        )
+        assertEquals(0, admitted)
+        val binding =
+            CallbackBindingEvidence.Bound(
+                CallbackArgumentBinding.fromCompiler(
+                        ValueInvocation.fromCompiler(target, body.range, target).refined(),
+                        RelationCallableBody.Named.fromCompiler(target.evidence).refined(),
+                        formal.position,
+                        formal.parameter,
+                    )
+                    .refined()
+            )
+        assertEquals(
+            CallbackSummaryRestore.Reused(candidate.summary.instantiate(body, binding).refined()),
+            reuse.restore(formal, body, binding).refined(),
+        )
+        assertEquals(1, admitted)
+    }
+
+    @Test
     fun `summary observations distinguish a miss successful instantiation and rejected supplier`() {
         val counts = SummaryCounts()
         val summaries = CallbackParameterSummaries(request.budget, counts)

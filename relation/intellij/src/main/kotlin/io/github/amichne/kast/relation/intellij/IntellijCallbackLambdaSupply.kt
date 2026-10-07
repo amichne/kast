@@ -59,7 +59,7 @@ internal fun classifyCallbackFunctionSupply(function: KtFunction): IntellijCallb
         else -> IntellijCallbackLambdaSupply.Unsupported
     }
 
-private fun classifyCallbackValueSupply(expression: KtExpression): IntellijCallbackLambdaSupply {
+internal fun classifyCallbackValueSupply(expression: KtExpression): IntellijCallbackLambdaSupply {
     return when (val parent = expression.parent) {
         is KtValueArgument -> IntellijCallbackLambdaSupply.Argument(parent, expression)
         is KtCallExpression -> classifyDirectCallback(parent, expression)

@@ -9,6 +9,14 @@ enum class ProjectReadEpochRelation {
     INCOMPARABLE,
 }
 
+/** Environment equality excludes source contents and never proves that semantic facts remain valid. */
+enum class ProjectReadEnvironmentRelation {
+    SAME,
+    CHANGED,
+    UNOBSERVED,
+    INCOMPARABLE,
+}
+
 /** Finite platform stages at which a project-read epoch observation can fail. */
 enum class ProjectReadEpochObservationStage {
     THREAD,
@@ -79,7 +87,22 @@ class ProjectReadEpoch<State : Any>
 private constructor(
     private val comparisonDomain: ComparisonDomain,
     private val state: State,
+    private val environment: EnvironmentEvidence,
 ) {
+    fun environmentRelationTo(other: ProjectReadEpoch<*>): ProjectReadEnvironmentRelation {
+        if (comparisonDomain !== other.comparisonDomain) return ProjectReadEnvironmentRelation.INCOMPARABLE
+        return when (val observed = environment) {
+            EnvironmentEvidence.Unobserved -> ProjectReadEnvironmentRelation.UNOBSERVED
+            is EnvironmentEvidence.Observed<*> ->
+                when (val otherEnvironment = other.environment) {
+                    EnvironmentEvidence.Unobserved -> ProjectReadEnvironmentRelation.UNOBSERVED
+                    is EnvironmentEvidence.Observed<*> ->
+                        if (observed == otherEnvironment) ProjectReadEnvironmentRelation.SAME
+                        else ProjectReadEnvironmentRelation.CHANGED
+                }
+        }
+    }
+
     /**
      * Proof transition: `(ProjectReadEpoch<*>, ProjectReadEpoch<*>) -> ProjectReadEpochRelation`.
      *
@@ -104,6 +127,7 @@ private constructor(
     private constructor(
         private val observer: () -> Refinement<State, ProjectReadEpochObservationFailure>,
         private val beforeWriteObserver: () -> Refinement<State, ProjectReadEpochObservationFailure>,
+        private val environment: (State) -> EnvironmentEvidence,
     ) {
         private val comparisonDomain = ComparisonDomain()
 
@@ -122,7 +146,9 @@ private constructor(
         private fun retain(result: Refinement<State, ProjectReadEpochObservationFailure>): ProjectReadEpochObservation =
             when (result) {
                 is Refinement.Refined ->
-                    ProjectReadEpochObservation.Observed(ProjectReadEpoch(comparisonDomain, result.value))
+                    ProjectReadEpochObservation.Observed(
+                        ProjectReadEpoch(comparisonDomain, result.value, environment(result.value))
+                    )
                 is Refinement.Rejected -> ProjectReadEpochObservation.Rejected(result.failure)
             }
 
@@ -136,15 +162,32 @@ private constructor(
             @JvmSynthetic
             internal fun <State : Any> create(
                 observer: () -> Refinement<State, ProjectReadEpochObservationFailure>
-            ): Source<State> = Source(observer) { Refinement.Rejected(ProjectReadEpochObservationFailure.WrongThread) }
+            ): Source<State> =
+                Source(observer, { Refinement.Rejected(ProjectReadEpochObservationFailure.WrongThread) }) {
+                    EnvironmentEvidence.Unobserved
+                }
 
             /** Both probes belong to this one source; the write probe must enforce its distinct execution boundary. */
             @JvmSynthetic
             internal fun <State : Any> create(
                 observer: () -> Refinement<State, ProjectReadEpochObservationFailure>,
                 beforeWriteObserver: () -> Refinement<State, ProjectReadEpochObservationFailure>,
-            ): Source<State> = Source(observer, beforeWriteObserver)
+            ): Source<State> = Source(observer, beforeWriteObserver) { EnvironmentEvidence.Unobserved }
+
+            /** The adapter supplies a detached immutable environment snapshot; epochs retain no projection callback. */
+            @JvmSynthetic
+            internal fun <State : Any, Environment : Any> createWithEnvironment(
+                observer: () -> Refinement<State, ProjectReadEpochObservationFailure>,
+                beforeWriteObserver: () -> Refinement<State, ProjectReadEpochObservationFailure>,
+                environment: (State) -> Environment,
+            ): Source<State> = Source(observer, beforeWriteObserver) { EnvironmentEvidence.Observed(environment(it)) }
         }
+    }
+
+    private sealed interface EnvironmentEvidence {
+        data object Unobserved : EnvironmentEvidence
+
+        data class Observed<Environment : Any>(val value: Environment) : EnvironmentEvidence
     }
 
     /** Callback-free identity retained by detached epochs from one exact source. */

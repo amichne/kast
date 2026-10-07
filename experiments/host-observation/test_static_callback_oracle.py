@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from static_callback_oracle import (
-    CallableValueRejection,
+    UnavailableRejection,
     CompleteCase,
     FixtureIntegrityError,
     FlowObligation,
@@ -28,6 +28,44 @@ class StaticCallbackOracleTest(unittest.TestCase):
 
     def oracle(self, sources=None):
         return materialize(str(FIXTURE.resolve()), self.sources if sources is None else sources)
+
+    def test_bound_and_unbound_references_preserve_receiver_and_formal_position(self):
+        plain, bound, unbound = self.oracle().excluded_cases
+        self.assertEqual('ABSENT', plain.dispatch_receiver.type)
+        self.assertEqual('fixture.staticcallbacks.forwarding.sharedWrapper(receiver::boundSink)', bound.call.text)
+        self.assertEqual('fixture.staticcallbacks.invocation.invokeReceiverCallback(receiver, fixture.staticcallbacks.invocation.ReferenceReceiver::unboundSink)', unbound.call.text)
+        self.assertEqual('BOUND', bound.dispatch_receiver.type)
+        self.assertEqual('receiver', bound.dispatch_receiver.occurrence.text)
+        self.assertEqual('UNBOUND', unbound.dispatch_receiver.type)
+        self.assertEqual(1, unbound.graph.root.position)
+        self.assertEqual('block(receiver)', unbound.invocation.occurrence.text)
+        self.assertEqual('fixture.staticcallbacks.invocation.ReferenceReceiver.boundSink', bound.target.fqn)
+        self.assertEqual('fixture.staticcallbacks.invocation.ReferenceReceiver.unboundSink', unbound.target.fqn)
+
+    def test_immutable_alias_forwarding_retains_exact_transfer_chain(self):
+        cases = {case.name: case for case in self.oracle().complete_cases}
+        alias = cases['immutable-alias-forwarding']
+        self.assertEqual('fixture.staticcallbacks.forwarding.aliasWrapper { fixture.staticcallbacks.invocation.aliasSink(); \"alias\" }', alias.supply.call.text)
+        edge, = alias.forwardings
+        self.assertEqual('second', edge.argument.text)
+        self.assertEqual(['LOCAL_BINDING', 'LOCAL_READ', 'LOCAL_BINDING', 'LOCAL_READ'],
+                         [transfer.kind for transfer in edge.transfers])
+        self.assertEqual(['block', 'val first = block', 'first', 'val second = first'],
+                         [transfer.source.text for transfer in edge.transfers])
+        self.assertEqual(['val first = block', 'first', 'val second = first', 'second'],
+                         [transfer.target.text for transfer in edge.transfers])
+        self.assertEqual('invokeCallback', alias.invocation.owner.name)
+        mutable = next(case for case in self.oracle().rejected_cases if case.name == 'mutable-alias-forwarding')
+        self.assertEqual(('PARAMETER_ESCAPES', 'NO_INVOCATION_PROVEN'), mutable.rejection.obligations)
+
+    def test_new_alias_targets_preserve_original_reverse_query_inventory(self):
+        oracle = self.oracle()
+        alias = next(case for case in oracle.complete_cases if case.name == 'immutable-alias-forwarding')
+        mutable = next(case for case in oracle.rejected_cases if case.name == 'mutable-alias-forwarding')
+        self.assertEqual('aliasSink', alias.supply.target.name)
+        self.assertEqual('mutableAliasSink', mutable.supply.target.name)
+        for case in oracle.complete_cases[:5]:
+            self.assertNotIn(case.supply.target, (alias.supply.target, mutable.supply.target))
 
     def test_recursive_graphs_preserve_cycle_edges_and_simple_invocation_routes(self):
         cases = {case.name: case for case in self.oracle().complete_cases}
@@ -120,7 +158,7 @@ class StaticCallbackOracleTest(unittest.TestCase):
             ('alphaEntry', 727, 920, 812,
              '// The suppliers share the formal route, but each owns a distinct callback body.\n'),
             ('callableReferenceEntry', 977, 1127, 1062,
-             '// Callable references remain outside the admitted COMPLETE_ONLY callback model.\n'),
+             '// Callable references retain supplied-value proof without becoming named calls.\n'),
             ('recursiveEntry', 1129, 1274, 1211,
              '// Static recursive graphs: never execute these functions to qualify a query.\n'),
         )
@@ -135,12 +173,12 @@ class StaticCallbackOracleTest(unittest.TestCase):
 
     def test_negative_controls_name_current_closed_model_boundaries(self):
         suite = self.oracle()
-        external, formal = suite.rejected_cases
-        reference, = suite.excluded_cases
+        external, formal = suite.rejected_cases[:2]
+        reference = suite.excluded_cases[0]
         self.assertEqual((FlowObligation.EXTERNAL_CALLABLE, FlowObligation.NO_INVOCATION_PROVEN),
                          external.rejection.obligations)
         self.assertEqual('java.util.Collections.singletonList(block)', external.cause_site.text)
-        self.assertEqual(CallableValueRejection(), formal.rejection)
+        self.assertEqual(UnavailableRejection(FlowObligation.STORED_CALLBACK), formal.rejection)
         self.assertEqual('invokeCallback', formal.owner.name)
         self.assertEqual('block()', formal.invocation.occurrence.text)
         self.assertEqual(formal.owner, formal.formal.callable)
@@ -158,12 +196,12 @@ class StaticCallbackOracleTest(unittest.TestCase):
         self.assertEqual(suite.complete_cases[0].supplies, resource.supplies)
         self.assertEqual(2, len(resource.supplies))
         self.assertEqual(2, sum(len(supply.target_occurrences) for supply in resource.supplies))
-        self.assertEqual((FlowObligation.NO_INVOCATION_PROVEN, FlowObligation.RESULT_LIMIT_REACHED),
-                         resource.rejection.obligations)
+        self.assertEqual((FlowObligation.RESULT_LIMIT_REACHED,), resource.rejection.obligations)
+        self.assertEqual((FlowObligation.NO_INVOCATION_PROVEN, FlowObligation.RESULT_LIMIT_REACHED), resource.lexical_rejection.obligations)
         self.assertEqual('INCOMPLETE', resource.rejection.scan)
         self.assertEqual('COMPLETE', resource.original_coverage.type)
-        self.assertEqual('invokeCallback(block)', resource.cause_site.text)
-        self.assertEqual(suite.complete_cases[0].forwardings[1].call, resource.cause_site)
+        self.assertEqual('sharedWrapper { alphaSink() }', resource.cause_site.text)
+        self.assertEqual(suite.complete_cases[0].supply.call, resource.cause_site)
         self.assertNotIn(resource, suite.cases)
 
     def test_case_supplies_require_one_exact_named_root_and_nonempty_inventory(self):
@@ -177,7 +215,7 @@ class StaticCallbackOracleTest(unittest.TestCase):
             replace(alpha, graph=recursive.graph)
 
     def test_graph_inventory_rejects_missing_unreachable_and_duplicate_formals_or_edges(self):
-        alpha, beta, recursive, self_recursive, mutual = self.oracle().complete_cases
+        alpha, beta, recursive, self_recursive, mutual = self.oracle().complete_cases[:5]
         for changed in (
             {'formals': mutual.graph.formals[:2]},
             {'formals': mutual.graph.formals + (recursive.graph.root,)},

@@ -75,6 +75,17 @@ internal class IntellijRelationLocators(
                         "callee-reference:${candidate.reference.javaClass.name}",
                     )
                     .map { site -> RelationProviderLocator.Callee.Reference(site.file, site.range, site.descriptor) }
+            is CalleeProviderItem.CallbackSupplies ->
+                site(candidate.call, candidate.call.relativeWholeRange(), "callback-supplies").flatMap { site ->
+                    candidate.call.detachedClass().map { elementClass ->
+                        RelationProviderLocator.Callee.CallbackSupplies(
+                            site.file,
+                            site.range,
+                            site.descriptor,
+                            elementClass,
+                        )
+                    }
+                }
             is CalleeProviderItem.Unresolved ->
                 site(candidate.call, candidate.call.relativeWholeRange(), "unresolved-call").flatMap { site ->
                     candidate.call.detachedClass().map { elementClass ->
@@ -111,31 +122,57 @@ internal class IntellijRelationLocators(
 
     fun restoreCallee(locator: RelationProviderLocator.Callee): Refinement<CalleeProviderItem, RelationLimitation> =
         when (locator) {
-            is RelationProviderLocator.Callee.Reference ->
-                when (val restored = restoreReferenceSite(locator, "callee-reference")) {
-                    is Refinement.Rejected -> restored
-                    is Refinement.Refined ->
-                        when (val reference = restored.value as? KtReference) {
-                            null -> unavailable()
-                            else ->
-                                Refinement.Refined(
-                                    CalleeProviderItem.Reference(reference, reference.element.nearestDeclaration())
-                                )
-                        }
+            is RelationProviderLocator.Callee.Reference -> restoreCalleeReference(locator)
+            is RelationProviderLocator.Callee.CallbackSupplies -> restoreCallbackSupplies(locator)
+            is RelationProviderLocator.Callee.UnresolvedCall -> restoreUnresolvedCall(locator)
+        }
+
+    private fun restoreCalleeReference(
+        locator: RelationProviderLocator.Callee.Reference
+    ): Refinement<CalleeProviderItem, RelationLimitation> =
+        when (val restored = restoreReferenceSite(locator, "callee-reference")) {
+            is Refinement.Rejected -> restored
+            is Refinement.Refined ->
+                when (val reference = restored.value as? KtReference) {
+                    null -> unavailable()
+                    else ->
+                        Refinement.Refined(
+                            CalleeProviderItem.Reference(reference, reference.element.nearestDeclaration())
+                        )
                 }
-            is RelationProviderLocator.Callee.UnresolvedCall ->
-                when (
-                    val restored =
-                        restoreElement(locator, locator.elementClass) { element ->
-                            providerItemDescriptor(element, element.relativeWholeRange(), "unresolved-call")
-                        }
-                ) {
-                    is Refinement.Rejected -> restored
-                    is Refinement.Refined ->
-                        when (val call = restored.value as? KtCallElement) {
-                            null -> unavailable()
-                            else -> Refinement.Refined(CalleeProviderItem.Unresolved(call, call.nearestDeclaration()))
-                        }
+        }
+
+    private fun restoreCallbackSupplies(
+        locator: RelationProviderLocator.Callee.CallbackSupplies
+    ): Refinement<CalleeProviderItem, RelationLimitation> =
+        when (
+            val restored =
+                restoreElement(locator, locator.elementClass) { element ->
+                    providerItemDescriptor(element, element.relativeWholeRange(), "callback-supplies")
+                }
+        ) {
+            is Refinement.Rejected -> restored
+            is Refinement.Refined ->
+                when (val call = restored.value as? KtCallElement) {
+                    null -> unavailable()
+                    else -> Refinement.Refined(CalleeProviderItem.CallbackSupplies(call, call.nearestDeclaration()))
+                }
+        }
+
+    private fun restoreUnresolvedCall(
+        locator: RelationProviderLocator.Callee.UnresolvedCall
+    ): Refinement<CalleeProviderItem, RelationLimitation> =
+        when (
+            val restored =
+                restoreElement(locator, locator.elementClass) { element ->
+                    providerItemDescriptor(element, element.relativeWholeRange(), "unresolved-call")
+                }
+        ) {
+            is Refinement.Rejected -> restored
+            is Refinement.Refined ->
+                when (val call = restored.value as? KtCallElement) {
+                    null -> unavailable()
+                    else -> Refinement.Refined(CalleeProviderItem.Unresolved(call, call.nearestDeclaration()))
                 }
         }
 

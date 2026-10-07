@@ -42,7 +42,53 @@ internal class IntellijRelationCompilerQuery(
     private val scopeCompiler: IntellijRelationScopeCompiler = IntellijRelationScopeCompiler(),
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val limits: ReadLimits = ReadLimits.Default,
+    private val summaries: io.github.amichne.kast.relation.contract.CallbackSummaryCachePreparationPort =
+        io.github.amichne.kast.relation.contract.CallbackSummaryCachePreparationPort.Disabled,
 ) {
+    private fun prepareSummaries(
+        request: RelationRequest,
+        allowance: IntellijRelationAllowance,
+    ): io.github.amichne.kast.relation.contract.CallbackSummaryCachePort =
+        when (val remaining = allowance.remainingResources(request.budget.resources)) {
+            is io.github.amichne.kast.kernel.Refinement.Refined ->
+                summaries.prepare(request, remaining.value, allowance::chargePreparation)
+            is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                io.github.amichne.kast.relation.contract.CallbackSummaryCachePort.Disabled
+        }
+
+    private fun readNamedPartition(
+        cache: io.github.amichne.kast.relation.contract.NamedRelationCachePort,
+        request: RelationRequest,
+        projection: IntellijK2RelationProjection,
+        scope: CompiledRelationScope,
+        allowance: IntellijRelationAllowance,
+    ): io.github.amichne.kast.relation.contract.NamedRelationCacheLookup =
+        when (
+            val found =
+                cache.find(request) { previous ->
+                    readmitNamedRelationPartition(previous, request, projection, scope, allowance)
+                }
+        ) {
+            io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Miss -> found
+            is io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Found ->
+                if (allowance.elapsedLimitReached(request.budget.resources))
+                    io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Miss
+                else {
+                    cache.admitted(found.complete)
+                    observation.count(IntellijReadCounter.NATIVE_RELATION_PAGES)
+                    found
+                }
+        }
+
+    private fun finish(
+        compilation: RelationCompilation,
+        cache: io.github.amichne.kast.relation.contract.NamedRelationCachePort,
+    ): RelationCompilation {
+        if (compilation is RelationCompilation.Complete) cache.retain(compilation)
+        observation.count(IntellijReadCounter.NATIVE_RELATION_PAGES)
+        return compilation
+    }
+
     /**
      * Proof transition: `(Project, SemanticReadAuthority, RelationRequest, WorkspaceSearchScopeModelCompilation) ->
      * RelationCompilation`.
@@ -68,6 +114,7 @@ internal class IntellijRelationCompilerQuery(
         val allowance = IntellijRelationAllowance(System::nanoTime)
         return try {
             readAction {
+                val preparedSummaries = prepareSummaries(request, allowance)
                 val scope =
                     when (val compilation = scopeCompiler.compile(project, request, modelCompilation)) {
                         is IntellijRelationScopeCompilation.Compiled -> compilation.scope
@@ -101,6 +148,12 @@ internal class IntellijRelationCompilerQuery(
                         is IntellijRelationSubjectLookup.Rejected ->
                             return@readAction RelationCompilation.Rejected(lookup.reason.compilerRejection())
                     }
+                val namedCache = preparedSummaries.namedRelations
+                when (val reused = readNamedPartition(namedCache, request, projection, scope, allowance)) {
+                    io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Miss -> Unit
+                    is io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Found ->
+                        return@readAction reused.complete
+                }
                 val collector =
                     IntellijRelationCollector(
                         request,
@@ -115,9 +168,10 @@ internal class IntellijRelationCompilerQuery(
                             projection,
                             observation = observation,
                             limits = limits,
+                            summaries = preparedSummaries,
                         )
                         .read(request, subject.plan(request), collector)
-                collector.finish(termination).also { observation.count(IntellijReadCounter.NATIVE_RELATION_PAGES) }
+                finish(collector.finish(termination), namedCache)
             }
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled

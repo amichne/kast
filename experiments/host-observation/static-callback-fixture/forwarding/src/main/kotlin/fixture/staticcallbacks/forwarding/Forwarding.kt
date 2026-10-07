@@ -17,3 +17,13 @@ fun mutualSecond(block: () -> String): String {
     return mutualFirst(block)
 }
 fun externalEscapeWrapper(block: () -> String): Int = externalEscape(block)
+
+fun aliasWrapper(block: () -> String): String {
+    val first = block
+    val second = first
+    return invokeCallback(second)
+}
+fun mutableAliasWrapper(block: () -> String): String {
+    var alias = block
+    return invokeCallback(alias)
+}

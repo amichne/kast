@@ -106,7 +106,21 @@ enum class SourceLessCallableDisposition {
 }
 
 sealed interface RelationCallableTarget {
-    data class ParameterInvocation(val parameter: CallbackParameterIdentity) : RelationCallableTarget
+    data class DirectInvocations(val invocations: CompleteCallbackDirectInvocations) : RelationCallableTarget
+
+    data class UnavailableSupply(val evidence: CallbackSupplyUnavailable) : RelationCallableTarget
+
+    data class CallbackSupplies(val supplies: CompleteCallbackSupplies) : RelationCallableTarget
+
+    data class UnavailableReference(val cause: CallbackInvocationFlowCause) : RelationCallableTarget
+
+    data class NamedReference(val reference: NamedCallbackReference) : RelationCallableTarget
+
+    data class ParameterInvocation(
+        val parameter: CallbackParameterIdentity,
+        val suppliers: CallbackSupplierInventoryEvidence,
+        val invocation: CallbackParameterInvocation,
+    ) : RelationCallableTarget
 
     data class SourceLess(val callable: SourceLessCallable, val disposition: SourceLessCallableDisposition) :
         RelationCallableTarget
@@ -129,16 +143,32 @@ private constructor(
     val basis: SemanticReadAuthority,
     val requestedDomain: RelationSearchBoundary,
     val effectiveDomain: RelationScopeFingerprint,
+    val meaning: RelationMeaning,
     val occurrence: RelationOccurrence,
     val lexicalOwner: CompilerGroundedSymbolEvidence,
     val body: RelationCallableBody,
     val target: RelationCallableTarget,
 ) : Comparable<RelationCallableObservation> {
     val retainedBytes: Long
-        get() = 4096L + canonicalProjection().length * 4L
+        get() =
+            (4096L + canonicalProjection().length * 4L).addBytes(
+                when (val value = target) {
+                    is RelationCallableTarget.DirectInvocations -> value.invocations.retainedBytes
+                    is RelationCallableTarget.CallbackSupplies -> value.supplies.retainedBytes
+                    is RelationCallableTarget.NamedReference -> value.reference.retainedBytes
+                    is RelationCallableTarget.ParameterInvocation ->
+                        value.invocation.retainedBytes.addBytes(
+                            (value.suppliers as? CallbackSupplierInventoryEvidence.Exhaustive)?.inventory?.retainedBytes
+                                ?: 0L
+                        )
+                    is RelationCallableTarget.UnavailableSupply,
+                    is RelationCallableTarget.UnavailableReference,
+                    is RelationCallableTarget.SourceLess -> 0L
+                }
+            )
 
     fun belongsTo(request: RelationRequest): Boolean =
-        request.meaning == RelationMeaning.Callees &&
+        request.meaning == meaning &&
             subject == request.subject.fingerprint &&
             basis == request.subject.lease &&
             requestedDomain == request.boundary &&
@@ -148,6 +178,7 @@ private constructor(
         listOf(
                 subject.value,
                 effectiveDomain.value,
+                meaning.toString(),
                 occurrence.file.stableValue,
                 occurrence.range.toString(),
                 lexicalOwner.file.stableValue,
@@ -164,34 +195,7 @@ private constructor(
                         "NAMED:${value.evidence.name.value}:${value.evidence.signature.canonicalEncoding().value}"
                     is RelationCallableBody.Anonymous -> "ANONYMOUS:${value.signature.canonicalEncoding().value}"
                 },
-                when (val value = target) {
-                    is RelationCallableTarget.ParameterInvocation ->
-                        listOf(
-                                "PARAMETER",
-                                value.parameter.callable.compilerIdentity.value,
-                                value.parameter.callable.file.stableValue,
-                                value.parameter.callable.range.toString(),
-                                value.parameter.callable.name.value,
-                                value.parameter.callable.kind.name,
-                                value.parameter.callable.signature.canonicalEncoding().value,
-                                value.parameter.position.value.toString(),
-                                value.parameter.parameter.file.stableValue,
-                                value.parameter.parameter.range.toString(),
-                            )
-                            .joinToString("\u0000")
-                    is RelationCallableTarget.SourceLess ->
-                        listOf(
-                                "SOURCE_LESS",
-                                value.callable.compilerIdentity.value,
-                                value.callable.kind.name,
-                                value.callable.signature.canonicalEncoding().value,
-                                value.callable.origin.name,
-                                value.callable.moduleKind.name,
-                                value.callable.moduleName.value,
-                                value.disposition.name,
-                            )
-                            .joinToString("\u0000")
-                },
+                target.callableCanonicalProjection(),
             )
             .joinToString("\u0000")
 
@@ -205,37 +209,29 @@ private constructor(
             lexicalOwner: CompilerGroundedSymbolEvidence,
             body: RelationCallableBody,
             target: RelationCallableTarget,
-        ): Refinement<RelationCallableObservation, RelationCallableObservationFailure> =
-            when {
-                request.meaning != RelationMeaning.Callees ->
-                    Refinement.Rejected(RelationCallableObservationFailure.MEANING_MISMATCH)
-                request.subject.file != lexicalOwner.file ||
-                    request.subject.range != lexicalOwner.range ||
-                    request.subject.compilerIdentity != lexicalOwner.compilerIdentity ->
-                    Refinement.Rejected(RelationCallableObservationFailure.SUBJECT_MISMATCH)
-                occurrence.file != body.file || !body.range.containsValueRange(occurrence.range) ->
-                    Refinement.Rejected(RelationCallableObservationFailure.OCCURRENCE_OUTSIDE_BODY)
-                body.file != lexicalOwner.file || !lexicalOwner.range.containsValueRange(body.range) ->
-                    Refinement.Rejected(RelationCallableObservationFailure.BODY_OUTSIDE_LEXICAL_OWNER)
-                target is RelationCallableTarget.ParameterInvocation &&
-                    target.parameter.callable.lease != request.subject.lease ->
-                    Refinement.Rejected(RelationCallableObservationFailure.PARAMETER_AUTHORITY_MISMATCH)
-                target is RelationCallableTarget.SourceLess && !target.validDisposition(request) ->
-                    Refinement.Rejected(RelationCallableObservationFailure.BOUNDARY_POLICY_MISMATCH)
-                else ->
-                    Refinement.Refined(
-                        RelationCallableObservation(
-                            request.subject.fingerprint,
-                            request.subject.lease,
-                            request.boundary,
-                            request.scopeFingerprint,
-                            occurrence,
-                            lexicalOwner,
-                            body,
-                            target,
-                        )
-                    )
+        ): Refinement<RelationCallableObservation, RelationCallableObservationFailure> {
+            when (val admitted = admitCallableFrame(request, occurrence, lexicalOwner, body, target)) {
+                is Refinement.Rejected -> return admitted
+                is Refinement.Refined -> Unit
             }
+            when (val admitted = target.admitCallableTarget(request, occurrence, body)) {
+                is Refinement.Rejected -> return admitted
+                is Refinement.Refined -> Unit
+            }
+            return Refinement.Refined(
+                RelationCallableObservation(
+                    request.subject.fingerprint,
+                    request.subject.lease,
+                    request.boundary,
+                    request.scopeFingerprint,
+                    request.meaning,
+                    occurrence,
+                    lexicalOwner,
+                    body,
+                    target,
+                )
+            )
+        }
     }
 }
 
@@ -252,4 +248,142 @@ private fun RelationCallableTarget.SourceLess.validDisposition(request: Relation
             callable.moduleKind == SourceLessCallableModuleKind.LIBRARY &&
                 libraries == io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy.INCLUDE
     }
+}
+
+private fun CompleteCallbackSupply.admitsObservation(
+    request: RelationRequest,
+    occurrence: RelationOccurrence,
+    body: RelationCallableBody,
+): Boolean {
+    val invocation = supplier.binding.invocation
+    if (invocation.basis != request.subject.lease.identity || supplier.binding.invocationOwner != body) return false
+    return occurrence.file == invocation.enclosing.file && occurrence.range == invocation.range
+}
+
+private fun CompleteCallbackDirectInvocations.admitsObservation(
+    request: RelationRequest,
+    occurrence: RelationOccurrence,
+    body: RelationCallableBody,
+): Boolean =
+    binding.basis == request.subject.lease.identity && binding.occurrence == occurrence && binding.owner == body
+
+private fun RelationCallableTarget.ParameterInvocation.admitsParameter(
+    request: RelationRequest,
+    occurrence: RelationOccurrence,
+    body: RelationCallableBody,
+): Boolean {
+    if (
+        parameter.callable.lease != request.subject.lease ||
+            parameter.callable.file != occurrence.file ||
+            !parameter.callable.range.containsValueRange(body.range)
+    )
+        return false
+    if (!suppliers.admits(parameter, request.scopeFingerprint)) return false
+    if (invocation.occurrence != occurrence || invocation.owner != body || invocation.forwardings.isNotEmpty())
+        return false
+    return invocation.callableTransfers.all { transfer ->
+        listOf(transfer.source, transfer.target).all { site ->
+            site.basis == request.subject.lease.identity &&
+                site.enclosing.valueIdentity == parameter.callable.valueIdentity
+        }
+    }
+}
+
+private fun RelationCallableTarget.callableCanonicalProjection(): String =
+    when (val value = this) {
+        is RelationCallableTarget.DirectInvocations -> value.invocations.canonicalProjection()
+        is RelationCallableTarget.CallbackSupplies -> value.supplies.canonicalProjection()
+        is RelationCallableTarget.UnavailableSupply ->
+            "UNAVAILABLE_SUPPLY:${value.evidence.causes.sortedBy { it.ordinal }.joinToString { it.name }}"
+        is RelationCallableTarget.UnavailableReference -> "UNAVAILABLE_REFERENCE:${value.cause.name}"
+        is RelationCallableTarget.NamedReference -> value.reference.canonicalProjection()
+        is RelationCallableTarget.ParameterInvocation ->
+            listOf(
+                    "PARAMETER",
+                    value.parameter.callable.compilerIdentity.value,
+                    value.parameter.callable.file.stableValue,
+                    value.parameter.callable.range.toString(),
+                    value.parameter.callable.name.value,
+                    value.parameter.callable.kind.name,
+                    value.parameter.callable.signature.canonicalEncoding().value,
+                    value.parameter.position.value.toString(),
+                    value.parameter.parameter.file.stableValue,
+                    value.parameter.parameter.range.toString(),
+                    value.suppliers.canonicalProjection(),
+                    value.invocation.canonicalProjection(),
+                )
+                .joinToString("\u0000")
+        is RelationCallableTarget.SourceLess ->
+            listOf(
+                    "SOURCE_LESS",
+                    value.callable.compilerIdentity.value,
+                    value.callable.kind.name,
+                    value.callable.signature.canonicalEncoding().value,
+                    value.callable.origin.name,
+                    value.callable.moduleKind.name,
+                    value.callable.moduleName.value,
+                    value.disposition.name,
+                )
+                .joinToString("\u0000")
+    }
+
+private fun admitCallableFrame(
+    request: RelationRequest,
+    occurrence: RelationOccurrence,
+    lexicalOwner: CompilerGroundedSymbolEvidence,
+    body: RelationCallableBody,
+    target: RelationCallableTarget,
+): Refinement<Unit, RelationCallableObservationFailure> =
+    when {
+        !request.meaning.admitsCallableTarget(target) ->
+            Refinement.Rejected(RelationCallableObservationFailure.MEANING_MISMATCH)
+        request.meaning == RelationMeaning.Callees && !request.namesLexicalOwner(lexicalOwner) ->
+            Refinement.Rejected(RelationCallableObservationFailure.SUBJECT_MISMATCH)
+        occurrence.file != body.file || !body.range.containsValueRange(occurrence.range) ->
+            Refinement.Rejected(RelationCallableObservationFailure.OCCURRENCE_OUTSIDE_BODY)
+        body.file != lexicalOwner.file || !lexicalOwner.range.containsValueRange(body.range) ->
+            Refinement.Rejected(RelationCallableObservationFailure.BODY_OUTSIDE_LEXICAL_OWNER)
+        else -> Refinement.Refined(Unit)
+    }
+
+private fun RelationMeaning.admitsCallableTarget(target: RelationCallableTarget): Boolean {
+    if (this == RelationMeaning.Callees) return true
+    return this == RelationMeaning.Callers &&
+        (target is RelationCallableTarget.NamedReference || target is RelationCallableTarget.UnavailableReference)
+}
+
+private fun RelationRequest.namesLexicalOwner(owner: CompilerGroundedSymbolEvidence): Boolean =
+    subject.file == owner.file && subject.range == owner.range && subject.compilerIdentity == owner.compilerIdentity
+
+private fun RelationCallableTarget.admitCallableTarget(
+    request: RelationRequest,
+    occurrence: RelationOccurrence,
+    body: RelationCallableBody,
+): Refinement<Unit, RelationCallableObservationFailure> {
+    val admitted =
+        when (this) {
+            is RelationCallableTarget.NamedReference -> admitsNamedTarget(request, occurrence)
+            is RelationCallableTarget.DirectInvocations -> invocations.admitsObservation(request, occurrence, body)
+            is RelationCallableTarget.CallbackSupplies ->
+                supplies.values.all { it.admitsObservation(request, occurrence, body) }
+            is RelationCallableTarget.ParameterInvocation ->
+                return if (admitsParameter(request, occurrence, body)) Refinement.Refined(Unit)
+                else Refinement.Rejected(RelationCallableObservationFailure.PARAMETER_AUTHORITY_MISMATCH)
+            is RelationCallableTarget.SourceLess ->
+                return if (validDisposition(request)) Refinement.Refined(Unit)
+                else Refinement.Rejected(RelationCallableObservationFailure.BOUNDARY_POLICY_MISMATCH)
+            is RelationCallableTarget.UnavailableSupply,
+            is RelationCallableTarget.UnavailableReference -> true
+        }
+    return if (admitted) Refinement.Refined(Unit)
+    else Refinement.Rejected(RelationCallableObservationFailure.SUBJECT_MISMATCH)
+}
+
+private fun RelationCallableTarget.NamedReference.admitsNamedTarget(
+    request: RelationRequest,
+    occurrence: RelationOccurrence,
+): Boolean {
+    if (reference.occurrence != occurrence || reference.target.lease != request.subject.lease) return false
+    return request.meaning != RelationMeaning.Callers ||
+        RevalidatedRelationEndpoint.validate(request.subject, reference.target.evidence) is Refinement.Refined
 }

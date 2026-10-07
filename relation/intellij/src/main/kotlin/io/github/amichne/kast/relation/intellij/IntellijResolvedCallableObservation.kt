@@ -12,6 +12,7 @@ internal fun IntellijK2ResolvedDeclaration.observedResolutionBy(
             is IntellijK2ResolvedDeclaration.Found -> IntellijReadTermination.K2_SOURCE_CALLABLE_CONFIRMED
             is IntellijK2ResolvedDeclaration.ParameterInvocation ->
                 IntellijReadTermination.K2_PARAMETER_INVOCATION_CONFIRMED
+            is IntellijK2ResolvedDeclaration.FunctionInvocation -> IntellijReadTermination.K2_INVOKE_RECEIVER_CONFIRMED
             is IntellijK2ResolvedDeclaration.SourceLess -> IntellijReadTermination.K2_SOURCELESS_CALLABLE_CONFIRMED
             IntellijK2ResolvedDeclaration.InvokeReceiver -> IntellijReadTermination.K2_INVOKE_RECEIVER_CONFIRMED
             IntellijK2ResolvedDeclaration.Unresolved -> IntellijReadTermination.K2_UNRESOLVED_SYMBOL
@@ -33,4 +34,19 @@ internal fun IntellijK2ResolvedDeclaration.observedResolutionBy(
         }
     )
     return this
+}
+
+/** Whole-call K2 refinement is observed separately from projecting its source-less callable evidence. */
+internal enum class IntellijInvokeCallRefinement {
+    CONFIRMED,
+    UNRESOLVED;
+
+    fun observe(observation: IntellijReadObservation) {
+        observation.terminated(
+            when (this) {
+                CONFIRMED -> IntellijReadTermination.K2_INVOKE_CALL_CONFIRMED
+                UNRESOLVED -> IntellijReadTermination.K2_INVOKE_CALL_UNRESOLVED
+            }
+        )
+    }
 }

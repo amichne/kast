@@ -47,6 +47,7 @@ internal fun unavailableCallbackSupply(
                 is Refinement.Refined -> CallbackInvocationFlowRead.Observed(refined.value)
                 is Refinement.Rejected -> CallbackInvocationFlowRead.ContractRejected(refined.failure)
             }
+        is CallbackInvocationFlowRead.Immutable,
         is CallbackInvocationFlowRead.Unavailable,
         is CallbackInvocationFlowRead.ContractRejected -> unbound
     }

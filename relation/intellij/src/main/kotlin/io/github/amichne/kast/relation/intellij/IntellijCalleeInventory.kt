@@ -10,7 +10,9 @@ import io.github.amichne.kast.relation.contract.RelationProviderLocator
 import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
+import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
+import org.jetbrains.kotlin.psi.KtCallableReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /** One native call-site discovery, retaining exact sites and confirming only the unconsumed suffix. */
@@ -35,10 +37,39 @@ internal class IntellijCalleeInventory(
                     cancellationCheck()
                     if (collector.admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY)
                         false
-                    else if (element is KtCallElement) collect(element, subject, inventory) else true
+                    else
+                        when (element) {
+                            is KtCallElement -> collect(element, subject, inventory)
+                            is KtCallableReferenceExpression -> collectReference(element, subject, inventory)
+                            else -> true
+                        }
                 },
             )
         return inventory.finish(exhausted, RelationProviderState::callees)
+    }
+
+    private fun collectReference(
+        expression: KtCallableReferenceExpression,
+        subject: KtNamedDeclaration,
+        inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
+    ): Boolean {
+        val owner = expression.nearestDeclaration()
+        val enclosing =
+            when (owner) {
+                is ContainingDeclaration.Deferred -> owner.enclosingDeclaration()
+                is ContainingDeclaration.Found,
+                ContainingDeclaration.Unsupported -> owner
+            }
+        if (enclosing !is ContainingDeclaration.Found || enclosing.declaration !== subject) return true
+        val references = expression.callableReference.references.filterIsInstance<KtReference>()
+        if (references.isEmpty()) {
+            collector.blockPartition(RelationLimitation.UNRESOLVED_TARGET)
+            return false
+        }
+        return references.all { reference ->
+            collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
+                inventory.append(locators.callee(CalleeProviderItem.Reference(reference, owner)))
+        }
     }
 
     private fun collect(
@@ -55,6 +86,11 @@ internal class IntellijCalleeInventory(
             }
         if (enclosing !is ContainingDeclaration.Found || enclosing.declaration !== subject) return true
         if (collector.admitProviderCandidate() != IntellijRelationProviderEnumerationAdmission.READY) return false
+        if (
+            owner is ContainingDeclaration.Found &&
+                !inventory.append(locators.callee(CalleeProviderItem.CallbackSupplies(call, owner)))
+        )
+            return false
         return when (val references = call.calleeReferences()) {
             is KotlinCallReferences.Found ->
                 references.references.all { reference ->

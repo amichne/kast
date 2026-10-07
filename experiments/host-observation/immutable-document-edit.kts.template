@@ -1,0 +1,108 @@
+// Opt-in disposable fixture only. Never opens, closes, or restarts a project.
+// Gson is the native ideScript carrier's JSON library; DTOs own fixed shapes.
+data class ImmutableEditRequest(val root: String, val token: String, val file: String,
+                                val expectedHostPid: Long, val before: String, val after: String, val mode: ImmutableEditMode)
+enum class ImmutableEditMode { UNSAVED, SAVED }
+enum class ImmutableEditFailure { INPUT_REJECTED, HOST_MISMATCH, OWNERSHIP_REJECTED,
+    PROJECT_UNAVAILABLE, SOURCE_UNAVAILABLE, PREIMAGE_MISMATCH, COMMIT_REJECTED }
+sealed interface ImmutableEditReceipt
+data class ImmutableEditApplied(val hostPid: Long, val file: String, val beforeSha256: String,
+    val afterSha256: String, val savedSha256: String, val type: String) : ImmutableEditReceipt {
+}
+data class ImmutableEditRejected(val failure: ImmutableEditFailure) : ImmutableEditReceipt {
+    val type: String = "REJECTED"
+}
+
+run {
+    fun hash(text: String): String = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    val input = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val gson = com.google.gson.Gson()
+    val pid = ProcessHandle.current().pid()
+    fun perform(): ImmutableEditReceipt {
+        if (java.nio.file.Files.size(input) > 800000L) return ImmutableEditRejected(ImmutableEditFailure.INPUT_REJECTED)
+        val text = java.nio.file.Files.readString(input)
+        val reader = com.google.gson.stream.JsonReader(java.io.StringReader(text))
+        if (reader.peek() != com.google.gson.stream.JsonToken.BEGIN_OBJECT)
+            return ImmutableEditRejected(ImmutableEditFailure.INPUT_REJECTED)
+        reader.beginObject()
+        val fields = mutableSetOf<String>()
+        while (reader.hasNext()) {
+            if (!fields.add(reader.nextName())) return ImmutableEditRejected(ImmutableEditFailure.INPUT_REJECTED)
+            reader.skipValue()
+        }
+        reader.endObject()
+        if (reader.peek() != com.google.gson.stream.JsonToken.END_DOCUMENT)
+            return ImmutableEditRejected(ImmutableEditFailure.INPUT_REJECTED)
+        val raw = com.google.gson.JsonParser.parseString(text)
+        if (!raw.isJsonObject || raw.asJsonObject.keySet() !=
+            setOf("root", "token", "file", "expectedHostPid", "before", "after", "mode"))
+            return ImmutableEditRejected(ImmutableEditFailure.INPUT_REJECTED)
+        val objectValue = raw.asJsonObject
+        if (setOf("root", "token", "file", "before", "after", "mode").any {
+                !objectValue[it].isJsonPrimitive || !objectValue[it].asJsonPrimitive.isString
+            } || !objectValue["expectedHostPid"].isJsonPrimitive ||
+            !objectValue["expectedHostPid"].asJsonPrimitive.isNumber ||
+            !objectValue["expectedHostPid"].asString.matches(Regex("[1-9][0-9]{0,18}")) ||
+            objectValue["expectedHostPid"].asString.toLongOrNull() == null)
+            return ImmutableEditRejected(ImmutableEditFailure.INPUT_REJECTED)
+        if (objectValue["mode"].asString !in setOf("UNSAVED", "SAVED"))
+            return ImmutableEditRejected(ImmutableEditFailure.INPUT_REJECTED)
+        val request = gson.fromJson(raw, ImmutableEditRequest::class.java)
+        if (request.before.toByteArray().size > 65536 || request.after.toByteArray().size > 65536 || request.before == request.after)
+            return ImmutableEditRejected(ImmutableEditFailure.INPUT_REJECTED)
+        if (request.expectedHostPid != pid) return ImmutableEditRejected(ImmutableEditFailure.HOST_MISMATCH)
+        val root = java.nio.file.Path.of(request.root)
+        if (!root.isAbsolute || root.toRealPath() != root) return ImmutableEditRejected(ImmutableEditFailure.OWNERSHIP_REJECTED)
+        val marker = root.resolve(".kast-owned-immutable-fixture")
+        if (java.nio.file.Files.isSymbolicLink(marker) || java.nio.file.Files.size(marker) != 32L ||
+            !request.token.matches(Regex("[0-9a-f]{32}")) || java.nio.file.Files.readString(marker) != request.token)
+            return ImmutableEditRejected(ImmutableEditFailure.OWNERSHIP_REJECTED)
+        val path = root.resolve(request.file)
+        val sources = setOf(
+            "suppliers/src/main/kotlin/fixture/immutable/suppliers/Suppliers.kt",
+            "forwarding/src/main/kotlin/fixture/immutable/forwarding/Forwarding.kt",
+            "invocation/src/main/kotlin/fixture/immutable/invocation/Invocation.kt",
+            "independent/src/main/kotlin/fixture/immutable/independent/Independent.kt")
+        if (request.file !in sources || path.normalize() != path || !path.startsWith(root) || path.toRealPath() != path)
+            return ImmutableEditRejected(ImmutableEditFailure.OWNERSHIP_REJECTED)
+        val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.singleOrNull {
+            it.basePath == request.root && !it.isDisposed
+        } ?: return ImmutableEditRejected(ImmutableEditFailure.PROJECT_UNAVAILABLE)
+        val virtual = com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath(path.toString())
+            ?: return ImmutableEditRejected(ImmutableEditFailure.SOURCE_UNAVAILABLE)
+        val saved = java.nio.file.Files.readString(path)
+        if (request.mode == ImmutableEditMode.SAVED && saved != request.before)
+            return ImmutableEditRejected(ImmutableEditFailure.PREIMAGE_MISMATCH)
+        val app = com.intellij.openapi.application.ApplicationManager.getApplication()
+        var result: ImmutableEditReceipt = ImmutableEditRejected(ImmutableEditFailure.COMMIT_REJECTED)
+        app.invokeAndWait {
+            val documents = com.intellij.openapi.fileEditor.FileDocumentManager.getInstance()
+            val document = documents.getDocument(virtual)
+            result = if (document == null) ImmutableEditRejected(ImmutableEditFailure.SOURCE_UNAVAILABLE)
+            else if (document.text != request.before) ImmutableEditRejected(ImmutableEditFailure.PREIMAGE_MISMATCH)
+            else {
+                com.intellij.openapi.application.WriteAction.run<RuntimeException> {
+                    document.setText(request.after)
+                    com.intellij.psi.PsiDocumentManager.getInstance(project).commitDocument(document)
+                }
+                // Saving inside the write action may defer persistence until it exits.
+                // The receipt observes disk, document and PSI after that boundary.
+                if (request.mode == ImmutableEditMode.SAVED) documents.saveDocument(document)
+                val expectedSaved = if (request.mode == ImmutableEditMode.SAVED) request.after else saved
+                if (document.text != request.after ||
+                    !com.intellij.psi.PsiDocumentManager.getInstance(project).isCommitted(document) ||
+                    java.nio.file.Files.readString(path) != expectedSaved ||
+                    (request.mode == ImmutableEditMode.SAVED && documents.isDocumentUnsaved(document)))
+                    ImmutableEditRejected(ImmutableEditFailure.COMMIT_REJECTED)
+                else ImmutableEditApplied(pid, request.file, hash(request.before), hash(request.after),
+                    hash(expectedSaved), "APPLIED_" + request.mode.name)
+            }
+        }
+        val expectedSaved = if (result is ImmutableEditApplied && request.mode == ImmutableEditMode.SAVED) request.after else saved
+        if (java.nio.file.Files.readString(path) != expectedSaved) return ImmutableEditRejected(ImmutableEditFailure.COMMIT_REJECTED)
+        return result
+    }
+    java.nio.file.Files.writeString(input.resolveSibling("result.json"), gson.toJson(perform()),
+        java.nio.file.StandardOpenOption.CREATE_NEW)
+}

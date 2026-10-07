@@ -137,9 +137,14 @@ internal class IntellijCallbackObservationEmitter(
     private val scope: CompiledRelationScope,
     private val collector: IntellijRelationCollector,
     observation: IntellijReadObservation,
+    cache: io.github.amichne.kast.relation.contract.CallbackSummaryCachePort =
+        io.github.amichne.kast.relation.contract.CallbackSummaryCachePort.Disabled,
     private val omit: (RelationLimitation, com.intellij.psi.PsiElement, com.intellij.openapi.util.TextRange) -> Boolean,
 ) {
-    private val summaries = CallbackParameterSummaries(request.budget, observation)
+    private val summaries =
+        CallbackParameterSummaries(request.budget, observation, cache) { previous ->
+            readmitCallbackSummary(previous, request, projection, scope, collector::admitCallbackWork)
+        }
 
     fun observe(
         reference: PsiReference,

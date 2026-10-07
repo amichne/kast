@@ -11,6 +11,7 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueTransfer
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
@@ -40,6 +41,7 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
         source: PreparedCallbackFlow,
         expression: KtNameReferenceExpression,
         argument: KtValueArgument,
+        callableTransfers: List<ValueTransfer>,
     ): CallbackForwardingRead {
         when (val permitted = context.permit()) {
             is Refinement.Refined -> Unit
@@ -73,7 +75,13 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return unavailable(admitted.failure)
             }
-        return observeForwarding(source, expression, target, PreparedCallbackOrigin.Argument(binding, call))
+        return observeForwarding(
+            source,
+            expression,
+            target,
+            PreparedCallbackOrigin.Argument(binding, call),
+            callableTransfers,
+        )
     }
 
     private fun mappedTarget(mapped: NativeArgument): Refinement<NativeForwardingTarget, CallbackInvocationFlowCause> {
@@ -145,6 +153,7 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
         expression: KtNameReferenceExpression,
         target: NativeForwardingTarget,
         origin: PreparedCallbackOrigin.Argument,
+        callableTransfers: List<ValueTransfer>,
     ): CallbackForwardingRead {
         val identity =
             when (val admitted = sourceIdentity(source)) {
@@ -154,7 +163,9 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
         val read =
             context.occurrence(expression)
                 ?: return unavailable(CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE)
-        return when (val admitted = CallbackParameterForwarding.fromCompiler(identity, read, origin.binding)) {
+        return when (
+            val admitted = CallbackParameterForwarding.fromCompiler(identity, read, origin.binding, callableTransfers)
+        ) {
             is Refinement.Refined ->
                 CallbackForwardingRead.Observed(
                     PreparedCallbackFlow(

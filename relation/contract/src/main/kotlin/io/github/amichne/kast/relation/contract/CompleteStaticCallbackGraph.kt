@@ -27,6 +27,7 @@ private constructor(
         ): Refinement<CompleteStaticCallbackGraph, StaticCallbackGraphFailure> {
             val flow =
                 when (val read = observation.flow) {
+                    is CallbackInvocationFlowRead.Immutable -> return immutable(observation, read.flow)
                     is CallbackInvocationFlowRead.Observed -> read.flow
                     is CallbackInvocationFlowRead.Unavailable ->
                         return Refinement.Rejected(StaticCallbackGraphFailure.Unavailable(read.cause))
@@ -57,6 +58,57 @@ private constructor(
                 }
             val nodes = edges.nodes()
             if (nodes.any { !it.insideWorkspace(observation.basis.workspaceRoot) })
+                return Refinement.Rejected(StaticCallbackGraphFailure.OutsideWorkspace)
+            return Refinement.Refined(
+                CompleteStaticCallbackGraph(
+                    observation,
+                    Collections.unmodifiableSet(nodes),
+                    Collections.unmodifiableList(edges),
+                )
+            )
+        }
+
+        private fun immutable(
+            observation: RelationCallbackObservation,
+            flow: ImmutableCallbackInvocationFlow,
+        ): Refinement<CompleteStaticCallbackGraph, StaticCallbackGraphFailure> {
+            if (flow.obligations.isNotEmpty())
+                return Refinement.Rejected(StaticCallbackGraphFailure.ImmutableUnresolved(flow))
+            if (flow.scan != CallbackInvocationScan.EXHAUSTIVE)
+                return Refinement.Rejected(StaticCallbackGraphFailure.IncompleteScan)
+            if (observation.policy is CallbackNamedCallPolicy.Unavailable)
+                return Refinement.Rejected(StaticCallbackGraphFailure.UnprovenPolicy(observation.policy))
+            val origin =
+                flow.origin as? ImmutableCallbackValueOrigin.Anonymous
+                    ?: return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
+            val owner =
+                when (val result = RelationCallableBody.Named.fromCompiler(observation.lexicalOwner)) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected -> return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
+                }
+            if (!flow.source.enclosing.matches(owner))
+                return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
+            val target =
+                when (val result = RelationCallableBody.Named.fromCompiler(observation.target)) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected -> return Refinement.Rejected(StaticCallbackGraphFailure.NonCallableTarget)
+                }
+            val body = StaticCallbackNode.Anonymous(origin.body)
+            val edges =
+                listOf<StaticCallbackEdge>(
+                    StaticCallbackEdge.ImmutableUses(StaticCallbackNode.Named(owner), body, flow),
+                    StaticCallbackEdge.BodyTarget(
+                        body,
+                        StaticCallbackNode.Named(target),
+                        observation.occurrence,
+                        observation.policy,
+                    ),
+                )
+            val nodes = edges.nodes()
+            if (
+                nodes.any { !it.insideWorkspace(observation.basis.workspaceRoot) } ||
+                    flow.admitCallbackWorkspace(observation.basis.workspaceRoot) is Refinement.Rejected
+            )
                 return Refinement.Rejected(StaticCallbackGraphFailure.OutsideWorkspace)
             return Refinement.Refined(
                 CompleteStaticCallbackGraph(
@@ -220,6 +272,19 @@ private fun StaticCallbackNode.insideWorkspace(root: CanonicalWorkspaceRoot): Bo
 private fun List<StaticCallbackEdge>.nodes(): Set<StaticCallbackNode> = flatMap { edge ->
     listOf(edge.source, edge.target) +
         when (edge) {
+            is StaticCallbackEdge.ImmutableUses ->
+                edge.evidence.uses.flatMap { use ->
+                    when (use) {
+                        is ImmutableCallbackInvocationUse.Supplied ->
+                            listOf(StaticCallbackNode.Formal(use.summary.formal, use.supplier.binding)) +
+                                use.summary.invocations.mapNotNull {
+                                    (it.owner as? RelationCallableBody.Named)?.let(StaticCallbackNode::Named)
+                                }
+                        is ImmutableCallbackInvocationUse.Direct ->
+                            listOf(StaticCallbackNode.Named(use.binding.owner as RelationCallableBody.Named))
+                        is ImmutableCallbackInvocationUse.Unused -> emptyList()
+                    }
+                }
             is StaticCallbackEdge.Supply -> listOf(edge.body)
             is StaticCallbackEdge.Invoke -> listOf(edge.owner)
             is StaticCallbackEdge.BodyTarget,

@@ -21,30 +21,8 @@ internal fun StaticCallbackGraphFailure.protocolGraphCause():
             Refinement.Refined(QueryCallbackGraphCauseDocument.Unavailable(cause.protocolCallbackDocument()))
         is StaticCallbackGraphFailure.InvalidFlow ->
             Refinement.Refined(QueryCallbackGraphCauseDocument.InvalidFlow(cause.protocolCallbackDocument()))
-        is StaticCallbackGraphFailure.Unresolved ->
-            when (
-                val obligations =
-                    QueryCallbackGraphObligationsDocument.from(
-                        flow.obligations.map { it.protocolCallbackDocument() }.sortedBy { it.ordinal }
-                    )
-            ) {
-                is Refinement.Refined ->
-                    Refinement.Refined(
-                        QueryCallbackGraphCauseDocument.Unresolved(
-                            obligations.value,
-                            flow.scan.protocolCallbackDocument(),
-                        )
-                    )
-                is Refinement.Rejected ->
-                    Refinement.Rejected(
-                        when (obligations.failure) {
-                            QueryCallbackGraphObligationsFailure.EMPTY ->
-                                QueryCallbackGraphProjectionFailureDocument.EMPTY_NATIVE_OBLIGATIONS
-                            QueryCallbackGraphObligationsFailure.NON_CANONICAL ->
-                                QueryCallbackGraphProjectionFailureDocument.NON_CANONICAL_NATIVE_OBLIGATIONS
-                        }
-                    )
-            }
+        is StaticCallbackGraphFailure.ImmutableUnresolved -> unresolvedGraphCause(flow.obligations, flow.scan)
+        is StaticCallbackGraphFailure.Unresolved -> unresolvedGraphCause(flow.obligations, flow.scan)
         is StaticCallbackGraphFailure.UnprovenPolicy ->
             when (val admitted = policy.protocolGraphPolicy()) {
                 is Refinement.Refined ->
@@ -120,4 +98,29 @@ private fun CallbackExclusionReason.protocolUnprovenExclusion():
             Refinement.Rejected(QueryCallbackGraphProjectionFailureDocument.NOINLINE_POLICY_REJECTED)
         CallbackExclusionReason.CROSSINLINE_ARGUMENT ->
             Refinement.Rejected(QueryCallbackGraphProjectionFailureDocument.CROSSINLINE_POLICY_REJECTED)
+    }
+
+private fun unresolvedGraphCause(
+    causes: Set<io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause>,
+    scan: io.github.amichne.kast.relation.contract.CallbackInvocationScan,
+): Refinement<QueryCallbackGraphCauseDocument, QueryCallbackGraphProjectionFailureDocument> =
+    when (
+        val admitted =
+            QueryCallbackGraphObligationsDocument.from(
+                causes.map { it.protocolCallbackDocument() }.sortedBy { it.ordinal }
+            )
+    ) {
+        is Refinement.Refined ->
+            Refinement.Refined(
+                QueryCallbackGraphCauseDocument.Unresolved(admitted.value, scan.protocolCallbackDocument())
+            )
+        is Refinement.Rejected ->
+            Refinement.Rejected(
+                when (admitted.failure) {
+                    QueryCallbackGraphObligationsFailure.EMPTY ->
+                        QueryCallbackGraphProjectionFailureDocument.EMPTY_NATIVE_OBLIGATIONS
+                    QueryCallbackGraphObligationsFailure.NON_CANONICAL ->
+                        QueryCallbackGraphProjectionFailureDocument.NON_CANONICAL_NATIVE_OBLIGATIONS
+                }
+            )
     }

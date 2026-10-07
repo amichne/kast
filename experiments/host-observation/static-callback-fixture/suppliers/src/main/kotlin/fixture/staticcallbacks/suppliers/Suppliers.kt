@@ -20,7 +20,7 @@ fun alphaEntry(): String {
 }
 fun betaEntry(): String = sharedWrapper { betaSink() }
 
-// Callable references remain outside the admitted COMPLETE_ONLY callback model.
+// Callable references retain supplied-value proof without becoming named calls.
 fun callableReferenceEntry(): String = sharedWrapper(::referenceSink)
 
 // Static recursive graphs: never execute these functions to qualify a query.
@@ -32,3 +32,11 @@ fun selfRecursiveEntry(): String {
 fun mutualRecursiveEntry(): String = mutualFirst { mutualRecursiveSink() }
 
 fun externalEscapeEntry(): Int = externalEscapeWrapper { escapeSink() }
+
+fun aliasEntry(): String = fixture.staticcallbacks.forwarding.aliasWrapper { fixture.staticcallbacks.invocation.aliasSink(); "alias" }
+fun mutableAliasEntry(): String = fixture.staticcallbacks.forwarding.mutableAliasWrapper { fixture.staticcallbacks.invocation.mutableAliasSink(); "mutable" }
+
+fun boundReferenceEntry(receiver: fixture.staticcallbacks.invocation.ReferenceReceiver): String =
+    fixture.staticcallbacks.forwarding.sharedWrapper(receiver::boundSink)
+fun unboundReferenceEntry(receiver: fixture.staticcallbacks.invocation.ReferenceReceiver): String =
+    fixture.staticcallbacks.invocation.invokeReceiverCallback(receiver, fixture.staticcallbacks.invocation.ReferenceReceiver::unboundSink)

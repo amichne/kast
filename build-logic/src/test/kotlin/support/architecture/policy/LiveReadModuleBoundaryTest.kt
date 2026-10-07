@@ -72,11 +72,12 @@ class LiveReadModuleBoundaryTest {
             ModuleId.DIAGNOSTIC_INTELLIJ, ModuleId.WORKSPACE_INTELLIJ_READ,
             ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_PLAN, ModuleId.CHANGE_APPLY,
             ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_RECOVERY, ModuleId.EVIDENCE_SQLITE,
+            ModuleId.TOPOLOGY_CONTRACT, ModuleId.TOPOLOGY_BUILD, ModuleId.TOPOLOGY_INTELLIJ,
         ).all(closure::contains))
         assertEquals(emptySet<ModuleId>(), closure.intersect(setOf(
             ModuleId.RUNTIME_COMPOSITION, ModuleId.INDEXER, ModuleId.RUNTIME_TELEMETRY,
             ModuleId.WORKSPACE_INTELLIJ, ModuleId.WORKSPACE_SERVICE,
-            ModuleId.DISTRIBUTION_MANAGED, ModuleId.TOPOLOGY_BUILD, ModuleId.TOPOLOGY_INTELLIJ,
+            ModuleId.DISTRIBUTION_MANAGED,
             ModuleId.TOPOLOGY_SERVICE,
         )))
     }

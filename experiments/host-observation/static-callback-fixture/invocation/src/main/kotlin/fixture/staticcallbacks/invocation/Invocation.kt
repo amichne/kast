@@ -10,3 +10,12 @@ fun recursiveSink(): String = "recursive"
 fun selfRecursiveSink(): String = "self-recursive"
 fun mutualRecursiveSink(): String = "mutual-recursive"
 fun escapeSink(): String = "escape"
+
+class ReferenceReceiver {
+    fun boundSink(): String = "bound"
+    fun unboundSink(): String = "unbound"
+}
+fun invokeReceiverCallback(receiver: ReferenceReceiver, block: (ReferenceReceiver) -> String): String = block(receiver)
+
+fun aliasSink(): String = "alias"
+fun mutableAliasSink(): String = "mutable"

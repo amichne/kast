@@ -14,6 +14,12 @@ private constructor(
     val scan: CallbackInvocationScan,
     val forwarding: CallbackForwardingEvidence,
 ) {
+    /** Every authority-bearing endpoint that a fresh compiler restoration must re-admit before cross-epoch reuse. */
+    fun requiredEndpoints(): List<RelationEndpoint> = CallbackSummaryEndpoints.collect(this)
+
+    /** Includes basis-free body and occurrence identities that also depend on exact source bytes. */
+    fun requiredSourceFiles() = CallbackSummaryEndpoints.sourceFiles(this)
+
     val retainedBytes: Long =
         invocations
             .fold(4096L.addBytes(formal.callable.detachedTextUnits().multiplyBytes(2))) { bytes, invocation ->

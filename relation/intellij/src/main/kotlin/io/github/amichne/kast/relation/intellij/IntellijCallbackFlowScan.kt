@@ -203,14 +203,10 @@ internal class IntellijCallbackFlowScan(
             recordAlias(expression, route, frame)
             return
         }
-        if (route.transfers.isNotEmpty()) {
-            obligations += CallbackInvocationFlowCause.PARAMETER_ESCAPES
-            return
-        }
         when (
             val forwarded =
                 IntellijCallbackForwardingReader(context)
-                    .read(frame.prepared, expression, value.parent as KtValueArgument)
+                    .read(frame.prepared, expression, value.parent as KtValueArgument, route.transfers)
         ) {
             is CallbackForwardingRead.Unavailable -> obligations += forwarded.cause
             is CallbackForwardingRead.Observed -> recordForwarding(expression, frame, forwarded, worklist)

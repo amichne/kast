@@ -1085,20 +1085,39 @@ def load_trial(path, profile=WorkloadProfile.RELIABILITY_FIXTURE):
 def read_observations(path, before):
     diagnostics, phases = [], []
     after = path.stat()
-    if after.st_ino != before.st_ino or not 0 <= after.st_size - before.st_size <= 2 * 1024 * 1024:
+    if after.st_ino == before.st_ino:
+        windows = [(path, before.st_size, after.st_size - before.st_size, after.st_ino)]
+    else:
+        # IDEA's immediate rollover name is fixed. Only the exact inode observed
+        # before this invocation can supply the tail; never search older logs.
+        previous = path.with_name(path.stem + '.1' + path.suffix)
+        if previous.is_symlink() or not previous.is_file(): return diagnostics, phases
+        rolled = previous.stat()
+        if rolled.st_ino != before.st_ino: return diagnostics, phases
+        windows = [(previous, before.st_size, rolled.st_size - before.st_size, rolled.st_ino),
+                   (path, 0, after.st_size, after.st_ino)]
+    lengths = [length for _, _, length, _ in windows]
+    if any(length < 0 for length in lengths) or sum(lengths) > OBSERVATION_POLICY['maxAppendedBytes']:
         return diagnostics, phases
-    with path.open('rb') as stream:
-        stream.seek(before.st_size)
-        for line in stream.read(after.st_size - before.st_size).splitlines():
-            for marker, target in ((b'kast_semantic_read ', diagnostics), (b'kast_semantic_phase ', phases)):
-                if marker in line:
-                    try: target.append(json.loads(line.split(marker, 1)[1]))
-                    except json.JSONDecodeError: pass  # A malformed receipt leaves correlation unavailable.
+    chunks = []
+    for observed_path, offset, length, inode in windows:
+        with observed_path.open('rb') as stream:
+            opened = os.fstat(stream.fileno())
+            if opened.st_ino != inode or opened.st_size < offset + length: return [], []
+            stream.seek(offset)
+            chunk = stream.read(length)
+            if len(chunk) != length: return [], []
+            chunks.append(chunk)
+    for line in b''.join(chunks).splitlines():
+        for marker, target in ((b'kast_semantic_read ', diagnostics), (b'kast_semantic_phase ', phases)):
+            if marker in line:
+                try: target.append(json.loads(line.split(marker, 1)[1]))
+                except json.JSONDecodeError: pass  # A malformed receipt leaves correlation unavailable.
     return diagnostics, phases
 
 
 
-OBSERVATION_POLICY = dict(maxWaitMillis=250, maxAppendedBytes=2 * 1024 * 1024)
+OBSERVATION_POLICY = dict(maxWaitMillis=250, maxAppendedBytes=2 * 1024 * 1024, maxRotations=1)
 
 
 def collect_observations(path, before, observe=read_observations, clock=time.monotonic, pause=time.sleep):

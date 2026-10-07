@@ -83,6 +83,7 @@ internal class QueryCallbackRefinementWireFixture {
                 QueryCallbackParameterIdentityWireDocument(initial.callable, initial.position, initial.parameter),
                 occurrence("Boundary.kt", 14, 18),
                 mapped,
+                emptyList(),
             )
         val invocation =
             observed.invocations
@@ -136,6 +137,7 @@ internal class QueryCallbackRefinementWireFixture {
                     graph.root.position,
                     graph.root.parameter,
                 ),
+                emptyList(),
             )
         return seed.copy(flow = observed.copy(forwarding = graph.copy(forwardings = graph.forwardings + back)))
     }

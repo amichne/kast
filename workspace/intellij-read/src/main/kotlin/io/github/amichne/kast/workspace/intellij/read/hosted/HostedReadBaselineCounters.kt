@@ -23,22 +23,45 @@ internal fun initialHostedReadCounters(): LinkedHashMap<Pair<IntellijReadCounter
         this[IntellijReadCounter.REVALIDATION_LOCATORS_REJECTED to IntellijReadContributor.NONE] = 0L
         this[IntellijReadCounter.EPOCH_READ_PREEMPTIONS to IntellijReadContributor.NONE] = 0L
         // Zero is observed only by this vocabulary's runtime; absent old-runtime counters remain unmeasured.
-        listOf(
-                IntellijReadCounter.CALLBACK_BODY_SCANS,
-                IntellijReadCounter.CALLBACK_BODY_SCANS_COMPLETED,
-                IntellijReadCounter.CALLBACK_BODY_SCANS_INCOMPLETE,
-                IntellijReadCounter.CALLBACK_SUMMARY_HITS,
-                IntellijReadCounter.CALLBACK_SUMMARY_MISSES,
-                IntellijReadCounter.CALLBACK_SUMMARY_REJECTIONS,
-                IntellijReadCounter.CALLBACK_SUMMARIES_RETAINED,
-                IntellijReadCounter.CALLBACK_SUMMARY_RETENTION_REJECTIONS,
-                IntellijReadCounter.CALLBACK_FORWARDING_FORMALS,
-                IntellijReadCounter.CALLBACK_FORWARDING_EDGES,
-                IntellijReadCounter.CALLBACK_FIXED_POINTS_COMPLETED,
-                IntellijReadCounter.CALLBACK_FIXED_POINTS_REJECTED,
-                IntellijReadCounter.QUERY_POLICY_EVIDENCE_PUBLICATIONS_COMMITTED,
-                IntellijReadCounter.QUERY_POLICY_EVIDENCE_COMMIT_REJECTIONS,
-                IntellijReadCounter.QUERY_POLICY_EVIDENCE_PUBLICATIONS_DISCARDED,
-            )
-            .forEach { this[it to IntellijReadContributor.NONE] = 0L }
+        callbackAndSemanticCounters().forEach { this[it to IntellijReadContributor.NONE] = 0L }
     }
+
+private fun callbackAndSemanticCounters(): List<IntellijReadCounter> =
+    listOf(
+        IntellijReadCounter.CALLBACK_SUPPLIER_PARTITIONS_STARTED,
+        IntellijReadCounter.CALLBACK_SUPPLIER_PARTITIONS_COMPLETED,
+        IntellijReadCounter.CALLBACK_SUPPLIER_PARTITIONS_REJECTED,
+        IntellijReadCounter.CALLBACK_SUPPLIER_CALLS_EXAMINED,
+        IntellijReadCounter.CALLBACK_SUPPLIER_VALUES_CONFIRMED,
+        IntellijReadCounter.CALLBACK_BODY_SCANS,
+        IntellijReadCounter.CALLBACK_BODY_SCANS_COMPLETED,
+        IntellijReadCounter.CALLBACK_BODY_SCANS_INCOMPLETE,
+        IntellijReadCounter.CALLBACK_SUMMARY_HITS,
+        IntellijReadCounter.CALLBACK_SUMMARY_MISSES,
+        IntellijReadCounter.CALLBACK_SUMMARY_REJECTIONS,
+        IntellijReadCounter.CALLBACK_SUMMARIES_RETAINED,
+        IntellijReadCounter.CALLBACK_SUMMARY_RETENTION_REJECTIONS,
+        IntellijReadCounter.NAMED_CALLBACK_REFERENCES_CONFIRMED,
+        IntellijReadCounter.NAMED_CALLBACK_REFERENCES_REJECTED,
+        IntellijReadCounter.SEMANTIC_FACT_PARTITIONS_EXTRACTED,
+        IntellijReadCounter.SEMANTIC_FACT_PARTITIONS_REUSED,
+        IntellijReadCounter.SEMANTIC_FACT_PARTITIONS_INVALIDATED,
+        IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REVALIDATIONS,
+        IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REJECTIONS,
+        IntellijReadCounter.SEMANTIC_FACT_GENERATIONS_PUBLISHED,
+        IntellijReadCounter.SEMANTIC_FACT_GENERATIONS_REJECTED,
+        IntellijReadCounter.SEMANTIC_FACT_NAMED_PARTITIONS_EXTRACTED,
+        IntellijReadCounter.SEMANTIC_FACT_NAMED_PARTITIONS_REUSED,
+        IntellijReadCounter.SEMANTIC_FACT_NAMED_PARTITIONS_INVALIDATED,
+        IntellijReadCounter.SEMANTIC_FACT_NAMED_PARTITIONS_INELIGIBLE,
+        IntellijReadCounter.SEMANTIC_FACT_SUPPLIER_INVENTORIES_EXTRACTED,
+        IntellijReadCounter.SEMANTIC_FACT_SUPPLIER_INVENTORIES_REUSED,
+        IntellijReadCounter.SEMANTIC_FACT_SUPPLIER_INVENTORIES_INVALIDATED,
+        IntellijReadCounter.CALLBACK_FORWARDING_FORMALS,
+        IntellijReadCounter.CALLBACK_FORWARDING_EDGES,
+        IntellijReadCounter.CALLBACK_FIXED_POINTS_COMPLETED,
+        IntellijReadCounter.CALLBACK_FIXED_POINTS_REJECTED,
+        IntellijReadCounter.QUERY_POLICY_EVIDENCE_PUBLICATIONS_COMMITTED,
+        IntellijReadCounter.QUERY_POLICY_EVIDENCE_COMMIT_REJECTIONS,
+        IntellijReadCounter.QUERY_POLICY_EVIDENCE_PUBLICATIONS_DISCARDED,
+    )

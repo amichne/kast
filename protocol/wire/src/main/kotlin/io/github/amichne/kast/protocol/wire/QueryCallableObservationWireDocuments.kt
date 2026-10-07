@@ -36,9 +36,45 @@ internal data class QuerySourceLessCallableWireDocument(
 @JsonClassDiscriminator("type")
 internal sealed interface QueryCallableTargetWireDocument {
     @Serializable
+    @SerialName("DIRECT_INVOCATIONS")
+    data class DirectInvocations(
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(minimumItems = 1, maximumItems = 1000)
+        val invocations: List<QueryImmutableCallbackUseWireDocument.Direct>
+    ) : QueryCallableTargetWireDocument
+
+    @Serializable
+    @SerialName("UNAVAILABLE_SUPPLY")
+    data class UnavailableSupply(
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(minimumItems = 1, maximumItems = 1000)
+        val causes: List<io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument>
+    ) : QueryCallableTargetWireDocument
+
+    @Serializable
+    @SerialName("CALLBACK_SUPPLIES")
+    data class CallbackSupplies(
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(minimumItems = 1, maximumItems = 1000)
+        val supplies: List<QueryImmutableCallbackUseWireDocument.Supplied>,
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(minimumItems = 1, maximumItems = 1000)
+        val formals: List<QueryCallbackParameterIdentityWireDocument>,
+    ) : QueryCallableTargetWireDocument
+
+    @Serializable
+    @SerialName("UNAVAILABLE_REFERENCE")
+    data class UnavailableReference(
+        val cause: io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
+    ) : QueryCallableTargetWireDocument
+
+    @Serializable
+    @SerialName("NAMED_REFERENCE")
+    data class NamedReference(val reference: QueryNamedCallbackReferenceWireDocument) : QueryCallableTargetWireDocument
+
+    @Serializable
     @SerialName("PARAMETER_INVOCATION")
-    data class ParameterInvocation(val parameter: QueryCallbackParameterIdentityWireDocument) :
-        QueryCallableTargetWireDocument
+    data class ParameterInvocation(
+        val parameter: QueryCallbackParameterIdentityWireDocument,
+        val suppliers: QueryCallbackSupplierInventoryWireDocument,
+        val invocation: QueryCallbackInvocationWireDocument,
+    ) : QueryCallableTargetWireDocument
 
     @Serializable
     @SerialName("SOURCE_LESS")
@@ -66,8 +102,32 @@ internal fun QueryCallableObservationDocument.toWireDocument() =
         lexicalOwner.callbackWire(),
         body.callbackWire(),
         when (val value = target) {
+            is QueryCallableTargetDocument.DirectInvocations ->
+                QueryCallableTargetWireDocument.DirectInvocations(
+                    value.invocations.values.map {
+                        QueryImmutableCallbackUseWireDocument.Direct(
+                            it.value.immutableCallbackWire(),
+                            it.binding.callbackWire(),
+                        )
+                    }
+                )
+            is QueryCallableTargetDocument.UnavailableSupply ->
+                QueryCallableTargetWireDocument.UnavailableSupply(value.obligations.values)
+            is QueryCallableTargetDocument.CallbackSupplies ->
+                QueryCallableTargetWireDocument.CallbackSupplies(
+                    value.supplies.values.map { it.suppliedWire() },
+                    value.formals.values.map { it.callbackWire() },
+                )
+            is QueryCallableTargetDocument.UnavailableReference ->
+                QueryCallableTargetWireDocument.UnavailableReference(value.cause)
+            is QueryCallableTargetDocument.NamedReference ->
+                QueryCallableTargetWireDocument.NamedReference(value.reference.callbackWire())
             is QueryCallableTargetDocument.ParameterInvocation ->
-                QueryCallableTargetWireDocument.ParameterInvocation(value.parameter.callbackWire())
+                QueryCallableTargetWireDocument.ParameterInvocation(
+                    value.parameter.callbackWire(),
+                    value.suppliers.supplierInventoryWire(),
+                    value.invocation.invocationWire(),
+                )
             is QueryCallableTargetDocument.SourceLess ->
                 QueryCallableTargetWireDocument.SourceLess(
                     QuerySourceLessCallableWireDocument(
@@ -95,8 +155,35 @@ internal fun QueryCallableObservationWireDocument.toContract():
 
 private fun QueryCallableTargetWireDocument.toContract(): WireDocumentConversion<QueryCallableTargetDocument> =
     when (this) {
+        is QueryCallableTargetWireDocument.DirectInvocations ->
+            invocations
+                .convertEach { direct ->
+                    direct.toContract().flatMapConverted {
+                        if (it is io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument.Direct)
+                            WireDocumentConversion.Converted(it)
+                        else WireDocumentConversion.Rejected
+                    }
+                }
+                .flatMapConverted {
+                    io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(it).toWireDocumentConversion()
+                }
+                .mapConverted { QueryCallableTargetDocument.DirectInvocations(it) }
+        is QueryCallableTargetWireDocument.UnavailableSupply ->
+            io.github.amichne.kast.protocol.contract.QueryCallbackGraphObligationsDocument.from(causes)
+                .toWireDocumentConversion()
+                .mapConverted { QueryCallableTargetDocument.UnavailableSupply(it) }
+        is QueryCallableTargetWireDocument.CallbackSupplies -> suppliesContract()
+        is QueryCallableTargetWireDocument.UnavailableReference ->
+            WireDocumentConversion.Converted(QueryCallableTargetDocument.UnavailableReference(cause))
+        is QueryCallableTargetWireDocument.NamedReference ->
+            reference.toContract().mapConverted { QueryCallableTargetDocument.NamedReference(it) }
         is QueryCallableTargetWireDocument.ParameterInvocation ->
-            parameter.toContract().mapConverted { QueryCallableTargetDocument.ParameterInvocation(it) }
+            combineConverted(parameter.toContract(), suppliers.toContract(), invocation.toContract()) {
+                parameter,
+                suppliers,
+                invocation ->
+                QueryCallableTargetDocument.ParameterInvocation(parameter, suppliers, invocation)
+            }
         is QueryCallableTargetWireDocument.SourceLess ->
             combineConverted(
                     callable.compilerEvidence.toContract(),
@@ -152,6 +239,37 @@ internal fun QueryWalkCallableObservationWireDocument.toContract():
             )
         }
         .flatMapConverted { value ->
-            if (value.observation.admitsDomain(effectiveDomain)) WireDocumentConversion.Converted(value)
+            if (value.observation.admitsDomain(effectiveDomain, domainFingerprint))
+                WireDocumentConversion.Converted(value)
             else WireDocumentConversion.Rejected
+        }
+
+internal fun io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument.invocationWire() =
+    QueryCallbackInvocationWireDocument(
+        occurrence.callbackWire(),
+        owner.callbackWire(),
+        callableTransfers.values,
+        forwardings.values.map { it.callbackWire() },
+    )
+
+private fun QueryCallableTargetWireDocument.CallbackSupplies.suppliesContract():
+    WireDocumentConversion<QueryCallableTargetDocument> =
+    supplies
+        .convertEach { supply ->
+            supply.toContract().flatMapConverted {
+                if (it is io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument.Supplied)
+                    WireDocumentConversion.Converted(it)
+                else WireDocumentConversion.Rejected
+            }
+        }
+        .flatMapConverted {
+            io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(it).toWireDocumentConversion()
+        }
+        .flatMapConverted { supplies ->
+            formals
+                .convertEach { it.toContract() }
+                .flatMapConverted {
+                    io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(it).toWireDocumentConversion()
+                }
+                .mapConverted { QueryCallableTargetDocument.CallbackSupplies(supplies, it) }
         }

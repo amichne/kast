@@ -18,6 +18,13 @@ sealed interface StaticCallbackEdge {
     val source: StaticCallbackNode
     val target: StaticCallbackNode
 
+    data class ImmutableUses
+    internal constructor(
+        override val source: StaticCallbackNode.Named,
+        override val target: StaticCallbackNode.Anonymous,
+        val evidence: ImmutableCallbackInvocationFlow,
+    ) : StaticCallbackEdge
+
     data class Supply
     internal constructor(
         override val source: StaticCallbackNode.Named,
@@ -61,6 +68,8 @@ sealed interface StaticCallbackGraphFailure {
     data class Unavailable(val cause: CallbackInvocationFlowCause) : StaticCallbackGraphFailure
 
     data class InvalidFlow(val cause: CallbackInvocationFlowFailure) : StaticCallbackGraphFailure
+
+    data class ImmutableUnresolved(val flow: ImmutableCallbackInvocationFlow) : StaticCallbackGraphFailure
 
     data class Unresolved(val flow: CallbackInvocationFlow) : StaticCallbackGraphFailure
 

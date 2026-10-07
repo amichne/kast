@@ -11,19 +11,33 @@ private data class CallbackInvocationReceiver(
 internal fun QueryCallbackFlowDocument.Observed.admitParameterInvocations(
     initial: QueryCallbackParameterIdentityDocument,
     initialReference: ImpactDeclarationReferenceDocument,
+): Refinement<Unit, QueryCallbackDocumentFailure> =
+    CallbackInvocationRouteProof(basis, invocations.values, obligations.values, forwarding)
+        .admitParameterInvocations(initial, initialReference)
+
+internal class CallbackInvocationRouteProof(
+    val basis: ImpactSemanticBasisDocument,
+    val invocations: List<QueryCallbackInvocationDocument>,
+    val obligations: List<QueryCallbackFlowCauseDocument>,
+    val forwarding: QueryCallbackForwardingEvidenceDocument,
+)
+
+internal fun CallbackInvocationRouteProof.admitParameterInvocations(
+    initial: QueryCallbackParameterIdentityDocument,
+    initialReference: ImpactDeclarationReferenceDocument,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
     val receiver = CallbackInvocationReceiver(initial, initialReference)
     when (val graph = admitForwardingEvidence(initial)) {
         is Refinement.Rejected -> return graph
         is Refinement.Refined -> Unit
     }
-    for (invocation in invocations.values) {
+    for (invocation in invocations) {
         val terminal =
             when (val route = admitForwardings(invocation, receiver)) {
                 is Refinement.Rejected -> return route
                 is Refinement.Refined -> route.value
             }
-        when (val admitted = invocation.admitReceivingOwner(terminal, obligations.values)) {
+        when (val admitted = invocation.admitReceivingOwner(terminal, obligations)) {
             is Refinement.Rejected -> return admitted
             is Refinement.Refined -> Unit
         }
@@ -31,7 +45,7 @@ internal fun QueryCallbackFlowDocument.Observed.admitParameterInvocations(
     return Refinement.Refined(Unit)
 }
 
-private data class CallbackFormalSite(
+internal data class CallbackFormalSite(
     val callable: QueryExcludedCompilerTargetDocument,
     val declaration: SourceRangeDocument,
     val parameterFile: ProtocolText,
@@ -39,10 +53,10 @@ private data class CallbackFormalSite(
     val position: ProtocolOffset,
 )
 
-private fun QueryCallbackParameterIdentityDocument.formalSite() =
+internal fun QueryCallbackParameterIdentityDocument.formalSite() =
     CallbackFormalSite(callable.compilerTarget, callable.declaration.range, parameter.file, parameter.range, position)
 
-private fun QueryCallbackFlowDocument.Observed.admitForwardingEvidence(
+private fun CallbackInvocationRouteProof.admitForwardingEvidence(
     initial: QueryCallbackParameterIdentityDocument
 ): Refinement<Unit, QueryCallbackDocumentFailure> =
     when (val evidence = forwarding) {
@@ -50,7 +64,7 @@ private fun QueryCallbackFlowDocument.Observed.admitForwardingEvidence(
         is QueryCallbackForwardingEvidenceDocument.ExhaustedGraph -> admitExhaustedGraph(initial, evidence)
     }
 
-private fun QueryCallbackFlowDocument.Observed.admitExhaustedGraph(
+private fun CallbackInvocationRouteProof.admitExhaustedGraph(
     initial: QueryCallbackParameterIdentityDocument,
     graph: QueryCallbackForwardingEvidenceDocument.ExhaustedGraph,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
@@ -65,7 +79,7 @@ private fun QueryCallbackFlowDocument.Observed.admitExhaustedGraph(
         is Refinement.Refined -> Unit
     }
     if (graph.reachableFormalSites() != inventory) return rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
-    if (invocations.values.any { !it.hasInventoriedForwardings(graph.forwardings.values) })
+    if (invocations.any { !it.hasInventoriedForwardings(graph.forwardings.values) })
         return rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
     return Refinement.Refined(Unit)
 }
@@ -81,7 +95,7 @@ private fun QueryCallbackForwardingEvidenceDocument.ExhaustedGraph.admitFormalIn
         rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
     else Refinement.Refined(Unit)
 
-private fun QueryCallbackFlowDocument.Observed.admitGraphForwardings(
+private fun CallbackInvocationRouteProof.admitGraphForwardings(
     edges: List<QueryCallbackForwardingDocument>,
     inventory: Set<CallbackFormalSite>,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
@@ -97,7 +111,7 @@ private fun QueryCallbackFlowDocument.Observed.admitGraphForwardings(
                 edge.admitForwarding(
                     CallbackInvocationReceiver(edge.source, edge.source.callable.reference(basis)),
                     basis,
-                    obligations.values,
+                    obligations,
                 )
         ) {
             is Refinement.Rejected -> return admitted
@@ -130,7 +144,8 @@ private fun QueryCallbackForwardingDocument.sameForwarding(other: QueryCallbackF
         target.invocation == other.target.invocation &&
         target.invocationOccurrence.sameSite(other.target.invocationOccurrence) &&
         target.invocationOwner.sameOwner(other.target.invocationOwner) &&
-        target.parameterIdentity().sameParameter(other.target.parameterIdentity())
+        target.parameterIdentity().sameParameter(other.target.parameterIdentity()) &&
+        callableTransfers.values == other.callableTransfers.values
 
 private fun QueryCallbackBodyDocument.sameOwner(other: QueryCallbackBodyDocument): Boolean =
     when (this) {
@@ -144,13 +159,13 @@ private fun QueryCallbackBodyDocument.sameOwner(other: QueryCallbackBodyDocument
                 compilerEvidence == other.compilerEvidence
     }
 
-private fun QueryCallbackFlowDocument.Observed.admitForwardings(
+private fun CallbackInvocationRouteProof.admitForwardings(
     invocation: QueryCallbackInvocationDocument,
     initial: CallbackInvocationReceiver,
 ): Refinement<CallbackInvocationReceiver, QueryCallbackDocumentFailure> {
     var receiver = initial
     for (forwarding in invocation.forwardings.values) {
-        when (val admitted = forwarding.admitForwarding(receiver, basis, obligations.values)) {
+        when (val admitted = forwarding.admitForwarding(receiver, basis, obligations)) {
             is Refinement.Rejected -> return admitted
             is Refinement.Refined -> receiver = admitted.value
         }
@@ -173,6 +188,8 @@ private fun QueryCallbackForwardingDocument.admitForwarding(
     if (!validForwardingSites(receiver.parameter, owner))
         return rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
     if (!target.validForwardingMapping(basis)) return rejected(QueryCallbackDocumentFailure.INVALID_FORWARDING_PATH)
+    if (!validCallableTransfers(callableTransfers.values, receiver.reference, argument))
+        return rejected(QueryCallbackDocumentFailure.TRANSFER_PROOF_MISMATCH)
     if (
         !target.invocationOwner.isReceivingCallable(source.callable) &&
             QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in obligations
@@ -223,7 +240,7 @@ private fun QueryCallbackInvocationDocument.validReceivingSites(
 ): Boolean =
     callable.declaration.contains(occurrence) && callable.declaration.contains(owner) && owner.contains(occurrence)
 
-private fun QueryCallbackParameterIdentityDocument.sameParameter(
+internal fun QueryCallbackParameterIdentityDocument.sameParameter(
     other: QueryCallbackParameterIdentityDocument
 ): Boolean =
     position == other.position &&
@@ -239,7 +256,14 @@ internal fun QueryCallbackBodyDocument.isReceivingCallable(receiving: QueryCallb
     }
 
 private fun QueryCallbackInvocationDocument.validTransfers(callable: ImpactDeclarationReferenceDocument): Boolean {
-    val transfers = callableTransfers.values
+    return validCallableTransfers(callableTransfers.values, callable, occurrence)
+}
+
+private fun validCallableTransfers(
+    transfers: List<ImpactCompilerTransferDocument>,
+    callable: ImpactDeclarationReferenceDocument,
+    occurrence: RelationOccurrenceDocument,
+): Boolean {
     if (transfers.any { !it.validTransfer(callable) }) return false
     if (transfers.zipWithNext().any { (left, right) -> left.target != right.source }) return false
     if (transfers.isEmpty()) return true
@@ -280,3 +304,45 @@ private fun ImpactValueSiteReferenceDocument.validSite(): Boolean =
 
 private fun rejected(failure: QueryCallbackDocumentFailure): Refinement.Rejected<QueryCallbackDocumentFailure> =
     Refinement.Rejected(failure)
+
+/** Reuses the forwarding owner proof for a reverse supplier inventory edge. */
+internal fun QueryCallbackForwardingDocument.admitSupplierForwarding(
+    basis: ImpactSemanticBasisDocument
+): Refinement<Unit, QueryCallbackDocumentFailure> =
+    when (
+        val admitted =
+            admitForwarding(CallbackInvocationReceiver(source, source.callable.reference(basis)), basis, emptyList())
+    ) {
+        is Refinement.Refined -> Refinement.Refined(Unit)
+        is Refinement.Rejected -> admitted
+    }
+
+internal fun QueryCallbackInvocationDocument.admitFactoryCapture(
+    body: QueryCallbackBodyDocument.Anonymous,
+    formal: QueryCallbackParameterIdentityDocument,
+    basis: ImpactSemanticBasisDocument,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    val actual =
+        owner as? QueryCallbackBodyDocument.Anonymous
+            ?: return rejected(QueryCallbackDocumentFailure.INVOCATION_OWNER_MISMATCH)
+    if (
+        actual.compilerEvidence != body.compilerEvidence ||
+            !actual.occurrence.sameSite(body.occurrence) ||
+            forwardings.values.isNotEmpty()
+    )
+        return rejected(QueryCallbackDocumentFailure.INVOCATION_OWNER_MISMATCH)
+    return admitReceivingOwner(
+        CallbackInvocationReceiver(formal, formal.callable.reference(basis)),
+        listOf(QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION),
+    )
+}
+
+internal fun QueryCallbackInvocationDocument.admitsObservedParameter(
+    parameter: QueryCallbackParameterIdentityDocument,
+    occurrence: RelationOccurrenceDocument,
+    body: QueryCallbackBodyDocument,
+): Boolean {
+    if (!this.occurrence.sameSite(occurrence) || owner != body || forwardings.values.isNotEmpty()) return false
+    val first = callableTransfers.values.firstOrNull() ?: return true
+    return validTransfers(parameter.callable.reference(first.source.enclosing.basis))
+}

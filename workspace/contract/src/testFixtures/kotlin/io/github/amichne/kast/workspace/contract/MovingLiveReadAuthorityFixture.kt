@@ -5,10 +5,15 @@ import java.util.UUID
 
 /** Test-only monotonic observations through the actual original-owner admission transition. */
 class MovingLiveReadAuthorityFixture(private val root: CanonicalWorkspaceRoot) {
-    private data class Signal(val revision: Long)
+    private data class Signal(val revision: Long, val environment: Long = 1)
 
     private var signal = Signal(1)
-    private val source = ProjectReadEpoch.Source.create { Refinement.Refined(signal) }
+    private val source =
+        ProjectReadEpoch.Source.createWithEnvironment(
+            observer = { Refinement.Refined(signal) },
+            beforeWriteObserver = { Refinement.Refined(signal) },
+            environment = Signal::environment,
+        )
     private val owner = LiveSemanticReadOwner(root, IdeReadHostLifetime.fromBoundary(UUID.randomUUID()))
 
     fun admit(): LiveSemanticReadAuthority {
@@ -19,7 +24,14 @@ class MovingLiveReadAuthorityFixture(private val root: CanonicalWorkspaceRoot) {
     }
 
     fun advance(): LiveSemanticReadAuthority {
-        signal = Signal(Math.addExact(signal.revision, 1))
+        signal = signal.copy(revision = Math.addExact(signal.revision, 1))
         return admit()
     }
+
+    fun advanceEnvironment(): LiveSemanticReadAuthority {
+        signal = signal.copy(environment = Math.addExact(signal.environment, 1))
+        return admit()
+    }
+
+    fun retire() = owner.retire()
 }

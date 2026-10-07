@@ -13,4 +13,5 @@ dependencies {
     api(project(":kernel"))
     api(project(":workspace:contract"))
     api(project(":symbol:contract"))
+    testImplementation(testFixtures(project(":workspace:contract")))
 }

@@ -83,6 +83,10 @@ internal data class QueryCallbackInvocationWireDocument(
 @JsonClassDiscriminator("type")
 internal sealed interface QueryCallbackFlowWireDocument {
     @Serializable
+    @SerialName("IMMUTABLE")
+    data class Immutable(val flow: QueryImmutableCallbackFlowWireDocument) : QueryCallbackFlowWireDocument
+
+    @Serializable
     @SerialName("OBSERVED")
     data class Observed(
         val basis: ImpactSemanticBasisDocument,
@@ -151,6 +155,7 @@ internal fun QueryCallbackBodyDocument.callbackWire(): QueryCallbackBodyWireDocu
 
 private fun QueryCallbackFlowDocument.callbackWire(): QueryCallbackFlowWireDocument =
     when (this) {
+        is QueryCallbackFlowDocument.Immutable -> QueryCallbackFlowWireDocument.Immutable(flow.immutableFlowWire())
         is QueryCallbackFlowDocument.Observed ->
             QueryCallbackFlowWireDocument.Observed(
                 basis,
@@ -231,6 +236,8 @@ internal fun QueryCallbackBodyWireDocument.toContract(): WireDocumentConversion<
 
 private fun QueryCallbackFlowWireDocument.toContract(): WireDocumentConversion<QueryCallbackFlowDocument> =
     when (this) {
+        is QueryCallbackFlowWireDocument.Immutable ->
+            flow.toContract().mapConverted { QueryCallbackFlowDocument.Immutable(it) }
         is QueryCallbackFlowWireDocument.Unavailable ->
             WireDocumentConversion.Converted(QueryCallbackFlowDocument.Unavailable(cause))
         is QueryCallbackFlowWireDocument.ContractRejected ->
@@ -321,7 +328,7 @@ internal fun QueryWalkCallbackObservationWireDocument.toContract():
         QueryWalkCallbackObservationDocument(QueryReferenceDocument.ExactSymbol(token), depth, observation)
     }
 
-private fun QueryCallbackInvocationWireDocument.toContract(): WireDocumentConversion<QueryCallbackInvocationDocument> =
+internal fun QueryCallbackInvocationWireDocument.toContract(): WireDocumentConversion<QueryCallbackInvocationDocument> =
     combineConverted(occurrence.toContract(), owner.toContract()) { occurrence, owner ->
             forwardings
                 .convertEach { it.toContract() }

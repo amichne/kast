@@ -71,6 +71,17 @@ class ResolvedCallableObservationTest {
         )
     }
 
+    @Test
+    fun `whole call invoke refinement has distinct confirmed and unresolved signals`() {
+        val recording = Recording()
+        IntellijInvokeCallRefinement.CONFIRMED.observe(recording)
+        IntellijInvokeCallRefinement.UNRESOLVED.observe(recording)
+        assertEquals(
+            listOf(IntellijReadTermination.K2_INVOKE_CALL_CONFIRMED, IntellijReadTermination.K2_INVOKE_CALL_UNRESOLVED),
+            recording.values,
+        )
+    }
+
     private class Recording : IntellijReadObservation by IntellijReadObservation.None {
         val values = mutableListOf<IntellijReadTermination>()
 

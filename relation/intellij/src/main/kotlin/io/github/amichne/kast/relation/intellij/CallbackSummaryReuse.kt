@@ -41,6 +41,7 @@ internal class CallbackSummaryReuse(private val summaries: CallbackParameterSumm
         }
         return when (val instance = cached.instantiate(body, binding)) {
             is Refinement.Refined -> {
+                summaries.used(cached)
                 summaries.observation.count(IntellijReadCounter.CALLBACK_SUMMARY_HITS)
                 Refinement.Refined(CallbackSummaryRestore.Reused(instance.value))
             }
@@ -83,6 +84,7 @@ internal class CallbackSummaryReuse(private val summaries: CallbackParameterSumm
                         CallbackInvocationFlowRead.Observed(admitted.value)
                     }
                 }
+            is CallbackInvocationFlowRead.Immutable,
             is CallbackInvocationFlowRead.Unavailable,
             is CallbackInvocationFlowRead.ContractRejected -> result
         }

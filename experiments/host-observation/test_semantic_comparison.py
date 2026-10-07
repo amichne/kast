@@ -609,7 +609,7 @@ class SemanticComparisonTest(unittest.TestCase):
         self.assertFalse(r.compare_trials(observed, template, False).lessWork)
 
     def test_observation_capture_policy_is_explicit_and_comparison_compatible(self):
-        policy = dict(maxWaitMillis=250, maxAppendedBytes=2 * 1024 * 1024)
+        policy = dict(maxWaitMillis=250, maxAppendedBytes=2 * 1024 * 1024, maxRotations=1)
         self.assertEqual(policy, r.OBSERVATION_POLICY)
         baseline = dict(fixture={'source.kt': 'hash'}, environment={'jdk': '25'},
             limits=dict(observationCapture=policy), requests=r.comparison_requests(), warmups=1,
@@ -617,7 +617,7 @@ class SemanticComparisonTest(unittest.TestCase):
             evidenceLevel='SCRIPTED', transport='TOOL_RPC')
         self.assertEqual(policy, json.loads(json.dumps(baseline))['limits']['observationCapture'])
         self.assertEqual([], r.incompatible_runs(baseline, copy.deepcopy(baseline)))
-        for field, value in [('maxWaitMillis', 251), ('maxAppendedBytes', 2 * 1024 * 1024 + 1)]:
+        for field, value in [('maxWaitMillis', 251), ('maxAppendedBytes', 2 * 1024 * 1024 + 1), ('maxRotations', 2)]:
             candidate = copy.deepcopy(baseline)
             candidate['limits']['observationCapture'][field] = value
             with self.subTest(field=field):
