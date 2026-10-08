@@ -59,6 +59,9 @@ code_sources:
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalSchemaReferences.kt
+- path: cli/src/test/kotlin/io/github/amichne/kast/cli/GeneratedSchemaReuseTest.kt
 - path: cli/src/test/kotlin/io/github/amichne/kast/cli/CopilotInputSchemaCompatibilityTest.kt
 - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt
 - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
@@ -83,8 +86,14 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt
   - id: openwiki-source-25b472ce8bd658b8f8006f96
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt
+  - id: openwiki-source-59889f27a7250df554c3789e
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt
+  - id: openwiki-source-1477ae5b7ae5aa974c4639a0
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalSchemaReferences.kt
   - id: openwiki-source-13541e0f8bd3fead648241e7
     resource: repo://cli/src/test/js/harness-adapters.test.mjs
+  - id: openwiki-source-4ef03fc871e7002a6d738dfc
+    resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/GeneratedSchemaReuseTest.kt
   - id: openwiki-source-ffafcc2936c3877f4b78db93
     resource: repo://copilot/extension.mjs
   - id: openwiki-source-9202c39abfaacebb6448e73f
@@ -105,10 +114,16 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPeerProofDocuments.kt
   - id: openwiki-source-aa500efdcfbb4a93d17c95ed
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactSiteAccountingDocuments.kt
+  - id: openwiki-source-9f733e1910323dc2c685d8ec
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/LocalDeclarationAddressDocuments.kt
   - id: openwiki-source-1363c35728458151b90e82c5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt
+  - id: openwiki-source-cfe1fb1d0ffdfe32b65ec05c
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt
   - id: openwiki-source-e8708d938df772dd92d2daf2
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
+  - id: openwiki-source-bf3ab75a4bb34b3c2053ce19
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalSymbolDocuments.kt
   - id: openwiki-source-25796dce45aaa5a543a07570
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
   - id: openwiki-source-a184ae82a49703816522523e
@@ -123,10 +138,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-ff3a32a34def3fbe81d63b1c
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
-generated: { by: "codex", at: "2026-10-08T03:31:21.414Z" }
+generated: { by: "codex", at: "2026-10-08T04:02:52.014Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T03:31:21.414Z
+    at: 2026-10-08T04:15:35.391Z
 ---
 
 # Public intent tools
@@ -146,6 +161,14 @@ Run can request `retention: "RETAIN"`. The produced semantic rows, failures, cov
 `query_symbols.request.output.fields` accepts `SOURCE` in symbol mode for a run. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text. Read-result can present a retained source window only when that evidence was captured in the original run.
 
 MCP `tools/list` and tool RPC `catalog` advertise the same generated input schema. Copilot registers the generated strict query union without merging alternatives into optional property bags. `CopilotInputSchemaCompatibilityTest` checks variant disjointness in the generated provider schema.
+
+Installed output generation substitutes references to registry-owned serializer
+descriptors before expanding nested schemas, then attaches the existing named
+definitions. Descriptor names alone cannot admit a reference. Constrained
+properties remain inline, nullable descendants retain their null alternative,
+and homogeneous array items expose the alternatives needed to reject mixed
+variants. Standalone request generation retains its full shape. The focused
+schema tests and callable reference verification preserve the encoded contract.
 
 The installed projection derives its advertised hosted tools from the shared definitions. App Server qualifies the packaged hosted catalog directly; the CLI command projection omits `workspace_lifecycle` and both hosted mutations, `add_declaration` and `replace_body`. Private admitted requests retain presentation and schema identities, excluding cross-tool substitution. Old persisted catalogs reject the versioned cutover grammar. Declaration discovery, containing-declaration location discovery, and scoped indexed-word discovery resolve to exact rows inside query. File discovery has no public route. `add_declaration` and `replace_body` compose private planning, application, verification and recovery into one call. Body replacement admits one exact existing non-inline named function with a block body, preserves its signature and surrounding source, and rejects expression bodies, contracts, and unsupported targets.
 
@@ -302,7 +325,7 @@ the `NORMAL_COMPLETION` condition. Raw admission rejects inconsistent transfer
 roles, owners, ranges or catch indexes. This evidence describes the supported
 static transfer, without asserting runtime path feasibility.
 
-Public contract version 6 requires this evidence and matching generated Pi and
+Public contract version 7 requires this evidence and matching generated Pi and
 Copilot adapter versions. Catalog admission rejects incompatible versions before
 tool registration; clients cannot silently discard the branch proof.
 
@@ -310,3 +333,11 @@ Pi and Copilot consume `KAST_TOOL_RPC_COMMAND` as their own executable selector
 and remove it from each child environment. Other supplied settings remain
 unchanged. This keeps private adapter selection outside Kast's strict product
 configuration admission without accepting unknown product settings.
+
+Local declarations use closed `LOCAL_FUNCTION` or `LOCAL_PROPERTY` signatures
+with required declaration addresses. The address retains a compiler-confirmed
+kind, containing declaration identity and range, exact file and declaration
+range, and bounded lexical ownership ranges. Function signatures retain callable
+facts; property signatures retain type and `VAL` or `VAR` mutability. Unknown
+variants, missing discriminators and inconsistent address/signature facts reject
+before domain construction. Names remain presentation and search constraints.

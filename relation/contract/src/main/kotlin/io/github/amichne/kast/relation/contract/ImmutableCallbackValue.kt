@@ -1,7 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import java.util.Collections
@@ -145,7 +145,7 @@ private fun ImmutableCallbackValueOrigin.admitSource(
 private fun ImmutableCallbackValueOrigin.Named.admitNamedSource(
     source: ValueSite
 ): Refinement<Unit, ImmutableCallbackValueFailure> {
-    if (target.signature !is CanonicalCompilerSignature.Function)
+    if (target.signature !is CanonicalCompilerCallableSignature)
         return Refinement.Rejected(ImmutableCallbackValueFailure.TARGET_NOT_CALLABLE)
     if (target.lease.identity != source.basis) return Refinement.Rejected(ImmutableCallbackValueFailure.BASIS_MISMATCH)
     for (receiver in listOf(receivers.dispatch, receivers.extension)) {

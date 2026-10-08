@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.LocalPropertyMutability
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
 import kotlinx.serialization.Serializable
 
@@ -110,21 +111,44 @@ sealed interface CompilerReceiverDocument {
     data class Present(val compilerType: ProtocolText) : CompilerReceiverDocument
 }
 
+/** Callable facts shared by qualified and local functions. */
+sealed interface CompilerCallableSignatureDocument : CompilerSignatureDocument {
+    val receiver: CompilerReceiverDocument
+    val contextReceivers: BoundedProtocolList<ProtocolText>
+    val valueParameters: BoundedProtocolList<ProtocolText>
+    val typeParameterCount: CompilerTypeParameterCountDocument
+}
+
 /** Structured canonical compiler signature; no signature fact is collapsed into display text. */
 sealed interface CompilerSignatureDocument {
     data class Function(
         val qualifiedIdentity: ProtocolText,
-        val receiver: CompilerReceiverDocument,
-        val contextReceivers: BoundedProtocolList<ProtocolText>,
-        val valueParameters: BoundedProtocolList<ProtocolText>,
-        val typeParameterCount: CompilerTypeParameterCountDocument,
-    ) : CompilerSignatureDocument
+        override val receiver: CompilerReceiverDocument,
+        override val contextReceivers: BoundedProtocolList<ProtocolText>,
+        override val valueParameters: BoundedProtocolList<ProtocolText>,
+        override val typeParameterCount: CompilerTypeParameterCountDocument,
+    ) : CompilerCallableSignatureDocument
 
     data class Property(
         val qualifiedIdentity: ProtocolText,
         val receiver: CompilerReceiverDocument,
         val contextReceivers: BoundedProtocolList<ProtocolText>,
         val returnType: ProtocolText,
+    ) : CompilerSignatureDocument
+
+    data class LocalFunction(
+        val address: LocalDeclarationAddressDocument,
+        override val receiver: CompilerReceiverDocument,
+        override val contextReceivers: BoundedProtocolList<ProtocolText>,
+        override val valueParameters: BoundedProtocolList<ProtocolText>,
+        override val typeParameterCount: CompilerTypeParameterCountDocument,
+        val returnType: ProtocolText,
+    ) : CompilerCallableSignatureDocument
+
+    data class LocalProperty(
+        val address: LocalDeclarationAddressDocument,
+        val returnType: ProtocolText,
+        val mutability: LocalPropertyMutabilityDocument,
     ) : CompilerSignatureDocument
 
     data class TypeAlias(val qualifiedIdentity: ProtocolText) : CompilerSignatureDocument
@@ -179,6 +203,7 @@ private constructor(
 }
 
 enum class SymbolDocumentFailure {
+    LOCAL_ADDRESS_MISMATCH,
     SIGNATURE_KIND_MISMATCH,
     QUALIFIED_IDENTITY_MISMATCH,
 }
@@ -208,11 +233,11 @@ private constructor(
             if (!compilerEvidence.signature.supports(kind)) {
                 return Refinement.Rejected(SymbolDocumentFailure.SIGNATURE_KIND_MISMATCH)
             }
-            if (
-                qualifiedIdentity !is SymbolQualifiedIdentityDocument.Available ||
-                    qualifiedIdentity.value != compilerEvidence.signature.qualifiedIdentity()
-            ) {
+            if (qualifiedIdentity != compilerEvidence.signature.qualifiedIdentity()) {
                 return Refinement.Rejected(SymbolDocumentFailure.QUALIFIED_IDENTITY_MISMATCH)
+            }
+            if (!compilerEvidence.signature.matchesLocation(file, range)) {
+                return Refinement.Rejected(SymbolDocumentFailure.LOCAL_ADDRESS_MISMATCH)
             }
             return Refinement.Refined(
                 SymbolDocument(
@@ -257,6 +282,17 @@ private fun CompilerSignatureDocument.canonicalSignature(): CanonicalCompilerSig
                         rawReturnType = returnType.value,
                     )
                     .valueOrNull() ?: return null
+            is CompilerSignatureDocument.LocalFunction -> canonicalLocalFunction() ?: return null
+            is CompilerSignatureDocument.LocalProperty ->
+                CanonicalCompilerSignature.localProperty(
+                        address.canonicalAddress(),
+                        returnType.value,
+                        when (mutability) {
+                            LocalPropertyMutabilityDocument.VAL -> LocalPropertyMutability.VAL
+                            LocalPropertyMutabilityDocument.VAR -> LocalPropertyMutability.VAR
+                        },
+                    )
+                    .valueOrNull() ?: return null
             is CompilerSignatureDocument.TypeAlias ->
                 CanonicalCompilerSignature.typeAlias(qualifiedIdentity.value).valueOrNull() ?: return null
             is CompilerSignatureDocument.ClassLike ->
@@ -264,6 +300,17 @@ private fun CompilerSignatureDocument.canonicalSignature(): CanonicalCompilerSig
         }
     return canonical.takeIf { matchesCanonical(it) }
 }
+
+private fun CompilerSignatureDocument.LocalFunction.canonicalLocalFunction(): CanonicalCompilerSignature? =
+    CanonicalCompilerSignature.localFunction(
+            address.canonicalAddress(),
+            receiver.rawType(),
+            contextReceivers.values.map(ProtocolText::value),
+            valueParameters.values.map(ProtocolText::value),
+            typeParameterCount.value,
+            returnType.value,
+        )
+        .valueOrNull()
 
 private fun CompilerSignatureDocument.matchesCanonical(canonical: CanonicalCompilerSignature): Boolean =
     when {
@@ -278,6 +325,17 @@ private fun CompilerSignatureDocument.matchesCanonical(canonical: CanonicalCompi
                 receiver.matchesCanonical(canonical.receiver) &&
                 contextReceivers.values.map(ProtocolText::value) == canonical.contextReceivers.map { it.value } &&
                 returnType.value == canonical.returnType.value
+        this is CompilerSignatureDocument.LocalFunction && canonical is CanonicalCompilerSignature.LocalFunction ->
+            address.canonicalAddress() == canonical.address &&
+                receiver.matchesCanonical(canonical.receiver) &&
+                contextReceivers.values.map(ProtocolText::value) == canonical.contextReceivers.map { it.value } &&
+                valueParameters.values.map(ProtocolText::value) == canonical.valueParameters.map { it.value } &&
+                typeParameterCount.value == canonical.typeParameterCount.value &&
+                returnType.value == canonical.returnType.value
+        this is CompilerSignatureDocument.LocalProperty && canonical is CanonicalCompilerSignature.LocalProperty ->
+            address.canonicalAddress() == canonical.address &&
+                returnType.value == canonical.returnType.value &&
+                mutability.name == canonical.mutability.name
         this is CompilerSignatureDocument.TypeAlias && canonical is CanonicalCompilerSignature.TypeAlias ->
             qualifiedIdentity.value == canonical.qualifiedIdentity.value
         this is CompilerSignatureDocument.ClassLike && canonical is CanonicalCompilerSignature.ClassLike ->
@@ -297,17 +355,37 @@ internal fun CompilerSignatureDocument.supports(kind: SymbolKindDocument): Boole
     when (this) {
         is CompilerSignatureDocument.Function ->
             kind == SymbolKindDocument.FUNCTION || kind == SymbolKindDocument.CONSTRUCTOR
-        is CompilerSignatureDocument.Property -> kind == SymbolKindDocument.PROPERTY
+        is CompilerSignatureDocument.LocalFunction -> kind == SymbolKindDocument.FUNCTION
+        is CompilerSignatureDocument.Property,
+        is CompilerSignatureDocument.LocalProperty -> kind == SymbolKindDocument.PROPERTY
         is CompilerSignatureDocument.TypeAlias -> kind == SymbolKindDocument.TYPE_ALIAS
         is CompilerSignatureDocument.ClassLike -> kind == SymbolKindDocument.CLASSLIKE
     }
 
-internal fun CompilerSignatureDocument.qualifiedIdentity(): ProtocolText =
+internal fun CompilerSignatureDocument.qualifiedIdentity(): SymbolQualifiedIdentityDocument =
     when (this) {
-        is CompilerSignatureDocument.Function -> qualifiedIdentity
-        is CompilerSignatureDocument.Property -> qualifiedIdentity
-        is CompilerSignatureDocument.TypeAlias -> qualifiedIdentity
-        is CompilerSignatureDocument.ClassLike -> qualifiedIdentity
+        is CompilerSignatureDocument.Function -> SymbolQualifiedIdentityDocument.Available(qualifiedIdentity)
+        is CompilerSignatureDocument.Property -> SymbolQualifiedIdentityDocument.Available(qualifiedIdentity)
+        is CompilerSignatureDocument.TypeAlias -> SymbolQualifiedIdentityDocument.Available(qualifiedIdentity)
+        is CompilerSignatureDocument.ClassLike -> SymbolQualifiedIdentityDocument.Available(qualifiedIdentity)
+        is CompilerSignatureDocument.LocalFunction,
+        is CompilerSignatureDocument.LocalProperty -> SymbolQualifiedIdentityDocument.Unavailable
+    }
+
+internal fun CompilerSignatureDocument.matchesLocation(file: ProtocolText, range: SourceRangeDocument): Boolean =
+    when (this) {
+        is CompilerSignatureDocument.LocalFunction -> address.file.value == file && address.range == range
+        is CompilerSignatureDocument.LocalProperty -> address.file.value == file && address.range == range
+        is CompilerSignatureDocument.Function,
+        is CompilerSignatureDocument.Property,
+        is CompilerSignatureDocument.TypeAlias,
+        is CompilerSignatureDocument.ClassLike -> true
+    }
+
+private fun CompilerReceiverDocument.rawType(): String? =
+    when (this) {
+        CompilerReceiverDocument.Absent -> null
+        is CompilerReceiverDocument.Present -> compilerType.value
     }
 
 private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? =

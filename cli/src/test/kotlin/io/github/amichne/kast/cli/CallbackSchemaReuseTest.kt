@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.LocalDeclarationAddressCliDocument
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -21,6 +22,7 @@ class CallbackSchemaReuseTest {
             listOf(
                 "callbackObservation" to CanonicalQueryCliDocuments.callbackObservationSerializer,
                 "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,
+                "localDeclarationAddress" to LocalDeclarationAddressCliDocument.serializer(),
             )) {
             assertEquivalent(generatedRequestSchema(serializer), definitions.getValue(name), definitions)
         }

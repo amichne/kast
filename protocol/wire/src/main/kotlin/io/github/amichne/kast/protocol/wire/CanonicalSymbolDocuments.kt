@@ -7,6 +7,10 @@ import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationAddressDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationFileDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.LocalPropertyMutabilityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -98,12 +102,71 @@ internal sealed interface CompilerSignatureWireDocument {
     ) : CompilerSignatureWireDocument
 
     @Serializable
+    @SerialName("LOCAL_FUNCTION")
+    data class LocalFunction(
+        val address: LocalDeclarationAddressWireDocument,
+        val receiver: CompilerReceiverWireDocument,
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val contextReceivers: List<String>,
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val valueParameters: List<String>,
+        @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
+        val typeParameterCount: Int,
+        @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(minimumLength = 1, maximumLength = 1048576)
+        val returnType: String,
+    ) : CompilerSignatureWireDocument
+
+    @Serializable
+    @SerialName("LOCAL_PROPERTY")
+    data class LocalProperty(
+        val address: LocalDeclarationAddressWireDocument,
+        @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(minimumLength = 1, maximumLength = 1048576)
+        val returnType: String,
+        val mutability: LocalPropertyMutabilityWireDocument,
+    ) : CompilerSignatureWireDocument
+
+    @Serializable
     @SerialName("type-alias")
     data class TypeAlias(val qualifiedIdentity: String) : CompilerSignatureWireDocument
 
     @Serializable
     @SerialName("class-like")
     data class ClassLike(val qualifiedIdentity: String) : CompilerSignatureWireDocument
+}
+
+@Serializable
+internal data class LocalDeclarationAddressWireDocument(
+    val file: LocalDeclarationFileWireDocument,
+    val kind: LocalDeclarationKindWireDocument,
+    val range: SourceRangeWireDocument,
+    @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(
+        minimumLength = 1,
+        maximumLength = 4096,
+        pattern = "^canonical-signature-sha256-v1\\|[0-9a-f]{64}$",
+    )
+    val ownerIdentity: String,
+    val ownerRange: SourceRangeWireDocument,
+    @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 32)
+    val lexicalOwners: List<SourceRangeWireDocument>,
+)
+
+@Serializable
+internal sealed interface LocalDeclarationFileWireDocument {
+    @Serializable @SerialName("WORKSPACE") data class Workspace(val path: String) : LocalDeclarationFileWireDocument
+
+    @Serializable @SerialName("EXTERNAL") data class External(val url: String) : LocalDeclarationFileWireDocument
+}
+
+@Serializable
+internal enum class LocalDeclarationKindWireDocument {
+    FUNCTION,
+    PROPERTY,
+}
+
+@Serializable
+internal enum class LocalPropertyMutabilityWireDocument {
+    VAL,
+    VAR,
 }
 
 @Serializable
@@ -275,6 +338,24 @@ internal fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDo
                 contextReceivers.values.map(ProtocolText::value),
                 returnType.value,
             )
+        is CompilerSignatureDocument.LocalFunction ->
+            CompilerSignatureWireDocument.LocalFunction(
+                address.toWireDocument(),
+                receiver.toWireDocument(),
+                contextReceivers.values.map(ProtocolText::value),
+                valueParameters.values.map(ProtocolText::value),
+                typeParameterCount.value,
+                returnType.value,
+            )
+        is CompilerSignatureDocument.LocalProperty ->
+            CompilerSignatureWireDocument.LocalProperty(
+                address.toWireDocument(),
+                returnType.value,
+                when (mutability) {
+                    LocalPropertyMutabilityDocument.VAL -> LocalPropertyMutabilityWireDocument.VAL
+                    LocalPropertyMutabilityDocument.VAR -> LocalPropertyMutabilityWireDocument.VAR
+                },
+            )
         is CompilerSignatureDocument.TypeAlias -> CompilerSignatureWireDocument.TypeAlias(qualifiedIdentity.value)
         is CompilerSignatureDocument.ClassLike -> CompilerSignatureWireDocument.ClassLike(qualifiedIdentity.value)
     }
@@ -311,6 +392,8 @@ internal fun CompilerSignatureWireDocument.toContract(): WireDocumentConversion<
                     returnType,
                 )
             }
+        is CompilerSignatureWireDocument.LocalFunction -> localFunctionContract()
+        is CompilerSignatureWireDocument.LocalProperty -> localPropertyContract()
         is CompilerSignatureWireDocument.TypeAlias ->
             qualifiedIdentity.toProtocolText().mapConverted {
                 CompilerSignatureDocument.TypeAlias(it)
@@ -319,6 +402,85 @@ internal fun CompilerSignatureWireDocument.toContract(): WireDocumentConversion<
             qualifiedIdentity.toProtocolText().mapConverted {
                 CompilerSignatureDocument.ClassLike(it)
             }
+    }
+
+private fun CompilerSignatureWireDocument.LocalFunction.localFunctionContract():
+    WireDocumentConversion<CompilerSignatureDocument> =
+    if (address.kind != LocalDeclarationKindWireDocument.FUNCTION) WireDocumentConversion.Rejected
+    else
+        returnType.toProtocolText().flatMapConverted { result ->
+            combineConverted(
+                address.toContract(),
+                receiver.toContract(),
+                contextReceivers.toProtocolTextList(),
+                valueParameters.toProtocolTextList(),
+                CompilerTypeParameterCountDocument.parse(typeParameterCount).toWireDocumentConversion(),
+            ) { address, receiver, contexts, parameters, count ->
+                CompilerSignatureDocument.LocalFunction(address, receiver, contexts, parameters, count, result)
+            }
+        }
+
+private fun CompilerSignatureWireDocument.LocalProperty.localPropertyContract():
+    WireDocumentConversion<CompilerSignatureDocument> =
+    if (address.kind != LocalDeclarationKindWireDocument.PROPERTY) WireDocumentConversion.Rejected
+    else
+        combineConverted(address.toContract(), returnType.toProtocolText()) { address, result ->
+            CompilerSignatureDocument.LocalProperty(
+                address,
+                result,
+                when (mutability) {
+                    LocalPropertyMutabilityWireDocument.VAL -> LocalPropertyMutabilityDocument.VAL
+                    LocalPropertyMutabilityWireDocument.VAR -> LocalPropertyMutabilityDocument.VAR
+                },
+            )
+        }
+
+internal fun LocalDeclarationAddressDocument.toWireDocument(): LocalDeclarationAddressWireDocument =
+    LocalDeclarationAddressWireDocument(
+        when (val location = file) {
+            is LocalDeclarationFileDocument.Workspace ->
+                LocalDeclarationFileWireDocument.Workspace(location.value.value)
+            is LocalDeclarationFileDocument.External -> LocalDeclarationFileWireDocument.External(location.value.value)
+        },
+        when (kind) {
+            LocalDeclarationKindDocument.FUNCTION -> LocalDeclarationKindWireDocument.FUNCTION
+            LocalDeclarationKindDocument.PROPERTY -> LocalDeclarationKindWireDocument.PROPERTY
+        },
+        range.toWireDocument(),
+        ownerIdentity.value,
+        ownerRange.toWireDocument(),
+        lexicalOwners.values.map { it.toWireDocument() },
+    )
+
+internal fun LocalDeclarationAddressWireDocument.toContract(): WireDocumentConversion<LocalDeclarationAddressDocument> =
+    combineConverted(
+            file.toContract(),
+            range.toContract(),
+            ownerIdentity.toProtocolText(),
+            ownerRange.toContract(),
+            lexicalOwners.convertEach { it.toContract() }.flatMapConverted { it.toBoundedList() },
+        ) { file, range, owner, ownerRange, lexical ->
+            LocalDeclarationAddressDocument.create(
+                    file,
+                    when (kind) {
+                        LocalDeclarationKindWireDocument.FUNCTION -> LocalDeclarationKindDocument.FUNCTION
+                        LocalDeclarationKindWireDocument.PROPERTY -> LocalDeclarationKindDocument.PROPERTY
+                    },
+                    range,
+                    owner,
+                    ownerRange,
+                    lexical,
+                )
+                .toWireDocumentConversion()
+        }
+        .flattenConverted()
+
+private fun LocalDeclarationFileWireDocument.toContract(): WireDocumentConversion<LocalDeclarationFileDocument> =
+    when (this) {
+        is LocalDeclarationFileWireDocument.Workspace ->
+            path.toProtocolText().mapConverted { LocalDeclarationFileDocument.Workspace(it) }
+        is LocalDeclarationFileWireDocument.External ->
+            url.toProtocolText().mapConverted { LocalDeclarationFileDocument.External(it) }
     }
 
 private fun CompilerReceiverDocument.toWireDocument(): CompilerReceiverWireDocument =

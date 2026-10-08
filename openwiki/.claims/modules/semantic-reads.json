@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b46422fbf038b20137eb27ea6fdff64a1fa1667420437d9f970d2b12d935bda7",
+  "pageVersion": "sha256:61f5fc29f2cdafc2be7c231136adfce74387e5bd4915489084a1c14f80bed8f7",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -28,7 +28,7 @@
       "evidence": [
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt",
-          "version": "repo-file-v1:sha256:b8639f32618673360d6b3d61ec213a23d5336a38092447168ed47b27cc7f35a6"
+          "version": "repo-file-v1:sha256:95ba63ad194a920f680015cb606434b1abf934faa0d1075773e25f142f2d7964"
         }
       ]
     },
@@ -126,7 +126,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:c01b75752197561c48888fcc7cd2ed31f3f44d7400f2ecd05688e3df7a8f1748"
+          "version": "repo-file-v1:sha256:4cb977fe57f2d25cee9276b3d12aec5cdd5017d94eb1c0ce5629c78434f3c055"
         }
       ]
     },
@@ -139,7 +139,7 @@
           "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
         },
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L135-L156",
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L147-L168",
           "version": "repo-lines-v1:sha256:b549f7448349e17615d6d5320cf7a300cd42e81ee77cce41d82d04db20f55066:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNzI4MmEzMzY1N2ZjNmIxOTE0MmFmMGE0ZjdhNzg5ZGY0YWRkYzQ5YmUzZGFkODljYzAxNzM1YWI4MTgwZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzMWNlMDBiMjZkMTlhMTg0M2JhY2Y4YTBmZTJiZDE5OWE1YjkyMTA2NTViNTdiNGZiNThkODQ4N2ZlMjY2NWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3MTRlMzY4ZWU4NWZmMWE2NjJlYmViMzAyNThjNmQyOTJjNTI2MGFjYWFmNmUwM2E0OTJiZDU5ZWU2ODZhMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0YzE1NGM2OWRiMjRhNDExNmI3Y2VmNDMxY2IyODg5ZTkyMzhkYmQxOTljNDI0NmIwZDhhNjhiZGNmMjA1MGMifQ"
         },
         {
@@ -169,10 +169,80 @@
           "version": "repo-file-v1:sha256:87a49b50be02dbfeb02aae3a3c41d96dd05bd7a573bb2ac3c531e9208f38895e"
         }
       ]
+    },
+    {
+      "id": "claim_36cb1c7f907c4c3d8b033f4f920486c7",
+      "statement": "Symbol, relation and source module-owned K2 adapters project local properties/functions into the same pure symbol address contract, preserving exact compiler and lexical ownership and finite bounded projection observations; compiler binding/parity remains a native qualification requirement.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationProjection.kt",
+          "version": "repo-file-v1:sha256:5c677e1d45c22954bb37efa32a0b0bfd8b7ccf60c4c4b5489b6ba75906f787e3"
+        },
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijLocalSourceAddress.kt",
+          "version": "repo-file-v1:sha256:dd90fd330c03d8f73b84202061d6439ed3823e528c30e3d1508e5c15a7935d92"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijLocalDeclarationAddressProjection.kt",
+          "version": "repo-file-v1:sha256:500fc8ef14e63433a64e8290586563ea20caa266dfbfa21d324764ffcab1a783"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijLocalIdentityObservation.kt",
+          "version": "repo-file-v1:sha256:5de8ff0df2b5c70628f4a5c10f0bb1b4edcfd3058c9d7e05d37bf3ec469c7d14"
+        }
+      ]
+    },
+    {
+      "id": "claim_f3645d2e395a40bdbcb54f11bb943545",
+      "statement": "Local declaration discovery preserves cheap file/scope/name/kind constraints before capacity and descends excluded containers; library-inclusive local supplementation uses the existing bounded collector with imported source ownership and duplicate checks.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDiscoveryAdmission.kt",
+          "version": "repo-file-v1:sha256:fb54355a5eab8ab8f33159223d4ebe9cd6c86c873218da54a5f9095cb2e3336d"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt",
+          "version": "repo-file-v1:sha256:da4992416a4b187a32c49d1eb59bd496309123adcca78ea24734b8a51506f6e0"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/LocalSupplementFileAdmissionTest.kt",
+          "version": "repo-file-v1:sha256:720dc0d705fdbfdabff4b22a033f50e8fd39658c925c62a16e7b1d0aae45e592"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/MixedLocalDeclarationDiscoveryTest.kt",
+          "version": "repo-file-v1:sha256:90d7dacc7df556a3656315054497e14ef11c8d73944040abc11b8c6f089aa745"
+        }
+      ]
+    },
+    {
+      "id": "claim_0d3f21ca663e4672913a1a225da4f209",
+      "statement": "Source and relation local containing-owner projection admits enum-entry overrides only through compiler initializer ownership, exact initializer equality and compiler entry/member identity, preserving existing qualified signature facts, bounded compiler-identity counters and finite rejection causes without broadening global qualified admission.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationOwnerSignature.kt",
+          "version": "repo-file-v1:sha256:24e7b0d295847a22c436fd5e85b14c6af0e483bc3822672ddbc51cc508d1aab0"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationLocalOwnerCallableIdentity.kt",
+          "version": "repo-file-v1:sha256:8851b99d387c9ad1118b9b204816ed61085e868f2f896142bf38a4ff5fcce823"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationLocalOwnerCallableIdentityObservation.kt",
+          "version": "repo-file-v1:sha256:a7869084742bd74f2de074f9c33f9a621a77477f4627b809166d05dc8251a2a9"
+        },
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceLocalOwnerCallableIdentity.kt",
+          "version": "repo-file-v1:sha256:95bd76ea2b990959ee1c1aeec0ca4525b15a36473e334dba3c92d000d2d99295"
+        },
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceLocalOwnerCallableIdentityObservation.kt",
+          "version": "repo-file-v1:sha256:c0175f8f0c4bab460eda7fa7dc8702d11e93888e1914d46142fdb2c0c45544eb"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T03:03:28.717Z"
+    "at": "2026-10-08T04:02:52.014Z"
   }
 }

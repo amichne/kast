@@ -21,6 +21,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import io.github.amichne.kast.workspace.intellij.read.localIdentityAdmitted
+import io.github.amichne.kast.workspace.intellij.read.localIdentityRejected
 import java.nio.file.Path
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -121,13 +123,31 @@ internal class IntellijK2RelationProjection(
             when (
                 val result =
                     analyze(declaration.kaModule(null)) {
-                        nativeSymbol(declaration)?.compilerProjection() ?: IntellijCompilerProjectionResult.Unsupported
+                        nativeSymbol(declaration)?.compilerProjection(this, detached, observation = observation)
+                            ?: IntellijCompilerProjectionResult.Unsupported
                     }
             ) {
                 is IntellijCompilerProjectionResult.Projected -> result.projection
+                is IntellijCompilerProjectionResult.LocalRejected -> {
+                    observation.localIdentityRejected(result.failure)
+                    return IntellijRelationDeclarationProjection.Unsupported
+                }
                 IntellijCompilerProjectionResult.Unsupported -> return IntellijRelationDeclarationProjection.Unsupported
             }
-        return groundedProjection(declaration, detached, projection)
+        val grounded = groundedProjection(declaration, detached, projection)
+        if (
+            projection.signature.declarationAddress
+                is io.github.amichne.kast.symbol.contract.CompilerDeclarationAddress.Local
+        ) {
+            when (grounded) {
+                is IntellijRelationDeclarationProjection.Projected -> observation.localIdentityAdmitted()
+                IntellijRelationDeclarationProjection.Unsupported ->
+                    observation.localIdentityRejected(
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.SignatureUnavailable
+                    )
+            }
+        }
+        return grounded
     }
 
     /**
@@ -210,7 +230,7 @@ internal class IntellijK2RelationProjection(
                             ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
                     if (
                         child.directlyOverriddenSymbols.any {
-                            it.compareIdentity(parent) == IntellijSymbolIdentityComparison.SAME
+                            it.compareIdentity(parent, this) == IntellijSymbolIdentityComparison.SAME
                         }
                     ) {
                         confirmed()
@@ -231,7 +251,7 @@ internal class IntellijK2RelationProjection(
                             if (
                                 candidateSymbol.modality != KaSymbolModality.ABSTRACT &&
                                     candidateSymbol.allOverriddenSymbols.any {
-                                        it.compareIdentity(subjectSymbol) == IntellijSymbolIdentityComparison.SAME
+                                        it.compareIdentity(subjectSymbol, this) == IntellijSymbolIdentityComparison.SAME
                                     }
                             )
                                 confirmed()

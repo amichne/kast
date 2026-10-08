@@ -91,7 +91,7 @@ private constructor(
             receivers: CallbackReferenceReceivers,
             flow: NamedCallbackReferenceFlow,
         ): Refinement<NamedCallbackReference, NamedCallbackReferenceFailure> {
-            if (target.signature !is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.Function)
+            if (target.signature !is io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature)
                 return Refinement.Rejected(NamedCallbackReferenceFailure.TARGET_NOT_CALLABLE)
             for (receiver in listOf(receivers.dispatch, receivers.extension)) {
                 if (

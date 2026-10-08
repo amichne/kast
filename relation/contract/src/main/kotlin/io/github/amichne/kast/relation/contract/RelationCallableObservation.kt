@@ -95,6 +95,8 @@ private fun CanonicalCompilerSignature.supportsSourceLessCallable(kind: Compiler
         is CanonicalCompilerSignature.Function ->
             kind == CompilerSymbolKind.FUNCTION || kind == CompilerSymbolKind.CONSTRUCTOR
         is CanonicalCompilerSignature.Property -> kind == CompilerSymbolKind.PROPERTY
+        is CanonicalCompilerSignature.LocalFunction,
+        is CanonicalCompilerSignature.LocalProperty -> false
         is CanonicalCompilerSignature.TypeAlias,
         is CanonicalCompilerSignature.ClassLike -> false
     }

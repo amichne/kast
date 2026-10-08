@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "first": {"type": "object", "additionalProperties": false, "properties": {"value": {"type": "string", "minLength": 1, "maxLength": 8}}, "required": ["value"]},
+    "second": {"type": "object", "additionalProperties": false, "properties": {"value": {"type": "string", "minLength": 1, "maxLength": 8}}, "required": ["value"]}
+  },
+  "required": ["first", "second"]
+}

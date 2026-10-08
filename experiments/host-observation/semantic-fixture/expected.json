@@ -166,5 +166,198 @@
     ],
     "text": "FixtureLoggerManager",
     "target": "manager"
+  },
+  "tryLocalSourceIntent": {
+    "sourcePath": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+    "sourceSha256": "07f4e58bf6221cb5befe26a1bfd1cfa47bc3785b35b0339a84010f8bb14da5e5",
+    "qualification": "SOURCE_TEXT_INTENT_REQUIRES_K2",
+    "flowCases": [
+      {
+        "name": "try-result",
+        "owner": "tryResult",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "NORMAL_RETURN",
+        "normalBranchResults": 1,
+        "branch": "TRY"
+      },
+      {
+        "name": "try-fallback",
+        "owner": "tryFallback",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "NORMAL_RETURN",
+        "normalBranchResults": 1,
+        "branch": "TRY"
+      },
+      {
+        "name": "catch-fallback",
+        "owner": "tryFallback",
+        "producer": "Hiped.encrypt(\"fallback\")",
+        "expected": "NORMAL_RETURN",
+        "normalBranchResults": 1,
+        "branch": "CATCH"
+      },
+      {
+        "name": "catch-result",
+        "owner": "catchResult",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "NORMAL_RETURN",
+        "normalBranchResults": 1,
+        "branch": "CATCH"
+      },
+      {
+        "name": "non-final",
+        "owner": "tryNonFinal",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "DISCARDED_RESULT",
+        "normalBranchResults": 0,
+        "branch": "NONE"
+      },
+      {
+        "name": "nested",
+        "owner": "tryNested",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "NORMAL_RETURN",
+        "normalBranchResults": 2,
+        "branch": "TRY"
+      },
+      {
+        "name": "explicit-return",
+        "owner": "tryExplicitReturn",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "NORMAL_RETURN",
+        "normalBranchResults": 0,
+        "branch": "NONE"
+      },
+      {
+        "name": "unit",
+        "owner": "tryUnit",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "DISCARDED_RESULT",
+        "normalBranchResults": 0,
+        "branch": "NONE"
+      },
+      {
+        "name": "finally-result",
+        "owner": "tryFinallyResult",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "FINALLY_UNSUPPORTED",
+        "normalBranchResults": 0,
+        "branch": "NONE"
+      },
+      {
+        "name": "finally-return",
+        "owner": "tryFinallyReturn",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "FINALLY_UNSUPPORTED",
+        "normalBranchResults": 0,
+        "branch": "NONE"
+      },
+      {
+        "name": "finally-throws",
+        "owner": "tryFinallyThrows",
+        "producer": "Voltage.encrypt(input)",
+        "expected": "FINALLY_UNSUPPORTED",
+        "normalBranchResults": 0,
+        "branch": "NONE"
+      }
+    ],
+    "localCases": [
+      {
+        "name": "outer-val",
+        "owner": "localBindings",
+        "file": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+        "declaration": "val binding = Voltage.encrypt(input)",
+        "kind": "PROPERTY",
+        "mutable": false,
+        "references": 2,
+        "excludedShadowedReferences": 1
+      },
+      {
+        "name": "shadowed-val",
+        "owner": "localBindings",
+        "file": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+        "declaration": "val binding = Hiped.encrypt(input)",
+        "kind": "PROPERTY",
+        "mutable": false,
+        "references": 1,
+        "excludedShadowedReferences": 2
+      },
+      {
+        "name": "mutable-var",
+        "owner": "localBindings",
+        "file": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+        "declaration": "var mutable = Voltage.encrypt(input)",
+        "kind": "PROPERTY",
+        "mutable": true,
+        "references": 3,
+        "excludedShadowedReferences": 0
+      },
+      {
+        "name": "other-owner-val",
+        "owner": "localOtherOwner",
+        "file": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+        "declaration": "val binding = Voltage.encrypt(input)",
+        "kind": "PROPERTY",
+        "mutable": false,
+        "references": 2,
+        "excludedShadowedReferences": 0
+      },
+      {
+        "name": "other-owner-function",
+        "owner": "localOtherOwner",
+        "file": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+        "declaration": "fun named(value: String): String = value",
+        "kind": "FUNCTION",
+        "mutable": false,
+        "references": 1,
+        "excludedShadowedReferences": 0
+      },
+      {
+        "name": "outer-function",
+        "owner": "localFunctions",
+        "file": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+        "declaration": "fun named(value: String): String = value",
+        "kind": "FUNCTION",
+        "mutable": false,
+        "references": 2,
+        "excludedShadowedReferences": 1
+      },
+      {
+        "name": "shadowed-function",
+        "owner": "localFunctions",
+        "file": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
+        "declaration": "fun named(value: String): String = value + \"inner\"",
+        "kind": "FUNCTION",
+        "mutable": false,
+        "references": 1,
+        "excludedShadowedReferences": 2
+      },
+      {
+        "name": "other-file-val",
+        "owner": "otherFileBindings",
+        "file": "logging/src/main/kotlin/representation/other/LocalIdentityOtherFixture.kt",
+        "declaration": "val binding = input",
+        "kind": "PROPERTY",
+        "mutable": false,
+        "references": 1,
+        "excludedShadowedReferences": 0
+      },
+      {
+        "name": "other-file-function",
+        "owner": "otherFileBindings",
+        "file": "logging/src/main/kotlin/representation/other/LocalIdentityOtherFixture.kt",
+        "declaration": "fun named(value: String): String = value",
+        "kind": "FUNCTION",
+        "mutable": false,
+        "references": 1,
+        "excludedShadowedReferences": 0
+      }
+    ],
+    "additionalSources": [
+      {
+        "file": "logging/src/main/kotlin/representation/other/LocalIdentityOtherFixture.kt",
+        "sha256": "b9bf4ab3a71ba5479b7ce856ed355659ec8fd4227321e54962d5b446ff6f6cff"
+      }
+    ]
   }
 }

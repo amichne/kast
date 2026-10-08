@@ -146,7 +146,7 @@ private fun QueryCallbackObservationDocument.admitBinding(
     if (!supplyingOwner.contains(bound.invocationOccurrence) || !lexicalOwner.declaration.contains(supplyingOwner))
         return rejected(QueryCallbackDocumentFailure.INVOCATION_OWNER_MISMATCH)
     val signature =
-        bound.callable.compilerTarget.compilerEvidence.signature as? CompilerSignatureDocument.Function
+        bound.callable.compilerTarget.compilerEvidence.signature as? CompilerCallableSignatureDocument
             ?: return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     if (!bound.validCallableMapping(flow.basis) || !validBindingSites(bound))
         return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
@@ -231,7 +231,7 @@ private fun QueryCallbackObservationDocument.admitDirectFlow(
 
 internal fun QueryCallbackParameterIdentityDocument.validParameter(): Boolean {
     val signature =
-        callable.compilerTarget.compilerEvidence.signature as? CompilerSignatureDocument.Function ?: return false
+        callable.compilerTarget.compilerEvidence.signature as? CompilerCallableSignatureDocument ?: return false
     return callable.validCallable() &&
         callable.declaration.contains(parameter) &&
         position.value in signature.valueParameters.values.indices
@@ -258,7 +258,7 @@ internal fun QueryCallbackCallableDocument.validDeclaration(): Boolean =
         compilerTarget.compilerEvidence.signature.supports(compilerTarget.kind)
 
 internal fun QueryCallbackCallableDocument.validCallable(): Boolean =
-    validDeclaration() && compilerTarget.compilerEvidence.signature is CompilerSignatureDocument.Function
+    validDeclaration() && compilerTarget.compilerEvidence.signature is CompilerCallableSignatureDocument
 
 internal fun QueryCallbackBodyDocument.Anonymous.validBody(): Boolean {
     val signature = compilerEvidence.signature as? CompilerSignatureDocument.Function ?: return false

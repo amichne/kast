@@ -24,6 +24,7 @@ Defines semantic relationship requests and facts, coordinates relation reads, an
 - [service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt](service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt) - orchestration.
 - [intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt](intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt) - compiler-backed search.
 - [intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt](intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt) - compiler-grounded identities for relation targets, including anonymous implementations.
+- [IntellijLocalRelationProjection.kt](intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationProjection.kt) - module-owned K2 local signatures using the same admitted address as discovery and source reads.
 - [intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt](intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt) - scope refinement.
 
 ## Subdirectories

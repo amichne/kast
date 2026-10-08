@@ -18,6 +18,8 @@ Defines symbol discovery and exact declaration identity, provides domain service
 - [IntellijCallableIdentity.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt) - native and compiler-owned enum-entry member identity.
 
 - [CanonicalSymbolId.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalSymbolId.kt) - snapshot-local canonical equality without widening selector scope.
+- [LocalDeclarationAddress.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt) - pure qualified/local address alternatives, exact compiler and lexical ownership, and closed admission failures.
+- [CanonicalCompilerSignatureEncoding.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignatureEncoding.kt) - qualified byte compatibility and versioned local signature encoding.
 - [BoundedLexicalCandidates.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedLexicalCandidates.kt) - bounded lexical ranking before compiler projection.
 - [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt) - canonical signature identity.
 - [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt) - exact selector.

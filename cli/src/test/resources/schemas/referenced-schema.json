@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "first": {"$ref": "#/$defs/leaf"},
+    "second": {"$ref": "#/$defs/leaf"}
+  },
+  "required": ["first", "second"]
+}

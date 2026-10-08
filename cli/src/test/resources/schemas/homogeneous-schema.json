@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "values": {
+      "anyOf": [
+        {"type": "array", "items": {"type": "object", "additionalProperties": false, "properties": {"type": {"enum": ["ONE"], "type": "string"}, "value": {"type": "string"}}, "required": ["type", "value"]}},
+        {"type": "array", "items": {"type": "object", "additionalProperties": false, "properties": {"type": {"enum": ["TWO"], "type": "string"}, "value": {"type": "integer"}}, "required": ["type", "value"]}}
+      ]
+    }
+  },
+  "required": ["values"]
+}

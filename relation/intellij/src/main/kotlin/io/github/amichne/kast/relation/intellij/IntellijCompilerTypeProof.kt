@@ -2,6 +2,10 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaCapturedType
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
@@ -88,4 +92,22 @@ private class IntellijCompilerTypeProof {
         }
         return NativeCompilerTypeProof.ADMITTED
     }
+}
+
+/** Inspect exactly the type facts encoded by a qualified containing declaration's signature. */
+internal fun KaSymbol.localOwnerCompilerTypeProof(): NativeCompilerTypeProof {
+    val facts =
+        when (this) {
+            is KaFunctionSymbol ->
+                listOfNotNull(receiverParameter?.returnType).asSequence() +
+                    contextReceivers.asSequence().map { it.type } +
+                    valueParameters.asSequence().map { it.returnType }
+            is KaKotlinPropertySymbol ->
+                sequenceOf(returnType) +
+                    listOfNotNull(receiverParameter?.returnType).asSequence() +
+                    contextReceivers.asSequence().map { it.type }
+            is KaClassLikeSymbol -> emptySequence()
+            else -> return NativeCompilerTypeProof.UNSUPPORTED_TYPE
+        }
+    return nativeCompilerTypeProof(facts)
 }

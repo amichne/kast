@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0eb3313b21425f588a0d840d517e9b169bedfe2e59014a0c12db3451bfcde34c",
+  "pageVersion": "sha256:fd6e9002f32f89cf51596342517a7faa9610bfe62d77a5d98b72de6e79e6e0f2",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -162,23 +162,23 @@
     },
     {
       "id": "claim_9631e8c5a90e442f94b16206c07b3094",
-      "statement": "Public contract version 6 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence.",
+      "statement": "Public contract version7 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence and local addresses.",
       "evidence": [
         {
-          "resource": "repo://copilot/extension.mjs#L69-L76",
-          "version": "repo-lines-v1:sha256:ec8b643b8bd46245d5433fdd582318fbb2b441249b703442b4f3599f5b2f02d3:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTJhMDQxMzRjM2ExZWYxMDQ4ZjdlMGI2M2NmOWRjOTI3NGM5ODFjMjlhNmVjZTQ0YzFlNDZlMzI5OTUyYTI5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWJjMDhlNmNmMDY4ODU0ZWIxZTNjNGJkYzUwNjY5OGI1NWQ1Zjk5N2E5ZjQ1ZGJlOWFkNDk3ZmI0MGQxNDVmNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTY2OGIwZTY3NDYzOGY2NWRkZDIzMDVlYTM5NTY1Mzg5NzY2NWM4YTk4ZDk0ZWJhOGQwMzI1ZmFhZGI5MDdlOCJ9"
+          "resource": "repo://copilot/extension.mjs#L69-L77",
+          "version": "repo-lines-v1:sha256:070a72d29b5700334a93204838149a7ee59836250b9c1df2d27e99c0634f0588:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWJjODhlMDA2OTVkNGQwYTMxMGQxYzVmZTk4Nzk5ZDkxZmE4Y2QwYWNiNGU4ZTE4YTQ1ZWNiNjVlZWNkYjgyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWJjMDhlNmNmMDY4ODU0ZWIxZTNjNGJkYzUwNjY5OGI1NWQ1Zjk5N2E5ZjQ1ZGJlOWFkNDk3ZmI0MGQxNDVmNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTQxNzhmOWFjYTc5Nzc3NGY1NjJhN2FjMmVlYTJhNDI5NDIzMTcyZTgxNWE0OWY1ZTlhYWNmNWYxNzE4ZTE0ZCJ9"
         },
         {
           "resource": "repo://pi/extension.ts#L1-L2",
-          "version": "repo-lines-v1:sha256:2794208572c7bd8ee990eef3c287426f0b1c04e1702c2a8523e8450c7b724b64:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODYyZTZlMzAwNDk1OWYxNDA3NTUzZGU2OTAwODEyZDBlMDQzMjdlNjljNjZhNDhhZWNjYmRjNmJlMTBhOTIwYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE4Y2I2ODJhYTVlMTlhMTZjZjRhNjRjMjFlMmFjNzRhNTgzNmU5ZDJiYjM4NzBkN2M3NDk0Y2E3NDgzYTgyZiJ9"
+          "version": "repo-lines-v1:sha256:ad426cfccb1957354ef6119b0a2e4d4cfbf64958342b6f9fbce6625341f24bdc:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjA0YzhjMzY1NmUwNTg4NzdjNzk5OGIzYTYxODZhMzQ3Y2RlZjcyMDdhNTg2YjcwNTY0OTcyNGUwNWU2ZjMwZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE4Y2I2ODJhYTVlMTlhMTZjZjRhNjRjMjFlMmFjNzRhNTgzNmU5ZDJiYjM4NzBkN2M3NDk0Y2E3NDgzYTgyZiJ9"
         },
         {
-          "resource": "repo://pi/extension.ts#L81-L88",
-          "version": "repo-lines-v1:sha256:9ab54a37bc182e5ebb907f4a7a3615c41ca48c67d269eeb4d5d412b20e38a02b:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDVjYjI5OWYwZGI1ZWE3ZmU0NmM4NDM1ZGIxZDM1NTQzMGNlM2FkNjhjNGVlODg3MThjY2JmNmNkYjljMjcyMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQxOWRmNjkyYzYxMWZiMmI1MWZmYzg1NGFiMDA0NzJkMDJlMzYyZjI1OGM5OTIxMjBhYWI1NWVjNmYyYjVmMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWExYTc2ZTBlN2UxNmEzMzJlZWU2M2I3NDdmNzMwNDg1YTljMDI3ODk5ZmIzMDMwYmEyMWEyNzk5ZGUzZjZlZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDc4YzE0ZWNhZmFhNmM2ZjgwYTg5MmVlNGI0OTI3NzIyMjFmNjdlMDg4NWUxODA0NDNlMDY2YWMwOWEwZjU2MSJ9"
+          "resource": "repo://pi/extension.ts#L81-L89",
+          "version": "repo-lines-v1:sha256:14559c365c00b5e4aac34556e6e9ca8d783717a843548dacd3018c4018d7a366:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDVjYjI5OWYwZGI1ZWE3ZmU0NmM4NDM1ZGIxZDM1NTQzMGNlM2FkNjhjNGVlODg3MThjY2JmNmNkYjljMjcyMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ2NmJhZjM1ZDEyMmJmYTdhNTNiNzZjNDM1MmYxNjA2YTAwZmU3YzQ4N2U1YTY3M2Y1Yzg0ODBkNGY3ODdjMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWExYTc2ZTBlN2UxNmEzMzJlZWU2M2I3NDdmNzMwNDg1YTljMDI3ODk5ZmIzMDMwYmEyMWEyNzk5ZGUzZjZlZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmE0MGExZDE5NGE0MmExOGZjOTE2Y2VjY2U2N2ZhMTkwNzQwNDI2Y2RmNGI4NDVkODBiMTY3NzJkM2E1ZjNjNiJ9"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt#L1-L6",
-          "version": "repo-lines-v1:sha256:52dc8fec4bcccbffe93cbd0407b08c0f8024505d5a3265d46297987f69d16d35:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk2NGRhNmQ1NGE3MDE1ZDllM2QxOWNhNDYxNjVjYWNmZjBmZDFjZTMzZmMyODBjOThkMGFmZGQzZDk2MDI4NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTFhNzA3ZDYxMWE2NWFlZWNlZmQzYWQ0MGIwZWFiMjUwMjk5OTBkMDkxNmUyNjQ3ODQwMjVlNjA1M2I3MjE2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTAxZThlNjk1ZWU1NmIzZjJlNTlkYWY0ZWUwMTUzMWQ3ZGQ5NDk0ZWUyN2RkNWFjN2U2MTk4Mzg5NzE3YTM4ZSJ9"
+          "version": "repo-lines-v1:sha256:ce19c2976b0cc2827014c223032756de824bd09ae2cefadc68f4063c8c13b8ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk2NGRhNmQ1NGE3MDE1ZDllM2QxOWNhNDYxNjVjYWNmZjBmZDFjZTMzZmMyODBjOThkMGFmZGQzZDk2MDI4NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2EzZjE5ZDI3MjU1YmJlYWZhZDA5YWRmOWVhMDM2NDg5ODY3MTBiN2ViZGUwNmFkNWRiMmIxOGQ0MzJlZTY3NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTAxZThlNjk1ZWU1NmIzZjJlNTlkYWY0ZWUwMTUzMWQ3ZGQ5NDk0ZWUyN2RkNWFjN2U2MTk4Mzg5NzE3YTM4ZSJ9"
         }
       ]
     },
@@ -188,11 +188,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/test/js/harness-adapters.test.mjs",
-          "version": "repo-file-v1:sha256:7ad63165d4b887eca8b5337c0b8996a38b9b6c025e8c6ff682fc6dbdbab58124"
+          "version": "repo-file-v1:sha256:f399038e3c53314a883a05ca53bc55cd3c9dcead044176e268a0dd7aef8263e4"
         },
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:4cdc5308fd89eab635ba0028d42884e7d927e1e8591d87dfebaf6e74d068575b"
+          "version": "repo-file-v1:sha256:8a9fce54ce626c0b55ef50e425d9b82e778ec33a9ed4e66a172eed9880d5f98b"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
@@ -200,13 +200,49 @@
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:b7e98efed3b59a6f52d05958377eb61857bfad5ab54423187c95f5e39b321f4c"
+          "version": "repo-file-v1:sha256:760471766852296bed372add0e5f585075f3efa92432f62e5ce7a8e9533961b6"
+        }
+      ]
+    },
+    {
+      "id": "claim_0dd5bc4f05794e6e9412cecd2437554f",
+      "statement": "LOCAL_FUNCTION and LOCAL_PROPERTY public signatures retain required compiler local addresses, callable or typed mutability facts; closed discriminator and address/signature consistency admission rejects malformed data before domain construction.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/LocalDeclarationAddressDocuments.kt",
+          "version": "repo-file-v1:sha256:b10b21f688158a402e8a0ee7c6ada85ed86893ad206e9ac35d4481271bfb6304"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt",
+          "version": "repo-file-v1:sha256:04970a9a591f7455f8a99434ea08a0f33c21154fb94fd05c75abbf5cfc264079"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalSymbolDocuments.kt",
+          "version": "repo-file-v1:sha256:4f7d294a146c7b59f4ce3890a4b49c494d7d4ff02d6ea3642f9ee0c966560ea3"
+        }
+      ]
+    },
+    {
+      "id": "claim_4c19c333f2d9445d96787d565c586235",
+      "statement": "Installed output schema generation references only registry-owned actual serializer descriptors before nested expansion, preserving property constraints, nullable alternatives, homogeneous arrays and standalone request schemas.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalSchemaReferences.kt",
+          "version": "repo-file-v1:sha256:8561313e4db72cb822fe9910d0ba529e84ca432906c1b7281957478015d6dd79"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
+          "version": "repo-file-v1:sha256:ff9340bdc1a3ce79e69064840124c4030072a4f4c38c0834d8e66afad4f33cb0"
+        },
+        {
+          "resource": "repo://cli/src/test/kotlin/io/github/amichne/kast/cli/GeneratedSchemaReuseTest.kt",
+          "version": "repo-file-v1:sha256:a87d5896236c93f9b76ae2c096ddb697b897598ac25e2b59552dd7e577331d6d"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T03:31:21.414Z"
+    "at": "2026-10-08T04:15:35.391Z"
   }
 }

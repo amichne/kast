@@ -39,7 +39,7 @@ class ExactRevalidationService(
                 is ExactRevalidationCompilation.Rejected -> return rejected(result.reason)
             }
         val matches =
-            when (policy) {
+            when (policy.forDeclaration(locator.evidence.signature)) {
                 ExactRevalidationPolicy.ORIGINAL_DOCUMENT -> evidence == locator.evidence
                 ExactRevalidationPolicy.CURRENT_DECLARATION -> evidence.sameDeclaration(locator.evidence)
             }

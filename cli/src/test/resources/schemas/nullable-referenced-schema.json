@@ -1,0 +1,6 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {"optional": {"anyOf": [{"$ref": "#/$defs/leaf"}, {"type": "null"}]}},
+  "required": ["optional"]
+}

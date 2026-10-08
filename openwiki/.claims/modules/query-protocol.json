@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c0946a8118a0b07288dd4282e21b85e59557f27a8e27fd5aaef3c02c16db6f2f",
+  "pageVersion": "sha256:3750f180daa66d00f4aa6ebb3a0be977388fb14119ba6cfcf5bea3adc31a57c7",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -249,7 +249,7 @@
       "statement": "Compiler steps preserve direct or normal branch-result evidence through path/model history and retained paging; projection keeps exact anchors, alternative and normal completion, while the existing storage visitor charges that evidence.",
       "evidence": [
         {
-          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt#L178-L190",
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt#L192-L204",
           "version": "repo-lines-v1:sha256:7c935fd92c74100a787ce24b1cde8fdc760d8a450ee7e75ab5020dccb3f96ed4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3NmE0Y2VhMTI3M2U3NGI0NWU3NzAzOWQzZjY2ZWYzNWZlMjE3NDk1ODFjODlhMGY0NzM0ZjY0M2Y0MmVmMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczNmJmN2E3OGI1NTlkODRkNmQ2MWMxNmUyMjk5Y2ViYmFjNDc4YmFlMTg5N2JiOTA5ZjViZjQyNmIxMDdhYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxNGE0ZDg5ZjkzMGYxYTg1NTQ5ZTBhMjcwMDkzNTZjNzM2YWYwMzJiZWI3NGY4MzVjY2MwOTY2Y2YzZGYwNDYifQ"
         },
         {
@@ -261,10 +261,50 @@
           "version": "repo-lines-v1:sha256:053bad2266a902d470319c72f4376532435983f1f824d3ff408d933e0da93488:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5OGU3ODhhZDFiNmRiMzA4NTI0N2IyNTk4MWIxMWNjZmViMzQzZDUxZWE1ZTI4M2Q5NDIyN2QyOWJjYjVmZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0ODhlNDVjNGZlZWQ5NzhjMWM5YThhNTBlOTA1MmRjODI3ODhhZTkyYzc1MWVkMDFhYWUwMDcwOTBiZDNmYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxZjgwMTNiNWJlN2YwNGQyNTQ5YTJmNjJjZjZlMzZhY2I5ZGNhNDRjZjk2MTA3MTRiNzg2MDJhOWVlOTFkMTcifQ"
         }
       ]
+    },
+    {
+      "id": "claim_e9bfb4b77590454ba78c24f4097b24e0",
+      "statement": "Local addresses survive query projection/composition and are charged under existing retained storage; local fresh-reference reacquisition requires unchanged owning-file content and exact ownership, while qualified reacquisition retains its existing policy.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt",
+          "version": "repo-file-v1:sha256:398b59d969c3f06619a94c2c597679522fff95fbcdcd6bd2d1b1c2f2dd0084aa"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSymbolDocuments.kt",
+          "version": "repo-file-v1:sha256:9d0faa7bbc18b7e737be867a9186ce5e884f93013b03a88c56a736d2dba1525f"
+        },
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt",
+          "version": "repo-file-v1:sha256:e966d06a82ca37b3b4ea8d52026ce1935a91101b037edf5b5e56bad6a4e0e618"
+        },
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+          "version": "repo-file-v1:sha256:ba968a3c6e47c0931f09edd63269eef63362b4c2091d22e77ae16030b15cf1a3"
+        }
+      ]
+    },
+    {
+      "id": "claim_e7cc985ef8414441a381f9d60094f082",
+      "statement": "Scoped original-document reacquisition reserves compiler lookup work before content capture and shares the supplied work/time grant; exhausted deadlines reject before capture, lookup or success publication while retained local identity facts remain unchanged.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ProjectBoundExactRevalidationPort.kt",
+          "version": "repo-file-v1:sha256:bfcd056c5e1040a99c8fc92b04caf1ce165a0b48f7f0fc929f3d972c2901a961"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt",
+          "version": "repo-file-v1:sha256:e607252d95b6e264454013f860f39ec1e825475341b3b1b57c0dad6ff46000f0"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt",
+          "version": "repo-file-v1:sha256:50685b2c774c9ab2fdf0fe382fdcc6f6676d560ecff31c80e7df0f2a8c554bf2"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T03:03:28.717Z"
+    "at": "2026-10-08T04:02:52.014Z"
   }
 }

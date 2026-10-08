@@ -4974,16 +4974,6 @@
     {
       "fingerprint": {
         "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
-        "scope": "fun:arraySchema(4:List1:<10:Annotation1:>)16:SerialDescriptor",
-        "kind": "JSON_BUILDER",
-        "sha256": "a9aea173c2831bd851815bc0c5e845ab1832c11915cebfcdb016051a461e0598"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
         "scope": "fun:arrayVariant(7:kotlinx1:.13:serialization1:.4:json1:.11:JsonElement,4:List1:<28:ProtocolCollectionConstraint1:>)",
         "kind": "JSON_BUILDER",
         "sha256": "0127ec657a423d102e35e331bf6ba39c97f3289919f430ad068daed531877fa6"
@@ -5067,46 +5057,6 @@
         "scope": "fun:stringSchema(4:List1:<10:Annotation1:>)/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
         "kind": "JSON_BUILDER",
         "sha256": "38851f57db209b4809827fa7b569a5371215b1caf7f4cebcd79c7c680e32b245"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
-        "scope": "fun:toJsonSchema(4:List1:<10:Annotation1:>,7:Boolean)16:SerialDescriptor",
-        "kind": "JSON_BUILDER",
-        "sha256": "9c0b004895e82ca9d87747414dcacc75d3a3498dfcef4bdce8597933ce0d70a9"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
-        "scope": "fun:toJsonSchema(4:List1:<10:Annotation1:>,7:Boolean)16:SerialDescriptor",
-        "kind": "JSON_BUILDER",
-        "sha256": "393de7fe1fa60827d912bff8d8aa7ee65b7430c19e5e49c3da793b87160d2d8e"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
-        "scope": "fun:toJsonSchema(4:List1:<10:Annotation1:>,7:Boolean)16:SerialDescriptor",
-        "kind": "JSON_BUILDER",
-        "sha256": "1c7dfa35d538984605571e24e26becefaf4367827898f969ca20cad3c3ba40a8"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
-        "scope": "fun:toJsonSchema(4:List1:<10:Annotation1:>,7:Boolean)16:SerialDescriptor/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "dd2b1017fe98960c7f6e286f8f79f490c457d96c7849b533f6c754df218d0914"
       },
       "count": 1,
       "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."

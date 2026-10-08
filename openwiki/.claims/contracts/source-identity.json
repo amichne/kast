@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:883bfdb7a8f1497afc0bc598c45c9e312ba2946759573cadd70a74dda336a9ca",
+  "pageVersion": "sha256:4c7dcc9400ff9cf2c801b8a7eea77b15c2b4bf109bb8370f21cd589416f82427",
   "claims": [
     {
       "id": "claim_f7d072d0792940888833dd8e689c0570",
@@ -35,10 +35,32 @@
           "version": "repo-lines-v1:sha256:e442a60ad923d477cb96c118a6dbe9b209f68210cf1d80bf10b7fa1d06da4d38:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYTdjMjA2OWY4ZDZkYThkYmUzNzMzZThjNmZjZGE1M2RmOTgzNTJiY2ZiYWI3Y2ZmNTEzODkxZmUyZDU3OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmZmFlNjMwOGQ1ZTQxNzY1YjM1OWM2NGUxNmM0NDc1MGYzYzYyOWEyMmYwMDRmZTVhZmMwNjdiZDZiY2YzM2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxN2MwM2UxOTk4YjliNGI1Mzc5YTdiMWM0NzA1YWFlZGYyNDU1MGNjNzU0MDY0MzVhMjE3ZTJmM2RkOTNjOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4NjlhZDY2OTRkMzViOGY2MzQ5ZTdkNzVlNTU2OWJhYjllYjk4YjgyZTA3N2ZlY2ZkOGMwNzU1ZWNlZTFhNTMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_3dddf619b10443e2b3a5052be6356eb9",
+      "statement": "Local exact references preserve admitted local addresses and require ORIGINAL_DOCUMENT unchanged whole owning-file content plus saved committed PSI and fresh compiler confirmation for reacquisition; edited locals require rediscovery rather than name rebinding.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt",
+          "version": "repo-file-v1:sha256:e966d06a82ca37b3b4ea8d52026ce1935a91101b037edf5b5e56bad6a4e0e618"
+        },
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+          "version": "repo-file-v1:sha256:ba968a3c6e47c0931f09edd63269eef63362b4c2091d22e77ae16030b15cf1a3"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt",
+          "version": "repo-file-v1:sha256:19383354164a5a9e5e62139e4a313206805d0502396a5b4918012cb248c86bf5"
+        },
+        {
+          "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt",
+          "version": "repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T01:13:49.481Z"
+    "at": "2026-10-08T03:09:54.978Z"
   }
 }

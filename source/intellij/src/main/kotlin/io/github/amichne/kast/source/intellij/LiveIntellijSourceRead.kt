@@ -333,8 +333,11 @@ internal class LiveIntellijSourceRegionAccess(
             exactDeclaration(document.psiFile, selector)
                 ?: return LiveSourceAnchorResult.Rejected(IntellijSourceReadRejection.ANCHOR_NOT_FOUND)
         val evidence =
-            declaration.compilerEvidence(selector)
-                ?: return LiveSourceAnchorResult.Rejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
+            when (val admitted = declaration.compilerEvidence(selector, observation)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return LiveSourceAnchorResult.Rejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
+            }
         when (RevalidatedSymbolSelector.validate(selector, evidence)) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected ->

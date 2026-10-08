@@ -10,26 +10,33 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.LocalDeclarationAddress
+import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolLocation
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
-import org.jetbrains.kotlin.psi.KtNamedFunction
 
 internal data class IntellijCompilerProjection(
     val kind: CompilerSymbolKind,
-    val qualifiedIdentity: String,
+    val qualifiedIdentity: String?,
     val signature: CanonicalCompilerSignature,
     val identity: CompilerSymbolIdentity,
 )
 
 internal sealed interface IntellijCompilerProjectionResult {
     data class Projected(val projection: IntellijCompilerProjection) : IntellijCompilerProjectionResult
+
+    data class LocalRejected(val failure: LocalDeclarationProjectionFailure) : IntellijCompilerProjectionResult
 
     data object Unsupported : IntellijCompilerProjectionResult
 }
@@ -47,10 +54,19 @@ internal enum class IntellijSymbolIdentityComparison {
  * identity. Unsupported is the closed local/unavailable identity state. Raw K2 values remain inside the
  * analysis-session receiver.
  */
-internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult =
-    when (this) {
+internal fun KaSymbol.compilerProjection(
+    session: KaSession,
+    file: SymbolDiscoveryFileIdentity? = null,
+    depth: Int = 0,
+    observation: IntellijReadObservation = IntellijReadObservation.None,
+): IntellijCompilerProjectionResult {
+    if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
+        return IntellijCompilerProjectionResult.LocalRejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
+    if (location == KaSymbolLocation.LOCAL) return localRelationProjection(session, file, depth, observation)
+    return when (this) {
         is KaValueParameterSymbol ->
-            generatedPrimaryConstructorProperty?.compilerProjection() ?: IntellijCompilerProjectionResult.Unsupported
+            generatedPrimaryConstructorProperty?.compilerProjection(session, file, depth, observation)
+                ?: IntellijCompilerProjectionResult.Unsupported
         is KaConstructorSymbol -> {
             val owner =
                 containingClassId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
@@ -61,20 +77,7 @@ internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult =
             )
         }
         is KaFunctionSymbol -> projectedFunction()
-        is KaKotlinPropertySymbol -> {
-            val callable =
-                callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
-            projected(
-                CompilerSymbolKind.PROPERTY,
-                callable,
-                CanonicalCompilerSignature.property(
-                    rawQualifiedIdentity = callable,
-                    rawReceiverType = receiverParameter?.returnType?.toString(),
-                    rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
-                    rawReturnType = returnType.toString(),
-                ),
-            )
-        }
+        is KaKotlinPropertySymbol -> projectedProperty()
         is KaTypeAliasSymbol -> {
             val className = classId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
             projected(
@@ -95,23 +98,11 @@ internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult =
         }
         else -> IntellijCompilerProjectionResult.Unsupported
     }
-
-private fun KaFunctionSymbol.projectedFunction(): IntellijCompilerProjectionResult {
-    val callable =
-        callableId?.asSingleFqName()?.asString()
-            ?: (psi as? KtNamedFunction)?.let { function ->
-                function.containingFile.virtualFile?.url?.let(function::sourceBoundCallableIdentity)
-            }
-            ?: return IntellijCompilerProjectionResult.Unsupported
-    return projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
 }
 
-/** A K2-resolved local function has no callableId; its exact file and PSI position bind its compiler signature. */
-internal fun KtNamedFunction.sourceBoundCallableIdentity(fileUrl: String): String? {
-    if (fileUrl.isBlank()) return null
-    val name = name?.takeIf(String::isNotBlank) ?: return null
-    val offset = textRange?.startOffset ?: return null
-    return "local@$fileUrl#$offset.$name"
+private fun KaFunctionSymbol.projectedFunction(): IntellijCompilerProjectionResult {
+    val callable = callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+    return projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
 }
 
 /**
@@ -120,15 +111,17 @@ internal fun KtNamedFunction.sourceBoundCallableIdentity(fileUrl: String): Strin
  * SAME establishes identical detached compiler identities. DIFFERENT and UNSUPPORTED are closed non-admission states;
  * no PSI name, offset, or display text substitutes for K2 identity.
  */
-internal fun KaSymbol.compareIdentity(other: KaSymbol): IntellijSymbolIdentityComparison {
+internal fun KaSymbol.compareIdentity(other: KaSymbol, session: KaSession): IntellijSymbolIdentityComparison {
     val left =
-        when (val result = compilerProjection()) {
+        when (val result = compilerProjection(session)) {
             is IntellijCompilerProjectionResult.Projected -> result.projection.identity
+            is IntellijCompilerProjectionResult.LocalRejected,
             IntellijCompilerProjectionResult.Unsupported -> return IntellijSymbolIdentityComparison.UNSUPPORTED
         }
     val right =
-        when (val result = other.compilerProjection()) {
+        when (val result = other.compilerProjection(session)) {
             is IntellijCompilerProjectionResult.Projected -> result.projection.identity
+            is IntellijCompilerProjectionResult.LocalRejected,
             IntellijCompilerProjectionResult.Unsupported -> return IntellijSymbolIdentityComparison.UNSUPPORTED
         }
     return if (left == right) {
@@ -138,7 +131,7 @@ internal fun KaSymbol.compareIdentity(other: KaSymbol): IntellijSymbolIdentityCo
     }
 }
 
-private fun KaFunctionSymbol.functionSignature(
+internal fun KaFunctionSymbol.functionSignature(
     callable: String
 ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
     CanonicalCompilerSignature.function(
@@ -149,9 +142,9 @@ private fun KaFunctionSymbol.functionSignature(
         rawTypeParameterCount = (this as? KaNamedFunctionSymbol)?.typeParameters?.size ?: 0,
     )
 
-private fun projected(
+internal fun projected(
     kind: CompilerSymbolKind,
-    qualifiedIdentity: String,
+    qualifiedIdentity: String?,
     signature: Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>,
 ): IntellijCompilerProjectionResult =
     when (signature) {
@@ -166,3 +159,22 @@ private fun projected(
             )
         is Refinement.Rejected -> IntellijCompilerProjectionResult.Unsupported
     }
+
+private fun KaKotlinPropertySymbol.projectedProperty(): IntellijCompilerProjectionResult {
+    val callable = callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+    return projected(
+        CompilerSymbolKind.PROPERTY,
+        callable,
+        propertySignature(callable),
+    )
+}
+
+internal fun KaKotlinPropertySymbol.propertySignature(
+    callable: String
+): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
+    CanonicalCompilerSignature.property(
+        rawQualifiedIdentity = callable,
+        rawReceiverType = receiverParameter?.returnType?.toString(),
+        rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+        rawReturnType = returnType.toString(),
+    )

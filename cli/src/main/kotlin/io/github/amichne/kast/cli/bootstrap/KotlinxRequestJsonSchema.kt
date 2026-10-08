@@ -30,7 +30,23 @@ import kotlinx.serialization.json.putJsonArray
 
 /** Generates the hosted request schema from the same serializer that admits the request. */
 internal fun generatedRequestSchema(serializer: KSerializer<*>): JsonObject =
-    serializer.descriptor.toJsonSchema(emptyList(), includeNullability = true)
+    serializer.descriptor.toJsonSchema(
+        emptyList(),
+        includeNullability = true,
+        references = CanonicalSchemaReferences.None,
+    )
+
+/** Installed output definitions are substituted before expansion; the caller attaches their canonical authority. */
+internal fun generatedOutputSchema(
+    serializer: KSerializer<*>,
+    references: CanonicalSchemaReferences = CanonicalSchemaReferences.Installed,
+): JsonObject =
+    serializer.descriptor.toJsonSchema(
+        emptyList(),
+        includeNullability = true,
+        references = references,
+        allowReference = false,
+    )
 
 /** Retains generated payload constraints while narrowing variants through the canonical hosted owner. */
 internal fun generatedHostedRequestSchema(serializer: KSerializer<*>, variants: HostedVariants): JsonObject {
@@ -70,17 +86,32 @@ internal fun generatedHostedRequestSchema(serializer: KSerializer<*>, variants: 
 private fun SerialDescriptor.toJsonSchema(
     propertyAnnotations: List<Annotation>,
     includeNullability: Boolean,
+    references: CanonicalSchemaReferences,
+    allowReference: Boolean = true,
 ): JsonObject {
     // JsonElement is used only for contract-defined opaque JSON. An empty schema admits every JSON value.
     if (serialName.removeSuffix("?") == "kotlinx.serialization.json.JsonElement")
         return OBJECT_SCHEMA_JSON.encodeToJsonElement(UnconstrainedJsonSchema.serializer(), UnconstrainedJsonSchema)
             .jsonObject
     if (includeNullability && isNullable) {
-        return buildJsonObject {
-            putJsonArray("anyOf") {
-                add(toJsonSchema(propertyAnnotations, includeNullability = false))
-                add(buildJsonObject { put("type", "null") })
-            }
+        return OBJECT_SCHEMA_JSON.encodeToJsonElement(
+                GeneratedAnyOfSchemaDocument.serializer(),
+                GeneratedAnyOfSchemaDocument(
+                    listOf(
+                        toJsonSchema(propertyAnnotations, includeNullability = false, references, allowReference),
+                        primitiveSchema(GeneratedPrimitiveSchemaType.NULL),
+                    )
+                ),
+            )
+            .jsonObject
+    }
+    if (allowReference && propertyAnnotations.isEmpty()) {
+        references.name(this)?.let { name ->
+            return OBJECT_SCHEMA_JSON.encodeToJsonElement(
+                    GeneratedSchemaReference.serializer(),
+                    GeneratedSchemaReference("#/\$defs/$name"),
+                )
+                .jsonObject
         }
     }
     val annotations = annotations + propertyAnnotations
@@ -91,11 +122,11 @@ private fun SerialDescriptor.toJsonSchema(
         PrimitiveKind.SHORT,
         PrimitiveKind.INT,
         PrimitiveKind.LONG -> integerSchema(annotations)
-        PrimitiveKind.BOOLEAN -> buildJsonObject { put("type", "boolean") }
+        PrimitiveKind.BOOLEAN -> primitiveSchema(GeneratedPrimitiveSchemaType.BOOLEAN)
         PrimitiveKind.FLOAT,
-        PrimitiveKind.DOUBLE -> buildJsonObject { put("type", "number") }
+        PrimitiveKind.DOUBLE -> primitiveSchema(GeneratedPrimitiveSchemaType.NUMBER)
         SerialKind.ENUM -> enumSchema(annotations)
-        StructureKind.LIST -> arraySchema(annotations)
+        StructureKind.LIST -> arraySchema(annotations, references)
         StructureKind.MAP ->
             if (serialName.removeSuffix("?") == "kotlinx.serialization.json.JsonObject") {
                 OBJECT_SCHEMA_JSON.encodeToJsonElement(OpenObjectSchema.serializer(), OpenObjectSchema()).jsonObject
@@ -103,8 +134,8 @@ private fun SerialDescriptor.toJsonSchema(
                 error("Unsupported canonical request descriptor kind $kind at $serialName")
             }
         StructureKind.CLASS,
-        StructureKind.OBJECT -> objectSchema()
-        PolymorphicKind.SEALED -> sealedSchema()
+        StructureKind.OBJECT -> objectSchema(references)
+        PolymorphicKind.SEALED -> sealedSchema(references)
         else -> error("Unsupported canonical request descriptor kind $kind at $serialName")
     }
 }
@@ -159,7 +190,10 @@ private fun SerialDescriptor.enumSchema(annotations: List<Annotation>): JsonObje
     }
 }
 
-private fun SerialDescriptor.arraySchema(annotations: List<Annotation>): JsonObject {
+private fun SerialDescriptor.arraySchema(
+    annotations: List<Annotation>,
+    references: CanonicalSchemaReferences,
+): JsonObject {
     val constraints = annotations.filterIsInstance<ProtocolCollectionConstraint>()
     val allowed = annotations.filterIsInstance<ProtocolAllowedValues>()
     val itemSchema =
@@ -167,14 +201,16 @@ private fun SerialDescriptor.arraySchema(annotations: List<Annotation>): JsonObj
             .toJsonSchema(
                 allowed,
                 includeNullability = true,
+                references = references,
+                allowReference = annotations.none { it is ProtocolHomogeneousCollection },
             )
     val itemVariants = itemSchema["anyOf"] as? JsonArray
     if (annotations.any { it is ProtocolHomogeneousCollection } && itemVariants != null) {
-        return buildJsonObject {
-            putJsonArray("anyOf") {
-                itemVariants.forEach { variant -> add(arrayVariant(variant, constraints)) }
-            }
-        }
+        return OBJECT_SCHEMA_JSON.encodeToJsonElement(
+                GeneratedAnyOfSchemaDocument.serializer(),
+                GeneratedAnyOfSchemaDocument(itemVariants.map { variant -> arrayVariant(variant, constraints) }),
+            )
+            .jsonObject
     }
     return arrayVariant(itemSchema, constraints)
 }
@@ -195,6 +231,27 @@ private fun arrayVariant(
 
 /** Property names and child schemas are the JSON Schema contract's dynamic boundary. */
 @Serializable private data class OpenObjectSchema(val type: String = "object", val additionalProperties: Boolean = true)
+
+@Serializable private data class GeneratedAnyOfSchemaDocument(val anyOf: List<JsonElement>)
+
+@Serializable private data class GeneratedPrimitiveSchemaDocument(val type: GeneratedPrimitiveSchemaType)
+
+@Serializable
+private enum class GeneratedPrimitiveSchemaType {
+    @kotlinx.serialization.SerialName("null") NULL,
+    @kotlinx.serialization.SerialName("boolean") BOOLEAN,
+    @kotlinx.serialization.SerialName("number") NUMBER,
+}
+
+private fun primitiveSchema(type: GeneratedPrimitiveSchemaType): JsonObject =
+    OBJECT_SCHEMA_JSON.encodeToJsonElement(
+            GeneratedPrimitiveSchemaDocument.serializer(),
+            GeneratedPrimitiveSchemaDocument(type),
+        )
+        .jsonObject
+
+@Serializable
+private data class GeneratedSchemaReference(@kotlinx.serialization.SerialName("\$ref") val reference: String)
 
 @Serializable private data object UnconstrainedJsonSchema
 
@@ -220,7 +277,7 @@ private data class GeneratedSealedUnionSchemaDocument(
 
 private val OBJECT_SCHEMA_JSON = Json { encodeDefaults = true }
 
-private fun SerialDescriptor.objectSchema(): JsonObject =
+private fun SerialDescriptor.objectSchema(references: CanonicalSchemaReferences): JsonObject =
     OBJECT_SCHEMA_JSON.encodeToJsonElement(
             GeneratedObjectSchemaDocument.serializer(),
             GeneratedObjectSchemaDocument(
@@ -228,14 +285,18 @@ private fun SerialDescriptor.objectSchema(): JsonObject =
                     (0 until elementsCount).associate { index ->
                         getElementName(index) to
                             getElementDescriptor(index)
-                                .toJsonSchema(getElementAnnotations(index), includeNullability = true)
+                                .toJsonSchema(
+                                    getElementAnnotations(index),
+                                    includeNullability = true,
+                                    references = references,
+                                )
                     },
                 required = (0 until elementsCount).filterNot(::isElementOptional).map(::getElementName),
             ),
         )
         .jsonObject
 
-private fun SerialDescriptor.sealedSchema(): JsonObject {
+private fun SerialDescriptor.sealedSchema(references: CanonicalSchemaReferences): JsonObject {
     val discriminator = annotations.filterIsInstance<JsonClassDiscriminator>().lastOrNull()?.discriminator ?: "type"
     val variants = getElementDescriptor(1)
     return OBJECT_SCHEMA_JSON.encodeToJsonElement(
@@ -246,7 +307,12 @@ private fun SerialDescriptor.sealedSchema(): JsonObject {
                         val tag = variants.getElementName(index).substringAfterLast('.')
                         variants
                             .getElementDescriptor(index)
-                            .toJsonSchema(emptyList(), includeNullability = false)
+                            .toJsonSchema(
+                                emptyList(),
+                                includeNullability = false,
+                                references = references,
+                                allowReference = false,
+                            )
                             .withDiscriminator(discriminator, tag)
                     },
                 discriminator = GeneratedSchemaDiscriminatorDocument(discriminator),
