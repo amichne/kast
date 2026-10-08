@@ -50,7 +50,7 @@ sealed interface IdeLifecycleCommand : OperationRequest {
         val requestId: String,
         val client: String,
         val target: IdeProjectTarget,
-        val assertion: String,
+        val confirmation: ProjectCloseApprovalPayload,
     ) : IdeLifecycleCommand
 
     @Serializable @SerialName("status") data class Status(val host: String, val requestId: String) : IdeLifecycleCommand
@@ -163,7 +163,7 @@ enum class IdeLifecycleQualification : OperationQualification {
 
 interface IdeLifecycleCapability : io.github.amichne.kast.kernel.CapabilityMarker
 
-/** Signed only after an exact-target controller response; never supplied by public model arguments. */
+/** Exact-target controller response retained for local endpoint correlation. */
 @Serializable
 data class ProjectCloseApprovalPayload(
     val target: IdeProjectTarget,
@@ -172,13 +172,12 @@ data class ProjectCloseApprovalPayload(
     val threadId: String,
     val turnId: String,
     val callId: String,
-    val purpose: String = "kast-project-close-v1",
 )
 
 @Serializable
 data class ApprovedProjectCloseInvocation(
     val arguments: WorkspaceLifecycleRequest.RequestUserClose,
-    val approval: String,
+    val confirmation: ProjectCloseApprovalPayload,
 )
 
 @Serializable

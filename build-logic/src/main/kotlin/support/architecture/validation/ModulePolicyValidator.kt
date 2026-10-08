@@ -164,6 +164,8 @@ internal object KastCleanSlateCrossRoleDependencies {
         ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_RECOVERY),
         ProjectDependencyObservation(ModuleId.RUNTIME_HOSTED, ModuleId.EVIDENCE_SQLITE),
+        // Uninstall delegates settled-state inspection to the durable mutation owner.
+        ProjectDependencyObservation(ModuleId.DISTRIBUTION_CLI, ModuleId.EVIDENCE_SQLITE),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_RECOVERY),
         ProjectDependencyObservation(ModuleId.CHANGE_INTELLIJ, ModuleId.CHANGE_VERIFY),

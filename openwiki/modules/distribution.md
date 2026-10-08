@@ -73,7 +73,9 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationTrustEnrollment.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstalledUserState.kt
+  - path: evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/ControlDistributionAdmissionMain.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
@@ -193,12 +195,20 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
+  - id: openwiki-source-a62e12ff14ead337deede61b
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt
   - id: openwiki-source-927dce901b5dbac4a4d84f48
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - id: openwiki-source-9aad56755086fa068397b99d
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ReadyReset.kt
+  - id: openwiki-source-47ff7393e051378d9c971323
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallRetirementJournal.kt
+  - id: openwiki-source-d6537b8c3c1d3e623334d7d1
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventory.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
+  - id: openwiki-source-a27a8f11a4689cb821b5f6e8
+    resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
     resource: repo://install.sh
   - id: openwiki-source-6fea3b3b86300de08664c4ee
@@ -219,10 +229,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-05T20:36:23.129Z" }
+generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T20:36:23.129Z
+    at: 2026-10-08T02:31:16.815Z
 ---
 
 # Distribution and packaging
@@ -239,7 +249,7 @@ The `distribution:cli` module builds the native public `kast` management executa
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
-Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. The hosted-plugin ZIP is named for its own version and the IDEA release line (`idea-262.zip`). The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check copies the production Control staging tree directly into an owned fixture before invoking launchers or the installer. It verifies independent artifact identities, required launchers including the native management command, and Control cold staging in the canonical layout beneath that fixture HOME. It verifies an installed/not-requested report, the exact publication receipt and absence of Host files; it establishes no loaded-host admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. The hosted-plugin ZIP is named for its own version and the IDEA release line (`idea-262.zip`). The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check copies the production Control staging tree directly into an owned fixture before invoking launchers or the installer. It verifies independent artifact identities, required launchers including the native management command, and Control cold staging in the canonical layout beneath that fixture HOME. It first verifies an installed/not-requested report, the exact publication receipt and absence of Host files. It then stages the receipted Host through the production Python owner, creates an empty canonical six-table mutation database, invokes the published native uninstall and checks removal of owned Host, Control, public command and user state while preserving an unrelated sentinel. This owned native composition establishes no live IDE, model or Codex admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
 Native lifecycle commands fence admission at `<install-root>/shutdown.json`, outside the replaceable payload. Direct tools and coordinator startup honor the fence. Stop disables the owned coordinator and drains recorded tool processes within one 30-second retirement budget; stop with `--force` additionally signals only admitted exact process incarnations with qualified installed classpaths. The selected IDEA executable is re-derived from its saved launch receipt; a running user-owned host rejects with `HOST_RESTART_REQUIRED`. No replacement proceeds on an unverified shutdown. Reinstall cold-stages only the exact installed Control version, admits an installed/not-requested staging report, then bootstraps through the existing fenced lifecycle and restores recorded registrations. No Host artifact is required. A failed bootstrap restores the fence, retires any partially started coordinator, and returns a typed installation-pending result. JSON results follow the shipped closed lifecycle schema; stage observations use finite discriminated variants on stderr. Older payloads without the manifest-qualified lifecycle capability reject before effects. Hosted-only lifecycle manifests may retain deleted historical workspace paths because no workspace-specific process is retired; schema-1 isolated installations still require existing roots.
 
@@ -347,9 +357,8 @@ readiness. The initialize response explains that wait, automatic linked-model
 reload, exact-reference reuse, relation coverage, continuations, and stage-specific
 recovery. The terminal MCP catalog does not expose manual refresh or
 `workspace_lifecycle`.
-Its `add_declaration` tool plans, signs the exact native challenge, applies, and verifies
-within one call, attempting recovery if application is unverified. The App Server exposes the same public tool and signs its exact
-plan internally. If apply is cancelled, only a complete native `prior_state` or
+Its `add_declaration` tool plans, submits the exact canonical plan identity, applies, and verifies
+within one call, attempting recovery if application is unverified. The App Server exposes the same public tool through current native mutation admission. If apply is cancelled, only a complete native `prior_state` or
 `rolled_back` recovery settles the invocation as known and releases the App
 Server workspace lane. Incomplete recovery leaves the lane protected.
 The app-server suite is always installed. Activation may still be pending with
@@ -413,7 +422,7 @@ schema projection as the CLI. The artifact contains hosted metadata and schemas,
 with no executable grammar. Distribution layout requires it; runtime release
 admission qualifies the actual staged file through the production provider.
 
-After installation admission and before retiring or replacing any installation, the installer enrolls or preserves the user-owned broker key pair. Partial, mismatched, unsafe or busy enrollment rejects with the finite trust failure. Plan mode creates no keys. Bounded trust observations contain only completion status or rejection cause, never key material. Keys live outside versioned payloads and remain unchanged across reinstalls and upgrades.
+Installation and mutation create no broker signing keys. Existing legacy key cleanup is a bounded migration effect after successful keyless service readiness, preserving unsafe or partial legacy state on rejection. Enabling the service from HOME starts the daemon without enrolling HOME; each fresh repository session selects its existing canonical Gradle settings owner.
 
 The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. The login LaunchAgent retains the service label and daemon executable, adding only the private login argument. Offline recovery admits that entry only when removing the argument from its bounded bytes yields the retained service plist for the exact Codex-home profile; it also recognizes the older one-shot entry. The assembled-product check verifies the private launchers are present and executable; their argument and readiness rules remain with their Kotlin owners.
 
@@ -432,7 +441,7 @@ Destructive `uninstall --force` and `reinstall --force` bypass old payload and r
 The closed lifecycle progresses through privately constructed fenced, quiescent, erased, staged, readiness-proven, and active types. A single-use lease rejects replayed effect transitions. The embedded installer cold-stages a fresh latest-stable payload under the selected root, requiring the manifest-qualified reset fence capability. Payload admission and a staging report establish committed bytes without claiming active readiness. Activation records `ACTIVATING` while retaining the exterior marker. Daemon startup requires that intent and the live exclusive reset lease; tools remain fenced until readiness verifies the fresh version and canonical service generation and the marker is lifted. Only then can the lifecycle produce `RESET_REINSTALLED`. Failed staging or activation restores the fence and retires partial startup. Failed compensation preserves the original and recovery failures in `RESET_RECOVERY_REQUIRED`. Interrupted retention remains discoverable through the exterior fence; the lock stays stable across resets. No old registration history survives successful erasure, external harness registrations remain, and erased data has no rollback. OS or filesystem refusal remains a finite failure. The canonical lifecycle schema includes all force reset variants.
 
 Native installer dispatch explicitly binds the sole admitted HOME-derived root.
-Public uninstall rejects an alternate root or nonphysical path before Control-only
+Public uninstall rejects an alternate root or nonphysical path before owned
 removal. Installation checks existing physical ancestors before creating missing
 directories, and force reset cannot resolve a parent alias into another tree.
 Public command publication retains its own receipt-bound destination and rejects
@@ -476,3 +485,7 @@ an unavailable or older runtime gives repair guidance rather than using ambient 
 Both paths require exactly one fully quoted `JAVA_VERSION` declaration. Duplicate
 declarations, an unclosed quote, trailing text, or a valid declaration beside a
 malformed duplicate reject before Gradle or child execution.
+
+Full native uninstall admits the exact Host removal target and immutable plugin receipt before invoking the private Host owner. A persistent exterior retirement journal preserves payload, executable, configuration and recovery identities so a failure after Control removal can resume without rerunning an erased helper. Cleanup removes only admitted registrations, public executable, private configuration, managed root and the closed user-owned `~/.kast` layout; the management receipt and journal remain until those effects complete.
+
+User-state inventory retains endpoint locks and physical identities through retirement and deletion. Unknown contents, live hosts, changed identities, malformed or unsettled mutation evidence, or an uncheckpointed WAL reject and preserve recovery state. The owning SQLite adapter inspects exact schemas and bounded typed plan, attempt, journal and receipt records read-only; it does not initialize, checkpoint or manufacture recovery. Upgrade does not invoke this full user-state cleanup.

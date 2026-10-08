@@ -15,7 +15,6 @@ import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalChangeCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
-import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -30,11 +29,8 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 
 class McpSingleChangeToolTest {
-    @TempDir lateinit var root: Path
-
     @Test
     fun `direct MCP advertises both live mutation tools instead of internal phases`() {
         val visible = CanonicalAgentToolDefinitions.all.map { it.name.value }
@@ -44,23 +40,21 @@ class McpSingleChangeToolTest {
     }
 
     @Test
-    fun `one call plans authorizes applies and returns verified receipt`() {
+    fun `one call plans and applies through existing transport and returns verified receipt`() {
         val phases = mutableListOf<McpChangePhase>()
         val tool =
-            McpSingleChangeTool(
-                root,
-                { phase, _ ->
-                    phases += phase
-                    when (phase) {
-                        McpChangePhase.PLAN -> complete(TestPlan())
-                        McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
-                        McpChangePhase.APPLY -> complete(TestApplication())
-                        McpChangePhase.PREPARE_RECOVER,
-                        McpChangePhase.RECOVER -> error("verified apply must not recover")
+            McpSingleChangeTool({ phase, arguments ->
+                phases += phase
+                when (phase) {
+                    McpChangePhase.PLAN -> complete(TestPlan())
+                    McpChangePhase.APPLY -> {
+                        assertEquals(setOf("planIdentity"), arguments.keys)
+                        assertEquals("plan:${"a".repeat(64)}", arguments.getValue("planIdentity").jsonPrimitive.content)
+                        complete(TestApplication())
                     }
-                },
-                { "signed-for-${it.operation}" },
-            )
+                    McpChangePhase.RECOVER -> error("verified apply must not recover")
+                }
+            })
 
         val result = tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent()).jsonObject)
         val admission =
@@ -77,7 +71,7 @@ class McpSingleChangeToolTest {
             "receipt:verified",
             output.getValue("application").jsonObject.getValue("receiptIdentity").jsonPrimitive.content,
         )
-        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
+        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.APPLY), phases)
         assertFalse("plan" in output)
         phases.clear()
         val verbose =
@@ -85,7 +79,7 @@ class McpSingleChangeToolTest {
         val full = Json.parseToJsonElement(verbose.document.value).jsonObject
         assertTrue("plan" in full)
         assertEquals(output.getValue("application"), full.getValue("application"))
-        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
+        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.APPLY), phases)
     }
 
     @Test
@@ -96,32 +90,26 @@ class McpSingleChangeToolTest {
         assertTrue(admitted is Refinement.Refined, admitted.toString())
         val phases = mutableListOf<McpChangePhase>()
         val tool =
-            McpSingleChangeTool(
-                root,
-                { phase, arguments ->
-                    phases += phase
-                    if (phase == McpChangePhase.PLAN) {
-                        val intent = arguments.getValue("intent").jsonObject
-                        assertEquals("replace-body", intent.getValue("kind").jsonPrimitive.content)
-                        assertEquals("{ return Unit }", intent.getValue("body").jsonPrimitive.content)
-                    }
-                    when (phase) {
-                        McpChangePhase.PLAN -> complete(TestPlan())
-                        McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
-                        McpChangePhase.APPLY -> complete(TestApplication())
-                        McpChangePhase.PREPARE_RECOVER,
-                        McpChangePhase.RECOVER -> error("verified apply must not recover")
-                    }
-                },
-                { "signed-for-${it.operation}" },
-            )
+            McpSingleChangeTool({ phase, arguments ->
+                phases += phase
+                if (phase == McpChangePhase.PLAN) {
+                    val intent = arguments.getValue("intent").jsonObject
+                    assertEquals("replace-body", intent.getValue("kind").jsonPrimitive.content)
+                    assertEquals("{ return Unit }", intent.getValue("body").jsonPrimitive.content)
+                }
+                when (phase) {
+                    McpChangePhase.PLAN -> complete(TestPlan())
+                    McpChangePhase.APPLY -> complete(TestApplication())
+                    McpChangePhase.RECOVER -> error("verified apply must not recover")
+                }
+            })
 
         val result = tool.invoke((admitted as Refinement.Refined).value)
         assertInstanceOf(CliExit.Complete::class.java, result)
         assertTrue(
             McpStructuredResults.validates("replace_body", Json.parseToJsonElement(result.document.value).jsonObject)
         )
-        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
+        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.APPLY), phases)
     }
 
     @Test
@@ -139,20 +127,14 @@ class McpSingleChangeToolTest {
     private fun assertProjectedRecovery(recoveryState: ChangeRecoveryDocumentState) {
         val phases = mutableListOf<McpChangePhase>()
         val tool =
-            McpSingleChangeTool(
-                root,
-                { phase, _ ->
-                    phases += phase
-                    when (phase) {
-                        McpChangePhase.PLAN -> complete(TestPlan())
-                        McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
-                        McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
-                        McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
-                        McpChangePhase.RECOVER -> projectedRecovery(recoveryState)
-                    }
-                },
-                { "signed-for-${it.operation}" },
-            )
+            McpSingleChangeTool({ phase, _ ->
+                phases += phase
+                when (phase) {
+                    McpChangePhase.PLAN -> complete(TestPlan())
+                    McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
+                    McpChangePhase.RECOVER -> projectedRecovery(recoveryState)
+                }
+            })
 
         val result = tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent()).jsonObject)
         assertInstanceOf(CliExit.OperationRejected::class.java, result)
@@ -172,20 +154,14 @@ class McpSingleChangeToolTest {
     fun `lost apply response triggers recovery and cannot claim verified success`() {
         val phases = mutableListOf<McpChangePhase>()
         val tool =
-            McpSingleChangeTool(
-                root,
-                { phase, _ ->
-                    phases += phase
-                    when (phase) {
-                        McpChangePhase.PLAN -> complete(TestPlan())
-                        McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
-                        McpChangePhase.APPLY -> error("transport lost after attempted write")
-                        McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
-                        McpChangePhase.RECOVER -> projectedRecovery()
-                    }
-                },
-                { "signed-for-${it.operation}" },
-            )
+            McpSingleChangeTool({ phase, _ ->
+                phases += phase
+                when (phase) {
+                    McpChangePhase.PLAN -> complete(TestPlan())
+                    McpChangePhase.APPLY -> error("transport lost after attempted write")
+                    McpChangePhase.RECOVER -> projectedRecovery()
+                }
+            })
 
         val result = tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent()).jsonObject)
         assertInstanceOf(CliExit.OperationRejected::class.java, result)
@@ -200,43 +176,31 @@ class McpSingleChangeToolTest {
     fun `cancellation during apply propagates without claiming write outcome`() {
         val phases = mutableListOf<McpChangePhase>()
         val tool =
-            McpSingleChangeTool(
-                root,
-                { phase, _ ->
-                    phases += phase
-                    when (phase) {
-                        McpChangePhase.PLAN -> complete(TestPlan())
-                        McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
-                        McpChangePhase.APPLY -> throw CancellationException("write outcome unknown")
-                        McpChangePhase.PREPARE_RECOVER,
-                        McpChangePhase.RECOVER -> error("caller owns cancellation settlement")
-                    }
-                },
-                { "signed-for-${it.operation}" },
-            )
+            McpSingleChangeTool({ phase, _ ->
+                phases += phase
+                when (phase) {
+                    McpChangePhase.PLAN -> complete(TestPlan())
+                    McpChangePhase.APPLY -> throw CancellationException("write outcome unknown")
+                    McpChangePhase.RECOVER -> error("caller owns cancellation settlement")
+                }
+            })
 
         assertThrows(CancellationException::class.java) {
             tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent()).jsonObject)
         }
-        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.PREPARE_APPLY, McpChangePhase.APPLY), phases)
+        assertEquals(listOf(McpChangePhase.PLAN, McpChangePhase.APPLY), phases)
     }
 
     @Test
     fun `qualified recovery remains unavailable even with a parseable document`() {
         val tool =
-            McpSingleChangeTool(
-                root,
-                { phase, _ ->
-                    when (phase) {
-                        McpChangePhase.PLAN -> complete(TestPlan())
-                        McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
-                        McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
-                        McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
-                        McpChangePhase.RECOVER -> projectedRecovery(ChangeRecoveryDocumentState.RECOVERY_REQUIRED)
-                    }
-                },
-                { "signed-for-${it.operation}" },
-            )
+            McpSingleChangeTool({ phase, _ ->
+                when (phase) {
+                    McpChangePhase.PLAN -> complete(TestPlan())
+                    McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
+                    McpChangePhase.RECOVER -> projectedRecovery(ChangeRecoveryDocumentState.RECOVERY_REQUIRED)
+                }
+            })
 
         val result = tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent()).jsonObject)
         val error = Json.parseToJsonElement(result.document.value).jsonObject.getValue("error").jsonObject
@@ -247,19 +211,13 @@ class McpSingleChangeToolTest {
     @Test
     fun `rejected recovery remains unavailable even with a parseable document`() {
         val tool =
-            McpSingleChangeTool(
-                root,
-                { phase, _ ->
-                    when (phase) {
-                        McpChangePhase.PLAN -> complete(TestPlan())
-                        McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
-                        McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
-                        McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
-                        McpChangePhase.RECOVER -> CliExit.OperationRejected(document(TestRecoveryRejection()))
-                    }
-                },
-                { "signed-for-${it.operation}" },
-            )
+            McpSingleChangeTool({ phase, _ ->
+                when (phase) {
+                    McpChangePhase.PLAN -> complete(TestPlan())
+                    McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
+                    McpChangePhase.RECOVER -> CliExit.OperationRejected(document(TestRecoveryRejection()))
+                }
+            })
 
         val result = tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent()).jsonObject)
         val error = Json.parseToJsonElement(result.document.value).jsonObject.getValue("error").jsonObject
@@ -271,14 +229,10 @@ class McpSingleChangeToolTest {
     fun `planning rejection cannot enter the write path`() {
         val phases = mutableListOf<McpChangePhase>()
         val tool =
-            McpSingleChangeTool(
-                root,
-                { phase, _ ->
-                    phases += phase
-                    CliExit.OperationRejected(document(TestPlanningRejection()))
-                },
-                { error("no challenge expected") },
-            )
+            McpSingleChangeTool({ phase, _ ->
+                phases += phase
+                CliExit.OperationRejected(document(TestPlanningRejection()))
+            })
 
         val result = tool.invoke(Json { encodeDefaults = true }.encodeToJsonElement(TestIntent()).jsonObject)
         assertInstanceOf(CliExit.OperationRejected::class.java, result)
@@ -294,17 +248,6 @@ class McpSingleChangeToolTest {
                 .content,
         )
     }
-
-    private fun challenge(operation: String) =
-        ApprovalChallenge(
-            version = 1,
-            operation = operation,
-            root = root.toString(),
-            host = "host",
-            planId = "a".repeat(64),
-            challenge = "b".repeat(64),
-            preview = ApprovalPreview("src/Target.kt", "+fun added() = Unit"),
-        )
 
     private fun projectedRecovery(
         state: ChangeRecoveryDocumentState = ChangeRecoveryDocumentState.ROLLED_BACK

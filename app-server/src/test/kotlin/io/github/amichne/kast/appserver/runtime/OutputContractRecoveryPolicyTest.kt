@@ -28,6 +28,34 @@ import org.junit.jupiter.api.io.TempDir
 
 class OutputContractRecoveryPolicyTest {
     @Test
+    fun `root discovery rejection leaves queued work eligible instead of requiring recovery`(@TempDir root: Path) =
+        runTest {
+            val fixture =
+                OutputContractExecutionFixture.create(
+                    root,
+                    this,
+                    BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_WRITE),
+                    FixtureTermination.ROOT_DISCOVERY_REJECTION,
+                )
+            try {
+                val first = fixture.submit("first")
+                fixture.entered.await()
+                val queued = fixture.submit("queued")
+                fixture.release.complete(Unit)
+                val rejected = first.await().reply()
+                assertEquals(JsonPrimitive("WORKSPACE_ROOT_MARKER_NOT_FOUND"), rejected.failureDocument()["failure"])
+                assertEquals(InvocationCertainty.KNOWN, rejected.certainty)
+                assertSuccess(queued.await())
+                assertSuccess(fixture.submit("later").await())
+                assertEquals(listOf("first", "queued", "later"), fixture.calls)
+                assertEquals(0, fixture.mutations)
+                assertEquals("idle", fixture.lane().getValue("state").jsonPrimitive.content)
+            } finally {
+                fixture.close()
+            }
+        }
+
+    @Test
     fun `all possible writing effects and unknown effects quarantine without replay and preserve other workspaces`(
         @TempDir root: Path
     ) = runTest {

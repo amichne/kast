@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/uninstall-cleanup.schema.json",
+  "title": "Kast uninstall cleanup evidence",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "STARTED"
+          ]
+        },
+        "artifact": {
+          "type": "string",
+          "enum": [
+            "CONTROL_PAYLOAD",
+            "USER_STATE",
+            "CODEX_MCP_REGISTRATION",
+            "CODEX_APP_SERVER_REGISTRATION",
+            "COPILOT_REGISTRATION",
+            "PI_REGISTRATION",
+            "PUBLIC_EXECUTABLE",
+            "MANAGEMENT_LOCK",
+            "MANAGEMENT_RECEIPT",
+            "RETIREMENT_JOURNAL",
+            "RECOVERY_BUNDLE",
+            "ACTIVATION_LOCK",
+            "MANAGED_ROOT",
+            "HOST_PLUGIN",
+            "HOME_CONFIGURATION"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "COMPLETED"
+          ]
+        },
+        "artifact": {
+          "type": "string",
+          "enum": [
+            "CONTROL_PAYLOAD",
+            "USER_STATE",
+            "CODEX_MCP_REGISTRATION",
+            "CODEX_APP_SERVER_REGISTRATION",
+            "COPILOT_REGISTRATION",
+            "PI_REGISTRATION",
+            "PUBLIC_EXECUTABLE",
+            "MANAGEMENT_LOCK",
+            "MANAGEMENT_RECEIPT",
+            "RETIREMENT_JOURNAL",
+            "RECOVERY_BUNDLE",
+            "ACTIVATION_LOCK",
+            "MANAGED_ROOT",
+            "HOST_PLUGIN",
+            "HOME_CONFIGURATION"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "REJECTED"
+          ]
+        },
+        "artifact": {
+          "type": "string",
+          "enum": [
+            "CONTROL_PAYLOAD",
+            "USER_STATE",
+            "CODEX_MCP_REGISTRATION",
+            "CODEX_APP_SERVER_REGISTRATION",
+            "COPILOT_REGISTRATION",
+            "PI_REGISTRATION",
+            "PUBLIC_EXECUTABLE",
+            "MANAGEMENT_LOCK",
+            "MANAGEMENT_RECEIPT",
+            "RETIREMENT_JOURNAL",
+            "RECOVERY_BUNDLE",
+            "ACTIVATION_LOCK",
+            "MANAGED_ROOT",
+            "HOST_PLUGIN",
+            "HOME_CONFIGURATION"
+          ]
+        },
+        "failure": {
+          "type": "string",
+          "enum": [
+            "OWNERSHIP_UNPROVEN",
+            "FILESYSTEM_REJECTED"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "USER_STATE_REJECTED"
+          ]
+        },
+        "artifact": {
+          "type": "string",
+          "enum": [
+            "USER_STATE"
+          ]
+        },
+        "failure": {
+          "type": "string",
+          "enum": [
+            "UNSETTLED_MUTATION",
+            "CHECKPOINT_REQUIRED",
+            "PATH_REJECTED",
+            "SCHEMA_REJECTED",
+            "CAPACITY_EXCEEDED",
+            "RECORD_REJECTED",
+            "WORKSPACE_MISMATCH",
+            "STORAGE_UNAVAILABLE",
+            "ACTIVE_HOST",
+            "OWNERSHIP_UNPROVEN",
+            "FILESYSTEM_REJECTED"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "RECOVERY_REJECTED"
+        },
+        "artifact": {
+          "const": "RECOVERY_BUNDLE"
+        },
+        "failure": {
+          "enum": [
+            "ROOT_REJECTED",
+            "INSTALLATION_NOT_RETIRED",
+            "OWNERSHIP_UNPROVEN",
+            "RECEIPT_REJECTED",
+            "RECOVERY_PENDING",
+            "RECOVERY_UNRESOLVED",
+            "FOREIGN_CONTENT",
+            "IO_UNAVAILABLE"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "HOST_REJECTED"
+        },
+        "artifact": {
+          "const": "HOST_PLUGIN"
+        },
+        "failure": {
+          "enum": [
+            "CONFIGURATION_UNPROVEN",
+            "OWNERSHIP_UNPROVEN",
+            "FILESYSTEM_REJECTED",
+            "RECOVERY_REQUIRED",
+            "PAYLOAD_REJECTED",
+            "RELEASE_REJECTED",
+            "COMPATIBILITY_REJECTED",
+            "PROCESS_UNAVAILABLE",
+            "DEADLINE_EXCEEDED",
+            "OUTPUT_REJECTED",
+            "TARGET_UNRECORDED"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact",
+        "failure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "HOME_CONFIGURATION_REJECTED"
+        },
+        "artifact": {
+          "const": "HOME_CONFIGURATION"
+        },
+        "failure": {
+          "enum": [
+            "OWNERSHIP_UNPROVEN",
+            "DOCUMENT_REJECTED",
+            "CONTENT_CHANGED",
+            "FOREIGN_CONTENT",
+            "FILESYSTEM_REJECTED"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact",
+        "exitCode"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "CONTROL_CHILD_REJECTED"
+        },
+        "artifact": {
+          "const": "CONTROL_PAYLOAD"
+        },
+        "exitCode": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "not": {
+            "const": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "artifact"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "CONTROL_PAYLOAD_RETAINED"
+        },
+        "artifact": {
+          "const": "CONTROL_PAYLOAD"
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "type": "STARTED",
+      "artifact": "CONTROL_PAYLOAD"
+    },
+    {
+      "type": "COMPLETED",
+      "artifact": "PUBLIC_EXECUTABLE"
+    },
+    {
+      "type": "REJECTED",
+      "artifact": "PI_REGISTRATION",
+      "failure": "OWNERSHIP_UNPROVEN"
+    }
+  ]
+}

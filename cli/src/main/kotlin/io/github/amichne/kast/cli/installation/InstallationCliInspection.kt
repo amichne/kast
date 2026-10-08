@@ -120,8 +120,8 @@ internal object InstallationCliInspection {
                         rejectionFactory.create(InstallationRejectionDocument(reason = outcome.reason.reason())),
                     )
                 )
-            is InstallationOutcome.TrustRejected ->
-                InstallationHandling.Handled(installationTrustRejection(outcome.failure))
+            is InstallationOutcome.LegacyApprovalRetained ->
+                InstallationHandling.Handled(installationApprovalCleanupRejection(outcome))
         }
 
     private fun recoveryReport(document: ControlRecoveryDocument): InstallationHandling =

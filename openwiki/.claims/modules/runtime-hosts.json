@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e58098c53fa47263912861b6773bfc7552a03601db522e28cf9c274e2b364a63",
+  "pageVersion": "sha256:bf40987f9e6af331f827e2c8a70e2429b46ef3dd66696686b1fbb97520ac48d5",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -60,11 +60,11 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
-          "version": "repo-file-v1:sha256:55d67af8a893df804f4c58dab76d5df83b320d96c7c3c3ffdb2969f17bc26474"
+          "version": "repo-file-v1:sha256:ab1822ddf9c35779b72d0e7ef0fe775f6ca93e4aff666eeef337619338e7d2c1"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:fe22daf282425d4460b9515b86649415766b68f03231756b2d26d40a6c1e14b1"
+          "version": "repo-file-v1:sha256:913656da15604ed3893d66986f72064a84d8c88884040fabab573da43126d381"
         }
       ]
     },
@@ -142,11 +142,11 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json",
-          "version": "repo-file-v1:sha256:e7ce90080742a98d1b91113dc4f7ba3ddb43a97d901d3f0593c429b7bd90ac88"
+          "version": "repo-file-v1:sha256:35c267e244e245137fcb6234b617e3b2a5707882ce9803608a220a4fe08ae833"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
-          "version": "repo-file-v1:sha256:849388668e0a801507b2121d4e7500ae417e97bccaa267ad1e33c51e7da3891c"
+          "version": "repo-file-v1:sha256:06b52850e8e65b4542b1a3c2f9fed0159422b2a64c2209505560f880a0d51302"
         }
       ]
     },
@@ -166,11 +166,11 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt",
-          "version": "repo-file-v1:sha256:4604c03c5fd925d62915b17871b6e04d69060a2cd513883e5456ec0f25c31cd6"
+          "version": "repo-file-v1:sha256:2b629b69114c67a243305059e5cdc006e99358a01c5f7aaff4fb96e36921cc77"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:07d837d3b7e28744731c78b1e8c53f4d2e990d84eb1a670fbe3023720a9eecd4"
+          "version": "repo-file-v1:sha256:c018e3c815295ea33e695ffa3126c8bd6c6123f84f3cb9c95bc11025a6df5238"
         }
       ]
     },
@@ -184,7 +184,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
-          "version": "repo-file-v1:sha256:4d0894be4bea8b658b8f223fc61e6e5c99315d6132b8cd5217cb60a096a92c73"
+          "version": "repo-file-v1:sha256:ea827caee7329908e7e6a2869840eb2a8043d75e0e88fdafba37567b7c45a635"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
@@ -202,7 +202,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:07d837d3b7e28744731c78b1e8c53f4d2e990d84eb1a670fbe3023720a9eecd4"
+          "version": "repo-file-v1:sha256:c018e3c815295ea33e695ffa3126c8bd6c6123f84f3cb9c95bc11025a6df5238"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt",
@@ -215,8 +215,8 @@
       "statement": "Hosted canonical query supplies an explicit finite retention observer that maps presented, pending-impact and original-investigation capture and issuance outcomes into existing RETENTION diagnostics without source payloads, handles, new state ownership or semantic authority.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L74-L83",
-          "version": "repo-lines-v1:sha256:c2dc8390277bdedad21aeb187db7741d995bf20ef57e914cfd43d2d3d4e3067a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2NmI3NDEzMjYwNDY1MjNiZWNmZmE1NTE3Mjk1MWQwZjU0MmVjNDk0M2Y3Y2JhMDdlNzYxMzVhNDM2NGRmMTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNjczYWJkNDU3YTk3ZWVhMTdhNjAwNjJlYjBmYWVhNmJkZjA5NDg2OGNjNmI4ZjhjMGViZGEyZjYxZWQ0MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkYzZkNmRjODQ1Nzg1OTM3MDcyYzgwNjgxYWQxOTU5ZWUyZjc3NTM3OTczZmMyNzAxZmQyMGZkYTU0ZDhiMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzMzA5OWNmZDc2MzYyNGY2NDQyM2RmY2ZmNzk2NmRjOGZmNjYwYWI5OWI1N2EyMjljMGJlNWNiNjRhZWU2YmQifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L140-L157",
+          "version": "repo-lines-v1:sha256:031dcb5011f58ae8ef63cd74a370857ae0e05eb0fdb5d4914a9ebbc8a93279e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5Y2FkNTE3NjhhYjNmMjFjNTMzZWUwMDUyNTA5MmZhNjZlMmUzZjJiNmFlMWQ1NGI0MTE4OWZjZTI5MDcyZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyZDg0Y2IxYzJlN2QxODIxZDYwMWU1YmFmOTkyZGVhZmFkNDNjZWJlM2Y2ZDVjZmUyYjRlMDc5MTgzN2QwODUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjN2YxMWEwMDk4NjU5NGFkYjJjMjEyYTkwZThlOWM4NDBkMmM1NDc4Y2U2NDY4MWY3MmZkN2QwZWY5ZGIzNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1MjhmYmViYmE4ZjEyMzlmNGJkNjkyODRmODc2YWI4YmZmZWQ0ZDZhNmQ0NTJhYzQ2N2YwN2EzYzQyMDY3ZGUifQ"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt",
@@ -273,10 +273,38 @@
           "version": "repo-lines-v1:sha256:2216b5d5dbf7bb740519d4ef7468a5add7e5578202e3d690fec233395dfe3fba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDkxMzQ3YjJmZWZhNGU2YzA0YzFkM2IzZjg4ZWZkZGE5MjUyMTJlNWU4NWU1NDY0ZDJkMTNhODFhNmQ4MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2Nzk3YzFkNTMwYzllOWI3MmI3YTQ1OTM5YWY2NGQ2NjBlOTI0YzQ4OWUxNGJkZDlkZThiNWYxYzEyNTI5MDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxYjdlMjcwNWViY2Q5MTM4OTVkOGU3OTc1MzE4OTc4YTkzMzg1YmQ4MzcyYTliNmM3MzNlYzZhNDcyMGIzNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxYzE1NTQ3MDhkMmUyYzA1MzVkMjZjMTE2YTk0NmYzYjJmMTFmZTRjOTRiOGIxNDY3MzBjZTM3NWU5OWVmYWMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_ebe9bb72fa27453c890cb02ffe10ff02",
+      "statement": "Service enablement does not enroll its current directory; fresh Codex startup discovers or validates the exact canonical settings.gradle.kts owner, and saved incorrect bindings reject without retargeting.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
+          "version": "repo-file-v1:sha256:57cc56c17ad868c3af6491138fb5ac5a78ab953ff0bfe7b6a6181b21d1ebf4d9"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt",
+          "version": "repo-file-v1:sha256:3fa42eecd562307c13b18cb1258e539e2af0fc1c405aaa94a598b7f7d4eeecba"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
+          "version": "repo-file-v1:sha256:a66f318d1a51c245e8a1b8185159d689f23c19d8bc04c626e41681c374668806"
+        }
+      ]
+    },
+    {
+      "id": "claim_fa57bb2cb7ad4cf8b48ef6711ef52c4b",
+      "statement": "Only WORKSPACE_START_UNAVAILABLE, WORKSPACE_START_NOT_DIRECTORY, WORKSPACE_ROOT_MARKER_NOT_FOUND and WORKSPACE_INVALID_ROOT_MARKER provider invocation failures are known root rejections; other provider invocation failures preserve uncertainty.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/SettledOutputRejection.kt",
+          "version": "repo-file-v1:sha256:4f3e7d944d248804d908f7914651a99b606cb481686db98679f3c43ea55178c4"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-05T20:36:23.129Z"
+    "at": "2026-10-08T02:33:12.078Z"
   }
 }

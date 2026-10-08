@@ -13,8 +13,11 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import java.nio.file.Path
 import java.util.Base64
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -27,21 +30,24 @@ class HostedChangeCliInputTest {
             Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(64))
 
     @Test
-    fun `approved apply and recovery retain exact request identity and opaque assertion`() {
+    fun `canonical apply and recovery retain exact request identity`() {
         for (verb in listOf("apply", "recover")) {
             val root = canonicalRootFixture(Path.of("/workspace"))
             var calls = 0
             executeExistingIdeCli(
-                argv = listOf("change", verb, "--stdin", "--hosted-approved-invocation"),
+                argv = listOf("change", verb, "--stdin"),
                 start = root.path,
                 roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
                 client =
                     ExistingIdeClient { _, operation ->
-                        error("Approved change reached direct IDE: $operation")
+                        error("Change reached direct IDE: $operation")
                     },
                 requestInput =
                     CliRequestDocumentInput.Provided(
-                        """{"arguments":{"planIdentity":"$identity"},"approval":"$assertion"}"""
+                        Json.encodeToString(
+                            ChangeApplyRequest.serializer(),
+                            ChangeApplyRequest((ProtocolText.parse(identity) as Refinement.Refined).value),
+                        )
                     ),
                 read =
                     DaemonOperationClient { admittedRoot, call ->
@@ -51,12 +57,10 @@ class HostedChangeCliInputTest {
                             when (action) {
                                 is DaemonChangeAction.Apply -> {
                                     assertEquals("apply", verb)
-                                    assertEquals(assertion, action.assertion)
                                     action.request.planIdentity.value
                                 }
                                 is DaemonChangeAction.Recover -> {
                                     assertEquals("recover", verb)
-                                    assertEquals(assertion, action.assertion)
                                     action.request.planIdentity.value
                                 }
                                 else -> error("Unexpected change stage: $action")

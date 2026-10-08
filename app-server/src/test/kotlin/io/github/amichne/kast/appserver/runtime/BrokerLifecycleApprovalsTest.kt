@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import java.nio.file.Path
@@ -20,15 +19,7 @@ class BrokerLifecycleApprovalsTest {
     @Test
     fun `only one exact controller acceptance produces project close authority`(@TempDir root: Path) = runBlocking {
         for (decision in listOf("accept", "acceptForSession", "decline", "cancel")) {
-            var signed = 0
-            val fixture =
-                HubTestFixture(
-                    root,
-                    closeSigner = { proof ->
-                        signed++
-                        Refinement.Refined(ProjectCloseApprovalGrant.signed(proof, "signed"))
-                    },
-                )
+            val fixture = HubTestFixture(root, lifecycleTools = true)
             try {
                 val peer = fixture.connect()
                 fixture.bind(peer, "thread/start")
@@ -46,12 +37,10 @@ class BrokerLifecycleApprovalsTest {
                 val prompt = Json.parseToJsonElement(withTimeout(3000) { peer.session.output.receive() }).jsonObject
                 assertEquals("item/commandExecution/requestApproval", prompt["method"]!!.jsonPrimitive.content)
                 assertTrue(prompt["params"]!!.jsonObject["reason"]!!.jsonPrimitive.content.contains(target.project))
-                assertEquals(0, signed)
                 peer.session.accept(
                     json.encodeToString(Answer(prompt["id"]!!.jsonPrimitive.content, Decision(decision)))
                 )
                 withTimeout(3000) { peer.upstream.sent.receive() }
-                assertEquals(if (decision == "accept") 1 else 0, signed)
                 if (decision == "accept") {
                     val grant = (fixture.approvedInvocations.single() as BrokerInvocationApproval.ProjectClose).grant
                     assertEquals(request, grant.approval.request)

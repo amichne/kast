@@ -2,7 +2,6 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
-import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -19,7 +18,7 @@ import kotlinx.serialization.json.JsonElement
 
 /** One typed semantic operation on the installed daemon's owned Unix socket. */
 internal object DaemonOperationProtocol {
-    const val version = 2
+    const val version = 3
     const val maximumRequestBytes = BrokerOperationalLimits.maximumToolArgumentBytes + 4096
     const val maximumResponseBytes = BrokerOperationalLimits.maximumToolResultBytes + 4096
     val json = Json {
@@ -60,28 +59,19 @@ internal sealed interface DaemonOperationSelection {
     @Serializable @SerialName("change") data class Change(val action: DaemonChangeAction) : DaemonOperationSelection
 }
 
-/** A change call retains its request or approval stage without an untyped mode flag. */
+/** A change call retains its exact typed plan, application or recovery request. */
 @Serializable
 sealed interface DaemonChangeAction {
     @Serializable @SerialName("plan") data class Plan(val request: ChangePlanRequest) : DaemonChangeAction
 
-    @Serializable
-    @SerialName("prepare")
-    data class Prepare(val kind: HostedMutationOperation, val identity: String) : DaemonChangeAction
+    @Serializable @SerialName("apply") data class Apply(val request: ChangeApplyRequest) : DaemonChangeAction
 
-    @Serializable
-    @SerialName("apply")
-    data class Apply(val request: ChangeApplyRequest, val assertion: String) : DaemonChangeAction
-
-    @Serializable
-    @SerialName("recover")
-    data class Recover(val request: ChangeRecoverRequest, val assertion: String) : DaemonChangeAction
+    @Serializable @SerialName("recover") data class Recover(val request: ChangeRecoverRequest) : DaemonChangeAction
 }
 
 internal fun DaemonChangeAction.operation(): CanonicalOperation =
     when (this) {
         is DaemonChangeAction.Plan -> CanonicalOperation.CHANGE_PLAN
-        is DaemonChangeAction.Prepare -> kind.canonical
         is DaemonChangeAction.Apply -> CanonicalOperation.CHANGE_APPLY
         is DaemonChangeAction.Recover -> CanonicalOperation.CHANGE_RECOVER
     }

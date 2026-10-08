@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:da8ddad4cdbe8686e3d628e431c8bb64789f1eac2a2ea361a105496d7d55ddbf",
+  "pageVersion": "sha256:46d42edcc4fafdd3ee61cf38a34c3d27f75cb8d2511a0081275a80dd1e1e1edd",
   "claims": [
     {
       "id": "claim_55bbe06398c44272b3f13d3df179d4ee",
@@ -17,8 +17,8 @@
       "statement": "Read recovery actions are finite directions derived exhaustively from rejection data; they grant no retry, refresh or mutation capability.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt#L6-L95",
-          "version": "repo-lines-v1:sha256:bcd407921ccb9eec6658a90b9cc5622eee65861010dcaa3eca4d08a6682eef46:eyJzZWxlY3RlZExpbmVDb3VudCI6OTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGFiNzgxNjdiZTllOWY5ZjhmNzJkYWVhZmVkNjRlYmQ4NjkyZjhjYjlkMTE3MTliNmJjMTBmOTQ5MTNlZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNzEyMGRhZTk4ODdiOTlhMTg4YmI4ZTg5YTYxZjE0MmY1ZTBlYWViNjU0YTY0NjZkMTIyZDlhODE5MmU1YjUifQ"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt#L6-L103",
+          "version": "repo-lines-v1:sha256:4771b51d9ac080e763bda409c23eaa4c801a2b39063f6a0b22849de2c9d43d3d:eyJzZWxlY3RlZExpbmVDb3VudCI6OTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGFiNzgxNjdiZTllOWY5ZjhmNzJkYWVhZmVkNjRlYmQ4NjkyZjhjYjlkMTE3MTliNmJjMTBmOTQ5MTNlZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNzEyMGRhZTk4ODdiOTlhMTg4YmI4ZTg5YTYxZjE0MmY1ZTBlYWViNjU0YTY0NjZkMTIyZDlhODE5MmU1YjUifQ"
         }
       ]
     },
@@ -95,6 +95,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-05T19:11:53.820Z"
+    "at": "2026-10-08T01:13:49.481Z"
   }
 }

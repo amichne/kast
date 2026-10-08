@@ -1,5 +1,5 @@
 """Explicit installed ownership transitions. Never searches or signals arbitrary processes."""
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 import argparse
 from typing import Callable, Optional, Protocol, Tuple, Union
@@ -197,6 +197,169 @@ class FileIdentity:
     def observe(path):
         observed = path.lstat()
         return FileIdentity(observed.st_dev, observed.st_ino, observed.st_uid)
+
+class UninstallPhase(str, Enum):
+    REMOVAL_REQUESTED = 'REMOVAL_REQUESTED'
+    CONTROL_RETIRED = 'CONTROL_RETIRED'
+    EXTERNALS_CLEANED = 'EXTERNALS_CLEANED'
+
+@dataclass(frozen=True)
+class CapturedRecoveryFile:
+    identity: FileIdentity
+    digest: str
+
+@dataclass(frozen=True)
+class AbsentRecovery:
+    type: str = field(default='ABSENT_RECOVERY', init=False)
+
+@dataclass(frozen=True)
+class AdmittedRecovery:
+    installation: str
+    installationIdentity: FileIdentity
+    recoveryDirectoryIdentity: FileIdentity
+    bundleIdentity: FileIdentity
+    receipt: CapturedRecoveryFile
+    recoveryScript: CapturedRecoveryFile
+    lifecycleScript: CapturedRecoveryFile
+    type: str = field(default='ADMITTED_RECOVERY', init=False)
+
+@dataclass(frozen=True)
+class EmptyRecovery:
+    installation: str
+    recoveryDirectoryIdentity: FileIdentity
+    type: str = field(default='EMPTY_RECOVERY', init=False)
+
+@dataclass(frozen=True)
+class AbsentConfiguration:
+    type: str = field(default='ABSENT_CONFIGURATION', init=False)
+
+@dataclass(frozen=True)
+class CapturedHomeConfigurationFile:
+    artifact: str
+    identity: FileIdentity
+    digest: str
+
+@dataclass(frozen=True)
+class AdmittedConfiguration:
+    home: str
+    directoryIdentity: FileIdentity
+    directoryMode: str
+    files: list[CapturedHomeConfigurationFile]
+    type: str = field(default='ADMITTED_CONFIGURATION', init=False)
+
+@dataclass(frozen=True)
+class UninstallRetirementJournal:
+    installationRoot: str
+    executable: str
+    executableSha256: str
+    channel: str
+    type: UninstallPhase
+    managedRootIdentity: FileIdentity
+    controlIdentity: FileIdentity
+    recoveryProof: Union[AbsentRecovery, AdmittedRecovery, EmptyRecovery]
+    homeConfiguration: Union[AbsentConfiguration, AdmittedConfiguration]
+
+def exact_fields(document, fields):
+    if not isinstance(document, dict) or set(document) != set(fields):
+        raise Rejected(Failure.RECOVERY_REJECTED)
+
+def journal_identity(document):
+    exact_fields(document, ('device', 'inode', 'owner'))
+    if any(type(value) is not int or value < 0 for value in document.values()) or document['owner'] != os.getuid():
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    return FileIdentity(**document)
+
+def captured_recovery_file(document):
+    exact_fields(document, ('identity', 'digest'))
+    if not isinstance(document['digest'], str) or re.fullmatch('[0-9a-f]{64}', document['digest']) is None:
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    return CapturedRecoveryFile(journal_identity(document['identity']), document['digest'])
+
+def decode_recovery_proof(document, installation):
+    if document == {'type': 'ABSENT_RECOVERY'}:
+        return AbsentRecovery()
+    if isinstance(document, dict) and document.get('type') == 'EMPTY_RECOVERY':
+        exact_fields(document, ('type', 'installation', 'recoveryDirectoryIdentity'))
+        if document['installation'] != str(installation.root):
+            raise Rejected(Failure.RECOVERY_REJECTED)
+        return EmptyRecovery(document['installation'], journal_identity(document['recoveryDirectoryIdentity']))
+    exact_fields(document, ('type', 'installation', 'installationIdentity', 'recoveryDirectoryIdentity',
+                            'bundleIdentity', 'receipt', 'recoveryScript', 'lifecycleScript'))
+    if document['type'] != 'ADMITTED_RECOVERY' or document['installation'] != str(installation.root):
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    return AdmittedRecovery(document['installation'], journal_identity(document['installationIdentity']),
+        journal_identity(document['recoveryDirectoryIdentity']), journal_identity(document['bundleIdentity']),
+        captured_recovery_file(document['receipt']), captured_recovery_file(document['recoveryScript']),
+        captured_recovery_file(document['lifecycleScript']))
+
+def decode_configuration_proof(document, installation):
+    if document == {'type': 'ABSENT_CONFIGURATION'}:
+        return AbsentConfiguration()
+    exact_fields(document, ('type', 'home', 'directoryIdentity', 'directoryMode', 'files'))
+    if (document['type'] != 'ADMITTED_CONFIGURATION'
+            or document['home'] != str(installation.managed_root.parent.parent.parent)
+            or document['directoryMode'] not in {'PRIVATE', 'READABLE'}
+            or not isinstance(document['files'], list) or len(document['files']) > 2):
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    files = []
+    for entry in document['files']:
+        exact_fields(entry, ('artifact', 'identity', 'digest'))
+        if (entry['artifact'] not in {'CONFIGURATION', 'CHECKPOINT'}
+                or any(previous.artifact == entry['artifact'] for previous in files)
+                or not isinstance(entry['digest'], str) or re.fullmatch('[0-9a-f]{64}', entry['digest']) is None):
+            raise Rejected(Failure.RECOVERY_REJECTED)
+        files.append(CapturedHomeConfigurationFile(entry['artifact'], journal_identity(entry['identity']), entry['digest']))
+    return AdmittedConfiguration(document['home'], journal_identity(document['directoryIdentity']), document['directoryMode'], files)
+
+def admit_uninstall_journal(path, installation):
+    expected = installation.managed_root.parent / ('.kast-uninstall-' +
+        hashlib.sha256(str(installation.managed_root).encode()).hexdigest() + '.json')
+    if path != expected or path.resolve(strict=True) != path:
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    attributes = path.lstat()
+    if not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid() or stat.S_IMODE(attributes.st_mode) != 0o600:
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    document = read_json(path, 65536, Failure.RECOVERY_REJECTED)
+    exact_fields(document, ('installationRoot', 'executable', 'executableSha256', 'channel', 'type',
+                            'managedRootIdentity', 'controlIdentity', 'recoveryProof', 'homeConfiguration'))
+    executable = Path(document['executable'])
+    if (document['installationRoot'] != str(installation.managed_root) or not executable.is_absolute()
+            or executable.resolve() != executable or document['channel'] not in {'STABLE', 'DEVELOPER'}
+            or not isinstance(document['executableSha256'], str)
+            or re.fullmatch('[0-9a-f]{64}', document['executableSha256']) is None
+            or document['type'] not in {'REMOVAL_REQUESTED', 'CONTROL_RETIRED'}):
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    journal = UninstallRetirementJournal(document['installationRoot'], document['executable'],
+        document['executableSha256'], document['channel'], UninstallPhase(document['type']),
+        journal_identity(document['managedRootIdentity']), journal_identity(document['controlIdentity']),
+        decode_recovery_proof(document['recoveryProof'], installation),
+        decode_configuration_proof(document['homeConfiguration'], installation))
+    if (journal.managedRootIdentity != FileIdentity.observe(installation.managed_root)
+            or journal.controlIdentity != installation.identity):
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    return journal, FileIdentity.observe(path)
+
+def commit_control_retirement(path, installation, admitted):
+    journal, identity = admitted
+    current, current_identity = admit_uninstall_journal(path, installation)
+    if current != journal or current_identity != identity:
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    temporary = path.parent / ('.kast-uninstall-stage-' + uuid.uuid4().hex)
+    try:
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor, 'w') as output:
+            json.dump(asdict(replace(journal, type=UninstallPhase.CONTROL_RETIRED)), output, separators=(',', ':'))
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, path)
+        descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 @dataclass(frozen=True)
 class Installation:
@@ -754,7 +917,7 @@ def prune_other_versions(selected, dry_run):
     return PruneReport('installation.prune', str(selected.root), 'pruned', removed)
 
 
-def execute(installation, operation, dry_run):
+def execute(installation, operation, dry_run, uninstall_journal=None):
     installation.revalidate()
     if (installation.manifest['schemaVersion'] == 3 and operation == 'remove'
             and os.path.lexists(installation.managed_root / 'recovery/replacement')):
@@ -770,6 +933,7 @@ def execute(installation, operation, dry_run):
               'status': 'planned' if dry_run else 'inspected'}
     if operation == 'inspect' or dry_run:
         return report
+    journal = admit_uninstall_journal(uninstall_journal, installation) if uninstall_journal is not None else None
     transition = begin_transition(installation, operation)
     if state_identity is not None:
         retire(installation, roots)
@@ -783,6 +947,8 @@ def execute(installation, operation, dry_run):
         raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
     if owned_upstream_directories(installation) != upstream_directories:
         raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
+    if journal is not None:
+        commit_control_retirement(uninstall_journal, installation, journal)
     state = installation.root / 'state'
     epoch = None
     if state_identity is not None:
@@ -922,10 +1088,13 @@ def main():
     parser.add_argument('--installation', required=True)
     parser.add_argument('operation', choices=('inspect-payload', 'inspect', 'recover-read-only', 'reset', 'remove', 'prune'))
     parser.add_argument('--control-only', action='store_true', help='Remove only the owned control installation.')
+    parser.add_argument('--uninstall-journal', type=Path)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--json', action='store_true')
     arguments = parser.parse_args()
     try:
+        if arguments.uninstall_journal is not None and (arguments.operation != 'remove' or not arguments.control_only):
+            raise Rejected(Failure.RECOVERY_REJECTED)
         if arguments.control_only and arguments.operation != 'remove':
             raise Rejected(Failure.MANIFEST_REJECTED)
         installation = Installation.admit(arguments.installation)
@@ -948,7 +1117,7 @@ def main():
                 elif arguments.operation == 'recover-read-only':
                     report = execute_read_only_recovery(installation, arguments.dry_run)
                 else:
-                    report = execute(installation, arguments.operation, arguments.dry_run)
+                    report = execute(installation, arguments.operation, arguments.dry_run, arguments.uninstall_journal)
             finally:
                 os.close(descriptor)
         print(json.dumps(report, separators=(',', ':')))

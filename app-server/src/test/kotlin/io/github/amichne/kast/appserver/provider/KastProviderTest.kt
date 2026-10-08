@@ -20,15 +20,6 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
-import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
-import io.github.amichne.kast.appserver.runtime.ClientConnectionId
-import io.github.amichne.kast.appserver.runtime.ExactPlanApprovalOutcome
-import io.github.amichne.kast.appserver.runtime.ExactPlanApprovalResolution
-import io.github.amichne.kast.appserver.runtime.ExactPlanApprovalSubject
-import io.github.amichne.kast.appserver.runtime.HostedApprovalOwnerId
-import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalGrant
-import io.github.amichne.kast.appserver.runtime.PendingExactPlanApproval
-import io.github.amichne.kast.appserver.runtime.SharedTaskSessions
 import io.github.amichne.kast.appserver.runtime.document
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
@@ -42,10 +33,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -54,7 +43,7 @@ import org.junit.jupiter.api.io.TempDir
 
 class KastProviderTest {
     @Test
-    fun `phase tools are absent even when an old approval grant is supplied`(@TempDir temporary: Path) =
+    fun `phase tools are absent from the public broker surface`(@TempDir temporary: Path) =
         runBlocking<Unit> {
             val cwd = temporary.toRealPath()
             val executor = RecordingCatalogSource(capabilitySchema().replace("\"plan\"", "\"planIdentity\""))
@@ -68,16 +57,7 @@ class KastProviderTest {
                         hostRejection()
                     },
                 )
-            val grant = approvedGrant(cwd)
-            val approved =
-                BrokerInvocationContext.admit(
-                        threadId = "thread-1",
-                        turnId = "turn-1",
-                        callId = "call-1",
-                        workingDirectory = cwd,
-                        approval = BrokerInvocationApproval.Granted(grant),
-                    )
-                    .refinedValue()
+            val approved = context(cwd)
             val arguments = Json.encodeToJsonElement(PhaseIdentityArguments("plan:${"a".repeat(64)}")).jsonObject
             val rejected =
                 assertInstanceOf(
@@ -103,21 +83,7 @@ class KastProviderTest {
                 )
             assertInstanceOf(BrokerDispatch.Rejected::class.java, substituted)
             assertEquals(count, operations.size)
-            assertGrantContext(cwd, grant)
         }
-
-    private fun assertGrantContext(cwd: Path, grant: HostedPlanApprovalGrant) {
-        assertInstanceOf(
-            Refinement.Rejected::class.java,
-            BrokerInvocationContext.admit(
-                threadId = "thread-1",
-                turnId = "turn-other",
-                callId = "call-1",
-                workingDirectory = cwd,
-                approval = BrokerInvocationApproval.Granted(grant),
-            ),
-        )
-    }
 
     @Serializable
     private data class HostRejection(val type: String = "HOST_REJECTED", val failure: String = "DIRTY_DOCUMENTS")
@@ -143,32 +109,6 @@ class KastProviderTest {
             )
         val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
         return Broker.create(listOf(qualification.registration), BrokerLimits.defaults()).validatedValue()
-    }
-
-    private fun approvedGrant(cwd: Path): HostedPlanApprovalGrant {
-        val original = context(cwd)
-        val subject =
-            ExactPlanApprovalSubject.admit(
-                    planIdentity = "a".repeat(64),
-                    hostedChallenge = "b".repeat(64),
-                    root = original.workingDirectory,
-                    host = HostedApprovalOwnerId.admit("11111111-1111-1111-1111-111111111111").refinedValue(),
-                )
-                .refinedValue()
-        val tasks = SharedTaskSessions()
-        val controller = ClientConnectionId.fresh()
-        tasks.connect(controller)
-        tasks.attach(original.threadId, controller)
-        val pending = PendingExactPlanApproval.open(subject, original, tasks).refinedValue()
-        val resolution =
-            pending.respond(controller, buildJsonObject { put("decision", "accept") })
-                as ExactPlanApprovalResolution.Resolved
-        val proof = (resolution.outcome as ExactPlanApprovalOutcome.Approved).proof
-        return HostedPlanApprovalGrant.fromSignedControllerApproval(
-                proof,
-                "e30.${java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(64))}",
-            )
-            .refinedValue()
     }
 
     @Test

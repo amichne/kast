@@ -32,6 +32,37 @@ class InstallationRequestTest {
     }
 
     @Test
+    fun `installer target retains only an exact profile under the actual user home`() {
+        val root = "/fixture/home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins"
+        val request =
+            InstallationRequest.parse(validEnvironment() + (InstallationEnvironment.IDEA_PLUGIN_ROOT.key to root))
+                as Refinement.Refined
+        assertEquals(
+            root,
+            (request.value.ideaPluginTarget
+                    as io.github.amichne.kast.distribution.managed.InstalledHostPluginTarget.Recorded)
+                .root,
+        )
+        assertEquals(
+            io.github.amichne.kast.distribution.managed.InstalledHostPluginTarget.Unrecorded,
+            (InstallationRequest.parse(validEnvironment()) as Refinement.Refined).value.ideaPluginTarget,
+        )
+        for (invalid in
+            listOf(
+                "/another/home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins",
+                "/fixture/home/Library/Application Support/JetBrains/../plugins",
+                "relative",
+            )) {
+            assertEquals(
+                Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.IDEA_PLUGIN_ROOT)),
+                InstallationRequest.parse(
+                    validEnvironment() + (InstallationEnvironment.IDEA_PLUGIN_ROOT.key to invalid)
+                ),
+            )
+        }
+    }
+
+    @Test
     fun `control-only reset rejects at request boundary`() {
         assertEquals(
             Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.CONTROL_ONLY)),

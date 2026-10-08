@@ -1,10 +1,7 @@
 package io.github.amichne.kast.change.verify
 
 import io.github.amichne.kast.change.apply.LiveAppliedSourceWrite
-import io.github.amichne.kast.change.apply.LiveApprovalChallenge
-import io.github.amichne.kast.change.apply.LiveChangeEffect
 import io.github.amichne.kast.change.apply.LiveMutationAuthority
-import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
 import io.github.amichne.kast.change.contract.ChangePlanId
 import io.github.amichne.kast.change.contract.ExpectedAddDeclarationDelta
 import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
@@ -33,14 +30,14 @@ private constructor(
     val thread: String,
     val turn: String,
     val call: String,
-    val challenge: LiveApprovalChallenge,
-) {
+    val challenge: HistoricalApprovalChallenge,
+) : HistoricalLiveExecution {
     internal companion object {
         fun restore(
             thread: String,
             turn: String,
             call: String,
-            challenge: LiveApprovalChallenge,
+            challenge: HistoricalApprovalChallenge,
         ): Refinement<HistoricalLiveApproval, LiveReceiptFailure> =
             if (
                 listOf(thread, turn, call).any {
@@ -88,11 +85,7 @@ class VerifiedLiveAddDeclarationReceipt private constructor(val historical: Hist
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return checked
             }
-            val approval =
-                when (val admitted = historicalApproval(write.authority.approval)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected -> return admitted
-                }
+            val execution = HistoricalLiveExecution.LocalEndpointOperation.fromAuthority(write.authority)
             val history =
                 when (val admitted = historicalRecovery(recovery)) {
                     is Refinement.Refined -> admitted.value
@@ -115,7 +108,7 @@ class VerifiedLiveAddDeclarationReceipt private constructor(val historical: Hist
                 write = write,
                 verification = verification,
                 delta = delta,
-                approval = approval,
+                execution = execution,
                 recovery = history,
             )
         }
@@ -124,7 +117,7 @@ class VerifiedLiveAddDeclarationReceipt private constructor(val historical: Hist
             write: LiveAppliedSourceWrite,
             verification: CompleteLiveAddDeclarationVerification,
             delta: ExpectedAddDeclarationDelta,
-            approval: HistoricalLiveApproval,
+            execution: HistoricalLiveExecution,
             recovery: HistoricalLiveRecovery,
         ): Refinement<VerifiedLiveAddDeclarationReceipt, LiveReceiptFailure> {
             val plan =
@@ -143,7 +136,7 @@ class VerifiedLiveAddDeclarationReceipt private constructor(val historical: Hist
                     HistoricalLiveAddDeclarationReceipt.restore(
                         plan = plan,
                         result = result,
-                        approval = approval,
+                        execution = execution,
                         recovery = recovery,
                         obligations =
                             HistoricalLiveReceiptObligations(
@@ -180,16 +173,6 @@ private fun validateVerifiedReceiptBinding(
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return checked
     }
-    val approved = authority.approval
-    if (approved.operation != LiveChangeEffect.CHANGE_APPLY || approved.planId != plan.planId) {
-        return Refinement.Rejected(LiveReceiptFailure.APPROVAL_MISMATCH)
-    }
-    if (
-        approved.owner != plan.basis.observation.reference.host ||
-            approved.root != plan.basis.observation.reference.workspaceRoot
-    ) {
-        return Refinement.Rejected(LiveReceiptFailure.APPROVAL_MISMATCH)
-    }
     return Refinement.Refined(Unit)
 }
 
@@ -219,16 +202,6 @@ internal fun validateRecoveryBinding(
         return rejected
     return Refinement.Refined(Unit)
 }
-
-internal fun historicalApproval(
-    approved: VerifiedLivePlanApproval
-): Refinement<HistoricalLiveApproval, LiveReceiptFailure> =
-    HistoricalLiveApproval.restore(
-        thread = approved.invocation.thread,
-        turn = approved.invocation.turn,
-        call = approved.invocation.call,
-        challenge = approved.challenge,
-    )
 
 internal fun historicalRecovery(
     recovery: AppliedAddDeclarationRecovery

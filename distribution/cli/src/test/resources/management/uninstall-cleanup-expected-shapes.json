@@ -1,0 +1,44 @@
+[
+  {
+    "type": "STARTED",
+    "artifact": "CONTROL_PAYLOAD"
+  },
+  {
+    "type": "COMPLETED",
+    "artifact": "PUBLIC_EXECUTABLE"
+  },
+  {
+    "type": "REJECTED",
+    "artifact": "PI_REGISTRATION",
+    "failure": "OWNERSHIP_UNPROVEN"
+  },
+  {
+    "type": "USER_STATE_REJECTED",
+    "failure": "UNSETTLED_MUTATION",
+    "artifact": "USER_STATE"
+  },
+  {
+    "type": "RECOVERY_REJECTED",
+    "failure": "FOREIGN_CONTENT",
+    "artifact": "RECOVERY_BUNDLE"
+  },
+  {
+    "type": "HOST_REJECTED",
+    "failure": "OWNERSHIP_UNPROVEN",
+    "artifact": "HOST_PLUGIN"
+  },
+  {
+    "type": "HOME_CONFIGURATION_REJECTED",
+    "failure": "CONTENT_CHANGED",
+    "artifact": "HOME_CONFIGURATION"
+  },
+  {
+    "type": "CONTROL_CHILD_REJECTED",
+    "exitCode": 9,
+    "artifact": "CONTROL_PAYLOAD"
+  },
+  {
+    "type": "CONTROL_PAYLOAD_RETAINED",
+    "artifact": "CONTROL_PAYLOAD"
+  }
+]

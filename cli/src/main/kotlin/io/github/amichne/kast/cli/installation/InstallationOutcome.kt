@@ -73,7 +73,10 @@ internal sealed interface InstallationOutcome {
 
     data class Complete(val report: InstallationReport) : InstallationOutcome
 
-    data class TrustRejected(val failure: io.github.amichne.kast.cli.ide.BrokerTrustFailure) : InstallationOutcome
+    data class LegacyApprovalRetained(
+        val report: InstallationReport,
+        val failure: io.github.amichne.kast.cli.ide.RetiredApprovalFailure,
+    ) : InstallationOutcome
 
     data class Rejected(val failure: InstallationFailure, val limit: ControlLimitExceeded? = null) : InstallationOutcome
 

@@ -2,7 +2,6 @@ package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.change.apply.LiveRecoveryAuthority
-import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
 import io.github.amichne.kast.change.contract.LiveChangeBasis
 import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.intellij.HostedLiveSourceRecovery
@@ -40,7 +39,6 @@ internal suspend fun recoverHostedChange(
     query: HostedQueryService,
     resources: HostedChangeResources,
     plan: LiveChangePlan,
-    approval: VerifiedLivePlanApproval,
 ): HostedRecoverOutcome {
     val binding =
         when (val parsed = MutationPlanBinding.parse(plan.planId.value)) {
@@ -60,7 +58,6 @@ internal suspend fun recoverHostedChange(
                 project = project,
                 context = context,
                 plan = plan,
-                approval = approval,
                 record = record,
             )
         }
@@ -98,7 +95,6 @@ private fun observeHostedRecovery(
     project: Project,
     context: HostedSemanticReadContext,
     plan: LiveChangePlan,
-    approval: VerifiedLivePlanApproval,
     record: MutationRecoveryRecord,
 ): Refinement<FreshHostedRecovery, ChangeRecoverRejection> {
     val rejected = Refinement.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
@@ -107,7 +103,6 @@ private fun observeHostedRecovery(
             val admitted =
                 LiveRecoveryAuthority.admit(
                     plan = plan,
-                    approval = approval,
                     current = context.authority,
                     model = context.model,
                     record = record,

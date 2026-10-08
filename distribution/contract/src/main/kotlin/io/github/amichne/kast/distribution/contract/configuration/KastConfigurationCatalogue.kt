@@ -226,6 +226,13 @@ enum class ConfigurationParameter(
         mutability = ConfigurationMutability.DERIVED,
     ),
     INSTALL_IDEA_HOME("KAST_INSTALL_IDEA_HOME", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.INSTALLATION),
+    INSTALL_IDEA_PLUGIN_ROOT(
+        "KAST_INSTALL_IDEA_PLUGIN_ROOT",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.INSTALLATION,
+        ":cli",
+        mutability = ConfigurationMutability.DERIVED,
+    ),
     INSTALL_IDEA_SEARCH_ROOT(
         "KAST_INSTALL_IDEA_SEARCH_ROOT",
         ConfigurationSyntax.ABSOLUTE_PATH,

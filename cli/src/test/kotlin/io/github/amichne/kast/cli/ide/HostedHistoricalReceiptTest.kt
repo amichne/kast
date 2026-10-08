@@ -5,7 +5,6 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
-import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
 import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
@@ -36,7 +35,6 @@ import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
-import java.util.Base64
 import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -62,11 +60,8 @@ class HostedHistoricalReceiptTest {
             )
             .refined()
     private val identity = "plan:${"a".repeat(64)}"
-    private val assertion =
-        HostedApprovalAssertion.parse("e30." + Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(64)))
-            .refined()
 
-    private fun operation(kind: HostedMutationOperation): ExistingIdeOperation.ApprovedMutation {
+    private fun operation(kind: HostedMutationOperation): ExistingIdeOperation.Mutation {
         val request =
             when (kind) {
                 HostedMutationOperation.CHANGE_APPLY ->
@@ -75,11 +70,10 @@ class HostedHistoricalReceiptTest {
                     canonicalCliRequestPreparers().changeRecover.prepare(ChangeRecoverRequest(text(identity)))
             }
                 as OperationPreparation.Prepared
-        return ExistingIdeOperation.ApprovedMutation.admit(
+        return ExistingIdeOperation.Mutation.admit(
                 request = request.request,
                 kind = kind,
                 identity = HostedPlanIdentity.parse(identity).refined(),
-                assertion = assertion,
             )
             .refined()
     }

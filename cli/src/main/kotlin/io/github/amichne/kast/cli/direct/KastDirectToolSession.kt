@@ -110,7 +110,7 @@ internal class KastDirectToolSession(
                 }
             val change =
                 observeDirectToolStage(DirectToolStage.CHANGE_TOOL_COMPOSITION) {
-                    McpSingleChangeTool.installed(root = boundRoot, home = home, capabilities = capabilities)
+                    McpSingleChangeTool.installed(root = boundRoot, capabilities = capabilities)
                 }
             val invokePublic: (AdmittedPublicTool) -> CliExit = { request ->
                 if (request.identity in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY))

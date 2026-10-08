@@ -100,6 +100,16 @@ private fun hostedEffect(
 ): HostedRequestEffect =
     if (operation == CanonicalOperation.CHANGE_PLAN && request is ChangePlanRequest) {
         HostedRequestEffect.ChangePlan(request.intent)
+    } else if (
+        operation == CanonicalOperation.CHANGE_APPLY &&
+            request is io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+    ) {
+        HostedRequestEffect.ChangeApply(request.planIdentity)
+    } else if (
+        operation == CanonicalOperation.CHANGE_RECOVER &&
+            request is io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+    ) {
+        HostedRequestEffect.ChangeRecover(request.planIdentity)
     } else {
         HostedRequestEffect.Operation(operation)
     }

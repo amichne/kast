@@ -29,6 +29,7 @@ internal object KastCleanSlateModules {
             ModuleRole.CLI,
             ModuleId.DISTRIBUTION_CONTRACT,
             ModuleId.DISTRIBUTION_MANAGED,
+            ModuleId.EVIDENCE_SQLITE,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementInstallationKt"),
@@ -37,6 +38,12 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/distribution/cli/IntegrationDisconnectionKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/RegistrationPreimageKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementLifecycleKt"),
+                // Resumable uninstall retains exact ownership before retiring artifacts.
+                JvmClassName("io/github/amichne/kast/distribution/cli/ManagementUninstallKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/UninstallRetirementJournalKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/UninstallManagedRootKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/UninstallHomeConfigurationKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/UserStateInventory"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/InstallationLifecycle"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ForceResetRoot"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ForceResetFence"),
@@ -361,7 +368,7 @@ internal object KastCleanSlateModules {
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
-                    JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
+                    JvmClassName("io/github/amichne/kast/cli/ide/RetiredApprovalArtifacts"),
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord"),
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord\$Companion"),
                     JvmClassName(
@@ -434,11 +441,9 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpoint"),
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
             ),
-                // Reads are confined to endpoint ownership and approval artifacts; the digest names the canonical root.
+                // Reads are confined to endpoint ownership; the digest names the canonical root.
                 ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(
                     JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
-                    JvmClassName("io/github/amichne/kast/runtime/hosted/HostedChangeApprovalsKt"),
-                    JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/ProjectCloseAuthorityKt"),
                     JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpointOwner\$Companion"),
                 ),
                 ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),

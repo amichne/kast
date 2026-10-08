@@ -217,7 +217,6 @@ internal class HostedSocketExchangeFixture {
                 "SOURCE_READ",
                 "DIAGNOSTIC_CHECK",
                 "CHANGE_PLAN",
-                "CHANGE_APPROVAL_PREPARE",
                 "CHANGE_APPLY",
                 "CHANGE_RECOVER",
             )

@@ -33,15 +33,15 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
   - id: openwiki-source-432d05143d371dfe54d7f30d
     resource: repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
   - id: openwiki-source-23a518e99c7e7bac85c836ca
     resource: repo://change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-08T01:13:49.481Z
 ---
 
 # Semantic change
@@ -53,7 +53,7 @@ The installed published path retains `EditableMutationTarget` and its
 separate live plans with historical original-owner epoch and project model
 evidence. Body replacement retains the exact block and all surrounding source.
 `LiveMutationAuthority` requires fresh matching evidence, exact
-source preconditions and verified plan approval before admitting a write.
+source preconditions and the exact admitted plan before admitting a write.
 Neither detached plan basis grants current authority.
 
 Planning is pure. Application first derives a deterministic postimage from the
@@ -73,7 +73,7 @@ reference bytes until its authority boundary, and a narrow durable-plan issuance
 port. The existing installed handler retains published selector admission.
 `CanonicalLiveChangePlanProtocol` adds live request admission through explicit
 host ports. The hosted coordinator owns live plan and receipt persistence,
-exact-plan approval verification, source effects and recovery. Shared protocol
+exact-plan admission, source effects and recovery. Shared protocol
 code cannot acquire those capabilities.
 
 A missing recovery record cannot establish that no effect occurred. A surviving

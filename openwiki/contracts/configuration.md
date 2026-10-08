@@ -38,7 +38,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt
   - path: packaging/configuration-schema.json
@@ -48,7 +48,7 @@ code_sources:
   - path: build.gradle.kts
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T20:36:23.129Z
+    at: 2026-10-08T02:31:16.815Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
@@ -78,7 +78,7 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-10-05T20:36:23.129Z" }
+generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
 ---
 
 # Installation configuration
@@ -174,7 +174,7 @@ user settings. Explicit cold staging defers Control activation through the
 existing lifecycle owner; it does not create another installation.
 
 The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session; it adds no saved configuration setting. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. Its process command adds no saved configuration setting or Codex App Server request.
-The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, repair, or trust enrollment to the existing owners.
+The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, or repair to the existing owners.
 
 Component selection belongs to installation ingress: `KAST_INSTALL_CONTROL_ONLY` selects a control-only upgrade and `KAST_HOST_VERSION` selects host provenance only for a paired or host installation. Local checkout routing retains `KAST_LOCAL_COMPONENT`, `KAST_LOCAL_PROFILE`, and `KAST_LOCAL_HOST_RELEASE_RECORD`. Checkout Control-only assembly builds and forwards only the Control payload and clears any inherited `KAST_HOST_VERSION` before invoking the public installer. Host and paired checkout assembly retain their generated Host version. Control-only replacement retains the admitted saved configuration and workspace registration; it starts fresh control state and session ownership.
 

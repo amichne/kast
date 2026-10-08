@@ -17,21 +17,10 @@ private data class SupertypeRequest(val root: String, val qualifiedName: String,
 @Serializable private data class PlanRequest(val root: String, val document: String, val type: String = "CHANGE_PLAN")
 
 @Serializable
-private data class ApprovalPreparationRequest(
-    val root: String,
-    val document: String,
-    val type: String = "CHANGE_APPROVAL_PREPARE",
-)
-
-@Serializable
-private data class ApprovalPreparationDocument(val operation: HostedMutationOperation, val planIdentity: String)
-
-@Serializable
 private data class MutationRequest(
     val root: String,
     val type: HostedMutationOperation,
     val document: String,
-    val approval: String,
 )
 
 @Serializable private data class ReadRequest(val root: String, val type: ExistingIdeReadOperation, val document: String)
@@ -44,15 +33,8 @@ fun ExistingIdeOperation.encodeControlRequest(root: CanonicalRoot): ByteArray {
             is ExistingIdeOperation.Classes -> controlJson.encodeToString(ClassLookupRequest(path, name.value))
             is ExistingIdeOperation.Supertype -> controlJson.encodeToString(SupertypeRequest(path, name.value))
             is ExistingIdeOperation.Plan -> controlJson.encodeToString(PlanRequest(path, request.document))
-            is ExistingIdeOperation.ApprovalPreparation ->
-                controlJson.encodeToString(
-                    ApprovalPreparationRequest(
-                        path,
-                        controlJson.encodeToString(ApprovalPreparationDocument(kind, identity.value)),
-                    )
-                )
-            is ExistingIdeOperation.ApprovedMutation ->
-                controlJson.encodeToString(MutationRequest(path, kind, request.document, assertion.value))
+            is ExistingIdeOperation.Mutation ->
+                controlJson.encodeToString(MutationRequest(path, kind, request.document))
             is ExistingIdeOperation.Read -> controlJson.encodeToString(ReadRequest(path, kind, request.document))
         }
     return encoded.toByteArray(Charsets.UTF_8)

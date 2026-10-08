@@ -74,6 +74,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt
   - id: openwiki-source-7c05e12b47d08ef75636350e
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
+  - id: openwiki-source-fbea068a13125b931c0783c9
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/SettledOutputRejection.kt
   - id: openwiki-source-e8970cbf92e81dc4000b50e4
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
   - id: openwiki-source-e750eea4b9efa673ce4df938
@@ -84,10 +86,10 @@ sources:
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
+generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T01:13:49.481Z
 ---
 
 # Request dispatch
@@ -158,7 +160,7 @@ rejects digest drift. Installed payload admission and Codex schema qualification
 resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Provider invocation uses the App Server-owned
 IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings. The installed coordinator first prepares the exact root, validates the live application/project identity, and retains that project through descriptor admission. Preparation failures are known pre-execution rejections with typed causes and operation IDs.
-The public `add_declaration` route prepares the host challenge through the same direct client and signs it internally before any source effect.
+The public `add_declaration` route sends the exact stored plan identity through canonical apply on that same direct client. The native owner admits fresh source and durable recovery before any write.
 Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` selects the three existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
@@ -178,10 +180,10 @@ is sent to a controller. Native schema admission and module tests establish the
 protocol shapes, while desktop rendering remains unqualified.
 
 The entire `change` CLI family routes to the existing-IDE path before installed
-bootstrap. Hosted ingress admits `AddDeclaration` planning; the one-call coordinator signs
-exact host challenges before the private apply/recovery operations. The endpoint protocol is version
+bootstrap. Hosted ingress admits `AddDeclaration` planning; the one-call coordinator
+retains exact plan identity through private canonical apply/recovery operations. The endpoint protocol is version
 3. Its added change routes retain canonical complete/qualified/rejected envelopes;
-missing hosts, unsupported intents and unapproved writes cannot fall back to an
+missing hosts, unsupported intents and inadmissible writes cannot fall back to an
 isolated worker. A stored verified apply receipt is historical evidence, so its
 original host may differ from the current endpoint; current reads still require
 the admitted endpoint owner.
@@ -204,9 +206,10 @@ the invocation's effects known and the workspace lane serves its next request.
 Output validity and semantic success remain separate from this settlement decision.
 
 All writing effects and unknown provider effects retain recovery-required
-handling after output rejection. Provider failures, cancellation, and timeouts
-remain uncertain even for reads; read metadata cannot prove that an execution has
-terminated. A cancelled change apply is settled as known only when exact native
+handling after output rejection. The four exact canonical-root discovery failures
+remain known because they occur before native dispatch. Other provider failures,
+cancellation, and timeouts remain uncertain even for reads; read metadata cannot
+prove that an execution has terminated. A cancelled change apply is settled as known only when exact native
 recovery completes in `prior_state` or `rolled_back`; its workspace lane can then
 serve later requests. Deterministic gates test queued and later calls, mutation
 without replay, independent workspaces, and retirement held across cancellation/deadline.
@@ -231,7 +234,7 @@ operation presentations retain their existing dispatch behavior.
 
 Workspace refresh is a separate typed hosted control path, not a canonical semantic read. Its request and response DTOs retain request identity and finite pending, complete, failed, rejected or configured outcomes. The CLI uses typed serialization for the hosted transport, validates the independent refresh schema, and binds the response to the admitted host and root.
 
-Agent lifecycle dispatch calls the App Server-owned lifecycle client and selected application control endpoint directly. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits enrolled signing; session-wide acceptance does not. The invocation transports the signed assertion privately and preserves finite lifecycle blockers through the output schema. Native semantic dispatch remains passive; the coordinator prepares the workspace through the lifecycle owner before sending a semantic request. If exact host identity changes during the final inspection, no semantic operation has been sent; the coordinator invalidates that preparation and tries once with a fresh incarnation.
+Agent lifecycle dispatch calls the App Server-owned lifecycle client and selected application control endpoint directly. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits the exact local close confirmation; session-wide acceptance does not. The invocation transports that typed confirmation privately and preserves finite lifecycle blockers through the output schema. Native semantic dispatch remains passive; the coordinator prepares the workspace through the lifecycle owner before sending a semantic request. If exact host identity changes during the final inspection, no semantic operation has been sent; the coordinator invalidates that preparation and tries once with a fresh incarnation.
 
 Local controller claim/release enters the owned daemon management route and delegates
 to the existing session owner. The target service generation and connected observer
@@ -240,44 +243,8 @@ cannot claim or release another connection by supplying its identifier. Manageme
 inspection observes pending/prepared/rejected/closed session state without admitting
 an optional host.
 
-Apply and recovery challenges share the installed workspace preparation
-owner. A workspace rejection is projected before source effects. The enrolled
-signer binds each challenge to the exact plan, root, host, operation, and caller
-invocation.
-
-Invocation admission persists intent before workspace submission. Known binding
-rejections and queued cancellations
-are durably completed before their responses are published. Executing calls settle
-inside the workspace permit so persistence failure remains uncertain before the
-lane can advance. The response owner publishes once, preserves uncertain outcomes,
-and keeps active results separate from its bounded completed cache. Eviction
-removes response bytes only; the durable fingerprint and phase continue to reject
-replay and conflicting inputs.
-
-Thread-store migration preserves historical bindings as non-executable records.
-Resume, fork and tool dispatch retain `NEW_CONVERSATION_REQUIRED` rather than
-silently rebinding those identities. New conversations receive current records;
-missing or corrupt unrelated historical records do not enter an exact thread
-lookup. Store failures preserve their finite cause through the owning projection.
-
-Private update preparation reads the live session, invocation, workspace and
-preparation owners under the same admission mutex used by frontend creation,
-session ingress and management mutations. A quiescent seal rejects new work while
-passive status remains available. Pending upstream requests survive frontend
-detachment; transport retirement with an unresolved request retains uncertainty
-and cannot supply a quiescence proof. Status observation never repeats preparation
-or seals admission.
-
-Both project semantic dispatch and application lifecycle dispatch admit the live
-host's complete hosted contract before sending an operation. Host release versions
-remain implementation provenance. A control-only installation checks the candidate's
-policy before retiring control and repeats admission after candidate activation;
-these checks do not replace connection-time admission.
-
-The project socket client retains successfully loaded packaged Control requirements
-for its own lifetime. Failed loads remain retryable. Every exchange still obtains
-and admits a fresh live describe before dispatching the requested operation.
-
-Public impact syntax uses the same `query.run` dispatch. Typed facade lowering preserves seeds, model declarations, expansion domain and forward-flow semantics in the canonical request. Read-result lowering selects the existing typed constructors for value paths or impact witness sections, retaining the result, cursor and admitted execution budget. Model syntax and native source revalidation remain separate steps; lowering alone establishes no compiler or representation facts.
-
-Optional requested-site claims follow that same lowering path. Omitted or null `requestedSites` becomes the canonical empty requested-site list; supplied claims remain in original order for canonical admission. The facade does not infer a relationship from the claim. `SITE_ACCOUNTING` is another section of the existing retained witness output, so its dispatch carries the original result reference and presentation cursor rather than starting a second query.
+Apply and recovery share the installed workspace preparation owner. A workspace
+rejection is projected before source effects. The existing native owner binds
+canonical requests to the immutable plan, exact current workspace and host,
+permanent attempt history and durable recovery evidence. No enrolled signing
+key or challenge envelope enters these paths.

@@ -11,7 +11,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
  * Shared boundary authority. Implementations must bump protocolIdentity when behavior breaks without a shape change.
  */
 object CanonicalHostedContract {
-    const val protocolIdentity = "kast.ide-hosted.runtime.v2"
+    const val protocolIdentity = "kast.ide-hosted.runtime.v3"
     private val bindings =
         listOf(
             CanonicalOperationWireBindings.workspaceLifecycle,
@@ -28,7 +28,6 @@ object CanonicalHostedContract {
             "hosted-query.schema.json",
             "hosted-workspace-refresh.schema.json",
             "hosted-request.schema.json",
-            "hosted-approval.schema.json",
         )
     val document: HostedContractDocument by lazy {
         val digest = MessageDigest.getInstance("SHA-256")

@@ -452,6 +452,7 @@ PYTHON
 
 action=install
 managed_registrations=0
+uninstall_journal=""
 version="${KAST_VERSION:-}"
 host_version="${KAST_HOST_VERSION:-}"
 component=pair
@@ -495,6 +496,11 @@ while [[ $# -gt 0 ]]; do
       [[ "$action" == install ]] || fail "--force is valid only for installation"
       force=1
       shift
+      ;;
+    --uninstall-journal)
+      [[ "$action" == uninstall && $# -ge 2 ]] || fail "--uninstall-journal requires removal and an exact path"
+      uninstall_journal="$2"
+      shift 2
       ;;
     --managed-registrations)
       [[ "$action" == uninstall ]] || fail "--managed-registrations is valid only for removal"
@@ -565,6 +571,7 @@ if [[ "$component" != pair ]]; then
   [[ "$codex_mcp_choice" != unspecified ]] || codex_mcp_choice=skip
 fi
 
+[[ -z "$uninstall_journal" || ( "$managed_registrations" == 1 && "$mode" == apply ) ]] || fail "uninstall journal requires native managed removal"
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
 # Local artifacts are an explicit developer entry point; public release installs use standard paths.
 profile="${KAST_INSTALL_PROFILE:-persistent}"
@@ -582,9 +589,107 @@ require_absolute_path "binary directory" "$bin_directory"
 
 if [[ "$action" == uninstall ]]; then
   require_command python3
-  [[ -d "$install_root" && ! -L "$install_root" ]] || fail "no Kast installation exists at $install_root"
-  physical_install_root="$(CDPATH='' cd -- "$install_root" && pwd -P)"
-  [[ "$physical_install_root" == "$install_root" ]] || fail "install root must be canonical: $install_root"
+  if [[ -e "$install_root" || -L "$install_root" ]]; then
+    [[ -d "$install_root" && ! -L "$install_root" ]] || fail "install root ownership is unproven: $install_root"
+    physical_install_root="$(CDPATH='' cd -- "$install_root" && pwd -P)"
+    [[ "$physical_install_root" == "$install_root" ]] || fail "install root must be canonical: $install_root"
+  else
+    [[ "$mode" == apply && "$managed_registrations" == 0 ]] || fail "no Kast installation exists at $install_root"
+  fi
+  if [[ "$mode" == apply && "$managed_registrations" == 0 ]]; then
+    # The native management owner retains cleanup authority after deleting its private payload.
+    management_admission=0
+    management_command="$(python3 - "$install_root" <<'PYTHON'
+import hashlib, json, os, re, stat, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+try:
+    receipt = root / 'management.json'
+    if not os.path.lexists(receipt):
+        token = hashlib.sha256(str(root).encode('utf-8')).hexdigest()
+        receipt = root.parent / ('.kast-uninstall-' + token + '.json')
+    attributes = receipt.lstat()
+    if not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid() or attributes.st_size > 65536:
+        raise ValueError('receipt ownership')
+    with receipt.open('rb') as source:
+        raw = source.read(65537)
+    if len(raw) > 65536:
+        raise ValueError('receipt size')
+    document = json.loads(raw.decode('utf-8'))
+    expected = {'schemaVersion', 'installationRoot', 'executable', 'executableSha256', 'channel', 'registrations'}
+    if receipt.name.startswith('.kast-uninstall-'):
+        if stat.S_IMODE(attributes.st_mode) != 0o600:
+            raise ValueError('retirement permissions')
+        expected = {'type', 'installationRoot', 'executable', 'executableSha256', 'channel', 'managedRootIdentity', 'controlIdentity', 'recoveryProof', 'homeConfiguration'}
+        if document.get('type') != 'EXTERNALS_CLEANED':
+            raise ValueError('incomplete cleanup')
+        if not isinstance(document.get('recoveryProof'), dict):
+            raise ValueError('recovery proof')
+        identity = document.get('managedRootIdentity')
+        if (not isinstance(identity, dict) or set(identity) != {'device', 'inode', 'owner'}
+                or any(type(value) is not int or value < 0 for value in identity.values())
+                or identity['owner'] != os.getuid()):
+            raise ValueError('root identity')
+        if os.path.lexists(root):
+            current = root.lstat()
+            if (not stat.S_ISDIR(current.st_mode)
+                    or (current.st_dev, current.st_ino, current.st_uid) != (identity['device'], identity['inode'], identity['owner'])):
+                raise ValueError('changed root')
+    elif document.get('schemaVersion') != 2 or not isinstance(document.get('registrations'), list):
+        raise ValueError('receipt contract')
+    if (set(document) != expected or document['installationRoot'] != str(root)
+            or document['channel'] not in {'STABLE', 'DEVELOPER'}
+            or not isinstance(document['executableSha256'], str)
+            or re.fullmatch('[0-9a-f]{64}', document['executableSha256']) is None):
+        raise ValueError('receipt contract')
+    command = Path(document['executable'])
+    if not command.is_absolute() or command.resolve() != command:
+        raise ValueError('executable scope')
+    if not os.path.lexists(command):
+        raise SystemExit(20)
+    attributes = command.lstat()
+    if (not command.is_absolute() or command.resolve(strict=True) != command
+            or not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid()
+            or not os.access(command, os.X_OK)):
+        raise ValueError('executable ownership')
+    digest = hashlib.sha256()
+    with command.open('rb') as source:
+        for chunk in iter(lambda: source.read(65536), b''):
+            digest.update(chunk)
+    if digest.hexdigest() != document['executableSha256']:
+        raise ValueError('executable identity')
+    print(command)
+except (OSError, ValueError, TypeError, KeyError):
+    print('kast-install: receipted management executable ownership is unproven; use verified Kast recovery', file=sys.stderr)
+    raise SystemExit(1)
+PYTHON
+    )" || management_admission=$?
+    if [[ "$management_admission" == 20 ]]; then
+      # Reuse the installer's admitted release archive when the old executable is already gone.
+      for command in curl shasum awk cp mktemp; do require_command "$command"; done
+      if [[ -z "$version" || "$version" == latest ]]; then
+        [[ -z "${KAST_RELEASE_BASE_URL:-}" && -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
+          fail "recovery assets require an exact KAST_VERSION"
+        version="$(resolve_latest_version control)"
+      fi
+      validate_version "$version"
+      release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
+      release_url="${release_url%/}/control-v$version"
+      recovery_directory="$(mktemp -d "${TMPDIR:-/tmp}/kast-uninstall-recovery.XXXXXX")"
+      trap 'rm -rf -- "$recovery_directory"' EXIT
+      recovery_name="kast-control-v$version-macos-aarch64.tar.gz"
+      for name in "$recovery_name" "$recovery_name.sha256"; do fetch_asset "$name" "$recovery_directory/$name"; done
+      verify_checksum "$recovery_directory/$recovery_name" "$recovery_directory/$recovery_name.sha256" "$recovery_name" >/dev/null
+      extract_control "$recovery_directory/$recovery_name" "$recovery_directory/control"
+      management_command="$recovery_directory/control/share/kast/libexec/kast-management"
+      [[ -x "$management_command" && -f "$management_command" && ! -L "$management_command" ]] ||
+        fail "admitted recovery archive has no native management executable"
+    elif [[ "$management_admission" != 0 ]]; then
+      fail "native removal admission failed; retained installation and cleanup state"
+    fi
+    run_installer_step "Owned installation removal" "" "$management_command" uninstall
+    exit 0
+  fi
   selected="$install_root/installation"
   [[ -d "$selected" && ! -L "$selected" ]] || fail "no Kast installation exists at $install_root"
   selected="$(CDPATH='' cd -- "$selected" && pwd -P)"
@@ -601,7 +706,9 @@ if [[ "$action" == uninstall ]]; then
       cp "$registration" "$unregister_copy"
       trap 'rm -f -- "$unregister_copy"' EXIT
     fi
-    run_installer_step "Installation removal" "" python3 "$lifecycle" --installation "$selected" remove --control-only --json
+    removal_arguments=()
+    [[ -z "$uninstall_journal" ]] || removal_arguments+=(--uninstall-journal "$uninstall_journal")
+    run_installer_step "Installation removal" "" python3 "$lifecycle" --installation "$selected" remove --control-only --json ${removal_arguments[@]+"${removal_arguments[@]}"}
     if [[ -n "${unregister_copy:-}" ]] && command -v codex >/dev/null 2>&1; then
       python3 "$unregister_copy" uninstall "$install_root"
     fi
@@ -804,6 +911,7 @@ export KAST_INSTALL_CONTROL_SHA256="$control_digest"
 export KAST_INSTALL_CONTROL_ONLY="$control_only"
 export KAST_INSTALL_VERSION="$version"
 export KAST_INSTALL_IDEA_HOME="$idea_home"
+export KAST_INSTALL_IDEA_PLUGIN_ROOT="$idea_plugin_root"
 export KAST_INSTALL_JAVA_HOME="$java_home"
 export KAST_INSTALL_ROOT="$install_root"
 export KAST_BIN_DIR="$bin_directory"

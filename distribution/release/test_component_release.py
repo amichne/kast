@@ -17,7 +17,7 @@ import component_release as release
 @dataclass(frozen=True)
 class Contract:
     type: str = "HOSTED_CONTRACT"
-    runtimeProtocolIdentity: str = "kast.ide-hosted.runtime.v2"
+    runtimeProtocolIdentity: str = "kast.ide-hosted.runtime.v3"
     operationRegistryDigest: str = "sha256:" + "a" * 64
     wireSchemaDigest: str = "sha256:" + "b" * 64
     capabilities: tuple[str, ...] = ("query.run",)

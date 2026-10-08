@@ -1,0 +1,71 @@
+[
+  {
+    "type": "REMOVAL_REQUESTED",
+    "installationRoot": "/home/user/.local/share/kast",
+    "executable": "/home/user/.local/bin/kast",
+    "executableSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "channel": "STABLE",
+    "managedRootIdentity": {
+      "device": 1,
+      "inode": 2,
+      "owner": 501
+    },
+    "recoveryProof": {
+      "type": "ABSENT_RECOVERY"
+    },
+    "controlIdentity": {
+      "device": 1,
+      "inode": 3,
+      "owner": 501
+    },
+    "homeConfiguration": {
+      "type": "ABSENT_CONFIGURATION"
+    }
+  },
+  {
+    "type": "CONTROL_RETIRED",
+    "installationRoot": "/home/user/.local/share/kast",
+    "executable": "/home/user/.local/bin/kast",
+    "executableSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "channel": "STABLE",
+    "managedRootIdentity": {
+      "device": 1,
+      "inode": 2,
+      "owner": 501
+    },
+    "recoveryProof": {
+      "type": "ABSENT_RECOVERY"
+    },
+    "controlIdentity": {
+      "device": 1,
+      "inode": 3,
+      "owner": 501
+    },
+    "homeConfiguration": {
+      "type": "ABSENT_CONFIGURATION"
+    }
+  },
+  {
+    "type": "EXTERNALS_CLEANED",
+    "installationRoot": "/home/user/.local/share/kast",
+    "executable": "/home/user/.local/bin/kast",
+    "executableSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "channel": "STABLE",
+    "managedRootIdentity": {
+      "device": 1,
+      "inode": 2,
+      "owner": 501
+    },
+    "recoveryProof": {
+      "type": "ABSENT_RECOVERY"
+    },
+    "controlIdentity": {
+      "device": 1,
+      "inode": 3,
+      "owner": 501
+    },
+    "homeConfiguration": {
+      "type": "ABSENT_CONFIGURATION"
+    }
+  }
+]

@@ -29,8 +29,8 @@ before attaching a compatible client:
 ```
 
 Registration is handled by the daemon management RPC. The private entry point
-also accepts `enable`, `disable`, `stop`, `repair --destructive`, and
-`enroll-trust`. A rejected registration retains its finite daemon reason.
+also accepts `enable`, `disable`, `stop`, and `repair --destructive`.
+A rejected registration retains its finite daemon reason.
 
 The canonical public socket remains installation-owned and is never taken over
 from an unproven incumbent. Explicit private mode instead uses `state/run/c.sock`
@@ -145,11 +145,19 @@ semantic operation. Cancelled waiters leave the shared preparation running.
 Preparation blockers reach Codex with their finite cause and operation ID, marked
 as known pre-execution failures.
 
-Apply and recovery approval challenges use the same preparation owner before reading
-the immutable hosted plan. Workspace blockers retain their typed cause and operation
-identity and never register a controller prompt or sign a grant. Preparation has the
-workspace-readiness budget in addition to the existing plan-read budget; controller
-waiting retains its separate deadline.
+Apply and recovery use the same preparation owner before loading the immutable
+hosted plan. The private local endpoint receives its canonical request without
+an approval key, signature, token, or challenge exchange. The native owner still
+checks exact workspace, plan, model, source, and durable attempt state before
+effects. Workspace blockers retain their typed cause and operation identity.
+Preparation retains its workspace-readiness budget.
+
+Closing a borrowed or presented project still requires the broker's exact-target
+controller confirmation. The local lifecycle endpoint checks the supplied target,
+request, client, and invocation correlation; it does not independently authenticate
+the controller's user decision. Existing local socket ownership is the transport
+boundary. Wrong hosts, stale projects, other clients, and pending work remain
+rejections. No replacement credential or authorization handshake is introduced.
 
 Service lifecycle, deferred updates and durable storage migration remain subsequent work.
 
@@ -304,9 +312,9 @@ implementation imports.
 The coordinator no longer launches or reserves isolated workspace workers. Its
 control route admits only passive, identity-correlated status and rejects legacy
 worker demands. Hosted provider calls check the exact root and installation and
-prepare the selected IDEA project before one native operation. Change preparation
-and approved apply/recover retain the plan identity and assertion; an ordinary
-apply or recovery without approval rejects before transport. Complete, qualified,
-rejected and hosted challenge replies remain distinct.
-Enrollment, sessions, approvals and durable invocation settlement remain broker
-responsibilities.
+prepare the selected IDEA project before one native operation. Apply and recover
+retain the exact stored plan identity through the existing local endpoint; the
+native owner admits its current root, Host, epoch, and durable mutation evidence.
+Complete, qualified, and rejected replies remain distinct.
+Enrollment, sessions, native Codex approvals, project-close confirmation, and
+durable invocation settlement remain broker responsibilities.

@@ -6,7 +6,6 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeStage
-import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
@@ -137,7 +136,7 @@ private fun rejectedMcpConfiguration() =
 private val mcpPreparers = canonicalCliRequestPreparers()
 
 @Suppress("CognitiveComplexMethod", "LongMethod")
-private fun mcpOperation(call: DaemonOperationCall): Refinement<ExistingIdeOperation, ExistingIdeFailure> {
+internal fun mcpOperation(call: DaemonOperationCall): Refinement<ExistingIdeOperation, ExistingIdeFailure> {
     val prepared =
         when (call) {
             is DaemonOperationCall.PublicTool ->
@@ -155,16 +154,6 @@ private fun mcpOperation(call: DaemonOperationCall): Refinement<ExistingIdeOpera
             is DaemonOperationCall.Change ->
                 when (val action = call.action) {
                     is DaemonChangeAction.Plan -> mcpPreparers.changePlan.prepare(action.request)
-                    is DaemonChangeAction.Prepare -> {
-                        val identity = HostedPlanIdentity.parse(action.identity)
-                        return when (identity) {
-                            is Refinement.Refined ->
-                                Refinement.Refined(
-                                    ExistingIdeOperation.ApprovalPreparation(action.kind, identity.value)
-                                )
-                            is Refinement.Rejected -> identity
-                        }
-                    }
                     is DaemonChangeAction.Apply -> mcpPreparers.changeApply.prepare(action.request)
                     is DaemonChangeAction.Recover -> mcpPreparers.changeRecover.prepare(action.request)
                 }
@@ -178,43 +167,34 @@ private fun mcpOperation(call: DaemonOperationCall): Refinement<ExistingIdeOpera
         is DaemonOperationCall.Change ->
             when (val action = call.action) {
                 is DaemonChangeAction.Plan -> ExistingIdeOperation.Plan.admit(request)
-                is DaemonChangeAction.Prepare -> error("Preparation returned before request encoding")
                 is DaemonChangeAction.Apply ->
-                    mcpApproved(
+                    mcpMutation(
                         request,
                         HostedMutationOperation.CHANGE_APPLY,
                         action.request.planIdentity.value,
-                        action.assertion,
                     )
                 is DaemonChangeAction.Recover ->
-                    mcpApproved(
+                    mcpMutation(
                         request,
                         HostedMutationOperation.CHANGE_RECOVER,
                         action.request.planIdentity.value,
-                        action.assertion,
                     )
             }
         else -> ExistingIdeOperation.Read.admit(request)
     }
 }
 
-private fun mcpApproved(
+private fun mcpMutation(
     request: io.github.amichne.kast.protocol.wire.presentation.PreparedOperationRequest,
     kind: HostedMutationOperation,
     identity: String,
-    assertion: String,
 ): Refinement<ExistingIdeOperation, ExistingIdeFailure> {
     val plan =
         when (val parsed = HostedPlanIdentity.parse(identity)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> return parsed
         }
-    val grant =
-        when (val parsed = HostedApprovalAssertion.parse(assertion)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return parsed
-        }
-    return ExistingIdeOperation.ApprovedMutation.admit(request, kind, plan, grant)
+    return ExistingIdeOperation.Mutation.admit(request, kind, plan)
 }
 
 private fun mcpResult(exchange: ExistingIdeExchange): DaemonOperationResult =

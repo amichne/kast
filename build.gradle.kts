@@ -269,7 +269,7 @@ tasks.register<Exec>("installLocal") {
 
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
-    description = "Verifies assembled artifact identity, launcher admission, and canonical persistent staging in an owned HOME."
+    description = "Verifies assembled artifacts, staging, and native Host/SQLite/full cleanup in an owned HOME."
     dependsOn(stageKastControlProduct, assembleKastControlDist, "generateHostReleaseRecord")
     inputs.dir(controlProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
@@ -277,6 +277,11 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     val hostRecord = layout.buildDirectory.file("generated/host-release/kast-host-release-v${hostedPluginVersion.get()}.json")
     inputs.file(hostRecord)
     inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py")
+    inputs.files(
+        "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt",
+        "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryDatabase.kt",
+        "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangeReceiptStore.kt",
+    )
     outputs.upToDateWhen { false }
     environment("KAST_INSTALLED_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)

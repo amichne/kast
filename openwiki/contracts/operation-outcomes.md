@@ -46,7 +46,7 @@ sources:
 generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T01:13:49.481Z
 ---
 
 # Operation outcomes

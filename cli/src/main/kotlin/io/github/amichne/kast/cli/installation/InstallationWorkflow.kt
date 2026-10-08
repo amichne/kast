@@ -157,11 +157,6 @@ internal object InstallationWorkflow {
             lock.use activation@{
                 if (Files.isSymbolicLink(lockPath) || !secureActivationLock(lockPath))
                     return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
-                when (val trust = enrollInstallationTrust(plan.request.home.value)) {
-                    is io.github.amichne.kast.cli.ide.BrokerTrustResult.Complete -> Unit
-                    is io.github.amichne.kast.cli.ide.BrokerTrustResult.Rejected ->
-                        return InstallationOutcome.TrustRejected(trust.failure)
-                }
                 when (observePendingInstallationReplacement(plan.request.installRoot.value)) {
                     PendingInstallationReplacement.Absent -> Unit
                     PendingInstallationReplacement.RecoveryRequired ->
@@ -187,7 +182,10 @@ internal object InstallationWorkflow {
                             is Refinement.Rejected ->
                                 return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
                         }
-                        return@activation
+                        when (val selection = admitInstallationIdeReuse(plan.request, plan.targetRoot)) {
+                            is Refinement.Refined -> return@activation
+                            is Refinement.Rejected -> return InstallationOutcome.Rejected(selection.failure)
+                        }
                     }
                 }
                 val prior =
@@ -226,7 +224,10 @@ internal object InstallationWorkflow {
                         configuration is InstallationConfigurationSelection.Prior &&
                         configuration.preservesEndpoint()
                 ) {
-                    return@activation
+                    when (val selection = admitInstallationIdeReuse(plan.request, plan.targetRoot)) {
+                        is Refinement.Refined -> return@activation
+                        is Refinement.Rejected -> return InstallationOutcome.Rejected(selection.failure)
+                    }
                 }
                 if (!existing && untrustedExistingCandidate(plan, prior))
                     return InstallationOutcome.Rejected(InstallationFailure.CANDIDATE_EXISTING_UNTRUSTED)
@@ -359,13 +360,25 @@ internal object InstallationWorkflow {
                     )
             }
         }
-        return InstallationOutcome.Complete(plan.report(activation))
+        val report = plan.report(activation)
+        if (activation is InstallationActivation.Pending) return InstallationOutcome.Complete(report)
+        return when (val cleanup = retireInstallationApprovalArtifacts(plan.request.home.value)) {
+            io.github.amichne.kast.cli.ide.RetiredApprovalOutcome.Absent,
+            io.github.amichne.kast.cli.ide.RetiredApprovalOutcome.Removed -> InstallationOutcome.Complete(report)
+            is io.github.amichne.kast.cli.ide.RetiredApprovalOutcome.Retained ->
+                InstallationOutcome.LegacyApprovalRetained(report, cleanup.failure)
+        }
     }
 
     private fun stage(
         plan: VerifiedInstallationPlan,
         configuration: InstallationConfigurationSelection,
     ): StageResult {
+        val selectedIde =
+            when (val selected = selectInstallationIdeLaunch(plan.request, configuration)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return StageResult.Rejected(selected.failure)
+            }
         val staged = Files.createTempDirectory(plan.request.installRoot.value, ".install-")
         var completed = false
         try {
@@ -379,17 +392,17 @@ internal object InstallationWorkflow {
                 stagedConfiguration = staged.resolve("config/environment"),
                 configuration = configuration,
             )
+            val selectedRecord = staged.resolve("config/selected-ide.json")
             Files.writeString(
-                staged.resolve("config/selected-ide.json"),
+                selectedRecord,
                 Json { encodeDefaults = true }
                     .encodeToString(
                         io.github.amichne.kast.distribution.managed.SelectedIdeLaunch.serializer(),
-                        io.github.amichne.kast.distribution.managed.SelectedIdeInstallation.resolve(
-                            plan.request.ideaHome.value
-                        ),
+                        selectedIde,
                     ),
                 StandardOpenOption.CREATE_NEW,
             )
+            setMode(selectedRecord, "rw-------")
             Files.writeString(staged.resolve(".kast-control-sha256"), "${plan.request.controlDigest.value}\n")
             if (!writeManifest(plan, staged)) {
                 return StageResult.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED)

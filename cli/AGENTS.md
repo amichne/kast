@@ -21,7 +21,7 @@ legacy command graph retained for migration, and hosted output projections.
 - [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - one-shot catalog and invocation boundary for agent extensions.
 - [McpWire.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWire.kt) - typed MCP discovery, request, and result envelopes.
 - [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-validated MCP result envelopes and concise health and validation summaries.
-- [McpApproval.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt) - enrolled key signing for an exact native mutation challenge.
+- [HostedChangeCliInput.kt](src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeCliInput.kt) - canonical hosted mutation request input retaining the operation and exact stored plan identity.
 - [McpSingleChangeTool.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt) - one-call direct MCP planning, application, and attempted recovery.
 
 - [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
@@ -79,5 +79,6 @@ legacy command graph retained for migration, and hosted output projections.
 - Semantic operations use the hosted provider. The installed MCP starts
   preparation for the discovered Gradle root on its first valid request, launching the
   selected IDE when needed; reads wait for its endpoint. The private installed
-  control owns registration, lifecycle actions, and trust enrollment. Former
+  control owns registration and lifecycle actions. Hosted mutations use the
+  existing private endpoint and native workspace admission; no approval keys are enrolled. Former
   public semantic commands reject at process ingress.

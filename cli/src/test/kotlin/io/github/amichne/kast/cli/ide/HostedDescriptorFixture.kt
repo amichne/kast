@@ -19,7 +19,6 @@ internal object HostedDescriptorFixture {
             Operation.SOURCE_READ,
             Operation.DIAGNOSTIC_CHECK,
             Operation.CHANGE_PLAN,
-            Operation.CHANGE_APPROVAL_PREPARE,
             Operation.CHANGE_APPLY,
             Operation.CHANGE_RECOVER,
         )
@@ -69,7 +68,6 @@ internal object HostedDescriptorFixture {
         SOURCE_READ,
         DIAGNOSTIC_CHECK,
         CHANGE_PLAN,
-        CHANGE_APPROVAL_PREPARE,
         CHANGE_APPLY,
         CHANGE_RECOVER,
     }

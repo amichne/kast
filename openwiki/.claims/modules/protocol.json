@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ece8424091b133ed45b48149a1b50bba0af77be624fd91914a385df2285bef5b",
+  "pageVersion": "sha256:436ad799bd7cc21a842378790af2a3241c565f186e5ed16bf23a6582a8a1c4c9",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -32,7 +32,7 @@
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
-          "version": "repo-file-v1:sha256:849388668e0a801507b2121d4e7500ae417e97bccaa267ad1e33c51e7da3891c"
+          "version": "repo-file-v1:sha256:06b52850e8e65b4542b1a3c2f9fed0159422b2a64c2209505560f880a0d51302"
         }
       ]
     },
@@ -41,18 +41,32 @@
       "statement": "Installed query output schemas derive complete, qualified and rejected shapes from their actual CLI serializers, and CLI projection validates impact completion/accounting before emitting successful documents.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt#L228-L240",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt#L318-L330",
           "version": "repo-lines-v1:sha256:4be7e304d8725f1f5c9902b5bff0d219d1ae5ab1de94879a8145da7143fbdda6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliYjNmYTFhZjIxZDIwYmYwYzMyNzgyMTY0NjU5ZDQ4YTI5NzQ0ZWIxYjEzNjQxMDI1ODY4YjM0NzkyNDY3MWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxY2QyNDA4ZjMwOTI0NWIyZjU2Mjk4ODcxNGNmNjYzZWQ1M2MwZjNjYzU4ZTIwYzUwMmNkNWM4MzJiYzNmMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3NzAwMWZhYmEwZjA5YmJiY2JlYzQ2YmYxYWVmYjE1OTc5YmM1ZjAyMGEwYWM5MjMzNzA5NzliOTFmYjYzMjMifQ"
         },
         {
-          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt#L67-L103",
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt#L82-L118",
           "version": "repo-lines-v1:sha256:012553815362e04a1bf9bbb9ae4a330f11dd0d5f97ec101f3772dac2716d42d3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmZTNkNjk1ZWI2MmY4ZTAxMDRkMzQzOWMyYTE3MjBlOTE1NDQ5MzRjZjEwOWQzNTVhNDM1YTJhMjVlNzhkZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkY2M5ZGViNGIwMTAzNjE5NDJmZjI4YTg3Y2M2NDFiMzY1Y2ZlNDIzNTAwZWEwZjQzMzE0ZTY3M2U2Y2QwMTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE1NmM4MzZjMzU0MjUyNjNhNDMzYTdjZDM3Njk5YmNjYTNhZjE0NzFlZmMwODE4NGQwY2ExOGE3OWY1M2Y0NzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_502ee5b7d36a48b09e126a58ba97c010",
+      "statement": "The keyless hosted contract declares kast.ide-hosted.runtime.v3, and daemon operation RPC version 3 projects canonical Apply and Recover requests without private approval preparation or assertions.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt",
+          "version": "repo-file-v1:sha256:f93eefd3d001f3302299e151a5aef85f4caaeaa24389f82cf045a1fdff793d2f"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
+          "version": "repo-file-v1:sha256:06b52850e8e65b4542b1a3c2f9fed0159422b2a64c2209505560f880a0d51302"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T04:45:37.704Z"
+    "at": "2026-10-08T01:13:49.481Z"
   }
 }

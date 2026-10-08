@@ -92,8 +92,33 @@ internal class SqliteMutationRecoveryConnections(private val database: SqliteMut
     private fun initializeSchema() = use { connection ->
         connection.createStatement().use { statement ->
             statement.execute("PRAGMA journal_mode = WAL")
-            statement.execute(
-                """CREATE TABLE IF NOT EXISTS mutation_recovery (
+            statement.execute(MUTATION_RECOVERY_SCHEMA)
+            statement.execute(MUTATION_RECOVERY_PLANNED_WRITE_SCHEMA)
+            statement.execute(MUTATION_RECOVERY_APPLIED_WRITE_SCHEMA)
+        }
+    }
+}
+
+internal fun ensureSqliteDriver() {
+    if (Collections.list(DriverManager.getDrivers()).any(::acceptsSqlite)) return
+    val driverClass =
+        Class.forName(
+            "org.sqlite.JDBC",
+            true,
+            SqliteMutationRecoveryConnections::class.java.classLoader,
+        )
+    if (!Collections.list(DriverManager.getDrivers()).any(::acceptsSqlite)) {
+        DriverManager.registerDriver(driverClass.getDeclaredConstructor().newInstance() as Driver)
+    }
+}
+
+private fun acceptsSqlite(driver: Driver): Boolean = runCatching {
+    driver.acceptsURL("jdbc:sqlite::memory:")
+}
+    .getOrDefault(false)
+
+internal const val MUTATION_RECOVERY_SCHEMA =
+    """CREATE TABLE IF NOT EXISTS mutation_recovery (
                     plan_binding TEXT PRIMARY KEY NOT NULL CHECK(length(plan_binding) = 64),
                     stage TEXT NOT NULL CHECK(stage IN (
                         'PRE_WRITE_DURABLE', 'APPLIED_WRITES_DURABLE',
@@ -113,9 +138,9 @@ internal class SqliteMutationRecoveryConnections(private val database: SqliteMut
                             recovery_requirement = 'ROLLBACK_REJECTED')
                     )
                 ) WITHOUT ROWID"""
-            )
-            statement.execute(
-                """CREATE TABLE IF NOT EXISTS mutation_recovery_planned_write (
+
+internal const val MUTATION_RECOVERY_PLANNED_WRITE_SCHEMA =
+    """CREATE TABLE IF NOT EXISTS mutation_recovery_planned_write (
                     plan_binding TEXT NOT NULL REFERENCES mutation_recovery(plan_binding),
                     ordinal INTEGER NOT NULL CHECK(ordinal >= 0),
                     source_path TEXT NOT NULL,
@@ -124,34 +149,12 @@ internal class SqliteMutationRecoveryConnections(private val database: SqliteMut
                     PRIMARY KEY(plan_binding, ordinal),
                     UNIQUE(plan_binding, source_path)
                 ) WITHOUT ROWID"""
-            )
-            statement.execute(
-                """CREATE TABLE IF NOT EXISTS mutation_recovery_applied_write (
+
+internal const val MUTATION_RECOVERY_APPLIED_WRITE_SCHEMA =
+    """CREATE TABLE IF NOT EXISTS mutation_recovery_applied_write (
                     plan_binding TEXT NOT NULL REFERENCES mutation_recovery(plan_binding),
                     ordinal INTEGER NOT NULL CHECK(ordinal >= 0),
                     source_path TEXT NOT NULL,
                     PRIMARY KEY(plan_binding, ordinal),
                     UNIQUE(plan_binding, source_path)
                 ) WITHOUT ROWID"""
-            )
-        }
-    }
-}
-
-private fun ensureSqliteDriver() {
-    if (Collections.list(DriverManager.getDrivers()).any(::acceptsSqlite)) return
-    val driverClass =
-        Class.forName(
-            "org.sqlite.JDBC",
-            true,
-            SqliteMutationRecoveryConnections::class.java.classLoader,
-        )
-    if (!Collections.list(DriverManager.getDrivers()).any(::acceptsSqlite)) {
-        DriverManager.registerDriver(driverClass.getDeclaredConstructor().newInstance() as Driver)
-    }
-}
-
-private fun acceptsSqlite(driver: Driver): Boolean = runCatching {
-    driver.acceptsURL("jdbc:sqlite::memory:")
-}
-    .getOrDefault(false)

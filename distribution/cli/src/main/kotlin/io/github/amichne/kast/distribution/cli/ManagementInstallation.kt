@@ -12,6 +12,8 @@ import kotlinx.serialization.encodeToString
 /** Installer-only path admission. It never picks a fallback after a rejected destination. */
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
 internal fun preflightPublicExecutable(root: Path, environment: Map<String, String>): InstallDestination {
+    if (Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS))
+        throw ManagementRejected("path-preflight", "uninstall cleanup is incomplete; retry verified removal")
     val existing =
         when (val read = readReceipt(root)) {
             is ReceiptRead.Read -> read.receipt

@@ -1,7 +1,6 @@
 package io.github.amichne.kast.change.verify
 
 import io.github.amichne.kast.change.apply.LiveAppliedSourceWrite
-import io.github.amichne.kast.change.apply.LiveChangeEffect
 import io.github.amichne.kast.change.contract.LiveChangeBasis
 import io.github.amichne.kast.change.contract.LiveReplaceBodyChangePlan
 import io.github.amichne.kast.change.contract.LiveReplaceBodyPlanCodec
@@ -19,24 +18,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-/** Bounded opaque exact reference, issued by the query codec only after live verification. */
-@JvmInline
-value class BodyExactReference private constructor(val value: String) {
-    companion object {
-        private const val MIN_TOKEN_LENGTH = 10
-        private const val MAX_TOKEN_LENGTH = 1_048_576
-
-        fun parse(raw: String): Refinement<BodyExactReference, LiveReceiptFailure> =
-            if (
-                raw.length in MIN_TOKEN_LENGTH..MAX_TOKEN_LENGTH &&
-                    raw.startsWith("exact:v") &&
-                    raw.none(Char::isISOControl)
-            )
-                Refinement.Refined(BodyExactReference(raw))
-            else Refinement.Rejected(LiveReceiptFailure.COMPILER_EVIDENCE_MISMATCH)
-    }
-}
-
 /** Historical body replacement proof; it does not restore a live selector or permission to write. */
 class HistoricalLiveReplaceBodyReceipt
 private constructor(
@@ -44,7 +25,7 @@ private constructor(
     override val after: LiveChangeBasis,
     val postimage: WorkspaceSourceContentHash,
     val freshReference: BodyExactReference,
-    val approval: HistoricalLiveApproval,
+    val execution: HistoricalLiveExecution,
     val recovery: HistoricalLiveRecovery,
 ) : HistoricalLiveChangeReceipt {
     override val identity: ChangeReceiptIdentity
@@ -57,9 +38,10 @@ private constructor(
             after: LiveChangeBasis,
             postimage: WorkspaceSourceContentHash,
             freshReference: BodyExactReference,
-            approval: HistoricalLiveApproval,
+            execution: HistoricalLiveExecution,
             recovery: HistoricalLiveRecovery,
         ): Refinement<HistoricalLiveReplaceBodyReceipt, LiveReceiptFailure> {
+            if (!execution.matches(plan)) return Refinement.Rejected(LiveReceiptFailure.APPROVAL_MISMATCH)
             val before = plan.basis.observation
             if (
                 after.reference.workspaceRoot != before.reference.workspaceRoot ||
@@ -76,7 +58,7 @@ private constructor(
             if (recovery.binding != plan.planId || recovery.preparedDigest == recovery.appliedDigest)
                 return Refinement.Rejected(LiveReceiptFailure.RECOVERY_MISMATCH)
             return Refinement.Refined(
-                HistoricalLiveReplaceBodyReceipt(plan, after, postimage, freshReference, approval, recovery)
+                HistoricalLiveReplaceBodyReceipt(plan, after, postimage, freshReference, execution, recovery)
             )
         }
     }
@@ -89,7 +71,7 @@ class VerifiedLiveReplaceBodyReceipt private constructor(val historical: Histori
 
     companion object {
         @Suppress("ComplexCondition", "CyclomaticComplexMethod", "LongMethod")
-        // The receipt is issued only after all write, approval, recovery, and verification identities agree.
+        // The receipt is issued only after all write, recovery, and verification identities agree.
         fun admit(
             write: LiveAppliedSourceWrite,
             recovery: AppliedAddDeclarationRecovery,
@@ -108,14 +90,6 @@ class VerifiedLiveReplaceBodyReceipt private constructor(val historical: Histori
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return checked
             }
-            val approved = authority.approval
-            if (
-                approved.operation != LiveChangeEffect.CHANGE_APPLY ||
-                    approved.planId != plan.planId ||
-                    approved.owner != plan.basis.observation.reference.host ||
-                    approved.root != plan.basis.observation.reference.workspaceRoot
-            )
-                return Refinement.Rejected(LiveReceiptFailure.APPROVAL_MISMATCH)
             if (
                 verification.freshReference.file != plan.target.file ||
                     verification.freshReference.lease.workspaceRoot != plan.basis.observation.reference.workspaceRoot
@@ -126,11 +100,7 @@ class VerifiedLiveReplaceBodyReceipt private constructor(val historical: Histori
                     is Refinement.Refined -> parsed.value
                     is Refinement.Rejected -> return parsed
                 }
-            val approval =
-                when (val result = historicalApproval(approved)) {
-                    is Refinement.Refined -> result.value
-                    is Refinement.Rejected -> return result
-                }
+            val execution = HistoricalLiveExecution.LocalEndpointOperation.fromAuthority(authority)
             val history =
                 when (val result = historicalRecovery(recovery)) {
                     is Refinement.Refined -> result.value
@@ -143,7 +113,7 @@ class VerifiedLiveReplaceBodyReceipt private constructor(val historical: Histori
                         verification.resulting,
                         verification.postimage,
                         freshReference,
-                        approval,
+                        execution,
                         history,
                     )
             ) {
@@ -156,7 +126,7 @@ class VerifiedLiveReplaceBodyReceipt private constructor(val historical: Histori
 
 /** The encoded identity covers the exact plan, resulting read, fresh token, and durable recovery chain. */
 object LiveReplaceBodyReceiptCodec {
-    const val VERSION = 1
+    const val VERSION = 2
     private const val KIND = "LIVE_REPLACE_BODY_RECEIPT"
     private val json = Json {
         encodeDefaults = true
@@ -164,50 +134,91 @@ object LiveReplaceBodyReceiptCodec {
         ignoreUnknownKeys = false
     }
 
+    fun version(receipt: HistoricalLiveReplaceBodyReceipt): Int =
+        when (receipt.execution) {
+            is HistoricalLiveApproval -> 1
+            is HistoricalLiveExecution.LocalEndpointOperation -> VERSION
+        }
+
     fun encode(receipt: HistoricalLiveReplaceBodyReceipt): String =
-        json.encodeToString(
-            BodyReceiptDocument.serializer(),
-            BodyReceiptDocument(receipt.identity.value, content(receipt)),
-        )
+        when (val execution = receipt.execution) {
+            is HistoricalLiveApproval ->
+                json.encodeToString(
+                    BodyReceiptDocument.serializer(),
+                    BodyReceiptDocument(receipt.identity.value, legacyContent(receipt, execution)),
+                )
+            is HistoricalLiveExecution.LocalEndpointOperation ->
+                json.encodeToString(
+                    BodyReceiptDocumentV2.serializer(),
+                    BodyReceiptDocumentV2(receipt.identity.value, content(receipt, execution)),
+                )
+        }
 
     @Suppress(
         "CyclomaticComplexMethod",
         "LongMethod",
     ) // Restore every persisted proof before checking canonical identity.
     fun decode(encoded: String): Refinement<HistoricalLiveReplaceBodyReceipt, LiveReceiptFailure> {
-        val document =
+        val version =
             try {
-                json.decodeFromString(BodyReceiptDocument.serializer(), encoded)
+                Json { ignoreUnknownKeys = true }.decodeFromString<LiveReceiptVersionDocument>(encoded).content.version
             } catch (_: SerializationException) {
                 return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
             } catch (_: IllegalArgumentException) {
                 return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
             }
-        if (document.content.version != VERSION || document.content.kind != KIND)
-            return Refinement.Rejected(LiveReceiptFailure.VERSION_UNSUPPORTED)
+        return try {
+            when (version) {
+                1 -> {
+                    val document = json.decodeFromString<BodyReceiptDocument>(encoded)
+                    decodeContent(encoded, document.identity, document.content) {
+                        decodeReceiptApproval(document.content.approval)
+                    }
+                }
+                VERSION -> {
+                    val document = json.decodeFromString<BodyReceiptDocumentV2>(encoded)
+                    decodeContent(encoded, document.identity, document.content) { plan ->
+                        decodeReceiptExecution(document.content.execution, plan)
+                    }
+                }
+                else -> Refinement.Rejected(LiveReceiptFailure.VERSION_UNSUPPORTED)
+            }
+        } catch (_: SerializationException) {
+            Refinement.Rejected(LiveReceiptFailure.MALFORMED)
+        } catch (_: IllegalArgumentException) {
+            Refinement.Rejected(LiveReceiptFailure.MALFORMED)
+        }
+    }
+
+    private fun decodeContent(
+        encoded: String,
+        identity: String,
+        content: BodyReceiptFacts,
+        decodeExecution: (LiveReplaceBodyChangePlan) -> Refinement<HistoricalLiveExecution, LiveReceiptFailure>,
+    ): Refinement<HistoricalLiveReplaceBodyReceipt, LiveReceiptFailure> {
+        if (content.kind != KIND) return Refinement.Rejected(LiveReceiptFailure.VERSION_UNSUPPORTED)
         val plan =
-            when (val result = LiveReplaceBodyPlanCodec.decode(document.content.plan)) {
+            when (val result = LiveReplaceBodyPlanCodec.decode(content.plan)) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return Refinement.Rejected(LiveReceiptFailure.PLAN_MISMATCH)
             }
-        if (document.content.diagnosticScope != plan.verificationScope.file.path.value)
+        if (content.diagnosticScope != plan.verificationScope.file.path.value)
             return Refinement.Rejected(LiveReceiptFailure.VERIFICATION_EVIDENCE_INCOMPLETE)
         val after =
-            decodeAfter(plan, document.content.after)
-                ?: return Refinement.Rejected(LiveReceiptFailure.RESULTING_BASIS_MISMATCH)
+            decodeAfter(plan, content.after) ?: return Refinement.Rejected(LiveReceiptFailure.RESULTING_BASIS_MISMATCH)
         val postimage =
-            (WorkspaceSourceContentHash.parse(document.content.postimage) as? Refinement.Refined)?.value
+            (WorkspaceSourceContentHash.parse(content.postimage) as? Refinement.Refined)?.value
                 ?: return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
         val reference =
-            (BodyExactReference.parse(document.content.freshReference) as? Refinement.Refined)?.value
+            (BodyExactReference.parse(content.freshReference) as? Refinement.Refined)?.value
                 ?: return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
-        val approval =
-            when (val result = decodeReceiptApproval(document.content.approval)) {
+        val execution =
+            when (val result = decodeExecution(plan)) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return result
             }
         val recovery =
-            when (val result = decodeReceiptRecovery(document.content.recovery)) {
+            when (val result = decodeReceiptRecovery(content.recovery)) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return result
             }
@@ -219,29 +230,37 @@ object LiveReplaceBodyReceiptCodec {
                         after,
                         postimage,
                         reference,
-                        approval,
+                        execution,
                         recovery,
                     )
             ) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return result
             }
-        return if (receipt.identity.value == document.identity && encode(receipt) == encoded)
-            Refinement.Refined(receipt)
+        return if (receipt.identity.value == identity && encode(receipt) == encoded) Refinement.Refined(receipt)
         else Refinement.Rejected(LiveReceiptFailure.IDENTITY_MISMATCH)
     }
 
     internal fun identity(receipt: HistoricalLiveReplaceBodyReceipt): ChangeReceiptIdentity {
-        val canonical = json.encodeToString(BodyReceiptContent.serializer(), content(receipt))
+        val canonical =
+            when (val execution = receipt.execution) {
+                is HistoricalLiveApproval ->
+                    json.encodeToString(BodyReceiptContent.serializer(), legacyContent(receipt, execution))
+                is HistoricalLiveExecution.LocalEndpointOperation ->
+                    json.encodeToString(BodyReceiptContentV2.serializer(), content(receipt, execution))
+            }
         val digest =
             java.util.HexFormat.of()
                 .formatHex(MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8)))
         return checkNotNull(ChangeReceiptIdentity.parse("receipt:$digest"))
     }
 
-    private fun content(receipt: HistoricalLiveReplaceBodyReceipt): BodyReceiptContent =
+    private fun legacyContent(
+        receipt: HistoricalLiveReplaceBodyReceipt,
+        approval: HistoricalLiveApproval,
+    ): BodyReceiptContent =
         BodyReceiptContent(
-            version = VERSION,
+            version = 1,
             kind = KIND,
             plan = LiveReplaceBodyPlanCodec.encode(receipt.plan),
             after =
@@ -256,11 +275,38 @@ object LiveReplaceBodyReceiptCodec {
             diagnosticScope = receipt.plan.verificationScope.file.path.value,
             approval =
                 LiveReceiptApproval(
-                    receipt.approval.thread,
-                    receipt.approval.turn,
-                    receipt.approval.call,
-                    receipt.approval.challenge.value,
+                    approval.thread,
+                    approval.turn,
+                    approval.call,
+                    approval.challenge.value,
                 ),
+            recovery =
+                LiveReceiptRecovery(
+                    receipt.recovery.binding.value,
+                    receipt.recovery.preparedDigest.value,
+                    receipt.recovery.appliedDigest.value,
+                ),
+        )
+
+    private fun content(
+        receipt: HistoricalLiveReplaceBodyReceipt,
+        execution: HistoricalLiveExecution.LocalEndpointOperation,
+    ): BodyReceiptContentV2 =
+        BodyReceiptContentV2(
+            version = VERSION,
+            kind = KIND,
+            plan = LiveReplaceBodyPlanCodec.encode(receipt.plan),
+            after =
+                BodyReceiptAfter(
+                    owner = receipt.after.reference.host.value.toString(),
+                    epoch = receipt.after.reference.epoch.value,
+                    contentView = receipt.after.reference.contentView.name,
+                    version = receipt.after.reference.version,
+                ),
+            postimage = receipt.postimage.value,
+            freshReference = receipt.freshReference.value,
+            diagnosticScope = receipt.plan.verificationScope.file.path.value,
+            execution = execution.document(),
             recovery =
                 LiveReceiptRecovery(
                     receipt.recovery.binding.value,
@@ -296,16 +342,16 @@ object LiveReplaceBodyReceiptCodec {
 
 @Serializable
 private data class BodyReceiptContent(
-    val version: Int,
-    val kind: String,
-    val plan: String,
-    val after: BodyReceiptAfter,
-    val postimage: String,
-    val freshReference: String,
-    val diagnosticScope: String,
+    override val version: Int,
+    override val kind: String,
+    override val plan: String,
+    override val after: BodyReceiptAfter,
+    override val postimage: String,
+    override val freshReference: String,
+    override val diagnosticScope: String,
     val approval: LiveReceiptApproval,
-    val recovery: LiveReceiptRecovery,
-)
+    override val recovery: LiveReceiptRecovery,
+) : BodyReceiptFacts
 
 @Serializable
 private data class BodyReceiptAfter(
@@ -314,3 +360,29 @@ private data class BodyReceiptAfter(
     val contentView: String,
     val version: Int,
 )
+
+private interface BodyReceiptFacts {
+    val version: Int
+    val kind: String
+    val plan: String
+    val after: BodyReceiptAfter
+    val postimage: String
+    val freshReference: String
+    val diagnosticScope: String
+    val recovery: LiveReceiptRecovery
+}
+
+@Serializable private data class BodyReceiptDocumentV2(val identity: String, val content: BodyReceiptContentV2)
+
+@Serializable
+private data class BodyReceiptContentV2(
+    override val version: Int,
+    override val kind: String,
+    override val plan: String,
+    override val after: BodyReceiptAfter,
+    override val postimage: String,
+    override val freshReference: String,
+    override val diagnosticScope: String,
+    val execution: LocalEndpointExecutionDocument,
+    override val recovery: LiveReceiptRecovery,
+) : BodyReceiptFacts

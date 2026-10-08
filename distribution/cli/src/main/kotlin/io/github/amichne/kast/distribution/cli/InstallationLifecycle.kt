@@ -196,7 +196,7 @@ private constructor(
         return when (selected) {
             is SelectedIdeLaunch.Unavailable -> LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
             is SelectedIdeLaunch.Resolved -> {
-                if (SelectedIdeInstallation.resolve(Path.of(selected.home)) != selected)
+                if (!SelectedIdeInstallation.matchesCurrentLaunch(selected))
                     LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
                 else execution.processes.selectedHost(Path.of(selected.executable))
             }

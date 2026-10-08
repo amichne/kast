@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9acef40b312d5db392554aa9da86e50b1e4417aca64a44892ecfbddb94b7d295",
+  "pageVersion": "sha256:8ac6f8096d26dd73411f0091291d57ab0eda9a70e026db46be5c176cbcc9ff4a",
   "claims": [
     {
       "id": "claim_4d6ed902909b4ef0b5885ebf90819d17",
-      "statement": "Live mutation authority is issued only after fresh candidate admission, an exact verified approval, a permanent application claim and durable preimage recovery preparation.",
+      "statement": "Live mutation authority is issued only after fresh candidate admission, a permanent application claim and durable preimage recovery preparation; canonical plan identity cannot bypass current root, host, epoch, model, source and write-scope validation.",
       "evidence": [
         {
-          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L39-L104",
-          "version": "repo-lines-v1:sha256:eea3794d6bf451cd62a603b19c80763327153ecdf4b9ceed0fe74565cc758de5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzNzUyOTQzOGU0MjE1NTIxZGQ3Yzc3MTdiYjZjOTJhNTVhOTYzOTM4MWFlZDcwZjk2ZDJmMTg0MWQ4Y2RjMTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzMGJkOTgwYjEyNDAxNThkNTdhNjM2ZWJhZmRjMDNlNThlMmZiYTgwMDZkNWUwMTg1MzZkMTlmMzAxYTkxZGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxOThjYzBkYzVlNDRhOWVhYzIxOWE4MTI2ZjJmNjZhZDE1YzdmMDI5MjQ2MjFjMjQ4ZmIwOGI1ODg0NTM3YWEifQ"
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L66-L137",
+          "version": "repo-lines-v1:sha256:8f41087853e1ef6f05460b460272cc8665ae33e7e3306b41db8794053d071489:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1ZmUzZjA1NjYxZjdlOTM4NzllM2QzYzk3OWI3MWU3ZjU0OTRmMWExMDExM2FjOTFhOWQyZDEyOTEyNDViNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZTJjYTMyYmYxMjFmMGNhZDIxNGI5NDVjMjA0ZDVhZGFjMzQ3OTQwNjcyOGUxYzRmMzhlNzIxMjFjYjg3YmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5ZmJmZjhkYWRmOWU3ZGFmZDE1MDhkZTFhZDZhOWIwM2Q3NWFhZmU0ZDk2ZWIwZmEwMzg1MTY1MjVmYzQ1NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkMzliMGJmYTc0OGE2ZmMwMGM4YjAwYzdlNTBlZDhkMjZhMGE3OTUwMjVkMGQxMjhjYjU5M2E3ODVhOGQzNWIifQ"
         }
       ]
     },
@@ -17,8 +17,8 @@
       "statement": "Hosted apply reacquires fresh mutation evidence before writing; an applied write proceeds to completion verification, while interrupted, durability-rejected or unknown effects retain recovery-required outcomes.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt#L42-L100",
-          "version": "repo-lines-v1:sha256:a45304a3fd001b9eb4f6f3cc1c9663345493bbedeac6c5458f9118d0d2f223f3:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiOWQxOGEzNzViOWQ3ODZhZmRjMzg3MTEzYWQ3NGJjZmUzM2Y5MDhjZjFmMzBlMDM3MjE5ZjY5OGQ5NDVjNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlMjI4MzBjOWU2NTI0NWQwYjdjMmUwYzA4NmY5NTI2OGUwM2JjMDVhYjEyNDBiMzFmYjM0ZGVmNjBhZTI2OWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt#L41-L98",
+          "version": "repo-lines-v1:sha256:a6f4b88861d4c53725e34cb73d33babd88eb619b30768089be3cab397bcacada:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiOWQxOGEzNzViOWQ3ODZhZmRjMzg3MTEzYWQ3NGJjZmUzM2Y5MDhjZjFmMzBlMDM3MjE5ZjY5OGQ5NDVjNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlMjI4MzBjOWU2NTI0NWQwYjdjMmUwYzA4NmY5NTI2OGUwM2JjMDVhYjEyNDBiMzFmYjM0ZGVmNjBhZTI2OWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
     },
@@ -27,7 +27,7 @@
       "statement": "Durable live-plan row storage version1 is independent of embedded plan codecs: issuance and reload use the same storage owner, then checksum and document-specific codec/identity validation reject unsupported or corrupt evidence.",
       "evidence": [
         {
-          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt#L187-L220",
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt#L171-L204",
           "version": "repo-lines-v1:sha256:1411302108593dfb4ac9bd862c21669385ce57ff8c717f37023425f602c421de:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMTM2MzdmNmIwOTk4N2I5NWUxZjY1MGNmMWY5NjA5YmU5MjM4MDZhM2EwY2ZkZjQzY2Y5OGZhZGI3ODdmZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2YjA1NWE3ZGQxZjAxZWMzZjdjYmM0NTMwNzNmN2I2MTcyMDMwNTY0Zjk1OTEwZjNkNTA0ZGNhMDYwMzlhMGIifQ"
         },
         {
@@ -35,10 +35,28 @@
           "version": "repo-lines-v1:sha256:4cda41ba1a33f5d71e07a5c817a8d96d61c4ea8d9a4e306bb4d4bd4036c663b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkOGNmYmQ5ZmQ3MzEyYWQxMmVkZTkwNzNhMjIzZTlmMjJjNDVhYTU3MzQzNjc5ZjRhMjM2OTI5NjNhZTYxODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMWQ4NDc2ZmI3MjZjMWRkMDQxN2FlYWJkMjljM2JmYTE2NTdhYjYyOWFjZDA5MzgxZTQ2N2MxYmU4ODMxZTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4MDljYjcwNjFiMTE0N2I0ODg5MGVkYzZhNTlhZTBhYWNkYWNmOWU4ZDk4YWU4YjIzZjM4MjA3M2VkOWQ1MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5MzVlM2I3Njk4ZmJhZTM1MzI2OThlYmFiYzg0ZGEyY2VjOGYwYzhmZjVmMjMzMjUwMzMzZjYwYWFiZjBiM2YifQ"
         }
       ]
+    },
+    {
+      "id": "claim_79da7acbd2714e1d8e9d6bc9abde67e4",
+      "statement": "The one-call change path sends canonical plan identity through apply and recovery without a signing key or challenge; version-2 verified receipts retain exact local endpoint execution, while admitted legacy version-1 approval fields are historical data without current mutation authority.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt",
+          "version": "repo-file-v1:sha256:aa1d621da3237d5503722012ceceb378c1eae4eec35915569ad1749cc32d9912"
+        },
+        {
+          "resource": "repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationReceiptCodec.kt",
+          "version": "repo-file-v1:sha256:15b30b2d894c92b7a0150a425263e33482fcfce98a4674ae37e3fea0a11ff878"
+        },
+        {
+          "resource": "repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveReplaceBodyReceipt.kt",
+          "version": "repo-file-v1:sha256:3dd9fcac578fc07ea46e9155e531bdfa8b0fbc8bff8d5c7d6eddd508c6197641"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-03T04:57:02.812Z"
+    "at": "2026-10-08T01:13:49.481Z"
   }
 }

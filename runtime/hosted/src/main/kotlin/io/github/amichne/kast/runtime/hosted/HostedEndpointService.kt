@@ -236,7 +236,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             modelTracker.set(null)
                             gradleChanges.dispose()
                             refresh.dispose()
-                            changes.close()
                             query.detach()
                         } finally {
                             owner.close()
@@ -271,7 +270,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         }
         return when (request) {
             is HostedRequest.Refresh -> HostedResponse.Completed(Json.encodeToString(refresh.execute(request.command)))
-            is HostedRequest.PrepareApproval -> changes.prepare(request)
             is HostedRequest.ApplyChange ->
                 observeHostedChange(
                     HostedChangeStage.ADMISSION,
@@ -346,7 +344,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         }
 
     override fun dispose() {
-        changes.close()
         query.dispose()
         job.cancel()
     }

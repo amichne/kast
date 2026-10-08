@@ -34,7 +34,7 @@ class HistoricalLiveAddDeclarationReceipt
 private constructor(
     override val plan: LiveAddDeclarationChangePlan,
     private val result: HistoricalLiveSemanticResult,
-    val approval: HistoricalLiveApproval,
+    val execution: HistoricalLiveExecution,
     val recovery: HistoricalLiveRecovery,
 ) : HistoricalLiveChangeReceipt {
     val before: LiveChangeBasis
@@ -74,10 +74,11 @@ private constructor(
         fun restore(
             plan: LiveAddDeclarationChangePlan,
             result: HistoricalLiveSemanticResult,
-            approval: HistoricalLiveApproval,
+            execution: HistoricalLiveExecution,
             recovery: HistoricalLiveRecovery,
             obligations: HistoricalLiveReceiptObligations,
         ): Refinement<HistoricalLiveAddDeclarationReceipt, LiveReceiptFailure> {
+            if (!execution.matches(plan)) return Refinement.Rejected(LiveReceiptFailure.APPROVAL_MISMATCH)
             when (val checked = validateHistoricalResult(plan, result)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return checked
@@ -100,7 +101,7 @@ private constructor(
                 HistoricalLiveAddDeclarationReceipt(
                     plan = plan,
                     result = result.copy(evidence = historical),
-                    approval = approval,
+                    execution = execution,
                     recovery = recovery,
                 )
             )

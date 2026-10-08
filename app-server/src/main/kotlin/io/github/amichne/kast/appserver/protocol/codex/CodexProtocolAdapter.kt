@@ -698,6 +698,24 @@ internal class CodexProtocolAdapter(
             } else Refinement.Rejected(ThreadWorkspaceFailure.OWNER_INCOMPATIBLE)
         if (bindingOwner !is ThreadBindingOwner.Installation)
             return Refinement.Rejected(ThreadWorkspaceFailure.OWNER_INCOMPATIBLE)
+        return refineWorkspaceBinding(binding)
+    }
+
+    private fun refineWorkspaceBinding(
+        binding: ThreadCatalogBinding
+    ): Refinement<ThreadCatalogBinding, ThreadWorkspaceFailure> {
+        when (
+            val root =
+                io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery.discover(
+                    binding.workspace.root.path
+                )
+        ) {
+            is io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Discovered ->
+                if (root.root.path != binding.workspace.root.path)
+                    return Refinement.Rejected(ThreadWorkspaceFailure.WORKSPACE_REJECTED)
+            is io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Rejected ->
+                return Refinement.Rejected(ThreadWorkspaceFailure.WORKSPACE_REJECTED)
+        }
         val selected =
             enrollment.select(binding.workingDirectory.path.toString(), binding.workspace.root.path.toString())
         return if (selected is WorkspaceSelection.Selected && selected.workspace == binding.workspace)
@@ -800,6 +818,7 @@ internal class CodexProtocolAdapter(
                 is Refinement.Refined -> admission.value
                 is Refinement.Rejected -> return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
             }
+        if (!validBinding(binding)) return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
         when (val written = threadStore.write(binding)) {
             ThreadStoreWrite.Written -> Unit
             is ThreadStoreWrite.Rejected ->

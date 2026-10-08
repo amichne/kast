@@ -47,7 +47,7 @@ internal fun requireOwnedExecutable(root: Path): ManagementReceipt {
 }
 
 @Suppress("ThrowsCount")
-private fun installedPrivateInstaller(root: Path): Path {
+internal fun installedPrivateInstaller(root: Path): Path {
     val selected = selectedInstallation(root)
     val script = selected.resolve("share/kast/install.sh")
     if (!Files.isRegularFile(script, LinkOption.NOFOLLOW_LINKS))
@@ -258,47 +258,3 @@ private fun registrationRepairAdvice(controlOnly: Boolean): String =
 private fun serviceRecoveryAdvice(controlOnly: Boolean): String =
     if (controlOnly) "restart connected harnesses after service recovery"
     else "restart IntelliJ IDEA and connected harnesses after service recovery"
-
-@Suppress("ThrowsCount")
-internal fun uninstallInstallation(root: Path, home: Path) {
-    val receipt = requireOwnedExecutable(root)
-    val script = installedPrivateInstaller(root)
-    // The private installer owns verified control retirement and managed control removal.
-    val code =
-        withRegistrationLock(root) {
-            executePrivateInstaller(
-                script,
-                listOf("uninstall", "--managed-registrations", "--install-root", root.toString()),
-            )
-        }
-    if (code != 0) {
-        throw ManagementRejected(
-            "uninstall",
-            "shutdown or managed removal failed with exit $code; installation remains incomplete",
-        )
-    }
-    val failed = mutableListOf<HarnessConnection>()
-    receipt.registrations.forEach { registration ->
-        try {
-            disconnectConnection(root, home, registration.connection)
-        } catch (_: ManagementRejected) {
-            failed += registration.connection
-        }
-    }
-    if (failed.isNotEmpty())
-        throw ManagementRejected(
-            "uninstall",
-            "owned registrations require cleanup: ${failed.joinToString { it.publicName }}",
-        )
-    val executable = Path.of(receipt.executable)
-    if (!Files.isRegularFile(executable, LinkOption.NOFOLLOW_LINKS) || sha256(executable) != receipt.executableSha256)
-        throw ManagementRejected("uninstall", "public executable identity changed before removal")
-    try {
-        Files.delete(executable)
-        Files.deleteIfExists(receiptPath(root))
-        Files.deleteIfExists(root.resolve("management.lock"))
-    } catch (_: Exception) {
-        throw ManagementRejected("uninstall", "public executable or receipt cleanup failed")
-    }
-    println("Removed Kast installation and owned registrations")
-}

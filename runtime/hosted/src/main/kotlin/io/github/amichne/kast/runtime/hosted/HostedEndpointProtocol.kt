@@ -82,22 +82,14 @@ internal sealed interface HostedRequest {
 
     data class PlanChange(override val root: CanonicalWorkspaceRoot, val request: ChangePlanRequest) : Change
 
-    data class PrepareApproval(
-        override val root: CanonicalWorkspaceRoot,
-        val effect: io.github.amichne.kast.change.apply.LiveChangeEffect,
-        val identity: io.github.amichne.kast.change.contract.ChangePlanIdentity,
-    ) : Change
-
     data class ApplyChange(
         override val root: CanonicalWorkspaceRoot,
         val request: ChangeApplyRequest,
-        val approval: String,
     ) : Change
 
     data class RecoverChange(
         override val root: CanonicalWorkspaceRoot,
         val request: ChangeRecoverRequest,
-        val approval: String,
     ) : Change
 
     sealed interface Read : HostedRequest
@@ -152,15 +144,10 @@ internal object HostedRequests {
                         io.github.amichne.kast.runtime.hosted.workspace.decodeWorkspaceRefreshCommand(text("document"))
                     Refinement.Refined(HostedRequest.Refresh(root, command))
                 }
-                "CHANGE_APPROVAL_PREPARE" -> {
-                    if (json.keySet() != setOf("type", "root", "document")) return rejected
-                    decodeHostedApprovalPreparation(root, text("document"))
-                }
                 "CHANGE_APPLY",
                 "CHANGE_RECOVER" -> {
-                    if (json.keySet() != setOf("type", "root", "document", "approval")) return rejected
-                    val assertion = text("approval")
-                    if (assertion.length !in 1..MAX_HOSTED_ASSERTION_LENGTH) return rejected
+                    val effect = Json.decodeFromString<HostedChangeRequestDocument>(raw)
+                    if (effect.root != root.value) return rejected
                     val envelope =
                         when (val admitted = WireRequestEnvelope.admit(text("document"))) {
                             is WireRequestAdmission.Admitted -> admitted.request
@@ -168,11 +155,11 @@ internal object HostedRequests {
                         }
                     if (text("type") == "CHANGE_APPLY")
                         decode(CanonicalOperationWireBindings.changeApply.decodeRequest(envelope)) {
-                            HostedRequest.ApplyChange(root, it, assertion)
+                            HostedRequest.ApplyChange(root, it)
                         }
                     else
                         decode(CanonicalOperationWireBindings.changeRecover.decodeRequest(envelope)) {
-                            HostedRequest.RecoverChange(root, it, assertion)
+                            HostedRequest.RecoverChange(root, it)
                         }
                 }
                 "QUERY_RUN",
@@ -314,3 +301,16 @@ private data class HostedEndpointRejectionDocument(
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
         io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
 )
+
+@Serializable
+private data class HostedChangeRequestDocument(
+    val type: HostedChangeRequestType,
+    val root: String,
+    val document: String,
+)
+
+@Serializable
+private enum class HostedChangeRequestType {
+    CHANGE_APPLY,
+    CHANGE_RECOVER,
+}

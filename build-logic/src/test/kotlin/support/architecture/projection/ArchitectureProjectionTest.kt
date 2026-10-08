@@ -86,7 +86,7 @@ class ArchitectureProjectionTest {
         assertEquals("FILESYSTEM_WRITE", filesystem.effect)
         assertEquals(7, filesystem.callerClasses.size)
         assertTrue("io/github/amichne/kast/cli/PosixRuntimeEndpointArtifacts" !in filesystem.callerClasses)
-        assertTrue("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar" in filesystem.callerClasses)
+        assertTrue("io/github/amichne/kast/cli/ide/RetiredApprovalArtifacts" in filesystem.callerClasses)
         assertTrue(filesystem.callerClasses.all { it.startsWith("io/github/amichne/kast/cli/") })
     }
 

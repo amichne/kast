@@ -47,8 +47,10 @@ code_sources:
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
     symbols: [CanonicalHostedContract]
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-request.schema.json
-  - path: protocol/contract/src/main/resources/ide-hosted/hosted-approval.schema.json
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
 sources:
+  - id: openwiki-source-0ceb4ed13db230e1218868e8
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
   - id: openwiki-source-1d64f9c2cdc32afac226c9c0
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
@@ -61,10 +63,10 @@ sources:
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
   - id: openwiki-source-7e2e7b680c5aeef13789f9ff
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt
-generated: { by: "codex", at: "2026-10-03T04:45:37.704Z" }
+generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-03T04:45:37.704Z
+    at: 2026-10-08T01:13:49.481Z
 ---
 
 # Protocol
@@ -101,7 +103,7 @@ that version and every canonical hosted tool. The build generates `provider-cata
 from the shared schema owner without CLI invocation metadata. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
 endpoint schema is version 3 and advertises the three canonical read routes plus
-change planning, approval preparation, apply and recovery. Version-2 endpoint
+change planning, apply and recovery. Version-2 endpoint
 descriptors reject. `change.apply.v3` distinguishes `Verified`,
 `AppliedUnverified` and `RecoveryRequired`; only the first carries a receipt.
 Qualified effects retain their finite reason and exact plan identity.
@@ -155,7 +157,7 @@ The canonical `workspace.lifecycle.v2` operation has one tagged request family a
 The canonical agent policy delegates preparation for ordinary semantic requests to
 the installed coordinator. Preparation rejection is a broker failure with typed
 workspace cause and operation identity, outside the canonical semantic result.
-It preserves native operation admission and signs the exact plan inside the one-call change boundary.
+It preserves native operation admission and submits the exact canonical plan identity inside the one-call change boundary.
 
 `HostedContract` is the single exact control/host compatibility tuple. Its canonical
 registry and schema/serializer graph cover actual project requests, responses and
@@ -169,3 +171,5 @@ protocol identity change even without a JSON shape change.
 Impact documents retain exact value-site basis, callable identity, source range and role; reviewed model identity/version/provenance; compiler transfers; boundary positions and obligations; original question; and investigation accounting. Required discriminators and closed causes survive canonical wire and CLI projections. Complete projection validates conserved impact closure, while qualified projection validates accounting without discharging unresolved obligations.
 
 The installed query output schema is derived from the actual complete, qualified and rejected CLI serializers. Item, failure and qualification schemas reuse the same serializer owners. The former independent source-window/query field lists have been removed, so schema admission and typed encoded output share one owner. Encoded-shape, schema and generation checks remain distinct from native qualification.
+
+Keyless mutation uses `kast.ide-hosted.runtime.v3` and daemon operation RPC version 3. Apply and recovery carry canonical requests, without private preparation, signing or approval assertions. Exact current native plan, source and recovery admission remains required. Older loaded Host contracts reject; receipt replay may retain admitted historical v1 evidence without granting current mutation authority.

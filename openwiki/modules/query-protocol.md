@@ -147,6 +147,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt
   - id: openwiki-source-b51014e0385264d1b67f03cd
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
+  - id: openwiki-source-5b77364ace1f31662c87a941
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPagePublication.kt
   - id: openwiki-source-bff1faad340ec1120efffe0b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentedResultIssuance.kt
   - id: openwiki-source-96ef904abd7028335557559c
@@ -178,7 +180,7 @@ sources:
 generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T01:13:49.481Z
 ---
 
 # Query protocol

@@ -8,4 +8,10 @@ sealed interface HostedRequestEffect {
     data class Operation(val operation: CanonicalOperation) : HostedRequestEffect
 
     data class ChangePlan(val intent: ChangeIntentDocument) : HostedRequestEffect
+
+    data class ChangeApply(val planIdentity: io.github.amichne.kast.protocol.contract.ProtocolText) :
+        HostedRequestEffect
+
+    data class ChangeRecover(val planIdentity: io.github.amichne.kast.protocol.contract.ProtocolText) :
+        HostedRequestEffect
 }

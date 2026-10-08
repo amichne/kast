@@ -104,7 +104,7 @@ Missing live evidence remains unavailable.
 | `kast upgrade` | Upgrade both components on the selected channel. Interrupt active calls and sessions. |
 | `kast stop` | Fence new calls and automatic restart, disable the coordinator, and wait up to 30 seconds for recorded calls. |
 | `kast reinstall` | Verify shutdown, reinstall the recorded release, activate services, and restore registrations. |
-| `kast uninstall` | Stop owned services and remove the owned installation and registrations. |
+| `kast uninstall` | Stop owned services and remove the receipted Host, Control, public executable, registrations, admitted configuration, and settled Kast state. |
 
 Control-only upgrade checks Host before shutdown and after activation. Failure
 restores and verifies previous Control or reports recovery required. Control
@@ -112,6 +112,19 @@ sessions can be interrupted. Load a compatible Host first.
 
 For Host-only installation, use the public installer with
 `--host-only --version <host-version>`, then restart IDEA. Control stays in place.
+
+Hosted changes use the existing private local endpoint and native workspace
+admission. Installation no longer creates approval keys. The keyless contract
+requires matching Control and Host components; upgrade both and restart IDEA
+before attaching a fresh agent session. An older Host remains incompatible until
+it loads the matching plugin. See the [keyless migration](app-server/docs/compatibility.md#keyless-hosted-change-migration).
+
+Uninstall retains a journal outside the installation until cleanup finishes, so a
+retry can continue after Control has been removed. Unknown ownership, changed
+configuration, active endpoints, or unsettled mutations retain the affected
+artifacts and report a typed failure. A legacy Host without a recorded installation
+target requires a verified paired installation before ordinary uninstall can
+remove it.
 
 Before stop or reinstall, close IDEA and affected agent connections. Running IDEA
 returns `HOST_RESTART_REQUIRED`. Failed shutdown prevents replacement. Failed

@@ -119,7 +119,7 @@
           },
           "requiredHostedContract": {
             "type": "HOSTED_CONTRACT",
-            "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v2",
+            "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v3",
             "operationRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "wireSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "capabilities": [
@@ -182,7 +182,7 @@
           },
           "providedHostedContract": {
             "type": "HOSTED_CONTRACT",
-            "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v2",
+            "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v3",
             "operationRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "wireSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "capabilities": [
@@ -206,7 +206,7 @@
       },
       "requiredHostedContract": {
         "type": "HOSTED_CONTRACT",
-        "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v2",
+        "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v3",
         "operationRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "wireSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "capabilities": [
@@ -225,7 +225,7 @@
       },
       "providedHostedContract": {
         "type": "HOSTED_CONTRACT",
-        "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v2",
+        "runtimeProtocolIdentity": "kast.ide-hosted.runtime.v3",
         "operationRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "wireSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "capabilities": [

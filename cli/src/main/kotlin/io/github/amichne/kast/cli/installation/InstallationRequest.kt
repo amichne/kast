@@ -12,6 +12,7 @@ internal enum class InstallationEnvironment(val key: String) {
     CONTROL_SHA256("KAST_INSTALL_CONTROL_SHA256"),
     VERSION("KAST_INSTALL_VERSION"),
     IDEA_HOME("KAST_INSTALL_IDEA_HOME"),
+    IDEA_PLUGIN_ROOT("KAST_INSTALL_IDEA_PLUGIN_ROOT"),
     JAVA_HOME("KAST_INSTALL_JAVA_HOME"),
     INSTALL_ROOT("KAST_INSTALL_ROOT"),
     BIN_DIRECTORY("KAST_BIN_DIR"),
@@ -141,6 +142,7 @@ private constructor(
     val payload: ControlPayload,
     val version: SemanticVersion,
     val ideaHome: InstallationPath,
+    val ideaPluginTarget: io.github.amichne.kast.distribution.managed.InstalledHostPluginTarget,
     val javaHome: InstallationPath,
     val installRoot: UserInstallationRoot,
     val binDirectory: UserInstallationBin,
@@ -185,29 +187,42 @@ private constructor(
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return admitted
                 }
+            val pluginTarget =
+                when (val admitted = input.pluginTarget(locations.home)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
             val options =
                 when (val admitted = input.options()) {
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return admitted
                 }
-            return Refinement.Refined(
-                ControlInstallRequest(
-                    payload = payload,
-                    version = version,
-                    ideaHome = locations.ideaHome,
-                    javaHome = locations.javaHome,
-                    installRoot = locations.installRoot,
-                    binDirectory = locations.binDirectory,
-                    home = locations.home,
-                    jvmUserHomeOption = locations.jvmUserHomeOption,
-                    codexHome = locations.codexHome,
-                    profile = options.profile,
-                    mode = options.mode,
-                    publicEndpoint = options.endpoint,
-                    force = options.force,
-                    controlOnly = options.controlOnly,
-                )
-            )
+            return Refinement.Refined(fromAdmitted(payload, version, locations, pluginTarget, options))
         }
+
+        private fun fromAdmitted(
+            payload: ControlPayload,
+            version: SemanticVersion,
+            locations: ControlInstallationLocations,
+            pluginTarget: io.github.amichne.kast.distribution.managed.InstalledHostPluginTarget,
+            options: ControlInstallationOptions,
+        ): ControlInstallRequest =
+            ControlInstallRequest(
+                payload = payload,
+                version = version,
+                ideaHome = locations.ideaHome,
+                ideaPluginTarget = pluginTarget,
+                javaHome = locations.javaHome,
+                installRoot = locations.installRoot,
+                binDirectory = locations.binDirectory,
+                home = locations.home,
+                jvmUserHomeOption = locations.jvmUserHomeOption,
+                codexHome = locations.codexHome,
+                profile = options.profile,
+                mode = options.mode,
+                publicEndpoint = options.endpoint,
+                force = options.force,
+                controlOnly = options.controlOnly,
+            )
     }
 }

@@ -1,14 +1,33 @@
 package io.github.amichne.kast.change.verify
 
-import io.github.amichne.kast.change.apply.LiveApprovalChallenge
 import io.github.amichne.kast.change.contract.LiveReplaceBodyPlanCodec
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 
 class LiveReplaceBodyReceiptCodecTest {
+    @Test
+    fun `keyless body receipt records exact local operation without nonce or invocation`() {
+        val receipt = fixture(local = true)
+        val encoded = LiveReplaceBodyReceiptCodec.encode(receipt)
+        val content =
+            kotlinx.serialization.json.Json.parseToJsonElement(encoded).jsonObject.getValue("content").jsonObject
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(2), content.getValue("version"))
+        assertTrue("approval" !in content)
+        val execution = content.getValue("execution").jsonObject
+        assertEquals(setOf("type", "operation", "root", "host", "planId"), execution.keys)
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("LOCAL_ENDPOINT_OPERATION"), execution.getValue("type"))
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(receipt.plan.planId.value), execution.getValue("planId"))
+        assertEquals(encoded, LiveReplaceBodyReceiptCodec.encode(LiveReplaceBodyReceiptCodec.decode(encoded).refined()))
+        assertTrue(
+            LiveReplaceBodyReceiptCodec.decode(encoded.replace("LOCAL_ENDPOINT_OPERATION", "UNKNOWN"))
+                is Refinement.Rejected
+        )
+    }
+
     @Test
     fun `historical body receipt restores exact plan postimage scope and fresh token`() {
         val receipt = fixture()
@@ -48,7 +67,7 @@ class LiveReplaceBodyReceiptCodecTest {
                     freshPlan.basis.observation,
                     receipt.postimage,
                     receipt.freshReference,
-                    receipt.approval,
+                    receipt.execution,
                     receipt.recovery,
                 )
                 .refined()
@@ -56,7 +75,7 @@ class LiveReplaceBodyReceiptCodecTest {
         )
     }
 
-    private fun fixture(): HistoricalLiveReplaceBodyReceipt {
+    private fun fixture(local: Boolean = false): HistoricalLiveReplaceBodyReceipt {
         val plan =
             LiveReplaceBodyPlanCodec.decode(
                     checkNotNull(javaClass.getResource("/live-replace-body-plan-v1.json")).readText().trim()
@@ -67,7 +86,7 @@ class LiveReplaceBodyReceiptCodecTest {
                     "thread",
                     "turn",
                     "call",
-                    LiveApprovalChallenge.parse("a".repeat(64)).refined(),
+                    HistoricalApprovalChallenge.parse("a".repeat(64)).refined(),
                 )
                 .refined()
         val recovery =
@@ -81,7 +100,16 @@ class LiveReplaceBodyReceiptCodecTest {
                 plan.basis.observation,
                 plan.expectedPostimage,
                 BodyExactReference.parse("exact:v5:fixture").refined(),
-                approval,
+                if (local)
+                    HistoricalLiveExecution.LocalEndpointOperation.restore(
+                            plan,
+                            plan.planId,
+                            plan.basis.observation.reference.workspaceRoot,
+                            plan.basis.observation.reference.host,
+                            io.github.amichne.kast.change.apply.LiveChangeEffect.CHANGE_APPLY,
+                        )
+                        .refined()
+                else approval,
                 recovery,
             )
             .refined()

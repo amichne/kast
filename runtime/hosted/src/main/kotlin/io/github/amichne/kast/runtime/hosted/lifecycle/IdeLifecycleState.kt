@@ -131,7 +131,7 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
         if (requiresIdle(command) && hasPendingFor(target)) return Refinement.Rejected(IdeLifecycleFailure.PROJECT_BUSY)
         if (command is IdeLifecycleCommand.Close) {
             if (entry.users.any { it != client }) return Refinement.Rejected(IdeLifecycleFailure.OTHER_CLIENTS)
-            val userDirected = authority is ProjectCloseAuthority.UserApproved && authority.matches(command)
+            val userDirected = authority is ProjectCloseAuthority.UserDirected && authority.matches(command)
             if (entry.ownership != IdeProjectOwnership.MANAGED && !userDirected)
                 return Refinement.Rejected(IdeLifecycleFailure.USER_AUTHORIZATION_REQUIRED)
         }

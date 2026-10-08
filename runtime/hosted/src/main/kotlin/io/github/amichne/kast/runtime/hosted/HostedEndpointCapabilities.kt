@@ -9,7 +9,6 @@ internal object HostedEndpointCapabilities {
         HostedReadCapabilities.operations +
             listOf(
                 CanonicalOperationWireBindings.changePlan.operation.name,
-                "CHANGE_APPROVAL_PREPARE",
                 CanonicalOperationWireBindings.changeApply.operation.name,
                 CanonicalOperationWireBindings.changeRecover.operation.name,
             )

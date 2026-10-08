@@ -17,7 +17,6 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 
 enum class LiveMutationAdmissionFailure {
     BASIS_MOVED,
-    APPROVAL_MISMATCH,
     SOURCE_MISMATCH,
     READ_ONLY,
     POSTIMAGE_INVALID,
@@ -41,14 +40,12 @@ data class LiveMutationCandidate(
     val current: LiveSemanticReadAuthority,
     val model: WorkspaceSearchScopeModel,
     val observed: ObservedMutationSource,
-    val approval: VerifiedLivePlanApproval,
 )
 
-/** A fresh admitted candidate plus exact approval, permanent attempt claim, and durable preimage. */
+/** A fresh admitted candidate plus permanent attempt claim, and durable preimage. */
 class LiveMutationAuthority
 private constructor(
     val plan: LiveChangePlan,
-    val approval: VerifiedLivePlanApproval,
     val recovery: PreparedAddDeclarationRecovery,
     private val preimage: ObservedMutationSource,
     private val postimage: DerivedMutationPostimage,
@@ -79,7 +76,6 @@ private constructor(
             val (identity, preparation, postimage) = admitted
             val plan = candidate.plan
             val observed = candidate.observed
-            val approval = candidate.approval
             when (attempts.claimApplication(identity)) {
                 is LiveChangeApplicationClaim.Claimed -> Unit
                 LiveChangeApplicationClaim.AlreadyAttempted -> return LiveMutationPreparation.AlreadyAttempted
@@ -96,7 +92,6 @@ private constructor(
             return LiveMutationPreparation.Ready(
                 LiveMutationAuthority(
                     plan = plan,
-                    approval = approval,
                     recovery = prepared,
                     preimage = observed,
                     postimage = postimage,
@@ -117,20 +112,9 @@ private constructor(
             val current = candidate.current
             val model = candidate.model
             val observed = candidate.observed
-            val approval = candidate.approval
             if (plan.basis.observation.compare(current.reference, model) != LiveChangeBasisComparison.UNCHANGED) {
                 return Refinement.Rejected(LiveMutationAdmissionFailure.BASIS_MOVED)
             }
-            if (approval.operation != LiveChangeEffect.CHANGE_APPLY)
-                return Refinement.Rejected(LiveMutationAdmissionFailure.APPROVAL_MISMATCH)
-            if (
-                approval.planId != plan.planId ||
-                    approval.root != current.workspaceRoot ||
-                    approval.owner != current.reference.host
-            ) {
-                return Refinement.Rejected(LiveMutationAdmissionFailure.APPROVAL_MISMATCH)
-            }
-
             if (observed.source != plan.target.file || observed.content != plan.content) {
                 return Refinement.Rejected(LiveMutationAdmissionFailure.SOURCE_MISMATCH)
             }

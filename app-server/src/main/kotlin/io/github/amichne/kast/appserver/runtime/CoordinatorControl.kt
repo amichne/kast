@@ -9,12 +9,15 @@ import io.github.amichne.kast.appserver.CoordinatorServiceState
 import io.github.amichne.kast.appserver.CoordinatorStatusDocument
 import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
 import io.github.amichne.kast.appserver.DaemonManagementTarget
+import io.github.amichne.kast.appserver.EnrollmentFailure
 import io.github.amichne.kast.appserver.InstallationLifecycleFence
 import io.github.amichne.kast.appserver.InstallationLifecycleStartAdmission
 import io.github.amichne.kast.appserver.ManagementRuntimeProjection
 import io.github.amichne.kast.appserver.WorkerControlFailure
 import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.appserver.coordinatorConfigurationIdentity
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.rejectedCoordinatorControl
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
@@ -68,7 +71,15 @@ private constructor(
             sessions,
             ManagedDaemonWorkspacePreparation(preparations),
             ::managementProjection,
-            { root -> WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json")).enroll(root) },
+            { root ->
+                when (val discovered = FilesystemCanonicalRootDiscovery.discover(root.path)) {
+                    is CanonicalRootDiscovery.Discovered ->
+                        if (discovered.root.path == root.path)
+                            WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json")).enroll(root)
+                        else Refinement.Rejected(EnrollmentFailure.PATH_REJECTED)
+                    is CanonicalRootDiscovery.Rejected -> Refinement.Rejected(EnrollmentFailure.PATH_REJECTED)
+                }
+            },
         )
 
     private fun status() =
