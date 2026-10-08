@@ -47,7 +47,13 @@ class PublicToolEvidenceCursorTest {
                     PublicToolImpactWitnessOutput(section) to QueryOutputDocument.ImpactWitness(section)
                 }
         for ((output, expected) in outputs) {
-            val action = PublicToolReadResultAction(result, rowCursor, output, evidenceCursor = evidenceCursor)
+            val action =
+                PublicToolReadResultAction(
+                    result = result,
+                    cursor = rowCursor,
+                    output = output,
+                    evidenceCursor = evidenceCursor,
+                )
             val encoded = json.encodeToJsonElement(PublicToolQuerySymbols(action))
             val request = encoded.jsonObject.getValue("request").jsonObject
             assertEquals("7", request.getValue("cursor").jsonPrimitive.content)

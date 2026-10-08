@@ -52,7 +52,14 @@ class RuntimeIdentityObservationTest {
         assertEquals(Refinement.Rejected(InstallationStateFailure.EPOCH_ABSENT), observed.value)
         assertEquals("", observed.stderr)
         assertEquals(
-            listOf(ControlInventoryAccepted(ControlInventoryBoundary.RUNTIME_IDENTITY, 5, 2, 15)),
+            listOf(
+                ControlInventoryAccepted(
+                    boundary = ControlInventoryBoundary.RUNTIME_IDENTITY,
+                    traversedEntries = 5,
+                    payloadFiles = 2,
+                    payloadBytes = 15,
+                )
+            ),
             observations,
         )
     }

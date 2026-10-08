@@ -43,6 +43,7 @@ class QueryService(
     private val presentation: QueryPresentationExecution? = null,
 ) : QueryOperations {
     private val stages = QueryReadStages(discovery, exact, source)
+    private val traceMembers = QueryTraceMembers(source, stages)
     private val relationStage = QueryRelationStage(relations)
     private val walkStage = QueryWalkStage(traversal, traversalCeiling)
 
@@ -120,6 +121,7 @@ class QueryService(
 
         private suspend fun advance(task: PipelineTask): Boolean =
             when (task) {
+                is PipelineTask.TraceTask -> traceMembers.advance(task, state, tasks)
                 is PipelineTask.ImpactExplore -> impactTransition(impactTasks.explore(task, ::retainedBytes))
                 PipelineTask.ImpactFinalize -> impactTransition(impactTasks.finalizeInvestigation())
                 is PipelineTask.ValuePath -> emitValuePath(task.value)
@@ -287,6 +289,7 @@ class QueryService(
 
         private suspend fun symbol(task: PipelineTask.Symbol): Boolean =
             when (val stage = task.stage) {
+                is ExactQueryStage.Trace -> advanceTrace(task, stage, tasks)
                 is ExactQueryStage.ProjectBinding -> contractViolation()
                 is ExactQueryStage.Emit -> stages.emitSymbol(task, stage, state, tasks, ::emit) { symbols += it }
                 is ExactQueryStage.Distinct -> {

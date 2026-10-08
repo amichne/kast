@@ -29,10 +29,10 @@ class PersistentBrokerDiscoveryTransitionTest {
     fun `missing readiness recovers discovery owner from predecessor receipt`(@TempDir temporary: Path) {
         val fixture = fixture(temporary)
         rotate(
-            fixture.command(),
-            fixture.command(mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")),
-            false,
-            PredecessorState.RECEIPT_ONLY,
+            initial = fixture.command(),
+            replacement = fixture.command(mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")),
+            republishes = false,
+            predecessorState = PredecessorState.RECEIPT_ONLY,
         )
     }
 
@@ -167,10 +167,10 @@ class PersistentBrokerDiscoveryTransitionTest {
         writeServiceState(
             command.readinessFile,
             BrokerServiceStateDocument.Ready(
-                BROKER_SERVICE_STATE_SCHEMA_VERSION,
-                command.identity.value,
-                "123e4567-e89b-42d3-a456-426614174000",
-                VENDORED_BROKER_VERSION,
+                schemaVersion = BROKER_SERVICE_STATE_SCHEMA_VERSION,
+                serviceIdentity = command.identity.value,
+                serviceInstanceId = "123e4567-e89b-42d3-a456-426614174000",
+                brokerVersion = VENDORED_BROKER_VERSION,
             ),
         )
 

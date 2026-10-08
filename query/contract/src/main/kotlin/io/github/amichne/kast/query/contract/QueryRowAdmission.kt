@@ -18,6 +18,9 @@ internal fun admitQueryRows(
     steps: List<QueryStepSyntax>,
     output: QueryOutputSyntax,
 ): Refinement<Unit, QueryPlanAdmissionFailure> {
+    val trace = steps.indexOfFirst { it is QueryStepSyntax.Trace }
+    if (trace >= 0 && (trace != steps.lastIndex || output !is QueryOutputSyntax.Symbols))
+        return Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)
     if (output is QueryOutputSyntax.ImpactWitness)
         return Refinement.Rejected(QueryPlanAdmissionFailure.OutputTypeMismatch)
     if (steps.any(::hasIncompleteRight)) return Refinement.Rejected(QueryPlanAdmissionFailure.IncompleteRightInput)

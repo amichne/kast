@@ -12,6 +12,7 @@ spotless {
         targetExclude(
             "src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt",
             "src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt",
+            "src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolTrace.kt",
             "src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
         )
         ktfmt("0.64").kotlinlangStyle().configure {

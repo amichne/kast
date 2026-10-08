@@ -62,44 +62,7 @@ class PublicToolSchemaTest {
 
     @Test
     fun `typed accepted action variants pass the production schema`() {
-        val root = (ProtocolText.parse(".") as Refinement.Refined).value
-        val result =
-            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
-        val continuation =
-            (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000000")
-                    as Refinement.Refined)
-                .value
-        val emptyFields = (BoundedProtocolList.create(emptyList<PublicToolFields>()) as Refinement.Refined).value
-        val cases =
-            listOf(
-                PublicToolIdentity.CHECK_DIAGNOSTICS to
-                    Json.encodeToJsonElement(PublicToolCheckDiagnostics.serializer(), PublicToolCheckDiagnostics(root)),
-                PublicToolIdentity.QUERY_SYMBOLS to publicNameQuery(),
-                PublicToolIdentity.QUERY_SYMBOLS to
-                    Json.encodeToJsonElement(
-                        PublicToolQuerySymbols.serializer(),
-                        PublicToolQuerySymbols(
-                            PublicToolRunAction(PublicToolAllSource(), null, PublicToolSymbolsOutput(emptyFields))
-                        ),
-                    ),
-                PublicToolIdentity.QUERY_SYMBOLS to
-                    Json.encodeToJsonElement(
-                        PublicToolQuerySymbols.serializer(),
-                        PublicToolQuerySymbols(
-                            PublicToolRunAction(PublicToolResultSource(result), null, null, PublicToolRetention.RETAIN)
-                        ),
-                    ),
-                PublicToolIdentity.QUERY_SYMBOLS to
-                    Json.encodeToJsonElement(
-                        PublicToolQuerySymbols.serializer(),
-                        PublicToolQuerySymbols(PublicToolResumeAction(continuation)),
-                    ),
-                PublicToolIdentity.QUERY_SYMBOLS to
-                    Json.encodeToJsonElement(
-                        PublicToolQuerySymbols.serializer(),
-                        PublicToolQuerySymbols(PublicToolReadResultAction(result, null, null)),
-                    ),
-            )
+        val cases = acceptedActionCases()
         cases.forEach { (identity, encoded) ->
             assertTrue(
                 PublicToolContract.schema(identity).admit(encoded) is io.github.amichne.kast.kernel.Validation.Validated
@@ -213,10 +176,10 @@ class PublicToolSchemaTest {
             PublicToolContract.admit(
                 PublicToolIdentity.QUERY_SYMBOLS,
                 publicNameQuery(
-                    "createOrder",
-                    listOf(PublicToolDeclarationKinds.FUNCTION),
-                    scoped,
-                    PublicToolNameMatch.FUZZY,
+                    name = "createOrder",
+                    kinds = listOf(PublicToolDeclarationKinds.FUNCTION),
+                    scope = scoped,
+                    match = PublicToolNameMatch.FUZZY,
                 ),
             ) as Refinement.Refined
         val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
@@ -262,10 +225,10 @@ class PublicToolSchemaTest {
                 assertTrue(
                     node.keys.intersect(setOf("\$id", "\$schema", "default", "discriminator", "uniqueItems")).isEmpty()
                 )
-                node["properties"]?.let {
+                node["properties"]?.let { properties ->
                     assertEquals(JsonPrimitive(false), node["additionalProperties"])
                     assertEquals(
-                        it.jsonObject.keys,
+                        properties.jsonObject.keys,
                         node.getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet(),
                     )
                 }
@@ -310,8 +273,55 @@ class PublicToolSchemaTest {
 
     private fun visit(node: JsonObject, check: (JsonObject) -> Unit) {
         check(node)
-        listOf("properties", "\$defs").forEach { node[it]?.jsonObject?.values?.forEach { visit(it.jsonObject, check) } }
+        listOf("properties", "\$defs").forEach { group ->
+            node[group]?.jsonObject?.values?.forEach { schema -> visit(schema.jsonObject, check) }
+        }
         node["anyOf"]?.jsonArray?.forEach { visit(it.jsonObject, check) }
         node["items"]?.let { visit(it.jsonObject, check) }
+    }
+
+    private fun acceptedActionCases(): List<Pair<PublicToolIdentity, kotlinx.serialization.json.JsonElement>> {
+        val root = (ProtocolText.parse(".") as Refinement.Refined).value
+        val result =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
+        val continuation =
+            (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000000")
+                    as Refinement.Refined)
+                .value
+        val emptyFields = (BoundedProtocolList.create(emptyList<PublicToolFields>()) as Refinement.Refined).value
+        return listOf(
+            PublicToolIdentity.CHECK_DIAGNOSTICS to
+                Json.encodeToJsonElement(PublicToolCheckDiagnostics.serializer(), PublicToolCheckDiagnostics(root)),
+            PublicToolIdentity.QUERY_SYMBOLS to publicNameQuery(),
+            PublicToolIdentity.QUERY_SYMBOLS to
+                Json.encodeToJsonElement(
+                    PublicToolQuerySymbols.serializer(),
+                    PublicToolQuerySymbols(
+                        PublicToolRunAction(PublicToolAllSource(), null, PublicToolSymbolsOutput(emptyFields))
+                    ),
+                ),
+            PublicToolIdentity.QUERY_SYMBOLS to
+                Json.encodeToJsonElement(
+                    PublicToolQuerySymbols.serializer(),
+                    PublicToolQuerySymbols(
+                        PublicToolRunAction(
+                            source = PublicToolResultSource(result),
+                            steps = null,
+                            output = null,
+                            retention = PublicToolRetention.RETAIN,
+                        )
+                    ),
+                ),
+            PublicToolIdentity.QUERY_SYMBOLS to
+                Json.encodeToJsonElement(
+                    PublicToolQuerySymbols.serializer(),
+                    PublicToolQuerySymbols(PublicToolResumeAction(continuation)),
+                ),
+            PublicToolIdentity.QUERY_SYMBOLS to
+                Json.encodeToJsonElement(
+                    PublicToolQuerySymbols.serializer(),
+                    PublicToolQuerySymbols(PublicToolReadResultAction(result, null, null)),
+                ),
+        )
     }
 }

@@ -60,7 +60,7 @@ internal enum class FixtureTermination {
 /** Uses one virtual scheduler for broker invocation and workspace ownership, with explicit retirement gates. */
 internal class OutputContractExecutionFixture
 private constructor(
-    private val root: Path,
+    root: Path,
     scope: TestScope,
     effect: BrokerOperationEffect,
     termination: FixtureTermination,
@@ -88,16 +88,17 @@ private constructor(
     private val inputSchema = NetworkntJsonSchemaCompiler.compile(OutputContractTestSchemas.input).refined()
     private val tool: BrokerTool<Unit, Input, Output, Nothing> =
         BrokerTool(
-            ToolName.admit("read").refined(),
-            ToolDescription.admit("Controlled output boundary").refined(),
-            ToolLoading.EAGER,
-            JsonDomainDefinition(
-                inputSchema,
-                RefinementDefinition { input ->
-                    Validation.validated(Json.decodeFromJsonElement<Input>(input.element))
-                },
-            ),
-            schema,
+            name = ToolName.admit("read").refined(),
+            description = ToolDescription.admit("Controlled output boundary").refined(),
+            loading = ToolLoading.EAGER,
+            input =
+                JsonDomainDefinition(
+                    inputSchema,
+                    RefinementDefinition { input ->
+                        Validation.validated(Json.decodeFromJsonElement<Input>(input.element))
+                    },
+                ),
+            outputSchema = schema,
             invoke = { _, input, _ ->
                 calls += input.call
                 active++
@@ -152,14 +153,15 @@ private constructor(
     private val store = MemoryThreadCatalogStore()
     val adapter =
         CodexProtocolAdapter(
-            broker,
-            CodexProtocolContracts.define(
-                    CodexOwnedSchema.entries.associateWith {
-                        OutputContractTestSchemas.objectDocument
-                    }
-                )
-                .validated(),
-            store,
+            broker = broker,
+            contracts =
+                CodexProtocolContracts.define(
+                        CodexOwnedSchema.entries.associateWith {
+                            OutputContractTestSchemas.objectDocument
+                        }
+                    )
+                    .validated(),
+            threadStore = store,
             invocationDispatcher = StandardTestDispatcher(scope.testScheduler),
         )
 
@@ -167,16 +169,27 @@ private constructor(
         val thread = if (workspace == this.workspace) "thread" else "other"
         return executions.submit(
             WorkspaceExecutionIdentity(
-                workspace,
-                ClientConnectionId.fresh(),
-                requireNotNull(BrokerThreadId.admit(thread)),
-                requireNotNull(BrokerTurnId.admit(call)),
-                requireNotNull(BrokerCallId.admit(call)),
+                workspace = workspace,
+                connection = ClientConnectionId.fresh(),
+                thread = requireNotNull(BrokerThreadId.admit(thread)),
+                turn = requireNotNull(BrokerTurnId.admit(call)),
+                call = requireNotNull(BrokerCallId.admit(call)),
             )
         ) {
             adapter.fromUpstream(
                 Json.encodeToString(
-                    Call(1, "item/tool/call", Params(thread, call, call, "boundary", "read", Input(call)))
+                    Call(
+                        1,
+                        "item/tool/call",
+                        Params(
+                            threadId = thread,
+                            turnId = call,
+                            callId = call,
+                            namespace = "boundary",
+                            tool = "read",
+                            arguments = Input(call),
+                        ),
+                    )
                 )
             )
         }
@@ -227,12 +240,21 @@ private constructor(
             termination: FixtureTermination,
             invocationBudget: ElapsedTimeLimitMillis = ElapsedTimeLimitMillis.parse(60_000).refined(),
         ): OutputContractExecutionFixture =
-            OutputContractExecutionFixture(root, scope, effect, termination, invocationBudget).also {
-                it.store.write(
-                    ThreadCatalogBinding.admit("thread", it.broker.catalog.digest, root.toRealPath()).refined()
+            OutputContractExecutionFixture(
+                    root = root,
+                    scope = scope,
+                    effect = effect,
+                    termination = termination,
+                    invocationBudget = invocationBudget,
                 )
-                it.store.write(ThreadCatalogBinding.admit("other", it.broker.catalog.digest, it.otherRoot).refined())
-            }
+                .also { fixture ->
+                    fixture.store.write(
+                        ThreadCatalogBinding.admit("thread", fixture.broker.catalog.digest, root.toRealPath()).refined()
+                    )
+                    fixture.store.write(
+                        ThreadCatalogBinding.admit("other", fixture.broker.catalog.digest, fixture.otherRoot).refined()
+                    )
+                }
 
         private fun workspace(root: Path) =
             BrokerWorkspaceId.derive(requireNotNull(CanonicalBrokerDirectory.admit(root.toRealPath())))

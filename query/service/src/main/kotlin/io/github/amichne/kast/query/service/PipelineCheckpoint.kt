@@ -3,7 +3,7 @@ package io.github.amichne.kast.query.service
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryArrivalEvidence
-import io.github.amichne.kast.query.contract.QueryCheckpoint
+import io.github.amichne.kast.query.contract.QueryCheckpointPartialSymbols
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
@@ -41,7 +41,12 @@ internal data class PipelineCheckpoint(
     val limitations: Set<QueryLimitation>,
     val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
     val impact: QueryImpactSnapshot? = null,
-) : QueryCheckpoint {
+) : QueryCheckpointPartialSymbols {
+    override fun partialSymbols(
+        rowLimit: io.github.amichne.kast.kernel.ResultLimit,
+        byteLimit: io.github.amichne.kast.query.contract.QueryByteLimit,
+    ): io.github.amichne.kast.query.contract.QueryRows.Symbols = traceProof(rowLimit, byteLimit)
+
     override val retainedBytes: Long
         get() = retainedBytes(QueryImpactRetainedGraph())
 
@@ -66,6 +71,7 @@ internal data class PipelineCheckpoint(
 
 private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
     when (this) {
+        is PipelineTask.TraceTask -> retainedTraceBytes()
         is PipelineTask.ImpactExplore -> route.retainedBytes(graph)
         PipelineTask.ImpactFinalize -> TASK_OVERHEAD_BYTES
         is PipelineTask.ValuePath -> graph.path(value)
@@ -114,6 +120,28 @@ private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
         is PipelineTask.DiscoverLocation -> DISCOVERY_TASK_BYTES
         is PipelineTask.DiscoverText -> DISCOVERY_TASK_BYTES
     }
+
+private fun PipelineTask.TraceTask.retainedTraceBytes(): Long =
+    when (this) {
+        is PipelineTask.TraceMembers -> retainedMemberBytes()
+        is PipelineTask.TraceMember -> retainedMemberBytes()
+    }
+
+private fun PipelineTask.TraceMember.retainedMemberBytes(): Long =
+    saturatedAdd(
+        saturatedMultiply(member.selection.candidate.projectedUtf8Size().value, RETAINED_EVIDENCE_MULTIPLIER),
+        DISCOVERY_TASK_BYTES,
+    )
+
+private fun PipelineTask.TraceMembers.retainedMemberBytes(): Long {
+    val cursorBytes =
+        (page as? io.github.amichne.kast.source.contract.SourceReadPage.Continue)?.continuation?.value?.length?.toLong()
+            ?: 0L
+    return saturatedAdd(
+        saturatedMultiply(owner.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
+        saturatedAdd(saturatedMultiply(cursorBytes, SOURCE_CURSOR_CHARACTER_BYTES), DISCOVERY_TASK_BYTES),
+    )
+}
 
 private fun saturatedMultiply(left: Long, right: Long): Long =
     if (left < 0L || right < 0L || left > Long.MAX_VALUE / right) Long.MAX_VALUE else left * right
@@ -193,6 +221,7 @@ private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
 
 private fun boundaryTasks(stage: ExactQueryStage): List<PipelineTask> =
     when (stage) {
+        is ExactQueryStage.Trace -> boundaryTasks(stage.next)
         is ExactQueryStage.ProjectBinding -> boundaryTasks(stage.next)
         is ExactQueryStage.Concat -> listOf(PipelineTask.Feed(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Set -> listOf(PipelineTask.FlushSet(stage)) + boundaryTasks(stage.next)
@@ -246,6 +275,7 @@ internal fun AdmittedQueryPlan.bindingMode(): QueryJoinMode.Inner {
                     mode = stage.mode as? QueryJoinMode.Inner
                     stage.next
                 }
+                is ExactQueryStage.Trace -> stage.next
                 is ExactQueryStage.ProjectBinding -> {
                     mode = null
                     stage.next
@@ -264,6 +294,7 @@ internal fun AdmittedQueryPlan.bindingMode(): QueryJoinMode.Inner {
 
 private fun ExactQueryStage.outputSyntax(): QueryOutputSyntax =
     when (this) {
+        is ExactQueryStage.Trace -> next.outputSyntax()
         is ExactQueryStage.ProjectBinding -> next.outputSyntax()
         is ExactQueryStage.Concat -> next.outputSyntax()
         is ExactQueryStage.Set -> next.outputSyntax()
@@ -291,6 +322,7 @@ private fun ExactQueryStage.exceedsTraversalDepth(
     ceiling: io.github.amichne.kast.traversal.contract.TraversalExtent
 ): Boolean =
     when (this) {
+        is ExactQueryStage.Trace -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.ProjectBinding -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Walk ->
             when (ceiling) {
@@ -309,6 +341,7 @@ private fun ExactQueryStage.exceedsTraversalDepth(
 
 private fun ExactQueryStage.retainedInputs(): List<QueryRetainedResult> =
     when (this) {
+        is ExactQueryStage.Trace -> next.retainedInputs()
         is ExactQueryStage.ProjectBinding -> next.retainedInputs()
         is ExactQueryStage.Concat ->
             (input as? QueryCompositionInput.Retained)?.result?.let { listOf(it) }.orEmpty() + next.retainedInputs()
@@ -335,3 +368,5 @@ internal fun discoveryDeclarationKinds(plan: AdmittedQueryPlan): QueryDeclaratio
         is AdmittedQueryPlan.ExactReferences,
         is AdmittedQueryPlan.Retained -> null
     }
+
+private const val SOURCE_CURSOR_CHARACTER_BYTES = 8L

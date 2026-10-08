@@ -9,7 +9,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolNameRelevance
 import io.github.amichne.kast.symbol.contract.relevance
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
@@ -20,8 +19,10 @@ internal class IntellijIndexedDiscoveryAdmission(
     private val request: SymbolDiscoveryRequest,
     private val limits: ReadLimits,
     private val observation: IntellijReadObservation,
-    private val contributor: IntellijReadContributor,
 ) {
+    private val contributor
+        get() = collector.contributor
+
     private val target = request.target
     private val fuzzy = (target as? SymbolDiscoveryTarget.Name)?.takeIf { it.match == SymbolDiscoveryMatch.FUZZY }
     private val capacity =
@@ -36,6 +37,7 @@ internal class IntellijIndexedDiscoveryAdmission(
     private val pending = ArrayList<NavigationItem>()
     private val identities = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<NavigationItem, Boolean>())
     private var reachedLimit = false
+    private var projectedCount = 0
 
     fun collect(
         process:
@@ -44,11 +46,13 @@ internal class IntellijIndexedDiscoveryAdmission(
                 (SymbolDiscoveryQualification) -> Unit,
                 (IntellijDiscoveryDeclarationInput) -> Boolean,
             ) -> Boolean
-    ) {
+    ): Boolean {
         val complete = process(collector::observe, collector::qualify, ::accept)
         retainRanked()
         qualifyCompletion(complete)
-        for (item in pending) if (!project(item)) break
+        for (index in projectedCount until pending.size) if (!project(pending[index])) break
+        projectedCount = pending.size
+        return complete && !collector.halted && !reachedLimit
     }
 
     private fun project(item: NavigationItem): Boolean {

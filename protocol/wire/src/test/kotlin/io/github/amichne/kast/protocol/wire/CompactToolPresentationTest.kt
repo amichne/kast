@@ -148,30 +148,34 @@ class CompactToolPresentationTest {
         )
         assertEquals(verbose.getValue("page_progress"), compact.getValue("page_progress"))
         assertEquals("54", compact.getValue("qualification").jsonObject.getValue("knownMinimum").jsonPrimitive.content)
-        assertEquals(
-            token.value,
-            compact
-                .getValue("qualification")
-                .jsonObject
-                .getValue("progress")
-                .jsonObject
-                .getValue("checkpoint")
-                .jsonObject
-                .getValue("token")
-                .jsonPrimitive
-                .content,
-        )
+        assertEquals(token.value, checkpointToken(compact))
         assertFalse("continuation" in compact)
         assertEquals(token.value, verbose.getValue("continuation").jsonPrimitive.content)
         assertFalse("failures" in compact)
         assertTrue("failures" in verbose)
-        assertEquals(setOf("root", "contentView"), compact.getValue("live").jsonObject.keys)
+        assertEquals(
+            verbose.getValue("live"),
+            compact.getValue("live"),
+            "Compact reference output must retain its authority basis",
+        )
         assertTrue("epoch" in verbose.getValue("live").jsonObject)
         assertEquals(
             verbose,
             json(outcome.document.present(ToolOutputDetail.COMPACT).present(ToolOutputDetail.VERBOSE)),
         )
     }
+
+    private fun checkpointToken(document: kotlinx.serialization.json.JsonObject): String =
+        document
+            .getValue("qualification")
+            .jsonObject
+            .getValue("progress")
+            .jsonObject
+            .getValue("checkpoint")
+            .jsonObject
+            .getValue("token")
+            .jsonPrimitive
+            .content
 
     @Test
     fun `compact verified mutation keeps receipt fresh reference and actual diff once`() {

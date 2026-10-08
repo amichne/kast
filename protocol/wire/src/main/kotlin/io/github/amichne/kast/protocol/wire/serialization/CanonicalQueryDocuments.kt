@@ -125,7 +125,7 @@ internal sealed interface QueryRunRejectionWireDocument {
 
     @Serializable
     @SerialName("COMPLETION_UNPROVEN")
-    data class CompletionUnproven(val detail: QueryRunRejection.CompletionUnproven) : QueryRunRejectionWireDocument
+    data class CompletionUnproven(val detail: QueryCompletionRejectionWireDocument) : QueryRunRejectionWireDocument
 
     @Serializable
     @SerialName("IMPACT_EXECUTION_REJECTED")
@@ -322,6 +322,11 @@ private fun QueryItemFailureDocument.toWire(): QueryItemFailureWireDocument =
                 ref.toWire() as QueryReferenceWireDocument.ExactSymbol,
                 QuerySourceFailureWireDocument.valueOf(reason.name),
             )
+        is QueryItemFailureDocument.SourceEnumerationIncomplete ->
+            QueryItemFailureWireDocument.SourceEnumerationIncomplete(
+                ref.toWire() as QueryReferenceWireDocument.ExactSymbol,
+                qualification.toWireDocument(),
+            )
         is QueryItemFailureDocument.Relation ->
             QueryItemFailureWireDocument.Relation(
                 ref.toWire() as QueryReferenceWireDocument.ExactSymbol,
@@ -368,6 +373,7 @@ private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<Qu
                     QuerySourceFailureDocument.valueOf(reason.name),
                 )
             }
+        is QueryItemFailureWireDocument.SourceEnumerationIncomplete -> toSourceEnumerationContract()
         is QueryItemFailureWireDocument.Relation ->
             ref.token.protocolText().mapConverted { token ->
                 QueryItemFailureDocument.Relation(
@@ -386,6 +392,12 @@ private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<Qu
             }
     }
 
+private fun QueryItemFailureWireDocument.SourceEnumerationIncomplete.toSourceEnumerationContract():
+    WireDocumentConversion<QueryItemFailureDocument.SourceEnumerationIncomplete> =
+    combineConverted(ref.token.protocolText(), qualification.toContract()) { reference, progress ->
+        QueryItemFailureDocument.SourceEnumerationIncomplete(QueryReferenceDocument.ExactSymbol(reference), progress)
+    }
+
 private fun QueryRunQualification.toQueryWireDocument() =
     QueryRunQualificationWireDocument(
         knownMinimum.value,
@@ -402,7 +414,7 @@ private fun QueryRunQualificationWireDocument.toContract(): WireDocumentConversi
 private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocument =
     when (this) {
         is QueryRunRejection.CompletionUnsupported -> QueryRunRejectionWireDocument.CompletionUnsupported(this)
-        is QueryRunRejection.CompletionUnproven -> QueryRunRejectionWireDocument.CompletionUnproven(this)
+        is QueryRunRejection.CompletionUnproven -> QueryRunRejectionWireDocument.CompletionUnproven(toCompletionWire())
         is QueryRunRejection.ImpactSourceRejected -> QueryRunRejectionWireDocument.ImpactSourceRejected(cause)
         is QueryRunRejection.ImpactExecutionRejected -> QueryRunRejectionWireDocument.ImpactExecutionRejected(cause)
         is QueryRunRejection.ImpactPresentationRejected ->
@@ -431,7 +443,7 @@ private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocume
 private fun QueryRunRejectionWireDocument.toContract(): WireDocumentConversion<QueryRunRejection> =
     when (this) {
         is QueryRunRejectionWireDocument.CompletionUnsupported -> WireDocumentConversion.Converted(detail)
-        is QueryRunRejectionWireDocument.CompletionUnproven -> WireDocumentConversion.Converted(detail)
+        is QueryRunRejectionWireDocument.CompletionUnproven -> detail.toContract()
         is QueryRunRejectionWireDocument.ImpactSourceRejected ->
             WireDocumentConversion.Converted(QueryRunRejection.ImpactSourceRejected(cause))
         is QueryRunRejectionWireDocument.ImpactExecutionRejected ->

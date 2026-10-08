@@ -69,8 +69,8 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
             val events = mutableListOf<WorkspacePreparationActivity>()
             val preparations =
                 WorkspacePreparations(
-                    this,
-                    script::exchange,
+                    scope = this,
+                    exchange = script::exchange,
                     observer = WorkspacePreparationObserver { events += it },
                     newId = { ids.removeFirst() },
                 )
@@ -96,9 +96,9 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
                 listOf(WorkspacePreparationActivityOutcome.CheckingHost(firstId.value.toString())),
                 events
                     .map { it.outcome }
-                    .filter {
-                        it is WorkspacePreparationActivityOutcome.CheckingHost ||
-                            it is WorkspacePreparationActivityOutcome.RetryingHost
+                    .filter { outcome ->
+                        outcome is WorkspacePreparationActivityOutcome.CheckingHost ||
+                            outcome is WorkspacePreparationActivityOutcome.RetryingHost
                     },
             )
             script.assertDrained()
@@ -168,7 +168,8 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
     @Test
     fun `recovery identity rejection preserves the prior outcome without another effect`() = runTest {
         val script = Script(listOf(open(firstId) to IdeLifecycleResult.Blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)))
-        val preparations = WorkspacePreparations(this, script::exchange, capacity = 1, newId = { firstId })
+        val preparations =
+            WorkspacePreparations(scope = this, exchange = script::exchange, capacity = 1, newId = { firstId })
         val original = (preparations.prepare(root) as Refinement.Refined).value
         runCurrent()
         val result = rejectedDemand(preparations).query(root, ExistingIdeOperation.Status)
@@ -190,8 +191,8 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
         val requests = mutableListOf<WorkspaceLifecycleRequest>()
         val preparations =
             WorkspacePreparations(
-                this,
-                { request ->
+                scope = this,
+                exchange = { request ->
                     requests += request
                     when (requests.size) {
                         1 -> {
@@ -235,11 +236,17 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
 
     private fun inspected() =
         IdeLifecycleResult.Inspected(
-            target.host,
-            "/idea",
-            "IU-262.1",
-            emptyList(),
-            HostedCompatibilityDocument("262.1.1", "262.1.1-IJ", "0.50.0", CanonicalHostedContract.document),
+            host = target.host,
+            home = "/idea",
+            build = "IU-262.1",
+            projects = emptyList(),
+            compatibility =
+                HostedCompatibilityDocument(
+                    ideBuild = "262.1.1",
+                    kotlinPluginBuild = "262.1.1-IJ",
+                    hostedPluginVersion = "0.50.0",
+                    hostedContract = CanonicalHostedContract.document,
+                ),
         )
 
     private fun open(id: WorkspacePreparationId) = WorkspaceLifecycleRequest.Open("/workspace", id.value.toString())

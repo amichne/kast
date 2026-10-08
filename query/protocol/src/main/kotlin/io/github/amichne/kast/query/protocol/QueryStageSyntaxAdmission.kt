@@ -22,6 +22,7 @@ import io.github.amichne.kast.traversal.contract.TraversalStrategy
 
 internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
     when (this) {
+        is QueryStepDocument.Trace -> QueryStepSyntax.Trace(expansionScope.boundary().refinedOrNull() ?: return null)
         is QueryStepDocument.Related ->
             QueryStepSyntax.Related(relation.meaning(), expansionScope.boundary().refinedOrNull() ?: return null)
         is QueryStepDocument.Walk -> walkSyntax()

@@ -17,6 +17,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -108,7 +109,7 @@ class PublicToolExpansionScopeContractTest {
 
     private fun admit(step: ExpansionStepFixture, codec: Json = json): QueryRunRequest.Run {
         val input = ExpansionInputFixture(ExpansionRunFixture(referenceSource(), listOf(step)))
-        val raw = codec.encodeToJsonElement(ExpansionInputFixture.serializer(), input)
+        val raw = codec.encodeToJsonElement(serializer<ExpansionInputFixture>(), input)
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw).refined()
         return (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
     }
@@ -117,19 +118,19 @@ class PublicToolExpansionScopeContractTest {
 
     private fun sourceDomain() =
         PublicToolImpactSourceDomain(
-            bounded(listOf(text("main"))),
-            text("logging/src/main/kotlin"),
-            false,
-            PublicToolSourcePolicy.PRODUCTION_ONLY,
-            PublicToolGeneratedSources.EXCLUDE,
+            sourceSets = bounded(listOf(text("main"))),
+            directory = text("logging/src/main/kotlin"),
+            includeSubdirectories = false,
+            sourcePolicy = PublicToolSourcePolicy.PRODUCTION_ONLY,
+            generatedSources = PublicToolGeneratedSources.EXCLUDE,
         )
 
     private fun expectedDomain() =
         QueryExpansionScopeDocument.Sources(
-            bounded(listOf(text("main"))),
-            QueryDirectoryScopeDocument(text("logging/src/main/kotlin"), QueryContainmentDocument.DIRECT),
-            QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
-            QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+            sourceSets = bounded(listOf(text("main"))),
+            directory = QueryDirectoryScopeDocument(text("logging/src/main/kotlin"), QueryContainmentDocument.DIRECT),
+            sourcePolicy = QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
+            generatedSources = QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

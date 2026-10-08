@@ -21,8 +21,8 @@ class DesktopDiscoveryRejectionTest {
         val script = Script(DesktopDaemonHomeRead.Default, *steps.toTypedArray())
         val discovery = DesktopDaemonDiscovery(script)
         val activities = mutableListOf<BrokerStartupActivity>()
-        val activity = BrokerStartupActivityPublisher {
-            activities += it
+        val activity = BrokerStartupActivityPublisher { event ->
+            activities += event
             BrokerStartupActivityPublication.PUBLISHED
         }
         repeat(3) { attempt ->
@@ -36,8 +36,8 @@ class DesktopDiscoveryRejectionTest {
         }
         assertEquals(
             3,
-            activities.count {
-                it ==
+            activities.count { event ->
+                event ==
                     BrokerStartupActivity.Rejected(
                         BrokerStartupStage.DESKTOP_DISCOVERY,
                         BrokerStartupRejection.DesktopDiscovery(DesktopDiscoveryFailure.ENVIRONMENT_CONFLICT),
@@ -69,8 +69,8 @@ class DesktopDiscoveryRejectionTest {
         val script =
             Script(DesktopDaemonHomeRead.Configured(CodexControlSocketPath.from(temporary.resolve("other"))), "home")
         val activities = mutableListOf<BrokerStartupActivity>()
-        val activity = BrokerStartupActivityPublisher {
-            activities += it
+        val activity = BrokerStartupActivityPublisher { event ->
+            activities += event
             BrokerStartupActivityPublication.PUBLISHED
         }
         assertEquals(
@@ -104,8 +104,8 @@ class DesktopDiscoveryRejectionTest {
             )) {
             val script = Script(DesktopDaemonHomeRead.Default, "home", observation)
             val activities = mutableListOf<BrokerStartupActivity>()
-            val activity = BrokerStartupActivityPublisher {
-                activities += it
+            val activity = BrokerStartupActivityPublisher { event ->
+                activities += event
                 BrokerStartupActivityPublication.PUBLISHED
             }
             assertEquals(

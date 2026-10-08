@@ -88,10 +88,10 @@ class BrokerPublicEndpointTest {
                 }
                 .encodeToString<BrokerServiceStateDocument>(
                     BrokerServiceStateDocument.Ready(
-                        BROKER_SERVICE_STATE_SCHEMA_VERSION,
-                        command.identity.value,
-                        "123e4567-e89b-42d3-a456-426614174000",
-                        VENDORED_BROKER_VERSION,
+                        schemaVersion = BROKER_SERVICE_STATE_SCHEMA_VERSION,
+                        serviceIdentity = command.identity.value,
+                        serviceInstanceId = "123e4567-e89b-42d3-a456-426614174000",
+                        brokerVersion = VENDORED_BROKER_VERSION,
                     )
                 ),
         )

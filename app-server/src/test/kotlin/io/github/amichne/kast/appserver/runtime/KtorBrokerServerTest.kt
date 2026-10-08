@@ -389,11 +389,11 @@ class KtorBrokerServerTest {
             )
         val tool: BrokerTool<Unit, ObserverInput, ObserverOutput, Nothing> =
             BrokerTool(
-                toolName("query_symbols"),
-                ToolDescription.admit("Inspect one symbol.").refinedValue(),
-                ToolLoading.DEFERRED,
-                input,
-                objectSchema,
+                name = toolName("query_symbols"),
+                description = ToolDescription.admit("Inspect one symbol.").refinedValue(),
+                loading = ToolLoading.DEFERRED,
+                input = input,
+                outputSchema = objectSchema,
                 invoke = { _, inputValue, _ ->
                     ProviderCall.Completed(ObserverOutput(inputValue.arguments))
                 },

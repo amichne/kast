@@ -29,7 +29,8 @@ private constructor(
     @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 1, maximum = 1)
     val version: Int? = null,
 ) {
-    fun compact(): LiveReadCliEvidence = copy(host = null, epoch = null, version = null)
+    /** Compact output retains the authority needed to compare opaque references and retained results. */
+    fun compact(): LiveReadCliEvidence = this
 
     companion object {
         fun from(value: LiveReadEvidence) =

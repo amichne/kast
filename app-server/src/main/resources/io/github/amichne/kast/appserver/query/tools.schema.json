@@ -1202,8 +1202,14 @@
         },
         {
           "$ref": "#/$defs/Join"
+        },
+        {
+          "$ref": "#/$defs/Trace"
         }
-      ]
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
     },
     "JoinMode": {
       "anyOf": [
@@ -5259,6 +5265,48 @@
       ],
       "additionalProperties": false,
       "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.CompleteOnly"
+    },
+    "Trace": {
+      "type": "object",
+      "description": "Terminal affected-use trace. Groups exact declarations while retaining every compiler-proven connection and reference occurrence. Includes seed references, implementations or overrides, direct callable callers, and one further caller layer. Every branch shares the execution grant and expansion scope; incomplete branches remain qualified.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "TRACE"
+          ],
+          "default": "TRACE",
+          "examples": [
+            "TRACE"
+          ]
+        },
+        "expansionScope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExpansionScope"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Native relation expansion domain, independent of seed discovery and output filtering. Omission or null selects WORKSPACE. SOURCE_DOMAIN restricts destinations before native enumeration."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "examples": [
+        {
+          "type": "TRACE"
+        },
+        {
+          "type": "TRACE",
+          "expansionScope": {
+            "type": "WORKSPACE"
+          }
+        }
+      ]
     }
   },
   "tools": [
@@ -5983,6 +6031,43 @@
               }
             }
           }
+        },
+        "traceAffectedUses": {
+          "summary": "Trace an interface method, its overrides, direct callers, adapter callers and occurrence evidence under one shared grant.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "execute",
+                "declarationKinds": [
+                  "FUNCTION"
+                ],
+                "scope": {
+                  "type": "PACKAGE",
+                  "packageName": "example.cache",
+                  "includeSubpackages": false,
+                  "sourceSetNames": [
+                    "main"
+                  ]
+                }
+              },
+              "steps": [
+                {
+                  "type": "TRACE"
+                }
+              ],
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "retention": "RETAIN"
+            }
+          }
         }
       },
       "invalidExamples": {
@@ -6277,6 +6362,24 @@
               "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA"
             }
           }
+        },
+        "traceUnknownDepth": {
+          "summary": "TRACE has a fixed topology; arbitrary depth controls are not accepted.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "execute"
+              },
+              "steps": [
+                {
+                  "type": "TRACE",
+                  "maximumDepth": 100
+                }
+              ]
+            }
+          }
         }
       },
       "defaults": {
@@ -6554,5 +6657,5 @@
       ]
     }
   ],
-  "contractVersion": 11
+  "contractVersion": 12
 }

@@ -43,6 +43,13 @@ internal sealed interface QueryItemFailureCliDocument {
     ) : QueryItemFailureCliDocument
 
     @Serializable
+    @SerialName("SOURCE_ENUMERATION_INCOMPLETE")
+    data class SourceEnumerationIncomplete(
+        @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(pattern = "^exact:v[2345]:") val ref: String,
+        val qualification: SourceReadQualificationCliDocument,
+    ) : QueryItemFailureCliDocument
+
+    @Serializable
     @SerialName("relation")
     data class Relation(
         @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(pattern = "^exact:v[2345]:") val ref: String,
@@ -73,6 +80,8 @@ internal fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocume
             QueryItemFailureCliDocument.ExactReference(ref.toCliDocument(), reason)
         is QueryItemFailureDocument.Predicate -> QueryItemFailureCliDocument.Predicate(ref.toCliDocument(), reason)
         is QueryItemFailureDocument.Source -> QueryItemFailureCliDocument.Source(ref.toCliDocument(), reason)
+        is QueryItemFailureDocument.SourceEnumerationIncomplete ->
+            QueryItemFailureCliDocument.SourceEnumerationIncomplete(ref.toCliDocument(), qualification.toCliDocument())
         is QueryItemFailureDocument.Relation ->
             QueryItemFailureCliDocument.Relation(
                 ref.toCliDocument(),

@@ -128,6 +128,11 @@ sealed interface QueryItemFailureDocument {
         val reason: QuerySourceFailureDocument,
     ) : QueryItemFailureDocument
 
+    data class SourceEnumerationIncomplete(
+        val ref: QueryReferenceDocument.ExactSymbol,
+        val qualification: SourceReadQualification,
+    ) : QueryItemFailureDocument
+
     data class Relation(
         val ref: QueryReferenceDocument.ExactSymbol,
         val relation: RelationKindDocument,

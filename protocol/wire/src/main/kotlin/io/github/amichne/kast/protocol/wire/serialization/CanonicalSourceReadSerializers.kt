@@ -407,14 +407,14 @@ private fun SourceTextProjectionWireDocument.toContract(): WireDocumentConversio
             WireDocumentConversion.Converted(SourceTextProjectionDocument.Withheld(reason.toContract()))
     }
 
-private fun SourceReadQualification.toWireDocument(): SourceReadQualificationWireDocument =
+internal fun SourceReadQualification.toWireDocument(): SourceReadQualificationWireDocument =
     SourceReadQualificationWireDocument(
         knownMinimumEntityCount.value,
         limitations.map(SourceReadLimitationDocument::toWireDocument),
         progress,
     )
 
-private fun SourceReadQualificationWireDocument.toContract(): WireDocumentConversion<SourceReadQualification> =
+internal fun SourceReadQualificationWireDocument.toContract(): WireDocumentConversion<SourceReadQualification> =
     knownMinimumEntityCount.sourceEntityCount().flatMapConverted { admittedCount ->
         SourceReadQualification.create(
                 admittedCount,

@@ -169,36 +169,10 @@ internal object KastObserverFixtures {
     }
 
     private fun queryWalkOutcome(qualified: Boolean): String {
-        val consumer =
-            symbol(
-                "EventConsumer",
-                "sample.events.EventConsumer",
-                "events/core/src/main/kotlin/sample/EventConsumer.kt",
-                "exact:v2:event-consumer",
-                12,
-                140,
-            )
-        val checkout =
-            symbol(
-                "CheckoutService",
-                "sample.checkout.CheckoutService",
-                "checkout/core/src/main/kotlin/sample/CheckoutService.kt",
-                "exact:v2:checkout-service",
-                20,
-                180,
-            )
-        val audit =
-            symbol(
-                "recordEvent",
-                "sample.audit.AuditSink.recordEvent",
-                "audit/src/main/kotlin/sample/AuditSink.kt",
-                "exact:v2:audit-sink",
-                30,
-                96,
-                function = true,
-            )
-        val first = relation(RelationKindDocument.CALLERS, checkout, consumer, "candidate:v2:checkout-call", 88, 101)
-        val second = relation(RelationKindDocument.CALLERS, audit, checkout, "candidate:v2:audit-call", 62, 75)
+        val (first, second) = queryWalkRelations()
+        val consumer = first.target
+        val checkout = first.source
+        val audit = second.source
         val items: List<QueryResultItemDocument> =
             listOf(
                 QueryResultItemDocument.TraversalRecord(
@@ -211,11 +185,55 @@ internal object KastObserverFixtures {
                 ),
             )
         return queryOutcome(
-            items,
-            qualified,
-            listOf(queryWalkObservation(consumer, qualified)),
-            QueryLimitationDocument.TRAVERSAL_INCOMPLETE,
+            items = items,
+            qualified = qualified,
+            walkObservations = listOf(queryWalkObservation(consumer, qualified)),
+            limitation = QueryLimitationDocument.TRAVERSAL_INCOMPLETE,
         )
+    }
+
+    private fun queryWalkRelations(): List<RelationFactDocument> {
+        val consumer =
+            symbol(
+                name = "EventConsumer",
+                signature = CompilerSignatureDocument.ClassLike(text("sample.events.EventConsumer")),
+                file = "events/core/src/main/kotlin/sample/EventConsumer.kt",
+                selector = "exact:v2:event-consumer",
+                range = range(12, 140),
+            )
+        val checkout =
+            symbol(
+                name = "CheckoutService",
+                signature = CompilerSignatureDocument.ClassLike(text("sample.checkout.CheckoutService")),
+                file = "checkout/core/src/main/kotlin/sample/CheckoutService.kt",
+                selector = "exact:v2:checkout-service",
+                range = range(20, 180),
+            )
+        val audit =
+            symbol(
+                name = "recordEvent",
+                signature = functionSignature(text("sample.audit.AuditSink.recordEvent")),
+                file = "audit/src/main/kotlin/sample/AuditSink.kt",
+                selector = "exact:v2:audit-sink",
+                range = range(30, 96),
+            )
+        val first =
+            relation(
+                meaning = RelationKindDocument.CALLERS,
+                source = checkout,
+                target = consumer,
+                candidate = "candidate:v2:checkout-call",
+                range = range(88, 101),
+            )
+        val second =
+            relation(
+                meaning = RelationKindDocument.CALLERS,
+                source = audit,
+                target = checkout,
+                candidate = "candidate:v2:audit-call",
+                range = range(62, 75),
+            )
+        return listOf(first, second)
     }
 
     private fun queryWalkObservation(subject: SymbolDocument, qualified: Boolean): QueryWalkObservationDocument {
@@ -235,7 +253,13 @@ internal object KastObserverFixtures {
                     ProtocolCount.parse(2).required()
                 ),
             expandedFrontier = QueryExpandedFrontierDocument.parse(2).required(),
-            progress = TraversalProgressDocument(1, 2, 2, 2),
+            progress =
+                TraversalProgressDocument(
+                    checkpointSequence = 1,
+                    totalReads = 2,
+                    totalEdges = 2,
+                    maximumDepthReached = 2,
+                ),
             strategy = TraversalStrategyDocument.BreadthFirst,
             partialExpansions = bounded(emptyList()),
             coverage = coverage,
@@ -255,11 +279,11 @@ internal object KastObserverFixtures {
     ): String {
         val result =
             QueryRunResult(
-                fixtureQueryQuestion(),
-                bounded(items),
-                bounded(emptyList()),
-                bounded(emptyList()),
-                bounded(walkObservations),
+                question = fixtureQueryQuestion(),
+                items = bounded(items),
+                failures = bounded(emptyList()),
+                omissions = bounded(emptyList()),
+                walkObservations = bounded(walkObservations),
             )
         val envelope =
             EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, EvidenceGeneration.parse(17).required(), result)
@@ -290,84 +314,101 @@ internal object KastObserverFixtures {
     private fun queryOccurrenceRelations(firstMeaning: RelationKindDocument): List<RelationFactDocument> {
         val checkout =
             symbol(
-                "CheckoutService",
-                "sample.checkout.CheckoutService",
-                "checkout/core/src/main/kotlin/sample/CheckoutService.kt",
-                "exact:v2:checkout-service",
-                20,
-                180,
+                name = "CheckoutService",
+                signature = CompilerSignatureDocument.ClassLike(text("sample.checkout.CheckoutService")),
+                file = "checkout/core/src/main/kotlin/sample/CheckoutService.kt",
+                selector = "exact:v2:checkout-service",
+                range = range(20, 180),
             )
         val audit =
             symbol(
-                "recordEvent",
-                "sample.audit.AuditSink.recordEvent",
-                "audit/src/main/kotlin/sample/AuditSink.kt",
-                "exact:v2:audit-sink",
-                30,
-                96,
-                function = true,
+                name = "recordEvent",
+                signature = functionSignature(text("sample.audit.AuditSink.recordEvent")),
+                file = "audit/src/main/kotlin/sample/AuditSink.kt",
+                selector = "exact:v2:audit-sink",
+                range = range(30, 96),
             )
         val consumer =
             symbol(
-                "EventConsumer",
-                "sample.events.EventConsumer",
-                "events/core/src/main/kotlin/sample/EventConsumer.kt",
-                "exact:v2:event-consumer",
-                12,
-                140,
+                name = "EventConsumer",
+                signature = CompilerSignatureDocument.ClassLike(text("sample.events.EventConsumer")),
+                file = "events/core/src/main/kotlin/sample/EventConsumer.kt",
+                selector = "exact:v2:event-consumer",
+                range = range(12, 140),
             )
-        val first = relation(firstMeaning, checkout, consumer, "candidate:v2:checkout-call", 88, 101)
-        val second = relation(RelationKindDocument.CALLERS, audit, consumer, "candidate:v2:audit-call", 62, 75)
+        val first =
+            relation(
+                meaning = firstMeaning,
+                source = checkout,
+                target = consumer,
+                candidate = "candidate:v2:checkout-call",
+                range = range(88, 101),
+            )
+        val second =
+            relation(
+                meaning = RelationKindDocument.CALLERS,
+                source = audit,
+                target = consumer,
+                candidate = "candidate:v2:audit-call",
+                range = range(62, 75),
+            )
         return listOf(first, second)
     }
 
     private fun symbol(
         name: String,
-        identity: String,
+        signature: CompilerSignatureDocument,
         file: String,
         selector: String,
-        start: Int,
-        end: Int,
-        function: Boolean = false,
+        range: SourceRangeDocument,
     ): SymbolDocument {
-        val qualified = text(identity)
-        val signature =
-            if (function)
-                CompilerSignatureDocument.Function(
-                    qualified,
-                    CompilerReceiverDocument.Absent,
-                    bounded(emptyList()),
-                    bounded(emptyList()),
-                    CompilerTypeParameterCountDocument.parse(0).required(),
-                )
-            else CompilerSignatureDocument.ClassLike(qualified)
+        val qualified =
+            when (signature) {
+                is CompilerSignatureDocument.Function -> signature.qualifiedIdentity
+                is CompilerSignatureDocument.ClassLike -> signature.qualifiedIdentity
+                else -> error("Unsupported observer fixture signature: $signature")
+            }
+        val kind =
+            when (signature) {
+                is CompilerSignatureDocument.Function -> SymbolKindDocument.FUNCTION
+                is CompilerSignatureDocument.ClassLike -> SymbolKindDocument.CLASSLIKE
+                else -> error("Unsupported observer fixture signature: $signature")
+            }
         return SymbolDocument.create(
                 selector = text(selector),
-                kind = if (function) SymbolKindDocument.FUNCTION else SymbolKindDocument.CLASSLIKE,
+                kind = kind,
                 name = text(name),
                 qualifiedIdentity = SymbolQualifiedIdentityDocument.Available(qualified),
                 file = text(file),
-                range = range(start, end),
+                range = range,
                 compilerEvidence = CompilerSymbolEvidenceDocument.fromSignature(signature).required(),
             )
             .required()
     }
+
+    private fun functionSignature(identity: ProtocolText) =
+        CompilerSignatureDocument.Function(
+            qualifiedIdentity = identity,
+            receiver = CompilerReceiverDocument.Absent,
+            contextReceivers = bounded(emptyList()),
+            valueParameters = bounded(emptyList()),
+            typeParameterCount = CompilerTypeParameterCountDocument.parse(0).required(),
+        )
 
     private fun relation(
         meaning: RelationKindDocument,
         source: SymbolDocument,
         target: SymbolDocument,
         candidate: String,
-        start: Int,
-        end: Int,
+        range: SourceRangeDocument,
     ) =
         RelationFactDocument(
-            meaning,
-            source,
-            target,
-            RelationOccurrenceDocument(text(candidate), source.file, range(start, end)),
-            RelationProvenanceDocument.K2_AUTHORED_SOURCE,
-            RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
+            meaning = meaning,
+            source = source,
+            target = target,
+            occurrence = RelationOccurrenceDocument(text(candidate), source.file, range),
+            provenance = RelationProvenanceDocument.K2_AUTHORED_SOURCE,
+            coverage = RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
         )
 
     private fun range(start: Int, end: Int): SourceRangeDocument =
@@ -410,15 +451,16 @@ private fun fixtureQueryQuestion(): io.github.amichne.kast.protocol.contract.Que
 
 private fun fixtureWalkDomain(): io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument =
     io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument(
-        io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument.Workspace,
-        io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument.PRODUCTION_AND_TEST,
-        io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
-        io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
-        io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument.All,
-        null,
-        null,
-        (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
-                emptyList<io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument>()
-            ) as io.github.amichne.kast.kernel.Refinement.Refined)
-            .value,
+        scope = io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument.Workspace,
+        sourcePolicy = io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument.PRODUCTION_AND_TEST,
+        generatedSources = io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        libraries = io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+        sourceSets = io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument.All,
+        directory = null,
+        packageName = null,
+        declarationKinds =
+            (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                    emptyList<io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument>()
+                ) as io.github.amichne.kast.kernel.Refinement.Refined)
+                .value,
     )

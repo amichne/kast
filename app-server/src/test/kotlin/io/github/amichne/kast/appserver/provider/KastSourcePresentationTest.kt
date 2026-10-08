@@ -25,6 +25,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -36,7 +37,7 @@ class KastSourcePresentationTest {
             presentKastSourceOrOutcome(
                     json
                         .encodeToJsonElement(
-                            SearchPresentationEnvelope.serializer(),
+                            serializer<SearchPresentationEnvelope>(),
                             SearchPresentationEnvelope(SearchFixture(status)),
                         )
                         .jsonObject,
@@ -56,7 +57,7 @@ class KastSourcePresentationTest {
         val document =
             json
                 .encodeToJsonElement(
-                    SearchPresentationEnvelope.serializer(),
+                    serializer<SearchPresentationEnvelope>(),
                     SearchPresentationEnvelope(
                         SearchFixture(
                             "complete",
@@ -185,7 +186,7 @@ class KastSourcePresentationTest {
             }
         return json
             .encodeToJsonElement(
-                DiagnosticPresentationEnvelope.serializer(),
+                serializer<DiagnosticPresentationEnvelope>(),
                 DiagnosticPresentationEnvelope(Json.parseToJsonElement(projected.present(detail).value).jsonObject),
             )
             .jsonObject
@@ -210,7 +211,7 @@ class KastSourcePresentationTest {
                     )
             )
         val document =
-            json.encodeToJsonElement(PresentationEnvelope.serializer(), PresentationEnvelope(fixture)).jsonObject
+            json.encodeToJsonElement(serializer<PresentationEnvelope>(), PresentationEnvelope(fixture)).jsonObject
         val presentation = presentKastSourceOrOutcome(document, true)
         assertEquals(source, presentation.content.first().text)
         assertEquals(document, json.parseToJsonElement(presentation.content.last().text))

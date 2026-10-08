@@ -69,6 +69,14 @@ class PublicQueryGenerationTest(unittest.TestCase):
         self.assertLessEqual(len(discovery.splitlines()), 400)
         self.assertLessEqual(len(ingress.splitlines()), 400)
 
+    def test_trace_documents_retain_one_generated_owner(self):
+        generated = generator.render_tools(self.authority)
+        trace = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolTrace.kt"]
+        ingress = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt"]
+        self.assertEqual(1, trace.count("internal data class PublicToolTrace("))
+        self.assertNotIn("internal data class PublicToolTrace(", ingress)
+        self.assertLessEqual(len(trace.splitlines()), 400)
+
     def test_requested_site_optional_collection_emits_formatter_stable_layout(self):
         generated = generator.render_tools(self.authority)
         source = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt"]

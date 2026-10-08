@@ -64,6 +64,9 @@ enum class QuerySetOperator {
 }
 
 sealed interface ExactQueryStage {
+    data class Trace(val phase: QueryTracePhase, val expansion: RelationSearchBoundary, val next: ExactQueryStage) :
+        ExactQueryStage
+
     data class ProjectBinding(val name: QueryBindingName, val next: ExactQueryStage) : ExactQueryStage
 
     data class Where(val predicate: QueryPredicate, val next: ExactQueryStage) : ExactQueryStage
@@ -90,7 +93,10 @@ sealed interface ExactQueryStage {
         ) : this(meaning, TraversalExtent.ThroughDepth(maximumDepth), strategy, next, expansion)
     }
 
-    data class Distinct(val next: ExactQueryStage) : ExactQueryStage
+    data class Distinct(
+        val next: ExactQueryStage,
+        val evidence: QueryGroupingEvidence = QueryGroupingEvidence.FIRST_ARRIVAL,
+    ) : ExactQueryStage
 
     data class Concat(val input: QueryCompositionInput, val next: ExactQueryStage) : ExactQueryStage
 
@@ -191,6 +197,12 @@ object QueryPlanCompiler {
         for (step in steps.asReversed()) {
             stage =
                 when (step) {
+                    is QueryStepSyntax.Trace ->
+                        ExactQueryStage.Trace(
+                            QueryTracePhase.SEED,
+                            step.expansion,
+                            ExactQueryStage.Distinct(stage, QueryGroupingEvidence.ALL_ARRIVALS),
+                        )
                     is QueryStepSyntax.ProjectBinding -> ExactQueryStage.ProjectBinding(step.name, stage)
                     QueryStepSyntax.Distinct -> ExactQueryStage.Distinct(stage)
                     is QueryStepSyntax.Where -> ExactQueryStage.Where(step.predicate, stage)
@@ -225,6 +237,7 @@ internal fun AdmittedQueryPlan.composedInputLeases(): List<SemanticReadAuthority
 
 private fun ExactQueryStage.composedInputLeases(): List<SemanticReadAuthority> =
     when (this) {
+        is ExactQueryStage.Trace -> next.composedInputLeases()
         is ExactQueryStage.ProjectBinding -> next.composedInputLeases()
         is ExactQueryStage.Concat ->
             (when (val source = input) {

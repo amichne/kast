@@ -63,7 +63,12 @@ class PublicToolContinuationTest {
             (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
         val input =
             PublicToolQuerySymbols(
-                PublicToolRunAction(PublicToolResultSource(reference), null, null, PublicToolRetention.RETAIN)
+                PublicToolRunAction(
+                    source = PublicToolResultSource(reference),
+                    steps = null,
+                    output = null,
+                    retention = PublicToolRetention.RETAIN,
+                )
             )
         val admitted =
             PublicToolContract.admit(

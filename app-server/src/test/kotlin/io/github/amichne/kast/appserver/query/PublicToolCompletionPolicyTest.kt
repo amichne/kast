@@ -6,6 +6,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -26,7 +27,7 @@ class PublicToolCompletionPolicyTest {
 
     private fun input(policy: InvalidPublicCompletionPolicy) =
         Json.encodeToJsonElement(
-            InvalidPublicCompletionEnvelope.serializer(),
+            serializer<InvalidPublicCompletionEnvelope>(),
             InvalidPublicCompletionEnvelope(InvalidPublicCompletionRun(source, policy)),
         )
 
@@ -35,7 +36,7 @@ class PublicToolCompletionPolicyTest {
         val omitted = encodePublicTool(PublicToolQuerySymbols(PublicToolRunAction(source)), Json)
         val explicitNull =
             Json.encodeToJsonElement(
-                NullablePublicCompletionEnvelope.serializer(),
+                serializer<NullablePublicCompletionEnvelope>(),
                 NullablePublicCompletionEnvelope(NullablePublicCompletionRun(source)),
             )
         for (input in listOf(omitted, explicitNull)) {

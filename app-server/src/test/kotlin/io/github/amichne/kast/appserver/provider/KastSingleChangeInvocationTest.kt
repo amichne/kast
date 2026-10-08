@@ -63,7 +63,13 @@ class KastSingleChangeInvocationTest {
                     io.github.amichne.kast.appserver.core.ProviderFailureCode.WORKSPACE_INVALID_ROOT_MARKER,
             )
         val context =
-            (BrokerInvocationContext.admit("thread", "turn", "call", home.toRealPath()) as Refinement.Refined).value
+            (BrokerInvocationContext.admit(
+                    threadId = "thread",
+                    turnId = "turn",
+                    callId = "call",
+                    workingDirectory = home.toRealPath(),
+                ) as Refinement.Refined)
+                .value
         val target =
             (io.github.amichne.kast.protocol.contract.ProtocolText.parse("exact:test") as Refinement.Refined).value
         val source =
@@ -275,7 +281,14 @@ class KastSingleChangeInvocationTest {
         val job =
             launch(settlement) {
                 try {
-                    invocation { operation -> cancelledApplyOperation(operation, enteredApply, observed, incomplete) }
+                    invocation { operation ->
+                        cancelledApplyOperation(
+                            operation = operation,
+                            enteredApply = enteredApply,
+                            observed = observed,
+                            recovery = incomplete,
+                        )
+                    }
                 } catch (failure: Throwable) {
                     cancellation.complete(failure)
                 }
@@ -354,7 +367,13 @@ class KastSingleChangeInvocationTest {
             )
         assertTrue(!Files.exists(home.resolve(".kast/approval")))
         val context =
-            (BrokerInvocationContext.admit("thread", "turn", "call", home.toRealPath()) as Refinement.Refined).value
+            (BrokerInvocationContext.admit(
+                    threadId = "thread",
+                    turnId = "turn",
+                    callId = "call",
+                    workingDirectory = home.toRealPath(),
+                ) as Refinement.Refined)
+                .value
         val target =
             (io.github.amichne.kast.protocol.contract.ProtocolText.parse("exact:test") as Refinement.Refined).value
         val source =

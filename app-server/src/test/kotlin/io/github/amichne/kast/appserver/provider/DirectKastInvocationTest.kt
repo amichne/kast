@@ -23,6 +23,7 @@ import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -45,7 +46,7 @@ class DirectKastInvocationTest {
                             assertEquals(root, admittedRoot.path)
                             operations += operation
                             ExistingIdeExchange.HostRejected(
-                                CanonicalJsonDocument.generated(HostRejection.serializer()).create(HostRejection())
+                                CanonicalJsonDocument.generated(serializer<HostRejection>()).create(HostRejection())
                             )
                         },
                 )
@@ -64,7 +65,13 @@ class DirectKastInvocationTest {
                             (ToolName.admit("query_symbols") as Refinement.Refined).value,
                         ),
                         publicNameQuery(),
-                        (BrokerInvocationContext.admit("thread", "turn", "call", root) as Refinement.Refined).value,
+                        (BrokerInvocationContext.admit(
+                                threadId = "thread",
+                                turnId = "turn",
+                                callId = "call",
+                                workingDirectory = root,
+                            ) as Refinement.Refined)
+                            .value,
                     )
                 )
             val completed = assertInstanceOf(BrokerDispatch.Completed::class.java, result, result.toString())

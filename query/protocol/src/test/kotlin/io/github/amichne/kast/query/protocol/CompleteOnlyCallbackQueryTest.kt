@@ -136,7 +136,17 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
             protocol.executeAutomatically(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val rejection = outcome.reason as QueryRunRejection.CompletionUnproven
         assertTrue(rejection.evidence is QueryCompletionEvidenceDocument.Unavailable)
-        val encoded = Json.encodeToJsonElement(QueryRunRejection.serializer(), rejection).jsonObject
+        val projected =
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.project(
+                OperationOutcome.Rejected(rejection)
+            ) as io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome.Rejected
+        val encoded =
+            Json.parseToJsonElement(projected.document.value)
+                .jsonObject
+                .getValue("rejection")
+                .jsonObject
+                .getValue("detail")
+                .jsonObject
         val graph = encoded.getValue("cause").jsonObject.getValue("graphFailure").jsonObject
         assertTrue("cause" in graph)
         assertEquals("STORED_CALLBACK", graph.getValue("cause").jsonObject.getValue("cause").jsonPrimitive.content)

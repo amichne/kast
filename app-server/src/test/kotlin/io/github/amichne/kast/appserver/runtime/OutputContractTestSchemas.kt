@@ -11,16 +11,21 @@ internal object OutputContractTestSchemas {
     val objectDocument = Json.encodeToJsonElement(ObjectSchema(Type.OBJECT)).jsonObject
     val input =
         Json.encodeToJsonElement(
-                ClosedObjectSchema(Type.OBJECT, listOf("call"), false, InputProperties(ObjectSchema(Type.STRING)))
+                ClosedObjectSchema(
+                    type = Type.OBJECT,
+                    required = listOf("call"),
+                    additionalProperties = false,
+                    properties = InputProperties(ObjectSchema(Type.STRING)),
+                )
             )
             .jsonObject
     val output =
         Json.encodeToJsonElement(
                 ClosedObjectSchema(
-                    Type.OBJECT,
-                    listOf("continuation"),
-                    false,
-                    OutputProperties(PatternSchema(Type.STRING, "^valid:[a-z]+$")),
+                    type = Type.OBJECT,
+                    required = listOf("continuation"),
+                    additionalProperties = false,
+                    properties = OutputProperties(PatternSchema(Type.STRING, "^valid:[a-z]+$")),
                 )
             )
             .jsonObject

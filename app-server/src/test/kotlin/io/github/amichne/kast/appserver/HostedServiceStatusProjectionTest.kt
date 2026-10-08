@@ -23,13 +23,13 @@ import org.junit.jupiter.api.Test
 class HostedServiceStatusProjectionTest {
     private val baseline =
         IdeHostCompatibilityCandidate(
-            "262.1.1",
-            "262.1.1-IJ",
-            "0.50.0",
-            "kast.ide-hosted.runtime.v1",
-            "sha256:${"a".repeat(64)}",
-            "sha256:${"b".repeat(64)}",
-            emptyList(),
+            ideBuild = "262.1.1",
+            kotlinPluginBuild = "262.1.1-IJ",
+            kastPluginVersion = "0.50.0",
+            runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
+            operationRegistryDigest = "sha256:${"a".repeat(64)}",
+            wireSchemaDigest = "sha256:${"b".repeat(64)}",
+            capabilities = emptyList(),
         )
     private val policy = (IdeHostCompatibilityPolicy.define(baseline) as Refinement.Refined).value
     private val root = CanonicalRoot(Path.of("/workspace"))
@@ -44,7 +44,12 @@ class HostedServiceStatusProjectionTest {
         val admission =
             policy.admit(baseline.copy(kastPluginVersion = "0.49.0")) as IdeHostCompatibilityAdmission.Admitted
         assertEquals(
-            HostedServiceStatus.Compatible("/workspace", descriptor.host.toString(), 123, "0.49.0"),
+            HostedServiceStatus.Compatible(
+                root = "/workspace",
+                host = descriptor.host.toString(),
+                hostPid = 123,
+                hostedPluginVersion = "0.49.0",
+            ),
             projectHostedService(HostedServiceObservation.Compatible(root, descriptor, admission.compatibility)),
         )
     }
@@ -58,18 +63,24 @@ class HostedServiceStatusProjectionTest {
         val provenance = HostProvenance((KastPluginVersion.parse("0.49.0") as Refinement.Refined).value)
         assertEquals(
             HostedServiceStatus.Incompatible(
-                "/workspace",
-                descriptor.host.toString(),
-                123,
-                "0.49.0",
-                HostedCompatibilityStatusFailure.Mismatch(
-                    HostedCompatibilityStatusField.RUNTIME_PROTOCOL_IDENTITY,
-                    listOf("kast.ide-hosted.runtime.v1"),
-                    listOf("kast.ide-hosted.runtime.v2"),
-                ),
+                root = "/workspace",
+                host = descriptor.host.toString(),
+                hostPid = 123,
+                hostedPluginVersion = "0.49.0",
+                failure =
+                    HostedCompatibilityStatusFailure.Mismatch(
+                        HostedCompatibilityStatusField.RUNTIME_PROTOCOL_IDENTITY,
+                        listOf("kast.ide-hosted.runtime.v1"),
+                        listOf("kast.ide-hosted.runtime.v2"),
+                    ),
             ),
             projectHostedService(
-                HostedServiceObservation.Incompatible(root, descriptor, admission.failure, provenance)
+                HostedServiceObservation.Incompatible(
+                    root = root,
+                    descriptor = descriptor,
+                    compatibilityFailure = admission.failure,
+                    provenance = provenance,
+                )
             ),
         )
     }

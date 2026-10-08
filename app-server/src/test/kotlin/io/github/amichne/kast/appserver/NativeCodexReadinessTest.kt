@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
@@ -104,7 +105,7 @@ class NativeCodexReadinessTest {
         }
 
         override suspend fun receive(): BrokerUpstreamFrame =
-            BrokerUpstreamFrame.Text(Json.encodeToString(Reply.serializer(), reply))
+            BrokerUpstreamFrame.Text(Json.encodeToString(serializer<Reply>(), reply))
 
         override suspend fun close() = Unit
     }

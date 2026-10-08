@@ -33,8 +33,8 @@ class WorkspacePreparationsTest {
         val events = mutableListOf<WorkspacePreparationActivity>()
         val preparations =
             WorkspacePreparations(
-                this,
-                { request ->
+                scope = this,
+                exchange = { request ->
                     requests += request
                     assertEquals(1, requests.size, "unexpected lifecycle exchange")
                     IdeLifecycleResult.Opened(target)
@@ -108,8 +108,8 @@ class WorkspacePreparationsTest {
         var calls = 0
         val preparations =
             WorkspacePreparations(
-                this,
-                {
+                scope = this,
+                exchange = {
                     calls++
                     awaitCancellation()
                 },
@@ -133,8 +133,8 @@ class WorkspacePreparationsTest {
     fun `capacity rejects excess roots and close settles queued admission`() = runTest {
         val preparations =
             WorkspacePreparations(
-                this,
-                { error("unexpected exchange after close") },
+                scope = this,
+                exchange = { error("unexpected exchange after close") },
                 capacity = 1,
                 newId = { requestId },
             )
@@ -171,8 +171,8 @@ class WorkspacePreparationsTest {
             val events = mutableListOf<WorkspacePreparationActivity>()
             val preparations =
                 WorkspacePreparations(
-                    this,
-                    {
+                    scope = this,
+                    exchange = {
                         calls++
                         reply
                     },
@@ -197,8 +197,8 @@ class WorkspacePreparationsTest {
             val events = mutableListOf<WorkspacePreparationActivity>()
             val preparations =
                 WorkspacePreparations(
-                    this,
-                    { IdeLifecycleResult.Blocked(reason) },
+                    scope = this,
+                    exchange = { IdeLifecycleResult.Blocked(reason) },
                     observer = WorkspacePreparationObserver { events += it },
                     newId = { requestId },
                 )
@@ -223,10 +223,10 @@ class WorkspacePreparationsTest {
                     "00000000-0000-0000-0000-000000000004",
                 ),
             )
-        rejected.forEach {
+        rejected.forEach { response ->
             assertEquals(
                 Refinement.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED),
-                admitPreparationProgress(it, requestId, previous),
+                admitPreparationProgress(response, requestId, previous),
             )
         }
         val next = IdeLifecycleResult.Pending(requestId.value.toString(), IdeLifecycleStage.ADMISSION, target.host)

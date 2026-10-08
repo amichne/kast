@@ -32,7 +32,8 @@ class PublicExecutionBudgetTest {
             maxResults = (ResultLimit.parse(3) as Refinement.Refined).value,
             maxReturnedBytes = (ReturnedByteLimit.parse(40000) as Refinement.Refined).value,
         )
-    private val publicBudget = PublicToolExecutionBudget(3000, 200000, 3, 40000)
+    private val publicBudget =
+        PublicToolExecutionBudget(maxElapsedMs = 3000, maxWorkUnits = 200000, maxResults = 3, maxReturnedBytes = 40000)
 
     @Test
     fun `query facade retains all four requested allowances`() {
@@ -43,9 +44,9 @@ class PublicExecutionBudgetTest {
                     json.encodeToJsonElement(
                         PublicToolQuerySymbols(
                             PublicToolRunAction(
-                                PublicToolReferenceSource(refs),
-                                null,
-                                null,
+                                source = PublicToolReferenceSource(refs),
+                                steps = null,
+                                output = null,
                                 executionBudget = publicBudget,
                             )
                         )
@@ -68,7 +69,12 @@ class PublicExecutionBudgetTest {
         val actions =
             listOf(
                 PublicToolResumeAction(continuation, publicBudget),
-                PublicToolReadResultAction(result, null, null, publicBudget),
+                PublicToolReadResultAction(
+                    result = result,
+                    cursor = null,
+                    output = null,
+                    executionBudget = publicBudget,
+                ),
             )
         actions.forEach { action ->
             val admitted =
@@ -124,9 +130,9 @@ class PublicExecutionBudgetTest {
                     json.encodeToJsonElement(
                         PublicToolQuerySymbols(
                             PublicToolRunAction(
-                                PublicToolReferenceSource(refs),
-                                null,
-                                null,
+                                source = PublicToolReferenceSource(refs),
+                                steps = null,
+                                output = null,
                                 executionBudget = publicBudget,
                             )
                         )

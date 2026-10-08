@@ -209,8 +209,8 @@ class DesktopDaemonDiscoveryTest {
     @Test
     fun `startup emits exact success and failure stages`(@TempDir temporary: Path) {
         val events = mutableListOf<BrokerStartupActivity>()
-        val publisher = BrokerStartupActivityPublisher {
-            events += it
+        val publisher = BrokerStartupActivityPublisher { activity ->
+            events += activity
             BrokerStartupActivityPublication.PUBLISHED
         }
         val ready = Script(Home, Read(DesktopDaemonSetting.ENABLED))

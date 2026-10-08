@@ -6,6 +6,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
 import io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument
@@ -50,7 +51,11 @@ internal class QueryInvocationProjection(
         accumulated: AccumulatedSymbolQuery,
         policy: QueryInvocationPolicy,
         owner: QueryExecutionClaim,
-    ): QueryPublishedPage = Projection(request, lease, accumulated, policy, owner).project()
+    ): QueryPublishedPage =
+        when (val recovered = completionCheckpointEvidence(request, accumulated, policy, authority)) {
+            is Refinement.Refined -> Projection(request, lease, recovered.value, policy, owner).project()
+            is Refinement.Rejected -> OperationOutcome.Rejected(recovered.failure)
+        }
 
     private inner class Projection(
         private val request: QueryRunRequest.Run,
@@ -93,19 +98,15 @@ internal class QueryInvocationProjection(
                     is QueryExecutionResult.Qualified -> execution.result
                     is QueryExecutionResult.Rejection -> return contractRejected()
                 }
-            val completion = request.completion
-            if (completion is QueryCompletionPolicyDocument.CompleteOnly) {
-                when (val proof = completionProof(execution)) {
-                    is Refinement.Refined -> Unit
-                    is Refinement.Rejected ->
-                        return rejectInvocationCompletion(completion, proof.failure, accumulated, progress, ::retain)
-                }
+            when (val admitted = admitCompletion()) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted.failure
             }
             val evidence =
                 when (
                     val selected =
                         QueryEvidencePresentation.create(
-                            raw.copy(rows = emptyRows(raw.rows)),
+                            raw.copy(rows = emptyInvocationRows(raw.rows)),
                             QueryEvidenceCursor.Start,
                             policy.previewRows,
                         )
@@ -137,6 +138,36 @@ internal class QueryInvocationProjection(
             return presentRetained(projectedEvidence, evidence.window)
         }
 
+        private fun admitCompletion(): Refinement<Unit, QueryPublishedPage> {
+            val completion =
+                request.completion as? QueryCompletionPolicyDocument.CompleteOnly ?: return Refinement.Refined(Unit)
+            return when (val proof = completionProof(execution)) {
+                is Refinement.Refined -> proof
+                is Refinement.Rejected ->
+                    Refinement.Rejected(
+                        fitQueryCompletionRejection(
+                            rejectInvocationCompletion(
+                                completion,
+                                proof.failure,
+                                accumulated,
+                                progress,
+                                ::completionEvidence,
+                            ),
+                            policy.inlinePresentation,
+                            ::contractRejected,
+                        )
+                    )
+            }
+        }
+
+        private fun completionEvidence(): Refinement<QueryCompletionEvidenceDocument, QueryRunRejection> =
+            completionQueryEvidence(retain(), QueryQuestionDocument.from(request)) { issued ->
+                when (val selected = preview(issued)) {
+                    is Refinement.Refined -> Refinement.Refined(selected.value.items)
+                    is Refinement.Rejected -> selected
+                }
+            }
+
         private fun presentRetained(
             evidence: QueryProjectedEvidence,
             window: QueryEvidenceWindowDocument,
@@ -144,15 +175,6 @@ internal class QueryInvocationProjection(
             when (val retained = retain()) {
                 is Refinement.Refined -> present(evidence, retained.value, window)
                 is Refinement.Rejected -> OperationOutcome.Rejected(retained.failure)
-            }
-
-        private fun emptyRows(rows: QueryRows): QueryRows =
-            when (rows) {
-                is QueryRows.Symbols -> QueryRows.Symbols.of(emptyList())
-                is QueryRows.Occurrences -> QueryRows.Occurrences.of(emptyList())
-                is QueryRows.Bindings -> QueryRows.Bindings.of(emptyList(), rows.mode)
-                is QueryRows.ValuePaths -> rows.selectRows(emptyList()).required()
-                is QueryRows.ImpactWitness -> error("Invocation admitted presentation-only rows")
             }
 
         private fun present(
@@ -323,7 +345,7 @@ internal class QueryInvocationProjection(
                 qualified?.coverage?.limitations.orEmpty().map { QueryLimitationDocument.valueOf(it.name) }.toSet() +
                     if (failed) setOf(QueryLimitationDocument.RETENTION_LIMIT_REACHED) else emptySet()
             val finalProgress =
-                if (failed) QueryQualifiedProgressDocument.RetentionUnavailable(upstreamCoverage())
+                if (failed) QueryQualifiedProgressDocument.RetentionUnavailable(invocationUpstreamCoverage(progress))
                 else progress ?: return contractRejected()
             val qualification =
                 QueryRunQualification.create(
@@ -334,15 +356,6 @@ internal class QueryInvocationProjection(
                     .required()
             return OperationOutcome.Qualified(envelope, qualification)
         }
-
-        private fun upstreamCoverage(): QueryPreparedCoverageDocument =
-            when (val original = progress) {
-                null -> QueryPreparedCoverageDocument.Complete
-                is QueryQualifiedProgressDocument.Resumable -> QueryPreparedCoverageDocument.Resumable
-                is QueryQualifiedProgressDocument.TerminalIncomplete ->
-                    QueryPreparedCoverageDocument.TerminalIncomplete(original.reason)
-                is QueryQualifiedProgressDocument.RetentionUnavailable -> original.upstream
-            }
     }
 
     private data class InvocationPreview(
@@ -366,4 +379,22 @@ private fun executionResultRows(execution: QueryExecutionResult): QueryRows? =
         is QueryExecutionResult.Complete -> execution.result.rows
         is QueryExecutionResult.Qualified -> execution.result.rows
         is QueryExecutionResult.Rejection -> null
+    }
+
+private fun emptyInvocationRows(rows: QueryRows): QueryRows =
+    when (rows) {
+        is QueryRows.Symbols -> QueryRows.Symbols.of(emptyList())
+        is QueryRows.Occurrences -> QueryRows.Occurrences.of(emptyList())
+        is QueryRows.Bindings -> QueryRows.Bindings.of(emptyList(), rows.mode)
+        is QueryRows.ValuePaths -> rows.selectRows(emptyList()).required()
+        is QueryRows.ImpactWitness -> error("Invocation admitted presentation-only rows")
+    }
+
+private fun invocationUpstreamCoverage(progress: QueryQualifiedProgressDocument?): QueryPreparedCoverageDocument =
+    when (val original = progress) {
+        null -> QueryPreparedCoverageDocument.Complete
+        is QueryQualifiedProgressDocument.Resumable -> QueryPreparedCoverageDocument.Resumable
+        is QueryQualifiedProgressDocument.TerminalIncomplete ->
+            QueryPreparedCoverageDocument.TerminalIncomplete(original.reason)
+        is QueryQualifiedProgressDocument.RetentionUnavailable -> original.upstream
     }

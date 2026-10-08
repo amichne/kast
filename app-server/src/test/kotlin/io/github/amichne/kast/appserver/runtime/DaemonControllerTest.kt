@@ -22,14 +22,25 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class DaemonControllerTest {
-    private val target = DaemonManagementTarget("installation", "epoch", "generation", "configuration")
+    private val target =
+        DaemonManagementTarget(
+            installationId = "installation",
+            stateEpoch = "epoch",
+            serviceGeneration = "generation",
+            configurationIdentity = "configuration",
+        )
 
     @Test
     fun `daemon control preserves live session ownership without another upstream connection`(@TempDir root: Path) =
         runBlocking {
             val fixture = HubTestFixture(root)
             val management =
-                DaemonManagement(target, { true }, { error("unexpected status") }, fixture.hub) {
+                DaemonManagement(
+                    target = target,
+                    available = { true },
+                    status = { error("unexpected status") },
+                    sessions = fixture.hub,
+                ) {
                     error("unexpected enrollment")
                 }
             try {
@@ -42,19 +53,19 @@ class DaemonControllerTest {
                 val snapshot = before.inspection as DaemonSessionInspection.Prepared
                 assertEquals(
                     DaemonManagementResponse.Controlled(
-                        target,
-                        ControlOperation.RELEASE,
-                        "thread-1",
-                        owner.session.id.value,
+                        target = target,
+                        operation = ControlOperation.RELEASE,
+                        threadId = "thread-1",
+                        connectionId = owner.session.id.value,
                     ),
                     management.apply(request(ControlOperation.RELEASE, owner.session.id.value)),
                 )
                 assertEquals(
                     DaemonManagementResponse.Controlled(
-                        target,
-                        ControlOperation.CLAIM,
-                        "thread-1",
-                        observer.session.id.value,
+                        target = target,
+                        operation = ControlOperation.CLAIM,
+                        threadId = "thread-1",
+                        connectionId = observer.session.id.value,
                     ),
                     management.apply(request(ControlOperation.CLAIM, observer.session.id.value)),
                 )
@@ -76,7 +87,12 @@ class DaemonControllerTest {
     fun `rejected handoffs preserve the connected controller and lease`(@TempDir root: Path) = runBlocking {
         val fixture = HubTestFixture(root)
         val management =
-            DaemonManagement(target, { true }, { error("unexpected status") }, fixture.hub) {
+            DaemonManagement(
+                target = target,
+                available = { true },
+                status = { error("unexpected status") },
+                sessions = fixture.hub,
+            ) {
                 error("unexpected enrollment")
             }
         try {
@@ -123,7 +139,12 @@ class DaemonControllerTest {
     }
 
     private fun request(operation: ControlOperation, connection: String, identity: DaemonManagementTarget = target) =
-        DaemonManagementRequest.Control(identity, operation, "thread-1", connection)
+        DaemonManagementRequest.Control(
+            target = identity,
+            operation = operation,
+            threadId = "thread-1",
+            connectionId = connection,
+        )
 
     private fun DaemonManagement.apply(request: DaemonManagementRequest): DaemonManagementResponse =
         DaemonManagementProtocol.json.decodeFromString(exchange(DaemonManagementProtocol.json.encodeToString(request)))

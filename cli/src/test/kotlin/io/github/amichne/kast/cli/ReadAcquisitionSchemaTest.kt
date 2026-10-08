@@ -31,7 +31,14 @@ class ReadAcquisitionSchemaTest {
                 )
             val acquisitions =
                 ReadReferenceAcquisitions.admit(
-                        listOf(ReadReferenceAcquisition(text("exact:old"), text("exact:current")))
+                        listOf(
+                            ReadReferenceAcquisition(
+                                text("exact:old"),
+                                text("exact:current"),
+                                io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitionReason
+                                    .STALE_SEMANTIC_AUTHORITY,
+                            )
+                        )
                     )
                     .proven()
             for (format in SourceReadFormatDocument.entries) {

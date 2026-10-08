@@ -26,6 +26,37 @@ A `query_symbols` `RUN` returning symbols, occurrences, traversal records, or bi
 
 Omitted or null `completion` selects `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. A successful answer requires exhausted execution, no item failures or omitted evidence, proven callback graphs, and conserved original investigation ledgers where applicable. Unsupported questions and missing proof return typed rejections. Retained rejection evidence remains rejected evidence when read; it cannot become a successful answer.
 
+When strict completion rejects, retained completion evidence includes a bounded
+`preview`, the original `question`, and a copyable `nextQuery` for `READ_RESULT`.
+Use that query to inspect proven partial facts. Its `originalCoverage` preserves
+the proven minimum, limitations and original progress. `policyProgress` is
+`{"type":"EVIDENCE_ONLY"}`, granting presentation of evidence. A historical
+checkpoint does not authorize more strict execution. If retention was unavailable,
+the response names its finite cause rather than inventing a result handle.
+
+Use the emitted public `nextQuery` arguments. The retained `question` describes
+the canonical query; its source grammar is not a replacement public request.
+When `seedQuery` is supplied, it starts a new investigation from proven preview
+symbol references. That selection preserves identity but does not prove coverage
+of omitted rows or unfinished scope.
+
+Keep the retained question's scope and the relationship observations' effective
+domains with those facts. To continue semantic investigation, issue an explicit
+progressive query or a narrower new query based on observed candidates and
+scope evidence. Do not interpret zero proven rows as absence. For
+`BYTE_LIMIT_REACHED`, distinguish encoded response bytes from conservative
+detached callback-proof storage. The final response has an encoded-byte guard;
+the callback graph builder separately accounts proof storage against its admitted
+byte allowance. Few returned rows do not imply either allowance remains available.
+Inspect the finite callback failure cause, scan state and obligations alongside
+the returned-byte execution grant. Callback evidence does not expose numeric
+storage accounting in the public result. The IDE diagnostic `kast_semantic_read`
+receipt records the actual retention allowance, admitted accounting and attempted
+required accounting, plus a coherent latest byte-rejection snapshot and finite
+decision counters. These values describe conservative proof storage, not measured
+heap use or encoded output size. Independent ledgers are not summed; later
+successful attempts do not erase the latest byte-rejection snapshot.
+
 Request `completion: {"type": "PROGRESSIVE"}` explicitly to inspect useful qualified results and execution checkpoints. Neither policy proves runtime activation or path feasibility.
 
 The invocation shares one elapsed-time, work, and retention allowance. It stops when work finishes or needs a new decision, including a budget increase, invalid state, or a terminal limit. It does not restart discovery after a stale state or hard timeout. Strict `VALUE_PATHS` follows issued continuations against one original investigation ledger. Strict `IMPACT_WITNESS` from `IMPACT` completes that investigation and presents a retained section. `RESUME` advances an issued progressive checkpoint; `READ_RESULT` presents retained evidence without semantic replay. A strict rejection's historical checkpoint grants no new strict execution allowance.

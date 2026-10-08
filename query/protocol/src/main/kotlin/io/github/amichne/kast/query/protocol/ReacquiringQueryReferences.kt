@@ -37,7 +37,15 @@ class ReacquiringQueryReferences(
         current: SemanticReadAuthority,
     ): CanonicalSelectorDecoding<SymbolSelector> {
         val restored = strict.restoreExact(token, current)
-        if (restored !is CanonicalSelectorDecoding.Rejected || restored.failure !in RECOVERABLE) return restored
+        if (restored !is CanonicalSelectorDecoding.Rejected) return restored
+        val reason =
+            when (restored.failure) {
+                CanonicalSelectorDecodingFailure.UNAVAILABLE ->
+                    io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitionReason.REFERENCE_UNAVAILABLE
+                CanonicalSelectorDecodingFailure.STALE_AUTHORITY ->
+                    io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitionReason.STALE_SEMANTIC_AUTHORITY
+                else -> return restored
+            }
         val key = Key(token, current)
         attempts[key]?.let {
             return it
@@ -48,7 +56,7 @@ class ReacquiringQueryReferences(
         val result =
             when (acquired) {
                 is CanonicalSelectorDecoding.Rejected -> acquired
-                is CanonicalSelectorDecoding.Decoded -> issueAcquired(token, current, acquired)
+                is CanonicalSelectorDecoding.Decoded -> issueAcquired(token, current, acquired, reason)
             }
         attempts[key] = result
         return result
@@ -58,6 +66,7 @@ class ReacquiringQueryReferences(
         token: ProtocolText,
         current: SemanticReadAuthority,
         acquired: CanonicalSelectorDecoding.Decoded<SymbolSelector>,
+        reason: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitionReason,
     ): CanonicalSelectorDecoding<SymbolSelector> {
         if (acquired.value.lease !== current)
             return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.REVALIDATION_BASIS_MOVED)
@@ -69,7 +78,8 @@ class ReacquiringQueryReferences(
                     )
                 is ExactSelectorIssuance.Issued -> result.selector
             }
-        val entries = refreshed + io.github.amichne.kast.protocol.contract.ReadReferenceAcquisition(token, issued)
+        val entries =
+            refreshed + io.github.amichne.kast.protocol.contract.ReadReferenceAcquisition(token, issued, reason)
         return when (val admitted = io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions.admit(entries)) {
             is io.github.amichne.kast.kernel.Refinement.Rejected ->
                 CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.REVALIDATION_CAPACITY)
@@ -83,8 +93,6 @@ class ReacquiringQueryReferences(
 
     private companion object {
         const val MAX_ACQUISITIONS = 256
-        val RECOVERABLE =
-            setOf(CanonicalSelectorDecodingFailure.UNAVAILABLE, CanonicalSelectorDecodingFailure.STALE_AUTHORITY)
     }
 }
 

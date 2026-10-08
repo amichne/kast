@@ -66,6 +66,10 @@ enum class QueryPrimitiveOperator {
 }
 
 sealed interface QueryStepSyntax {
+    /** Fixed affected-use topology; grouping retains every proven occurrence, never just the first arrival. */
+    data class Trace(val expansion: RelationSearchBoundary = RelationSearchBoundary.WORKSPACE_EXPANSION) :
+        QueryStepSyntax
+
     data class ProjectBinding(val name: QueryBindingName) : QueryStepSyntax
 
     data class Where(val predicate: QueryPredicate) : QueryStepSyntax

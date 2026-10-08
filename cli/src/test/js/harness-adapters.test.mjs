@@ -150,7 +150,7 @@ for (const harness of ['copilot', 'pi']) {
     const reply = structuredClone(catalog); reply.catalog.schemaVersion = 999;
     const loaded = await load(harness, reply);
     assert.equal(loaded.registered.length, 0);
-    assert.match(loaded.error?.message ?? '', /catalog.*expected=11.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
+    assert.match(loaded.error?.message ?? '', /catalog.*expected=12.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
   });
   const invokeRead = async (outcome) => {
     const loaded = await load(harness, catalog, outcome);

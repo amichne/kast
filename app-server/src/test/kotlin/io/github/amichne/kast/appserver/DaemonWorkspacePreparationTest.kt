@@ -24,7 +24,13 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class DaemonWorkspacePreparationTest {
-    private val target = DaemonManagementTarget("installation", "epoch", "generation", "configuration")
+    private val target =
+        DaemonManagementTarget(
+            installationId = "installation",
+            stateEpoch = "epoch",
+            serviceGeneration = "generation",
+            configurationIdentity = "configuration",
+        )
 
     @Test
     fun `preparation RPC returns stable identity and passive status retains exact readiness`(@TempDir directory: Path) =
@@ -105,11 +111,11 @@ class DaemonWorkspacePreparationTest {
 
     private fun management(owner: WorkspacePreparations) =
         DaemonManagement(
-            target,
-            { true },
-            { error("unexpected status") },
-            UnavailableDaemonSessions,
-            ManagedDaemonWorkspacePreparation(owner),
+            target = target,
+            available = { true },
+            status = { error("unexpected status") },
+            sessions = UnavailableDaemonSessions,
+            preparation = ManagedDaemonWorkspacePreparation(owner),
         ) {
             error("unexpected enrollment")
         }

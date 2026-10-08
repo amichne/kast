@@ -16,10 +16,10 @@ import org.junit.jupiter.api.io.TempDir
 class DaemonManagementExchangeTest {
     private val target =
         DaemonManagementTarget(
-            "sha256:${"a".repeat(64)}",
-            "00000000-0000-0000-0000-000000000001",
-            "00000000-0000-0000-0000-000000000002",
-            "b".repeat(64),
+            installationId = "sha256:${"a".repeat(64)}",
+            stateEpoch = "00000000-0000-0000-0000-000000000001",
+            serviceGeneration = "00000000-0000-0000-0000-000000000002",
+            configurationIdentity = "b".repeat(64),
         )
 
     @Test

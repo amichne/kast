@@ -71,15 +71,25 @@ sealed interface QueryCompletionCoverageDocument {
     ) : QueryCompletionCoverageDocument
 }
 
-@Serializable
-@JsonClassDiscriminator("type")
 sealed interface QueryCompletionEvidenceDocument {
-    @Serializable
-    @SerialName("RETAINED")
-    data class Retained(val result: QueryResultReference) : QueryCompletionEvidenceDocument
+    data class Retained(
+        val result: QueryResultReference,
+        val preview: BoundedProtocolList<QueryResultItemDocument>,
+        val question: QueryQuestionDocument,
+    ) : QueryCompletionEvidenceDocument {
+        /** Reading these rows preserves the original policy rejection and performs no semantic replay. */
+        fun readRequest(): QueryRunRequest.ReadResult =
+            when (val selected = question.output) {
+                is QueryOutputDocument.Symbols -> QueryRunRequest.ReadResult.symbols(result, output = selected)
+                QueryOutputDocument.Occurrences -> QueryRunRequest.ReadResult.occurrences(result)
+                QueryOutputDocument.TraversalRecords -> QueryRunRequest.ReadResult.traversalRecords(result)
+                QueryOutputDocument.BindingRows -> QueryRunRequest.ReadResult.bindingRows(result)
+                QueryOutputDocument.ValuePaths -> QueryRunRequest.ReadResult.valuePaths(result)
+                is QueryOutputDocument.ImpactWitness ->
+                    QueryRunRequest.ReadResult.impactWitness(result, selected.section)
+            }
+    }
 
-    @Serializable
-    @SerialName("UNAVAILABLE")
     data class Unavailable(val cause: QueryCompletionRetentionFailure) : QueryCompletionEvidenceDocument
 }
 

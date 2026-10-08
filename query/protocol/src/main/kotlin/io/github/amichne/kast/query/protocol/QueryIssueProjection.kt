@@ -44,15 +44,23 @@ internal fun QueryItemFailure.projectIssue(authority: QueryReferenceAuthority): 
                 QueryPredicateFailureDocument.PREDICATE_UNPROVEN,
             )
         is QueryItemFailure.Source ->
-            QueryItemFailureDocument.Source(
-                selector.exactReference(authority) ?: return null,
-                QuerySourceFailureDocument.valueOf(
-                    when (val cause = reason) {
-                        is QuerySourceFailure.Rejected -> cause.reason.name
-                        is QuerySourceFailure.Withheld -> cause.reason.name
-                    }
-                ),
-            )
+            when (val cause = reason) {
+                is QuerySourceFailure.Rejected ->
+                    QueryItemFailureDocument.Source(
+                        selector.exactReference(authority) ?: return null,
+                        QuerySourceFailureDocument.valueOf(cause.reason.name),
+                    )
+                is QuerySourceFailure.Withheld ->
+                    QueryItemFailureDocument.Source(
+                        selector.exactReference(authority) ?: return null,
+                        QuerySourceFailureDocument.valueOf(cause.reason.name),
+                    )
+                is QuerySourceFailure.EnumerationIncomplete ->
+                    QueryItemFailureDocument.SourceEnumerationIncomplete(
+                        selector.exactReference(authority) ?: return null,
+                        cause.qualification.protocol() ?: return null,
+                    )
+            }
         is QueryItemFailure.Relation ->
             QueryItemFailureDocument.Relation(
                 selector.exactReference(authority) ?: return null,

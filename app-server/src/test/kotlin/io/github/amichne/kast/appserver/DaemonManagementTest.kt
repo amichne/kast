@@ -21,31 +21,37 @@ import org.junit.jupiter.api.io.TempDir
 class DaemonManagementTest {
     private val target =
         DaemonManagementTarget(
-            "sha256:${"a".repeat(64)}",
-            "00000000-0000-0000-0000-000000000001",
-            "00000000-0000-0000-0000-000000000002",
-            "b".repeat(64),
+            installationId = "sha256:${"a".repeat(64)}",
+            stateEpoch = "00000000-0000-0000-0000-000000000001",
+            serviceGeneration = "00000000-0000-0000-0000-000000000002",
+            configurationIdentity = "b".repeat(64),
         )
     private val status =
         CoordinatorStatusDocument(
-            CoordinatorServiceState.READY,
-            target.installationId,
-            target.stateEpoch,
-            target.serviceGeneration,
-            target.configurationIdentity,
-            0,
-            0,
-            emptyList(),
-            CoordinatorHostAttachment.PENDING,
+            status = CoordinatorServiceState.READY,
+            installationId = target.installationId,
+            stateEpoch = target.stateEpoch,
+            serviceGeneration = target.serviceGeneration,
+            configurationIdentity = target.configurationIdentity,
+            reservedMiB = 0,
+            starting = 0,
+            workers = emptyList(),
+            hostAttachment = CoordinatorHostAttachment.PENDING,
         )
 
     @Test
     fun `update admission without a session owner retains unavailable failure`() {
         val management =
-            DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) {
+            DaemonManagement(
+                target = target,
+                available = { true },
+                status = { status },
+                sessions = UnavailableDaemonSessions,
+            ) {
                 error("update admission must not enroll a workspace")
             }
-        val request = UpdateAdmissionRequest("prepare_update", 1, target, "c".repeat(64))
+        val request =
+            UpdateAdmissionRequest(type = "prepare_update", version = 1, target = target, candidate = "c".repeat(64))
         val result = Json.parseToJsonElement(management.exchange(Json.encodeToString(request))).jsonObject
         assertEquals("rejected", result.getValue("type").jsonPrimitive.content)
         val reason = result.getValue("reason").jsonObject
@@ -66,7 +72,12 @@ class DaemonManagementTest {
     fun `foreign identity dimensions reject before enrollment or path observation`() {
         var effects = 0
         val management =
-            DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) {
+            DaemonManagement(
+                target = target,
+                available = { true },
+                status = { status },
+                sessions = UnavailableDaemonSessions,
+            ) {
                 effects++
                 error("unexpected enrollment")
             }
@@ -77,10 +88,10 @@ class DaemonManagementTest {
                 target.copy(serviceGeneration = "other"),
                 target.copy(configurationIdentity = "other"),
             )
-        foreign.forEach {
+        foreign.forEach { identity ->
             assertEquals(
                 rejection(DaemonManagementFailure.IDENTITY_REJECTED),
-                management.execute(DaemonManagementRequest.RegisterWorkspace(it, "\u0000")),
+                management.execute(DaemonManagementRequest.RegisterWorkspace(identity, "\u0000")),
             )
         }
         assertEquals(0, effects)
@@ -91,13 +102,13 @@ class DaemonManagementTest {
         var effects = 0
         val management =
             DaemonManagement(
-                target,
-                { false },
-                {
+                target = target,
+                available = { false },
+                status = {
                     effects++
                     status
                 },
-                UnavailableDaemonSessions,
+                sessions = UnavailableDaemonSessions,
             ) {
                 effects++
                 error("unexpected enrollment")
@@ -122,13 +133,13 @@ class DaemonManagementTest {
         var effects = 0
         val management =
             DaemonManagement(
-                target,
-                {
+                target = target,
+                available = {
                     effects++
                     true
                 },
-                { status },
-                UnavailableDaemonSessions,
+                status = { status },
+                sessions = UnavailableDaemonSessions,
             ) {
                 effects++
                 error("unexpected enrollment")
@@ -150,7 +161,15 @@ class DaemonManagementTest {
     fun `registration preserves root revision and idempotence`(@TempDir directory: Path) {
         val root = Files.createDirectory(directory.resolve("workspace")).toRealPath()
         val store = WorkspaceEnrollmentStore(directory.toRealPath().resolve("registry/workspaces.json"))
-        val management = DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) { store.enroll(it) }
+        val management =
+            DaemonManagement(
+                target = target,
+                available = { true },
+                status = { status },
+                sessions = UnavailableDaemonSessions,
+            ) {
+                store.enroll(it)
+            }
         val request = DaemonManagementRequest.RegisterWorkspace(target, root.toString())
         val response = management.execute(request)
         assertTrue(response is DaemonManagementResponse.Registered)
@@ -180,9 +199,14 @@ class DaemonManagementTest {
         EnrollmentFailure.entries.forEach { failure ->
             var calls = 0
             val management =
-                DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) {
+                DaemonManagement(
+                    target = target,
+                    available = { true },
+                    status = { status },
+                    sessions = UnavailableDaemonSessions,
+                ) { workspace ->
                     calls++
-                    assertEquals(root, it.path)
+                    assertEquals(root, workspace.path)
                     Refinement.Rejected(failure)
                 }
             val response = management.execute(DaemonManagementRequest.RegisterWorkspace(target, root.toString()))
@@ -195,7 +219,12 @@ class DaemonManagementTest {
     fun `invalid workspace path rejects without changing registry`(@TempDir directory: Path) {
         var calls = 0
         val management =
-            DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) {
+            DaemonManagement(
+                target = target,
+                available = { true },
+                status = { status },
+                sessions = UnavailableDaemonSessions,
+            ) {
                 calls++
                 error("unexpected enrollment")
             }
@@ -215,7 +244,12 @@ class DaemonManagementTest {
     fun `client rejects changed targets roots ids and invalid revisions`(@TempDir directory: Path) {
         val root = checkNotNull(CanonicalBrokerDirectory.admit(directory.toRealPath()))
         val valid =
-            DaemonManagementResponse.Registered(target, WorkspaceRegistration(root).id.value, root.path.toString(), 1)
+            DaemonManagementResponse.Registered(
+                target = target,
+                workspaceId = WorkspaceRegistration(root).id.value,
+                root = root.path.toString(),
+                revision = 1,
+            )
         listOf(
                 valid.copy(target = target.copy(serviceGeneration = "other")),
                 valid.copy(root = "/other"),
@@ -223,10 +257,10 @@ class DaemonManagementTest {
                 valid.copy(revision = 0),
                 valid.copy(revision = -1),
             )
-            .forEach {
+            .forEach { response ->
                 assertEquals(
                     Refinement.Rejected(DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED)),
-                    admitDaemonRegistration(encode(it), target, root),
+                    admitDaemonRegistration(encode(response), target, root),
                 )
             }
         assertEquals(
@@ -246,92 +280,6 @@ class DaemonManagementTest {
             ),
         )
     }
-
-    @Test
-    fun `wire projection emits required discriminators defaults and closed failure codes`() {
-        val request =
-            DaemonManagementProtocol.json.encodeToString(
-                DaemonManagementRequest.serializer(),
-                DaemonManagementRequest.Status(),
-            )
-        val document = Json.parseToJsonElement(request).jsonObject
-        assertEquals(setOf("type", "version"), document.keys)
-        assertEquals("status", document.getValue("type").jsonPrimitive.content)
-        assertEquals("1", document.getValue("version").jsonPrimitive.content)
-        val variants =
-            listOf(
-                DaemonManagementRejection.Protocol(DaemonManagementFailure.IDENTITY_REJECTED) to "protocol",
-                DaemonManagementRejection.Coordinator(WorkerControlFailure.SERVICE_IDENTITY_REJECTED) to "coordinator",
-                DaemonManagementRejection.Enrollment(EnrollmentFailure.DOCUMENT_REJECTED) to "enrollment",
-            )
-        variants.forEach { (reason, type) ->
-            val rejected = Json.parseToJsonElement(encode(DaemonManagementResponse.Rejected(reason))).jsonObject
-            assertEquals(setOf("type", "reason"), rejected.keys)
-            assertEquals("rejected", rejected.getValue("type").jsonPrimitive.content)
-            assertEquals(type, rejected.getValue("reason").jsonObject.getValue("type").jsonPrimitive.content)
-            assertEquals(setOf("type", "failure"), rejected.getValue("reason").jsonObject.keys)
-        }
-    }
-
-    @Test
-    fun `missing protocol version and unknown operation reject without observations`() {
-        var observations = 0
-        val management =
-            DaemonManagement(
-                target,
-                {
-                    observations++
-                    true
-                },
-                { status },
-                UnavailableDaemonSessions,
-            ) {
-                error("unexpected enrollment")
-            }
-        val missing = Json.encodeToString(UnversionedRequest("status"))
-        val unknown = Json.encodeToString(UnknownOperationRequest("unsupported", 1))
-        listOf(missing, unknown).forEach {
-            assertEquals(
-                rejection(DaemonManagementFailure.INVALID_REQUEST),
-                DaemonManagementProtocol.json.decodeFromString<DaemonManagementResponse>(management.exchange(it)),
-            )
-        }
-        assertEquals(0, observations)
-    }
-
-    @Test
-    fun `status and registration replies retain exact independent wire shapes`() {
-        val statusDocument = Json.parseToJsonElement(encode(DaemonManagementResponse.Status(status))).jsonObject
-        assertEquals(setOf("type", "coordinator"), statusDocument.keys)
-        assertEquals("status", statusDocument.getValue("type").jsonPrimitive.content)
-        assertEquals(
-            "PENDING",
-            statusDocument.getValue("coordinator").jsonObject.getValue("hostAttachment").jsonPrimitive.content,
-        )
-        val document =
-            Json.parseToJsonElement(
-                    encode(DaemonManagementResponse.Registered(target, "c".repeat(64), "/workspace", 3))
-                )
-                .jsonObject
-        assertEquals(setOf("type", "target", "workspaceId", "root", "revision"), document.keys)
-        assertEquals("registered", document.getValue("type").jsonPrimitive.content)
-        assertEquals("/workspace", document.getValue("root").jsonPrimitive.content)
-        assertEquals("c".repeat(64), document.getValue("workspaceId").jsonPrimitive.content)
-        assertEquals("3", document.getValue("revision").jsonPrimitive.content)
-        assertFalse(document.getValue("revision").jsonPrimitive.isString)
-        assertEquals(
-            setOf("installationId", "stateEpoch", "serviceGeneration", "configurationIdentity"),
-            document.getValue("target").jsonObject.keys,
-        )
-        assertEquals(
-            target.serviceGeneration,
-            document.getValue("target").jsonObject.getValue("serviceGeneration").jsonPrimitive.content,
-        )
-    }
-
-    @Serializable private data class UnversionedRequest(val type: String)
-
-    @Serializable private data class UnknownOperationRequest(val type: String, val version: Int)
 
     private fun encode(response: DaemonManagementResponse) =
         DaemonManagementProtocol.json.encodeToString(DaemonManagementResponse.serializer(), response)

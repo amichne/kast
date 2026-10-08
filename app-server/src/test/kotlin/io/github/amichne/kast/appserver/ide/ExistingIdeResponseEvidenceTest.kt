@@ -56,8 +56,13 @@ class ExistingIdeResponseEvidenceTest {
         val bytes = fixture.reply() + ByteArray(1_572_864) { 32 }
         val evidence = ArrayList<ExistingIdeResponseEvidence>()
         val exchange =
-            readExistingIdeResponse(framed(bytes.size, bytes), ReadLimits.Default, evidence::add) {
-                ExistingIdeDocuments.responseWithEvidence(it, fixture.root, fixture.operation, fixture.descriptor)
+            readExistingIdeResponse(framed(bytes.size, bytes), ReadLimits.Default, evidence::add) { raw ->
+                ExistingIdeDocuments.responseWithEvidence(
+                    raw = raw,
+                    root = fixture.root,
+                    operation = fixture.operation,
+                    descriptor = fixture.descriptor,
+                )
             }
         assertInstanceOf(ExistingIdeExchange.Semantic::class.java, exchange)
         assertEquals(ExistingIdeResponseBodyOutcome.DRAINED, (evidence[1] as ExistingIdeResponseEvidence.Body).outcome)
@@ -70,8 +75,13 @@ class ExistingIdeResponseEvidenceTest {
         val bytes = fixture.reply()
         val evidence = ArrayList<ExistingIdeResponseEvidence>()
         val exchange =
-            readExistingIdeResponse(framed(bytes.size, bytes), hostLimits, evidence::add) {
-                ExistingIdeDocuments.responseWithEvidence(it, fixture.root, fixture.operation, fixture.descriptor)
+            readExistingIdeResponse(framed(bytes.size, bytes), hostLimits, evidence::add) { raw ->
+                ExistingIdeDocuments.responseWithEvidence(
+                    raw = raw,
+                    root = fixture.root,
+                    operation = fixture.operation,
+                    descriptor = fixture.descriptor,
+                )
             }
         assertInstanceOf(ExistingIdeExchange.Semantic::class.java, exchange)
         assertEquals(
@@ -212,9 +222,9 @@ class ExistingIdeResponseEvidenceTest {
 
     private fun framed(announced: Int, bytes: ByteArray): DataInputStream {
         val output = ByteArrayOutputStream()
-        DataOutputStream(output).use {
-            it.writeInt(announced)
-            it.write(bytes)
+        DataOutputStream(output).use { stream ->
+            stream.writeInt(announced)
+            stream.write(bytes)
         }
         return DataInputStream(ByteArrayInputStream(output.toByteArray()))
     }
@@ -248,7 +258,15 @@ private class ResponseFixture {
     fun reply(host: UUID = descriptor.host, path: String = root.path.toString()): ByteArray {
         val basis =
             EvidenceBasis.Live(
-                refined(LiveReadEvidence.create(path, host, 7, LiveReadContentView.SAVED_PSI_COMMITTED, 1))
+                refined(
+                    LiveReadEvidence.create(
+                        workspaceRoot = path,
+                        host = host,
+                        epoch = 7,
+                        contentView = LiveReadContentView.SAVED_PSI_COMMITTED,
+                        version = 1,
+                    )
+                )
             )
         return replyWithBasis(basis)
     }
@@ -263,7 +281,12 @@ private class ResponseFixture {
     }
 
     fun decode(raw: String): ExistingIdeDecodedResponse =
-        ExistingIdeDocuments.responseWithEvidence(raw.toByteArray(), root, operation, descriptor)
+        ExistingIdeDocuments.responseWithEvidence(
+            raw = raw.toByteArray(),
+            root = root,
+            operation = operation,
+            descriptor = descriptor,
+        )
 
     private fun <Value, Failure> refined(value: Refinement<Value, Failure>): Value = (value as Refinement.Refined).value
 }

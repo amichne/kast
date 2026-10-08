@@ -17,6 +17,16 @@ enum class IntellijReadGauge {
     /** Synchronous native provider preparation for this invocation, separately from retained confirmation. */
     RELATION_PREPARATION_NANOS,
     RELATION_CONFIRMATION_NANOS,
+    /** Last callback-proof retention attempt's allowance; conservative detached accounting, not wire bytes. */
+    CALLBACK_PROOF_BYTE_ALLOWANCE,
+    /** Last attempt ledger's admitted conservative storage; independent ledgers are not summed. */
+    CALLBACK_PROOF_RETAINED_BYTES,
+    /** Admitted storage plus attempted addition, saturated on overflow; rejection does not charge it. */
+    CALLBACK_PROOF_REQUIRED_BYTES,
+    /** Latest byte rejection snapshots below belong to one ledger and survive later successful attempts. */
+    CALLBACK_PROOF_BYTE_REJECTION_ALLOWANCE,
+    CALLBACK_PROOF_BYTE_REJECTION_RETAINED_BYTES,
+    CALLBACK_PROOF_BYTE_REJECTION_REQUIRED_BYTES,
     SOURCE_RETAINED_BYTES,
     SOURCE_RETAINED_BYTES_HIGH_WATER,
     SOURCE_RETAINED_ENTRIES,
@@ -51,6 +61,12 @@ internal fun IntellijReadGauge.merge(
         IntellijReadGauge.RELATION_ELAPSED_BEFORE_PREPARATION_NANOS,
         IntellijReadGauge.RELATION_PREPARATION_NANOS,
         IntellijReadGauge.RELATION_CONFIRMATION_NANOS,
+        IntellijReadGauge.CALLBACK_PROOF_BYTE_ALLOWANCE,
+        IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES,
+        IntellijReadGauge.CALLBACK_PROOF_REQUIRED_BYTES,
+        IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_ALLOWANCE,
+        IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_RETAINED_BYTES,
+        IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_REQUIRED_BYTES,
         IntellijReadGauge.SOURCE_RETAINED_BYTES,
         IntellijReadGauge.SOURCE_RETAINED_ENTRIES,
         IntellijReadGauge.DIAGNOSTIC_RETAINED_BYTES,

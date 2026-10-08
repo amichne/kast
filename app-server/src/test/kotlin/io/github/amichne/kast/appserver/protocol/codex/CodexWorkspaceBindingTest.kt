@@ -30,6 +30,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -56,24 +57,25 @@ class CodexWorkspaceBindingTest {
             val broker = echoBroker()
             val store = MemoryThreadCatalogStore()
             val binding =
-                ThreadCatalogBinding.admit("legacy", broker.catalog.digest, repository, home, owner).refinedValue()
+                ThreadCatalogBinding.admit(
+                        threadId = "legacy",
+                        catalogDigest = broker.catalog.digest,
+                        workingDirectory = repository,
+                        workspaceRoot = home,
+                        owner = owner,
+                    )
+                    .refinedValue()
             store.write(binding)
             val adapter =
-                CodexProtocolAdapter(broker, protocolContracts(), store, enrollment = enrollment, bindingOwner = owner)
+                CodexProtocolAdapter(
+                    broker = broker,
+                    contracts = protocolContracts(),
+                    threadStore = store,
+                    enrollment = enrollment,
+                    bindingOwner = owner,
+                )
             try {
-                assertEquals(
-                    ThreadWorkspaceFailure.WORKSPACE_REJECTED,
-                    (adapter.boundWorkspace(io.github.amichne.kast.appserver.core.BrokerThreadId.admit("legacy")!!)
-                            as Refinement.Rejected)
-                        .failure,
-                )
-                assertInstanceOf(
-                    ProtocolRouting.ReplyDownstream::class.java,
-                    adapter.fromDownstream(
-                        Json.encodeToString(BindingRequestFixture(1, "thread/resume", ResumeBindingFixture("legacy")))
-                    ),
-                )
-                assertEquals(binding, (store.read("legacy") as ThreadStoreRead.Found).binding)
+                assertRejectedLegacyBinding(adapter, store, binding)
             } finally {
                 adapter.close()
             }
@@ -85,12 +87,18 @@ class CodexWorkspaceBindingTest {
             val fixture = OverlapFixture(temporary)
             val adapter = fixture.adapter()
             try {
-                startOverlapThread(adapter, 0, "thread-nearest", fixture.child)
+                startOverlapThread(adapter = adapter, requestId = 0, threadId = "thread-nearest", cwd = fixture.child)
                 assertEquals(
                     fixture.child,
                     (fixture.store.read("thread-nearest") as ThreadStoreRead.Found).binding.workspace.root.path,
                 )
-                startOverlapThread(adapter, 1, "thread-1", fixture.child, fixture.root)
+                startOverlapThread(
+                    adapter = adapter,
+                    requestId = 1,
+                    threadId = "thread-1",
+                    cwd = fixture.child,
+                    explicitRoot = fixture.root,
+                )
                 assertEquals(
                     fixture.root,
                     (fixture.store.read("thread-1") as ThreadStoreRead.Found).binding.workspace.root.path,
@@ -109,7 +117,13 @@ class CodexWorkspaceBindingTest {
                 ThreadBindingOwner.admit("installation", "00000000-0000-0000-0000-000000000002").refinedValue()
             val restarted = fixture.adapter(staleOwner)
             try {
-                startOverlapThread(adapter, 1, "thread-1", fixture.child, fixture.root)
+                startOverlapThread(
+                    adapter = adapter,
+                    requestId = 1,
+                    threadId = "thread-1",
+                    cwd = fixture.child,
+                    explicitRoot = fixture.root,
+                )
                 assertInstanceOf(
                     ProtocolRouting.ReplyDownstream::class.java,
                     restarted.fromDownstream(resumeOverlapMessage()),
@@ -171,7 +185,14 @@ class CodexWorkspaceBindingTest {
             BindingRequestFixture(
                 3,
                 "item/tool/call",
-                ToolBindingFixture("thread-1", "turn-1", "call-1", "echo", "say", EchoArgumentsFixture("hello")),
+                ToolBindingFixture(
+                    threadId = "thread-1",
+                    turnId = "turn-1",
+                    callId = "call-1",
+                    namespace = "echo",
+                    tool = "say",
+                    arguments = EchoArgumentsFixture("hello"),
+                ),
             )
         )
 
@@ -196,9 +217,9 @@ class CodexWorkspaceBindingTest {
 
         fun adapter(bindingOwner: ThreadBindingOwner = owner) =
             CodexProtocolAdapter(
-                broker,
-                protocolContracts(),
-                store,
+                broker = broker,
+                contracts = protocolContracts(),
+                threadStore = store,
                 enrollment = enrollment,
                 bindingOwner = bindingOwner,
             )
@@ -216,20 +237,20 @@ class CodexWorkspaceBindingTest {
             )
         val tool: BrokerTool<Unit, EchoValue, EchoValue, Nothing> =
             BrokerTool(
-                ToolName.admit("say").refinedValue(),
-                ToolDescription.admit("Echo a value.").refinedValue(),
-                ToolLoading.EAGER,
-                input,
-                outputSchema,
+                name = ToolName.admit("say").refinedValue(),
+                description = ToolDescription.admit("Echo a value.").refinedValue(),
+                loading = ToolLoading.EAGER,
+                input = input,
+                outputSchema = outputSchema,
                 invoke = { _, argument, _ -> ProviderCall.Completed(argument) },
-                encode = { output -> Json.encodeToJsonElement(EchoValue.serializer(), output).jsonObject },
+                encode = { output -> Json.encodeToJsonElement(serializer<EchoValue>(), output).jsonObject },
                 present = { output -> ToolPresentation.text(output.value, success = true) },
             )
         val provider =
             ProviderRegistration.define(
-                    ProviderNamespace.admit("echo").refinedValue(),
-                    ProviderVersion.admit("1.0.0").refinedValue(),
-                    listOf(tool),
+                    namespace = ProviderNamespace.admit("echo").refinedValue(),
+                    version = ProviderVersion.admit("1.0.0").refinedValue(),
+                    tools = listOf(tool),
                     start = { ProviderStartup.Started(Unit) },
                 )
                 .validatedValue()
@@ -256,6 +277,26 @@ class CodexWorkspaceBindingTest {
             is Validation.Validated -> value
             is Validation.Rejected -> throw AssertionError("Expected validation, received $failures")
         }
+
+    private suspend fun assertRejectedLegacyBinding(
+        adapter: CodexProtocolAdapter,
+        store: MemoryThreadCatalogStore,
+        binding: ThreadCatalogBinding,
+    ) {
+        assertEquals(
+            ThreadWorkspaceFailure.WORKSPACE_REJECTED,
+            (adapter.boundWorkspace(io.github.amichne.kast.appserver.core.BrokerThreadId.admit("legacy")!!)
+                    as Refinement.Rejected)
+                .failure,
+        )
+        assertInstanceOf(
+            ProtocolRouting.ReplyDownstream::class.java,
+            adapter.fromDownstream(
+                Json.encodeToString(BindingRequestFixture(1, "thread/resume", ResumeBindingFixture("legacy")))
+            ),
+        )
+        assertEquals(binding, (store.read("legacy") as ThreadStoreRead.Found).binding)
+    }
 }
 
 @Serializable private data class EchoValue(val value: String)

@@ -93,7 +93,8 @@ internal class WorkspacePreparationRetentionTest {
                 beforeInspection = { release.await() },
             )
         var issued = 0
-        val preparations = WorkspacePreparations(this, script::exchange, capacity = 2, newId = { id(++issued) })
+        val preparations =
+            WorkspacePreparations(scope = this, exchange = script::exchange, capacity = 2, newId = { id(++issued) })
         val retained = (preparations.prepare(other) as Refinement.Refined).value
         val original = (preparations.prepare(root) as Refinement.Refined).value
         runCurrent()
@@ -129,7 +130,8 @@ internal class WorkspacePreparationRetentionTest {
                 )
             )
         var issued = 0
-        val preparations = WorkspacePreparations(this, script::exchange, capacity = 1, newId = { id(++issued) })
+        val preparations =
+            WorkspacePreparations(scope = this, exchange = script::exchange, capacity = 1, newId = { id(++issued) })
         val original = (preparations.prepare(root) as Refinement.Refined).value
         runCurrent()
         val outcome = original.state.value as WorkspacePreparationOutcome.Complete
@@ -167,8 +169,8 @@ internal class WorkspacePreparationRetentionTest {
         val events = mutableListOf<WorkspacePreparationActivity>()
         val preparations =
             WorkspacePreparations(
-                scope,
-                script::exchange,
+                scope = scope,
+                exchange = script::exchange,
                 observer = WorkspacePreparationObserver { events += it },
                 capacity = capacity,
                 newId = { id(++issued) },

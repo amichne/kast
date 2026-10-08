@@ -54,7 +54,7 @@ class PreferredReadRoutingTest {
 
     @Test
     fun `published inputs cannot bypass a different bound catalog`(@TempDir root: Path) = runTest {
-        val (broker, executor) = fixture(root)
+        val (broker, _) = fixture(root)
         val store = MemoryThreadCatalogStore()
         store.write(
             ThreadCatalogBinding.admit("thread-1", CatalogDigest.derive("different catalog"), root.toRealPath())
@@ -94,7 +94,7 @@ class PreferredReadRoutingTest {
     }
 
     private suspend fun assertRoutes(root: Path, removed: String, preferred: String) {
-        val (broker, executor) = fixture(root)
+        val (broker, _) = fixture(root)
         val context =
             BrokerInvocationContext.admit(
                     threadId = "thread-1",

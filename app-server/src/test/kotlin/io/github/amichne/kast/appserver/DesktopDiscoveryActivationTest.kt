@@ -104,8 +104,8 @@ class DesktopDiscoveryActivationTest {
         val activities = mutableListOf<BrokerStartupActivity>()
         val activity =
             BrokerStartupActivityPublisher(
-                BrokerStartupActivitySink {
-                    activities += it
+                BrokerStartupActivitySink { activity ->
+                    activities += activity
                     BrokerStartupActivityPublication.PUBLISHED
                 }
             )
@@ -125,34 +125,54 @@ class DesktopDiscoveryActivationTest {
     @Test
     fun `rejected readiness removes just published discovery`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        rejectReadiness(root, "remove", BrokerServerFailure.READINESS_REJECTED, false)
+        rejectReadiness(
+            root = root,
+            removal = "remove",
+            failure = BrokerServerFailure.READINESS_REJECTED,
+            retains = false,
+        )
     }
 
     @Test
     fun `readiness rollback failure retains ownership and both rejection causes`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        rejectReadiness(root, "remove:REJECTED", BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED, true)
+        rejectReadiness(
+            root = root,
+            removal = "remove:REJECTED",
+            failure = BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED,
+            retains = true,
+        )
     }
 
     @Test
     fun `failed publication read back rolls back the introduced flag`(@TempDir temporary: Path) {
-        rejectPublication(temporary.toRealPath(), "remove", DesktopDiscoveryFailure.COMMAND_TIMED_OUT, false)
+        rejectPublication(
+            root = temporary.toRealPath(),
+            removal = "remove",
+            failure = DesktopDiscoveryFailure.COMMAND_TIMED_OUT,
+            retains = false,
+        )
     }
 
     @Test
     fun `failed publication command rolls back any introduced flag`(@TempDir temporary: Path) {
         rejectPublication(
-            temporary.toRealPath(),
-            "remove",
-            DesktopDiscoveryFailure.COMMAND_TIMED_OUT,
-            false,
-            listOf("enable:REJECTED"),
+            root = temporary.toRealPath(),
+            removal = "remove",
+            failure = DesktopDiscoveryFailure.COMMAND_TIMED_OUT,
+            retains = false,
+            publication = listOf("enable:REJECTED"),
         )
     }
 
     @Test
     fun `failed publication rollback preserves both causes and ownership`(@TempDir temporary: Path) {
-        rejectPublication(temporary.toRealPath(), "remove:REJECTED", DesktopDiscoveryFailure.COMMAND_REJECTED, true)
+        rejectPublication(
+            root = temporary.toRealPath(),
+            removal = "remove:REJECTED",
+            failure = DesktopDiscoveryFailure.COMMAND_REJECTED,
+            retains = true,
+        )
     }
 
     private fun rejectPublication(
@@ -172,8 +192,8 @@ class DesktopDiscoveryActivationTest {
         val activities = mutableListOf<BrokerStartupActivity>()
         val activity =
             BrokerStartupActivityPublisher(
-                BrokerStartupActivitySink {
-                    activities += it
+                BrokerStartupActivitySink { activity ->
+                    activities += activity
                     BrokerStartupActivityPublication.PUBLISHED
                 }
             )
@@ -240,8 +260,8 @@ class DesktopDiscoveryActivationTest {
         val activities = mutableListOf<BrokerStartupActivity>()
         val activity =
             BrokerStartupActivityPublisher(
-                BrokerStartupActivitySink {
-                    activities += it
+                BrokerStartupActivitySink { activity ->
+                    activities += activity
                     BrokerStartupActivityPublication.PUBLISHED
                 }
             )

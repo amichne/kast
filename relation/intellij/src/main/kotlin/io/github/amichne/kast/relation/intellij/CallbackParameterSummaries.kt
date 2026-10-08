@@ -38,7 +38,7 @@ internal class CallbackParameterSummaries(
             )
         },
 ) {
-    val retention = CallbackFlowRetention(budget)
+    val retention = CallbackFlowRetention(budget, observation)
     private val summaries = linkedMapOf<CallbackParameterIdentity, CallbackParameterSummary>()
 
     private val pendingProjectUse = mutableSetOf<CallbackParameterIdentity>()

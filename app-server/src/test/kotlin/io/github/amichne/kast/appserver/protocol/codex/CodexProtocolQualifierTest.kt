@@ -267,10 +267,11 @@ class CodexProtocolQualifierTest {
             for (omitted in listOf(rollback, setOf(CodexOwnedSchema.THREAD_ROLLBACK_PARAMS))) {
                 val options =
                     CodexProtocolQualificationOptions.admit(
-                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
-                            codexHome,
-                            tempRoot,
-                            SchemaGeneratingExecutor(omit = omitted),
+                            codexExecutable =
+                                UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                            codexHome = codexHome,
+                            temporaryRoot = tempRoot,
+                            processExecutor = SchemaGeneratingExecutor(omit = omitted),
                         )
                         .refinedValue()
                 when (val result = CodexProtocolQualifier.qualify(options)) {

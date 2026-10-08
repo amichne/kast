@@ -57,12 +57,33 @@ Discovery accepts directory or package scope. Its default is recursive workspace
 | `DISTINCT_SYMBOLS` | Keep the first row per canonical identity at this pipeline position. |
 | `EXPAND_RELATION` | One hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`. |
 | `WALK` | Exhaustive relation traversal when `maximumDepth` is omitted or null; explicit depth bounds reach. Default breadth-first strategy. |
+| `TRACE` | Terminal bounded investigation returning the seed, its direct callable members, reference owners, implementations or overrides, direct callers, and one further caller layer. Select `SYMBOLS`. |
 | `CONCAT` | Append `input`, preserving order and duplicates. |
 | `UNION`, `INTERSECT`, `DIFFERENCE` | Compare retained symbol rows in `right` by canonical identity. Difference requires complete right coverage. |
 | `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` requires complete right coverage to establish absence. |
 | `PROJECT_BINDING` | Select one named symbol cell before further symbol steps. |
 
 There is no arbitrary-field join or general-purpose `MAP`. Steps after composition apply to the combined stream. See [Combine query results](/query-pipelines).
+
+### Trace an interface or adapter
+
+Use `steps: [{"type": "TRACE"}]` with `SYMBOLS` output after selecting an exact
+interface or method. `TRACE` is terminal. It groups facts by canonical symbol
+identity while preserving each compiler relation connection and the original
+reference observations. Imports, type references and code references remain
+distinct evidence; their count is not a call count.
+
+For a class or interface seed, the fixed investigation discovers direct callable
+members through authoritative source inventory and compiler refinement. It then
+includes implementations or overrides, callers of callable seeds and those
+callable targets, reference owners, and one additional caller layer from the
+discovered owners/callers. Member calls through inferred receiver types remain
+eligible. Members retain exact declaration references; membership is established
+by source inspection and is not serialized as a class-to-member relation edge.
+A type seed does not acquire an invented named caller edge. This is bounded static evidence for common
+interface/adapter investigations; it does not claim an exhaustive downstream
+runtime graph. Supply `expansionScope` on `TRACE` to constrain native expansion.
+Each component's domain and incomplete coverage remain part of the answer.
 
 ### Choose the relationship search domain
 

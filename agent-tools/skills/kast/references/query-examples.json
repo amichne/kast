@@ -697,6 +697,43 @@
           }
         }
       }
+    },
+    "traceAffectedUses": {
+      "summary": "Trace an interface method, its overrides, direct callers, adapter callers and occurrence evidence under one shared grant.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "execute",
+            "declarationKinds": [
+              "FUNCTION"
+            ],
+            "scope": {
+              "type": "PACKAGE",
+              "packageName": "example.cache",
+              "includeSubpackages": false,
+              "sourceSetNames": [
+                "main"
+              ]
+            }
+          },
+          "steps": [
+            {
+              "type": "TRACE"
+            }
+          ],
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN"
+        }
+      }
     }
   },
   "invalidExamples": {
@@ -989,6 +1026,24 @@
         "request": {
           "type": "READ_SOURCE",
           "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA"
+        }
+      }
+    },
+    "traceUnknownDepth": {
+      "summary": "TRACE has a fixed topology; arbitrary depth controls are not accepted.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "execute"
+          },
+          "steps": [
+            {
+              "type": "TRACE",
+              "maximumDepth": 100
+            }
+          ]
         }
       }
     }

@@ -90,12 +90,12 @@ class FileThreadCatalogStoreTest {
             )
         val first =
             LegacyThreadBindingDocument(
-                "thread-1",
-                "sha256:${"a".repeat(64)}",
-                cwd.toString(),
-                cwd.toString(),
-                workspace.id.value,
-                "protocolFixture",
+                threadId = "thread-1",
+                catalogDigest = "sha256:${"a".repeat(64)}",
+                cwd = cwd.toString(),
+                workspaceRoot = cwd.toString(),
+                workspaceId = workspace.id.value,
+                ownerKind = "protocolFixture",
             )
         val document =
             LegacyThreadStoreDocument(2, listOf(first, first.copy(catalogDigest = "sha256:${"b".repeat(64)}")))
