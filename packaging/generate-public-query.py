@@ -393,7 +393,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     document_source = ''.join(lines)
     outputs = {
         KOTLIN / 'PublicToolDocuments.kt': document_source,
-        KOTLIN / 'PublicToolTrace.kt': HEADER + ''.join(trace_body),
+        KOTLIN / 'PublicToolTrace.kt': HEADER + ''.join(trace_body).rstrip() + '\n',
         KOTLIN / 'PublicToolDiscoveryDocuments.kt':
             '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
             'package io.github.amichne.kast.appserver.query\n\n'

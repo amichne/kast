@@ -26,4 +26,3 @@ import kotlinx.serialization.Serializable
 internal data class PublicToolTrace(
     val expansionScope: PublicToolExpansionScope? = null,
 ) : PublicToolStep
-
