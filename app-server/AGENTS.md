@@ -26,7 +26,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [ExistingIdeResponseEvidence.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt) - private response stage/outcome records; pure decoder causes stay separate from semantic authority.
 - [ExistingIdeStageObservation.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeStageObservation.kt) - opt-in bounded JFR lifecycle and exact-socket exchange stages.
 - [McpWorkspaceOperationClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt) - session-owned preparation of an exact Gradle root for the Codex MCP process.
-- [KastSingleChangeInvocation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt) - one broker call that plans, signs the exact host challenge, applies, and attempts recovery.
+- [KastSingleChangeInvocation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt) - one broker call that plans, retains the exact plan identity, applies, and attempts recovery through the existing local endpoint.
 - [WorkspaceRecoverySettlement.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceRecoverySettlement.kt) - typed proof that a cancelled change recovered before the workspace lane settles.
 
 - [WorkspacePreparations.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) - daemon-owned, coalesced IDEA preparation and retained operation outcomes.
