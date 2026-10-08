@@ -157,6 +157,8 @@ internal fun ValueFlowRejection.boundaryFailure(): QueryImpactSourceFailureCode 
 
 internal fun ValueFlowUnsupportedCause.boundaryFailure(): QueryImpactSourceFailureCode =
     when (this) {
+        ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED -> QueryImpactSourceFailureCode.FINALLY_UNSUPPORTED
+        ValueFlowUnsupportedCause.ABRUPT_COMPLETION -> QueryImpactSourceFailureCode.ABRUPT_COMPLETION
         ValueFlowUnsupportedCause.EXTERNAL_CALL -> QueryImpactSourceFailureCode.EXTERNAL_CALL
         ValueFlowUnsupportedCause.UNMODELED_CALL -> QueryImpactSourceFailureCode.UNMODELED_CALL
         ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW -> QueryImpactSourceFailureCode.MUTABLE_CONTROL_FLOW

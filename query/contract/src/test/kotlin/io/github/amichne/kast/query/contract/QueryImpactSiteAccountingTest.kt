@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test
 class QueryImpactSiteAccountingTest {
     @Test
     fun `requested native sites preserve both proven routes and an unmatched relationship obligation`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val reached = requested(f, f.destination)
         val unmatched = requested(f, ValueSite.fromCompiler(f.owner, range(60, 61), ValueRole.LocalRead).value())
         val ledger = ledger(f, listOf(reached, unmatched)).value()
@@ -43,7 +43,7 @@ class QueryImpactSiteAccountingTest {
 
     @Test
     fun `duplicate native targets fail closed and unmatched obligations forbid complete execution`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val site = requested(f, f.destination)
         assertEquals(
             Refinement.Rejected(QueryImpactLedgerFailure.DUPLICATE_REQUESTED_SITE),
@@ -62,7 +62,7 @@ class QueryImpactSiteAccountingTest {
 
     @Test
     fun `native selection receipt rejects substituted occurrence and excess work`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val proof = requested(f, f.destination)
         val changed =
             ValueSiteRevalidationRequest.create(
@@ -88,7 +88,7 @@ class QueryImpactSiteAccountingTest {
 
     @Test
     fun `positive exits preserve both original path ordinals and mixed reached partition`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val domain = outsideDomain(f, "Other.kt")
         val target = requested(f, f.destination)
         val excludedPaths = f.paths.map { path -> excluded(path, f.destination, domain) }
@@ -113,7 +113,7 @@ class QueryImpactSiteAccountingTest {
 
     @Test
     fun `another domain or another exact native site cannot count as requested scope exclusion`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val domain = outsideDomain(f, "Other.kt")
         val other = outsideDomain(f, "Elsewhere.kt")
         val target = requested(f, f.destination)
@@ -141,7 +141,7 @@ class QueryImpactSiteAccountingTest {
         )
     }
 
-    private fun outsideDomain(f: QueryImpactLedgerTest.Fixture, filename: String) =
+    private fun outsideDomain(f: QueryImpactLedgerFixture, filename: String) =
         RelationSearchBoundary.Explicit(
             SymbolSearchScope.ExactFile(
                 CanonicalWorkspaceFilePath.fromCanonicalPath(
@@ -163,7 +163,7 @@ class QueryImpactSiteAccountingTest {
             )
             .value()
 
-    private fun requested(f: QueryImpactLedgerTest.Fixture, site: ValueSite): QueryImpactRequestedSite {
+    private fun requested(f: QueryImpactLedgerFixture, site: ValueSite): QueryImpactRequestedSite {
         val owner = SymbolSelector.issue(f.lease, f.scope, f.evidence)
         val request =
             ValueSiteRevalidationRequest.create(owner, site.range, ValueSiteRoleClaim.LocalRead, f.domain.budget)
@@ -176,7 +176,7 @@ class QueryImpactSiteAccountingTest {
             .value()
     }
 
-    private fun ledger(f: QueryImpactLedgerTest.Fixture, requested: List<QueryImpactRequestedSite>) =
+    private fun ledger(f: QueryImpactLedgerFixture, requested: List<QueryImpactRequestedSite>) =
         QueryImpactLedger.fromEvidence(
             listOf(f.producer),
             f.domain.boundary,

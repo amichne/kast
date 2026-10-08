@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.ImpactBoundaryObligationDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryRequiredDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryTerminalDocument
+import io.github.amichne.kast.protocol.contract.ImpactBranchCompletionDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationApplicationDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationBranchDocument
@@ -16,7 +17,9 @@ import io.github.amichne.kast.protocol.contract.ImpactRepresentationHistoryDocum
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationStateDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationUnknownDocument
+import io.github.amichne.kast.protocol.contract.ImpactTransferEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactTryBranchAlternativeDocument
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.relation.contract.BoundaryArrival
 import io.github.amichne.kast.relation.contract.BoundaryCompatibilityAssumption
@@ -31,7 +34,9 @@ import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RepresentationUnknownReason
 import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.relation.contract.ValueTryBranchAlternative
 
 internal fun RepresentationRule.impactDocument(): ImpactProjected<ImpactRepresentationRuleDocument> =
     reference.rule.value.impactId().impactThen { id ->
@@ -67,7 +72,9 @@ internal fun RepresentationRule.impactDocument(): ImpactProjected<ImpactRepresen
     }
 
 internal fun ValueTransfer.impactDocument(): ImpactProjected<ImpactCompilerTransferDocument> =
-    source.impactDocument().impactZip(target.impactDocument()).impactMap { (source, target) ->
+    source.impactDocument().impactZip(target.impactDocument()).impactZip(evidence.impactDocument()).impactMap {
+        (sites, evidence) ->
+        val (source, target) = sites
         ImpactCompilerTransferDocument(
             source,
             target,
@@ -80,7 +87,26 @@ internal fun ValueTransfer.impactDocument(): ImpactProjected<ImpactCompilerTrans
                 ValueTransferKind.BRANCH_ALTERNATIVE -> ImpactTransferKindDocument.BRANCH_ALTERNATIVE
                 ValueTransferKind.WRAPPER_RETURN -> ImpactTransferKindDocument.WRAPPER_RETURN
             },
+            evidence,
         )
+    }
+
+private fun ValueTransferEvidence.impactDocument(): ImpactProjected<ImpactTransferEvidenceDocument> =
+    when (this) {
+        ValueTransferEvidence.Direct -> Refinement.Refined(ImpactTransferEvidenceDocument.Direct)
+        is ValueTransferEvidence.NormalBranchResult ->
+            tryRange.impactDocument().impactZip(branchRange.impactDocument()).impactMap { (enclosing, branch) ->
+                ImpactTransferEvidenceDocument.NormalBranchResult(
+                    enclosing,
+                    branch,
+                    when (val branchAlternative = alternative) {
+                        ValueTryBranchAlternative.TryBody -> ImpactTryBranchAlternativeDocument.TryBody
+                        is ValueTryBranchAlternative.CatchBody ->
+                            ImpactTryBranchAlternativeDocument.CatchBody(branchAlternative.index.value)
+                    },
+                    ImpactBranchCompletionDocument.NORMAL_COMPLETION,
+                )
+            }
     }
 
 internal fun RepresentationModelApplication.impactDocument(): ImpactProjected<ImpactRepresentationApplicationDocument> {
