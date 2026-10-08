@@ -16,10 +16,17 @@ combine by exact identity, and joins preserve both cells and their evidence.
 These operators already express much of the proposed map/flatMap algebra.
 
 `WALK` expands a deterministic priority frontier and suppresses repeated node
-expansion while preserving incoming edge evidence. Its completion proof is
-relative to the requested maximum depth. A depth bound cannot prove unrestricted
-transitive closure. A composite relation expression per hop also needs a separate
-typed contract; the current walk selects one relation kind.
+expansion while preserving incoming edge evidence. Its default extent is
+`EXHAUSTIVE`: completion proves exhaustion of the reachable finite graph inside
+the declared expansion domain. Resource grants retain an unfinished frontier;
+they never shorten the original question. Explicit `THROUGH_DEPTH` extent proves
+only the selected depth-bound question. Public `maximumDepth` selects this
+bounded variant; omission or null selects exhaustive traversal. Exhaustive walks
+default to workspace expansion, while explicit depth-bound public walks retain
+the seed-domain default. An explicit expansion policy overrides either default.
+A composite relation expression per hop needs a separate typed contract; the
+current walk selects one relation kind. Depth representation overflow remains
+`DEPTH_REPRESENTATION_EXHAUSTED`, distinct from reaching a requested bound.
 
 Automatic execution now drains symbols, occurrences, traversal records, and
 binding rows under one invocation allowance. It follows issued continuations,

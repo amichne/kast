@@ -31,7 +31,7 @@ internal fun admitTraversalRead(
     val remainingWork = plan.budget.workUnits.value - accounting.examinedWorkUnits
     val remainingTime = plan.budget.elapsedTime.value - accounting.elapsedMillis
     return when {
-        next.depth.value >= plan.budget.depth.value ->
+        !plan.budget.extent.permitsExpansion(next.depth) ->
             TraversalReadAdmission.Limited(TraversalLimitation.DEPTH_LIMIT_REACHED)
         accounting.expandedFrontier >= plan.budget.frontier.value ->
             TraversalReadAdmission.Limited(TraversalLimitation.FRONTIER_LIMIT_REACHED)

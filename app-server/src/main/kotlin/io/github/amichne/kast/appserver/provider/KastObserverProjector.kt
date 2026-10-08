@@ -349,7 +349,7 @@ internal object KastObserverProjector {
         val observation = candidate as? JsonObject ?: return false
         if (observation.strictString("subject") == null) return false
         if (observation.strictString("relation")?.let(RelationMeaningObservation::admit) == null) return false
-        if (observation.strictInt("maximum_depth")?.takeIf { it > 0 } == null) return false
+        if (!admittedWalkExtent(observation["extent"])) return false
         if (observation.strictInt("expanded_frontier")?.takeIf { it >= 0 } == null) return false
         if (observation["progress"] !is JsonObject) return false
         if (observation["strategy"] !is JsonObject) return false
@@ -357,6 +357,24 @@ internal object KastObserverProjector {
         val coverage = (observation["coverage"] as? JsonObject)?.strictString("kind") ?: return false
         return coverage in setOf("complete", "resumable", "terminal_incomplete") &&
             (status != ObserverCoverage.COMPLETE || coverage == "complete")
+    }
+
+    private fun admittedWalkExtent(candidate: kotlinx.serialization.json.JsonElement?): Boolean {
+        val extent = candidate as? JsonObject ?: return false
+        if (
+            extent.strictString("type") == "THROUGH_DEPTH" &&
+                extent.strictInt("maximum_depth")?.takeIf { it > 0 } == null
+        )
+            return false
+        return try {
+            kotlinx.serialization.json.Json.decodeFromJsonElement(
+                io.github.amichne.kast.protocol.contract.TraversalExtentDocument.serializer(),
+                extent,
+            )
+            true
+        } catch (_: kotlinx.serialization.SerializationException) {
+            false
+        }
     }
 
     private fun renderQueryWalk(

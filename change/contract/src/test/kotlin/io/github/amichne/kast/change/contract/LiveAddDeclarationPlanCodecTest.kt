@@ -23,6 +23,73 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class LiveAddDeclarationPlanCodecTest {
     @Test
+    fun `v2 retains exact bounded extent scope identity and canonical bytes`() {
+        val encoded = checkNotNull(javaClass.getResource("/live-add-declaration-plan-v2.json")).readText()
+        val decoded = LiveAddDeclarationPlanCodec.decode(encoded).refined()
+        assertEquals(
+            io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth(
+                io.github.amichne.kast.traversal.contract.TraversalDepthLimit.parse(5).refined()
+            ),
+            decoded.verificationScope.traversals.single().budget.extent,
+        )
+        assertEquals(RelationSearchBoundary.RETAINED_SUBJECT, decoded.verificationScope.traversals.single().expansion)
+        assertEquals("eeeeb74620ba720465d0683ceb63194de94b11997ee939b40e94dc783412c75b", decoded.planId.value)
+        assertEquals(encoded, LiveAddDeclarationPlanCodec.encode(decoded))
+    }
+
+    @Test
+    fun `exhaustive replay emits v3 typed extent and preserves it across decode`() {
+        val original = detachedLivePlan()
+        val scope =
+            LiveAddDeclarationVerificationScope.restore(
+                    original.verificationScope.relations,
+                    original.verificationScope.traversals.map {
+                        it.copy(
+                            budget =
+                                it.budget.copy(
+                                    extent = io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive
+                                )
+                        )
+                    },
+                    original.verificationScope.diagnostics,
+                    original.evidence,
+                )
+                .refined()
+        val input =
+            AdmittedLiveAddDeclarationPlanInput.restore(
+                    LivePlanningTarget(original.basis.observation, original.target, original.content),
+                    LivePlannedDeclaration(original.declaration, original.expectedSemanticDelta),
+                    LivePlanningEvidence(original.evidence, scope),
+                )
+                .refined()
+        val plan = LiveAddDeclarationChangePlan.issue(input)
+        val encoded = LiveAddDeclarationPlanCodec.encode(plan)
+        val document = Json.parseToJsonElement(encoded).jsonObject
+        assertEquals(JsonPrimitive(3), document.getValue("schemaVersion"))
+        assertEquals(
+            Json.parseToJsonElement(checkNotNull(javaClass.getResource("/live-traversal-exhaustive.json")).readText()),
+            document
+                .getValue("verificationScope")
+                .jsonObject
+                .getValue("traversals")
+                .jsonArray
+                .single()
+                .jsonObject
+                .getValue("extent"),
+        )
+        val decoded = LiveAddDeclarationPlanCodec.decode(encoded).refined()
+        assertEquals(
+            io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive,
+            decoded.verificationScope.traversals.single().budget.extent,
+        )
+        assertEquals(encoded, LiveAddDeclarationPlanCodec.encode(decoded))
+        assertEquals(
+            LiveAddDeclarationPlanDecodeFailure.MALFORMED,
+            rejected(encoded.replace("\"schemaVersion\":3", "\"schemaVersion\":2")),
+        )
+    }
+
+    @Test
     fun `durable replay retains explicit expansion scope directory and source sets`() {
         val plan = detachedLivePlan()
         val explicit =
@@ -102,6 +169,7 @@ class LiveAddDeclarationPlanCodecTest {
     fun `replay requests retain their exact budgets and diagnostic scope on restart`() {
         val encoded = LiveAddDeclarationPlanCodec.encode(detachedLivePlan())
         val scope = Json.parseToJsonElement(encoded).jsonObject.getValue("verificationScope").jsonObject
+        assertEquals(JsonPrimitive(5), scope.getValue("traversals").jsonArray.single().jsonObject.getValue("depth"))
         assertEquals(
             LiveAddDeclarationPlanDecodeFailure.IDENTITY_MISMATCH,
             rejected(encoded.replace("\"depth\":5", "\"depth\":4")),
@@ -139,7 +207,7 @@ class LiveAddDeclarationPlanCodecTest {
         val encoded = LiveAddDeclarationPlanCodec.encode(detachedLivePlan())
         assertEquals(
             LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED,
-            rejected(change(encoded, "schemaVersion", JsonPrimitive(3))),
+            rejected(change(encoded, "schemaVersion", JsonPrimitive(4))),
         )
         assertEquals(
             LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED,

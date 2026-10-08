@@ -84,6 +84,7 @@ internal enum class TraversalLimitationWireDocument {
     @SerialName("work_limit_reached") WORK_LIMIT_REACHED,
     @SerialName("time_limit_reached") TIME_LIMIT_REACHED,
     @SerialName("depth_limit_reached") DEPTH_LIMIT_REACHED,
+    @SerialName("depth_representation_exhausted") DEPTH_REPRESENTATION_EXHAUSTED,
     @SerialName("frontier_limit_reached") FRONTIER_LIMIT_REACHED,
     @SerialName("one_hop_incomplete") ONE_HOP_INCOMPLETE,
     @SerialName("no_progress") NO_PROGRESS,

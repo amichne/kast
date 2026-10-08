@@ -54,7 +54,7 @@ class QueryService(
         if (checkpoint != null && checkpoint !is PipelineCheckpoint) {
             return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
         }
-        if (request.plan.exceedsTraversalDepth(traversalCeiling.depth)) {
+        if (request.plan.exceedsTraversalDepth(traversalCeiling.extent)) {
             return QueryExecutionResult.Rejected(QueryExecutionRejection.BUDGET_REJECTED)
         }
         return Execution(request, checkpoint).run()

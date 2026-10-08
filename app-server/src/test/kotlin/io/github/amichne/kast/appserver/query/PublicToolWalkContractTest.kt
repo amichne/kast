@@ -19,6 +19,30 @@ import org.junit.jupiter.api.Test
 
 class PublicToolWalkContractTest {
     @Test
+    fun `omitted depth requests exhaustive workspace traversal`() {
+        val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
+        val source =
+            PublicToolReferenceSource((BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value)
+        val steps =
+            (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolWalk(PublicToolRelation.CALLEES)))
+                    as Refinement.Refined)
+                .value
+        val encoded =
+            Json.encodeToJsonElement(
+                PublicToolQuerySymbols.serializer(),
+                PublicToolQuerySymbols(PublicToolRunAction(source, steps)),
+            )
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
+        val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        val walk = Json.encodeToJsonElement(QueryStepDocument.serializer(), run.steps.values.single()).jsonObject
+        assertEquals("EXHAUSTIVE", walk["extent"]?.jsonObject?.get("type")?.jsonPrimitive?.content)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument.Workspace,
+            (run.steps.values.single() as QueryStepDocument.Walk).expansionScope,
+        )
+    }
+
+    @Test
     fun `omitted nullable and explicit controls lower to the same effective query`() {
         val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
         val source =
@@ -44,7 +68,7 @@ class PublicToolWalkContractTest {
             }
         assertEquals(requests.first(), requests.last())
         val walk = ((requests.first() as QueryRunRequest.Run).steps.values.single() as QueryStepDocument.Walk)
-        assertEquals(depth, walk.maximumDepth)
+        assertEquals(io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(depth), walk.extent)
         assertEquals(
             TraversalStrategyDocument.BoundedFanOut((ProtocolCount.parse(32) as Refinement.Refined).value),
             walk.strategy,
@@ -86,7 +110,10 @@ class PublicToolWalkContractTest {
             val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
             val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
             val lowered = run.steps.values.single() as QueryStepDocument.Walk
-            assertEquals(depth, lowered.maximumDepth)
+            assertEquals(
+                io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(depth),
+                lowered.extent,
+            )
             assertEquals(expected, lowered.strategy)
             assertEquals(QueryOutputDocument.TraversalRecords, run.output)
         }

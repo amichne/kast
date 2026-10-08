@@ -487,12 +487,15 @@
       "additionalProperties": false
     },
     "WalkDepth": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 1000,
       "x-kotlin-type": "ProtocolCount",
-      "description": "Maximum semantic hop depth; each walk remains bounded by the hosted traversal ceiling.",
-      "default": 1
+      "description": "Explicit maximum semantic hop depth, subject to the hosted bounded-depth ceiling. Omission or null requests exhaustive traversal.",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 1000
     },
     "WalkStrategy": {
       "anyOf": [
@@ -583,7 +586,7 @@
               "type": "null"
             }
           ],
-          "description": "Native relation expansion domain, independent of seed discovery and output filtering. Omission or null selects RETAINED_SEED. SOURCE_DOMAIN restricts destinations before native enumeration."
+          "description": "Native relation expansion domain. Omission or null selects WORKSPACE for exhaustive traversal and RETAINED_SEED for an explicit depth bound. Explicit SOURCE_DOMAIN applies before native enumeration."
         }
       },
       "required": [
@@ -591,7 +594,7 @@
         "relation"
       ],
       "additionalProperties": false,
-      "description": "Traverse each input symbol through compiler-confirmed relations up to the requested depth. Existing traversal execution retains frontier, progress, strategy and partial-expansion evidence."
+      "description": "Traverse the reachable compiler-confirmed relation graph to exhaustion by default. Explicit maximumDepth selects a bounded question. Resource grants may pause evaluation without shortening the question; frontier, progress and qualifications remain retained."
     },
     "DistinctSymbols": {
       "type": "object",
@@ -5261,7 +5264,7 @@
   "tools": [
     {
       "name": "query_symbols",
-      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For remembered words, use source {\"type\":\"SEARCH_TEXT\",\"word\":\"launchd\",\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"app-server\"}} to receive exact containing-declaration refs and bounded lexical matches. This word mode is case-sensitive and excludes regex and qualified literals. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, bounded walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct. Discovery observations preserve the declared universe, phase counts, coverage and unfinished input. Reference occurrence rows retain compiler target identity and explicit declaration-owned, file-scoped or unavailable ownership. A published execution page replays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner publishes or drains. Set steps[].expansionScope to WORKSPACE, RETAINED_SEED, or SOURCE_DOMAIN to control native relation destinations separately from source discovery and output predicates. Inspect a callback occurrence, anonymous callable body, or proof declaration with request {\"type\":\"READ_SOURCE\",\"candidateRef\":\"<exact issued candidate reference>\"}; this returns the existing source.read document for that exact range, preserving freshness and authority failures. Completion defaults to COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1; supported row families execute automatically to exhaustion under one grant. Request completion {\"type\":\"PROGRESSIVE\"} explicitly for qualified investigation. Unproven or unsupported strict answers reject with retained evidence when admitted; presentation prefixes never establish completeness. For IMPACT, strict VALUE_PATHS completes the original ledger; strict IMPACT_WITNESS presents a retained section after that proof.",
+      "description": "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name search, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\"}}}; source is directly inside request. For remembered words, use source {\"type\":\"SEARCH_TEXT\",\"word\":\"launchd\",\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"app-server\"}} to receive exact containing-declaration refs and bounded lexical matches. This word mode is case-sensitive and excludes regex and qualified literals. For one-hop references, add \"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep the result, set request.retention to RETAIN; then page its returned reference with request.type READ_RESULT and request.result. Resume execution with request.type RESUME and its exact continuation. Apply structured predicates, relation expansion, walk, set composition, and retained binding projection and joins. Join preserves both named output cells and occurrence evidence; anti-join requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. Retained results preserve qualification and omissions; execution continuation and result presentation cursor remain distinct. Discovery observations preserve the declared universe, phase counts, coverage and unfinished input. Reference occurrence rows retain compiler target identity and explicit declaration-owned, file-scoped or unavailable ownership. A published execution page replays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner publishes or drains. Set steps[].expansionScope to WORKSPACE, RETAINED_SEED, or SOURCE_DOMAIN to control native relation destinations separately from source discovery and output predicates. Inspect a callback occurrence, anonymous callable body, or proof declaration with request {\"type\":\"READ_SOURCE\",\"candidateRef\":\"<exact issued candidate reference>\"}; this returns the existing source.read document for that exact range, preserving freshness and authority failures. Completion defaults to COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1; supported row families execute automatically to exhaustion under one grant. Request completion {\"type\":\"PROGRESSIVE\"} explicitly for qualified investigation. Unproven or unsupported strict answers reject with retained evidence when admitted; presentation prefixes never establish completeness. For IMPACT, strict VALUE_PATHS completes the original ledger; strict IMPACT_WITNESS presents a retained section after that proof. WALK without maximumDepth exhausts the reachable static graph with WORKSPACE expansion. Explicit maximumDepth chooses bounded reach and defaults to RETAINED_SEED; explicit expansionScope is preserved.",
       "deferLoading": false,
       "schema": {
         "type": "object",
@@ -6551,5 +6554,5 @@
       ]
     }
   ],
-  "contractVersion": 10
+  "contractVersion": 11
 }

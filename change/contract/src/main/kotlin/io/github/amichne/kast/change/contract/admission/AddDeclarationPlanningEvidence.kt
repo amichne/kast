@@ -340,7 +340,12 @@ private fun traversalProjection(result: TraversalResult.Complete): String = buil
     appendPlanningField(plan.budget.returnedBytes.value.toString())
     appendPlanningField(plan.budget.workUnits.value.toString())
     appendPlanningField(plan.budget.elapsedTime.value.toString())
-    appendPlanningField(plan.budget.depth.value.toString())
+    when (val extent = plan.budget.extent) {
+        io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive -> appendPlanningField("EXHAUSTIVE")
+        is io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth -> {
+            appendPlanningField(extent.maximumDepth.value.toString())
+        }
+    }
     appendPlanningField(plan.budget.frontier.value.toString())
     appendPlanningField(result.page.encodedBytes.value.toString())
     appendPlanningField(result.page.examinedWorkUnits.value.toString())

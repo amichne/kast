@@ -147,7 +147,7 @@ def validate_authority(authority: dict) -> None:
                     if isinstance(value, bool) or isinstance(value, int):
                         if isinstance(value, int) and (value < resolved.get('minimum', value) or value > resolved.get('maximum', value)):
                             raise ValueError(f'{path}.{name}: invalid numeric default')
-                    elif value != []:
+                    elif value != [] and not (value is None and nullable(resolved)):
                         raise ValueError(f'{path}.{name}: invalid control default')
         for key, child in node.items():
             visit(child, f'{path}.{key}')
@@ -353,7 +353,6 @@ def render_tools(authority: dict) -> dict[Path, str]:
     lines.append('    val nameMatch = PublicToolNameMatch.' + enum_entry(defaults['nameMatch']) + '\n')
     lines.append('    const val includeSubdirectories = ' + str(definitions['DirectoryScope']['properties']['includeSubdirectories']['default']).lower() + '\n')
     lines.append('    const val includeSubpackages = ' + str(definitions['PackageScope']['properties']['includeSubpackages']['default']).lower() + '\n')
-    lines.append('    val walkDepth = toolDefault(ProtocolCount.parse(' + str(definitions['WalkDepth']['default']) + '))\n')
     lines.append('    const val maximumEdgesPerNode = ' + str(definitions['BoundedFanOutStrategy']['properties']['maximumEdgesPerNode']['default']) + '\n')
     lines.append('    val sourceSets = ' + bounded([text_value(s) for s in defaults['sourceSetNames']]) + '\n')
     lines.append('    val declarationKinds = ' + bounded(['PublicToolDeclarationKinds.' + enum_entry(s) for s in defaults['declarationKinds']]) + '\n')

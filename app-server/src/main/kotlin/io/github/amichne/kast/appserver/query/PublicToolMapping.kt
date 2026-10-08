@@ -284,9 +284,13 @@ private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInpu
             Refinement.Refined(
                 QueryStepDocument.Walk(
                     relation.lower(),
-                    maximumDepth ?: PublicToolDefaults.walkDepth,
+                    maximumDepth?.let {
+                        io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(it)
+                    } ?: io.github.amichne.kast.protocol.contract.TraversalExtentDocument.Exhaustive,
                     strategy?.lower() ?: TraversalStrategyDocument.BreadthFirst,
-                    expansionScope?.lowerExpansionScope() ?: QueryExpansionScopeDocument.RetainedSeed,
+                    expansionScope?.lowerExpansionScope()
+                        ?: if (maximumDepth == null) QueryExpansionScopeDocument.Workspace
+                        else QueryExpansionScopeDocument.RetainedSeed,
                 )
             )
         PublicToolDistinctSymbols -> Refinement.Refined(QueryStepDocument.Distinct)

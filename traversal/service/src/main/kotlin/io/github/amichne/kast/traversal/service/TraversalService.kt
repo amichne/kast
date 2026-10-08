@@ -115,7 +115,7 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                         return terminalIncomplete(
                             plan,
                             accounting,
-                            state.limitationsWith(TraversalLimitation.DEPTH_LIMIT_REACHED),
+                            state.limitationsWith(TraversalLimitation.DEPTH_REPRESENTATION_EXHAUSTED),
                             state.terminalRelationLimitations,
                         )
                 }
@@ -179,7 +179,9 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
             }
             for (record in records) {
                 // Breadth-first results at the requested depth need no further expansion.
-                if (plan.strategy == TraversalStrategy.BreadthFirst && nextDepth.value == plan.budget.depth.value) {
+                if (
+                    plan.strategy == TraversalStrategy.BreadthFirst && !plan.budget.extent.permitsExpansion(nextDepth)
+                ) {
                     continue
                 }
                 val node =
@@ -392,11 +394,3 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
         }
     }
 }
-
-private fun MutableTraversalState.limitationsWith(limitation: TraversalLimitation): Set<TraversalLimitation> =
-    buildSet {
-        add(limitation)
-        if (terminalRelationLimitations.isNotEmpty()) {
-            add(TraversalLimitation.ONE_HOP_INCOMPLETE)
-        }
-    }

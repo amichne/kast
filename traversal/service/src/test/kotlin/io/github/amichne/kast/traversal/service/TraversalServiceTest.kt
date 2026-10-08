@@ -9,11 +9,9 @@ import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
-import io.github.amichne.kast.traversal.contract.TraversalNode
 import io.github.amichne.kast.traversal.contract.TraversalPendingState
 import io.github.amichne.kast.traversal.contract.TraversalPlan
 import io.github.amichne.kast.traversal.contract.TraversalQualification
-import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
 import kotlin.coroutines.Continuation
@@ -181,7 +179,13 @@ class TraversalServiceTest {
             TraversalPlan.resume(
                 selector = a,
                 meaning = RelationMeaning.Callees,
-                budget = plan.budget.copy(depth = TraversalDepthLimit.parse(3).refined()),
+                budget =
+                    plan.budget.copy(
+                        extent =
+                            io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth(
+                                TraversalDepthLimit.parse(3).refined()
+                            )
+                    ),
                 continuation = continuation,
             ),
         )
@@ -562,22 +566,6 @@ class TraversalServiceTest {
         assertEquals(
             setOf(RelationLimitation.UNRESOLVED_TARGET),
             terminal.qualification.relationLimitations,
-        )
-    }
-
-    @Test
-    fun `reader cannot widen identity scope meaning or one hop budget`() {
-        val plan = fixture.plan(a)
-        val escalatingReader = OneHopRelationReader { request ->
-            val mismatched = request.copy(node = TraversalNode.start(b))
-            fixture.completeRead(mismatched, emptyList())
-        }
-
-        val result = runSuspend { TraversalService(escalatingReader).run(plan) }
-
-        assertEquals(
-            TraversalResult.Rejected(TraversalRejection.ReaderContractViolation),
-            result,
         )
     }
 

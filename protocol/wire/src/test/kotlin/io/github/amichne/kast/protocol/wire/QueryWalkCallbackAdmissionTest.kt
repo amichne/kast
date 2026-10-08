@@ -29,7 +29,9 @@ class QueryWalkCallbackAdmissionTest {
         QueryWalkObservationDocument(
                 QueryReferenceDocument.ExactSymbol(fixture.text("exact:seed")),
                 callback.relation,
-                ProtocolCount.parse(1).value(),
+                io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                    ProtocolCount.parse(1).value()
+                ),
                 QueryExpandedFrontierDocument.parse(1).value(),
                 TraversalProgressDocument(1, 1, 0, 0),
                 TraversalStrategyDocument.BreadthFirst,
@@ -125,7 +127,10 @@ class QueryWalkCallbackAdmissionTest {
             WireDocumentConversion.Rejected,
             decode(
                 wire.copy(
-                    maximumDepth = 2,
+                    extent =
+                        io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                            ProtocolCount.parse(2).value()
+                        ),
                     callbackObservations = listOf(entry),
                 )
             ),
@@ -153,7 +158,6 @@ class QueryWalkCallbackAdmissionTest {
                 ),
             )
         }
-        assertEquals(WireDocumentConversion.Rejected, decode(wire.copy(maximumDepth = 0)))
     }
 
     @Test
@@ -178,7 +182,17 @@ class QueryWalkCallbackAdmissionTest {
                 depth = 1,
                 observation = entry.observation.copy(domainFingerprint = fingerprint),
             )
-        val decoded = decode(wire.copy(maximumDepth = 2, callbackObservations = listOf(deeper))).value()
+        val decoded =
+            decode(
+                    wire.copy(
+                        extent =
+                            io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                                ProtocolCount.parse(2).value()
+                            ),
+                        callbackObservations = listOf(deeper),
+                    )
+                )
+                .value()
         val retained = decoded.callbackObservations.values.single()
         assertEquals("exact:frontier", retained.subject.token.value)
         assertEquals(1, retained.depth.value)
@@ -191,7 +205,17 @@ class QueryWalkCallbackAdmissionTest {
         val wire = original()
         val entry = wire.callbackObservations.single()
         val deeper = entry.copy(subject = QueryReferenceWireDocument.ExactSymbol("exact:frontier"), depth = 1)
-        val decoded = decode(wire.copy(maximumDepth = 2, callbackObservations = listOf(deeper))).value()
+        val decoded =
+            decode(
+                    wire.copy(
+                        extent =
+                            io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                                ProtocolCount.parse(2).value()
+                            ),
+                        callbackObservations = listOf(deeper),
+                    )
+                )
+                .value()
         val retained = decoded.callbackObservations.values.single()
         assertEquals("exact:frontier", retained.subject.token.value)
         assertEquals(callback.domainFingerprint, retained.observation.domainFingerprint)
@@ -238,7 +262,15 @@ class QueryWalkCallbackAdmissionTest {
     }
 
     private fun rejectSeedAtPositiveDepth(relation: RelationKindDocument) {
-        val wire = original().copy(relation = relation.toWireDocument(), maximumDepth = 2)
+        val wire =
+            original()
+                .copy(
+                    relation = relation.toWireDocument(),
+                    extent =
+                        io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                            ProtocolCount.parse(2).value()
+                        ),
+                )
         val seedAtOne =
             wire.callbackObservations
                 .single()

@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-const val PUBLIC_TOOL_CONTRACT_VERSION = 10
+const val PUBLIC_TOOL_CONTRACT_VERSION = 11
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
@@ -23,25 +23,27 @@ enum class PublicToolIdentity(
             "\"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep" +
             " the result, set request.retention to RETAIN; then page its returned reference with request.type R" +
             "EAD_RESULT and request.result. Resume execution with request.type RESUME and its exact continuatio" +
-            "n. Apply structured predicates, relation expansion, bounded walk, set composition, and retained bi" +
-            "nding projection and joins. Join preserves both named output cells and occurrence evidence; anti-j" +
-            "oin requires complete right coverage. Choose symbol, occurrence, traversal record, or binding row " +
-            "output. Retained results preserve qualification and omissions; execution continuation and result p" +
-            "resentation cursor remain distinct. Discovery observations preserve the declared universe, phase c" +
-            "ounts, coverage and unfinished input. Reference occurrence rows retain compiler target identity an" +
-            "d explicit declaration-owned, file-scoped or unavailable ownership. A published execution page rep" +
-            "lays idempotently; concurrent use of one checkpoint is rejected with continuation-in-use until its" +
-            " owner publishes or drains. Set steps[].expansionScope to WORKSPACE, RETAINED_SEED, or SOURCE_DOMA" +
-            "IN to control native relation destinations separately from source discovery and output predicates." +
-            " Inspect a callback occurrence, anonymous callable body, or proof declaration with request {\"type" +
-            "\":\"READ_SOURCE\",\"candidateRef\":\"<exact issued candidate reference>\"}; this returns the exis" +
-            "ting source.read document for that exact range, preserving freshness and authority failures. Compl" +
-            "etion defaults to COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1; supported row families execute" +
-            " automatically to exhaustion under one grant. Request completion {\"type\":\"PROGRESSIVE\"} explic" +
-            "itly for qualified investigation. Unproven or unsupported strict answers reject with retained evid" +
-            "ence when admitted; presentation prefixes never establish completeness. For IMPACT, strict VALUE_P" +
-            "ATHS completes the original ledger; strict IMPACT_WITNESS presents a retained section after that p" +
-            "roof.",
+            "n. Apply structured predicates, relation expansion, walk, set composition, and retained binding pr" +
+            "ojection and joins. Join preserves both named output cells and occurrence evidence; anti-join requ" +
+            "ires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. " +
+            "Retained results preserve qualification and omissions; execution continuation and result presentat" +
+            "ion cursor remain distinct. Discovery observations preserve the declared universe, phase counts, c" +
+            "overage and unfinished input. Reference occurrence rows retain compiler target identity and explic" +
+            "it declaration-owned, file-scoped or unavailable ownership. A published execution page replays ide" +
+            "mpotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner p" +
+            "ublishes or drains. Set steps[].expansionScope to WORKSPACE, RETAINED_SEED, or SOURCE_DOMAIN to co" +
+            "ntrol native relation destinations separately from source discovery and output predicates. Inspect" +
+            " a callback occurrence, anonymous callable body, or proof declaration with request {\"type\":\"REA" +
+            "D_SOURCE\",\"candidateRef\":\"<exact issued candidate reference>\"}; this returns the existing sou" +
+            "rce.read document for that exact range, preserving freshness and authority failures. Completion de" +
+            "faults to COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1; supported row families execute automat" +
+            "ically to exhaustion under one grant. Request completion {\"type\":\"PROGRESSIVE\"} explicitly for" +
+            " qualified investigation. Unproven or unsupported strict answers reject with retained evidence whe" +
+            "n admitted; presentation prefixes never establish completeness. For IMPACT, strict VALUE_PATHS com" +
+            "pletes the original ledger; strict IMPACT_WITNESS presents a retained section after that proof. WA" +
+            "LK without maximumDepth exhausts the reachable static graph with WORKSPACE expansion. Explicit max" +
+            "imumDepth chooses bounded reach and defaults to RETAINED_SEED; explicit expansionScope is preserve" +
+            "d.",
         HostedToolLoading.EAGER,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

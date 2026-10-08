@@ -497,10 +497,13 @@
       "additionalProperties": false
     },
     "WalkDepth": {
-      "type": "integer",
+      "description": "Explicit maximum semantic hop depth, subject to the hosted bounded-depth ceiling. Omission or null requests exhaustive traversal.",
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 1,
-      "maximum": 1000,
-      "description": "Maximum semantic hop depth; each walk remains bounded by the hosted traversal ceiling."
+      "maximum": 1000
     },
     "WalkStrategy": {
       "anyOf": [
@@ -605,7 +608,7 @@
               "type": "null"
             }
           ],
-          "description": "Native relation expansion domain, independent of seed discovery and output filtering. Omission or null selects RETAINED_SEED. SOURCE_DOMAIN restricts destinations before native enumeration."
+          "description": "Native relation expansion domain. Omission or null selects WORKSPACE for exhaustive traversal and RETAINED_SEED for an explicit depth bound. Explicit SOURCE_DOMAIN applies before native enumeration."
         }
       },
       "required": [
@@ -616,7 +619,7 @@
         "expansionScope"
       ],
       "additionalProperties": false,
-      "description": "Traverse each input symbol through compiler-confirmed relations up to the requested depth. Existing traversal execution retains frontier, progress, strategy and partial-expansion evidence."
+      "description": "Traverse the reachable compiler-confirmed relation graph to exhaustion by default. Explicit maximumDepth selects a bounded question. Resource grants may pause evaluation without shortening the question; frontier, progress and qualifications remain retained."
     },
     "DistinctSymbols": {
       "type": "object",

@@ -73,6 +73,26 @@ class KastObserverProjectorTest {
     }
 
     @Test
+    fun `walk observer admits exhaustive extent and rejects malformed depth variants`() {
+        val raw = KastObserverFixtures.queryWalk
+        val boundedExtent = "\"extent\":{\"type\":\"THROUGH_DEPTH\",\"maximum_depth\":2}"
+        check(boundedExtent in raw)
+        assertTrue(project("query.run", raw) is ObserverPresentation.Markdown)
+        assertTrue(
+            project("query.run", raw.replace(boundedExtent, "\"extent\":{\"type\":\"EXHAUSTIVE\"}"))
+                is ObserverPresentation.Markdown
+        )
+        val invalidExtents =
+            checkNotNull(javaClass.getResource("/invalid-observer-walk-extents.jsonl")).readText().lineSequence()
+        for (invalid in invalidExtents.filter(String::isNotBlank)) {
+            assertEquals(
+                ObserverPresentation.None,
+                project("query.run", raw.replace(boundedExtent, "\"extent\":$invalid")),
+            )
+        }
+    }
+
+    @Test
     fun `applied change retains a native diff and rejects escaped paths`() {
         val presentation = project("change.apply", KastObserverFixtures.changeApply)
         val changes = (presentation as ObserverPresentation.FileChanges).files.entries

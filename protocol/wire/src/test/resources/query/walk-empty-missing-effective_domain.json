@@ -3,7 +3,6 @@
     "token": "exact:fixture-node"
   },
   "relation": "references",
-  "maximum_depth": 2,
   "expanded_frontier": 1,
   "progress": {
     "checkpointSequence": 1,
@@ -24,5 +23,9 @@
   "reference_occurrences": [],
   "scope_exclusions": [],
   "callback_observations": [],
-  "callable_observations": []
+  "callable_observations": [],
+  "extent": {
+    "type": "THROUGH_DEPTH",
+    "maximum_depth": 2
+  }
 }

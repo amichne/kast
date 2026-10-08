@@ -306,7 +306,7 @@ private constructor(
                 }
             )
                 return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)
-            if (omissions.any { it.entry.depth.value >= plan.budget.depth.value })
+            if (omissions.any { !plan.budget.extent.permitsExpansion(it.entry.depth) })
                 return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)
             if (omissions.any { it.omissions.none { evidence -> evidence.reason in terminal } })
                 return Refinement.Rejected(TraversalCheckpointFailure.RETAINED_OMISSION_MISMATCH)

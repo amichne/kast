@@ -35,7 +35,7 @@ internal fun QueryWalkObservation.projectWalkObservation(
     return QueryWalkObservationDocument(
         subject = subject,
         relation = meaning.protocolDocument(),
-        maximumDepth = measures.maximumDepth,
+        extent = measures.extent,
         expandedFrontier = measures.expandedFrontier,
         progress =
             TraversalProgressDocument(
@@ -65,13 +65,20 @@ internal fun QueryWalkObservation.projectWalkObservation(
 }
 
 private data class WalkPageMeasures(
-    val maximumDepth: ProtocolCount,
+    val extent: io.github.amichne.kast.protocol.contract.TraversalExtentDocument,
     val expandedFrontier: QueryExpandedFrontierDocument,
 )
 
 private fun QueryWalkObservation.projectPageMeasures(): WalkPageMeasures? {
     return WalkPageMeasures(
-        ProtocolCount.parse(budget.depth.value).refinedWalkOrNull() ?: return null,
+        when (val selected = budget.extent) {
+            io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive ->
+                io.github.amichne.kast.protocol.contract.TraversalExtentDocument.Exhaustive
+            is io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth ->
+                io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                    ProtocolCount.parse(selected.maximumDepth.value).refinedWalkOrNull() ?: return null
+                )
+        },
         QueryExpandedFrontierDocument.parse(expandedFrontier.value).refinedWalkOrNull() ?: return null,
     )
 }
@@ -164,6 +171,7 @@ internal fun TraversalLimitation.protocolDocument(): TraversalLimitationDocument
         TraversalLimitation.WORK_LIMIT_REACHED -> TraversalLimitationDocument.WORK_LIMIT_REACHED
         TraversalLimitation.TIME_LIMIT_REACHED -> TraversalLimitationDocument.TIME_LIMIT_REACHED
         TraversalLimitation.DEPTH_LIMIT_REACHED -> TraversalLimitationDocument.DEPTH_LIMIT_REACHED
+        TraversalLimitation.DEPTH_REPRESENTATION_EXHAUSTED -> TraversalLimitationDocument.DEPTH_REPRESENTATION_EXHAUSTED
         TraversalLimitation.FRONTIER_LIMIT_REACHED -> TraversalLimitationDocument.FRONTIER_LIMIT_REACHED
         TraversalLimitation.ONE_HOP_INCOMPLETE -> TraversalLimitationDocument.ONE_HOP_INCOMPLETE
         TraversalLimitation.NO_PROGRESS -> TraversalLimitationDocument.NO_PROGRESS

@@ -38,7 +38,7 @@ private constructor(
                     Refinement.Rejected(TraversalCallbackObservationFailure.DOMAIN_MISMATCH)
                 observation.meaning != plan.meaning ->
                     Refinement.Rejected(TraversalCallbackObservationFailure.MEANING_MISMATCH)
-                !plan.admitsEndpoint(entry.node.endpoint) || entry.depth.value >= plan.budget.depth.value ->
+                !plan.admitsEndpoint(entry.node.endpoint) || !plan.budget.extent.permitsExpansion(entry.depth) ->
                     Refinement.Rejected(TraversalCallbackObservationFailure.DEPTH_MISMATCH)
                 else -> Refinement.Refined(TraversalCallbackObservation(entry, observation))
             }

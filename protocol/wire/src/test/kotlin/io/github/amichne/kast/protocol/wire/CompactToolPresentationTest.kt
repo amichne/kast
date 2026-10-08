@@ -100,7 +100,9 @@ class CompactToolPresentationTest {
                 ProtocolText.parse("exact:v5:fixture").value()
             ),
             io.github.amichne.kast.protocol.contract.RelationKindDocument.CALLEES,
-            ProtocolCount.parse(2).value(),
+            io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                ProtocolCount.parse(2).value()
+            ),
             io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument.parse(1).value(),
             io.github.amichne.kast.protocol.contract.TraversalProgressDocument(1, 7, 29, 2),
             io.github.amichne.kast.protocol.contract.TraversalStrategyDocument.BreadthFirst,

@@ -16,7 +16,7 @@ class PublicToolContractTest {
                 PublicToolWalk(PublicToolRelation.CALLERS, null, PublicToolBoundedFanOutStrategy(null)),
                 PublicToolWalk(
                     PublicToolRelation.CALLERS,
-                    PublicToolDefaults.walkDepth,
+                    null,
                     PublicToolBoundedFanOutStrategy(PublicToolDefaults.maximumEdgesPerNode),
                 ),
             )

@@ -8,6 +8,7 @@ enum class TraversalLimitationDocument {
     WORK_LIMIT_REACHED,
     TIME_LIMIT_REACHED,
     DEPTH_LIMIT_REACHED,
+    DEPTH_REPRESENTATION_EXHAUSTED,
     FRONTIER_LIMIT_REACHED,
     ONE_HOP_INCOMPLETE,
     NO_PROGRESS,
@@ -95,7 +96,7 @@ sealed interface QueryWalkCoverageDocument {
 data class QueryWalkObservationDocument(
     val subject: QueryReferenceDocument.ExactSymbol,
     val relation: RelationKindDocument,
-    val maximumDepth: ProtocolCount,
+    val extent: TraversalExtentDocument,
     val expandedFrontier: QueryExpandedFrontierDocument,
     val progress: TraversalProgressDocument,
     val strategy: TraversalStrategyDocument,

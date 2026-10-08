@@ -235,7 +235,9 @@ class HostedQueryWalkResponseTest {
         return QueryWalkObservationDocument(
             QueryReferenceDocument.ExactSymbol(exact),
             RelationKindDocument.REFERENCES,
-            ProtocolCount.parse(2).refined(),
+            io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                ProtocolCount.parse(2).refined()
+            ),
             QueryExpandedFrontierDocument.parse(1).refined(),
             TraversalProgressDocument(1, 1, edgeCount.toLong(), 1),
             TraversalStrategyDocument.BreadthFirst,

@@ -51,7 +51,7 @@ class QueryWalkCliProjectionTest {
         with(LiveReadOutputSchemaTest()) { assertAdmits(CanonicalOperation.QUERY_RUN, document) }
         val walk = document.getValue("walk_observations").jsonArray.single().jsonObject
         assertEquals("exact:v2:fixture-node", walk.getValue("subject").jsonPrimitive.content)
-        assertEquals("2", walk.getValue("maximum_depth").jsonPrimitive.content)
+        assertEquals("2", walk.getValue("extent").jsonObject.getValue("maximum_depth").jsonPrimitive.content)
         assertEquals("1", walk.getValue("expanded_frontier").jsonPrimitive.content)
         assertEquals("terminal_incomplete", walk.getValue("coverage").jsonObject.getValue("kind").jsonPrimitive.content)
         val expansion = walk.getValue("partial_expansions").jsonArray.single().jsonObject
@@ -67,7 +67,9 @@ class QueryWalkCliProjectionTest {
             QueryWalkObservationDocument(
                 QueryReferenceDocument.ExactSymbol(exact),
                 RelationKindDocument.CALLERS,
-                ProtocolCount.parse(2).value(),
+                io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                    ProtocolCount.parse(2).value()
+                ),
                 QueryExpandedFrontierDocument.parse(1).value(),
                 TraversalProgressDocument(1, 1, 0, 0),
                 TraversalStrategyDocument.BreadthFirst,

@@ -20,7 +20,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
-import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalQualification
 
 /** Mutable accounting is request-local; semantic authority remains in the typed request. */
@@ -163,7 +162,7 @@ internal class QueryExecutionState(
 
     fun traversalBudget(
         resultCapacity: Int,
-        requestedDepth: TraversalDepthLimit,
+        requestedExtent: io.github.amichne.kast.traversal.contract.TraversalExtent,
         ceiling: TraversalBudget,
     ): TraversalBudget? {
         val resources = remainingResources(minOf(resultCapacity, ceiling.records.value)) ?: return null
@@ -190,7 +189,7 @@ internal class QueryExecutionState(
             returnedBytes = returnedBytes,
             workUnits = work,
             elapsedTime = time,
-            depth = requestedDepth,
+            extent = requestedExtent,
             frontier = ceiling.frontier,
             oneHop = oneHop,
         )

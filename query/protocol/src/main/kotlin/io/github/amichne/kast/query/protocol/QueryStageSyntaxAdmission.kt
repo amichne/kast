@@ -24,20 +24,7 @@ internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
     when (this) {
         is QueryStepDocument.Related ->
             QueryStepSyntax.Related(relation.meaning(), expansionScope.boundary().refinedOrNull() ?: return null)
-        is QueryStepDocument.Walk ->
-            QueryStepSyntax.Walk(
-                relation.meaning(),
-                TraversalDepthLimit.parse(maximumDepth.value).refinedOrNull() ?: return null,
-                when (val selected = strategy) {
-                    TraversalStrategyDocument.BreadthFirst -> TraversalStrategy.BreadthFirst
-                    is TraversalStrategyDocument.BoundedFanOut ->
-                        TraversalStrategy.BoundedFanOut(
-                            io.github.amichne.kast.kernel.ResultLimit.parse(selected.maximumEdgesPerNode.value)
-                                .refinedOrNull() ?: return null
-                        )
-                },
-                expansionScope.boundary().refinedOrNull() ?: return null,
-            )
+        is QueryStepDocument.Walk -> walkSyntax()
         QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
         is QueryStepDocument.Concat,
         is QueryStepDocument.ProjectBinding,
@@ -68,6 +55,28 @@ internal fun QueryStepDocument.syntax(): QueryStepSyntax? =
                     )
             }
     }
+
+private fun QueryStepDocument.Walk.walkSyntax(): QueryStepSyntax.Walk? =
+    QueryStepSyntax.Walk(
+        relation.meaning(),
+        when (val selected = extent) {
+            io.github.amichne.kast.protocol.contract.TraversalExtentDocument.Exhaustive ->
+                io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive
+            is io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth ->
+                io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth(
+                    TraversalDepthLimit.parse(selected.maximumDepth.value).refinedOrNull() ?: return null
+                )
+        },
+        when (val selected = strategy) {
+            TraversalStrategyDocument.BreadthFirst -> TraversalStrategy.BreadthFirst
+            is TraversalStrategyDocument.BoundedFanOut ->
+                TraversalStrategy.BoundedFanOut(
+                    io.github.amichne.kast.kernel.ResultLimit.parse(selected.maximumEdgesPerNode.value).refinedOrNull()
+                        ?: return null
+                )
+        },
+        expansionScope.boundary().refinedOrNull() ?: return null,
+    )
 
 internal fun QueryOutputDocument.syntax(): QueryOutputSyntax? =
     when (this) {

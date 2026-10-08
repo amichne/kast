@@ -78,10 +78,28 @@ data class TraversalBudget(
     val returnedBytes: TraversalByteLimit,
     val workUnits: WorkUnitLimit,
     val elapsedTime: ElapsedTimeLimitMillis,
-    val depth: TraversalDepthLimit,
+    val extent: TraversalExtent,
     val frontier: TraversalFrontierLimit,
     val oneHop: RelationBudget,
-)
+) {
+    constructor(
+        records: ResultLimit,
+        returnedBytes: TraversalByteLimit,
+        workUnits: WorkUnitLimit,
+        elapsedTime: ElapsedTimeLimitMillis,
+        depth: TraversalDepthLimit,
+        frontier: TraversalFrontierLimit,
+        oneHop: RelationBudget,
+    ) : this(
+        records,
+        returnedBytes,
+        workUnits,
+        elapsedTime,
+        TraversalExtent.ThroughDepth(depth),
+        frontier,
+        oneHop,
+    )
+}
 
 enum class TraversalPlanFailure {
     ONE_HOP_RECORD_LIMIT_EXCEEDS_TRAVERSAL,
@@ -265,7 +283,13 @@ private fun traversalIdentity(
         appendTraversalField(selector.fingerprint.value)
         appendTraversalField(RelationScopeFingerprint.from(RelationEndpoint.subject(selector), expansion).value)
         appendTraversalField(meaning.canonicalName())
-        appendTraversalField(budget.depth.value.toString())
+        when (val extent = budget.extent) {
+            TraversalExtent.Exhaustive -> appendTraversalField("EXHAUSTIVE")
+            is TraversalExtent.ThroughDepth -> {
+                appendTraversalField("THROUGH_DEPTH")
+                appendTraversalField(extent.maximumDepth.value.toString())
+            }
+        }
         when (strategy) {
             TraversalStrategy.BreadthFirst -> appendTraversalField("breadth-first")
             is TraversalStrategy.BoundedFanOut -> {
