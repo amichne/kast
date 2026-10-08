@@ -189,7 +189,7 @@ There is no arbitrary-field join or general-purpose `MAP`.
 
 ## Choose the relationship search domain
 
-`EXPAND_RELATION` defaults to `WORKSPACE`. `WALK` defaults to `RETAINED_SEED`. `expansionScope` controls the search domain before enumeration. A later `WHERE` filters returned rows.
+`EXPAND_RELATION` defaults to `WORKSPACE`. A `WALK` with omitted or null `maximumDepth` exhausts the reachable graph and defaults to `WORKSPACE`; an explicit depth defaults to `RETAINED_SEED`. An explicit `expansionScope` overrides either default and controls the search domain before enumeration. A later `WHERE` filters returned rows.
 
 For explicit source restrictions:
 

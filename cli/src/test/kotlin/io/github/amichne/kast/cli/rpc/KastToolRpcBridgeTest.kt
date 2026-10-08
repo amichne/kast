@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.cli.LiveReadOutputSchemaTest
 import io.github.amichne.kast.cli.direct.DirectToolRegistration
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
@@ -12,17 +13,28 @@ import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.cli.mcp.KastMcpServer
+import io.github.amichne.kast.kernel.EvidenceBasis
+import io.github.amichne.kast.kernel.EvidenceEnvelope
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeRejection
+import io.github.amichne.kast.protocol.contract.ChangeRunDocument
+import io.github.amichne.kast.protocol.contract.ChangeRunError
 import io.github.amichne.kast.protocol.registry.AgentToolName
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -45,7 +57,7 @@ class KastToolRpcBridgeTest {
         val name = (AgentToolName.parse(PublicToolIdentity.QUERY_SYMBOLS.toolName) as Refinement.Refined).value
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val root = (FilesystemCanonicalRootDiscovery.discover(temporary) as CanonicalRootDiscovery.Discovered).root
-        val document = CanonicalJsonDocument.generated(TestResult.serializer()).create(TestResult())
+        val document = completeSourceDocument()
         var invocations = 0
         var preparations = 0
         val session =
@@ -112,12 +124,17 @@ class KastToolRpcBridgeTest {
             )
         val catalog = temporary.resolve("catalog.json")
         Files.writeString(catalog, Json.encodeToString<ToolRpcReply>(KastToolRpcBridge(session).catalog()))
+        val failures = temporary.resolve("failures.json")
+        Files.writeString(failures, Json.encodeToString(ToolRpcFailure.entries.toList()))
         val output = temporary.resolve("adapter-test.log")
         val process =
             ProcessBuilder("node", "--experimental-vm-modules", "--test", "src/test/js/harness-adapters.test.mjs")
                 .redirectErrorStream(true)
                 .redirectOutput(output.toFile())
-                .apply { environment()["KAST_ADAPTER_TEST_CATALOG"] = catalog.toString() }
+                .apply {
+                    environment()["KAST_ADAPTER_TEST_CATALOG"] = catalog.toString()
+                    environment()["KAST_ADAPTER_TEST_FAILURES"] = failures.toString()
+                }
                 .start()
         try {
             org.junit.jupiter.api.Assertions.assertTrue(process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS))
@@ -157,7 +174,7 @@ class KastToolRpcBridgeTest {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val read = installedHostedBootstrap().tools.single { it.name == "query_symbols" }
         val change = installedHostedBootstrap().tools.single { it.name == "add_declaration" }
-        val document = CanonicalJsonDocument.generated(TestResult.serializer()).create(TestResult())
+        val document = completeSourceDocument()
         var preparationCount = 0
         var invokedName: String? = null
         val session =
@@ -176,7 +193,8 @@ class KastToolRpcBridgeTest {
                 },
                 invokePublic = { request ->
                     invokedName = request.identity.toolName
-                    if (request.identity == PublicToolIdentity.ADD_DECLARATION) CliExit.OperationRejected(document)
+                    if (request.identity == PublicToolIdentity.ADD_DECLARATION)
+                        CliExit.OperationRejected(changeRejectionDocument())
                     else CliExit.Complete(document)
                 },
             )
@@ -215,6 +233,21 @@ class KastToolRpcBridgeTest {
                 .call("query_symbols", publicExample(PublicToolIdentity.QUERY_SYMBOLS, "runByName")),
         )
     }
+
+    private fun completeSourceDocument(): CanonicalJsonDocument {
+        val fixture = LiveReadOutputSchemaTest()
+        val basis = EvidenceBasis.Published((EvidenceGeneration.parse(1) as Refinement.Refined).value)
+        return (CanonicalSourceReadCliDocuments.project(
+                OperationOutcome.Complete(
+                    EvidenceEnvelope(CanonicalOperation.SOURCE_READ.id, basis, fixture.sourceResult(basis))
+                )
+            ) as ProjectedOperationOutcome.Complete)
+            .document
+    }
+
+    private fun changeRejectionDocument(): CanonicalJsonDocument =
+        CanonicalJsonDocument.generated(ChangeRunDocument.serializer())
+            .create(ChangeRunDocument.Rejected(ChangeRunError(ChangeRejection.PLANNING_REJECTED)))
 
     private fun publicExample(identity: PublicToolIdentity, name: String): String =
         PublicToolContract.examples(identity).examples.getValue(name).value.toString()
@@ -283,7 +316,8 @@ class KastToolRpcBridgeTest {
     }
 }
 
-@Serializable private data class TestCatalogRequest(val id: Int, val method: String, val jsonrpc: String = "2.0")
+@Serializable
+private data class TestCatalogRequest(val id: Int, val method: String, @Required val jsonrpc: String = "2.0")
 
 @Serializable private class TestEmptyRequest
 

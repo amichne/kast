@@ -52,7 +52,7 @@ internal fun mintlifyCallableReference(): CanonicalJsonDocument {
                     .documentationComponents(MintlifyCallableComponentName.named("McpToolCallResult")) +
                 healthInputSchema()
                     .documentationComponents(MintlifyCallableComponentName.named("health_checkRequest")) +
-                McpStructuredResults.schemaFor("health_check")
+                McpStructuredResults.semanticSchemaFor("health_check")
                     .documentationComponents(MintlifyCallableComponentName.named("health_checkSemanticResult")))
             .toMap(linkedMapOf())
     return mintlifyCallableReferenceFactory.create(

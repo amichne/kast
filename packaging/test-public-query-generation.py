@@ -4,6 +4,7 @@
 import copy
 import importlib.util
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -24,6 +25,15 @@ class PublicQueryGenerationTest(unittest.TestCase):
         generated = generator.render_tools(self.authority)
         for relative in ("copilot/extension.mjs", "pi/extension.ts"):
             self.assertIn("const PUBLIC_TOOL_CONTRACT_VERSION = 37;", generated[ROOT / relative])
+
+    def test_adapter_failures_project_the_runtime_enum_owner(self):
+        owner = (ROOT / "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt").read_text()
+        values = re.search(r"internal enum class ToolRpcFailure \{([^}]+)\}", owner).group(1)
+        expected = [entry.strip() for entry in values.split(",") if entry.strip()]
+        generated = generator.render_tools(self.authority)
+        for relative in ("copilot/extension.mjs", "pi/extension.ts"):
+            block = re.search(r"const TOOL_RPC_FAILURES = \[(.*?)\]", generated[ROOT / relative], re.DOTALL).group(1)
+            self.assertEqual(expected, re.findall(r'"([A-Z_]+)"', block))
 
     def test_word_discovery_is_a_closed_scoped_source(self):
         source = self.authority["$defs"]["TextSource"]

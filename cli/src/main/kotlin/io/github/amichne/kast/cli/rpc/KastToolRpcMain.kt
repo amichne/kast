@@ -10,10 +10,12 @@ import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.observeDirectToolStage
 import io.github.amichne.kast.cli.mcp.McpChangePhase
+import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import java.nio.charset.CharacterCodingException
 import java.nio.file.Path
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -48,9 +50,7 @@ object KastToolRpcMain {
                             ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
                         else if (session.admission() != InstalledToolAdmission.AVAILABLE)
                             ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
-                        else
-                            OneShotInvocationRecord.begin()?.use { bridge.call(args[1], bytes.decodeToString()) }
-                                ?: ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE)
+                        else invokeObserved(bridge, args[1], bytes)
                     }
                     else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
                 }
@@ -59,6 +59,14 @@ object KastToolRpcMain {
                     toolRpcJson.encodeToString<ToolRpcReply>(response)
                 }
             println(document)
+        }
+
+    private fun invokeObserved(bridge: KastToolRpcBridge, name: String, bytes: ByteArray): ToolRpcReply =
+        when (val input = decodeToolRpcInput(bytes)) {
+            is Refinement.Refined ->
+                OneShotInvocationRecord.begin()?.use { bridge.call(name, input.value) }
+                    ?: ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE)
+            is Refinement.Rejected -> ToolRpcReply.Rejected(input.failure)
         }
 }
 
@@ -114,10 +122,10 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
             } catch (_: RuntimeException) {
                 return ToolRpcReply.Rejected(ToolRpcFailure.INVOCATION_FAILED)
             }
-        return observeDirectToolStage(DirectToolStage.RESULT_PROJECTION) { present(exit) }
+        return observeDirectToolStage(DirectToolStage.RESULT_PROJECTION) { present(name, exit) }
     }
 
-    private fun present(exit: CliExit): ToolRpcReply {
+    private fun present(name: String, exit: CliExit): ToolRpcReply {
         val document =
             try {
                 toolRpcJson.parseToJsonElement(exit.document.value) as? JsonObject
@@ -125,6 +133,18 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
             } catch (_: SerializationException) {
                 return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
             }
+        val admitted =
+            when (exit) {
+                // Legacy CLI boundary documents have their own closed serializers, outside semantic schemas.
+                is CliExit.BoundaryRejected -> true
+                is CliExit.Complete,
+                is CliExit.Qualified,
+                is CliExit.OperationRejected ->
+                    McpStructuredResults.validatesSemantic(name, document) &&
+                        McpStructuredResults.matchesExit(exit, document)
+                is CliExit.Delegated -> false
+            }
+        if (!admitted) return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
         return when (exit) {
             is CliExit.Complete -> ToolRpcReply.Complete(document)
             is CliExit.Qualified -> ToolRpcReply.Qualified(document)
@@ -134,6 +154,13 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
         }
     }
 }
+
+internal fun decodeToolRpcInput(bytes: ByteArray): Refinement<String, ToolRpcFailure> =
+    try {
+        Refinement.Refined(bytes.decodeToString(throwOnInvalidSequence = true))
+    } catch (_: CharacterCodingException) {
+        Refinement.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+    }
 
 @Serializable
 internal sealed interface ToolRpcReply {

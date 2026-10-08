@@ -454,7 +454,15 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
     support_lines.append('}\n')
     outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/SupportToolIdentity.kt'] = ''.join(support_lines)
-    # Registration installs each adapter as one file; generate its marked version in place.
+    # ToolRpcFailure is the runtime owner; project its closed values into single-file adapters.
+    rpc_owner = ROOT / 'cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt'
+    failure_match = re.search(r'internal enum class ToolRpcFailure \{([^}]+)\}', rpc_owner.read_text())
+    if failure_match is None or not re.fullmatch(r'[\sA-Z_,]+', failure_match.group(1)):
+        raise ValueError('ToolRpcFailure must remain a closed enum of CAPS_CASE entries')
+    failures = [entry.strip() for entry in failure_match.group(1).split(',') if entry.strip()]
+    if not failures or len(failures) != len(set(failures)):
+        raise ValueError('ToolRpcFailure must have unique finite entries')
+    # Registration installs each adapter as one file; generate its marked constants in place.
     for relative in ('copilot/extension.mjs', 'pi/extension.ts'):
         adapter = ROOT / relative
         source, count = re.subn(
@@ -463,6 +471,17 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
         if count != 1:
             raise ValueError(f'{relative}: missing unique generated contract version')
+        failure_block = ('// Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.\n'
+                         'const TOOL_RPC_FAILURES = [\n' +
+                         ''.join('  ' + json.dumps(failure) + ',\n' for failure in failures) +
+                         ('] as const;\n' if relative.startswith('pi/') else '];\n') +
+                         '// End generated ToolRpcFailure.')
+        source, count = re.subn(
+            r'// Generated from ToolRpcFailure; owned by packaging/generate-public-query.py\.\n.*?// End generated ToolRpcFailure\.',
+            lambda _: failure_block, source, flags=re.DOTALL,
+        )
+        if count != 1:
+            raise ValueError(f'{relative}: missing unique generated RPC failures')
         outputs[adapter] = source
     registrations = []
     responses = []

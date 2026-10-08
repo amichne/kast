@@ -35,9 +35,12 @@ internal class KastMcpServer(
     fun run(input: BufferedInputStream, output: PrintStream) {
         while (true) {
             val line = readMcpLine(input) ?: return
-            val request = decodeRequest(line) ?: continue
-            val id = request.id ?: continue
-            val response = dispatch(id, request)
+            val response =
+                when (val admission = admitMcpRequest(line)) {
+                    is McpRequestAdmission.Call -> dispatch(admission.id, admission.request)
+                    is McpRequestAdmission.Notification -> continue
+                    is McpRequestAdmission.Rejected -> McpResponse(admission.id, error = admission.error)
+                }
             output.println(mcpWire.encodeToString(response))
             output.flush()
         }
@@ -108,8 +111,9 @@ internal class KastMcpServer(
                     it.outputSchema,
                     annotations =
                         ToolAnnotations(
-                            readOnlyHint = it.readOnly,
-                            destructiveHint = !it.readOnly,
+                            // Every call can save editor buffers and refresh the project during preparation.
+                            readOnlyHint = false,
+                            destructiveHint = true,
                             idempotentHint = it.readOnly,
                             openWorldHint = false,
                         ),
@@ -145,13 +149,6 @@ internal class KastMcpServer(
         }
     }
 
-    private fun decodeRequest(line: String): McpRequest? =
-        try {
-            mcpWire.decodeFromString<McpRequest>(line).takeIf { it.jsonrpc == "2.0" }
-        } catch (_: SerializationException) {
-            null
-        }
-
     @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
     private fun call(id: JsonElement, params: JsonElement?, modern: Boolean): McpResponse {
         val raw = params as? JsonObject ?: return rejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
@@ -181,9 +178,13 @@ internal class KastMcpServer(
                 return rejected(id, McpCallFailure.INVOCATION_FAILED, modern)
             }
         val canonical = runCatching { mcpWire.parseToJsonElement(exit.document.value) as? JsonObject }.getOrNull()
-        val structured = if (exit is CliExit.BoundaryRejected) null else canonical
-        val schemaEvidence =
-            if (exit is CliExit.BoundaryRejected) null else McpStructuredResults.failure(call.name, structured)
+        if (exit is CliExit.BoundaryRejected) {
+            if (canonical == null) return rejected(id, McpCallFailure.INVALID_RESULT_SCHEMA, modern)
+            report(call.name, McpCallStage.EXECUTION, McpCallOutcome.REJECTED, McpStructuredResults.variant(canonical))
+            return transportRejected(id, McpTransportRejection.BoundaryFailure(canonical), modern)
+        }
+        val structured = canonical
+        val schemaEvidence = McpStructuredResults.failure(call.name, structured)
         if (schemaEvidence != null) {
             report(
                 call.name,
@@ -195,11 +196,21 @@ internal class KastMcpServer(
             )
             return rejected(id, McpCallFailure.INVALID_RESULT_SCHEMA, modern)
         }
+        if (structured == null || !McpStructuredResults.matchesExit(exit, structured)) {
+            report(
+                call.name,
+                McpCallStage.EXECUTION,
+                McpCallOutcome.REJECTED,
+                McpStructuredResults.variant(structured),
+                McpResultSchemaFailure.OUTCOME_MISMATCH,
+                McpResultSchemaField.STATUS,
+            )
+            return rejected(id, McpCallFailure.INVALID_RESULT_SCHEMA, modern)
+        }
         report(
             call.name,
             McpCallStage.EXECUTION,
-            if (exit is CliExit.BoundaryRejected || exit is CliExit.OperationRejected) McpCallOutcome.REJECTED
-            else McpCallOutcome.COMPLETED,
+            if (exit is CliExit.OperationRejected) McpCallOutcome.REJECTED else McpCallOutcome.COMPLETED,
             McpStructuredResults.variant(structured),
         )
         val summary =
@@ -213,7 +224,7 @@ internal class KastMcpServer(
                 content =
                     if (modern && call.name == "health_check") listOf(McpTextContent(summary))
                     else listOf(McpTextContent(exit.document.value)),
-                isError = exit is CliExit.BoundaryRejected || exit is CliExit.OperationRejected,
+                isError = exit is CliExit.OperationRejected,
                 structuredContent = structured,
                 resultType = if (modern) "complete" else null,
             ),
@@ -221,13 +232,21 @@ internal class KastMcpServer(
     }
 
     private fun rejected(id: JsonElement, failure: McpCallFailure, modern: Boolean): McpResponse {
-        val rejection = McpRejected(error = McpCallError(failure, failure.nextAction))
+        return transportRejected(
+            id,
+            McpTransportRejection.CallFailure(McpCallError(failure, failure.nextAction)),
+            modern,
+        )
+    }
+
+    private fun transportRejected(id: JsonElement, rejection: McpTransportRejection, modern: Boolean): McpResponse {
         return success(
             id,
             McpCallResult(
-                listOf(McpTextContent(mcpWire.encodeToString(rejection))),
+                listOf(McpTextContent(mcpWire.encodeToString(McpTransportRejection.serializer(), rejection))),
                 isError = true,
-                structuredContent = mcpWire.encodeToJsonElement(rejection).jsonObject,
+                structuredContent =
+                    mcpWire.encodeToJsonElement(McpTransportRejection.serializer(), rejection).jsonObject,
                 resultType = if (modern) "complete" else null,
             ),
         )

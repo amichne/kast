@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test
 
 class KastMcpToolHintsTest {
     @Test
-    fun `semantic reads advertise safe MCP hints while change retains write hints`() {
+    fun `read hints include editor save preparation while change retains write hints`() {
         val readNames =
             setOf(
                 "check_diagnostics",
@@ -38,8 +38,8 @@ class KastMcpToolHintsTest {
             val document = tool.jsonObject
             val read = document.getValue("name").jsonPrimitive.content in readNames
             val hints = document.getValue("annotations").jsonObject
-            assertEquals(read.toString(), hints.getValue("readOnlyHint").jsonPrimitive.content)
-            assertEquals((!read).toString(), hints.getValue("destructiveHint").jsonPrimitive.content)
+            assertEquals("false", hints.getValue("readOnlyHint").jsonPrimitive.content)
+            assertEquals("true", hints.getValue("destructiveHint").jsonPrimitive.content)
             assertEquals(read.toString(), hints.getValue("idempotentHint").jsonPrimitive.content)
             assertEquals("false", hints.getValue("openWorldHint").jsonPrimitive.content)
         }

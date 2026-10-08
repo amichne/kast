@@ -120,6 +120,57 @@ relation evidence. Read walk progress and partial expansions before describing
 the covered graph. `BOUNDED_FAN_OUT` can sample deeper paths; it qualifies
 truncated coverage rather than proving an exhaustive traversal.
 
+Omitting `maximumDepth`, or supplying null, requests exhaustive reachable-graph
+traversal with default `WORKSPACE` expansion. An explicit depth defaults to
+`RETAINED_SEED`; an explicit `expansionScope` overrides either default.
+
+## Restrict native relationship destinations
+
+Use `narrowReferenceExpansion` when only one source domain matters. Its
+`SOURCE_DOMAIN` supplies exact imported `sourceSets`, `sourcePolicy`,
+`generatedSources`, and an optional relative `directory` before native
+enumeration. A later `WHERE` only filters returned rows. Use
+`workspaceReferenceWalk` for an explicit one-hop workspace walk independent of
+the seed's discovery scope. Preserve requested and effective domains and proven
+exclusions when explaining coverage.
+
+## Read an anchored occurrence or anonymous body
+
+Use `readCallbackSource` with a `candidateSelector` issued in the current
+workspace's occurrence, callback, or proof evidence. Pass it unchanged as
+`request.candidateRef`. A symbol `ref` cannot substitute for this capability,
+and the enclosing named function cannot substitute for the anonymous source
+range. Reacquire the candidate after an epoch change; preserve source-read
+freshness and authority failures.
+
+## Investigate value impact and inspect retained proof
+
+Use `representationImpact` for qualified static provenance from an exact
+producer invocation. Supply current issued `enclosing` and producer `callable`
+references and a UTF-16 anchor covering the whole invocation; native admission
+revalidates those claims. Keep `steps` empty, choose an explicit `domain`, and
+use the installed schema for reviewed `models` and their `declarations`.
+Empty models supply no representation or boundary meaning and can leave
+obligations unresolved. Static paths do not prove runtime execution.
+
+The example explicitly selects `PROGRESSIVE` and retains `VALUE_PATHS`.
+After retention issues a result reference, use `readImpactProducers` or
+`readImpactFindings` to inspect the original investigation. A finding links its
+original path: present `VALUE_PATHS` with its `pathOrdinal` as `cursor` and
+`executionBudget.maxResults: 1`. Retain terminal qualifications and obligations.
+An unfinished evidence-only ledger can reject witness fields as
+`RESULT_FIELD_UNAVAILABLE`; follow its issued execution continuation.
+
+Use `representationImpactRequestedSite` only with current exact site identity,
+range, and role claims. Native admission revalidates them. Then use
+`readImpactSiteAccounting` to distinguish `REACHED`, proven `EXCLUDED`, and
+`RELATIONSHIP_UNPROVEN` sites. Identity alone does not prove a producer route.
+
+Use `completeImpactFindings` when a complete static investigation is required.
+It selects `COMPLETE_ONLY` and `IMPACT_WITNESS` findings, completing the original
+ledger before presentation. Missing evidence or unresolved obligations reject;
+do not infer completion from a compact finding or from retained paging.
+
 ## Retain, page, and compose
 
 Use `retainByName` when a later query needs the immutable rows. Continue only

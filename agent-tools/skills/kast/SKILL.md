@@ -39,10 +39,15 @@ source-set constraints in the source. Request only fields the task needs.
 `SIGNATURE` distinguishes overloads; `SOURCE` reads a bounded committed source
 window. Scope on discovery does not constrain later relation destinations.
 
-Copy returned exact `ref` values unchanged into follow-up reads. A name, path,
-candidate selector, result reference, or continuation cannot replace that
-capability. `AT_LOCATION` finds the containing named declaration at a UTF-16
+Copy returned exact `ref` values unchanged into exact-symbol follow-up reads.
+A name, path, candidate selector, result reference, or continuation cannot replace
+that capability. `AT_LOCATION` finds the containing named declaration at a UTF-16
 offset; it does not resolve the reference expression at that offset.
+
+For an anchored occurrence or anonymous body, pass its issued `candidateSelector`
+unchanged as `READ_SOURCE.candidateRef`; that capability is distinct from a symbol
+`ref`. Consult the query patterns for candidate source reads, native relation
+expansion scopes, and retained value-impact investigations.
 
 ## Preserve what the result proves
 
@@ -57,6 +62,7 @@ Keep these issued values in their owning operations:
 | Value | Use |
 | --- | --- |
 | Exact symbol `ref` | Fresh exact-symbol query or exact-target change. |
+| Issued `candidateSelector` | `READ_SOURCE.candidateRef` for its exact anchored source range. |
 | Retained result reference | `RESULT` source, set/join right input, or `READ_RESULT`. |
 | Issued row ID | Select a row from its owning retained result. |
 | Execution continuation | `RESUME` without resending source or steps. |
