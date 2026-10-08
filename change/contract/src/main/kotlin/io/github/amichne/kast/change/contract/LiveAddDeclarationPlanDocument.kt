@@ -9,7 +9,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-internal data class LiveAddDeclarationPlanDocument(
+internal data class LiveAddDeclarationPlanDocument<S>(
     @SerialName("format") val formatIdentity: String,
     val schemaVersion: Int,
     val planId: String,
@@ -29,7 +29,7 @@ internal data class LiveAddDeclarationPlanDocument(
     val expectedKind: String,
     val relationEvidenceSemantics: String,
     val evidence: DurableAddDeclarationPlanningEvidence,
-    val verificationScope: LiveVerificationScopeDocument,
+    val verificationScope: S,
     val semanticObligations: List<String>,
     val liveObligations: List<String>,
 )
@@ -78,7 +78,10 @@ internal data class LivePlanConstraintsDocument(
     val sourceSets: List<String>?,
 )
 
-internal fun LiveAddDeclarationChangePlan.document(): LiveAddDeclarationPlanDocument {
+internal fun <S> LiveAddDeclarationChangePlan.document(
+    schemaVersion: Int,
+    verificationScope: S,
+): LiveAddDeclarationPlanDocument<S> {
     val observed = basis.observation
     val scope = SymbolSearchScope.snapshot(target.scope)
     val qualified =
@@ -88,7 +91,7 @@ internal fun LiveAddDeclarationChangePlan.document(): LiveAddDeclarationPlanDocu
         }
     return LiveAddDeclarationPlanDocument(
         formatIdentity = "LIVE_ADD_DECLARATION",
-        schemaVersion = LiveAddDeclarationPlanCodec.VERSION,
+        schemaVersion = schemaVersion,
         planId = planId.value,
         workspaceRoot = observed.reference.workspaceRoot.value,
         owner = observed.reference.host.value.toString(),
@@ -106,7 +109,7 @@ internal fun LiveAddDeclarationChangePlan.document(): LiveAddDeclarationPlanDocu
         expectedKind = expectedSemanticDelta.declarationKind.name,
         relationEvidenceSemantics = evidence.relationDigestSemantics.name,
         evidence = evidence,
-        verificationScope = LiveVerificationScopeCodec.document(verificationScope),
+        verificationScope = verificationScope,
         semanticObligations = requiredVerification.semanticObligations.map { it.name },
         liveObligations = requiredVerification.liveObligations.map { it.name },
     )

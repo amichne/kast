@@ -5,6 +5,7 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalExtent
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
@@ -75,11 +76,19 @@ sealed interface ExactQueryStage {
 
     data class Walk(
         val meaning: RelationMeaning,
-        val maximumDepth: TraversalDepthLimit,
+        val extent: TraversalExtent = TraversalExtent.Exhaustive,
         val strategy: TraversalStrategy,
         val next: ExactQueryStage,
-        val expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
-    ) : ExactQueryStage
+        val expansion: RelationSearchBoundary = extent.defaultExpansion(),
+    ) : ExactQueryStage {
+        constructor(
+            meaning: RelationMeaning,
+            maximumDepth: TraversalDepthLimit,
+            strategy: TraversalStrategy,
+            next: ExactQueryStage,
+            expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
+        ) : this(meaning, TraversalExtent.ThroughDepth(maximumDepth), strategy, next, expansion)
+    }
 
     data class Distinct(val next: ExactQueryStage) : ExactQueryStage
 
@@ -187,7 +196,7 @@ object QueryPlanCompiler {
                     is QueryStepSyntax.Where -> ExactQueryStage.Where(step.predicate, stage)
                     is QueryStepSyntax.Related -> ExactQueryStage.Related(step.meaning, stage, step.expansion)
                     is QueryStepSyntax.Walk ->
-                        ExactQueryStage.Walk(step.meaning, step.maximumDepth, step.strategy, stage, step.expansion)
+                        ExactQueryStage.Walk(step.meaning, step.extent, step.strategy, stage, step.expansion)
                     is QueryStepSyntax.Concat -> ExactQueryStage.Concat(step.input, stage)
                     is QueryStepSyntax.Intersect ->
                         ExactQueryStage.Set(QuerySetOperator.INTERSECTION, step.right, stage)

@@ -24,7 +24,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import java.nio.file.Path
 
-internal fun LiveAddDeclarationPlanDocument.restoreTarget(
+internal fun LiveAddDeclarationPlanDocument<*>.restoreTarget(
     basis: LiveChangeBasis
 ): Refinement<PlannedDeclarationIdentity, LiveAddDeclarationPlanDecodeFailure> =
     restoreLivePlanTarget(basis, target, scope, constraints)

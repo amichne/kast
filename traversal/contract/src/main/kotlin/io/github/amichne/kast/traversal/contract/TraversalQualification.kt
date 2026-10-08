@@ -9,6 +9,7 @@ enum class TraversalLimitation {
     WORK_LIMIT_REACHED,
     TIME_LIMIT_REACHED,
     DEPTH_LIMIT_REACHED,
+    DEPTH_REPRESENTATION_EXHAUSTED,
     FRONTIER_LIMIT_REACHED,
     ONE_HOP_INCOMPLETE,
     NO_PROGRESS,
@@ -62,6 +63,7 @@ sealed interface TraversalQualification {
                 is Refinement.Refined ->
                     if (
                         TraversalLimitation.DEPTH_LIMIT_REACHED in admitted.value.first ||
+                            TraversalLimitation.DEPTH_REPRESENTATION_EXHAUSTED in admitted.value.first ||
                             TraversalLimitation.NO_PROGRESS in admitted.value.first
                     ) {
                         Refinement.Rejected(TraversalQualificationFailure.TERMINAL_LIMITATION_RESUMABLE)
@@ -98,6 +100,7 @@ sealed interface TraversalQualification {
                         setOf(
                                 TraversalLimitation.ONE_HOP_INCOMPLETE,
                                 TraversalLimitation.DEPTH_LIMIT_REACHED,
+                                TraversalLimitation.DEPTH_REPRESENTATION_EXHAUSTED,
                                 TraversalLimitation.NO_PROGRESS,
                                 TraversalLimitation.TIME_LIMIT_REACHED,
                             )

@@ -230,7 +230,10 @@ internal object KastObserverFixtures {
         return QueryWalkObservationDocument(
             subject = QueryReferenceDocument.ExactSymbol(subject.selector),
             relation = RelationKindDocument.CALLERS,
-            maximumDepth = ProtocolCount.parse(2).required(),
+            extent =
+                io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                    ProtocolCount.parse(2).required()
+                ),
             expandedFrontier = QueryExpandedFrontierDocument.parse(2).required(),
             progress = TraversalProgressDocument(1, 2, 2, 2),
             strategy = TraversalStrategyDocument.BreadthFirst,

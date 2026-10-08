@@ -45,6 +45,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalExtent
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.traversal.contract.TraversalPage
 import io.github.amichne.kast.traversal.contract.TraversalProgress
@@ -157,7 +158,10 @@ class QueryJoinCompositionTest {
                     TraversalOperations { plan ->
                         walks++
                         assertEquals(selected, plan.start)
-                        assertEquals(2, plan.budget.depth.value)
+                        assertEquals(
+                            TraversalExtent.ThroughDepth(TraversalDepthLimit.parse(2).refined()),
+                            plan.budget.extent,
+                        )
                         val progress = TraversalProgress.restore(1, 1, 0, 0).refined()
                         TraversalResult.complete(
                             TraversalPage.fromBoundary(plan, emptyList(), 0, 1, 1, 1, progress).refined()

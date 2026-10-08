@@ -5,6 +5,7 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalExtent
 import io.github.amichne.kast.traversal.contract.TraversalStrategy
 
 class QueryVisibilitySelection private constructor(val values: List<DeclarationVisibility>) {
@@ -76,10 +77,17 @@ sealed interface QueryStepSyntax {
 
     data class Walk(
         val meaning: RelationMeaning,
-        val maximumDepth: TraversalDepthLimit,
+        val extent: TraversalExtent = TraversalExtent.Exhaustive,
         val strategy: TraversalStrategy,
-        val expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
-    ) : QueryStepSyntax
+        val expansion: RelationSearchBoundary = extent.defaultExpansion(),
+    ) : QueryStepSyntax {
+        constructor(
+            meaning: RelationMeaning,
+            maximumDepth: TraversalDepthLimit,
+            strategy: TraversalStrategy,
+            expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
+        ) : this(meaning, TraversalExtent.ThroughDepth(maximumDepth), strategy, expansion)
+    }
 
     data class Concat(val input: QueryCompositionInput) : QueryStepSyntax
 

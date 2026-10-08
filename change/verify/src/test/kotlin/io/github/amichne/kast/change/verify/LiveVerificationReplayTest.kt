@@ -65,7 +65,12 @@ class LiveVerificationReplayTest {
                 TraversalPlan.start(
                         anchor,
                         original.meaning,
-                        original.budget.copy(depth = TraversalDepthLimit.parse(1).refined()),
+                        original.budget.copy(
+                            extent =
+                                io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth(
+                                    TraversalDepthLimit.parse(1).refined()
+                                )
+                        ),
                     )
                     .refined()
             )

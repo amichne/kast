@@ -18,6 +18,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalExtent
 import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import java.nio.file.Path
@@ -33,7 +34,38 @@ internal object LiveVerificationScopeCodec {
     }
 
     fun canonicalIdentity(scope: LiveAddDeclarationVerificationScope): String =
-        json.encodeToString(LiveVerificationScopeDocument.serializer(), document(scope))
+        when (val selected = representation(scope)) {
+            is LiveVerificationScopeRepresentation.LegacyDepth ->
+                json.encodeToString(LegacyLiveVerificationScopeDocument.serializer(), selected.document)
+            is LiveVerificationScopeRepresentation.Extent ->
+                json.encodeToString(LiveVerificationScopeDocument.serializer(), selected.document)
+        }
+
+    fun representation(scope: LiveAddDeclarationVerificationScope): LiveVerificationScopeRepresentation {
+        val current = document(scope)
+        val legacy = mutableListOf<LegacyLiveTraversalReplayDocument>()
+        for (traversal in current.traversals) {
+            when (val extent = traversal.extent) {
+                LiveTraversalExtentDocument.Exhaustive -> return LiveVerificationScopeRepresentation.Extent(current)
+                is LiveTraversalExtentDocument.ThroughDepth ->
+                    legacy +=
+                        LegacyLiveTraversalReplayDocument(
+                            traversal.meaning,
+                            traversal.records,
+                            traversal.returnedBytes,
+                            traversal.workUnits,
+                            traversal.elapsedTime,
+                            extent.maximumDepth,
+                            traversal.frontier,
+                            traversal.oneHop,
+                            traversal.expansion,
+                        )
+            }
+        }
+        return LiveVerificationScopeRepresentation.LegacyDepth(
+            LegacyLiveVerificationScopeDocument(current.relations, legacy, current.diagnostics)
+        )
+    }
 
     fun document(scope: LiveAddDeclarationVerificationScope) =
         LiveVerificationScopeDocument(
@@ -48,7 +80,12 @@ internal object LiveVerificationScopeCodec {
                     returnedBytes = budget.returnedBytes.value,
                     workUnits = budget.workUnits.value,
                     elapsedTime = budget.elapsedTime.value,
-                    depth = budget.depth.value,
+                    extent =
+                        when (val selected = budget.extent) {
+                            TraversalExtent.Exhaustive -> LiveTraversalExtentDocument.Exhaustive
+                            is TraversalExtent.ThroughDepth ->
+                                LiveTraversalExtentDocument.ThroughDepth(selected.maximumDepth.value)
+                        },
                     frontier = budget.frontier.value,
                     oneHop = budget.oneHop.document(),
                     expansion = replay.expansion.document(),
@@ -129,8 +166,8 @@ internal object LiveVerificationScopeCodec {
                     ElapsedTimeLimitMillis.parse(elapsedTime).required {
                         return rejected()
                     },
-                depth =
-                    TraversalDepthLimit.parse(depth).required {
+                extent =
+                    restoreExtent(extent).required {
                         return rejected()
                     },
                 frontier =
@@ -152,6 +189,18 @@ internal object LiveVerificationScopeCodec {
             )
         )
     }
+
+    private fun restoreExtent(
+        document: LiveTraversalExtentDocument
+    ): Refinement<TraversalExtent, LiveAddDeclarationPlanDecodeFailure> =
+        when (document) {
+            LiveTraversalExtentDocument.Exhaustive -> Refinement.Refined(TraversalExtent.Exhaustive)
+            is LiveTraversalExtentDocument.ThroughDepth ->
+                when (val depth = TraversalDepthLimit.parse(document.maximumDepth)) {
+                    is Refinement.Refined -> Refinement.Refined(TraversalExtent.ThroughDepth(depth.value))
+                    is Refinement.Rejected -> rejected()
+                }
+        }
 
     private fun RelationBudget.document() =
         LiveRelationBudgetDocument(
@@ -231,7 +280,7 @@ internal data class LiveTraversalReplayDocument(
     val returnedBytes: Long,
     val workUnits: Long,
     val elapsedTime: Long,
-    val depth: Int,
+    val extent: LiveTraversalExtentDocument,
     val frontier: Int,
     val oneHop: LiveRelationBudgetDocument,
     val expansion: LiveRelationBoundaryDocument,

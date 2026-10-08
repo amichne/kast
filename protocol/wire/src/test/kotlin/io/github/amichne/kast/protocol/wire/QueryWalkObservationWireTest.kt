@@ -91,7 +91,9 @@ class QueryWalkObservationWireTest {
             QueryWalkObservationDocument(
                 QueryReferenceDocument.ExactSymbol(ProtocolText.parse("exact:fixture-node").value()),
                 RelationKindDocument.REFERENCES,
-                ProtocolCount.parse(2).value(),
+                io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                    ProtocolCount.parse(2).value()
+                ),
                 QueryExpandedFrontierDocument.parse(1).value(),
                 TraversalProgressDocument(1, 1, 0, 0),
                 TraversalStrategyDocument.BreadthFirst,
@@ -128,7 +130,9 @@ class QueryWalkObservationWireTest {
         return QueryWalkObservationDocument(
             QueryReferenceDocument.ExactSymbol(ProtocolText.parse("exact:fixture-node").value()),
             RelationKindDocument.CALLEES,
-            ProtocolCount.parse(3).value(),
+            io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
+                ProtocolCount.parse(3).value()
+            ),
             QueryExpandedFrontierDocument.parse(1).value(),
             TraversalProgressDocument(1, 2, 3, 2),
             TraversalStrategyDocument.BreadthFirst,

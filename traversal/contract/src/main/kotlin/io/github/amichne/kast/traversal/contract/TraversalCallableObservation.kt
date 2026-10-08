@@ -38,7 +38,7 @@ private constructor(
                     Refinement.Rejected(TraversalCallableObservationFailure.DOMAIN_MISMATCH)
                 plan.meaning != io.github.amichne.kast.relation.contract.RelationMeaning.Callees ->
                     Refinement.Rejected(TraversalCallableObservationFailure.MEANING_MISMATCH)
-                !plan.admitsEndpoint(entry.node.endpoint) || entry.depth.value >= plan.budget.depth.value ->
+                !plan.admitsEndpoint(entry.node.endpoint) || !plan.budget.extent.permitsExpansion(entry.depth) ->
                     Refinement.Rejected(TraversalCallableObservationFailure.DEPTH_MISMATCH)
                 else -> Refinement.Refined(TraversalCallableObservation(entry, observation))
             }

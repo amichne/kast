@@ -60,7 +60,7 @@ private constructor(
             if (!plan.admitsEndpoint(fact.source) || !plan.admitsEndpoint(fact.target)) {
                 return Refinement.Rejected(TraversalRecordFailure.SCOPE_MISMATCH)
             }
-            if (depth.value > plan.budget.depth.value) {
+            if (!plan.budget.extent.permitsRecord(depth)) {
                 return Refinement.Rejected(TraversalRecordFailure.DEPTH_EXCEEDS_PLAN)
             }
             val related =

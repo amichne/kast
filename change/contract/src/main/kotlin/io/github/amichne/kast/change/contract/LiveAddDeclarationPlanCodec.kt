@@ -23,7 +23,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /** Versioned historical plan representation. Decoding never creates read or source-write authority. */
 object LiveAddDeclarationPlanCodec {
-    const val VERSION = 2
+    const val VERSION = 3
     private const val FORMAT = "LIVE_ADD_DECLARATION"
 
     private val json = Json {
@@ -33,7 +33,19 @@ object LiveAddDeclarationPlanCodec {
         prettyPrint = false
     }
 
-    fun encode(plan: LiveAddDeclarationChangePlan): String = json.encodeToString(plan.document())
+    fun encode(plan: LiveAddDeclarationChangePlan): String =
+        when (val selected = LiveVerificationScopeCodec.representation(plan.verificationScope)) {
+            is LiveVerificationScopeRepresentation.LegacyDepth ->
+                json.encodeToString(
+                    LiveAddDeclarationPlanDocument.serializer(LegacyLiveVerificationScopeDocument.serializer()),
+                    plan.document(2, selected.document),
+                )
+            is LiveVerificationScopeRepresentation.Extent ->
+                json.encodeToString(
+                    LiveAddDeclarationPlanDocument.serializer(LiveVerificationScopeDocument.serializer()),
+                    plan.document(VERSION, selected.document),
+                )
+        }
 
     fun decode(encoded: String): Refinement<LiveAddDeclarationChangePlan, LiveAddDeclarationPlanDecodeFailure> {
         val document =
@@ -60,25 +72,38 @@ object LiveAddDeclarationPlanCodec {
 
     private fun decodeDocument(
         encoded: String
-    ): Refinement<LiveAddDeclarationPlanDocument, LiveAddDeclarationPlanDecodeFailure> {
+    ): Refinement<LiveAddDeclarationPlanDocument<LiveVerificationScopeDocument>, LiveAddDeclarationPlanDecodeFailure> {
         val version =
             try {
                 json.parseToJsonElement(encoded).jsonObject["schemaVersion"]?.jsonPrimitive?.intOrNull
             } catch (_: IllegalArgumentException) {
                 return rejected()
             } ?: return rejected()
-        if (version != VERSION) return rejected(LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED)
         val document =
-            try {
-                json.decodeFromString<LiveAddDeclarationPlanDocument>(encoded)
-            } catch (_: IllegalArgumentException) {
-                return rejected()
+            when (version) {
+                2 ->
+                    canonicalDocument(
+                            encoded,
+                            LiveAddDeclarationPlanDocument.serializer(LegacyLiveVerificationScopeDocument.serializer()),
+                        )
+                        .required {
+                            return it
+                        }
+                        .migrated()
+                VERSION ->
+                    canonicalDocument(
+                            encoded,
+                            LiveAddDeclarationPlanDocument.serializer(LiveVerificationScopeDocument.serializer()),
+                        )
+                        .required {
+                            return it
+                        }
+                else -> return rejected(LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED)
             }
         if (document.formatIdentity != FORMAT) return rejected()
         if (document.referenceVersion != LiveSemanticReadReference.VERSION) {
             return rejected(LiveAddDeclarationPlanDecodeFailure.VERSION_UNSUPPORTED)
         }
-        if (json.encodeToString(document) != encoded) return rejected()
         val required = LiveAddDeclarationVerificationContract.required
         if (
             document.semanticObligations != required.semanticObligations.map { it.name } ||
@@ -89,7 +114,20 @@ object LiveAddDeclarationPlanCodec {
         return Refinement.Refined(document)
     }
 
-    private fun LiveAddDeclarationPlanDocument.restoreBasis():
+    private fun <Document> canonicalDocument(
+        encoded: String,
+        serializer: kotlinx.serialization.KSerializer<Document>,
+    ): Refinement<Document, LiveAddDeclarationPlanDecodeFailure> {
+        val document =
+            try {
+                json.decodeFromString(serializer, encoded)
+            } catch (_: IllegalArgumentException) {
+                return rejected()
+            }
+        return if (json.encodeToString(serializer, document) == encoded) Refinement.Refined(document) else rejected()
+    }
+
+    private fun LiveAddDeclarationPlanDocument<LiveVerificationScopeDocument>.restoreBasis():
         Refinement<LiveChangeBasis, LiveAddDeclarationPlanDecodeFailure> {
         val rootPath = workspaceRoot.pathOrNull() ?: return rejected()
         val root =
@@ -152,7 +190,7 @@ object LiveAddDeclarationPlanCodec {
         )
     }
 
-    private fun LiveAddDeclarationPlanDocument.restoreInput(
+    private fun LiveAddDeclarationPlanDocument<LiveVerificationScopeDocument>.restoreInput(
         basis: LiveChangeBasis
     ): Refinement<AdmittedLiveAddDeclarationPlanInput, LiveAddDeclarationPlanDecodeFailure> {
         val target =
@@ -191,7 +229,7 @@ object LiveAddDeclarationPlanCodec {
         )
     }
 
-    private fun LiveAddDeclarationPlanDocument.restoreEvidence():
+    private fun LiveAddDeclarationPlanDocument<LiveVerificationScopeDocument>.restoreEvidence():
         Refinement<DurableAddDeclarationPlanningEvidence, LiveAddDeclarationPlanDecodeFailure> {
         if (relationEvidenceSemantics != StableRelationEvidenceSemantics.SEMANTIC_V2.name) {
             return rejected(LiveAddDeclarationPlanDecodeFailure.EVIDENCE_INCOMPLETE)
@@ -228,3 +266,31 @@ private inline fun <T, F> Refinement<T, F>.required(onFailure: (Refinement.Rejec
         is Refinement.Refined -> value
         is Refinement.Rejected -> onFailure(this)
     }
+
+/** Converts only the legacy scope shape; common target, identity and evidence admission remains authoritative. */
+private fun LiveAddDeclarationPlanDocument<LegacyLiveVerificationScopeDocument>.migrated():
+    LiveAddDeclarationPlanDocument<LiveVerificationScopeDocument> =
+    LiveAddDeclarationPlanDocument(
+        formatIdentity,
+        schemaVersion,
+        planId,
+        workspaceRoot,
+        owner,
+        epoch,
+        referenceVersion,
+        contentView,
+        model,
+        target,
+        scope,
+        constraints,
+        sourceContent,
+        declaration,
+        expectedPackage,
+        expectedName,
+        expectedKind,
+        relationEvidenceSemantics,
+        evidence,
+        verificationScope.migrated(),
+        semanticObligations,
+        liveObligations,
+    )

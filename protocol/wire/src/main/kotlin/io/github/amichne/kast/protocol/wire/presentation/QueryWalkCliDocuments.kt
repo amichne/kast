@@ -23,7 +23,7 @@ internal fun TraversalRecordDocument.toQueryCliDocument() =
 internal data class QueryWalkObservationCliDocument(
     val subject: String,
     val relation: String,
-    @SerialName("maximum_depth") val maximumDepth: Int,
+    val extent: io.github.amichne.kast.protocol.contract.TraversalExtentDocument,
     @SerialName("expanded_frontier") val expandedFrontier: Int,
     val progress: TraversalProgressDocument,
     val strategy: TraversalStrategyDocument,
@@ -69,7 +69,7 @@ internal fun QueryWalkObservationDocument.toQueryCliDocument() =
     QueryWalkObservationCliDocument(
         subject.token.value,
         relation.cliName(),
-        maximumDepth.value,
+        extent,
         expandedFrontier.value,
         progress,
         strategy,

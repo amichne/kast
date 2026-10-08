@@ -3,7 +3,6 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
@@ -25,7 +24,7 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 internal data class QueryWalkObservationWireDocument(
     val subject: QueryReferenceWireDocument.ExactSymbol,
     val relation: RelationKindWireDocument,
-    @SerialName("maximum_depth") val maximumDepth: Int,
+    val extent: io.github.amichne.kast.protocol.contract.TraversalExtentDocument,
     @SerialName("expanded_frontier") val expandedFrontier: Int,
     val progress: TraversalProgressDocument,
     val strategy: TraversalStrategyDocument,
@@ -138,7 +137,7 @@ internal fun QueryWalkObservationDocument.toWireDocument() =
     QueryWalkObservationWireDocument(
         subject = QueryReferenceWireDocument.ExactSymbol(subject.token.value),
         relation = relation.toWireDocument(),
-        maximumDepth = maximumDepth.value,
+        extent = extent,
         expandedFrontier = expandedFrontier.value,
         progress = progress,
         strategy = strategy,
@@ -171,20 +170,16 @@ private fun QueryWalkCoverageDocument.toWireDocument(): QueryWalkCoverageWireDoc
 
 internal fun QueryWalkObservationWireDocument.toContract(): WireDocumentConversion<QueryWalkObservationDocument> =
     ProtocolText.parse(subject.token).toWireDocumentConversion().flatMapConverted { token ->
-        ProtocolCount.parse(maximumDepth).toWireDocumentConversion().flatMapConverted { depth ->
-            QueryExpandedFrontierDocument.parse(expandedFrontier).toWireDocumentConversion().flatMapConverted { frontier
-                ->
-                partialExpansions.convertBounded(TraversalPartialExpansionWireDocument::toContract).flatMapConverted {
-                    partials ->
-                    retainedWalkEvidence(token, depth, frontier, partials)
-                }
+        QueryExpandedFrontierDocument.parse(expandedFrontier).toWireDocumentConversion().flatMapConverted { frontier ->
+            partialExpansions.convertBounded(TraversalPartialExpansionWireDocument::toContract).flatMapConverted {
+                partials ->
+                retainedWalkEvidence(token, frontier, partials)
             }
         }
     }
 
 private fun QueryWalkObservationWireDocument.retainedWalkEvidence(
     token: ProtocolText,
-    depth: ProtocolCount,
     frontier: QueryExpandedFrontierDocument,
     partials: BoundedProtocolList<TraversalPartialExpansionDocument>,
 ): WireDocumentConversion<QueryWalkObservationDocument> =
@@ -202,7 +197,7 @@ private fun QueryWalkObservationWireDocument.retainedWalkEvidence(
                                     QueryWalkObservationDocument(
                                         subject = QueryReferenceDocument.ExactSymbol(token),
                                         relation = relation.toContract(),
-                                        maximumDepth = depth,
+                                        extent = extent,
                                         expandedFrontier = frontier,
                                         progress = progress,
                                         strategy = strategy,
@@ -229,7 +224,7 @@ private fun QueryWalkObservationWireDocument.convertCallable(
 ): WireDocumentConversion<io.github.amichne.kast.protocol.contract.QueryWalkCallableObservationDocument> =
     callable.toContract().flatMapConverted { admitted ->
         when {
-            admitted.depth.value >= maximumDepth ||
+            !extent.permitsExpansion(admitted.depth) ||
                 relation.toContract() != io.github.amichne.kast.protocol.contract.RelationKindDocument.CALLEES ->
                 WireDocumentConversion.Rejected
             admitted.requestedDomain != requestedDomain || admitted.effectiveDomain != effectiveDomain ->
@@ -256,7 +251,7 @@ private fun QueryWalkObservationWireDocument.convertCallback(
     callback.toContract().flatMapConverted { admitted ->
         val observation = admitted.observation
         when {
-            admitted.depth.value >= maximumDepth -> WireDocumentConversion.Rejected
+            !extent.permitsExpansion(admitted.depth) -> WireDocumentConversion.Rejected
             observation.relation != relation.toContract() -> WireDocumentConversion.Rejected
             observation.requestedDomain != requestedDomain || observation.effectiveDomain != effectiveDomain ->
                 WireDocumentConversion.Rejected

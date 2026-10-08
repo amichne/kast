@@ -78,7 +78,7 @@ Omission or `null` uses the operation's default. `SOURCE_DOMAIN` requires `sourc
 
 Observations retain requested and effective domains, coverage, and proven exclusions. [Callback observations](/reference/callbacks) preserve anonymous ownership. Excluded callbacks do not become named edges.
 
-For breadth-first walks, `maximumDepth` includes nodes at that depth without expanding them. Complete coverage requires complete one-hop reads below the bound. Result, work, and time limits can pause execution. Terminal incomplete reads keep the walk incomplete.
+A `WALK` with omitted or null `maximumDepth` exhausts the reachable relation graph in its declared expansion domain and defaults to workspace expansion. Its result evidence carries `extent: {"type": "EXHAUSTIVE"}`. Explicit `maximumDepth` includes nodes at that depth without expanding them; evidence carries `extent: {"type": "THROUGH_DEPTH", "maximum_depth": N}`. Complete coverage requires complete one-hop reads at every required node. Result, work, and time limits can pause evaluation while retaining the original extent. Terminal incomplete reads keep the walk incomplete. Explicit expansion policies remain part of the completion question.
 
 ## Choose the result you need
 

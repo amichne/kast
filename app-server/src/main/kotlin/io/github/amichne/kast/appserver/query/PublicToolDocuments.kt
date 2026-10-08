@@ -355,7 +355,6 @@ internal object PublicToolDefaults {
     val nameMatch = PublicToolNameMatch.EXACT
     const val includeSubdirectories = true
     const val includeSubpackages = true
-    val walkDepth = toolDefault(ProtocolCount.parse(1))
     const val maximumEdgesPerNode = 32
     val sourceSets = toolDefault(BoundedProtocolList.create(listOf(toolDefault(ProtocolText.parse("main")), toolDefault(ProtocolText.parse("test")))))
     val declarationKinds = toolDefault(BoundedProtocolList.create(listOf(PublicToolDeclarationKinds.CLASS, PublicToolDeclarationKinds.FUNCTION, PublicToolDeclarationKinds.PROPERTY, PublicToolDeclarationKinds.TYPE_ALIAS)))

@@ -168,7 +168,13 @@ class QueryWalkCompositionTest {
                     traversal = { traversalPlan ->
                         calls++
                         assertEquals(TraversalPosition.Start, traversalPlan.position)
-                        assertEquals(3, traversalPlan.budget.depth.value)
+                        assertEquals(
+                            3,
+                            (traversalPlan.budget.extent
+                                    as io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth)
+                                .maximumDepth
+                                .value,
+                        )
                         assertEquals(TraversalStrategy.BreadthFirst, traversalPlan.strategy)
                         val records = listOf(walkRecord(traversalPlan, 100), walkRecord(traversalPlan, 101))
                         TraversalResult.complete(page(traversalPlan, records, 1))

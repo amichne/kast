@@ -33,7 +33,7 @@ private constructor(
                     Refinement.Rejected(TraversalReferenceObservationFailure.SUBJECT_MISMATCH)
                 reference.meaning != plan.meaning ->
                     Refinement.Rejected(TraversalReferenceObservationFailure.MEANING_MISMATCH)
-                entry.depth.value >= plan.budget.depth.value ->
+                !plan.budget.extent.permitsExpansion(entry.depth) ->
                     Refinement.Rejected(TraversalReferenceObservationFailure.DEPTH_MISMATCH)
                 else -> Refinement.Refined(TraversalReferenceObservation(entry, reference))
             }

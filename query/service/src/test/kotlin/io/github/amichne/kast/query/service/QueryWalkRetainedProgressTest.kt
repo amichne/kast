@@ -53,6 +53,32 @@ import org.junit.jupiter.api.Test
 /** The production traversal and query schedulers consume one retained relation inventory together. */
 class QueryWalkRetainedProgressTest {
     @Test
+    fun `exhaustive query traverses beyond bounded hosted ceiling across small grants`() = runTest {
+        val names = listOf("PaymentService") + (1..20).map { "N$it" }
+        val graph = names.mapIndexed { index, name -> name to names.drop(index + 1).take(1) }.toMap()
+        val expected = names.zipWithNext().toSet()
+        for (capacity in listOf(1, 100)) {
+            val fixture =
+                RetainedWalkFixture(
+                    graph,
+                    extent = io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive,
+                )
+            val pages = fixture.drain(resultLimit = capacity)
+            assertInstanceOf(QueryExecutionResult.Complete::class.java, pages.last())
+            val edges = pages.walkRecords().map { it.fact.source.name.value to it.related.name.value }
+            assertEquals(expected, edges.toSet())
+            assertEquals(20, edges.size)
+            assertEquals(names.toSet(), fixture.reads.map { it.first }.toSet())
+            assertEquals(21, fixture.reads.size)
+            assertTrue(
+                pages
+                    .flatMap { it.result().walkObservations }
+                    .all { it.budget.extent == io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive }
+            )
+        }
+    }
+
+    @Test
     fun depthBoundDrainsAcrossResultPages() = runTest {
         val graph =
             mapOf(
@@ -156,6 +182,10 @@ private class RetainedWalkFixture(
     private val graph: Map<String, List<String>> =
         mapOf("PaymentService" to listOf("B", "C"), "B" to emptyList(), "C" to emptyList()),
     depth: Int = 3,
+    extent: io.github.amichne.kast.traversal.contract.TraversalExtent =
+        io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth(
+            TraversalDepthLimit.parse(depth).refinedWalkProgress()
+        ),
 ) {
     private val scope = QueryServiceTest()
     private val selected = scope.selector(scope.selection())
@@ -166,7 +196,7 @@ private class RetainedWalkFixture(
             listOf(
                 QueryStepSyntax.Walk(
                     RelationMeaning.Callees,
-                    TraversalDepthLimit.parse(depth).refinedWalkProgress(),
+                    extent,
                     TraversalStrategy.BreadthFirst,
                 )
             ),

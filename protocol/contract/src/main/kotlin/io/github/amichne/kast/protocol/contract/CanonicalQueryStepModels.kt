@@ -64,12 +64,19 @@ sealed interface QueryStepDocument {
     @SerialName("walk")
     data class Walk(
         val relation: RelationKindDocument,
-        @SerialName("maximum_depth") val maximumDepth: ProtocolCount,
+        @kotlinx.serialization.EncodeDefault val extent: TraversalExtentDocument = TraversalExtentDocument.Exhaustive,
         val strategy: TraversalStrategyDocument = TraversalStrategyDocument.BreadthFirst,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("expansion_scope")
-        val expansionScope: QueryExpansionScopeDocument = QueryExpansionScopeDocument.RetainedSeed,
-    ) : QueryStepDocument
+        val expansionScope: QueryExpansionScopeDocument = extent.defaultExpansion(),
+    ) : QueryStepDocument {
+        constructor(
+            relation: RelationKindDocument,
+            maximumDepth: ProtocolCount,
+            strategy: TraversalStrategyDocument = TraversalStrategyDocument.BreadthFirst,
+            expansionScope: QueryExpansionScopeDocument = QueryExpansionScopeDocument.RetainedSeed,
+        ) : this(relation, TraversalExtentDocument.ThroughDepth(maximumDepth), strategy, expansionScope)
+    }
 
     @Serializable @SerialName("distinct") data object Distinct : QueryStepDocument
 

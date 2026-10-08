@@ -20,7 +20,7 @@ Diagnostics cover the reported IDEA scope. Source changes require their own [ver
 
 ## Read an automatic query
 
-The response shape uses `kast.query.run.v7`; Host and Control must provide the same contract.
+The response shape uses `kast.query.run.v8`; Host and Control must provide the same contract.
 
 A `query_symbols` `RUN` returning symbols, occurrences, traversal records, or bindings follows issued resumable execution internally. One call returns the accumulated rows in page order, with their exact references and multiplicity. Empty advancing pages can continue. The original query, scope, output, and semantic basis stay fixed.
 

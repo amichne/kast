@@ -59,7 +59,7 @@ class PublicToolExpansionScopeContractTest {
     }
 
     @Test
-    fun `omitted and null expansion retain relation and walk defaults`() {
+    fun `omitted and null expansion select defaults from walk extent`() {
         for (codec in
             listOf(
                 json,
@@ -74,8 +74,14 @@ class PublicToolExpansionScopeContractTest {
                     .expansionScope,
             )
             assertEquals(
-                QueryExpansionScopeDocument.RetainedSeed,
+                QueryExpansionScopeDocument.Workspace,
                 (admit(ExpansionStepFixture.Walk(null), codec).steps.values.single() as QueryStepDocument.Walk)
+                    .expansionScope,
+            )
+            assertEquals(
+                QueryExpansionScopeDocument.RetainedSeed,
+                (admit(ExpansionStepFixture.Walk(null, maximumDepth = 2), codec).steps.values.single()
+                        as QueryStepDocument.Walk)
                     .expansionScope,
             )
         }
@@ -166,5 +172,6 @@ private sealed interface ExpansionStepFixture {
     data class Walk(
         val expansionScope: PublicToolExpansionScope?,
         val relation: PublicToolRelation = PublicToolRelation.REFERENCES,
+        val maximumDepth: Int? = null,
     ) : ExpansionStepFixture
 }

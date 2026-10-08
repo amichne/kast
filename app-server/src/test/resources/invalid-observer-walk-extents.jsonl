@@ -1,0 +1,5 @@
+{"type":"THROUGH_DEPTH","maximum_depth":"2"}
+{"type":"THROUGH_DEPTH","maximum_depth":0}
+{"type":"THROUGH_DEPTH"}
+{"type":"EXHAUSTIVE","maximum_depth":2}
+{"type":"UNKNOWN"}

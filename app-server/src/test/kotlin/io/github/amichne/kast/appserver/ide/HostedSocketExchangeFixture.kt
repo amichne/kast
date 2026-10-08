@@ -175,7 +175,7 @@ internal class HostedSocketExchangeFixture {
         val protocol: Int = 3,
         val hostPid: Long = ProcessHandle.current().pid(),
         val host: String = "00000000-0000-0000-0000-000000000002",
-        val querySchema: String = "kast.query.run.v7",
+        val querySchema: String = "kast.query.run.v8",
         val operations: List<String> = operations(),
     )
 
@@ -187,7 +187,7 @@ internal class HostedSocketExchangeFixture {
         val compatibility: HostedCompatibilityDocument,
         val type: String = "KAST_IDE_HOST",
         val protocol: Int = 3,
-        val querySchema: String = "kast.query.run.v7",
+        val querySchema: String = "kast.query.run.v8",
         val indexAuthority: String = "existing_ide_kotlin_stub_index",
         val operations: List<String> = operations(),
     )
@@ -202,7 +202,7 @@ internal class HostedSocketExchangeFixture {
         val hostPid: Long,
         val type: String = "KAST_IDE_HOST",
         val protocol: Int = 3,
-        val querySchema: String = "kast.query.run.v7",
+        val querySchema: String = "kast.query.run.v8",
         val indexAuthority: String = "existing_ide_kotlin_stub_index",
         val operations: List<String> = operations(),
     )

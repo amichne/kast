@@ -35,7 +35,7 @@ private constructor(
                 exclusion.requestedDomain != plan.expansion ||
                     exclusion.effectiveDomain != RelationScopeFingerprint.from(entry.node.endpoint, plan.expansion) ->
                     Refinement.Rejected(TraversalScopeExclusionFailure.DOMAIN_MISMATCH)
-                !plan.admitsEndpoint(entry.node.endpoint) || entry.depth.value >= plan.budget.depth.value ->
+                !plan.admitsEndpoint(entry.node.endpoint) || !plan.budget.extent.permitsExpansion(entry.depth) ->
                     Refinement.Rejected(TraversalScopeExclusionFailure.DEPTH_MISMATCH)
                 else -> Refinement.Refined(TraversalScopeExclusion(entry, exclusion))
             }

@@ -15,7 +15,6 @@ import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QueryWalkArrival
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import io.github.amichne.kast.symbol.contract.SymbolDescription
-import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 private const val TASK_OVERHEAD_BYTES = 512L
@@ -276,7 +275,9 @@ private fun ExactQueryStage.outputSyntax(): QueryOutputSyntax =
         is ExactQueryStage.Emit -> output
     }
 
-internal fun AdmittedQueryPlan.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
+internal fun AdmittedQueryPlan.exceedsTraversalDepth(
+    ceiling: io.github.amichne.kast.traversal.contract.TraversalExtent
+): Boolean =
     when (this) {
         is AdmittedQueryPlan.Impact -> false
         is AdmittedQueryPlan.Symbols -> stage.exceedsTraversalDepth(ceiling)
@@ -286,10 +287,17 @@ internal fun AdmittedQueryPlan.exceedsTraversalDepth(ceiling: TraversalDepthLimi
         is AdmittedQueryPlan.Retained -> stage.exceedsTraversalDepth(ceiling)
     }
 
-private fun ExactQueryStage.exceedsTraversalDepth(ceiling: TraversalDepthLimit): Boolean =
+private fun ExactQueryStage.exceedsTraversalDepth(
+    ceiling: io.github.amichne.kast.traversal.contract.TraversalExtent
+): Boolean =
     when (this) {
         is ExactQueryStage.ProjectBinding -> next.exceedsTraversalDepth(ceiling)
-        is ExactQueryStage.Walk -> maximumDepth.value > ceiling.value || next.exceedsTraversalDepth(ceiling)
+        is ExactQueryStage.Walk ->
+            when (ceiling) {
+                io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive -> false
+                is io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth ->
+                    extent.exceeds(ceiling.maximumDepth)
+            } || next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Concat -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Set -> next.exceedsTraversalDepth(ceiling)
         is ExactQueryStage.Distinct -> next.exceedsTraversalDepth(ceiling)

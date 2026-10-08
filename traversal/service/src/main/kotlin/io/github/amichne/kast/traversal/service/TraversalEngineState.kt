@@ -105,6 +105,11 @@ private constructor(
         terminalRelationLimitations += retained.flatMap { it.limitations }
     }
 
+    fun limitationsWith(limitation: TraversalLimitation): Set<TraversalLimitation> = buildSet {
+        add(limitation)
+        if (terminalRelationLimitations.isNotEmpty()) add(TraversalLimitation.ONE_HOP_INCOMPLETE)
+    }
+
     companion object {
         fun from(checkpoint: TraversalCheckpoint): MutableTraversalState =
             MutableTraversalState(
